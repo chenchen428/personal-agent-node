@@ -22,7 +22,9 @@ test('authorization code redeems a device code and activates Free managed Edge',
   const tunnel = fs.readFileSync(path.join(dataRoot, 'secrets', 'node-identity', 'personal-agent.conf'), 'utf8');
   assert.match(tunnel, /Address = 10\.77\.0\.2\/32/);
   assert.match(tunnel, /AllowedIPs = 10\.77\.0\.1\/32/);
-  assert.equal(fs.statSync(path.join(dataRoot, 'secrets', 'node-identity', 'wireguard.key')).mode & 0o777, 0o600);
+  const wireGuardKey = path.join(dataRoot, 'secrets', 'node-identity', 'wireguard.key');
+  assert.ok(fs.statSync(wireGuardKey).isFile());
+  if (process.platform !== 'win32') assert.equal(fs.statSync(wireGuardKey).mode & 0o777, 0o600);
   const env = fs.readFileSync(path.join(dataRoot, 'secrets', 'applications', 'site.env'), 'utf8');
   assert.match(env, /PERSONAL_AGENT_CLOUD_TOKEN="node-secret-token"/);
   const metadata = fs.readFileSync(path.join(dataRoot, 'config', 'cloud.json'), 'utf8');
@@ -55,7 +57,7 @@ async function mockCloud() {
     }
     if (request.url === '/api/node/enroll') {
       calls.push('enroll'); assert.deepEqual(Object.keys(body).sort(), ['deviceCode', 'publicKey']); assert.equal(body.deviceCode, 'device-code-1'); assert.match(body.publicKey, /^[A-Za-z0-9+/]{43}=$/);
-      return send(response, 201, { ok: true, site: { id: 'site-1', slug: 'user-one', managed_host: 'user-one.personal-agent.cn', plan: 'free', status: 'active' }, nodeToken: 'node-secret-token', tunnel: { schemaVersion: 1, endpoint: 'edge.personal-agent.cn:51820', edgePublicKey: `${'E'.repeat(43)}=`, address: '10.77.0.2/32', dns: ['10.77.0.1'], allowedIPs: ['10.77.0.1/32'], persistentKeepalive: 25, originUrl: 'http://10.77.0.2:8843' } });
+      return send(response, 201, { ok: true, site: { id: 'site-1', slug: 'user-one', managed_host: 'user-one.personal-agent.cn', plan: 'free', status: 'active' }, nodeToken: 'node-secret-token', tunnel: { schemaVersion: 1, endpoint: 'edge.personal-agent.cn:51821', edgePublicKey: `${'E'.repeat(43)}=`, address: '10.77.0.2/32', dns: ['10.77.0.1'], allowedIPs: ['10.77.0.1/32'], persistentKeepalive: 25, originUrl: 'http://10.77.0.2:8843' } });
     }
     if (request.url === '/api/node/heartbeat') {
       calls.push('heartbeat'); assert.equal(request.headers.authorization, 'Bearer node-secret-token'); return send(response, 200, { ok: true, siteId: 'site-1', status: 'active', tunnelGeneration: 1 });
