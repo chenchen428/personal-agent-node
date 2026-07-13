@@ -3,7 +3,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
-import { initializeSite, normalizeApexDomain, normalizeRoutingMode, resolveCodexAppServer, resolveCodexCli, resolveNodeConfig } from "../src/config.mjs";
+import { initializeSite, normalizeApexDomain, normalizeConnectionMode, normalizeRoutingMode, resolveCodexAppServer, resolveCodexCli, resolveNodeConfig } from "../src/config.mjs";
 import { buildRoutes } from "../src/gateway.mjs";
 
 test("normalizes Unicode apex domains to ASCII", () => {
@@ -31,10 +31,38 @@ test("initializes one stable Site identity and fixed path routes", () => {
     }
     for (const legacy of ["/admin", "/agent", "/api/agent", "/api/files"]) assert.equal(routes.has(legacy), false, legacy);
     assert.equal(config.routingMode, "path");
+    assert.equal(config.site.connectionMode, "local-only");
+    assert.equal(config.site.schemaVersion, 2);
+    assert.equal("edgeMode" in config.site, false);
     assert.deepEqual(config.allowedHosts, ["example.site", "example.site.local", "localhost", "127.0.0.1"]);
     assert.ok(fs.existsSync(config.envPath));
   } finally {
     fs.rmSync(dataRoot, { recursive: true, force: true });
+  }
+});
+
+test("connection modes are canonical and managed Cloud cannot be declared before enrollment", () => {
+  for (const mode of ["local-only", "managed-cloud", "self-hosted-edge"]) assert.equal(normalizeConnectionMode(mode), mode);
+  assert.throws(() => normalizeConnectionMode("managed"), /connection mode/i);
+  assert.throws(() => initializeSite({ domain: "example.site", connectionMode: "managed-cloud" }), /completed personal-agent cloud connect/i);
+});
+
+test("migrates legacy connection state without reporting incomplete Cloud enrollment as managed", () => {
+  for (const [completed, expected] of [[false, "local-only"], [true, "managed-cloud"]]) {
+    const dataRoot = fs.mkdtempSync(path.join(os.tmpdir(), "personal-agent-mode-migration-"));
+    try {
+      const configDir = path.join(dataRoot, "config");
+      fs.mkdirSync(configDir, { recursive: true });
+      fs.writeFileSync(path.join(configDir, "site.json"), `${JSON.stringify({ schemaVersion: 1, siteId: "site_old", nodeId: "node_old", asciiDomain: "legacy.example", displayDomain: "legacy.example", edgeMode: "managed", routingMode: "path" })}\n`);
+      if (completed) fs.writeFileSync(path.join(configDir, "cloud.json"), `${JSON.stringify({ schemaVersion: 1, cloudUrl: "https://personal-agent.cn", managedHost: "legacy.personal-agent.cn", siteId: "site_cloud", enrolledAt: "2026-07-13T00:00:00.000Z", tunnel: { address: "10.77.0.2/32", endpoint: "edge.personal-agent.cn:51821" } })}\n`);
+      const config = resolveNodeConfig({ PRIVATE_SITE_DATA_ROOT: dataRoot });
+      assert.equal(config.site.connectionMode, expected);
+      assert.equal(config.site.schemaVersion, 2);
+      assert.equal("edgeMode" in config.site, false);
+      assert.deepEqual(JSON.parse(fs.readFileSync(config.configPath, "utf8")), config.site);
+    } finally {
+      fs.rmSync(dataRoot, { recursive: true, force: true });
+    }
   }
 });
 

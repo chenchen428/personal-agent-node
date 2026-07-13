@@ -16,7 +16,7 @@ Personal Agent Node must start in local-only mode without contacting `personal-a
 For the managed Free Edge path, install a verified GitHub Release and run the installed CLI:
 
 ```bash
-node scripts/install-from-github-release.mjs --tag v0.1.0-beta.5
+node scripts/install-from-github-release.mjs --tag v0.1.0-beta.6
 personal-agent cloud connect --json
 ```
 

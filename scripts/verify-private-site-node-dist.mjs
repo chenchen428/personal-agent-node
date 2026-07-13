@@ -65,7 +65,6 @@ function verifyLayout() {
     "projects/core/node/src/cloud-enrollment.mjs",
     "projects/core/node/src/control-service.mjs",
     "projects/core/node/src/operations.mjs",
-    "projects/core/node/src/onboarding-server.mjs",
     "projects/core/node/src/release-pruning.mjs",
     "projects/core/node/src/platform-service.mjs",
     "projects/core/node/src/platform-wireguard.mjs",

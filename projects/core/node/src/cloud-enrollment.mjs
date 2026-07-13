@@ -2,7 +2,7 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { spawn } from 'node:child_process';
-import { initializeSite, mergeSecretEnv, resolveNodeConfig, writeJsonAtomic } from './config.mjs';
+import { initializeSite, mergeSecretEnv, resolveNodeConfig, setConnectionMode, writeJsonAtomic } from './config.mjs';
 import { installManagedWireGuardTunnel, prepareManagedWireGuardIdentity } from './identity.mjs';
 import { setProvider } from './providers.mjs';
 
@@ -90,42 +90,16 @@ export async function pollCloudDeviceAuthorization({ baseUrl, cloudUrl, fetchImp
   throw cloudAuthError('CLOUD_AUTH_EXPIRED', '页面授权已过期，请重新运行 cloud connect');
 }
 
-// Compatibility path for invitation-based onboarding from older releases.
-export async function enrollWithCloud({ email, authorizationCode, slug, cloudUrl = DEFAULT_CLOUD_URL, dataRoot, fetchImpl = fetch, wireGuardExecutor } = {}) {
-  const baseUrl = normalizeCloudUrl(cloudUrl);
-  const normalizedEmail = String(email || '').trim().toLowerCase();
-  const code = String(authorizationCode || '').trim();
-  const selectedSlug = String(slug || '').trim().toLowerCase();
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) throw new Error('请输入有效邮箱');
-  if (code.length < 4 || code.length > 256) throw new Error('授权码格式无效');
-  if (!/^[a-z0-9][a-z0-9-]{1,30}[a-z0-9]$/.test(selectedSlug)) throw new Error('slug 必须为 3-32 位小写字母、数字或连字符');
-  const preliminary = resolveNodeConfig({ ...process.env, PRIVATE_SITE_DATA_ROOT: dataRoot || process.env.PRIVATE_SITE_DATA_ROOT });
-  const pendingPath = path.join(preliminary.dataRoot, 'secrets', 'applications', 'cloud-enrollment-pending.json');
-  let pending = readLegacyPendingEnrollment(pendingPath, { baseUrl, normalizedEmail, selectedSlug });
-  if (!pending && fs.existsSync(preliminary.configPath)) throw new Error('Site data root 已初始化，请选择空的数据目录或恢复原 Cloud 接入');
-  if (!pending) {
-    const activation = await requestJson(fetchImpl, `${baseUrl}/activate`, { email: normalizedEmail, code, slug: selectedSlug });
-    if (!activation.deviceCode || !activation.site?.managedHost) throw new Error('Cloud 未返回有效设备码或托管域名');
-    const config = initializeSite({ domain: activation.site.managedHost, dataRoot, edgeMode: 'managed' }).config;
-    const identity = prepareManagedWireGuardIdentity(config);
-    const enrolled = await requestJson(fetchImpl, `${baseUrl}/api/node/enroll`, { deviceCode: activation.deviceCode, publicKey: identity.publicKey });
-    if (!enrolled.nodeToken || enrolled.site?.status !== 'active' || !enrolled.tunnel) throw new Error('Cloud 设备接入未激活');
-    pending = { schemaVersion: 1, baseUrl, email: normalizedEmail, slug: selectedSlug, activationSite: activation.site, enrolled, createdAt: new Date().toISOString() };
-    writeJsonAtomic(pendingPath, pending, 0o600);
-  }
-  return finalizeEnrollment({ pending, pendingPath, dataRoot: preliminary.dataRoot, wireGuardExecutor, fetchImpl });
-}
-
 async function finalizeEnrollment({ pending, pendingPath, dataRoot, wireGuardExecutor, fetchImpl }) {
   const { enrolled, activationSite } = pending;
   const selectedSlug = activationSite.slug;
   const before = resolveNodeConfig({ ...process.env, PRIVATE_SITE_DATA_ROOT: dataRoot });
   let config;
   if (fs.existsSync(before.configPath)) {
-    writeJsonAtomic(before.configPath, { ...before.site, displayDomain: activationSite.managedHost, asciiDomain: activationSite.managedHost, edgeMode: 'managed', routingMode: 'path', updatedAt: new Date().toISOString() }, 0o600);
+    writeJsonAtomic(before.configPath, { ...before.site, displayDomain: activationSite.managedHost, asciiDomain: activationSite.managedHost, routingMode: 'path', updatedAt: new Date().toISOString() }, 0o600);
     config = resolveNodeConfig({ ...process.env, PRIVATE_SITE_DATA_ROOT: dataRoot, SITE_DOMAIN: activationSite.managedHost });
   } else {
-    config = initializeSite({ domain: activationSite.managedHost, dataRoot, edgeMode: 'managed' }).config;
+    config = initializeSite({ domain: activationSite.managedHost, dataRoot }).config;
   }
   const tunnel = installManagedWireGuardTunnel(config, enrolled.tunnel, { ...(wireGuardExecutor ? { executor: wireGuardExecutor } : {}) });
   const localPassword = crypto.randomBytes(18).toString('base64url');
@@ -135,6 +109,7 @@ async function finalizeEnrollment({ pending, pendingPath, dataRoot, wireGuardExe
   const heartbeat = await requestJson(fetchImpl, `${pending.baseUrl}/api/node/heartbeat`, undefined, { authorization: `Bearer ${enrolled.nodeToken}` });
   const metadata = { schemaVersion: 1, cloudUrl: pending.baseUrl, slug: selectedSlug, managedHost: activationSite.managedHost, siteId: enrolled.site.id, plan: activationSite.plan || 'free', status: heartbeat.status || enrolled.site.status, tunnel: { address: enrolled.tunnel.address, endpoint: enrolled.tunnel.endpoint, generation: heartbeat.tunnelGeneration || 1 }, enrolledAt: new Date().toISOString() };
   writeJsonAtomic(path.join(config.configDir, 'cloud.json'), metadata, 0o600);
+  setConnectionMode(config, 'managed-cloud');
   fs.rmSync(pendingPath, { force: true });
   return { ok: true, site: metadata, tunnel, dataRoot: config.dataRoot, managedUrl: `https://${metadata.managedHost}` };
 }
@@ -143,18 +118,8 @@ function readDevicePendingEnrollment(pendingPath, baseUrl) {
   if (!fs.existsSync(pendingPath)) return null;
   const pending = JSON.parse(fs.readFileSync(pendingPath, 'utf8'));
   if (pending.schemaVersion !== 2 || pending.flow !== 'device-authorization' || pending.baseUrl !== baseUrl) {
-    if (pending.schemaVersion === 1) throw new Error('本机存在旧版邀请接入恢复状态，请使用原版设置页完成恢复');
+    if (pending.schemaVersion === 1) throw new Error('本机存在已废弃的邀请接入状态；请回滚 previous 完成恢复，或清理该未完成状态后重新运行 cloud connect');
     throw new Error('本机存在另一个未完成的 Cloud 接入，请使用原 Cloud 地址恢复');
-  }
-  validatePending(pending);
-  return pending;
-}
-
-function readLegacyPendingEnrollment(pendingPath, expected) {
-  if (!fs.existsSync(pendingPath)) return null;
-  const pending = JSON.parse(fs.readFileSync(pendingPath, 'utf8'));
-  if (pending.schemaVersion !== 1 || pending.baseUrl !== expected.baseUrl || pending.email !== expected.normalizedEmail || pending.slug !== expected.selectedSlug) {
-    throw new Error('本机存在另一个未完成的 Cloud 接入，请使用原邮箱和专属前缀恢复');
   }
   validatePending(pending);
   return pending;

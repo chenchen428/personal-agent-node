@@ -1,6 +1,6 @@
 {
   "name": "personal-agent-node",
-  "version": "0.1.0-beta.5",
+  "version": "0.1.0-beta.6",
   "private": true,
   "type": "module",
   "description": "Local-first complete Site Node lifecycle and origin gateway.",
@@ -10,7 +10,7 @@
   },
   "scripts": {
     "start": "node bin/private-site.mjs start",
-    "check": "node --check bin/personal-agent.mjs && node --check bin/private-site.mjs && node --check src/backup.mjs && node --check src/backup-scheduler.mjs && node --check src/cli-shims.mjs && node --check src/cloud-enrollment.mjs && node --check src/config.mjs && node --check src/control-service.mjs && node --check src/extensions.mjs && node --check src/gateway.mjs && node --check src/identity.mjs && node --check src/migration.mjs && node --check src/onboarding-server.mjs && node --check src/operations.mjs && node --check src/platform-service.mjs && node --check src/platform-wireguard.mjs && node --check src/providers.mjs && node --check src/release-pruning.mjs && node --check src/supervisor.mjs && node --check src/windows-service.mjs && node --check src/workspace-files.mjs",
+    "check": "node --check bin/personal-agent.mjs && node --check bin/private-site.mjs && node --check src/backup.mjs && node --check src/backup-scheduler.mjs && node --check src/cli-shims.mjs && node --check src/cloud-enrollment.mjs && node --check src/config.mjs && node --check src/control-service.mjs && node --check src/extensions.mjs && node --check src/gateway.mjs && node --check src/identity.mjs && node --check src/migration.mjs && node --check src/operations.mjs && node --check src/platform-service.mjs && node --check src/platform-wireguard.mjs && node --check src/providers.mjs && node --check src/release-pruning.mjs && node --check src/supervisor.mjs && node --check src/windows-service.mjs && node --check src/workspace-files.mjs",
     "test": "node --test test/*.test.mjs"
   },
   "dependencies": {

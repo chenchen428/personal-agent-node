@@ -4,33 +4,8 @@ import http from 'node:http';
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
-import { enrollWithCloud, enrollWithCloudDeviceAuthorization, pollCloudDeviceAuthorization, startCloudDeviceAuthorization } from '../src/cloud-enrollment.mjs';
+import { enrollWithCloudDeviceAuthorization, pollCloudDeviceAuthorization, startCloudDeviceAuthorization } from '../src/cloud-enrollment.mjs';
 import { initializeSite } from '../src/config.mjs';
-import { startOnboardingServer } from '../src/onboarding-server.mjs';
-
-test('authorization code redeems a device code and activates Free managed Edge', async (t) => {
-  const cloud = await mockCloud();
-  const dataRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'personal-agent-enroll-'));
-  t.after(async () => { await close(cloud.server); fs.rmSync(dataRoot, { recursive: true, force: true }); });
-  const result = await enrollWithCloud({ email: 'User@example.com', authorizationCode: 'invite-1234', slug: 'user-one', cloudUrl: cloud.url, dataRoot, wireGuardExecutor: () => ({ started: true }) });
-  assert.equal(result.ok, true);
-  assert.equal(result.site.plan, 'free');
-  assert.equal(result.site.status, 'active');
-  assert.equal(cloud.calls.join(','), 'activate,enroll,heartbeat');
-  const providers = JSON.parse(fs.readFileSync(path.join(dataRoot, 'config', 'providers.json'), 'utf8'));
-  assert.equal(providers.tunnel.provider, 'personal-agent-cloud');
-  assert.equal(providers.tunnel.credentialEnv, 'PERSONAL_AGENT_CLOUD_TOKEN');
-  const tunnel = fs.readFileSync(path.join(dataRoot, 'secrets', 'node-identity', 'personal-agent.conf'), 'utf8');
-  assert.match(tunnel, /Address = 10\.77\.0\.2\/32/);
-  assert.match(tunnel, /AllowedIPs = 10\.77\.0\.1\/32/);
-  const wireGuardKey = path.join(dataRoot, 'secrets', 'node-identity', 'wireguard.key');
-  assert.ok(fs.statSync(wireGuardKey).isFile());
-  if (process.platform !== 'win32') assert.equal(fs.statSync(wireGuardKey).mode & 0o777, 0o600);
-  const env = fs.readFileSync(path.join(dataRoot, 'secrets', 'applications', 'site.env'), 'utf8');
-  assert.match(env, /PERSONAL_AGENT_CLOUD_TOKEN="node-secret-token"/);
-  const metadata = fs.readFileSync(path.join(dataRoot, 'config', 'cloud.json'), 'utf8');
-  assert.doesNotMatch(metadata, /node-secret-token|invite-1234/);
-});
 
 test('browser device authorization emits only public codes then consumes a one-time enrollment credential', async (t) => {
   const cloud = await mockCloud();
@@ -70,7 +45,7 @@ test('browser authorization attaches an existing local-only Node without replaci
   const cloud = await mockCloud();
   const dataRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'personal-agent-device-upgrade-'));
   t.after(async () => { await close(cloud.server); fs.rmSync(dataRoot, { recursive: true, force: true }); });
-  const initialized = initializeSite({ domain: 'personal-agent.local', dataRoot, edgeMode: 'local-only' });
+  const initialized = initializeSite({ domain: 'personal-agent.local', dataRoot });
   const original = JSON.parse(fs.readFileSync(initialized.config.configPath, 'utf8'));
   fs.writeFileSync(path.join(dataRoot, 'workspace', 'memory.txt'), 'preserve me');
   const result = await enrollWithCloudDeviceAuthorization({
@@ -85,8 +60,25 @@ test('browser authorization attaches an existing local-only Node without replaci
   assert.equal(attached.siteId, original.siteId);
   assert.equal(attached.nodeId, original.nodeId);
   assert.equal(attached.asciiDomain, 'user-one.personal-agent.cn');
-  assert.equal(attached.edgeMode, 'managed');
+  assert.equal(attached.connectionMode, 'managed-cloud');
+  assert.equal('edgeMode' in attached, false);
   assert.equal(fs.readFileSync(path.join(dataRoot, 'workspace', 'memory.txt'), 'utf8'), 'preserve me');
+});
+
+test('failed Cloud tunnel installation remains local-only until enrollment completes', async (t) => {
+  const cloud = await mockCloud();
+  const dataRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'personal-agent-device-failed-'));
+  t.after(async () => { await close(cloud.server); fs.rmSync(dataRoot, { recursive: true, force: true }); });
+  await assert.rejects(enrollWithCloudDeviceAuthorization({
+    cloudUrl: cloud.url,
+    dataRoot,
+    wireGuardExecutor: () => { throw new Error('tunnel install failed'); },
+    openBrowser: async () => true,
+    sleep: async () => {},
+  }), /tunnel install failed/);
+  const site = JSON.parse(fs.readFileSync(path.join(dataRoot, 'config', 'site.json'), 'utf8'));
+  assert.equal(site.connectionMode, 'local-only');
+  assert.equal(fs.existsSync(path.join(dataRoot, 'config', 'cloud.json')), false);
 });
 
 test('device authorization refuses a verification URL outside the selected Cloud origin', async (t) => {
@@ -113,39 +105,6 @@ test('device authorization fails closed on denial and local expiry', async () =>
   assert.equal(calls, 1);
 });
 
-test('loopback onboarding page submits email, code and slug to the enrollment client', async (t) => {
-  const cloud = await mockCloud();
-  const dataRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'personal-agent-onboarding-'));
-  const onboarding = await startOnboardingServer({ port: 0, cloudUrl: cloud.url, dataRoot, enrollmentOptions: { wireGuardExecutor: () => ({ started: true }) } });
-  t.after(async () => { await close(onboarding.server); await close(cloud.server); fs.rmSync(dataRoot, { recursive: true, force: true }); });
-  const page = await fetch(onboarding.url);
-  assert.equal(page.status, 200);
-  assert.match(await page.text(), /邮箱[\s\S]*授权码[\s\S]*专属前缀/);
-  const response = await fetch(new URL('/api/enroll', onboarding.url), { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email: 'user@example.com', authorizationCode: 'invite-1234', slug: 'user-one' }) });
-  assert.equal(response.status, 201);
-  const body = await response.json();
-  assert.equal(body.managedUrl, 'https://user-one.personal-agent.cn');
-  assert.equal(body.started, false);
-});
-
-test('a failed tunnel authorization resumes without redeeming the invitation twice', async (t) => {
-  const cloud = await mockCloud();
-  const dataRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'personal-agent-enroll-resume-'));
-  t.after(async () => { await close(cloud.server); fs.rmSync(dataRoot, { recursive: true, force: true }); });
-  await assert.rejects(
-    enrollWithCloud({ email: 'user@example.com', authorizationCode: 'invite-1234', slug: 'user-one', cloudUrl: cloud.url, dataRoot, wireGuardExecutor: () => { throw new Error('authorization cancelled'); } }),
-    /authorization cancelled/
-  );
-  const pendingPath = path.join(dataRoot, 'secrets', 'applications', 'cloud-enrollment-pending.json');
-  assert.ok(fs.existsSync(pendingPath));
-  if (process.platform !== 'win32') assert.equal(fs.statSync(pendingPath).mode & 0o777, 0o600);
-  assert.match(fs.readFileSync(pendingPath, 'utf8'), /node-secret-token/);
-  const resumed = await enrollWithCloud({ email: 'user@example.com', authorizationCode: 'already-consumed', slug: 'user-one', cloudUrl: cloud.url, dataRoot, wireGuardExecutor: () => ({ started: true }) });
-  assert.equal(resumed.ok, true);
-  assert.equal(cloud.calls.join(','), 'activate,enroll,heartbeat');
-  assert.equal(fs.existsSync(pendingPath), false);
-});
-
 async function mockCloud(options = {}) {
   const calls = [];
   let polls = 0;
@@ -164,15 +123,9 @@ async function mockCloud(options = {}) {
       if (polls === 2) { response.setHeader('Retry-After', '9'); return send(response, 429, { error: 'Polling too quickly', code: 'slow_down' }); }
       return send(response, 200, { status: 'approved', enrollmentCredential: 'enrollment-credential-123456' });
     }
-    if (request.url === '/activate') {
-      calls.push('activate');
-      assert.deepEqual(body, { email: 'user@example.com', code: 'invite-1234', slug: 'user-one' });
-      return send(response, 201, { ok: true, site: { id: 'site-1', slug: 'user-one', managedHost: 'user-one.personal-agent.cn', plan: 'free' }, deviceCode: 'device-code-1' });
-    }
     if (request.url === '/api/node/enroll') {
-      calls.push('enroll'); assert.deepEqual(Object.keys(body).sort(), body.enrollmentCredential ? ['enrollmentCredential', 'publicKey'] : ['deviceCode', 'publicKey']);
-      if (body.enrollmentCredential) assert.equal(body.enrollmentCredential, 'enrollment-credential-123456');
-      else assert.equal(body.deviceCode, 'device-code-1');
+      calls.push('enroll'); assert.deepEqual(Object.keys(body).sort(), ['enrollmentCredential', 'publicKey']);
+      assert.equal(body.enrollmentCredential, 'enrollment-credential-123456');
       assert.match(body.publicKey, /^[A-Za-z0-9+/]{43}=$/);
       return send(response, 201, { ok: true, site: { id: 'site-1', slug: 'user-one', managed_host: 'user-one.personal-agent.cn', plan: 'free', status: 'active' }, nodeToken: 'node-secret-token', tunnel: { schemaVersion: 1, endpoint: 'edge.personal-agent.cn:51821', edgePublicKey: `${'E'.repeat(43)}=`, address: '10.77.0.2/32', dns: ['10.77.0.1'], allowedIPs: ['10.77.0.1/32'], persistentKeepalive: 25, originUrl: 'http://10.77.0.2:8843' } });
     }

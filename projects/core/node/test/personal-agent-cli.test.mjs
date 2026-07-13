@@ -4,6 +4,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import test from 'node:test';
+import { initializeSite } from '../src/config.mjs';
 
 const root = path.resolve(import.meta.dirname, '..');
 const cli = path.join(root, 'bin', 'personal-agent.mjs');
@@ -47,6 +48,21 @@ test('personal-agent status never emits local secret values', () => {
     const result = run(['status', '--json', '--data-root', dataRoot], { PERSONAL_AGENT_CLOUD_TOKEN: 'DO_NOT_EMIT_TOKEN' });
     assert.equal(result.status, 0);
     assert.doesNotMatch(result.stdout, /DO_NOT_EMIT_TOKEN/);
+  } finally {
+    fs.rmSync(dataRoot, { recursive: true, force: true });
+  }
+});
+
+test('connection status uses the canonical mode in the standard JSON envelope', () => {
+  const dataRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'personal-agent-connection-'));
+  try {
+    initializeSite({ domain: 'local.example', dataRoot });
+    const result = run(['connection', 'status', '--json', '--data-root', dataRoot]);
+    assert.equal(result.status, 0);
+    const body = JSON.parse(result.stdout);
+    assert.deepEqual({ schemaVersion: body.schemaVersion, ok: body.ok, command: body.command, mode: body.result.mode }, { schemaVersion: 1, ok: true, command: 'connection status', mode: 'local-only' });
+    assert.deepEqual(body.warnings, []);
+    assert.deepEqual(body.nextActions, []);
   } finally {
     fs.rmSync(dataRoot, { recursive: true, force: true });
   }

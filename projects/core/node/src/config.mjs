@@ -8,6 +8,7 @@ import { domainToASCII, fileURLToPath } from "node:url";
 export const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 export const workspaceRoot = path.resolve(projectRoot, "..", "..", "..");
 export const distributionPath = path.join(workspaceRoot, "registry", "site-distribution.json");
+export const CONNECTION_MODES = Object.freeze(["local-only", "managed-cloud", "self-hosted-edge"]);
 
 export function resolveNodeConfig(env = process.env) {
   const dataRoot = path.resolve(env.PRIVATE_SITE_DATA_ROOT || path.join(os.homedir(), ".personal-agent"));
@@ -18,7 +19,7 @@ export function resolveNodeConfig(env = process.env) {
   const runtimeDir = path.join(dataRoot, "runtime");
   const logsDir = path.join(dataRoot, "logs");
   const distribution = readJson(distributionPath);
-  const site = fs.existsSync(configPath) ? readJson(configPath) : null;
+  const site = fs.existsSync(configPath) ? migrateSiteConnectionMode(configPath, configDir) : null;
   const fileEnv = readEnvFile(envPath);
   const mergedEnv = { ...fileEnv, ...env };
   const providers = readProviderDocument(providersPath);
@@ -61,8 +62,12 @@ export function resolveNodeConfig(env = process.env) {
   };
 }
 
-export function initializeSite({ domain, dataRoot, edgeMode = "local-only", distributionVersion = "0.1.0" } = {}) {
+export function initializeSite({ domain, dataRoot, connectionMode = "local-only", distributionVersion = "0.1.0" } = {}) {
   const normalizedDomain = normalizeApexDomain(domain || process.env.SITE_DOMAIN || "personal-agent.local");
+  const normalizedConnectionMode = normalizeConnectionMode(connectionMode);
+  if (normalizedConnectionMode === "managed-cloud") {
+    throw new Error("managed-cloud can only be activated by a completed personal-agent cloud connect flow");
+  }
   const config = resolveNodeConfig({ ...process.env, PRIVATE_SITE_DATA_ROOT: dataRoot || process.env.PRIVATE_SITE_DATA_ROOT, SITE_DOMAIN: normalizedDomain });
   ensureNodeDirectories(config);
   if (fs.existsSync(config.configPath)) {
@@ -74,14 +79,14 @@ export function initializeSite({ domain, dataRoot, edgeMode = "local-only", dist
   }
   const now = new Date().toISOString();
   const site = {
-    schemaVersion: 1,
+    schemaVersion: 2,
     siteId: opaqueId("site"),
     displayDomain: String(domain || normalizedDomain),
     asciiDomain: normalizedDomain,
     nodeId: opaqueId("node"),
     protocolVersion: "1.0",
     distributionVersion,
-    edgeMode,
+    connectionMode: normalizedConnectionMode,
     routingMode: "path",
     createdAt: now,
   };
@@ -95,6 +100,62 @@ export function initializeSite({ domain, dataRoot, edgeMode = "local-only", dist
     ...(fs.existsSync(path.join(workspaceRoot, "projects", "personal", "lmt_tools")) ? { LMT_SESSION_SECRET: randomSecret() } : {}),
   });
   return { config: resolveNodeConfig({ ...process.env, PRIVATE_SITE_DATA_ROOT: config.dataRoot }), created: true };
+}
+
+export function normalizeConnectionMode(value) {
+  const mode = String(value || "").trim().toLowerCase();
+  if (!CONNECTION_MODES.includes(mode)) {
+    throw new Error(`Invalid Personal Agent connection mode: ${mode || "empty"}; expected ${CONNECTION_MODES.join(" | ")}`);
+  }
+  return mode;
+}
+
+export function setConnectionMode(config, mode) {
+  if (!config?.configPath || !config.site) throw new Error("Personal Agent Node is not initialized");
+  const connectionMode = normalizeConnectionMode(mode);
+  if (connectionMode === "managed-cloud" && !hasCompletedCloudEnrollment(config.configDir)) {
+    throw new Error("managed-cloud requires a completed Cloud enrollment");
+  }
+  const site = { ...config.site, schemaVersion: 2, connectionMode, updatedAt: new Date().toISOString() };
+  delete site.edgeMode;
+  writeJsonAtomic(config.configPath, site, 0o600);
+  return site;
+}
+
+function migrateSiteConnectionMode(configPath, configDir) {
+  const site = readJson(configPath);
+  const completedCloudEnrollment = hasCompletedCloudEnrollment(configDir);
+  let connectionMode;
+  if (site.connectionMode !== undefined) {
+    connectionMode = normalizeConnectionMode(site.connectionMode);
+    if (connectionMode === "managed-cloud" && !completedCloudEnrollment) connectionMode = "local-only";
+  } else {
+    const legacyMode = String(site.edgeMode || "local-only").trim().toLowerCase();
+    if (legacyMode === "managed") connectionMode = completedCloudEnrollment ? "managed-cloud" : "local-only";
+    else if (legacyMode === "self-hosted") connectionMode = "self-hosted-edge";
+    else connectionMode = normalizeConnectionMode(legacyMode);
+  }
+  const migrated = { ...site, schemaVersion: 2, connectionMode };
+  delete migrated.edgeMode;
+  if (JSON.stringify(migrated) !== JSON.stringify(site)) writeJsonAtomic(configPath, migrated, 0o600);
+  return migrated;
+}
+
+function hasCompletedCloudEnrollment(configDir) {
+  const cloudPath = path.join(configDir, "cloud.json");
+  if (!fs.existsSync(cloudPath)) return false;
+  try {
+    const cloud = readJson(cloudPath);
+    return cloud?.schemaVersion === 1
+      && Boolean(String(cloud.cloudUrl || "").trim())
+      && Boolean(String(cloud.managedHost || "").trim())
+      && Boolean(String(cloud.siteId || "").trim())
+      && Boolean(String(cloud.enrolledAt || "").trim())
+      && Boolean(String(cloud.tunnel?.address || "").trim())
+      && Boolean(String(cloud.tunnel?.endpoint || "").trim());
+  } catch {
+    return false;
+  }
 }
 
 export function ensureNodeDirectories(config) {

@@ -53,11 +53,12 @@ async function execute(args) {
 function statusResult() {
   const config = safeConfig();
   const installation = readJsonIfExists(path.join(resolveInstallRoot(), 'installation.json'));
+  const initialized = Boolean(config && fs.existsSync(config.configPath));
   return success('status', {
     release: installation ? { releaseId: installation.activeReleaseId, revision: installation.revision, profile: installation.profile } : null,
-    initialized: Boolean(config && fs.existsSync(config.configPath)),
-    connection: config ? providerStatus(config) : null,
-    cloud: config ? sanitizedCloud(config) : null,
+    initialized,
+    connection: initialized ? connectionResult(config) : null,
+    cloud: initialized ? sanitizedCloud(config) : null,
     legacyBridge: config ? bridgeCliStatus(config) : { ready: false },
   });
 }
@@ -107,7 +108,11 @@ function skillVerify(id) {
 
 function connectionStatus() {
   const config = requireConfig();
-  return success('connection status', { mode: config.site.edgeMode, providers: providerStatus(config) });
+  return success('connection status', connectionResult(config));
+}
+
+function connectionResult(config) {
+  return { mode: config.site.connectionMode, providers: providerStatus(config) };
 }
 
 function cloudStatus() {

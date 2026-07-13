@@ -1,5 +1,7 @@
 #!/usr/bin/env node
-import { exists, readJson, report } from './harness-lib.mjs';
+import fs from 'node:fs';
+import path from 'node:path';
+import { exists, readJson, report, root } from './harness-lib.mjs';
 
 const checks = [];
 const projects = readJson('registry/projects.json');
@@ -35,4 +37,6 @@ checks.push({ name: 'commands declare R0-R3 risk', ok: commands.commands.every((
 checks.push({ name: 'agent output contract is JSON', ok: commands.output?.agentFormat === 'json' && commands.output?.formats?.includes('json') });
 checks.push({ name: 'personal-agent skill', ok: exists('skills/personal-agent/SKILL.md') });
 checks.push({ name: 'legacy bridge skill removed', ok: !exists('skills/open-agent-bridge/SKILL.md') });
+const cloudEnrollmentSource = fs.readFileSync(path.join(root, 'projects/core/node/src/cloud-enrollment.mjs'), 'utf8');
+checks.push({ name: 'legacy invitation onboarding removed', ok: !exists('projects/core/node/src/onboarding-server.mjs') && !cloudEnrollmentSource.includes('enrollWithCloud(') && !cloudEnrollmentSource.includes('/activate') });
 report(checks);
