@@ -9,7 +9,7 @@ import { downloadReleaseAsset } from './release-download.mjs';
 
 const args = parseArgs(process.argv.slice(2));
 const repository = args.repository || 'chenchen428/personal-agent-node';
-const tag = args.tag || 'v0.1.0-beta.9';
+const tag = args.tag || 'v0.1.0-beta.10';
 if (!/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(repository) || !/^v[0-9][0-9A-Za-z.-]+$/.test(tag)) throw new Error('Invalid repository or tag');
 const base = `https://github.com/${repository}/releases/download/${tag}`;
 const archiveName = `personal-agent-node-${tag}-universal.tar.gz`;

@@ -65,8 +65,43 @@ test('release downloader falls back to curl with shell-free HTTPS-only arguments
     assert.equal(value.toString(), 'curl-fallback');
     assert.equal(invocation.command, 'curl');
     assert.equal(invocation.options.shell, false);
-    assert.deepEqual(invocation.args.slice(0, 9), ['--fail', '--silent', '--show-error', '--location', '--proto', '=https', '--proto-redir', '=https', '--tlsv1.2']);
+    assert.deepEqual(invocation.args.slice(0, 15), [
+      '--fail', '--silent', '--show-error', '--location',
+      '--proto', '=https', '--proto-redir', '=https', '--tlsv1.2',
+      '--ipv4', '--http1.1', '--connect-timeout', '10', '--max-time', '90',
+    ]);
     assert.deepEqual(invocation.args.slice(-2), ['--', assetUrl]);
+  } finally {
+    fs.rmSync(temporaryRoot, { recursive: true, force: true });
+  }
+});
+
+test('release downloader uses the official GitHub API when the direct asset host is unreachable', async () => {
+  const temporaryRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'personal-agent-api-fallback-test-'));
+  const invocations = [];
+  try {
+    const value = await downloadReleaseAsset(assetUrl, {
+      fetchImpl: async () => { throw new Error('direct fetch unavailable'); },
+      platform: 'darwin',
+      temporaryRoot,
+      spawnImpl(command, args, options) {
+        invocations.push({ command, args, options });
+        const output = args[args.indexOf('--output') + 1];
+        const requestedUrl = args.at(-1);
+        if (invocations.length === 1) return { status: 28, stdout: '', stderr: 'connect timeout' };
+        if (requestedUrl.includes('/releases/tags/v1.0.0')) {
+          fs.writeFileSync(output, JSON.stringify({ assets: [{ name: 'asset.tar.gz', url: 'https://api.github.com/repos/example/personal-agent-node/releases/assets/123' }] }));
+          return { status: 0, stdout: '', stderr: '' };
+        }
+        assert.equal(requestedUrl, 'https://api.github.com/repos/example/personal-agent-node/releases/assets/123');
+        assert.ok(args.includes('Accept: application/octet-stream'));
+        fs.writeFileSync(output, 'api-fallback');
+        return { status: 0, stdout: '', stderr: '' };
+      },
+    });
+    assert.equal(value.toString(), 'api-fallback');
+    assert.equal(invocations.length, 3);
+    assert.ok(invocations.every((entry) => entry.command === 'curl' && entry.options.shell === false));
   } finally {
     fs.rmSync(temporaryRoot, { recursive: true, force: true });
   }
