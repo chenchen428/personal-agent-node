@@ -17,4 +17,4 @@ After every mutation, run the matching `status` or `verify` command and report r
 
 For milestone, release, final delivery, customer-machine installation, upgrade, rollback, Console, CLI, permission or integration acceptance, read and apply [acceptance.md](references/acceptance.md). Keep Node core acceptance independent from optional Managed Cloud integration and never infer runtime evidence from source presence.
 
-The unified CLI is currently a partial migration target. Check `registry/commands.json` and machine-readable help; when a requested command is unavailable, report that gap instead of falling back to an internal or legacy interface.
+The unified CLI is currently a partial migration target. Default machine-readable help lists only `implemented` commands. Use `help --preview --json` to discover preview commands and pass `--preview` only when the user intentionally accepts a non-stable command; preserve the returned warning in the report. `help --all --json` is discovery-only and never enables `planned` commands. When a requested command is unavailable, report that gap instead of falling back to an internal or legacy interface.

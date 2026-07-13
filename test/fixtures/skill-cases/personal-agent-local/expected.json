@@ -1,1 +1,16 @@
-{"schemaVersion":1,"mode":"local-only","cloudRequired":false,"secretsDisclosed":false,"implementationStatus":"partial"}
+{
+  "schemaVersion": 1,
+  "mode": "local-only",
+  "cloudRequired": false,
+  "secretsDisclosed": false,
+  "implementationStatus": "partial",
+  "commandSurface": {
+    "defaultHelp": ["implemented"],
+    "previewHelp": ["implemented", "preview"],
+    "allHelp": ["implemented", "preview", "planned"],
+    "previewRequiresOptIn": true,
+    "previewSuccessWarning": "PREVIEW_COMMAND",
+    "plannedError": "CAPABILITY_UNAVAILABLE",
+    "plannedEnabledByPreview": false
+  }
+}

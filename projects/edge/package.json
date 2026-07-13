@@ -1,6 +1,6 @@
 {
   "name": "private-site-edge",
-  "version": "0.1.0-beta.8",
+  "version": "0.1.0-beta.9",
   "private": true,
   "type": "module",
   "scripts": {

@@ -10,6 +10,9 @@ import { readBackupState } from '../src/backup-scheduler.mjs';
 import { providerStatus } from '../src/providers.mjs';
 import { requestControl } from '../src/control-service.mjs';
 import { enrollWithCloudDeviceAuthorization } from '../src/cloud-enrollment.mjs';
+import { commandKey, expandCommandName, HANDLED_COMMAND_KEYS } from '../src/command-surface.mjs';
+
+const handledCommandKeys = new Set(HANDLED_COMMAND_KEYS);
 
 try {
   const parsed = parseArgs(process.argv.slice(2));
@@ -24,7 +27,22 @@ try {
 
 async function execute(args) {
   const [resource = 'status', action, id] = args._;
-  if (resource === 'help' || args.help) return helpResult();
+  if (resource === 'help' || args.help) return helpResult(args);
+  if (args.all) throw cliError('INVALID_ARGUMENT', '--all is only valid with help', 2, ['Run personal-agent help --all --json']);
+  const requestedCommand = commandKey(resource, action);
+  const descriptor = commandDescriptor(requestedCommand);
+  if (!descriptor || descriptor.implementationStatus === 'planned' || !handledCommandKeys.has(requestedCommand)) throw unavailableCommand(requestedCommand);
+  if (descriptor.implementationStatus === 'preview' && !args.preview) {
+    throw unavailableCommand(requestedCommand, [`Run personal-agent ${requestedCommand} --preview --json to opt in to the non-stable command`]);
+  }
+  const response = await executeHandled({ resource, action, id, args, requestedCommand });
+  if (descriptor.implementationStatus === 'preview') {
+    response.warnings = [...(response.warnings || []), { code: 'PREVIEW_COMMAND', message: `${requestedCommand} is a non-stable preview command` }];
+  }
+  return response;
+}
+
+async function executeHandled({ resource, action, id, args, requestedCommand }) {
   if (resource === 'status') return statusResult();
   if (resource === 'doctor') return doctorResult();
   if (resource === 'capabilities' && action === 'list') return capabilityList();
@@ -39,7 +57,7 @@ async function execute(args) {
   if (resource === 'extension' && action === 'list') return extensionList();
   if (resource === 'extension' && action === 'inspect') return extensionInspect(id);
   if (resource === 'operation' && action === 'list') return controlResult(await requestControl(requireConfig(), 'operation.list'));
-  if (resource === 'operation' && (action === 'show' || action === 'inspect')) return controlResult(await requestControl(requireConfig(), 'operation.inspect', { id }));
+  if (resource === 'operation' && action === 'show') return controlResult(await requestControl(requireConfig(), 'operation.inspect', { id }));
   if (resource === 'operation' && action === 'approve') {
     if (process.stdin.isTTY !== true || process.stdout.isTTY !== true) throw cliError('APPROVAL_REQUIRED', 'Operation approval requires an interactive local terminal', 5);
     const config = requireConfig();
@@ -47,7 +65,7 @@ async function execute(args) {
     const confirmation = await confirmApproval(challenge.result.prompt);
     return controlResult(await requestControl(config, 'operation.approve', { id, digest: args.digest, nonce: challenge.result.nonce, confirmation }));
   }
-  throw cliError('CAPABILITY_UNAVAILABLE', `Command is not implemented in this release: ${[resource, action].filter(Boolean).join(' ')}`, 7, ['Run personal-agent capabilities list --json']);
+  throw unavailableCommand(requestedCommand);
 }
 
 function statusResult() {
@@ -86,24 +104,24 @@ function capabilityInspect(id) {
 }
 
 function skillList() {
-  const skills = registry('skills.json').skills.map(({ id, category, maturity, risk, path: skillPath }) => ({ id, category, maturity, risk, path: skillPath }));
+  const skills = registry('skills.json').skills.map(({ name, category, maturity, risks, directory }) => ({ name, category, maturity, risks, directory }));
   return success('skill list', { skills });
 }
 
-function skillInspect(id) {
-  requireId(id, 'skill id');
-  const skill = registry('skills.json').skills.find((entry) => entry.id === id);
-  if (!skill) throw cliError('NOT_FOUND', `Unknown skill: ${id}`, 3);
+function skillInspect(name) {
+  requireId(name, 'skill name');
+  const skill = registry('skills.json').skills.find((entry) => entry.name === name);
+  if (!skill) throw cliError('NOT_FOUND', `Unknown skill: ${name}`, 3);
   return success('skill inspect', { skill });
 }
 
-function skillVerify(id) {
-  requireId(id, 'skill id');
-  const skill = registry('skills.json').skills.find((entry) => entry.id === id);
-  if (!skill) throw cliError('NOT_FOUND', `Unknown skill: ${id}`, 3);
+function skillVerify(name) {
+  requireId(name, 'skill name');
+  const skill = registry('skills.json').skills.find((entry) => entry.name === name);
+  if (!skill) throw cliError('NOT_FOUND', `Unknown skill: ${name}`, 3);
   const result = spawnSync(process.execPath, [path.join(workspaceRoot, 'scripts', 'skill-tree.mjs'), 'cases', 'verify'], { cwd: workspaceRoot, encoding: 'utf8' });
   if (result.status !== 0) throw cliError('ACCEPTANCE_FAILED', 'Skill verification failed', 8);
-  return success('skill verify', { skillId: id, verified: true, case: skill.case || null });
+  return success('skill verify', { skillName: name, verified: true, examples: skill.examples || [] });
 }
 
 function connectionStatus() {
@@ -154,9 +172,29 @@ function extensionInspect(id) {
   return success('extension inspect', { extension });
 }
 
-function helpResult() {
+function helpResult(args) {
+  if (args.preview && args.all) throw cliError('INVALID_ARGUMENT', '--preview and --all cannot be combined', 2);
   const commands = registry('commands.json');
-  return success('help', { binary: commands.binary, output: commands.output, commands: commands.commands });
+  const visibleStatuses = args.all ? ['implemented', 'preview', 'planned'] : args.preview ? ['implemented', 'preview'] : ['implemented'];
+  const commandGroups = Object.fromEntries(visibleStatuses.map((status) => [status, commands.commands.filter((entry) => entry.implementationStatus === status)]));
+  const visibleCommands = commands.commands.filter((entry) => visibleStatuses.includes(entry.implementationStatus));
+  return success('help', {
+    binary: commands.binary,
+    implementationStatus: commands.implementationStatus,
+    implementationStatuses: commands.implementationStatuses,
+    visibility: args.all ? 'all' : args.preview ? 'preview' : 'implemented',
+    output: commands.output,
+    commands: visibleCommands,
+    commandGroups,
+  });
+}
+
+function unavailableCommand(command, nextActions = ['Run personal-agent help --all --json to inspect implemented, preview, and planned commands']) {
+  return cliError('CAPABILITY_UNAVAILABLE', `Command is not available in this release: ${command}`, 7, nextActions);
+}
+
+function commandDescriptor(command) {
+  return registry('commands.json').commands.find((entry) => expandCommandName(entry.name).includes(command)) || null;
 }
 
 function safeConfig() {
@@ -213,11 +251,13 @@ function resolveInstallRoot() {
 }
 
 function parseArgs(argv) {
-  const result = { _: [], json: false, help: false };
+  const result = { _: [], json: false, help: false, preview: false, all: false };
   for (let index = 0; index < argv.length; index += 1) {
     const value = argv[index];
     if (value === '--json' || value === '--output=json') result.json = true;
     else if (value === '--help' || value === '-h') result.help = true;
+    else if (value === '--preview') result.preview = true;
+    else if (value === '--all') result.all = true;
     else if (value === '--data-root') result.dataRoot = argv[++index];
     else if (value === '--digest') result.digest = argv[++index];
     else if (value === '--cloud-url') result.cloudUrl = argv[++index];

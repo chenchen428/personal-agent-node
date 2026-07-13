@@ -18,7 +18,8 @@ async function main() {
   verifySecurityBoundary();
   verifyProjectOwnership();
   verifyHarness();
-  verifyEntrypoints();
+  const expandBundledCommandName = await verifyCommandRegistry();
+  verifyEntrypoints(expandBundledCommandName);
   await verifyPlatformAdapters();
   process.stdout.write(`${JSON.stringify({
     ok: true,
@@ -36,6 +37,7 @@ function verifyLayout() {
   assert(manifest.harness?.supportedAgentRuntime === "codex", "Node release must declare Codex as its supported Agent runtime");
   assert(manifest.harness?.developmentWorkspace === "full-git-clone", "Node release must preserve the full-clone evolution contract");
   assert(manifest.profile === "universal", "Node release profile is invalid");
+  assert(manifest.entrypoints?.personalAgent === "projects/core/node/bin/personal-agent.mjs", "Node release must declare the public personal-agent entrypoint");
   assert(manifest.ownership?.edge?.length === 5, "Edge ownership must stay limited to the transport plane");
   for (const relative of [
     "AGENTS.md",
@@ -51,6 +53,7 @@ function verifyLayout() {
     "scripts/project-guard.mjs",
     "scripts/skill-guard.mjs",
     "scripts/skill-tree.mjs",
+    "scripts/lib/command-registry-contract.mjs",
     "scripts/setup-agent-bridge.sh",
     "scripts/install-from-github-release.mjs",
     "scripts/release-download.mjs",
@@ -61,6 +64,7 @@ function verifyLayout() {
     "test/fixtures/skill-cases/content-workbench/report-input.json",
     "projects/core/node/bin/personal-agent.mjs",
     "projects/core/node/bin/private-site.mjs",
+    "projects/core/node/src/command-surface.mjs",
     "projects/core/node/src/backup-scheduler.mjs",
     "projects/core/node/src/cli-shims.mjs",
     "projects/core/node/src/cloud-enrollment.mjs",
@@ -84,6 +88,7 @@ function verifyLayout() {
     "registry/extensions.json",
     "registry/commands.json",
     "schemas/personal-agent/capabilities.schema.json",
+    "schemas/personal-agent/commands.schema.json",
     "schemas/personal-agent/operations.schema.json",
     "registry/behavior-baselines.json",
     "docs/adr/0001-node-product-boundary-freeze.md",
@@ -165,13 +170,48 @@ function verifyHarness() {
   assert(server.includes("data-detail"), "Bridge bundle is missing channel detail markers");
 }
 
-function verifyEntrypoints() {
+async function verifyCommandRegistry() {
+  const [{ validateCommandRegistry }, { HANDLED_COMMAND_KEYS, expandCommandName }] = await Promise.all([
+    import(pathToFileURL(at("scripts/lib/command-registry-contract.mjs"))),
+    import(pathToFileURL(at("projects/core/node/src/command-surface.mjs"))),
+  ]);
+  const registry = readJson("registry/commands.json");
+  const schema = readJson("schemas/personal-agent/commands.schema.json");
+  const capabilities = readJson("registry/capabilities.json");
+  const capabilityIds = new Set(capabilities.capabilities.map((entry) => entry.id));
+  const result = validateCommandRegistry({ registry, schema, capabilityIds, handledCommandKeys: HANDLED_COMMAND_KEYS });
+  assert(result.ok, `Bundled command registry contract failed: ${result.errors.join("; ")}`);
+  return expandCommandName;
+}
+
+function verifyEntrypoints(expandBundledCommandName) {
   for (const relative of Object.values(manifest.entrypoints)) {
     const result = spawnSync(process.execPath, ["--check", at(relative)], { encoding: "utf8" });
     assert(result.status === 0, `${relative} failed node --check: ${String(result.stderr || "").trim()}`);
   }
-  const help = spawnSync(process.execPath, [at(manifest.entrypoints.harnessCli), "help"], { encoding: "utf8", timeout: 30_000 });
-  assert(help.status === 0, `Bundled Harness CLI failed: ${String(help.stderr || "").trim()}`);
+  for (const expectation of [
+    { args: ["help", "--json"], visibility: "implemented", groups: ["implemented"] },
+    { args: ["help", "--preview", "--json"], visibility: "preview", groups: ["implemented", "preview"] },
+    { args: ["help", "--all", "--json"], visibility: "all", groups: ["implemented", "preview", "planned"] },
+  ]) {
+    const help = spawnSync(process.execPath, [at(manifest.entrypoints.personalAgent), ...expectation.args], { encoding: "utf8", timeout: 30_000 });
+    assert(help.status === 0, `Bundled Harness CLI failed (${expectation.args.join(" ")}): ${String(help.stderr || "").trim()}`);
+    const body = JSON.parse(help.stdout);
+    assert(body.ok === true && body.result?.visibility === expectation.visibility, `Bundled Harness CLI returned the wrong help visibility: ${expectation.visibility}`);
+    assert(JSON.stringify(Object.keys(body.result.commandGroups)) === JSON.stringify(expectation.groups), `Bundled Harness CLI exposed the wrong command groups: ${expectation.visibility}`);
+  }
+  const plannedLeaves = readJson("registry/commands.json").commands
+    .filter((entry) => entry.implementationStatus === "planned")
+    .flatMap((entry) => expandBundledCommandName(entry.name));
+  assert(plannedLeaves.length > 0, "Bundled command registry has no planned leaves to verify");
+  for (const command of plannedLeaves) {
+    for (const optIn of [[], ["--preview"]]) {
+      const result = spawnSync(process.execPath, [at(manifest.entrypoints.personalAgent), ...command.split(" "), ...optIn, "--json"], { encoding: "utf8", timeout: 30_000 });
+      assert(result.status === 7, `Planned command did not fail closed: ${command} ${optIn.join(" ")}`);
+      const error = JSON.parse(result.stderr);
+      assert(error.error?.code === "CAPABILITY_UNAVAILABLE", `Planned command returned the wrong error: ${command} ${optIn.join(" ")}`);
+    }
+  }
   const supervisor = fs.readFileSync(at("projects/core/node/src/supervisor.mjs"), "utf8");
   assert(supervisor.includes("windowsHide: true"), "Supervisor must hide Windows child processes");
   assert(!supervisor.includes('"--import", "tsx"'), "Supervisor must not fall back to a development Bridge server");

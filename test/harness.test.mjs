@@ -4,6 +4,7 @@ import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
+import { validateCommandRegistry } from '../scripts/lib/command-registry-contract.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 function run(command, args) { return spawnSync(command, args, { cwd: root, encoding: 'utf8' }); }
@@ -55,6 +56,29 @@ test('cloud is optional in public project inventory', () => {
   const registry = JSON.parse(fs.readFileSync(path.join(root, 'registry/projects.json'), 'utf8'));
   assert.equal(registry.projects.some((project) => /cloud/i.test(project.name)), false);
   assert.deepEqual(registry.projects.map((project) => project.name), ['personal-agent-node', 'private-site-edge']);
+});
+
+test('command registry validates against the public command schema', () => {
+  const registry = JSON.parse(fs.readFileSync(path.join(root, 'registry/commands.json'), 'utf8'));
+  const schema = JSON.parse(fs.readFileSync(path.join(root, 'schemas/personal-agent/commands.schema.json'), 'utf8'));
+  const capabilities = JSON.parse(fs.readFileSync(path.join(root, 'registry/capabilities.json'), 'utf8'));
+  const capabilityIds = new Set(capabilities.capabilities.map((entry) => entry.id));
+  const valid = validateCommandRegistry({ registry, schema, capabilityIds });
+  assert.equal(valid.ok, true, valid.errors.join('\n'));
+  assert.deepEqual(registry.output.formats, ['json'], 'partial beta must not advertise unimplemented table or text output');
+
+  const invalid = structuredClone(registry);
+  invalid.implementationStatuses.preview.requiresPreviewFlag = false;
+  assert.equal(validateCommandRegistry({ registry: invalid, schema, capabilityIds }).ok, false, 'contract must reject preview commands without explicit opt-in');
+
+  const extraFields = structuredClone(registry);
+  extraFields.undocumented = true;
+  extraFields.output.undocumented = true;
+  assert.equal(validateCommandRegistry({ registry: extraFields, schema, capabilityIds }).ok, false, 'contract must reject undocumented top-level and output fields');
+
+  const invalidSchema = structuredClone(schema);
+  invalidSchema.$defs.command.properties.implementationStatus.enum = ['implemented', 'planned'];
+  assert.equal(validateCommandRegistry({ registry, schema: invalidSchema, capabilityIds }).ok, false, 'contract must reject a schema that omits preview');
 });
 
 test('GitHub release chain is version-gated and publishes verifiable artifacts', () => {

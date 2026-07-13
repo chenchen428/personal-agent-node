@@ -7,7 +7,7 @@
     "personal-agent status --json",
     "personal-agent doctor --json",
     "personal-agent capabilities list --json",
-    "personal-agent skill verify --json"
+    "personal-agent skill verify personal-agent --json"
   ],
   "expected": [
     "区分 milestone、release 与 final",

@@ -1,16 +1,80 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://personal-agent.local/schemas/commands.schema.json",
-  "type": "object", "additionalProperties": false,
-  "required": ["schemaVersion", "binary", "implementationStatus", "output", "commands"],
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "binary", "implementationStatus", "implementationStatuses", "output", "commands"],
   "properties": {
-    "schemaVersion": { "const": 1 }, "binary": { "const": "personal-agent" },
+    "schemaVersion": { "const": 2 },
+    "binary": { "const": "personal-agent" },
     "implementationStatus": { "enum": ["planned", "partial", "implemented"] },
-    "output": { "type": "object", "required": ["schemaVersion", "formats", "agentFormat"], "properties": {
-      "schemaVersion": { "type": "integer", "minimum": 1 }, "formats": { "type": "array", "contains": { "const": "json" } }, "agentFormat": { "const": "json" }
-    }},
-    "commands": { "type": "array", "items": { "type": "object", "additionalProperties": false, "required": ["name", "risk", "capability"], "properties": {
-      "name": { "type": "string" }, "risk": { "enum": ["R0", "R1", "R2", "R3"] }, "capability": { "type": "string" }
-    }} }
+    "implementationStatuses": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["implemented", "preview", "planned"],
+      "properties": {
+        "implemented": { "$ref": "#/$defs/implementedStatus" },
+        "preview": { "$ref": "#/$defs/previewStatus" },
+        "planned": { "$ref": "#/$defs/plannedStatus" }
+      }
+    },
+    "output": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schemaVersion", "formats", "agentFormat"],
+      "properties": {
+        "schemaVersion": { "type": "integer", "minimum": 1 },
+        "formats": { "const": ["json"] },
+        "agentFormat": { "const": "json" }
+      }
+    },
+    "commands": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/command" }
+    }
+  },
+  "$defs": {
+    "implementedStatus": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["executable", "requiresPreviewFlag", "description"],
+      "properties": {
+        "executable": { "const": true },
+        "requiresPreviewFlag": { "const": false },
+        "description": { "type": "string", "minLength": 1 }
+      }
+    },
+    "previewStatus": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["executable", "requiresPreviewFlag", "description"],
+      "properties": {
+        "executable": { "const": true },
+        "requiresPreviewFlag": { "const": true },
+        "description": { "type": "string", "minLength": 1 }
+      }
+    },
+    "plannedStatus": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["executable", "requiresPreviewFlag", "description"],
+      "properties": {
+        "executable": { "const": false },
+        "requiresPreviewFlag": { "const": false },
+        "description": { "type": "string", "minLength": 1 }
+      }
+    },
+    "command": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "risk", "capability", "implementationStatus", "description"],
+      "properties": {
+        "name": { "type": "string", "pattern": "^[a-z][a-z0-9-]*(?: [a-z][a-z0-9-]*(?:\\|[a-z][a-z0-9-]*)*)?$" },
+        "risk": { "enum": ["R0", "R1", "R2", "R3"] },
+        "capability": { "type": "string" },
+        "implementationStatus": { "enum": ["implemented", "preview", "planned"] },
+        "description": { "type": "string", "minLength": 1 }
+      }
+    }
   }
 }

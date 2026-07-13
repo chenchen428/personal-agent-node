@@ -2,6 +2,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { exists, readJson, report, root } from './harness-lib.mjs';
+import { validateCommandRegistry } from './lib/command-registry-contract.mjs';
 
 const checks = [];
 const projects = readJson('registry/projects.json');
@@ -9,9 +10,12 @@ const capabilities = readJson('registry/capabilities.json');
 const routes = readJson('registry/routes.json');
 const extensions = readJson('registry/extensions.json');
 const commands = readJson('registry/commands.json');
+const commandsSchema = readJson('schemas/personal-agent/commands.schema.json');
 const distribution = readJson('registry/site-distribution.json');
 const projectNames = new Set(projects.projects.map((entry) => entry.name));
 const capabilityIds = new Set(capabilities.capabilities.map((entry) => entry.id));
+const commandStatuses = commands.implementationStatuses || {};
+const commandContract = validateCommandRegistry({ registry: commands, schema: commandsSchema, capabilityIds });
 
 checks.push({ name: 'only Node and Edge are registered products', ok: projectNames.size === 2 && projectNames.has('personal-agent-node') && projectNames.has('private-site-edge') });
 checks.push({ name: 'project registry has target schema version', ok: projects.schemaVersion === 2 });
@@ -30,8 +34,24 @@ checks.push({ name: 'distribution exposes only unified private routes', ok: dist
 checks.push({ name: 'unified console is mounted', ok: distribution.routing.paths.some((entry) => entry.prefix === '/app' && entry.access === 'authenticated') });
 checks.push({ name: 'extension ids are unique', ok: new Set(extensions.extensions.map((entry) => entry.id)).size === extensions.extensions.length });
 checks.push({ name: 'extensions declare permissions', ok: extensions.extensions.every((entry) => Array.isArray(entry.permissions) && entry.permissions.length > 0) });
-checks.push({ name: 'unified CLI is partially implemented', ok: commands.binary === 'personal-agent' && commands.implementationStatus === 'partial' && exists('projects/core/node/bin/personal-agent.mjs') });
-checks.push({ name: 'command names are unique', ok: new Set(commands.commands.map((entry) => entry.name)).size === commands.commands.length });
+checks.push({ name: 'unified CLI is partially implemented', ok: commands.schemaVersion === 2 && commands.binary === 'personal-agent' && commands.implementationStatus === 'partial' && exists('projects/core/node/bin/personal-agent.mjs') });
+checks.push({ name: 'command registry satisfies the self-contained public contract', ok: commandContract.ok });
+checks.push({
+  name: 'command implementation statuses are explicit',
+  ok: commandStatuses.implemented?.executable === true
+    && commandStatuses.implemented?.requiresPreviewFlag === false
+    && commandStatuses.preview?.executable === true
+    && commandStatuses.preview?.requiresPreviewFlag === true
+    && commandStatuses.planned?.executable === false
+    && commandStatuses.planned?.requiresPreviewFlag === false
+    && Object.keys(commandStatuses).sort().join(',') === 'implemented,planned,preview',
+});
+checks.push({
+  name: 'commands declare known implementation status and description',
+  ok: commands.commands.every((entry) => commandStatuses[entry.implementationStatus]
+    && typeof entry.description === 'string'
+    && entry.description.trim().length > 0),
+});
 checks.push({ name: 'commands reference capabilities', ok: commands.commands.every((entry) => capabilityIds.has(entry.capability)) });
 checks.push({ name: 'commands declare R0-R3 risk', ok: commands.commands.every((entry) => /^R[0-3]$/.test(entry.risk)) });
 checks.push({ name: 'agent output contract is JSON', ok: commands.output?.agentFormat === 'json' && commands.output?.formats?.includes('json') });

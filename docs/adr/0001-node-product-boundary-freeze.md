@@ -32,9 +32,13 @@ We accept the following public constraints:
 6. The stable future automation surface is the `personal-agent` CLI and its
    public Skill. Historical commands and routes are migration inputs, not the
    target contract.
-7. Managed Cloud is optional. Its private implementation, operator policy, and
+7. `registry/commands.json` is the declarative truth for the public command
+   surface. Default help exposes only `implemented` commands, preview commands
+   require explicit `--preview` opt-in and warnings, and `planned` or unknown
+   commands always fail closed. `--all` expands help metadata only.
+8. Managed Cloud is optional. Its private implementation, operator policy, and
    infrastructure details do not enter this repository.
-8. Migration proceeds in phases. A phase may remove old entrypoints when its
+9. Migration proceeds in phases. A phase may remove old entrypoints when its
    replacement is accepted; the immutable previous release provides rollback.
 
 The Phase 0 behavior freeze is recorded in
@@ -61,4 +65,3 @@ and source-layout migrations. They do not make historical names permanent.
 npm run baseline:verify
 npm run baseline:replay
 ```
-
