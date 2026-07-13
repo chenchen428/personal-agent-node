@@ -17,6 +17,15 @@ test('generated Agent compatibility bridges stay outside Git', () => {
   for (const entry of ['.agents/', '.claude/', '.codex/', '.cursor/', 'CLAUDE.md']) assert.equal(ignore.includes(entry), true, entry);
 });
 
+test('public dependency metadata uses only the public npm registry', () => {
+  const files = ['.npmrc', 'package-lock.json', 'projects/core/open-agent-bridge/package-lock.json'];
+  for (const file of files) {
+    const content = fs.readFileSync(path.join(root, file), 'utf8');
+    assert.equal(content.includes('registry.anpm.alibaba-inc.com'), false, file);
+  }
+  assert.match(fs.readFileSync(path.join(root, '.npmrc'), 'utf8'), /^registry=https:\/\/registry\.npmjs\.org\/$/m);
+});
+
 test('project and skill guards pass', () => {
   for (const file of ['scripts/project-guard.mjs', 'scripts/skill-guard.mjs']) {
     const result = run(process.execPath, [file, '--working']);
