@@ -9,7 +9,22 @@ const nodeMajor = Number(process.versions.node.split('.')[0]);
 checks.push({ name: 'Node.js 22.x', ok: nodeMajor >= 22 && nodeMajor < 24, detail: process.version });
 for (const file of ['AGENTS.md', 'README.md', 'registry/projects.json', 'registry/skills.json', 'scripts/project-guard.mjs', 'scripts/skill-guard.mjs', 'scripts/skill-tree.mjs', 'scripts/setup-agent-bridge.sh']) checks.push({ name: `harness file ${file}`, ok: exists(file) });
 for (const file of ['scripts/project-guard.mjs', 'scripts/skill-guard.mjs', 'scripts/skill-tree.mjs', 'scripts/setup-agent-bridge.sh']) checks.push({ name: `executable ${file}`, ok: exists(file) && executable(file) });
-checks.push({ name: 'dependencies installed', ok: exists('node_modules'), detail: 'run npm install when missing' });
+const installedRelease = exists('release-manifest.json');
+if (installedRelease) {
+  const manifest = JSON.parse(fs.readFileSync(path.join(root, 'release-manifest.json'), 'utf8'));
+  checks.push({
+    name: 'installed release manifest',
+    ok: manifest.releaseType === 'private-site-node' && Boolean(manifest.releaseId) && Boolean(manifest.profile),
+    detail: manifest.releaseId || 'invalid release manifest'
+  });
+  for (const file of [
+    'projects/core/node/bin/private-site.mjs',
+    'projects/core/open-agent-bridge/package.json',
+    'scripts/install-private-site-node-release.mjs'
+  ]) checks.push({ name: `packaged runtime ${file}`, ok: exists(file) });
+} else {
+  checks.push({ name: 'development dependencies installed', ok: exists('node_modules'), detail: 'run npm install when missing' });
+}
 const tracked = trackedFiles();
 checks.push({ name: 'no tracked secrets', ok: !tracked.some((file) => file.startsWith('secrets/')) });
 checks.push({ name: 'no tracked Agent compatibility links', ok: !tracked.some((file) => /^(?:CLAUDE\.md|\.(?:agents|codex|claude|cursor)\/)/.test(file)) });
