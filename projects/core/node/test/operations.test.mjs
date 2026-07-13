@@ -28,7 +28,7 @@ test("R2/R3 operation approval binds digest, expires, redacts and executes once"
     assert.equal(executions, 1);
     assert.equal(first.result.token, "[REDACTED]");
     assert.equal(first.result.nested.password, "[REDACTED]");
-    assert.equal(fs.statSync(path.join(store.directory, `${planned.id}.json`)).mode & 0o777, 0o600);
+    if (process.platform !== "win32") assert.equal(fs.statSync(path.join(store.directory, `${planned.id}.json`)).mode & 0o777, 0o600);
 
     clock += 1;
     const expiringStore = createOperationStore({ dataRoot, now: () => clock, randomUUID: () => "00000000-0000-4000-8000-000000000002" });
@@ -45,7 +45,9 @@ test("control socket requires a one-time approval challenge and survives malform
   const service = createControlService({ config, logger: { error() {} } });
   try {
     await service.listen();
-    assert.equal(controlEndpoint(config), path.join(dataRoot, "runtime", "control.sock"));
+    assert.equal(service.endpoint, controlEndpoint(config));
+    if (process.platform === "win32") assert.match(service.endpoint, /^\\\\\.\\pipe\\personal-agent-[a-f0-9]{16}$/);
+    else assert.equal(service.endpoint, path.join(dataRoot, "runtime", "control.sock"));
     if (process.platform !== "win32") assert.equal(fs.statSync(service.endpoint).mode & 0o777, 0o600);
     assert.equal((await requestControl(config, "health")).result.service, "personal-agent-control");
     const plan = service.operations.plan({ command: "cloud disconnect", risk: "R2", inputSummary: "Disconnect managed Cloud", target: "site" });
