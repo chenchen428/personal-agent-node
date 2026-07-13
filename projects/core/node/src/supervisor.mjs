@@ -85,10 +85,17 @@ export function componentSpecs(config, workerConfig) {
   const bundledBridgeServer = path.join(bridgeRoot, "app", "server.mjs");
   const bundledBridgeWorker = path.join(bridgeRoot, "app", "worker.mjs");
   const toolsStandaloneRoot = toolsRoot;
-  for (const entrypoint of [bundledBridgeServer, bundledBridgeWorker, path.join(workspaceRoot, "projects", "core", "admin-panel", "server.mjs")]) {
+  for (const entrypoint of [bundledBridgeServer, bundledBridgeWorker, path.join(workspaceRoot, "projects", "core", "admin-panel", "server.mjs"), path.join(workspaceRoot, "projects", "core", "node", "src", "control-service.mjs")]) {
     if (!fs.existsSync(entrypoint)) throw new Error(`Packaged runtime entrypoint is missing: ${entrypoint}`);
   }
   const components = [
+    {
+      name: "personal-agent-control",
+      command: node,
+      args: [path.join(workspaceRoot, "projects", "core", "node", "src", "control-service.mjs")],
+      cwd: workspaceRoot,
+      env: {},
+    },
     {
       name: "open-agent-bridge",
       command: node,

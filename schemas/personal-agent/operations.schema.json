@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Personal Agent operation",
+  "type": "object",
+  "required": ["schemaVersion", "id", "command", "risk", "digest", "status", "createdAt", "expiresAt"],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "id": { "type": "string", "pattern": "^op_[A-Za-z0-9-]+$" },
+    "command": { "type": "string", "minLength": 1 },
+    "risk": { "enum": ["R2", "R3"] },
+    "digest": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "status": { "enum": ["planned", "approved", "executing", "succeeded", "failed", "expired"] },
+    "createdAt": { "type": "string", "format": "date-time" },
+    "expiresAt": { "type": "string", "format": "date-time" }
+  }
+}

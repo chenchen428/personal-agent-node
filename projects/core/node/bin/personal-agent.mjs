@@ -2,17 +2,19 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
+import { createInterface } from 'node:readline/promises';
 import { bridgeCliStatus } from '../src/cli-shims.mjs';
 import { resolveNodeConfig, workspaceRoot } from '../src/config.mjs';
 import { listExtensions } from '../src/extensions.mjs';
 import { readBackupState } from '../src/backup-scheduler.mjs';
 import { providerStatus } from '../src/providers.mjs';
+import { requestControl } from '../src/control-service.mjs';
 
 const parsed = parseArgs(process.argv.slice(2));
 if (parsed.dataRoot) process.env.PRIVATE_SITE_DATA_ROOT = path.resolve(parsed.dataRoot);
 
 try {
-  const response = execute(parsed);
+  const response = await execute(parsed);
   process.stdout.write(`${JSON.stringify({ schemaVersion: 1, ok: true, ...response })}\n`);
 } catch (error) {
   const exitCode = Number(error.exitCode || 7);
@@ -20,7 +22,7 @@ try {
   process.exitCode = exitCode;
 }
 
-function execute(args) {
+async function execute(args) {
   const [resource = 'status', action, id] = args._;
   if (resource === 'help' || args.help) return helpResult();
   if (resource === 'status') return statusResult();
@@ -35,6 +37,15 @@ function execute(args) {
   if (resource === 'backup' && action === 'status') return backupStatus();
   if (resource === 'extension' && action === 'list') return extensionList();
   if (resource === 'extension' && action === 'inspect') return extensionInspect(id);
+  if (resource === 'operation' && action === 'list') return controlResult(await requestControl(requireConfig(), 'operation.list'));
+  if (resource === 'operation' && (action === 'show' || action === 'inspect')) return controlResult(await requestControl(requireConfig(), 'operation.inspect', { id }));
+  if (resource === 'operation' && action === 'approve') {
+    if (process.stdin.isTTY !== true || process.stdout.isTTY !== true) throw cliError('APPROVAL_REQUIRED', 'Operation approval requires an interactive local terminal', 5);
+    const config = requireConfig();
+    const challenge = await requestControl(config, 'operation.approval-challenge', { id, digest: args.digest });
+    const confirmation = await confirmApproval(challenge.result.prompt);
+    return controlResult(await requestControl(config, 'operation.approve', { id, digest: args.digest, nonce: challenge.result.nonce, confirmation }));
+  }
   throw cliError('CAPABILITY_UNAVAILABLE', `Command is not implemented in this release: ${[resource, action].filter(Boolean).join(' ')}`, 7, ['Run personal-agent capabilities list --json']);
 }
 
@@ -151,6 +162,16 @@ function success(command, result, warnings = [], nextActions = []) {
   return { command, result, warnings, nextActions };
 }
 
+function controlResult(response) {
+  return { command: response.command, result: response.result, warnings: response.warnings || [], nextActions: response.nextActions || [] };
+}
+
+async function confirmApproval(prompt) {
+  const terminal = createInterface({ input: process.stdin, output: process.stderr });
+  try { return (await terminal.question(`Type exactly \"${prompt}\" to approve: `)).trim(); }
+  finally { terminal.close(); }
+}
+
 function requireId(value, label) {
   if (!value) throw cliError('INVALID_ARGUMENT', `Missing ${label}`, 2);
 }
@@ -171,6 +192,7 @@ function parseArgs(argv) {
     if (value === '--json' || value === '--output=json') result.json = true;
     else if (value === '--help' || value === '-h') result.help = true;
     else if (value === '--data-root') result.dataRoot = argv[++index];
+    else if (value === '--digest') result.digest = argv[++index];
     else if (value.startsWith('-')) throw cliError('INVALID_ARGUMENT', `Unknown option: ${value}`, 2);
     else result._.push(value);
   }

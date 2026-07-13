@@ -24,6 +24,7 @@
     { "name": "backup status|create|verify|restore-plan|restore-apply", "risk": "R3", "capability": "runtime" },
     { "name": "update check|plan|apply|rollback", "risk": "R3", "capability": "runtime" },
     { "name": "audit list|show", "risk": "R0", "capability": "runtime" },
+    { "name": "operation list|show", "risk": "R0", "capability": "runtime" },
     { "name": "operation approve|execute", "risk": "R3", "capability": "runtime" }
   ]
 }
