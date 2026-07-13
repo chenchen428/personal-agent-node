@@ -16,7 +16,7 @@ Personal Agent Node must start in local-only mode without contacting `personal-a
 For the managed Free Edge path, install a verified GitHub Release and start the loopback-only setup page:
 
 ```bash
-node scripts/install-from-github-release.mjs --tag v0.1.0-beta.1
+node scripts/install-from-github-release.mjs --tag v0.1.0-beta.2
 node ~/.private-site-node/current/projects/core/node/bin/private-site.mjs onboarding
 ```
 

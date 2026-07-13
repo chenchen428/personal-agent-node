@@ -4,6 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
 import { pruneInactiveRelease } from "../projects/core/node/src/release-pruning.mjs";
+import { materializeHarnessLinks, verifyHarnessLinks } from "./harness-links.mjs";
 
 const args = parseArgs(process.argv.slice(2));
 const source = path.resolve(args._[0] || "");
@@ -27,6 +28,8 @@ if (!fs.existsSync(target)) {
   fs.cpSync(source, temporary, { recursive: true, preserveTimestamps: true });
   fs.renameSync(temporary, target);
 }
+materializeHarnessLinks(target);
+verifyHarnessLinks(target);
 
 const oldCurrent = pointerTarget(current);
 if (oldCurrent && path.resolve(oldCurrent) !== path.resolve(target)) replacePointer(previous, oldCurrent);

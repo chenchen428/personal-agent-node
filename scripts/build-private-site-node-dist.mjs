@@ -6,6 +6,7 @@ import { execFileSync } from "node:child_process";
 import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
 import { pruneLocalDist } from "./prune-local-dist.mjs";
+import { materializeHarnessLinks } from "./harness-links.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const workspacePackage = JSON.parse(fs.readFileSync(path.join(root, "package.json"), "utf8"));
@@ -64,6 +65,7 @@ function copyRuntimeInputs() {
     "docs",
     "test/fixtures",
     ".githooks",
+    ".gitignore",
     "package.json",
     "AGENTS.md",
     "README.md",
@@ -82,7 +84,6 @@ function copyRuntimeInputs() {
   fs.mkdirSync(path.join(outputRoot, "projects", "core", "open-agent-bridge", "public", "pages"), { recursive: true });
   fs.mkdirSync(path.join(outputRoot, "projects", "core", "open-agent-bridge", "public", "uploads"), { recursive: true });
   fs.mkdirSync(path.join(outputRoot, ".local", "files"), { recursive: true });
-  fs.copyFileSync(path.join(outputRoot, "AGENTS.md"), path.join(outputRoot, "CLAUDE.md"));
 }
 
 async function bundleNodeApplications() {
@@ -110,14 +111,7 @@ async function bundleNodeApplications() {
 }
 
 function materializeHarnessBridges() {
-  for (const directory of [".agents", ".codex", ".claude", ".cursor"]) {
-    const target = path.join(outputRoot, directory);
-    fs.mkdirSync(target, { recursive: true });
-    fs.cpSync(path.join(outputRoot, "skills"), path.join(target, "skills"), {
-      recursive: true,
-      preserveTimestamps: true,
-    });
-  }
+  materializeHarnessLinks(outputRoot);
 }
 
 function writeRuntimePackages() {

@@ -4,6 +4,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
 import { pathToFileURL } from "node:url";
+import { harnessLinks, verifyHarnessLinks } from "./harness-links.mjs";
 
 const releaseRoot = path.resolve(process.argv[2] || "");
 if (!releaseRoot || !fs.existsSync(releaseRoot)) throw new Error("Usage: verify-private-site-node-dist.mjs <release-root>");
@@ -39,6 +40,7 @@ function verifyLayout() {
   for (const relative of [
     "AGENTS.md",
     "CLAUDE.md",
+    ".gitignore",
     "release-manifest.json",
     "SHA256SUMS",
     "SBOM.cdx.json",
@@ -122,10 +124,9 @@ function verifyHarness() {
   const skillNames = (catalog.skills || []).map((skill) => skill.name || skill.id).filter(Boolean);
   assert(skillNames.length > 0, "Skill catalog is empty");
   for (const name of skillNames) assert(fs.existsSync(at("skills", name, "SKILL.md")), `Cataloged skill is missing: ${name}`);
-  for (const bridge of manifest.harness.compatibilityBridges) {
-    assert(fs.statSync(at(bridge)).isDirectory(), `Harness compatibility bridge is missing: ${bridge}`);
-    for (const name of skillNames) assert(fs.existsSync(at(bridge, name, "SKILL.md")), `${bridge} is missing ${name}`);
-  }
+  verifyHarnessLinks(releaseRoot);
+  assert(harnessLinks.length === 5, "Harness link contract is incomplete");
+  for (const bridge of manifest.harness.compatibilityBridges) for (const name of skillNames) assert(fs.existsSync(at(bridge, name, "SKILL.md")), `${bridge} is missing ${name}`);
   const server = fs.readFileSync(at("projects/core/open-agent-bridge/app/server.mjs"), "utf8");
   const worker = fs.readFileSync(at("projects/core/open-agent-bridge/app/worker.mjs"), "utf8");
   assert(server.includes("worker/hook/completed"), "Bridge bundle is missing Harness completion hooks");

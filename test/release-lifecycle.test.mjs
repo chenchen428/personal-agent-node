@@ -5,6 +5,7 @@ import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
+import { harnessLinks, materializeHarnessLinks, verifyHarnessLinks } from '../scripts/harness-links.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -26,4 +27,32 @@ test('rollback atomically swaps current and previous immutable releases', () => 
   const state = JSON.parse(fs.readFileSync(path.join(installRoot, 'installation.json'), 'utf8'));
   assert.equal(state.activeReleaseId, '0.0.1');
   fs.rmSync(installRoot, { recursive: true, force: true });
+});
+
+test('installed Harness uses real relative symlinks for every Agent client', () => {
+  const releaseRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'personal-agent-links-'));
+  try {
+    fs.mkdirSync(path.join(releaseRoot, 'skills'));
+    fs.writeFileSync(path.join(releaseRoot, 'AGENTS.md'), '# Agent\n');
+    const links = materializeHarnessLinks(releaseRoot);
+    assert.equal(links.length, 5);
+    assert.deepEqual(verifyHarnessLinks(releaseRoot).map((entry) => entry.link), harnessLinks.map((entry) => entry.link));
+    for (const spec of harnessLinks) {
+      const link = path.join(releaseRoot, spec.link);
+      assert.equal(fs.lstatSync(link).isSymbolicLink(), true, spec.link);
+      assert.equal(path.resolve(path.dirname(link), fs.readlinkSync(link)), path.resolve(path.dirname(link), spec.target));
+    }
+  } finally { fs.rmSync(releaseRoot, { recursive: true, force: true }); }
+});
+
+test('Windows link plan uses a file link and directory junctions', () => {
+  const calls = [];
+  const fileSystem = {
+    mkdirSync() {}, rmSync() {}, symlinkSync(target, link, type) { calls.push({ target, link, type }); },
+    lstatSync() { return { isSymbolicLink: () => true }; },
+    readlinkSync(link) { return calls.find((entry) => entry.link === link).target; },
+  };
+  materializeHarnessLinks('C:\\personal-agent', { platform: 'win32', fileSystem });
+  assert.equal(calls.find((entry) => entry.link.endsWith('CLAUDE.md')).type, 'file');
+  assert.equal(calls.filter((entry) => entry.type === 'junction').length, 4);
 });
