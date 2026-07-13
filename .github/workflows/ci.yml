@@ -20,8 +20,6 @@ jobs:
             node: 22
           - os: windows-latest
             node: 22
-          - os: ubuntu-latest
-            node: 24
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4

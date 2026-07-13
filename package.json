@@ -23,6 +23,6 @@
     "test:edge": "npm run test -w private-site-edge"
   },
   "engines": {
-    "node": ">=22"
+    "node": ">=22 <24"
   }
 }

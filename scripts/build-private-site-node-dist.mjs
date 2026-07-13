@@ -129,7 +129,7 @@ function writeRuntimePackages() {
     type: "module",
     bin: { "open-abg": "bin/oab.mjs", oab: "bin/oab.mjs" },
     scripts: { start: "node app/server.mjs", worker: "node app/worker.mjs" },
-    engines: { node: ">=22" },
+    engines: { node: ">=22 <24" },
   }, null, 2)}\n`);
 }
 
@@ -152,7 +152,7 @@ function writeManifest() {
     distributionVersion: workspacePackage.version,
     profile: profileName,
     extensions: [...includedExtensionIds],
-    runtime: { node: ">=22", platforms: ["win32-x64", "darwin-arm64", "darwin-x64", "linux-x64", "linux-arm64"] },
+    runtime: { node: ">=22 <24", platforms: ["win32-x64", "darwin-arm64", "darwin-x64", "linux-x64", "linux-arm64"] },
     ownership: {
       node: ["agent", "codex-app-server", "harness", "worker", "skills", "workflows", "channels", "private-data", "files", "publications", "backups"],
       edge: ["https-entry", "acme", "wireguard-relay", "origin-mtls", "routing-metadata"],

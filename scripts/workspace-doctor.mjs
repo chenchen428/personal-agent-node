@@ -5,7 +5,8 @@ import { execFileSync } from 'node:child_process';
 import { exists, executable, report, root, trackedFiles } from './harness-lib.mjs';
 
 const checks = [];
-checks.push({ name: 'Node.js 22+', ok: Number(process.versions.node.split('.')[0]) >= 22, detail: process.version });
+const nodeMajor = Number(process.versions.node.split('.')[0]);
+checks.push({ name: 'Node.js 22.x', ok: nodeMajor >= 22 && nodeMajor < 24, detail: process.version });
 for (const file of ['AGENTS.md', 'README.md', 'registry/projects.json', 'registry/skills.json', 'scripts/project-guard.mjs', 'scripts/skill-guard.mjs', 'scripts/skill-tree.mjs', 'scripts/setup-agent-bridge.sh']) checks.push({ name: `harness file ${file}`, ok: exists(file) });
 for (const file of ['scripts/project-guard.mjs', 'scripts/skill-guard.mjs', 'scripts/skill-tree.mjs', 'scripts/setup-agent-bridge.sh']) checks.push({ name: `executable ${file}`, ok: exists(file) && executable(file) });
 checks.push({ name: 'dependencies installed', ok: exists('node_modules'), detail: 'run npm install when missing' });

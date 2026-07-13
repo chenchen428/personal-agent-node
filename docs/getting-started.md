@@ -1,6 +1,6 @@
 # Getting started
 
-Install Node.js 22 or newer, then run:
+Install Node.js 22.x, then run:
 
 ```bash
 npm install
