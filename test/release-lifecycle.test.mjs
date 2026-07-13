@@ -64,7 +64,9 @@ test('installed personal-agent command follows the immutable current release', (
   const posix = installPersonalAgentCommand({ installRoot: '/home/user/.private-site-node', homeDir: '/home/user', platform: 'linux', fileSystem });
   assert.equal(posix.commandPath, '/home/user/.local/bin/personal-agent');
   assert.match(files.get(posix.commandPath), /current\/projects\/core\/node\/bin\/personal-agent\.mjs/);
+  assert.match(files.get(posix.commandPath), /PRIVATE_SITE_INSTALL_ROOT='\/home\/user\/\.private-site-node'/);
   const windows = installPersonalAgentCommand({ installRoot: 'C:\\Users\\user\\.private-site-node', homeDir: 'C:\\Users\\user', platform: 'win32', env: { APPDATA: 'C:\\Users\\user\\AppData\\Roaming' }, fileSystem });
   assert.match(windows.commandPath, /personal-agent\.cmd$/);
   assert.match(files.get(windows.commandPath), /personal-agent\.mjs/);
+  assert.match(files.get(windows.commandPath), /PRIVATE_SITE_INSTALL_ROOT=C:\\Users\\user\\\.private-site-node/);
 });

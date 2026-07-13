@@ -12,6 +12,7 @@ execFileSync(process.execPath, [path.join(root, 'scripts/release-check.mjs'), '-
 const releaseId = args.releaseId || tag.replace(/^v/, '');
 const stage = path.resolve(args.stage || path.join(root, 'dist', 'private-site-node', releaseId));
 const output = path.resolve(args.output || path.join(root, 'dist', 'releases', tag));
+fs.rmSync(output, { recursive: true, force: true });
 fs.mkdirSync(output, { recursive: true });
 execFileSync(process.execPath, [path.join(root, 'scripts/build-private-site-node-dist.mjs'), '--profile', 'universal', '--release-id', releaseId, '--output', stage], { cwd: root, stdio: 'inherit' });
 execFileSync(process.execPath, [path.join(root, 'scripts/verify-private-site-node-dist.mjs'), stage], { cwd: root, stdio: 'inherit' });

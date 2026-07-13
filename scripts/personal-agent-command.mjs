@@ -10,8 +10,8 @@ export function installPersonalAgentCommand({ installRoot, platform = process.pl
   fileSystem.mkdirSync(binDir, { recursive: true, mode: 0o700 });
   const commandPath = targetPath.join(binDir, platform === 'win32' ? 'personal-agent.cmd' : 'personal-agent');
   const content = platform === 'win32'
-    ? `@echo off\r\nnode "${entrypoint.replaceAll('/', '\\')}" %*\r\n`
-    : `#!/bin/sh\nexec node '${entrypoint.replaceAll("'", `'"'"'`)}' "$@"\n`;
+    ? `@echo off\r\nset "PRIVATE_SITE_INSTALL_ROOT=${root.replaceAll('%', '%%')}"\r\nnode "${entrypoint.replaceAll('/', '\\')}" %*\r\n`
+    : `#!/bin/sh\nPRIVATE_SITE_INSTALL_ROOT='${root.replaceAll("'", `'"'"'`)}' exec node '${entrypoint.replaceAll("'", `'"'"'`)}' "$@"\n`;
   fileSystem.writeFileSync(commandPath, content, { encoding: 'utf8', mode: platform === 'win32' ? 0o600 : 0o700 });
   if (platform !== 'win32') fileSystem.chmodSync(commandPath, 0o700);
   return { commandPath, binDir, entrypoint, followsCurrent: true };

@@ -15,9 +15,9 @@
   "scripts": {
     "start": "tsx src/server/server.ts",
     "cli": "node bin/oab.mjs",
-    "test": "node --test test/*.test.mjs",
-    "check": "node --check bin/oab.mjs && node --test test/*.test.mjs",
-    "smoke": "node --test test/*.test.mjs"
+    "test": "node --test --test-concurrency=4 test/*.test.mjs",
+    "check": "node --check bin/oab.mjs && node --test --test-concurrency=4 test/*.test.mjs",
+    "smoke": "node --test --test-concurrency=4 test/*.test.mjs"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.29.0",
