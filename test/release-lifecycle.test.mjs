@@ -12,7 +12,8 @@ import { installPersonalAgentCommand } from '../scripts/personal-agent-command.m
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
 test('install roots resolve filesystem aliases before release pointers are created', () => {
-  const requested = fs.mkdtempSync(path.join('/tmp', 'personal-agent-install-root-'));
+  const temporaryRoot = process.platform === 'darwin' ? '/tmp' : os.tmpdir();
+  const requested = fs.mkdtempSync(path.join(temporaryRoot, 'personal-agent-install-root-'));
   try {
     assert.equal(canonicalInstallRoot(requested), fs.realpathSync(requested));
   } finally {
