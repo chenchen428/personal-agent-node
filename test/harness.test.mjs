@@ -58,7 +58,7 @@ test('cloud is optional in public project inventory', () => {
 });
 
 test('GitHub release chain is version-gated and publishes verifiable artifacts', () => {
-  for (const file of ['.github/workflows/ci.yml', '.github/workflows/release.yml', 'scripts/release-check.mjs', 'scripts/release-package.mjs', 'scripts/rollback-private-site-node-release.mjs', 'workflows/release.md']) assert.equal(fs.existsSync(path.join(root, file)), true, file);
+  for (const file of ['.github/workflows/ci.yml', '.github/workflows/release.yml', 'scripts/release-check.mjs', 'scripts/release-package.mjs', 'scripts/release-download.mjs', 'scripts/rollback-private-site-node-release.mjs', 'workflows/release.md']) assert.equal(fs.existsSync(path.join(root, file)), true, file);
   const pkg = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'));
   const gate = run(process.execPath, ['scripts/release-check.mjs', '--tag', `v${pkg.version}`, '--allow-dirty']);
   assert.equal(gate.status, 0, `${gate.stdout}\n${gate.stderr}`);

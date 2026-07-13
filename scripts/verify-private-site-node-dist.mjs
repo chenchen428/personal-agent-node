@@ -53,6 +53,7 @@ function verifyLayout() {
     "scripts/skill-tree.mjs",
     "scripts/setup-agent-bridge.sh",
     "scripts/install-from-github-release.mjs",
+    "scripts/release-download.mjs",
     "scripts/install-hooks.sh",
     ".githooks/pre-commit",
     "package.json",
