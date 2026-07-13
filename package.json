@@ -12,7 +12,7 @@
   "scripts": {
     "doctor": "node scripts/workspace-doctor.mjs",
     "guard": "node scripts/project-guard.mjs --working && node scripts/skill-guard.mjs --working",
-    "harness:test": "node --test test/harness.test.mjs && node scripts/skill-tree.mjs cases verify",
+    "harness:test": "node --test test/*.test.mjs && node scripts/skill-tree.mjs cases verify",
     "release:check": "node scripts/release-check.mjs",
     "release:build": "node scripts/release-package.mjs",
     "release:rollback": "node scripts/rollback-private-site-node-release.mjs",

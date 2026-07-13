@@ -4,7 +4,8 @@ import os from 'node:os';
 import path from 'node:path';
 
 const args = parseArgs(process.argv.slice(2));
-const installRoot = path.resolve(args.installRoot || path.join(os.homedir(), '.private-site-node'));
+const requestedInstallRoot = path.resolve(args.installRoot || path.join(os.homedir(), '.private-site-node'));
+const installRoot = fs.realpathSync(requestedInstallRoot);
 const current = path.join(installRoot, 'current');
 const previous = path.join(installRoot, 'previous');
 const currentTarget = target(current);

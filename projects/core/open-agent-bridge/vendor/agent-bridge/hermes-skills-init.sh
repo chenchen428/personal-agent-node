@@ -86,7 +86,7 @@ if [ -d "$HERMES_SKILLS_DIR" ] && [ "$(ls -A "$HERMES_SKILLS_DIR" 2>/dev/null)" 
   echo ""
   read -p "是否清空现有技能目录？(y/N): " confirm_clear
   echo ""
-  
+
   if [[ "$confirm_clear" =~ ^[Yy]$ ]]; then
     info "清空 ${HERMES_SKILLS_DIR}..."
     rm -rf "${HERMES_SKILLS_DIR:?}/"*

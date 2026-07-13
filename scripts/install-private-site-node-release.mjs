@@ -2,11 +2,16 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { spawnSync } from "node:child_process";
 import { pruneInactiveRelease } from "../projects/core/node/src/release-pruning.mjs";
 
 const args = parseArgs(process.argv.slice(2));
 const source = path.resolve(args._[0] || "");
 if (!source || !fs.existsSync(source)) throw new Error("Usage: install-private-site-node-release.mjs <release-root> [--install-root <path>]");
+const verifier = path.join(source, "scripts", "verify-private-site-node-dist.mjs");
+if (!fs.existsSync(verifier)) throw new Error("Release verifier is missing");
+const verified = spawnSync(process.execPath, [verifier, source], { encoding: "utf8", timeout: 10 * 60_000 });
+if (verified.status !== 0) throw new Error(`Release verification failed: ${String(verified.stderr || verified.stdout || "unknown error").trim()}`);
 const manifest = JSON.parse(fs.readFileSync(path.join(source, "release-manifest.json"), "utf8"));
 if (manifest.releaseType !== "private-site-node" || !manifest.releaseId) throw new Error("Source is not a private Site Node release");
 const installRoot = path.resolve(args.installRoot || path.join(os.homedir(), ".private-site-node"));
