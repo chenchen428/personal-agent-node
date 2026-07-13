@@ -72,6 +72,7 @@ function copyRuntimeInputs() {
     "package.json",
     "AGENTS.md",
     "README.md",
+    "README.en.md",
     "LICENSE",
     "SECURITY.md",
     "CONTRIBUTING.md",

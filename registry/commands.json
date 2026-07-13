@@ -19,7 +19,7 @@
     { "name": "automation list|inspect|create|enable|disable|run|remove", "risk": "R2", "capability": "automation" },
     { "name": "model list|status|set|verify", "risk": "R2", "capability": "agent" },
     { "name": "connection status|set|verify", "risk": "R2", "capability": "gateway" },
-    { "name": "cloud enroll|status|disconnect", "risk": "R2", "capability": "gateway" },
+    { "name": "cloud connect|status|disconnect", "risk": "R2", "capability": "gateway" },
     { "name": "edge plan|apply|status|verify|rollback", "risk": "R3", "capability": "edge-transport" },
     { "name": "backup status|create|verify|restore-plan|restore-apply", "risk": "R3", "capability": "runtime" },
     { "name": "update check|plan|apply|rollback", "risk": "R3", "capability": "runtime" },

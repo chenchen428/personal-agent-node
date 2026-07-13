@@ -9,11 +9,11 @@ import { listExtensions } from '../src/extensions.mjs';
 import { readBackupState } from '../src/backup-scheduler.mjs';
 import { providerStatus } from '../src/providers.mjs';
 import { requestControl } from '../src/control-service.mjs';
-
-const parsed = parseArgs(process.argv.slice(2));
-if (parsed.dataRoot) process.env.PRIVATE_SITE_DATA_ROOT = path.resolve(parsed.dataRoot);
+import { enrollWithCloudDeviceAuthorization } from '../src/cloud-enrollment.mjs';
 
 try {
+  const parsed = parseArgs(process.argv.slice(2));
+  if (parsed.dataRoot) process.env.PRIVATE_SITE_DATA_ROOT = path.resolve(parsed.dataRoot);
   const response = await execute(parsed);
   process.stdout.write(`${JSON.stringify({ schemaVersion: 1, ok: true, ...response })}\n`);
 } catch (error) {
@@ -33,6 +33,7 @@ async function execute(args) {
   if (resource === 'skill' && action === 'inspect') return skillInspect(id);
   if (resource === 'skill' && action === 'verify') return skillVerify(id);
   if (resource === 'connection' && action === 'status') return connectionStatus();
+  if (resource === 'cloud' && action === 'connect') return cloudConnect(args);
   if (resource === 'cloud' && action === 'status') return cloudStatus();
   if (resource === 'backup' && action === 'status') return backupStatus();
   if (resource === 'extension' && action === 'list') return extensionList();
@@ -114,6 +115,23 @@ function cloudStatus() {
   return success('cloud status', { cloud: sanitizedCloud(config) });
 }
 
+async function cloudConnect(args) {
+  const cloudUrl = args.cloudUrl || process.env.PERSONAL_AGENT_CLOUD_URL || 'https://personal-agent.cn';
+  const packageMetadata = readJsonIfExists(path.join(workspaceRoot, 'projects', 'core', 'node', 'package.json'));
+  const enrolled = await enrollWithCloudDeviceAuthorization({
+    cloudUrl,
+    dataRoot: args.dataRoot,
+    clientVersion: packageMetadata?.version || 'unknown',
+    ...(args.noOpen ? { openBrowser: async () => false } : {}),
+    onAuthorization: (authorization) => emitProgress('cloud.device-authorization', authorization),
+  });
+  return success('cloud connect', {
+    cloud: { enrolled: true, managedHost: enrolled.site.managedHost, plan: enrolled.site.plan, status: enrolled.site.status, tunnel: enrolled.site.tunnel },
+    managedUrl: enrolled.managedUrl,
+    authorization: enrolled.authorization,
+  }, [], ['Run personal-agent status --json']);
+}
+
 function backupStatus() {
   const config = requireConfig();
   return success('backup status', { backup: readBackupState(config) });
@@ -142,7 +160,7 @@ function safeConfig() {
 
 function requireConfig() {
   const config = safeConfig();
-  if (!config || !fs.existsSync(config.configPath)) throw cliError('NOT_INITIALIZED', 'Personal Agent Node is not initialized', 3, ['Open the local onboarding page or run cloud enroll from an interactive session']);
+  if (!config || !fs.existsSync(config.configPath)) throw cliError('NOT_INITIALIZED', 'Personal Agent Node is not initialized', 3, ['Run personal-agent cloud connect from an interactive session or initialize local-only mode']);
   return config;
 }
 
@@ -164,6 +182,10 @@ function success(command, result, warnings = [], nextActions = []) {
 
 function controlResult(response) {
   return { command: response.command, result: response.result, warnings: response.warnings || [], nextActions: response.nextActions || [] };
+}
+
+function emitProgress(event, result) {
+  process.stderr.write(`${JSON.stringify({ schemaVersion: 1, ok: true, event, result })}\n`);
 }
 
 async function confirmApproval(prompt) {
@@ -193,6 +215,8 @@ function parseArgs(argv) {
     else if (value === '--help' || value === '-h') result.help = true;
     else if (value === '--data-root') result.dataRoot = argv[++index];
     else if (value === '--digest') result.digest = argv[++index];
+    else if (value === '--cloud-url') result.cloudUrl = argv[++index];
+    else if (value === '--no-open') result.noOpen = true;
     else if (value.startsWith('-')) throw cliError('INVALID_ARGUMENT', `Unknown option: ${value}`, 2);
     else result._.push(value);
   }

@@ -39,6 +39,8 @@ function verifyLayout() {
   assert(manifest.ownership?.edge?.length === 5, "Edge ownership must stay limited to the transport plane");
   for (const relative of [
     "AGENTS.md",
+    "README.md",
+    "README.en.md",
     "CLAUDE.md",
     ".gitignore",
     "release-manifest.json",

@@ -15,7 +15,7 @@ Use this standard for installed Node milestone, release and final decisions. Nev
 
 ## Optional Managed Cloud Integration
 
-Managed Cloud is not a prerequisite for the Node core gate. For an integrated customer journey, additionally verify single-use authorization, recoverable pending enrollment, device enrollment, heartbeat, tenant assignment and managed data plane. Never record the authorization code, Node token or tunnel secret.
+Managed Cloud is not a prerequisite for the Node core gate. For an integrated customer journey, additionally verify browser device authorization, same-origin verification URLs, bounded polling/slow-down, expiry and denial, single-use enrollment credentials, recoverable pending enrollment, device enrollment, heartbeat, tenant assignment and managed data plane. Verify CLI/browser output never contains a device code, enrollment credential, Node token, generated local password or tunnel secret.
 
 ## Decision
 

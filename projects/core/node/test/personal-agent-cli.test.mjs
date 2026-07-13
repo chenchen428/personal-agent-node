@@ -30,6 +30,17 @@ test('personal-agent uses stable JSON errors and fails closed for unavailable co
   assert.deepEqual({ schemaVersion: body.schemaVersion, ok: body.ok, code: body.error.code, retryable: body.error.retryable }, { schemaVersion: 1, ok: false, code: 'CAPABILITY_UNAVAILABLE', retryable: true });
 });
 
+test('cloud enrollment does not accept long-lived or invitation credentials on the command line', () => {
+  for (const option of ['--authorization-code', '--enrollment-credential', '--node-token']) {
+    const result = run(['cloud', 'connect', option, 'DO_NOT_ACCEPT', '--json']);
+    assert.equal(result.status, 2);
+    assert.equal(result.stdout, '');
+    const body = JSON.parse(result.stderr);
+    assert.equal(body.error.code, 'INVALID_ARGUMENT');
+    assert.doesNotMatch(body.error.message, /DO_NOT_ACCEPT/);
+  }
+});
+
 test('personal-agent status never emits local secret values', () => {
   const dataRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'personal-agent-cli-'));
   try {

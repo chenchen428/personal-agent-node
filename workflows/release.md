@@ -13,7 +13,7 @@ To install directly from a published GitHub Release artifact:
 
 ```bash
 node scripts/install-from-github-release.mjs --tag v0.1.0-beta.2
-node ~/.private-site-node/current/projects/core/node/bin/private-site.mjs onboarding
+personal-agent cloud connect --json
 ```
 
-The downloader verifies the archive against the Release `SHA256SUMS`, then the embedded installer verifies every packaged file before atomically advancing `current`. The onboarding page is available at `http://127.0.0.1:8842/` and accepts the Cloud email, authorization code, and slug.
+The downloader verifies the archive against the Release `SHA256SUMS`, then the embedded installer verifies every packaged file before atomically advancing `current`. The CLI uses a short-lived browser device authorization and consumes a one-time enrollment credential after the signed-in user confirms the administrator-assigned Site. No long-lived Node token is displayed.

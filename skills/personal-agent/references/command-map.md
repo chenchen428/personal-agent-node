@@ -12,4 +12,6 @@ The normative machine-readable command tree is `registry/commands.json`. Every c
 | Data protection and lifecycle | `backup`, `update`, `audit` |
 | Two-stage approval | `operation approve`, `operation execute` |
 
+`personal-agent cloud connect --json [--cloud-url <https-url>] [--no-open]` performs browser device authorization. During the wait it emits a `cloud.device-authorization` progress envelope containing only `userCode`, `verificationUrl`, `verificationUrlComplete`, expiry and polling interval; its final stdout remains the standard command envelope. Never request an email, authorization code, slug, device code, enrollment credential, or Node token on the command line.
+
 Use `personal-agent <command> --help --json` for parameters, required capability, and risk metadata once the registry marks the CLI implemented.
