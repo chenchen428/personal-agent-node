@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "skill": "personal-agent",
+  "title": "Node 发行与客户机标准验收",
+  "prompt": "按标准验收一个 Node beta 发行和客户机安装，区分 Node 核心与可选 Managed Cloud 联调，缺失证据必须失败。",
+  "commands": [
+    "personal-agent status --json",
+    "personal-agent doctor --json",
+    "personal-agent capabilities list --json",
+    "personal-agent skill verify --json"
+  ],
+  "expected": [
+    "区分 milestone、release 与 final",
+    "验证三平台 CI、GitHub asset、checksum、SBOM 和非源码安装",
+    "验证完整 Harness、五个 Agent bridge 和 local-first 能力",
+    "验证 /app 四级权限、未知路由拒绝、CLI JSON 契约和 R0-R3",
+    "验证 Extension 隔离、数据根、安装、升级和 previous 回滚",
+    "Managed Cloud 联调独立判定且证据不包含授权码或 token"
+  ],
+  "artifacts": [
+    { "path": "expected.json", "label": "Sanitized Node acceptance decision shape" }
+  ]
+}

@@ -57,7 +57,7 @@ test('research results cannot escape their project directory', () => {
 test('all universal skill cases are registered and confined', () => {
   const result = verifyCases();
   assert.deepEqual(result.errors, []);
-  assert.equal(result.cases.length, 9);
+  assert.equal(result.cases.length, 10);
 });
 
 test('workspace CLI delegates only to skill-owned portable entrypoints', () => {

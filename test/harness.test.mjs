@@ -12,6 +12,12 @@ test('customer Harness contains architecture registries and Agent guidance', () 
   for (const file of ['AGENTS.md', 'docs/adr/0001-node-product-boundary-freeze.md', 'registry/projects.json', 'registry/skills.json', 'registry/behavior-baselines.json', 'registry/capabilities.json', 'registry/routes.json', 'registry/extensions.json', 'registry/commands.json', 'workflows/project-iteration.md', 'workflows/skill-iteration.md']) assert.equal(fs.existsSync(path.join(root, file)), true, file);
 });
 
+test('customer Harness carries the portable Node acceptance standard', () => {
+  const standard = fs.readFileSync(path.join(root, 'skills/personal-agent/references/acceptance.md'), 'utf8');
+  for (const requirement of ['Node Core Gate', 'Optional Managed Cloud Integration', 'local-admin', 'ten minutes', 'previous-release rollback']) assert.match(standard, new RegExp(requirement));
+  assert.equal(fs.existsSync(path.join(root, 'test/fixtures/skill-cases/personal-agent-acceptance/case.json')), true);
+});
+
 test('Phase 0 behavior baseline registry and cases are complete', () => {
   const result = run(process.execPath, ['scripts/verify-behavior-baselines.mjs']);
   assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`);

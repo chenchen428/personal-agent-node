@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "acceptanceLevel": "release",
+  "nodeCore": {
+    "ok": false,
+    "reason": "runtime evidence required"
+  },
+  "managedCloudIntegration": {
+    "required": false,
+    "ok": false,
+    "reason": "not observed"
+  },
+  "containsSecrets": false
+}
