@@ -1,47 +1,26 @@
 {
+  "schemaVersion": 2,
   "workspace": {
     "name": "personal-agent-node",
     "domain": "user-configured",
-    "description": "Local-first Personal Agent runtime with optional self-hosted or managed Edge."
+    "description": "Local-first Personal Agent Node with an optional self-hosted Edge."
   },
   "projects": [
     {
       "name": "personal-agent-node",
-      "scope": "core",
+      "scope": "product",
       "path": "projects/core/node",
+      "targetPath": "projects/node",
+      "implementationStatus": "migrating",
       "runtime": { "type": "node", "port": 8843, "host": "127.0.0.1", "dataDirEnv": "PRIVATE_SITE_DATA_ROOT" }
     },
     {
       "name": "private-site-edge",
-      "scope": "core",
+      "scope": "product",
       "path": "projects/core/edge",
+      "targetPath": "projects/edge",
+      "implementationStatus": "migrating",
       "runtime": { "type": "native", "configDir": "/etc/private-site-edge", "stateDir": "/var/lib/private-site-edge" }
-    },
-    {
-      "name": "workspace-admin-panel",
-      "scope": "core",
-      "path": "projects/core/admin-panel",
-      "routes": ["/admin"],
-      "runtime": { "type": "node", "port": 8791, "host": "127.0.0.1", "managedBy": "private-site-node", "dataDirEnv": "PRIVATE_SITE_DATA_ROOT" }
-    },
-    {
-      "name": "channel-egress",
-      "scope": "core",
-      "path": "projects/core/channels/egress",
-      "runtime": { "type": "native", "port": 1080, "host": "127.0.0.1", "managedBy": "private-site-node", "dataDirEnv": "PRIVATE_SITE_DATA_ROOT" }
-    },
-    {
-      "name": "xiaohongshu-channel",
-      "scope": "core",
-      "path": "projects/core/channels/xiaohongshu",
-      "runtime": { "type": "native", "port": 18060, "host": "127.0.0.1", "managedBy": "private-site-node", "dataDirEnv": "PRIVATE_SITE_DATA_ROOT" }
-    },
-    {
-      "name": "open-agent-bridge",
-      "scope": "core",
-      "path": "projects/core/open-agent-bridge",
-      "routes": ["/agent", "/mail", "/files", "/pages", "/api/agent", "/api/files", "/api/pages"],
-      "runtime": { "type": "node", "port": 8788, "host": "127.0.0.1", "managedBy": "private-site-node", "dataDirEnv": "PRIVATE_SITE_DATA_ROOT" }
     }
   ]
 }

@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "id": "encrypted-backup-restore",
+  "workflow": "Encrypted backup and restore",
+  "cloudIndependent": true,
+  "given": "An isolated data root containing SQLite, configuration, channel, and extension state",
+  "when": "A protected backup is created, verified, restored, scheduled, and pruned",
+  "acceptance": [
+    "Backup is encrypted and SQLite-aware",
+    "Restore verifies data before activation",
+    "Scheduled archives and locks are bounded"
+  ]
+}

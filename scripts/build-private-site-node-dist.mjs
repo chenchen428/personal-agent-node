@@ -61,6 +61,7 @@ function copyRuntimeInputs() {
     "workflows",
     "registry",
     "schemas/private-site",
+    "schemas/personal-agent",
     "scripts",
     "docs",
     "test/fixtures",
@@ -129,6 +130,7 @@ function writeRuntimePackages() {
 
 function writeManifest() {
   const entrypoints = {
+    personalAgent: "projects/core/node/bin/personal-agent.mjs",
     node: "projects/core/node/bin/private-site.mjs",
     bridge: "projects/core/open-agent-bridge/app/server.mjs",
     worker: "projects/core/open-agent-bridge/app/worker.mjs",

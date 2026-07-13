@@ -85,13 +85,12 @@ test("mail page renders a responsive read-only inbox without executing message H
 });
 
 test("mail is registered as a protected fixed path", () => {
-  const registry = JSON.parse(fs.readFileSync(path.join(workspaceRoot, "registry", "projects.json"), "utf8"));
-  const bridge = registry.projects.find((project) => project.name === "open-agent-bridge");
-  assert.ok(bridge.routes.includes("/mail"));
-  const distribution = JSON.parse(fs.readFileSync(path.join(workspaceRoot, "registry", "site-distribution.json"), "utf8"));
-  const route = distribution.routing.paths.find((entry) => entry.prefix === "/mail");
-  assert.equal(route.access, "private");
-  assert.equal(route.targetKey || route.key, "mail");
+  const routes = JSON.parse(fs.readFileSync(path.join(workspaceRoot, "registry", "routes.json"), "utf8"));
+  const app = routes.routes.find((entry) => entry.pattern === "/app/*");
+  assert.equal(app.access, "authenticated");
+  assert.equal(app.capability, "console");
+  const capabilities = JSON.parse(fs.readFileSync(path.join(workspaceRoot, "registry", "capabilities.json"), "utf8"));
+  assert.equal(capabilities.capabilities.find((entry) => entry.id === "mail").owner, "personal-agent-node");
 });
 
 test("mail web requires authentication and serves message, raw EML, and attachments", async (t) => {

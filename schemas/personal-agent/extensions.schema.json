@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://personal-agent.local/schemas/extensions.schema.json",
+  "type": "object", "additionalProperties": false,
+  "required": ["schemaVersion", "manifestVersion", "extensions"],
+  "properties": {
+    "schemaVersion": { "const": 1 }, "manifestVersion": { "const": 1 },
+    "extensions": { "type": "array", "items": { "type": "object", "additionalProperties": false, "required": ["id", "kind", "bundled", "defaultEnabled", "status", "permissions"], "properties": {
+      "id": { "type": "string", "pattern": "^[a-z][a-z0-9-]+$" },
+      "kind": { "enum": ["channel", "managed-platform", "infrastructure"] },
+      "bundled": { "type": "boolean" }, "defaultEnabled": { "type": "boolean" },
+      "status": { "enum": ["implemented", "migrating", "planned"] },
+      "permissions": { "type": "array", "items": { "type": "string" }, "uniqueItems": true }
+    }} }
+  }
+}

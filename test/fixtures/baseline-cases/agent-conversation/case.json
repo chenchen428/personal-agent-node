@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "id": "agent-conversation",
+  "workflow": "Local Agent conversation",
+  "cloudIndependent": true,
+  "given": "An isolated local broker database and a deterministic Agent runner",
+  "when": "Conversation inputs create a session and additional messages arrive while it is running",
+  "acceptance": [
+    "A local session stores ordered commands and events",
+    "Concurrent input is serialized",
+    "Conversation execution does not require Cloud"
+  ]
+}

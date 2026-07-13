@@ -1,0 +1,63 @@
+{
+  "schemaVersion": 1,
+  "architectureDecision": "docs/adr/0001-node-product-boundary-freeze.md",
+  "phase": 0,
+  "workflows": [
+    {
+      "id": "release-installation",
+      "label": "Immutable release installation",
+      "case": "test/fixtures/baseline-cases/release-installation/case.json",
+      "command": ["node", "--test", "test/release-lifecycle.test.mjs"],
+      "requirements": ["Installation switches an immutable current release", "One previous release remains available"]
+    },
+    {
+      "id": "authenticated-login",
+      "label": "Authenticated browser login",
+      "case": "test/fixtures/baseline-cases/authenticated-login/case.json",
+      "command": ["node", "--test", "projects/core/open-agent-bridge/test/personal-auth.test.mjs"],
+      "requirements": ["Login requires explicit local secrets", "Session cookies are host-only and tenant-bound", "Unsafe return locations are rejected"]
+    },
+    {
+      "id": "agent-conversation",
+      "label": "Local Agent conversation",
+      "case": "test/fixtures/baseline-cases/agent-conversation/case.json",
+      "command": ["node", "--test", "projects/core/open-agent-bridge/test/broker.test.mjs", "projects/core/open-agent-bridge/test/orchestrator.test.mjs"],
+      "requirements": ["A local session stores ordered commands and events", "Concurrent input is serialized", "Conversation execution does not require Cloud"]
+    },
+    {
+      "id": "wechat-conversation-channel",
+      "label": "WeChat conversation channel",
+      "case": "test/fixtures/baseline-cases/wechat-conversation-channel/case.json",
+      "command": ["node", "--test", "projects/core/open-agent-bridge/test/store.test.mjs", "projects/core/open-agent-bridge/test/orchestrator.test.mjs", "projects/core/open-agent-bridge/test/cli.test.mjs"],
+      "requirements": ["WeChat identity maps to a reusable local Agent session", "Health failure asks for confirmation before login", "Verification codes are bounded and are not persisted as conversation input"]
+    },
+    {
+      "id": "xiaohongshu-managed-platform",
+      "label": "Xiaohongshu managed-platform baseline",
+      "case": "test/fixtures/baseline-cases/xiaohongshu-managed-platform/case.json",
+      "command": ["node", "--test", "projects/core/open-agent-bridge/test/xiaohongshu-channel.test.mjs", "projects/core/open-agent-bridge/test/xiaohongshu-login-coordinator.test.mjs", "projects/core/open-agent-bridge/test/xiaohongshu-verification-client.test.mjs"],
+      "requirements": ["Account login is coordinated without leaking verification codes", "Read-only search results are normalized", "Invalid login and QR input is rejected"]
+    },
+    {
+      "id": "pages-publication",
+      "label": "Pages publication and private preview",
+      "case": "test/fixtures/baseline-cases/pages-publication/case.json",
+      "command": ["node", "--test", "projects/core/open-agent-bridge/test/private-publications.test.mjs", "projects/core/open-agent-bridge/test/web-pages.test.mjs"],
+      "requirements": ["Private publication records remain authenticated", "Rendered pages do not expose internal system modules", "Published and private content have distinct routes"]
+    },
+    {
+      "id": "encrypted-backup-restore",
+      "label": "Encrypted backup and restore",
+      "case": "test/fixtures/baseline-cases/encrypted-backup-restore/case.json",
+      "command": ["node", "--test", "projects/core/node/test/backup.test.mjs", "projects/core/node/test/backup-scheduler.test.mjs"],
+      "requirements": ["Backup is encrypted and SQLite-aware", "Restore verifies data before activation", "Scheduled archives and locks are bounded"]
+    },
+    {
+      "id": "previous-release-rollback",
+      "label": "Previous release rollback",
+      "case": "test/fixtures/baseline-cases/previous-release-rollback/case.json",
+      "command": ["node", "--test", "test/release-lifecycle.test.mjs", "projects/core/node/test/release-pruning.test.mjs"],
+      "requirements": ["Rollback atomically swaps current and previous", "Inactive release pruning preserves the rollback boundary"]
+    }
+  ]
+}

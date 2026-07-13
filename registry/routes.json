@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "defaultPolicy": "deny",
+  "routes": [
+    { "pattern": "/", "access": "public", "capability": "publications" },
+    { "pattern": "/blog/*", "access": "public", "capability": "publications" },
+    { "pattern": "/pages/*", "access": "public", "capability": "publications" },
+    { "pattern": "/docs/*", "access": "public", "capability": "publications" },
+    { "pattern": "/app/*", "access": "authenticated", "capability": "console" },
+    { "pattern": "/api/app/*", "access": "authenticated", "capability": "console" },
+    { "pattern": "/api/chat/*", "access": "authenticated", "capability": "agent" },
+    { "pattern": "/api/channels/*", "access": "authenticated", "capability": "channels" },
+    { "pattern": "/api/managed-platforms/*", "access": "local-admin", "capability": "managed-platforms" },
+    { "pattern": "/api/publications/*", "access": "authenticated", "capability": "publications" },
+    { "pattern": "/api/system/*", "access": "local-admin", "capability": "runtime" },
+    { "pattern": "/api/extensions/*", "access": "local-admin", "capability": "extensions" }
+  ]
+}

@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 1,
+  "id": "previous-release-rollback",
+  "workflow": "Previous release rollback",
+  "cloudIndependent": true,
+  "given": "An isolated install root with current and previous immutable releases",
+  "when": "Rollback and inactive-release pruning are executed",
+  "acceptance": [
+    "Rollback atomically swaps current and previous",
+    "Inactive release pruning preserves the rollback boundary"
+  ]
+}

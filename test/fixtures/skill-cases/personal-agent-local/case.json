@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "skill": "personal-agent",
+  "title": "Cloud 离线时的本地能力发现与安全诊断",
+  "prompt": "Cloud 不可用。发现本地能力、发起对话、验证技能和微信渠道状态，不能读取数据库或泄露凭据。",
+  "commands": [
+    "personal-agent status --json",
+    "personal-agent capabilities list --json",
+    "personal-agent chat start --json",
+    "personal-agent skill verify --json",
+    "personal-agent channel status --json"
+  ],
+  "artifacts": [{ "path": "expected.json", "label": "Redacted local-only acceptance expectation" }]
+}

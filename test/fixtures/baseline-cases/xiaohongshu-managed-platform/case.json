@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "id": "xiaohongshu-managed-platform",
+  "workflow": "Xiaohongshu managed-platform baseline",
+  "cloudIndependent": true,
+  "given": "A deterministic local Xiaohongshu adapter with mocked external responses",
+  "when": "Account login, verification, search, and invalid QR inputs are exercised",
+  "acceptance": [
+    "Account login is coordinated without leaking verification codes",
+    "Read-only search results are normalized",
+    "Invalid login and QR input is rejected"
+  ]
+}

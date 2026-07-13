@@ -8,8 +8,14 @@ import { fileURLToPath } from 'node:url';
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 function run(command, args) { return spawnSync(command, args, { cwd: root, encoding: 'utf8' }); }
 
-test('customer Harness contains both registries and Agent guidance', () => {
-  for (const file of ['AGENTS.md', 'registry/projects.json', 'registry/skills.json', 'workflows/project-iteration.md', 'workflows/skill-iteration.md']) assert.equal(fs.existsSync(path.join(root, file)), true, file);
+test('customer Harness contains architecture registries and Agent guidance', () => {
+  for (const file of ['AGENTS.md', 'docs/adr/0001-node-product-boundary-freeze.md', 'registry/projects.json', 'registry/skills.json', 'registry/behavior-baselines.json', 'registry/capabilities.json', 'registry/routes.json', 'registry/extensions.json', 'registry/commands.json', 'workflows/project-iteration.md', 'workflows/skill-iteration.md']) assert.equal(fs.existsSync(path.join(root, file)), true, file);
+});
+
+test('Phase 0 behavior baseline registry and cases are complete', () => {
+  const result = run(process.execPath, ['scripts/verify-behavior-baselines.mjs']);
+  assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`);
+  assert.match(result.stdout, /8\/8/);
 });
 
 test('generated Agent compatibility bridges stay outside Git', () => {
@@ -27,8 +33,8 @@ test('public dependency metadata uses only the public npm registry', () => {
   assert.match(fs.readFileSync(path.join(root, '.npmrc'), 'utf8'), /^registry=https:\/\/registry\.npmjs\.org\/$/m);
 });
 
-test('project and skill guards pass', () => {
-  for (const file of ['scripts/project-guard.mjs', 'scripts/skill-guard.mjs']) {
+test('project, architecture, and skill guards pass', () => {
+  for (const file of ['scripts/project-guard.mjs', 'scripts/architecture-guard.mjs', 'scripts/skill-guard.mjs']) {
     const result = run(process.execPath, [file, '--working']);
     assert.equal(result.status, 0, `${file}\n${result.stdout}\n${result.stderr}`);
   }
@@ -42,6 +48,7 @@ test('skill cases are reproducible', () => {
 test('cloud is optional in public project inventory', () => {
   const registry = JSON.parse(fs.readFileSync(path.join(root, 'registry/projects.json'), 'utf8'));
   assert.equal(registry.projects.some((project) => /cloud/i.test(project.name)), false);
+  assert.deepEqual(registry.projects.map((project) => project.name), ['personal-agent-node', 'private-site-edge']);
 });
 
 test('GitHub release chain is version-gated and publishes verifiable artifacts', () => {

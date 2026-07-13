@@ -1,6 +1,6 @@
 {
   "name": "personal-agent-node-workspace",
-  "version": "0.1.0-beta.4",
+  "version": "0.1.0-beta.5",
   "private": true,
   "license": "Apache-2.0",
   "type": "module",
@@ -11,8 +11,10 @@
   ],
   "scripts": {
     "doctor": "node scripts/workspace-doctor.mjs",
-    "guard": "node scripts/project-guard.mjs --working && node scripts/skill-guard.mjs --working",
+    "guard": "node scripts/project-guard.mjs --working && node scripts/architecture-guard.mjs && node scripts/skill-guard.mjs --working",
     "harness:test": "node --test test/*.test.mjs && node scripts/skill-tree.mjs cases verify",
+    "baseline:verify": "node scripts/verify-behavior-baselines.mjs",
+    "baseline:replay": "node scripts/verify-behavior-baselines.mjs --run",
     "release:check": "node scripts/release-check.mjs",
     "release:build": "node scripts/release-package.mjs",
     "release:rollback": "node scripts/rollback-private-site-node-release.mjs",

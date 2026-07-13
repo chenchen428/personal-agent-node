@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "id": "pages-publication",
+  "workflow": "Pages publication and private preview",
+  "cloudIndependent": true,
+  "given": "Private publication metadata and deterministic self-contained page content",
+  "when": "Private previews, public page rendering, and conversation fragments are produced",
+  "acceptance": [
+    "Private publication records remain authenticated",
+    "Rendered pages do not expose internal system modules",
+    "Published and private content have distinct routes"
+  ]
+}

@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 1,
+  "id": "release-installation",
+  "workflow": "Immutable release installation",
+  "cloudIndependent": true,
+  "given": "Two verified immutable release directories and an isolated installation root",
+  "when": "The release lifecycle advances the current link and retains its predecessor",
+  "acceptance": [
+    "Installation switches an immutable current release",
+    "One previous release remains available"
+  ]
+}

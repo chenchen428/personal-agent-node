@@ -1,0 +1,4 @@
+interface:
+  display_name: "Personal Agent"
+  short_description: "Safely operate the local-first Personal Agent Node"
+  default_prompt: "Use $personal-agent to inspect or operate the installed Personal Agent Node through its stable CLI and confirmation protocol."

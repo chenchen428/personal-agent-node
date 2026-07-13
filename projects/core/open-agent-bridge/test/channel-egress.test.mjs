@@ -45,11 +45,11 @@ test("channel egress renderer fails closed when secrets are incomplete", () => {
 });
 
 test("channel state is owned by the local Node without cloud storage", () => {
-  const registry = JSON.parse(fs.readFileSync(path.join(workspaceRoot, "registry", "projects.json"), "utf8"));
-  const egress = registry.projects.find((project) => project.name === "channel-egress");
-  assert.equal(egress.runtime.managedBy, "private-site-node");
-  assert.equal(egress.runtime.dataDirEnv, "PRIVATE_SITE_DATA_ROOT");
-  assert.equal(egress.runtime.systemd, undefined);
+  const registry = JSON.parse(fs.readFileSync(path.join(workspaceRoot, "registry", "extensions.json"), "utf8"));
+  const egress = registry.extensions.find((extension) => extension.id === "channel-egress");
+  assert.equal(egress.kind, "infrastructure");
+  assert.equal(egress.status, "migrating");
+  assert.deepEqual(egress.permissions, ["network-proxy"]);
   assert.doesNotMatch(JSON.stringify(egress), /OSS|\/opt\/personal-agent\.site|\/var\/lib\/personal-agent\.site/i);
 });
 

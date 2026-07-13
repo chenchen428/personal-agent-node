@@ -6,6 +6,7 @@ import { spawnSync } from 'node:child_process';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { harnessLinks, materializeHarnessLinks, verifyHarnessLinks } from '../scripts/harness-links.mjs';
+import { installPersonalAgentCommand } from '../scripts/personal-agent-command.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -55,4 +56,15 @@ test('Windows link plan uses a file link and directory junctions', () => {
   materializeHarnessLinks('C:\\personal-agent', { platform: 'win32', fileSystem });
   assert.equal(calls.find((entry) => entry.link.endsWith('CLAUDE.md')).type, 'file');
   assert.equal(calls.filter((entry) => entry.type === 'junction').length, 4);
+});
+
+test('installed personal-agent command follows the immutable current release', () => {
+  const files = new Map();
+  const fileSystem = { mkdirSync() {}, chmodSync() {}, writeFileSync(file, content) { files.set(file, content); } };
+  const posix = installPersonalAgentCommand({ installRoot: '/home/user/.private-site-node', homeDir: '/home/user', platform: 'linux', fileSystem });
+  assert.equal(posix.commandPath, '/home/user/.local/bin/personal-agent');
+  assert.match(files.get(posix.commandPath), /current\/projects\/core\/node\/bin\/personal-agent\.mjs/);
+  const windows = installPersonalAgentCommand({ installRoot: 'C:\\Users\\user\\.private-site-node', homeDir: 'C:\\Users\\user', platform: 'win32', env: { APPDATA: 'C:\\Users\\user\\AppData\\Roaming' }, fileSystem });
+  assert.match(windows.commandPath, /personal-agent\.cmd$/);
+  assert.match(files.get(windows.commandPath), /personal-agent\.mjs/);
 });

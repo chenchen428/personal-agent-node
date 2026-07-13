@@ -57,7 +57,7 @@ test('research results cannot escape their project directory', () => {
 test('all universal skill cases are registered and confined', () => {
   const result = verifyCases();
   assert.deepEqual(result.errors, []);
-  assert.equal(result.cases.length, 6);
+  assert.equal(result.cases.length, 9);
 });
 
 test('workspace CLI delegates only to skill-owned portable entrypoints', () => {
@@ -68,5 +68,8 @@ test('workspace CLI delegates only to skill-owned portable entrypoints', () => {
   }
   const result = spawnSync(process.execPath, ['scripts/skill-tree.mjs', 'catalog', '--json'], { cwd: root, encoding: 'utf8' });
   assert.equal(result.status, 0, result.stderr);
-  assert.equal(JSON.parse(result.stdout).skills.length, 6);
+  const output = JSON.parse(result.stdout);
+  assert.equal(output.skills.length, 6);
+  assert.equal(output.skills.some((skill) => skill.name === 'personal-agent'), true);
+  assert.equal(output.skills.some((skill) => skill.name === 'open-agent-bridge'), false);
 });

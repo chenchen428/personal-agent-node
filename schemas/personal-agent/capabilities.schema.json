@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://personal-agent.local/schemas/capabilities.schema.json",
+  "type": "object",
+  "required": ["schemaVersion", "capabilities"],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "capabilities": { "type": "array", "items": { "$ref": "#/$defs/capability" } }
+  },
+  "$defs": { "capability": {
+    "type": "object", "additionalProperties": false,
+    "required": ["id", "owner", "dataScope", "status"],
+    "properties": {
+      "id": { "type": "string", "pattern": "^[a-z][a-z0-9-]+$" },
+      "owner": { "enum": ["personal-agent-node", "private-site-edge"] },
+      "dataScope": { "enum": ["local-private", "release", "mixed", "isolated-extension", "transport-metadata"] },
+      "status": { "enum": ["implemented", "migrating", "planned"] }
+    }
+  }}
+}

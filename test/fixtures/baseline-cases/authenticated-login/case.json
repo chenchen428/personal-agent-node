@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "id": "authenticated-login",
+  "workflow": "Authenticated browser login",
+  "cloudIndependent": true,
+  "given": "A loopback authentication service configured with test-only local secrets",
+  "when": "A browser logs in and attempts valid, cross-tenant, expired, and unsafe redirects",
+  "acceptance": [
+    "Login requires explicit local secrets",
+    "Session cookies are host-only and tenant-bound",
+    "Unsafe return locations are rejected"
+  ]
+}

@@ -27,7 +27,7 @@ Read [references/mode-matrix.md](references/mode-matrix.md) when choosing among 
 
 Do not use one format for every request. A protocol sequence is usually a diagram; an emotional story may need a scene; a comparison may need an infographic; a branded social carousel may belong to `$guizang-social-card`.
 
-For precise, data-backed reports that will be read as HTML on Online Pages, do not flatten interactive trends into a raster infographic. Route line and bar charts to `$open-agent-bridge`'s self-contained mobile chart report renderer, then use this skill only to review information hierarchy, series semantics, palette restraint, and label density.
+For precise, data-backed reports that will be read as HTML, do not flatten interactive trends into a raster infographic. Route line and bar charts to the content-workbench self-contained report renderer, then publish through `personal-agent content publish` only after the required approval.
 
 ## Workflow
 

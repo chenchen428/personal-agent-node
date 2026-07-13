@@ -1,0 +1,29 @@
+{
+  "schemaVersion": 1,
+  "binary": "personal-agent",
+  "implementationStatus": "partial",
+  "output": { "schemaVersion": 1, "formats": ["json", "table", "text"], "agentFormat": "json" },
+  "commands": [
+    { "name": "status", "risk": "R0", "capability": "runtime" },
+    { "name": "doctor", "risk": "R0", "capability": "runtime" },
+    { "name": "capabilities list|inspect", "risk": "R0", "capability": "runtime" },
+    { "name": "chat list|start|show|send|cancel", "risk": "R1", "capability": "agent" },
+    { "name": "skill list|inspect|verify", "risk": "R0", "capability": "skills" },
+    { "name": "channel list|status|connect|disconnect", "risk": "R2", "capability": "channels" },
+    { "name": "managed-platform list|inspect", "risk": "R0", "capability": "managed-platforms" },
+    { "name": "managed-account list|connect|status|pause|disconnect", "risk": "R2", "capability": "managed-platforms" },
+    { "name": "managed-task list|show|plan|approve|execute|cancel", "risk": "R2", "capability": "managed-platforms" },
+    { "name": "extension list|inspect|install|enable|disable|remove|verify", "risk": "R3", "capability": "extensions" },
+    { "name": "content list|inspect|build|preview|publish|unpublish", "risk": "R2", "capability": "publications" },
+    { "name": "file list|inspect|import|export|remove", "risk": "R2", "capability": "files" },
+    { "name": "automation list|inspect|create|enable|disable|run|remove", "risk": "R2", "capability": "automation" },
+    { "name": "model list|status|set|verify", "risk": "R2", "capability": "agent" },
+    { "name": "connection status|set|verify", "risk": "R2", "capability": "gateway" },
+    { "name": "cloud enroll|status|disconnect", "risk": "R2", "capability": "gateway" },
+    { "name": "edge plan|apply|status|verify|rollback", "risk": "R3", "capability": "edge-transport" },
+    { "name": "backup status|create|verify|restore-plan|restore-apply", "risk": "R3", "capability": "runtime" },
+    { "name": "update check|plan|apply|rollback", "risk": "R3", "capability": "runtime" },
+    { "name": "audit list|show", "risk": "R0", "capability": "runtime" },
+    { "name": "operation approve|execute", "risk": "R3", "capability": "runtime" }
+  ]
+}

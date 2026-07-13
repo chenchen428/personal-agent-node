@@ -5,6 +5,7 @@ import path from "node:path";
 import { spawnSync } from "node:child_process";
 import { pruneInactiveRelease } from "../projects/core/node/src/release-pruning.mjs";
 import { materializeHarnessLinks, verifyHarnessLinks } from "./harness-links.mjs";
+import { installPersonalAgentCommand } from "./personal-agent-command.mjs";
 
 const args = parseArgs(process.argv.slice(2));
 const source = path.resolve(args._[0] || "");
@@ -34,6 +35,7 @@ verifyHarnessLinks(target);
 const oldCurrent = pointerTarget(current);
 if (oldCurrent && path.resolve(oldCurrent) !== path.resolve(target)) replacePointer(previous, oldCurrent);
 replacePointer(current, target);
+const personalAgentCommand = installPersonalAgentCommand({ installRoot });
 const installation = {
   schemaVersion: 1,
   activeReleaseId: manifest.releaseId,
@@ -42,6 +44,7 @@ const installation = {
   activatedAt: new Date().toISOString(),
   current,
   previous: oldCurrent && path.resolve(oldCurrent) !== path.resolve(target) ? oldCurrent : pointerTarget(previous),
+  personalAgentCommand: personalAgentCommand.commandPath,
 };
 fs.writeFileSync(path.join(installRoot, "installation.json"), `${JSON.stringify(installation, null, 2)}\n`, { mode: 0o600 });
 
@@ -59,7 +62,7 @@ if (deferredPrune.length) {
   fs.writeFileSync(path.join(installRoot, "installation.json"), `${JSON.stringify(installation, null, 2)}\n`, { mode: 0o600 });
 }
 
-process.stdout.write(`${JSON.stringify({ ok: true, releaseId: manifest.releaseId, profile: manifest.profile, installRoot, current, target, previous: pointerTarget(previous) || "", deferredPrune }, null, 2)}\n`);
+process.stdout.write(`${JSON.stringify({ ok: true, releaseId: manifest.releaseId, profile: manifest.profile, installRoot, current, target, previous: pointerTarget(previous) || "", personalAgentCommand: personalAgentCommand.commandPath, deferredPrune }, null, 2)}\n`);
 
 function replacePointer(linkPath, targetPath) {
   if (fs.existsSync(linkPath) || fs.lstatSync(path.dirname(linkPath)).isDirectory() && isDanglingLink(linkPath)) fs.rmSync(linkPath, { force: true, recursive: false });

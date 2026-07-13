@@ -27,4 +27,4 @@ Use this contract for every Deep Research HTML deliverable. It adapts the editor
 - Prefer tables for exact comparison mappings and prose for synthesis.
 - Use green for verified/high-confidence evidence, amber for partial evidence or gaps, and muted red only for low confidence or material risk.
 - Never remove a configured field because it is awkward to display. Preserve the gap and confidence instead.
-- Do not publish automatically. Hand the finished HTML to `open-agent-bridge` only when the user asks for a public or shareable URL.
+- Do not publish automatically. Hand the finished HTML to `personal-agent content publish` only when the user asks for a public or shareable URL and approves the operation.

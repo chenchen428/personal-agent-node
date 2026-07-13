@@ -132,7 +132,7 @@
       "related": [
         "knowledge-capture",
         "visual-content",
-        "open-agent-bridge"
+        "personal-agent"
       ]
     },
     {
@@ -202,10 +202,10 @@
       ]
     },
     {
-      "name": "open-agent-bridge",
-      "directory": "skills/open-agent-bridge",
+      "name": "personal-agent",
+      "directory": "skills/personal-agent",
       "category": "publishing-automation",
-      "maturity": "stable",
+      "maturity": "beta",
       "risks": [
         "credentials",
         "external-write"
@@ -224,11 +224,13 @@
         "license": "Apache-2.0"
       },
       "cli": [
-        "open-abg",
-        "open-abg-report"
+        "personal-agent"
       ],
       "examples": [
-        "test/fixtures/skill-cases/open-agent-bridge/case.json"
+        "test/fixtures/skill-cases/personal-agent-local/case.json",
+        "test/fixtures/skill-cases/personal-agent-managed/case.json",
+        "test/fixtures/skill-cases/personal-agent-content/case.json",
+        "test/fixtures/skill-cases/personal-agent-lifecycle/case.json"
       ],
       "caseRequired": true,
       "related": [
@@ -289,22 +291,13 @@
       "description": "Inspect and compress raster or SVG assets with local tools."
     },
     {
-      "name": "open-abg",
+      "name": "personal-agent",
       "category": "publishing-automation",
-      "owner": "open-agent-bridge",
+      "owner": "personal-agent",
       "kind": "external-cli",
-      "entrypoint": "skills/open-agent-bridge/SKILL.md",
-      "command": "open-abg --help",
-      "description": "Operate managed hot/cold files, WeChat, sessions, schedules, and Pages through the installed Open Agent Bridge CLI."
-    },
-    {
-      "name": "open-abg-report",
-      "category": "publishing-automation",
-      "owner": "open-agent-bridge",
-      "kind": "skill-script",
-      "entrypoint": "skills/open-agent-bridge/scripts/render-report.mjs",
-      "command": "node skills/open-agent-bridge/scripts/render-report.mjs --input <report.json> --out <report.html>",
-      "description": "Render self-contained mobile-friendly HTML reports with accessible professional SVG charts."
+      "entrypoint": "skills/personal-agent/SKILL.md",
+      "command": "personal-agent --help --json",
+      "description": "Target stable CLI for local-first Personal Agent operations; registry/commands.json currently marks implementation status."
     },
     {
       "name": "cases",
@@ -454,7 +447,7 @@
           "targets": [
             "content-workbench",
             "visual-content",
-            "open-agent-bridge"
+            "personal-agent"
           ],
           "reason": "Retain content preparation and preview ideas; publish and share only through Open Agent Bridge Pages."
         },
@@ -464,7 +457,7 @@
           "targets": [
             "content-workbench",
             "visual-content",
-            "open-agent-bridge"
+            "personal-agent"
           ],
           "reason": "Retain content preparation and preview ideas; direct account automation is outside the workspace publishing path."
         },
@@ -474,7 +467,7 @@
           "targets": [
             "content-workbench",
             "visual-content",
-            "open-agent-bridge"
+            "personal-agent"
           ],
           "reason": "Retain content preparation and preview ideas; direct account automation is outside the workspace publishing path."
         },

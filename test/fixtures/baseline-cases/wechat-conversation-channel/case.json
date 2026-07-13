@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "id": "wechat-conversation-channel",
+  "workflow": "WeChat conversation channel",
+  "cloudIndependent": true,
+  "given": "A local WeChat channel identity, health adapter, and Agent session store",
+  "when": "Messages, health degradation, and a bounded login verification code are received",
+  "acceptance": [
+    "WeChat identity maps to a reusable local Agent session",
+    "Health failure asks for confirmation before login",
+    "Verification codes are bounded and are not persisted as conversation input"
+  ]
+}

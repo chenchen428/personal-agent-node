@@ -1,4 +1,0 @@
-interface:
-  display_name: "Open Agent Bridge"
-  short_description: "WeChat, managed files, sessions, and Pages"
-  default_prompt: "Use $open-agent-bridge to work with managed files, WeChat, Codex sessions, schedules, or Pages publishing."

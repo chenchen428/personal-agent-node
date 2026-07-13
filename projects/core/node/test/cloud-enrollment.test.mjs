@@ -46,6 +46,24 @@ test('loopback onboarding page submits email, code and slug to the enrollment cl
   assert.equal(body.started, false);
 });
 
+test('a failed tunnel authorization resumes without redeeming the invitation twice', async (t) => {
+  const cloud = await mockCloud();
+  const dataRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'personal-agent-enroll-resume-'));
+  t.after(async () => { await close(cloud.server); fs.rmSync(dataRoot, { recursive: true, force: true }); });
+  await assert.rejects(
+    enrollWithCloud({ email: 'user@example.com', authorizationCode: 'invite-1234', slug: 'user-one', cloudUrl: cloud.url, dataRoot, wireGuardExecutor: () => { throw new Error('authorization cancelled'); } }),
+    /authorization cancelled/
+  );
+  const pendingPath = path.join(dataRoot, 'secrets', 'applications', 'cloud-enrollment-pending.json');
+  assert.ok(fs.existsSync(pendingPath));
+  if (process.platform !== 'win32') assert.equal(fs.statSync(pendingPath).mode & 0o777, 0o600);
+  assert.match(fs.readFileSync(pendingPath, 'utf8'), /node-secret-token/);
+  const resumed = await enrollWithCloud({ email: 'user@example.com', authorizationCode: 'already-consumed', slug: 'user-one', cloudUrl: cloud.url, dataRoot, wireGuardExecutor: () => ({ started: true }) });
+  assert.equal(resumed.ok, true);
+  assert.equal(cloud.calls.join(','), 'activate,enroll,heartbeat');
+  assert.equal(fs.existsSync(pendingPath), false);
+});
+
 async function mockCloud() {
   const calls = [];
   const server = http.createServer(async (request, response) => {

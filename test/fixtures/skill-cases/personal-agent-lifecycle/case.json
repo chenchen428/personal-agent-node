@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "skill": "personal-agent",
+  "title": "连接选择、备份、更新和失败回滚",
+  "prompt": "分别说明 local-only、Managed Cloud、自建 Edge 流程，不擅自外部变更；验证备份并规划更新，失败后回滚且保留审计证据。",
+  "commands": [
+    "personal-agent connection status --json",
+    "personal-agent backup verify --json",
+    "personal-agent update plan --json",
+    "personal-agent update rollback --plan --json",
+    "personal-agent audit list --json"
+  ],
+  "artifacts": [{ "path": "expected.json", "label": "Connectivity and recovery expectation" }]
+}

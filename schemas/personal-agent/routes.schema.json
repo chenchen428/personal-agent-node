@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://personal-agent.local/schemas/routes.schema.json",
+  "type": "object", "additionalProperties": false,
+  "required": ["schemaVersion", "defaultPolicy", "routes"],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "defaultPolicy": { "const": "deny" },
+    "routes": { "type": "array", "items": { "type": "object", "additionalProperties": false, "required": ["pattern", "access", "capability"], "properties": {
+      "pattern": { "type": "string", "pattern": "^/" },
+      "access": { "enum": ["public", "authenticated", "local-admin", "internal"] },
+      "capability": { "type": "string" }
+    }} }
+  }
+}
