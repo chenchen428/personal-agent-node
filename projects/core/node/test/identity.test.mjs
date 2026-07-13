@@ -3,7 +3,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
-import { writeWireGuardTunnelConfig } from "../src/identity.mjs";
+import { prepareManagedWireGuardIdentity, validateManagedTunnelContract, writeWireGuardTunnelConfig } from "../src/identity.mjs";
 
 test("WireGuard tunnel writes report only material configuration changes", () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "private-site-wireguard-"));
@@ -27,4 +27,20 @@ test("WireGuard tunnel writes report only material configuration changes", () =>
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
   }
+});
+
+test("managed WireGuard identity remains local and contract rejects lateral routes", () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "personal-agent-wg-identity-"));
+  try {
+    const config = { dataRoot: root };
+    const first = prepareManagedWireGuardIdentity(config);
+    const second = prepareManagedWireGuardIdentity(config);
+    assert.equal(first.publicKey, second.publicKey);
+    assert.match(first.publicKey, /^[A-Za-z0-9+/]{43}=$/);
+    assert.equal(fs.statSync(first.privateKeyPath).mode & 0o777, 0o600);
+    const base = { schemaVersion: 1, edgePublicKey: `${"E".repeat(43)}=`, endpoint: "edge.personal-agent.cn:51820", address: "10.77.0.2/32", allowedIPs: ["10.77.0.1/32"], dns: ["10.77.0.1"], persistentKeepalive: 25 };
+    assert.doesNotThrow(() => validateManagedTunnelContract(base));
+    assert.throws(() => validateManagedTunnelContract({ ...base, allowedIPs: ["10.77.0.0/24", "192.168.0.0/16"] }), /AllowedIPs/);
+    assert.throws(() => validateManagedTunnelContract({ ...base, address: "10.77.0.1/32" }), /address/);
+  } finally { fs.rmSync(root, { recursive: true, force: true }); }
 });

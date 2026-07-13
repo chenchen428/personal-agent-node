@@ -2,9 +2,10 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { initializeSite, mergeSecretEnv, resolveNodeConfig, writeJsonAtomic } from './config.mjs';
+import { installManagedWireGuardTunnel, prepareManagedWireGuardIdentity } from './identity.mjs';
 import { setProvider } from './providers.mjs';
 
-export async function enrollWithCloud({ email, authorizationCode, slug, cloudUrl = 'https://personal-agent.cn', dataRoot, originUrl = 'http://10.77.0.2:8843', fetchImpl = fetch } = {}) {
+export async function enrollWithCloud({ email, authorizationCode, slug, cloudUrl = 'https://personal-agent.cn', dataRoot, fetchImpl = fetch, wireGuardExecutor } = {}) {
   const baseUrl = normalizeCloudUrl(cloudUrl);
   const normalizedEmail = String(email || '').trim().toLowerCase();
   const code = String(authorizationCode || '').trim();
@@ -16,30 +17,17 @@ export async function enrollWithCloud({ email, authorizationCode, slug, cloudUrl
   if (!activation.deviceCode || !activation.site?.managedHost) throw new Error('Cloud 未返回设备码或托管域名');
   const initialized = initializeSite({ domain: activation.site.managedHost, dataRoot, edgeMode: 'managed', distributionVersion: '0.1.0-beta.1' });
   const config = initialized.config;
-  const publicKey = ensureCloudIdentity(config);
-  const enrolled = await requestJson(fetchImpl, `${baseUrl}/api/node/enroll`, { deviceCode: activation.deviceCode, publicKey, originUrl });
-  if (!enrolled.nodeToken || enrolled.site?.status !== 'active') throw new Error('Cloud 设备接入未激活');
+  const identity = prepareManagedWireGuardIdentity(config);
+  const enrolled = await requestJson(fetchImpl, `${baseUrl}/api/node/enroll`, { deviceCode: activation.deviceCode, publicKey: identity.publicKey });
+  if (!enrolled.nodeToken || enrolled.site?.status !== 'active' || !enrolled.tunnel) throw new Error('Cloud 设备接入未激活');
+  const tunnel = installManagedWireGuardTunnel(config, enrolled.tunnel, { ...(wireGuardExecutor ? { executor: wireGuardExecutor } : {}) });
   const localPassword = crypto.randomBytes(18).toString('base64url');
   mergeSecretEnv(config.envPath, { PERSONAL_AGENT_CLOUD_TOKEN: enrolled.nodeToken, PERSONAL_AGENT_AUTH_PASSWORD: localPassword }, ['PERSONAL_AGENT_CLOUD_TOKEN', 'PERSONAL_AGENT_AUTH_PASSWORD']);
   setProvider(resolveNodeConfig({ ...process.env, PRIVATE_SITE_DATA_ROOT: config.dataRoot }), { kind: 'tunnel', provider: 'personal-agent-cloud', endpoint: `${baseUrl}/${selectedSlug}`, credentialEnv: 'PERSONAL_AGENT_CLOUD_TOKEN' });
   const heartbeat = await requestJson(fetchImpl, `${baseUrl}/api/node/heartbeat`, undefined, { authorization: `Bearer ${enrolled.nodeToken}` });
-  const metadata = { schemaVersion: 1, cloudUrl: baseUrl, email: normalizedEmail, slug: selectedSlug, managedHost: activation.site.managedHost, siteId: enrolled.site.id, plan: activation.site.plan || 'free', status: heartbeat.status || enrolled.site.status, enrolledAt: new Date().toISOString() };
+  const metadata = { schemaVersion: 1, cloudUrl: baseUrl, email: normalizedEmail, slug: selectedSlug, managedHost: activation.site.managedHost, siteId: enrolled.site.id, plan: activation.site.plan || 'free', status: heartbeat.status || enrolled.site.status, tunnel: { address: enrolled.tunnel.address, endpoint: enrolled.tunnel.endpoint, generation: heartbeat.tunnelGeneration || 1 }, enrolledAt: new Date().toISOString() };
   writeJsonAtomic(path.join(config.configDir, 'cloud.json'), metadata, 0o600);
-  return { ok: true, site: metadata, dataRoot: config.dataRoot, localPassword, managedUrl: `https://${metadata.managedHost}` };
-}
-
-function ensureCloudIdentity(config) {
-  const directory = path.join(config.dataRoot, 'secrets', 'node-identity');
-  const privatePath = path.join(directory, 'cloud-x25519-private.pem');
-  const publicPath = path.join(directory, 'cloud-x25519-public.txt');
-  fs.mkdirSync(directory, { recursive: true, mode: 0o700 });
-  if (!fs.existsSync(privatePath) || !fs.existsSync(publicPath)) {
-    const pair = crypto.generateKeyPairSync('x25519');
-    const der = pair.publicKey.export({ type: 'spki', format: 'der' });
-    fs.writeFileSync(privatePath, pair.privateKey.export({ type: 'pkcs8', format: 'pem' }), { mode: 0o600 });
-    fs.writeFileSync(publicPath, `${der.subarray(-32).toString('base64')}\n`, { mode: 0o600 });
-  }
-  return fs.readFileSync(publicPath, 'utf8').trim();
+  return { ok: true, site: metadata, tunnel, dataRoot: config.dataRoot, localPassword, managedUrl: `https://${metadata.managedHost}` };
 }
 
 async function requestJson(fetchImpl, url, body, headers = {}) {

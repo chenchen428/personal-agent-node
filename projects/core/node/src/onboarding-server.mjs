@@ -1,7 +1,7 @@
 import http from 'node:http';
 import { enrollWithCloud } from './cloud-enrollment.mjs';
 
-export async function startOnboardingServer({ host = '127.0.0.1', port = 8842, cloudUrl, dataRoot, onEnrolled } = {}) {
+export async function startOnboardingServer({ host = '127.0.0.1', port = 8842, cloudUrl, dataRoot, onEnrolled, enrollmentOptions = {} } = {}) {
   if (!['127.0.0.1', '::1'].includes(host)) throw new Error('Onboarding 只能监听本机回环地址');
   const server = http.createServer(async (request, response) => {
     try {
@@ -14,7 +14,7 @@ export async function startOnboardingServer({ host = '127.0.0.1', port = 8842, c
       if (request.method === 'GET' && url.pathname === '/healthz') return json(response, 200, { ok: true });
       if (request.method === 'POST' && url.pathname === '/api/enroll') {
         const input = await readJson(request);
-        const result = await enrollWithCloud({ ...input, cloudUrl, dataRoot });
+        const result = await enrollWithCloud({ ...input, cloudUrl, dataRoot, ...enrollmentOptions });
         let started = false;
         if (onEnrolled) { await onEnrolled(result); started = true; }
         return json(response, 201, { ...result, started });

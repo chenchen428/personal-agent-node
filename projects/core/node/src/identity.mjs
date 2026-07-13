@@ -1,6 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
-import { createHash, createPrivateKey, createPublicKey, X509Certificate } from "node:crypto";
+import { createHash, createPrivateKey, createPublicKey, generateKeyPairSync, X509Certificate } from "node:crypto";
 import { spawnSync } from "node:child_process";
 import { mergeSecretEnv } from "./config.mjs";
 import { wireGuardLifecycle } from "./platform-wireguard.mjs";
@@ -82,22 +82,83 @@ export function initializeWireGuard(config, { edgePublicKey, endpoint, address =
   return { ok: true, nodeId: config.site.nodeId, address, endpoint, publicKey, edgePublicKey, tunnelPath, changed: tunnel.changed, configHash: tunnel.configHash, lifecycle: wireGuardLifecycle(tunnelPath) };
 }
 
-export function writeWireGuardTunnelConfig({ tunnelPath, privateKey, address, edgePublicKey, endpoint }) {
+export function prepareManagedWireGuardIdentity(config) {
+  const identityDir = path.join(config.dataRoot, "secrets", "node-identity");
+  const privateKeyPath = path.join(identityDir, "wireguard.key");
+  const publicKeyPath = path.join(identityDir, "wireguard.pub");
+  fs.mkdirSync(identityDir, { recursive: true, mode: 0o700 });
+  if (!fs.existsSync(privateKeyPath) || !fs.existsSync(publicKeyPath)) {
+    const pair = generateKeyPairSync("x25519");
+    const privateKey = pair.privateKey.export({ type: "pkcs8", format: "der" }).subarray(-32).toString("base64");
+    const publicKey = pair.publicKey.export({ type: "spki", format: "der" }).subarray(-32).toString("base64");
+    fs.writeFileSync(privateKeyPath, `${privateKey}\n`, { mode: 0o600 });
+    fs.writeFileSync(publicKeyPath, `${publicKey}\n`, { mode: 0o600 });
+  }
+  try { fs.chmodSync(privateKeyPath, 0o600); fs.chmodSync(publicKeyPath, 0o600); } catch {}
+  const privateKey = fs.readFileSync(privateKeyPath, "utf8").trim();
+  const publicKey = fs.readFileSync(publicKeyPath, "utf8").trim();
+  if (!isWireGuardKey(privateKey) || !isWireGuardKey(publicKey)) throw new Error("Managed WireGuard identity is invalid");
+  return { privateKeyPath, publicKeyPath, publicKey };
+}
+
+export function installManagedWireGuardTunnel(config, contract, { executor = executeWireGuardLifecycle } = {}) {
+  validateManagedTunnelContract(contract);
+  const identity = prepareManagedWireGuardIdentity(config);
+  const privateKey = fs.readFileSync(identity.privateKeyPath, "utf8").trim();
+  const tunnelPath = path.join(path.dirname(identity.privateKeyPath), "personal-agent.conf");
+  const tunnel = writeWireGuardTunnelConfig({
+    tunnelPath,
+    privateKey,
+    address: contract.address,
+    edgePublicKey: contract.edgePublicKey,
+    endpoint: contract.endpoint,
+    allowedIPs: contract.allowedIPs,
+    dns: contract.dns,
+    persistentKeepalive: contract.persistentKeepalive,
+  });
+  const lifecycle = wireGuardLifecycle(tunnelPath);
+  const activation = executor(lifecycle);
+  return { ...tunnel, tunnelPath, lifecycle, activation };
+}
+
+export function writeWireGuardTunnelConfig({ tunnelPath, privateKey, address, edgePublicKey, endpoint, allowedIPs = ["10.77.0.1/32"], dns = [], persistentKeepalive = 25 }) {
+  if (!Array.isArray(allowedIPs) || !allowedIPs.length) throw new Error("WireGuard AllowedIPs are required");
+  if (!Array.isArray(dns)) throw new Error("WireGuard DNS must be an array");
   const tunnelConfig = `[Interface]
 PrivateKey = ${privateKey}
 Address = ${address}
+${dns.length ? `DNS = ${dns.join(", ")}\n` : ""}
 
 [Peer]
 PublicKey = ${edgePublicKey}
-AllowedIPs = 10.77.0.1/32
+AllowedIPs = ${allowedIPs.join(", ")}
 Endpoint = ${endpoint}
-PersistentKeepalive = 25
+PersistentKeepalive = ${persistentKeepalive}
 `;
   const changed = !fs.existsSync(tunnelPath) || fs.readFileSync(tunnelPath, "utf8") !== tunnelConfig;
   fs.mkdirSync(path.dirname(tunnelPath), { recursive: true, mode: 0o700 });
   fs.writeFileSync(tunnelPath, tunnelConfig, { mode: 0o600 });
   return { changed, configHash: createHash("sha256").update(tunnelConfig).digest("hex") };
 }
+
+export function validateManagedTunnelContract(contract) {
+  if (!contract || contract.schemaVersion !== 1) throw new Error("Unsupported managed tunnel contract");
+  if (!isWireGuardKey(contract.edgePublicKey)) throw new Error("Invalid Edge WireGuard public key");
+  if (!/^10\.77\.0\.(?:[2-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-4])\/32$/.test(contract.address)) throw new Error("Invalid managed tunnel address");
+  if (!/^([A-Za-z0-9.-]+|\[[0-9a-f:]+\]):[1-9][0-9]{0,4}$/i.test(contract.endpoint)) throw new Error("Invalid managed tunnel endpoint");
+  if (!Array.isArray(contract.allowedIPs) || !contract.allowedIPs.length || contract.allowedIPs.some((item) => !/^10\.77\.0\.[0-9]{1,3}\/(?:24|32)$/.test(item))) throw new Error("Invalid managed tunnel AllowedIPs");
+  if (!Array.isArray(contract.dns) || contract.dns.some((item) => !/^10\.77\.0\.[0-9]{1,3}$/.test(item))) throw new Error("Invalid managed tunnel DNS");
+  if (contract.persistentKeepalive !== 25) throw new Error("Invalid managed tunnel keepalive");
+}
+
+export function executeWireGuardLifecycle(lifecycle) {
+  if (!lifecycle?.executable || !Array.isArray(lifecycle.args)) throw new Error("WireGuard lifecycle adapter is incomplete");
+  const result = spawnSync(lifecycle.executable, lifecycle.args, { shell: false, encoding: "utf8", windowsHide: true, stdio: ["inherit", "pipe", "pipe"] });
+  if (result.status !== 0) throw new Error(`WireGuard tunnel activation failed: ${String(result.stderr || "").trim() || result.status}`);
+  return { started: true, serviceId: lifecycle.serviceId || "", executable: lifecycle.executable, args: [...lifecycle.args] };
+}
+
+function isWireGuardKey(value) { return /^[A-Za-z0-9+/]{43}=$/.test(String(value || "")); }
 
 export function originServerName(nodeId) {
   const label = String(nodeId).toLowerCase().replace(/[^a-z0-9-]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 63);

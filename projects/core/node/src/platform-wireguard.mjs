@@ -5,6 +5,8 @@ export function wireGuardLifecycle(tunnelPath, platform = process.platform) {
   if (platform === "win32") {
     return {
       platform,
+      executable: "C:\\Program Files\\WireGuard\\wireguard.exe",
+      args: ["/installtunnelservice", configPath],
       installCommand: `"C:\\Program Files\\WireGuard\\wireguard.exe" /installtunnelservice "${configPath}"`,
       uninstallCommand: '"C:\\Program Files\\WireGuard\\wireguard.exe" /uninstalltunnelservice private-site',
       serviceId: "WireGuardTunnel$private-site",
@@ -13,6 +15,8 @@ export function wireGuardLifecycle(tunnelPath, platform = process.platform) {
   if (platform === "darwin") {
     return {
       platform,
+      executable: "sudo",
+      args: ["wg-quick", "up", configPath],
       installCommand: `sudo wg-quick up "${configPath}"`,
       uninstallCommand: `sudo wg-quick down "${configPath}"`,
       prerequisite: "brew install wireguard-tools",
@@ -21,6 +25,8 @@ export function wireGuardLifecycle(tunnelPath, platform = process.platform) {
   if (platform === "linux") {
     return {
       platform,
+      executable: "sudo",
+      args: ["wg-quick", "up", configPath],
       installCommand: `sudo wg-quick up "${configPath}"`,
       uninstallCommand: `sudo wg-quick down "${configPath}"`,
       prerequisite: "Install wireguard-tools with the platform package manager",
