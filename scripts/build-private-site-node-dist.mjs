@@ -19,6 +19,7 @@ const includedExtensionIds = new Set(profile.extensions || []);
 const revision = sourceRevision();
 const releaseId = args.releaseId || `${timestamp()}-${revision.commit.slice(0, 12)}${revision.dirty ? "-dirty" : ""}`;
 const outputRoot = path.resolve(args.output || path.join(root, "dist", "private-site-node", releaseId));
+const releasesRoot = path.join(root, "dist", "private-site-node");
 const bridgeSource = path.join(root, "projects", "core", "open-agent-bridge");
 const requireFromBridge = createRequire(path.join(bridgeSource, "package.json"));
 const { build } = requireFromBridge("esbuild");
@@ -37,7 +38,9 @@ async function main() {
   normalizeShellScripts();
   writeManifest();
   writeChecksums();
-  const retention = pruneLocalDist(path.dirname(outputRoot), { keep: 2, preserve: [outputRoot] });
+  const retention = path.dirname(outputRoot) === releasesRoot
+    ? pruneLocalDist(releasesRoot, { keep: 2, preserve: [outputRoot] })
+    : { root: releasesRoot, keep: 2, retained: [], removed: [], skipped: "custom-output" };
 
   process.stdout.write(`${JSON.stringify({
     ok: true,

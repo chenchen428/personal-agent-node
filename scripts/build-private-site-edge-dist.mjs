@@ -11,6 +11,7 @@ const args = parseArgs(process.argv.slice(2));
 const source = sourceRevision();
 const releaseId = args.releaseId || `${timestamp()}-${source.commit.slice(0, 12)}${source.dirty ? "-dirty" : ""}`;
 const outputRoot = path.resolve(args.output || path.join(root, "dist", "private-site-edge", releaseId));
+const releasesRoot = path.join(root, "dist", "private-site-edge");
 
 fs.rmSync(outputRoot, { recursive: true, force: true });
 fs.mkdirSync(outputRoot, { recursive: true });
@@ -46,7 +47,9 @@ const checksums = listFiles(outputRoot)
   .map((file) => `${sha256(file)}  ${path.relative(outputRoot, file).replaceAll("\\", "/")}`)
   .join("\n");
 fs.writeFileSync(path.join(outputRoot, "SHA256SUMS"), `${checksums}\n`);
-const retention = pruneLocalDist(path.dirname(outputRoot), { keep: 2, preserve: [outputRoot] });
+const retention = path.dirname(outputRoot) === releasesRoot
+  ? pruneLocalDist(releasesRoot, { keep: 2, preserve: [outputRoot] })
+  : { root: releasesRoot, keep: 2, retained: [], removed: [], skipped: "custom-output" };
 process.stdout.write(`${JSON.stringify({ ok: true, releaseId, revision: source.commit, dirty: source.dirty, outputRoot, files: listFiles(outputRoot).length, retention }, null, 2)}\n`);
 
 function copy(relative) {
