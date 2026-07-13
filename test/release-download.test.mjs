@@ -9,12 +9,43 @@ const assetUrl = 'https://github.com/example/personal-agent-node/releases/downlo
 
 test('release downloader returns a successful fetch without starting a fallback process', async () => {
   let spawned = false;
+  let fetchSignal;
   const value = await downloadReleaseAsset(assetUrl, {
-    fetchImpl: async () => new Response('fetched', { status: 200 }),
+    fetchImpl: async (_url, options) => { fetchSignal = options.signal; return new Response('fetched', { status: 200 }); },
     spawnImpl: () => { spawned = true; return { status: 1 }; },
   });
   assert.equal(value.toString(), 'fetched');
   assert.equal(spawned, false);
+  assert.ok(fetchSignal instanceof AbortSignal);
+});
+
+test('release fetch timeout signal is bounded and triggers the platform fallback', async () => {
+  const temporaryRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'personal-agent-timeout-test-'));
+  const timeoutSignal = { aborted: false };
+  let timeoutMilliseconds;
+  let fallbackStarted = false;
+  try {
+    const value = await downloadReleaseAsset(assetUrl, {
+      fetchTimeoutMs: 3210,
+      createTimeoutSignal(milliseconds) { timeoutMilliseconds = milliseconds; return timeoutSignal; },
+      fetchImpl: async (_url, options) => {
+        assert.equal(options.signal, timeoutSignal);
+        throw Object.assign(new Error('fetch timed out'), { name: 'TimeoutError' });
+      },
+      platform: 'linux',
+      temporaryRoot,
+      spawnImpl(_command, args) {
+        fallbackStarted = true;
+        fs.writeFileSync(args[args.indexOf('--output') + 1], 'timeout-fallback');
+        return { status: 0, stdout: '', stderr: '' };
+      },
+    });
+    assert.equal(timeoutMilliseconds, 3210);
+    assert.equal(fallbackStarted, true);
+    assert.equal(value.toString(), 'timeout-fallback');
+  } finally {
+    fs.rmSync(temporaryRoot, { recursive: true, force: true });
+  }
 });
 
 test('release downloader falls back to curl with shell-free HTTPS-only arguments', async () => {

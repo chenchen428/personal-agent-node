@@ -1,6 +1,6 @@
 {
   "name": "personal-agent-node",
-  "version": "0.1.0-beta.7",
+  "version": "0.1.0-beta.8",
   "private": true,
   "type": "module",
   "description": "Local-first complete Site Node lifecycle and origin gateway.",

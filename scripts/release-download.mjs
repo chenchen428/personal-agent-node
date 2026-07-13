@@ -4,16 +4,22 @@ import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 
 const USER_AGENT = 'personal-agent-node-installer/0.1';
+const DEFAULT_FETCH_TIMEOUT_MILLISECONDS = 10_000;
 
 export async function downloadReleaseAsset(url, {
   fetchImpl = fetch,
   platform = process.platform,
   spawnImpl = spawnSync,
   temporaryRoot = os.tmpdir(),
+  fetchTimeoutMs = DEFAULT_FETCH_TIMEOUT_MILLISECONDS,
+  createTimeoutSignal = (milliseconds) => AbortSignal.timeout(milliseconds),
 } = {}) {
   const targetUrl = validateReleaseUrl(url);
+  if (!Number.isInteger(fetchTimeoutMs) || fetchTimeoutMs < 1 || fetchTimeoutMs > 60_000) throw new Error('Release fetch timeout must be between 1 and 60000 milliseconds');
+  const signal = createTimeoutSignal(fetchTimeoutMs);
+  if (!signal) throw new Error('Release fetch timeout signal is unavailable');
   try {
-    const response = await fetchImpl(targetUrl, { redirect: 'follow', headers: { 'user-agent': USER_AGENT } });
+    const response = await fetchImpl(targetUrl, { redirect: 'follow', headers: { 'user-agent': USER_AGENT }, signal });
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     return Buffer.from(await response.arrayBuffer());
   } catch (fetchError) {
