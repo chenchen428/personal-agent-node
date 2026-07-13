@@ -56,7 +56,6 @@ function copyRuntimeInputs() {
     "projects/core/node/src",
     "projects/core/node/package.json",
     "projects/core/node/README.md",
-    "projects/core/edge",
     "skills",
     "workflows",
     "registry",

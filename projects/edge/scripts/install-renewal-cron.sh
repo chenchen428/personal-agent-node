@@ -4,7 +4,7 @@ set -euo pipefail
 CURRENT_ROOT="${PERSONAL_AGENT_CURRENT_ROOT:-/opt/private-site-edge/current}"
 CRON_FILE="${PRIVATE_SITE_EDGE_ACME_CRON_FILE:-/etc/cron.d/private-site-edge-acme}"
 CRON_SCHEDULE="${PRIVATE_SITE_EDGE_ACME_SCHEDULE:-23 3 * * *}"
-SCRIPT="$CURRENT_ROOT/projects/core/edge/scripts/reconcile-certificates.sh"
+SCRIPT="$CURRENT_ROOT/projects/edge/scripts/reconcile-certificates.sh"
 
 [[ "$(id -u)" == "0" ]] || { echo "Install the Edge ACME cron as root." >&2; exit 1; }
 [[ -f "$SCRIPT" ]] || { echo "Missing Edge ACME reconciliation script: $SCRIPT" >&2; exit 1; }

@@ -5,7 +5,7 @@ import { createPrivateKey, createPublicKey, X509Certificate } from "node:crypto"
 import { domainToASCII, fileURLToPath } from "node:url";
 
 export const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-export const workspaceRoot = path.resolve(projectRoot, "..", "..", "..");
+export const workspaceRoot = path.resolve(projectRoot, "..", "..");
 export const defaultDistributionPath = path.join(workspaceRoot, "registry", "site-distribution.json");
 
 export function loadEdgeConfig(env = process.env) {

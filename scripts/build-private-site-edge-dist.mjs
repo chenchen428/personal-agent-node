@@ -16,12 +16,12 @@ fs.rmSync(outputRoot, { recursive: true, force: true });
 fs.mkdirSync(outputRoot, { recursive: true });
 
 for (const relative of [
-  "projects/core/edge/bin",
-  "projects/core/edge/config",
-  "projects/core/edge/scripts",
-  "projects/core/edge/src",
-  "projects/core/edge/package.json",
-  "projects/core/edge/README.md",
+  "projects/edge/bin",
+  "projects/edge/config",
+  "projects/edge/scripts",
+  "projects/edge/src",
+  "projects/edge/package.json",
+  "projects/edge/README.md",
   "infra/edge",
   "infra/acme/install-acme.sh",
   "infra/nginx/conf.d/05-private-site-edge.conf",

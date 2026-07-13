@@ -9,9 +9,9 @@ const manifest = readJson(path.join(releaseRoot, "release-manifest.json"));
 if (manifest.releaseType !== "private-site-edge" || !manifest.releaseId || !manifest.revision) throw new Error("Invalid Edge release manifest");
 if (manifest.dirty !== false) throw new Error("Production Edge release must be built from a clean worktree");
 for (const relative of [
-  "projects/core/edge/bin/private-site-edge.mjs",
-  "projects/core/edge/src/edge.mjs",
-  "projects/core/edge/scripts/reconcile-certificates.sh",
+  "projects/edge/bin/private-site-edge.mjs",
+  "projects/edge/src/edge.mjs",
+  "projects/edge/scripts/reconcile-certificates.sh",
   "infra/edge/migrate-current-site.sh",
   "infra/edge/bootstrap-host.sh",
   "infra/edge/logrotate/private-site-edge.conf",

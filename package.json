@@ -7,7 +7,7 @@
   "workspaces": [
     "projects/core/node",
     "projects/core/open-agent-bridge",
-    "projects/core/edge"
+    "projects/edge"
   ],
   "scripts": {
     "doctor": "node scripts/workspace-doctor.mjs",

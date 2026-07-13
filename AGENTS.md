@@ -19,7 +19,7 @@ This repository is both the public, local-first Personal Agent runtime and the c
 
 - Keep credentials, tokens, keys, databases, logs, attachments, and mutable state under ignored `secrets/` or `.local/`. Never print or commit them.
 - The only registered product boundaries are Personal Agent Node and optional Private Site Edge. During staged migration their source remains under `projects/core/node`, `projects/core/open-agent-bridge`, `projects/core/admin-panel`, and `projects/core/channels`; these legacy directories are internal Node modules, not independent registered projects.
-- `projects/core/edge` is the optional self-hosted transport plane. Managed Personal Agent Cloud is only an optional provider.
+- `projects/edge` is the optional self-hosted transport plane. Managed Personal Agent Cloud is only an optional provider.
 - `registry/capabilities.json`, `routes.json`, `extensions.json`, and `commands.json` are the target architecture contract. Planned or partial status is not full implementation evidence.
 - Preserve independent domain, tunnel, and Token providers. Local-only plus BYOK must remain functional.
 - Top-level `skills/` is the portable skill source. Compatibility paths `.agents`, `.codex`, `.claude`, `.cursor`, and `CLAUDE.md` are generated locally and ignored.

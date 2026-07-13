@@ -17,9 +17,8 @@
     {
       "name": "private-site-edge",
       "scope": "product",
-      "path": "projects/core/edge",
-      "targetPath": "projects/edge",
-      "implementationStatus": "migrating",
+      "path": "projects/edge",
+      "implementationStatus": "implemented",
       "runtime": { "type": "native", "configDir": "/etc/private-site-edge", "stateDir": "/var/lib/private-site-edge" }
     }
   ]

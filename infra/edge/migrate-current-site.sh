@@ -3,7 +3,7 @@ set -euo pipefail
 
 ACTION="${1:-}"
 CURRENT_ROOT="${PERSONAL_AGENT_CURRENT_ROOT:-/opt/private-site-edge/current}"
-EDGE_CLI="${PRIVATE_SITE_EDGE_CLI:-$CURRENT_ROOT/projects/core/edge/bin/private-site-edge.mjs}"
+EDGE_CLI="${PRIVATE_SITE_EDGE_CLI:-$CURRENT_ROOT/projects/edge/bin/private-site-edge.mjs}"
 EDGE_CONFIG_DIR="${PRIVATE_SITE_EDGE_CONFIG_DIR:-/etc/private-site-edge}"
 NGINX_CONF_DIR="${NGINX_CONF_DIR:-/etc/nginx/conf.d}"
 MIGRATION_DIR="${PRIVATE_SITE_EDGE_MIGRATION_DIR:-$EDGE_CONFIG_DIR/migration/current-site}"

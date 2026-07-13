@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-EDGE_ROOT="${PRIVATE_SITE_EDGE_ROOT:-/opt/private-site-edge/current/projects/core/edge}"
+EDGE_ROOT="${PRIVATE_SITE_EDGE_ROOT:-/opt/private-site-edge/current/projects/edge}"
 EDGE_CLI="${PRIVATE_SITE_EDGE_CLI:-$EDGE_ROOT/bin/private-site-edge.mjs}"
 EDGE_CONFIG_DIR="${PRIVATE_SITE_EDGE_CONFIG_DIR:-/etc/private-site-edge}"
 EDGE_ACME_ENV="${PRIVATE_SITE_EDGE_ACME_ENV:-$EDGE_CONFIG_DIR/acme.env}"

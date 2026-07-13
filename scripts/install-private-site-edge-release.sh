@@ -11,8 +11,8 @@ command -v logrotate >/dev/null 2>&1 || { echo "Edge host prerequisite is missin
 [[ -f "$RELEASE_DIR/release-manifest.json" && -f "$RELEASE_DIR/SHA256SUMS" ]] || { echo "Invalid Edge release." >&2; exit 1; }
 (cd "$RELEASE_DIR" && sha256sum -c SHA256SUMS >/dev/null)
 chmod 755 \
-  "$RELEASE_DIR/projects/core/edge/bin/private-site-edge.mjs" \
-  "$RELEASE_DIR/projects/core/edge/scripts/"*.sh \
+  "$RELEASE_DIR/projects/edge/bin/private-site-edge.mjs" \
+  "$RELEASE_DIR/projects/edge/scripts/"*.sh \
   "$RELEASE_DIR/infra/edge/"*.sh \
   "$RELEASE_DIR/infra/edge/pki/"*.sh \
   "$RELEASE_DIR/infra/edge/wireguard/"*.sh
@@ -43,10 +43,10 @@ bash "$RELEASE_DIR/infra/edge/wireguard/setup-hub.sh"
 bash "$RELEASE_DIR/infra/edge/pki/init-origin-pki.sh"
 install -m 644 "$RELEASE_DIR/infra/nginx/conf.d/05-private-site-edge.conf" /etc/nginx/conf.d/05-private-site-edge.conf
 PRIVATE_SITE_EDGE_CONFIG_DIR="$EDGE_CONFIG_DIR" PRIVATE_SITE_EDGE_STATE_DIR="$EDGE_STATE_DIR" \
-  node "$RELEASE_DIR/projects/core/edge/bin/private-site-edge.mjs" render >/dev/null
+  node "$RELEASE_DIR/projects/edge/bin/private-site-edge.mjs" render >/dev/null
 nginx -t
 systemctl reload nginx
-PERSONAL_AGENT_CURRENT_ROOT="$RELEASE_DIR" bash "$RELEASE_DIR/projects/core/edge/scripts/install-renewal-cron.sh"
+PERSONAL_AGENT_CURRENT_ROOT="$RELEASE_DIR" bash "$RELEASE_DIR/projects/edge/scripts/install-renewal-cron.sh"
 
 current="$(readlink -f "$EDGE_ROOT/current")"
 previous="$(readlink -f "$EDGE_ROOT/previous" 2>/dev/null || true)"

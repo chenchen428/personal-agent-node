@@ -248,8 +248,8 @@ test("replacement refuses a stale previous Node identity", () => {
 });
 
 test("uses payload-free seven-day operational metrics", () => {
-  const globalNginx = fs.readFileSync(new URL("../../../../infra/nginx/conf.d/05-private-site-edge.conf", import.meta.url), "utf8");
-  const logrotate = fs.readFileSync(new URL("../../../../infra/edge/logrotate/private-site-edge.conf", import.meta.url), "utf8");
+  const globalNginx = fs.readFileSync(new URL("../../../infra/nginx/conf.d/05-private-site-edge.conf", import.meta.url), "utf8");
+  const logrotate = fs.readFileSync(new URL("../../../infra/edge/logrotate/private-site-edge.conf", import.meta.url), "utf8");
   for (const forbidden of [/\$remote_addr\b/, /\$request_uri\b/, /\$request(?:\s|\")/, /\$http_/, /\$cookie_/]) assert.doesNotMatch(globalNginx, forbidden);
   assert.match(logrotate, /rotate 7/);
   assert.match(logrotate, /su root @NGINX_GROUP@/);
@@ -280,14 +280,14 @@ test("uses payload-free seven-day operational metrics", () => {
 });
 
 test("fresh Edge bootstrap persists the no-core and no-swap privacy policy", () => {
-  const bootstrap = fs.readFileSync(new URL("../../../../infra/edge/bootstrap-host.sh", import.meta.url), "utf8");
+  const bootstrap = fs.readFileSync(new URL("../../../infra/edge/bootstrap-host.sh", import.meta.url), "utf8");
   assert.match(bootstrap, /\/etc\/sysctl\.d\/99-private-site-edge\.conf/);
   assert.match(bootstrap, /fs\.suid_dumpable = 0/);
   assert.match(bootstrap, /swapon --noheadings/);
 });
 
 test("Edge installer normalizes CRLF user records and resolves the primary group", () => {
-  const installer = fs.readFileSync(new URL("../../../../scripts/install-private-site-edge-release.sh", import.meta.url), "utf8");
+  const installer = fs.readFileSync(new URL("../../../scripts/install-private-site-edge-release.sh", import.meta.url), "utf8");
   assert.match(installer, /tr -d '\\r'/);
   assert.match(installer, /id -gn "\$nginx_user"/);
 });
