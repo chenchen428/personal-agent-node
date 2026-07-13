@@ -1,0 +1,52 @@
+{
+  "schemaVersion": 1,
+  "provider": "open-agent-bridge",
+  "capability": "online-pages",
+  "folder": "skill-cases-2026-07-10",
+  "source": "test/fixtures/skill-cases/index.html",
+  "url": "https://pages.personal-agent.local/uploads/skill-cases-2026-07-10/index.html",
+  "strategy": "Upload relative dependencies first and index.html last with overwrite enabled for a stable review URL.",
+  "publicFiles": 22,
+  "verifiedAt": "2026-07-10T15:44:10+08:00",
+  "checks": [
+    {
+      "path": "index.html",
+      "status": 200,
+      "contentType": "text/html",
+      "marker": "技能融合验收台",
+      "sha256": "b97dc51f051e583f873fd17edab06a31e645a4de058d943a5ecd6a9ad4d383ad"
+    },
+    {
+      "path": "visual-content/skill-tree.svg",
+      "status": 200,
+      "contentType": "image/svg+xml",
+      "bytes": 4577
+    },
+    {
+      "path": "media-toolkit/skill-tree.webp",
+      "status": 200,
+      "contentType": "image/webp",
+      "bytes": 56158,
+      "sha256": "212d2e26944a0292d31b279c4c93786367e3cd9ab5e74b486cf4f17c883d3a3f"
+    },
+    {
+      "path": "deep-research/research-project/report.md",
+      "status": 200,
+      "contentType": "text/markdown",
+      "bytes": 3459
+    },
+    {
+      "path": "content-workbench/draft.html",
+      "status": 200,
+      "contentType": "text/html",
+      "bytes": 3270
+    },
+    {
+      "path": "knowledge-capture/captured-readme.md",
+      "status": 200,
+      "contentType": "text/markdown",
+      "bytes": 5716,
+      "sha256": "a45fd1d9a8c56b2ac70792345b921217ae5ddbe6d34f5e46a4ba0222cf01972c"
+    }
+  ]
+}

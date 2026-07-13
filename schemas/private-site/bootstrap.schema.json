@@ -1,0 +1,37 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://personal-agent.local/schemas/private-site/bootstrap.schema.json",
+  "title": "Private Site self-hosted bootstrap configuration",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "domain", "profile", "dataRoot", "ecs", "aliyun", "acmeEmail"],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "domain": { "type": "string" },
+    "profile": { "enum": ["universal", "personal-agent"] },
+    "replacement": { "type": "boolean", "default": false },
+    "dataRoot": { "type": "string" },
+    "acmeEmail": { "type": "string", "format": "email" },
+    "ecs": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sshHost", "sshUser", "sshKey", "publicIpv4"],
+      "properties": {
+        "sshHost": { "type": "string" },
+        "sshUser": { "type": "string" },
+        "sshKey": { "type": "string" },
+        "publicIpv4": { "type": "string", "format": "ipv4" }
+      }
+    },
+    "aliyun": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["region", "instanceId", "accessKeyCsv"],
+      "properties": {
+        "region": { "type": "string" },
+        "instanceId": { "type": "string" },
+        "accessKeyCsv": { "type": "string" }
+      }
+    }
+  }
+}

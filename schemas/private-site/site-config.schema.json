@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://personal-agent.local/schemas/private-site/site-config.schema.json",
+  "title": "Private Site local configuration",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "siteId", "displayDomain", "asciiDomain", "nodeId", "distributionVersion", "edgeMode"],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "siteId": { "type": "string", "pattern": "^site_[A-Za-z0-9_-]{12,}$" },
+    "displayDomain": { "type": "string", "minLength": 3, "maxLength": 253 },
+    "asciiDomain": { "type": "string", "pattern": "^(?=.{3,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\\.)+[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$" },
+    "nodeId": { "type": "string", "pattern": "^node_[A-Za-z0-9_-]{12,}$" },
+    "protocolVersion": { "type": "string" },
+    "distributionVersion": { "type": "string", "minLength": 1 },
+    "edgeMode": { "enum": ["local-only", "self-hosted-relay", "shared-relay"] },
+    "createdAt": { "type": "string", "format": "date-time" }
+  }
+}

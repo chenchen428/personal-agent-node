@@ -1,0 +1,61 @@
+diff --git a/service.go b/service.go
+index 8b2a260..1e7024a 100644
+--- a/service.go
++++ b/service.go
+@@ -70,0 +71 @@ type LoginStatusResponse struct {
++	LoginState string `json:"login_state,omitempty"`
+@@ -128,0 +130,47 @@ func (s *XiaohongshuService) DeleteCookies(ctx context.Context) error {
++// activeLoginStatus reads the browser that owns the current QR code. This keeps
++// scan and verification state in the same browser instead of launching a new
++// browser on every poll.
++func (s *XiaohongshuService) activeLoginStatus(ctx context.Context) (*LoginStatusResponse, bool, error) {
++	s.loginMu.Lock()
++	page := s.loginPage
++	deadline := s.loginDeadline
++	s.loginMu.Unlock()
++
++	if page == nil {
++		return nil, false, nil
++	}
++	if !deadline.IsZero() && time.Now().After(deadline) {
++		s.clearLoginSession()
++		return &LoginStatusResponse{IsLoggedIn: false, Username: configs.Username, LoginState: "expired"}, true, nil
++	}
++
++	pp := page.Context(ctx)
++	loggedIn, _, err := pp.Has(`.main-container .user .link-wrapper .channel`)
++	if err != nil {
++		return nil, true, err
++	}
++	if loggedIn {
++		if err := saveCookies(page); err != nil {
++			return nil, true, fmt.Errorf("登录成功但保存 cookies 失败: %w", err)
++		}
++		s.clearLoginSession()
++		return &LoginStatusResponse{IsLoggedIn: true, Username: configs.Username, LoginState: "confirmed"}, true, nil
++	}
++
++	body, err := pp.Element("body")
++	if err != nil {
++		return nil, true, err
++	}
++	text, err := body.Text()
++	if err != nil {
++		return nil, true, err
++	}
++	state := "pending"
++	if strings.Contains(text, "扫码成功") {
++		state = "scanned"
++	} else if strings.Contains(text, "短信验证码") || strings.Contains(text, "请输入验证码") {
++		state = "verification_required"
++	}
++	return &LoginStatusResponse{IsLoggedIn: false, Username: configs.Username, LoginState: state}, true, nil
++}
++
+@@ -130,0 +179,4 @@ func (s *XiaohongshuService) CheckLoginStatus(ctx context.Context) (*LoginStatus
++	if active, ok, err := s.activeLoginStatus(ctx); ok || err != nil {
++		return active, err
++	}
++
+@@ -146,0 +199 @@ func (s *XiaohongshuService) CheckLoginStatus(ctx context.Context) (*LoginStatus
++		LoginState: map[bool]string{true: "confirmed", false: "missing"}[isLoggedIn],

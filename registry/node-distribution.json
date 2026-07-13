@@ -1,0 +1,67 @@
+{
+  "schemaVersion": 1,
+  "agentRuntime": {
+    "supported": ["codex"],
+    "workspaceDelivery": "full-repository",
+    "compatibilityOnly": ["agents", "claude", "cursor"]
+  },
+  "core": {
+    "projects": [
+      "personal-agent-node",
+      "open-agent-bridge",
+      "workspace-admin-panel",
+      "xiaohongshu-channel",
+      "channel-egress"
+    ],
+    "capabilities": [
+      "node-lifecycle",
+      "local-gateway",
+      "agent-harness",
+      "codex-app-server-worker",
+      "skill-catalog",
+      "workflows",
+      "wechat-channel",
+      "sqlite-data",
+      "managed-files",
+      "pages",
+      "blog-and-static-sites",
+      "local-resources",
+      "backup-restore",
+      "extension-runtime"
+    ]
+  },
+  "edge": {
+    "projects": ["private-site-edge"],
+    "capabilities": ["https-entry", "acme", "wireguard-relay", "origin-mtls", "routing-metadata"]
+  },
+  "extensions": [
+    {
+      "id": "xiaohongshu-channel",
+      "project": "xiaohongshu-channel",
+      "scope": "core",
+      "owner": "platform",
+      "portable": false
+    },
+    {
+      "id": "channel-egress",
+      "project": "channel-egress",
+      "scope": "core",
+      "owner": "platform",
+      "portable": false
+    }
+  ],
+  "profiles": {
+    "universal": {
+      "description": "Reusable private Site Node Core without owner-specific applications or content.",
+      "extensions": []
+    }
+  },
+  "extensionContract": {
+    "manifest": "private-site-extension.json",
+    "runtimeRoot": "PRIVATE_SITE_DATA_ROOT/extensions",
+    "workspaceRoot": "PRIVATE_SITE_DATA_ROOT/workspace",
+    "requiredFields": ["schemaVersion", "id", "version", "entrypoint"],
+    "mutableByLocalAgent": true,
+    "edgeChangesRequired": false
+  }
+}

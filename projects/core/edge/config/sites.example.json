@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "sites": [
+    {
+      "schemaVersion": 1,
+      "siteId": "site_example",
+      "asciiDomain": "example.site",
+      "nodeId": "node_example",
+      "originUrl": "https://10.77.0.2:8843/",
+      "originServerName": "node-example.origin.private-site",
+      "wireGuardPublicKey": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
+      "status": "active",
+      "certificateMode": "http-san",
+      "distributionVersion": "0.1.0"
+    }
+  ]
+}

@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://personal-agent.local/schemas/private-site/edge-record.schema.json",
+  "title": "Private Site Edge route record",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "siteId", "asciiDomain", "nodeId", "originUrl", "status"],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "siteId": { "type": "string" },
+    "asciiDomain": { "type": "string" },
+    "nodeId": { "type": "string" },
+    "originUrl": { "type": "string", "pattern": "^https://" },
+    "originServerName": { "type": "string" },
+    "wireGuardPublicKey": { "type": "string", "pattern": "^[A-Za-z0-9+/]{43}=$" },
+    "status": { "enum": ["pending", "active", "offline", "disabled", "revoked"] },
+    "certificateMode": { "enum": ["http-san", "dns-wildcard"] },
+    "certificateNotAfter": { "type": "string", "format": "date-time" },
+    "distributionVersion": { "type": "string" }
+  }
+}

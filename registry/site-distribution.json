@@ -1,0 +1,65 @@
+{
+  "schemaVersion": 1,
+  "name": "private-site-complete",
+  "routing": {
+    "defaultMode": "path",
+    "paths": [
+      { "key": "home", "prefix": "/", "exact": true, "access": "public", "kind": "static" },
+      { "key": "admin", "prefix": "/admin", "access": "private", "kind": "proxy", "upstreamPath": "/" },
+      { "key": "agent-memory", "prefix": "/agent/memory", "access": "private", "kind": "proxy", "targetKey": "agent", "upstreamPath": "/agent-memory" },
+      { "key": "agent-data", "prefix": "/agent/data", "access": "private", "kind": "proxy", "targetKey": "agent", "upstreamPath": "/agent-data" },
+      { "key": "agent-automations", "prefix": "/agent/automations", "access": "private", "kind": "proxy", "targetKey": "agent", "upstreamPath": "/agent-automations" },
+      { "key": "agent-skills", "prefix": "/agent/skills", "access": "private", "kind": "proxy", "targetKey": "agent", "upstreamPath": "/agent-skills" },
+      { "key": "agent-schedules", "prefix": "/agent/schedules", "access": "private", "kind": "proxy", "targetKey": "agent", "upstreamPath": "/agent-corn" },
+      { "key": "agent-channels", "prefix": "/agent/channels", "access": "private", "kind": "proxy", "targetKey": "agent", "upstreamPath": "/agent-channels" },
+      { "key": "agent-releases", "prefix": "/agent/release-notes", "access": "private", "kind": "proxy", "targetKey": "agent", "upstreamPath": "/release-notes" },
+      { "key": "agent-session", "prefix": "/agent/session", "access": "private", "kind": "proxy", "targetKey": "agent", "upstreamPath": "/agent-bridge/session", "websocket": true },
+      { "key": "agent", "prefix": "/agent", "access": "private", "kind": "proxy", "upstreamPath": "/agent-bridge", "websocket": true },
+      { "key": "mail", "prefix": "/mail", "access": "private", "kind": "proxy", "upstreamPath": "/mail" },
+      { "key": "files", "prefix": "/files", "access": "private", "kind": "proxy", "upstreamPath": "/private-files" },
+      { "key": "pages", "prefix": "/pages", "access": "public", "kind": "proxy", "upstreamPath": "/pages" },
+      { "key": "resources", "prefix": "/resources", "access": "public", "kind": "static" },
+      { "key": "blog", "prefix": "/blog", "access": "public", "kind": "static" },
+      { "key": "docs", "prefix": "/docs", "access": "public", "kind": "static" },
+      { "key": "tools", "prefix": "/tools", "access": "private", "kind": "proxy", "upstreamPath": "/", "websocket": true },
+      { "key": "api-agent-bridge", "prefix": "/api/agent/bridge", "access": "private", "kind": "proxy", "targetKey": "agent", "upstreamPath": "/api/agent-bridge" },
+      { "key": "api-agent-automations", "prefix": "/api/agent/automations", "access": "private", "kind": "proxy", "targetKey": "agent", "upstreamPath": "/api/agent-automations" },
+      { "key": "api-agent-schedules", "prefix": "/api/agent/schedules", "access": "private", "kind": "proxy", "targetKey": "agent", "upstreamPath": "/api/agent-corn" },
+      { "key": "api-agent-data", "prefix": "/api/agent/data", "access": "private", "kind": "proxy", "targetKey": "agent", "upstreamPath": "/api/agent-data" },
+      { "key": "api-agent-channels", "prefix": "/api/agent/channels", "access": "private", "kind": "proxy", "targetKey": "agent", "upstreamPath": "/api/channels" },
+      { "key": "agent-ws", "prefix": "/api/agent/ws", "access": "private", "kind": "proxy", "targetKey": "agent", "upstreamPath": "/ws", "websocket": true },
+      { "key": "api-agent", "prefix": "/api/agent", "access": "private", "kind": "proxy", "targetKey": "agent", "upstreamPath": "/api" },
+      { "key": "api-files", "prefix": "/api/files", "access": "private", "kind": "proxy", "targetKey": "agent", "upstreamPath": "/api/files" },
+      { "key": "api-pages", "prefix": "/api/pages", "access": "private", "kind": "proxy", "targetKey": "agent", "upstreamPath": "/api/pages" }
+    ]
+  },
+  "domain": {
+    "apexEnv": "SITE_DOMAIN",
+    "localSuffix": "local",
+    "standardHosts": [
+      { "key": "home", "label": "Site home", "prefix": "", "access": "public", "kind": "static", "source": "projects/core/site-web/html/blog" },
+      { "key": "admin", "label": "Site administration", "prefix": "a", "access": "private", "kind": "proxy", "target": "http://127.0.0.1:8791" },
+      { "key": "agent", "label": "Open Agent Bridge", "prefix": "agent", "access": "private", "kind": "proxy", "target": "http://127.0.0.1:8788", "websocket": true },
+      { "key": "tools", "label": "Extension tools slot", "prefix": "tools", "access": "private", "kind": "proxy", "target": "http://127.0.0.1:9955", "websocket": true },
+      { "key": "pages", "label": "Generated pages", "prefix": "pages", "access": "public", "kind": "proxy", "target": "http://127.0.0.1:8788" },
+      { "key": "resources", "label": "Publication resources", "prefix": "resources", "access": "public", "kind": "static", "source": "projects/core/site-web/html/resources" },
+      { "key": "blog", "label": "Blog", "prefix": "blog", "access": "public", "kind": "static", "source": "projects/core/site-web/html/blog" },
+      { "key": "docs", "label": "Documentation", "prefix": "docs", "access": "public", "kind": "static", "source": "projects/core/site-web/html/docs" },
+      { "key": "mail", "label": "Agent mail", "prefix": "mail", "access": "private", "kind": "proxy", "target": "http://127.0.0.1:8788" }
+    ],
+    "legacyHosts": [
+      { "prefix": "demo", "kind": "static", "source": "projects/core/site-web/html/demo" },
+      { "prefix": "sgtools", "kind": "static", "source": "projects/core/site-web/html/sg-tools" },
+      { "prefix": "tjcds", "kind": "static", "source": "projects/core/site-web/html/tjcds" },
+      { "prefix": "sg", "kind": "static", "source": "projects/personal/sg-site" }
+    ]
+  },
+  "services": [
+    { "name": "open-agent-bridge", "port": 8788, "healthPath": "/health", "required": true },
+    { "name": "open-agent-bridge-worker", "required": true },
+    { "name": "workspace-admin-panel", "port": 8791, "healthPath": "/healthz", "required": true },
+    { "name": "lmt-tools", "port": 9955, "healthPath": "/", "required": false },
+    { "name": "private-site-gateway", "port": 8843, "healthPath": "/__private-site/health", "required": true },
+    { "name": "xiaohongshu-channel", "port": 18060, "healthPath": "/health", "required": false }
+  ]
+}

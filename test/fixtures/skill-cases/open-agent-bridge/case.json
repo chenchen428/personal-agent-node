@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 1,
+  "skill": "open-agent-bridge",
+  "title": "Open Agent Bridge 数据、邮件防护、移动图表与 Pages 验收",
+  "prompt": "验证 Agent 能维护动态 SQLite 数据、限制恶意邮件和自动化并发、审计发件人信誉策略、运行受限模板，并生成移动端友好的专业图表报告，再按数据敏感级别发布私人或公开报告。",
+  "commands": [
+    "node --test projects/core/open-agent-bridge/test/agent-data.test.mjs projects/core/open-agent-bridge/test/automation.test.mjs projects/core/open-agent-bridge/test/mail-ingest.test.mjs projects/core/open-agent-bridge/test/template-runtime.test.mjs projects/core/open-agent-bridge/test/private-publications.test.mjs",
+    "node --test projects/core/open-agent-bridge/test/managed-files.test.mjs",
+    "node --test projects/core/open-agent-bridge/test/channel-health-check.test.mjs projects/core/open-agent-bridge/test/channel-runtime-source.test.mjs projects/core/open-agent-bridge/test/xiaohongshu-channel.test.mjs projects/core/open-agent-bridge/test/xiaohongshu-login-coordinator.test.mjs projects/core/open-agent-bridge/test/xiaohongshu-verification-client.test.mjs",
+    "node skills/open-agent-bridge/scripts/render-report.mjs --input test/fixtures/skill-cases/open-agent-bridge/report-input.json --out test/fixtures/skill-cases/open-agent-bridge/report.html --force",
+    "open-abg pages upload --file test/fixtures/skill-cases/visual-content/skill-tree.svg --folder skill-cases-2026-07-10/visual-content --overwrite --json",
+    "open-abg pages upload --file test/fixtures/skill-cases/media-toolkit/skill-tree.webp --folder skill-cases-2026-07-10/media-toolkit --overwrite --json",
+    "open-abg pages upload --file test/fixtures/skill-cases/index.html --folder skill-cases-2026-07-10 --overwrite --json",
+    "curl --fail https://pages.personal-agent.local/uploads/skill-cases-2026-07-10/index.html"
+  ],
+  "artifacts": [
+    {
+      "path": "publish-result.json",
+      "label": "Online Pages URL and HTTPS verification record"
+    },
+    {
+      "path": "report.html",
+      "label": "Self-contained mobile chart report fixture"
+    }
+  ],
+  "verifiedAt": "2026-07-11T22:30:00+08:00"
+}

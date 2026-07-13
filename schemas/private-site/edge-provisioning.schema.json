@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://personal-agent.local/schemas/private-site/edge-provisioning.schema.json",
+  "title": "Private Site self-hosted Edge provisioning input",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "asciiDomain", "nodePublicKey", "originCertificateRequest"],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "asciiDomain": { "type": "string" },
+    "nodePublicKey": { "type": "string", "minLength": 32 },
+    "originCertificateRequest": { "type": "string", "minLength": 64 },
+    "protocolVersion": { "type": "string" },
+    "distributionVersion": { "type": "string" }
+  }
+}

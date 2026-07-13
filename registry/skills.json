@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "categories": [
+    {
+      "id": "agent-runtime",
+      "label": "Agent Runtime",
+      "description": "Local Personal Agent capabilities.",
+      "order": 10
+    }
+  ],
+  "skills": [
+    {
+      "name": "open-agent-bridge",
+      "directory": "skills/open-agent-bridge",
+      "category": "agent-runtime",
+      "maturity": "beta",
+      "cli": ["open-abg", "oab"],
+      "related": []
+    }
+  ]
+}

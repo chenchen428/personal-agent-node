@@ -1,0 +1,28 @@
+{
+  "name": "personal-agent-node-workspace",
+  "version": "0.1.0",
+  "private": true,
+  "license": "Apache-2.0",
+  "type": "module",
+  "workspaces": [
+    "projects/core/node",
+    "projects/core/open-agent-bridge",
+    "projects/core/edge"
+  ],
+  "scripts": {
+    "doctor": "node scripts/workspace-doctor.mjs",
+    "guard": "node scripts/project-guard.mjs --working && node scripts/skill-guard.mjs --working",
+    "harness:test": "node --test test/harness.test.mjs && node scripts/skill-tree.mjs cases verify",
+    "release:check": "node scripts/release-check.mjs",
+    "release:build": "node scripts/release-package.mjs",
+    "release:rollback": "node scripts/rollback-private-site-node-release.mjs",
+    "check": "npm run check -w personal-agent-node && npm run check -w open-agent-bridge",
+    "test": "npm run harness:test && npm run test -w personal-agent-node && npm run test -w private-site-edge && npm run test -w open-agent-bridge",
+    "test:node": "npm run test -w personal-agent-node",
+    "test:bridge": "npm run test -w open-agent-bridge",
+    "test:edge": "npm run test -w private-site-edge"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}
