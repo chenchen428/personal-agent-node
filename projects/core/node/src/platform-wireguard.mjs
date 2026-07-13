@@ -13,12 +13,14 @@ export function wireGuardLifecycle(tunnelPath, platform = process.platform) {
     };
   }
   if (platform === "darwin") {
+    const up = macOsPrivilegedCommand("up", configPath);
+    const down = macOsPrivilegedCommand("down", configPath);
     return {
       platform,
-      executable: "sudo",
-      args: ["wg-quick", "up", configPath],
-      installCommand: `sudo wg-quick up "${configPath}"`,
-      uninstallCommand: `sudo wg-quick down "${configPath}"`,
+      executable: "/usr/bin/osascript",
+      args: ["-e", up],
+      installCommand: `osascript -e '${up.replaceAll("'", "'\\''")}'`,
+      uninstallCommand: `osascript -e '${down.replaceAll("'", "'\\''")}'`,
       prerequisite: "brew install wireguard-tools",
     };
   }
@@ -33,4 +35,11 @@ export function wireGuardLifecycle(tunnelPath, platform = process.platform) {
     };
   }
   throw new Error(`Unsupported WireGuard platform: ${platform}`);
+}
+
+function macOsPrivilegedCommand(action, configPath) {
+  const shellPath = configPath.replaceAll("'", "'\\''");
+  const command = `PATH=/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin wg-quick ${action} '${shellPath}'`;
+  const appleScriptCommand = command.replaceAll("\\", "\\\\").replaceAll('"', '\\"');
+  return `do shell script "${appleScriptCommand}" with administrator privileges`;
 }

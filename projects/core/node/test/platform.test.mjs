@@ -40,6 +40,10 @@ test("renders a Windows interactive-user scheduled task", () => {
 
 test("describes WireGuard lifecycle for every supported Node platform", () => {
   assert.equal(wireGuardLifecycle("/tmp/private-site.conf", "win32").serviceId, "WireGuardTunnel$private-site");
-  assert.match(wireGuardLifecycle("/tmp/private-site.conf", "darwin").prerequisite, /brew install wireguard-tools/);
+  const macOS = wireGuardLifecycle("/tmp/private-site.conf", "darwin");
+  assert.match(macOS.prerequisite, /brew install wireguard-tools/);
+  assert.equal(macOS.executable, "/usr/bin/osascript");
+  assert.match(macOS.args[1], /with administrator privileges/);
+  assert.match(macOS.args[1], /wg-quick up/);
   assert.match(wireGuardLifecycle("/tmp/private-site.conf", "linux").installCommand, /wg-quick up/);
 });
