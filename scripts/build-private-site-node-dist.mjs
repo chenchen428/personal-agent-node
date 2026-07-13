@@ -8,6 +8,7 @@ import { fileURLToPath } from "node:url";
 import { pruneLocalDist } from "./prune-local-dist.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+const workspacePackage = JSON.parse(fs.readFileSync(path.join(root, "package.json"), "utf8"));
 const args = parseArgs(process.argv.slice(2));
 const distribution = JSON.parse(fs.readFileSync(path.join(root, "registry", "node-distribution.json"), "utf8"));
 const profileName = args.profile || "universal";
@@ -62,6 +63,8 @@ function copyRuntimeInputs() {
     "scripts",
     "docs",
     "test/fixtures",
+    ".githooks",
+    "package.json",
     "AGENTS.md",
     "README.md",
     "LICENSE",
@@ -146,7 +149,7 @@ function writeManifest() {
     dirty: revision.dirty,
     createdAt: new Date().toISOString(),
     protocolVersion: "1.0",
-    distributionVersion: "0.1.0",
+    distributionVersion: workspacePackage.version,
     profile: profileName,
     extensions: [...includedExtensionIds],
     runtime: { node: ">=22", platforms: ["win32-x64", "darwin-arm64", "darwin-x64", "linux-x64", "linux-arm64"] },

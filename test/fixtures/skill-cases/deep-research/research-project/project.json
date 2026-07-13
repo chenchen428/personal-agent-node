@@ -1,0 +1,47 @@
+{
+  "schemaVersion": 1,
+  "topic": "外部 Agent 技能仓库融合评估",
+  "slug": "外部-agent-技能仓库融合评估",
+  "createdAt": "2026-07-10T06:19:40.385Z",
+  "language": "zh-CN",
+  "questions": [
+    "如何以更小上下文成本融合到 Personal Agent Node？"
+  ],
+  "items": [
+    {
+      "id": "deep-research-skills",
+      "name": "Deep-Research-skills",
+      "context": "Weizhena repository supplied by the user; assess workflow control and Codex portability."
+    },
+    {
+      "id": "baoyu-skills",
+      "name": "baoyu-skills",
+      "context": "JimLiu repository supplied by the user; assess reusable creation capabilities and dependency cost."
+    }
+  ],
+  "fields": [
+    {
+      "id": "workflow_model",
+      "label": "工作流模型",
+      "description": "How the source divides agent judgment, deterministic work, and human checkpoints.",
+      "required": true
+    },
+    {
+      "id": "runtime_dependencies",
+      "label": "运行依赖",
+      "description": "Global configuration, CLIs, packages, credentials, and browser/session prerequisites.",
+      "required": true
+    },
+    {
+      "id": "integration_decision",
+      "label": "融合决策",
+      "description": "Merge, split, defer, or exclude decision for Personal Agent Node.",
+      "required": true
+    }
+  ],
+  "execution": {
+    "batchSize": 4,
+    "itemsPerAgent": 1,
+    "resultsDir": "results"
+  }
+}

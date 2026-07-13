@@ -1,0 +1,11 @@
+{
+  "input": "test/fixtures/skill-cases/visual-content/skill-tree.png",
+  "output": "test/fixtures/skill-cases/media-toolkit/skill-tree.webp",
+  "format": "webp",
+  "quality": 78,
+  "tool": "cwebp",
+  "beforeBytes": 151426,
+  "afterBytes": 56756,
+  "reductionPercent": 62.52,
+  "sha256": "d67640166f35932c15430ebb9b8385fb07c6b9d2c44e0fa86b8b7ec6f24bb359"
+}

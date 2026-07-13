@@ -1,0 +1,4 @@
+interface:
+  display_name: "Knowledge Capture"
+  short_description: "Capture web and video sources into traceable Markdown"
+  default_prompt: "Use $knowledge-capture to save this source as clean Markdown with provenance."

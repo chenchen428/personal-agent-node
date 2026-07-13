@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "skill": "visual-content",
+  "title": "研究到图文发布的技能树架构图",
+  "prompt": "生成一张 8:5 的中文架构图，解释研究与采集、内容与视觉创作、图文发布及贯穿全流程的治理层。",
+  "commands": [
+    "node skills/media-toolkit/scripts/cli.mjs inspect --input test/fixtures/skill-cases/visual-content/skill-tree.svg",
+    "node skills/media-toolkit/scripts/cli.mjs compress --input test/fixtures/skill-cases/visual-content/skill-tree.svg --output test/fixtures/skill-cases/visual-content/skill-tree.png --format png --quality 92 --force --report test/fixtures/skill-cases/visual-content/inspection.json"
+  ],
+  "artifacts": [
+    {"path": "prompts/01-diagram-skill-tree.md", "label": "Reproducible visual brief"},
+    {"path": "skill-tree.svg", "label": "Standalone vector diagram"},
+    {"path": "skill-tree.png", "label": "1600x1000 raster preview"},
+    {"path": "inspection.json", "label": "Rasterization report"}
+  ],
+  "verifiedAt": "2026-07-10",
+  "note": "The runtime image generation tool was unavailable, so this case intentionally exercises the exact-text SVG diagram branch."
+}

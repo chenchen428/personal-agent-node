@@ -1,0 +1,4 @@
+interface:
+  display_name: "Deep Research"
+  short_description: "Plan and execute evidence-backed multi-source research"
+  default_prompt: "Use $deep-research to compare two technologies with a sourced research plan and report."

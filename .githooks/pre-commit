@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
+
+if [[ "${PERSONAL_AGENT_HOOKS_DISABLE:-0}" == "1" ]]; then
+  echo "[pre-commit] bypass: PERSONAL_AGENT_HOOKS_DISABLE=1" >&2
+  exit 0
+fi
+
+node "$ROOT/scripts/skill-guard.mjs" --staged
+node --test "$ROOT/test/skill-tree.test.mjs"
+node "$ROOT/scripts/project-guard.mjs" --staged
+node "$ROOT/scripts/workspace-doctor.mjs"

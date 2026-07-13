@@ -15,6 +15,7 @@ import { readBackupState, runScheduledBackup } from "../src/backup-scheduler.mjs
 import { bridgeCliStatus, prepareBridgeCliShims } from "../src/cli-shims.mjs";
 import { ensureWorkspaceFiles } from "../src/workspace-files.mjs";
 import { providerCatalog, providerStatus, setProvider } from "../src/providers.mjs";
+import { startOnboardingServer } from "../src/onboarding-server.mjs";
 
 const args = parseArgs(process.argv.slice(2));
 const command = args._[0] || "status";
@@ -36,6 +37,7 @@ else if (command === "wireguard-init") await wireGuardInitCommand();
 else if (command === "service-prepare") await servicePrepareCommand();
 else if (command === "extension") await extensionCommand();
 else if (command === "provider") await providerCommand();
+else if (command === "onboarding") await onboardingCommand();
 else if (command === "backup") await backupCommand();
 else if (command === "restore-verify") await restoreVerifyCommand();
 else if (command === "restore-apply") await restoreApplyCommand();
@@ -297,6 +299,22 @@ async function providerCommand() {
   throw new Error("provider action must be list, status, or set");
 }
 
+async function onboardingCommand() {
+  const port = Number(args.port || process.env.PERSONAL_AGENT_ONBOARDING_PORT || 8842);
+  const cloudUrl = args.cloudUrl || process.env.PERSONAL_AGENT_CLOUD_URL || "https://personal-agent.cn";
+  const onboarding = await startOnboardingServer({
+    host: "127.0.0.1",
+    port,
+    cloudUrl,
+    dataRoot: args.dataRoot,
+    onEnrolled: async () => {
+      await prepareCommand();
+      await daemonStartCommand();
+    },
+  });
+  process.stdout.write(`${JSON.stringify({ ok: true, onboardingUrl: onboarding.url, cloudUrl }, null, 2)}\n`);
+}
+
 async function identityInitCommand() {
   const config = resolveNodeConfig();
   assertSupervisorStopped(config);
@@ -500,5 +518,5 @@ function parseArgs(argv) {
 }
 
 function printHelp() {
-  process.stdout.write(`Usage:\n  private-site <command> [--data-root <path>]\n  private-site init --domain <apex> [--data-root <path>]\n  private-site prepare\n  private-site start\n  private-site daemon-start\n  private-site stop\n  private-site status --json\n  private-site verify --json\n  private-site import-legacy-env --source-dir <path>\n  private-site import-legacy-data --source-dir <path> --phase <preflight|final>\n  private-site mode <preflight|active>\n  private-site identity-init [--address 10.77.0.2]\n  private-site identity-install --certificate <file> --ca <file> --edge-client-certificate <file>\n  private-site wireguard-init --edge-public-key <key> --endpoint <host:port>\n  private-site service-prepare\n  private-site extension list\n  private-site extension install --source <directory>\n  private-site extension remove --id <extension-id>\n  private-site provider list\n  private-site provider status\n  private-site provider set --kind <tunnel|token> --provider <name> [--endpoint <url>] [--credential-env <ENV_NAME>]\n  private-site backup [--output <archive>] [--key-file <key>] [--full-recovery] [--scheduled]\n  private-site restore-verify --archive <archive> --key-file <key> [--target <directory>]\n  private-site restore-apply --archive <archive> --key-file <key> --target <empty-data-root> [--replacement]\n`);
+  process.stdout.write(`Usage:\n  private-site <command> [--data-root <path>]\n  private-site init --domain <apex> [--data-root <path>]\n  private-site prepare\n  private-site start\n  private-site daemon-start\n  private-site onboarding [--port 8842] [--cloud-url https://personal-agent.cn]\n  private-site stop\n  private-site status --json\n  private-site verify --json\n  private-site import-legacy-env --source-dir <path>\n  private-site import-legacy-data --source-dir <path> --phase <preflight|final>\n  private-site mode <preflight|active>\n  private-site identity-init [--address 10.77.0.2]\n  private-site identity-install --certificate <file> --ca <file> --edge-client-certificate <file>\n  private-site wireguard-init --edge-public-key <key> --endpoint <host:port>\n  private-site service-prepare\n  private-site extension list\n  private-site extension install --source <directory>\n  private-site extension remove --id <extension-id>\n  private-site provider list\n  private-site provider status\n  private-site provider set --kind <tunnel|token> --provider <name> [--endpoint <url>] [--credential-env <ENV_NAME>]\n  private-site backup [--output <archive>] [--key-file <key>] [--full-recovery] [--scheduled]\n  private-site restore-verify --archive <archive> --key-file <key> [--target <directory>]\n  private-site restore-apply --archive <archive> --key-file <key> --target <empty-data-root> [--replacement]\n`);
 }

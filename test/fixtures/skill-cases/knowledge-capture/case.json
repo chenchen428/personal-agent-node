@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "skill": "knowledge-capture",
+  "title": "GitHub 中文 README 可追溯抓取",
+  "prompt": "把给定 GitHub blob 页面保存为 Markdown，保留原始 URL、最终 raw URL 和抓取时间。",
+  "commands": [
+    "node skills/knowledge-capture/scripts/cli.mjs url --url https://github.com/Weizhena/Deep-Research-skills/blob/master/README.zh.md --out test/fixtures/skill-cases/knowledge-capture/captured-readme.md --force"
+  ],
+  "artifacts": [
+    {"path": "captured-readme.md", "label": "Markdown capture with provenance"}
+  ],
+  "verifiedAt": "2026-07-10"
+}

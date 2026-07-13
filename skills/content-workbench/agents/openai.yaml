@@ -1,0 +1,4 @@
+interface:
+  display_name: "Content Workbench"
+  short_description: "Format, translate, and render publication-ready content"
+  default_prompt: "Use $content-workbench to structure this draft and render a reviewable HTML version."

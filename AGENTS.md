@@ -11,7 +11,8 @@ This repository is both the public, local-first Personal Agent runtime and the c
 5. Run `node scripts/project-guard.mjs --working` before project or runtime layout changes.
 6. Run `node scripts/skill-guard.mjs --working` before skill or fixture changes.
 7. Run `bash scripts/setup-agent-bridge.sh --check` when Agent compatibility links matter.
-8. Read a subproject's `AGENTS.md` when present.
+8. Run `bash scripts/install-hooks.sh --check` when repository hooks matter.
+9. Read a subproject's `AGENTS.md` when present.
 
 ## Boundaries
 
@@ -28,6 +29,7 @@ This repository is both the public, local-first Personal Agent runtime and the c
 ```bash
 npm run doctor
 npm run guard
+node scripts/skill-tree.mjs cases verify
 npm test
 npm run check
 ```

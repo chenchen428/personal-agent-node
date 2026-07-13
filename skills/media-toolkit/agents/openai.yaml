@@ -1,0 +1,4 @@
+interface:
+  display_name: "Media Toolkit"
+  short_description: "Inspect, convert, and compress media with deterministic tools"
+  default_prompt: "Use $media-toolkit to compress these images and report the size reduction."

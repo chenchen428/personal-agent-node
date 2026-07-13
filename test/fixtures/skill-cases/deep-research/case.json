@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "skill": "deep-research",
+  "title": "两个外部技能仓库的融合评估",
+  "prompt": "比较 Deep-Research-skills 与 baoyu-skills 的工作流、运行依赖和适合 Personal Agent Node 的融合方式，并输出带来源的结构化报告。",
+  "commands": [
+    "node skills/deep-research/scripts/cli.mjs validate --project test/fixtures/skill-cases/deep-research/research-project",
+    "node skills/deep-research/scripts/cli.mjs report --project test/fixtures/skill-cases/deep-research/research-project --out test/fixtures/skill-cases/deep-research/research-project/report.html --force"
+  ],
+  "artifacts": [
+    {"path": "research-project/project.json", "label": "Research scope and schema"},
+    {"path": "research-project/results/deep-research-skills.json", "label": "Validated item result"},
+    {"path": "research-project/results/baoyu-skills.json", "label": "Validated item result"},
+    {"path": "research-project/report.html", "label": "Self-contained sourced comparison report"}
+  ],
+  "verifiedAt": "2026-07-10"
+}

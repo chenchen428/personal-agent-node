@@ -34,3 +34,4 @@ jobs:
         with:
           files: dist/releases/${{ github.ref_name }}/*
           generate_release_notes: true
+          prerelease: ${{ contains(github.ref_name, '-') }}

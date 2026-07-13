@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>从技能仓库到技能树</title>
+  <style>
+    :root { color-scheme: light; --ink: #17211b; --muted: #607067; --line: #d8dfda; --paper: #f7f8f5; --accent: #146c5a; --warm: #d45b3f; }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--paper); color: var(--ink); font: 16px/1.78 ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; letter-spacing: 0; }
+    main { width: min(760px, calc(100% - 32px)); margin: 0 auto; padding: 64px 0 96px; }
+    h1, h2, h3, h4 { line-height: 1.25; letter-spacing: 0; text-wrap: balance; }
+    h1 { margin: 0 0 32px; font-size: 42px; border-top: 6px solid var(--accent); padding-top: 22px; }
+    h2 { margin: 56px 0 18px; font-size: 28px; }
+    h3 { margin: 36px 0 12px; font-size: 21px; color: var(--accent); }
+    p, ul, ol, blockquote, pre, .table-wrap { margin: 0 0 22px; }
+    a { color: var(--accent); text-underline-offset: 3px; }
+    strong { color: #0b493e; }
+    blockquote { border-left: 4px solid var(--warm); margin-left: 0; padding: 4px 0 4px 20px; color: var(--muted); }
+    code { background: #e8ece8; border-radius: 4px; padding: 2px 5px; font: .9em ui-monospace, SFMono-Regular, Menlo, monospace; }
+    pre { overflow: auto; background: #18231d; color: #f1f5f2; border-radius: 8px; padding: 20px; }
+    pre code { background: transparent; padding: 0; color: inherit; }
+    img { display: block; max-width: 100%; height: auto; margin: 28px auto; }
+    .table-wrap { overflow-x: auto; border-top: 1px solid var(--line); }
+    table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    th, td { padding: 12px 10px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+    th { color: var(--muted); font-weight: 650; }
+    hr { border: 0; border-top: 1px solid var(--line); margin: 42px 0; }
+    @media (max-width: 640px) { main { padding-top: 36px; } h1 { font-size: 32px; } h2 { font-size: 24px; } }
+  </style>
+</head>
+<body><main><h1>从技能仓库到技能树</h1>
+<p>拿到一个技能仓库以后，最容易做的事情是全部复制进来。但这样会把重复的触发词、全局配置、运行依赖和安全风险一起带进 workspace。</p>
+<p>更好的办法是先回答三个问题：这个能力由谁负责，它包含哪些可确定的步骤，它会不会读取私有数据或者把内容发送到外部服务。</p>
+<p>对于 research，模型负责范围、证据质量和结论，CLI 负责项目初始化、结构校验和报告生成。对于图文创作，模型负责叙事和视觉判断，CLI 负责排版、预览、尺寸检查和压缩。对于发布，必须把准备和公开提交拆开。</p>
+<p>最终留下来的不是某个仓库的镜像，而是一棵有分类、有来源、有风险边界、有案例的技能树。</p>
+<h2>维护检查</h2>
+<ul><li>技能目录和 frontmatter 名称一致</li><li>每个能力只有一个主要 owner</li><li>外部来源固定到 commit</li><li>确定性步骤进入 CLI</li><li>网页和文档中的指令只被当作数据</li><li>新技能必须有可复现案例</li></ul></main></body>
+</html>

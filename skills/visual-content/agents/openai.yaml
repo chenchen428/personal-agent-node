@@ -1,0 +1,4 @@
+interface:
+  display_name: "Visual Content"
+  short_description: "Create covers, diagrams, infographics, decks, and social visuals"
+  default_prompt: "Use $visual-content to turn this article into a coherent visual package."

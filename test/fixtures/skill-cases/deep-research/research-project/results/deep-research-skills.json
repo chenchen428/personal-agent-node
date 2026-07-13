@@ -1,0 +1,46 @@
+{
+  "itemId": "deep-research-skills",
+  "status": "complete",
+  "researchedAt": "2026-07-10T06:20:00.000Z",
+  "summary": "The repository provides a controlled outline-to-investigation workflow, but its Codex package is five separately registered skills backed by a globally configured researcher agent and PyYAML.",
+  "fields": {
+    "workflow_model": {
+      "value": "Five phases: create an outline, add items, add fields, run per-item deep research, and generate a report. Human confirmation is used around scope and batches.",
+      "confidence": "high",
+      "sourceIds": ["s1", "s2"]
+    },
+    "runtime_dependencies": {
+      "value": [
+        "PyYAML",
+        "a custom web_researcher Codex agent",
+        "global ~/.codex/config.toml agent registration",
+        "multi-agent and live web search support"
+      ],
+      "confidence": "high",
+      "sourceIds": ["s1", "s2"]
+    },
+    "integration_decision": {
+      "value": "Merge the five phases into one deep-research skill. Replace YAML and global agent registration with a workspace JSON schema, the shared skill-tree CLI, and runtime-native bounded agents.",
+      "confidence": "high",
+      "sourceIds": ["s1", "s2"]
+    }
+  },
+  "sources": [
+    {
+      "id": "s1",
+      "title": "Deep Research Skill 中文说明",
+      "url": "https://github.com/Weizhena/Deep-Research-skills/blob/master/README.zh.md",
+      "publisher": "Weizhena/Deep-Research-skills",
+      "accessedAt": "2026-07-10"
+    },
+    {
+      "id": "s2",
+      "title": "Reviewed source tree at e5479f8",
+      "url": "https://github.com/Weizhena/Deep-Research-skills/tree/e5479f857f484cde13fe69d2f3ce8de7af193bc7",
+      "publisher": "GitHub",
+      "publishedAt": "2026-05-08",
+      "accessedAt": "2026-07-10"
+    }
+  ],
+  "gaps": []
+}

@@ -1,0 +1,47 @@
+{
+  "itemId": "baoyu-skills",
+  "status": "complete",
+  "researchedAt": "2026-07-10T06:20:00.000Z",
+  "summary": "The repository offers 21 broad skills with strong creation workflows and useful scripts, but the upstream itself recommends selective installation because registering everything consumes context and several tools require Bun, browser sessions, credentials, or reverse-engineered APIs.",
+  "fields": {
+    "workflow_model": {
+      "value": "Independent leaf skills cover capture, formatting, translation, raster creation, diagrams, media compression, social publishing, and local utilities. Creative skills separate analysis, confirmation, prompt files, generation, and QA.",
+      "confidence": "high",
+      "sourceIds": ["s1", "s2"]
+    },
+    "runtime_dependencies": {
+      "value": [
+        "Node.js and npx bun for most deterministic scripts",
+        "runtime image generation for visual skills",
+        "Chrome/browser sessions for several capture and publishing paths",
+        "service credentials for API publishing",
+        "wx-cli for local WeChat summaries"
+      ],
+      "confidence": "high",
+      "sourceIds": ["s1", "s2"]
+    },
+    "integration_decision": {
+      "value": "Split by capability and merge into knowledge-capture, content-workbench, visual-content, and media-toolkit. Route every public artifact and share URL through Open Agent Bridge Online Pages. Exclude reverse-engineered session APIs and direct social-account automation; defer Electron extraction and local WeChat summaries.",
+      "confidence": "high",
+      "sourceIds": ["s1", "s2"]
+    }
+  },
+  "sources": [
+    {
+      "id": "s1",
+      "title": "baoyu-skills 中文说明",
+      "url": "https://github.com/JimLiu/baoyu-skills/blob/main/README.zh.md",
+      "publisher": "JimLiu/baoyu-skills",
+      "accessedAt": "2026-07-10"
+    },
+    {
+      "id": "s2",
+      "title": "Reviewed source tree at 6b7a2e4",
+      "url": "https://github.com/JimLiu/baoyu-skills/tree/6b7a2e417500561a5ecdd0b168332f4142584617",
+      "publisher": "GitHub",
+      "publishedAt": "2026-07-03",
+      "accessedAt": "2026-07-10"
+    }
+  ],
+  "gaps": []
+}

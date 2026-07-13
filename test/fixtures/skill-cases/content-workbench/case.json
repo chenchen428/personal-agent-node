@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "skill": "content-workbench",
+  "title": "技能树文章的排版与 HTML 审阅稿",
+  "prompt": "不改写事实，把这篇中英混排草稿整理为规范 Markdown，并生成适合审阅的自包含 HTML。",
+  "commands": [
+    "node skills/content-workbench/scripts/cli.mjs format --input test/fixtures/skill-cases/content-workbench/draft.md --output test/fixtures/skill-cases/content-workbench/draft-formatted.md --force",
+    "node skills/content-workbench/scripts/cli.mjs html --input test/fixtures/skill-cases/content-workbench/draft-formatted.md --output test/fixtures/skill-cases/content-workbench/draft.html --force"
+  ],
+  "artifacts": [
+    {"path": "draft.md", "label": "Original draft"},
+    {"path": "draft-formatted.md", "label": "Deterministically formatted Markdown"},
+    {"path": "draft.html", "label": "Self-contained review page"}
+  ],
+  "verifiedAt": "2026-07-10"
+}

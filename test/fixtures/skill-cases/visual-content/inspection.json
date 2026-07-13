@@ -1,0 +1,11 @@
+{
+  "input": "test/fixtures/skill-cases/visual-content/skill-tree.svg",
+  "output": "test/fixtures/skill-cases/visual-content/skill-tree.png",
+  "format": "png",
+  "quality": 92,
+  "tool": "chrome",
+  "beforeBytes": 4583,
+  "afterBytes": 151426,
+  "reductionPercent": -3204.08,
+  "sha256": "f310284db95882d873e8854c3b8359b88e4c3a2ae0f3b7b3733fe7e614256854"
+}

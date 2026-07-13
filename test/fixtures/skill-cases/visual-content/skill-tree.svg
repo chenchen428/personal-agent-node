@@ -1,0 +1,68 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1000" viewBox="0 0 1600 1000" role="img" aria-labelledby="title desc">
+  <title id="title">Personal Agent Node 技能树融合架构</title>
+  <desc id="desc">研究与采集、内容与视觉创作、图文发布三阶段，以及贯穿全流程的治理层。</desc>
+  <style>
+    text { font-family: "Noto Sans SC", "PingFang SC", system-ui, sans-serif; letter-spacing: 0; fill: #17211b; }
+    .eyebrow { font-size: 20px; font-weight: 700; fill: #146c5a; }
+    .title { font-size: 54px; font-weight: 760; }
+    .subtitle { font-size: 24px; fill: #607067; }
+    .stage { font-size: 21px; font-weight: 750; }
+    .node-title { font-size: 26px; font-weight: 730; }
+    .node-copy { font-size: 18px; fill: #4e5f56; }
+    .guard-title { font-size: 25px; font-weight: 760; fill: #f7f8f5; }
+    .guard-copy { font-size: 18px; fill: #dbe6df; }
+    .edge { fill: none; stroke: #17211b; stroke-width: 3; marker-end: url(#arrow); }
+  </style>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#17211b"/>
+    </marker>
+  </defs>
+
+  <rect width="1600" height="1000" fill="#f7f8f5"/>
+  <rect x="72" y="72" width="12" height="124" fill="#146c5a"/>
+  <text x="112" y="98" class="eyebrow">PERSONAL AGENT NODE / SKILL TREE 01</text>
+  <text x="112" y="156" class="title">从仓库复制，走向能力融合</text>
+  <text x="112" y="202" class="subtitle">模型负责判断，CLI 负责确定性，Guard 负责边界，案例负责验收。</text>
+
+  <text x="88" y="300" class="stage">01 研究与采集</text>
+  <rect x="88" y="332" width="390" height="160" rx="6" fill="#dcece6" stroke="#146c5a" stroke-width="2"/>
+  <text x="120" y="382" class="node-title">deep-research</text>
+  <text x="120" y="420" class="node-copy">范围 · 字段 · 证据 · 并行调查</text>
+  <text x="120" y="451" class="node-copy">JSON 校验与可恢复报告</text>
+  <rect x="88" y="514" width="390" height="124" rx="6" fill="#ffffff" stroke="#9bb7ab" stroke-width="2"/>
+  <text x="120" y="560" class="node-title">knowledge-capture</text>
+  <text x="120" y="598" class="node-copy">URL → 带来源信息的 Markdown</text>
+
+  <text x="606" y="300" class="stage">02 内容与视觉创作</text>
+  <rect x="606" y="332" width="390" height="140" rx="6" fill="#f6ded8" stroke="#d45b3f" stroke-width="2"/>
+  <text x="638" y="382" class="node-title">content-workbench</text>
+  <text x="638" y="420" class="node-copy">结构 · 翻译 · 排版 · HTML</text>
+  <rect x="606" y="494" width="390" height="144" rx="6" fill="#fff4ef" stroke="#d45b3f" stroke-width="2"/>
+  <text x="638" y="544" class="node-title">visual-content</text>
+  <text x="638" y="582" class="node-copy">封面 · 配图 · 信息图 · SVG · 卡片</text>
+  <text x="638" y="612" class="node-copy">复用 guizang + media CLI</text>
+
+  <text x="1124" y="300" class="stage">03 图文发布</text>
+  <rect x="1124" y="332" width="390" height="160" rx="6" fill="#fff0bb" stroke="#b88700" stroke-width="2"/>
+  <text x="1156" y="382" class="node-title">Online Pages</text>
+  <text x="1156" y="420" class="node-copy">HTML · SVG · image · report</text>
+  <text x="1156" y="451" class="node-copy">统一生成公开 URL</text>
+  <rect x="1124" y="514" width="390" height="124" rx="6" fill="#ffffff" stroke="#c7aa52" stroke-width="2"/>
+  <text x="1156" y="560" class="node-title">open-agent-bridge</text>
+  <text x="1156" y="598" class="node-copy">upload · verify · share · schedule</text>
+
+  <path class="edge" d="M 478 412 C 530 412, 550 402, 606 402"/>
+  <path class="edge" d="M 478 576 C 530 576, 550 566, 606 566"/>
+  <path class="edge" d="M 996 402 C 1048 402, 1068 412, 1124 412"/>
+  <path class="edge" d="M 996 566 C 1048 566, 1068 576, 1124 576"/>
+
+  <rect x="72" y="718" width="1456" height="190" rx="6" fill="#17211b"/>
+  <text x="112" y="774" class="guard-title">贯穿全流程的治理带</text>
+  <text x="112" y="820" class="guard-copy">registry/skills.json</text>
+  <text x="390" y="820" class="guard-copy">skill-tree CLI</text>
+  <text x="640" y="820" class="guard-copy">skill-guard security scan</text>
+  <text x="1016" y="820" class="guard-copy">case.json + artifacts</text>
+  <line x1="112" y1="850" x2="1488" y2="850" stroke="#607067" stroke-width="1"/>
+  <text x="112" y="882" class="guard-copy">分类唯一 · 来源固定 commit · 内容不可信 · 不读密钥 · 不向未知服务器上传 · 外部写入需授权</text>
+</svg>

@@ -1,25 +1,52 @@
 #!/usr/bin/env node
-import fs from 'node:fs';
 import path from 'node:path';
-import { readJson, root } from './harness-lib.mjs';
+import { spawnSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
+import { parseOptions } from './skill-tree/common.mjs';
+import { runCases } from './skill-tree/cases.mjs';
+import { runCatalog } from './skill-tree/catalog.mjs';
 
-const [group = 'catalog', action] = process.argv.slice(2);
-const catalog = readJson('registry/skills.json');
-if (group === 'catalog') console.log(JSON.stringify(catalog.skills, null, 2));
-else if (group === 'cases' && action === 'verify') {
-  let count = 0;
-  for (const skill of catalog.skills || []) {
-    const file = path.join(root, 'test', 'fixtures', 'skill-cases', skill.name, 'case.json');
-    if (!fs.existsSync(file)) throw new Error(`Missing case: ${skill.name}`);
-    const value = JSON.parse(fs.readFileSync(file, 'utf8'));
-    if ((value.skill || value.name) !== skill.name || !value.prompt || !Array.isArray(value.artifacts)) throw new Error(`Invalid case: ${skill.name}`);
-    for (const artifact of value.artifacts) {
-      const candidate = typeof artifact === 'string' ? artifact : artifact.path;
-      const inRoot = candidate && path.join(root, candidate);
-      const besideCase = candidate && path.join(path.dirname(file), candidate);
-      if (candidate && !fs.existsSync(inRoot) && !fs.existsSync(besideCase)) throw new Error(`Missing artifact for ${skill.name}: ${candidate}`);
-    }
-    console.log(`[OK] ${skill.name}`); count += 1;
-  }
-  console.log(`OK: ${count} skill cases`);
-} else throw new Error('Usage: skill-tree.mjs catalog | cases verify');
+const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+const skillEntrypoints = {
+  research: 'skills/deep-research/scripts/cli.mjs',
+  capture: 'skills/knowledge-capture/scripts/cli.mjs',
+  content: 'skills/content-workbench/scripts/cli.mjs',
+  media: 'skills/media-toolkit/scripts/cli.mjs',
+};
+
+const [group = 'help', action, ...rest] = process.argv.slice(2);
+const parsed = parseOptions(rest);
+
+const help = `Personal Agent Node skill tree CLI
+
+Usage:
+  skill-tree catalog [--json]
+  skill-tree research init --topic <topic> [--items a,b] [--fields id:label] --out <dir>
+  skill-tree research validate --project <dir> [--allow-incomplete] [--json]
+  skill-tree research report --project <dir> [--out report.md]
+  skill-tree capture url --url <url> --out <file.md>
+  skill-tree content format --input <file.md> --output <file.md>
+  skill-tree content html --input <file.md> --output <file.html>
+  skill-tree media inspect --input <image>
+  skill-tree media compress --input <image> --output <image.webp> [--quality 80]
+  open-abg pages upload --file <artifact> --folder <folder> --json
+  skill-tree cases verify
+`;
+
+try {
+  if (group === 'catalog') runCatalog(parseOptions([action, ...rest].filter(Boolean)).options);
+  else if (skillEntrypoints[group]) runSkillCli(group, [action, ...rest].filter(Boolean));
+  else if (group === 'cases') runCases(action, parsed);
+  else if (group === 'help' || group === '--help' || group === '-h') console.log(help);
+  else throw new Error(`Unknown command: ${group}\n\n${help}`);
+} catch (error) {
+  console.error(`[skill-tree] ${error.message}`);
+  process.exitCode = 1;
+}
+
+function runSkillCli(group, args) {
+  const entrypoint = path.join(root, skillEntrypoints[group]);
+  const result = spawnSync(process.execPath, [entrypoint, ...args], { cwd: process.cwd(), stdio: 'inherit' });
+  if (result.error) throw result.error;
+  if (result.status !== 0) process.exitCode = result.status ?? 1;
+}

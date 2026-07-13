@@ -1,21 +1,525 @@
 {
   "schemaVersion": 1,
+  "version": 1,
+  "updatedAt": "2026-07-13",
   "categories": [
     {
-      "id": "agent-runtime",
-      "label": "Agent Runtime",
-      "description": "Local Personal Agent capabilities.",
+      "id": "research-knowledge",
+      "label": "Research & Knowledge",
+      "description": "Source capture, evidence gathering, synthesis, and decision support.",
       "order": 10
+    },
+    {
+      "id": "writing-content",
+      "label": "Writing & Content",
+      "description": "Structure, translate, edit, and render long-form content.",
+      "order": 20
+    },
+    {
+      "id": "visual-media",
+      "label": "Visual & Media",
+      "description": "Visual storytelling, social cards, diagrams, and deterministic media processing.",
+      "order": 30
+    },
+    {
+      "id": "publishing-automation",
+      "label": "Publishing & Automation",
+      "description": "Prepare external publications, send notifications, schedule work, and publish artifacts.",
+      "order": 40
     }
   ],
   "skills": [
     {
+      "name": "deep-research",
+      "directory": "skills/deep-research",
+      "category": "research-knowledge",
+      "maturity": "beta",
+      "risks": [
+        "network-read",
+        "local-write"
+      ],
+      "security": {
+        "network": "read",
+        "dataClass": "mixed",
+        "outboundData": "query",
+        "externalWrite": false,
+        "requiresAuthorization": true,
+        "untrustedContent": true
+      },
+      "origin": {
+        "kind": "adapted",
+        "repository": "https://github.com/Weizhena/Deep-Research-skills",
+        "revision": "e5479f857f484cde13fe69d2f3ce8de7af193bc7",
+        "license": "MIT"
+      },
+      "cli": [
+        "research"
+      ],
+      "examples": [
+        "test/fixtures/skill-cases/deep-research/case.json"
+      ],
+      "caseRequired": true,
+      "related": [
+        "knowledge-capture",
+        "content-workbench"
+      ]
+    },
+    {
+      "name": "knowledge-capture",
+      "directory": "skills/knowledge-capture",
+      "category": "research-knowledge",
+      "maturity": "beta",
+      "risks": [
+        "network-read",
+        "local-write",
+        "browser-session"
+      ],
+      "security": {
+        "network": "read",
+        "dataClass": "mixed",
+        "outboundData": "query",
+        "externalWrite": false,
+        "requiresAuthorization": true,
+        "untrustedContent": true
+      },
+      "origin": {
+        "kind": "adapted",
+        "repository": "https://github.com/JimLiu/baoyu-skills",
+        "revision": "6b7a2e417500561a5ecdd0b168332f4142584617",
+        "license": "MIT"
+      },
+      "cli": [
+        "capture"
+      ],
+      "examples": [
+        "test/fixtures/skill-cases/knowledge-capture/case.json"
+      ],
+      "caseRequired": true,
+      "related": [
+        "deep-research",
+        "content-workbench"
+      ]
+    },
+    {
+      "name": "content-workbench",
+      "directory": "skills/content-workbench",
+      "category": "writing-content",
+      "maturity": "beta",
+      "risks": [
+        "local-write"
+      ],
+      "security": {
+        "network": "none",
+        "dataClass": "mixed",
+        "outboundData": "none",
+        "externalWrite": false,
+        "requiresAuthorization": false,
+        "untrustedContent": true
+      },
+      "origin": {
+        "kind": "adapted",
+        "repository": "https://github.com/JimLiu/baoyu-skills",
+        "revision": "6b7a2e417500561a5ecdd0b168332f4142584617",
+        "license": "MIT"
+      },
+      "cli": [
+        "content"
+      ],
+      "examples": [
+        "test/fixtures/skill-cases/content-workbench/case.json"
+      ],
+      "caseRequired": true,
+      "related": [
+        "knowledge-capture",
+        "visual-content",
+        "open-agent-bridge"
+      ]
+    },
+    {
+      "name": "visual-content",
+      "directory": "skills/visual-content",
+      "category": "visual-media",
+      "maturity": "beta",
+      "risks": [
+        "local-write",
+        "external-generation"
+      ],
+      "security": {
+        "network": "write",
+        "dataClass": "mixed",
+        "outboundData": "content",
+        "externalWrite": false,
+        "requiresAuthorization": true,
+        "untrustedContent": true
+      },
+      "origin": {
+        "kind": "adapted",
+        "repository": "https://github.com/JimLiu/baoyu-skills",
+        "revision": "6b7a2e417500561a5ecdd0b168332f4142584617",
+        "license": "MIT"
+      },
+      "cli": [],
+      "examples": [
+        "test/fixtures/skill-cases/visual-content/case.json"
+      ],
+      "caseRequired": true,
+      "related": [
+        "media-toolkit",
+        "content-workbench"
+      ]
+    },
+    {
+      "name": "media-toolkit",
+      "directory": "skills/media-toolkit",
+      "category": "visual-media",
+      "maturity": "beta",
+      "risks": [
+        "local-write"
+      ],
+      "security": {
+        "network": "none",
+        "dataClass": "mixed",
+        "outboundData": "none",
+        "externalWrite": false,
+        "requiresAuthorization": false,
+        "untrustedContent": false
+      },
+      "origin": {
+        "kind": "adapted",
+        "repository": "https://github.com/JimLiu/baoyu-skills",
+        "revision": "6b7a2e417500561a5ecdd0b168332f4142584617",
+        "license": "MIT"
+      },
+      "cli": [
+        "media"
+      ],
+      "examples": [
+        "test/fixtures/skill-cases/media-toolkit/case.json"
+      ],
+      "caseRequired": true,
+      "related": [
+        "visual-content"
+      ]
+    },
+    {
       "name": "open-agent-bridge",
       "directory": "skills/open-agent-bridge",
-      "category": "agent-runtime",
-      "maturity": "beta",
-      "cli": ["open-abg", "oab"],
-      "related": []
+      "category": "publishing-automation",
+      "maturity": "stable",
+      "risks": [
+        "credentials",
+        "external-write"
+      ],
+      "security": {
+        "network": "write",
+        "dataClass": "private",
+        "outboundData": "content",
+        "externalWrite": true,
+        "requiresAuthorization": true,
+        "requiresFinalConfirmation": true,
+        "untrustedContent": true
+      },
+      "origin": {
+        "kind": "workspace",
+        "license": "Apache-2.0"
+      },
+      "cli": [
+        "open-abg",
+        "open-abg-report"
+      ],
+      "examples": [
+        "test/fixtures/skill-cases/open-agent-bridge/case.json"
+      ],
+      "caseRequired": true,
+      "related": [
+        "content-workbench",
+        "visual-content",
+        "media-toolkit"
+      ]
+    }
+  ],
+  "cliCapabilities": [
+    {
+      "name": "catalog",
+      "category": "research-knowledge",
+      "owner": "workspace",
+      "kind": "workspace-cli",
+      "entrypoint": "scripts/skill-tree.mjs",
+      "command": "node scripts/skill-tree.mjs catalog",
+      "description": "List the classified skill tree from the registry."
+    },
+    {
+      "name": "research",
+      "category": "research-knowledge",
+      "owner": "deep-research",
+      "kind": "skill-script",
+      "entrypoint": "skills/deep-research/scripts/cli.mjs",
+      "command": "node skills/deep-research/scripts/cli.mjs <init|validate|report>",
+      "workspaceCommand": "node scripts/skill-tree.mjs research <init|validate|report>",
+      "description": "Create, validate, and render structured research projects."
+    },
+    {
+      "name": "capture",
+      "category": "research-knowledge",
+      "owner": "knowledge-capture",
+      "kind": "skill-script",
+      "entrypoint": "skills/knowledge-capture/scripts/cli.mjs",
+      "command": "node skills/knowledge-capture/scripts/cli.mjs url",
+      "workspaceCommand": "node scripts/skill-tree.mjs capture url",
+      "description": "Capture public sources into Markdown with provenance."
+    },
+    {
+      "name": "content",
+      "category": "writing-content",
+      "owner": "content-workbench",
+      "kind": "skill-script",
+      "entrypoint": "skills/content-workbench/scripts/cli.mjs",
+      "command": "node skills/content-workbench/scripts/cli.mjs <format|html>",
+      "workspaceCommand": "node scripts/skill-tree.mjs content <format|html>",
+      "description": "Apply deterministic typography cleanup and render self-contained HTML."
+    },
+    {
+      "name": "media",
+      "category": "visual-media",
+      "owner": "media-toolkit",
+      "kind": "skill-script",
+      "entrypoint": "skills/media-toolkit/scripts/cli.mjs",
+      "command": "node skills/media-toolkit/scripts/cli.mjs <inspect|compress>",
+      "workspaceCommand": "node scripts/skill-tree.mjs media <inspect|compress>",
+      "description": "Inspect and compress raster or SVG assets with local tools."
+    },
+    {
+      "name": "open-abg",
+      "category": "publishing-automation",
+      "owner": "open-agent-bridge",
+      "kind": "external-cli",
+      "entrypoint": "skills/open-agent-bridge/SKILL.md",
+      "command": "open-abg --help",
+      "description": "Operate managed hot/cold files, WeChat, sessions, schedules, and Pages through the installed Open Agent Bridge CLI."
+    },
+    {
+      "name": "open-abg-report",
+      "category": "publishing-automation",
+      "owner": "open-agent-bridge",
+      "kind": "skill-script",
+      "entrypoint": "skills/open-agent-bridge/scripts/render-report.mjs",
+      "command": "node skills/open-agent-bridge/scripts/render-report.mjs --input <report.json> --out <report.html>",
+      "description": "Render self-contained mobile-friendly HTML reports with accessible professional SVG charts."
+    },
+    {
+      "name": "cases",
+      "category": "publishing-automation",
+      "owner": "workspace",
+      "kind": "workspace-cli",
+      "entrypoint": "scripts/skill-tree.mjs",
+      "command": "node scripts/skill-tree.mjs cases verify",
+      "description": "Verify registered skill case manifests and artifacts."
+    }
+  ],
+  "upstreams": [
+    {
+      "id": "deep-research-skills",
+      "repository": "https://github.com/Weizhena/Deep-Research-skills",
+      "revision": "e5479f857f484cde13fe69d2f3ce8de7af193bc7",
+      "license": "MIT",
+      "retrievedAt": "2026-07-10",
+      "mappings": [
+        {
+          "source": "research",
+          "decision": "merged",
+          "targets": [
+            "deep-research"
+          ]
+        },
+        {
+          "source": "research-add-items",
+          "decision": "merged",
+          "targets": [
+            "deep-research"
+          ]
+        },
+        {
+          "source": "research-add-fields",
+          "decision": "merged",
+          "targets": [
+            "deep-research"
+          ]
+        },
+        {
+          "source": "research-deep",
+          "decision": "merged",
+          "targets": [
+            "deep-research"
+          ]
+        },
+        {
+          "source": "research-report",
+          "decision": "merged",
+          "targets": [
+            "deep-research"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "baoyu-skills",
+      "repository": "https://github.com/JimLiu/baoyu-skills",
+      "revision": "6b7a2e417500561a5ecdd0b168332f4142584617",
+      "license": "MIT",
+      "retrievedAt": "2026-07-10",
+      "mappings": [
+        {
+          "source": "baoyu-article-illustrator",
+          "decision": "merged",
+          "targets": [
+            "visual-content"
+          ]
+        },
+        {
+          "source": "baoyu-comic",
+          "decision": "merged",
+          "targets": [
+            "visual-content"
+          ]
+        },
+        {
+          "source": "baoyu-compress-image",
+          "decision": "merged",
+          "targets": [
+            "media-toolkit"
+          ]
+        },
+        {
+          "source": "baoyu-cover-image",
+          "decision": "merged",
+          "targets": [
+            "visual-content"
+          ]
+        },
+        {
+          "source": "baoyu-danger-gemini-web",
+          "decision": "excluded",
+          "targets": [],
+          "reason": "Reverse-engineered session API; use the native image generation capability."
+        },
+        {
+          "source": "baoyu-danger-x-to-markdown",
+          "decision": "excluded",
+          "targets": [],
+          "reason": "Reverse-engineered cookie API; use public capture or an authorized browser session."
+        },
+        {
+          "source": "baoyu-diagram",
+          "decision": "merged",
+          "targets": [
+            "visual-content"
+          ]
+        },
+        {
+          "source": "baoyu-electron-extract",
+          "decision": "deferred",
+          "targets": [],
+          "reason": "Useful but specialized; add only with a dedicated extraction CLI and fixture."
+        },
+        {
+          "source": "baoyu-format-markdown",
+          "decision": "merged",
+          "targets": [
+            "content-workbench"
+          ]
+        },
+        {
+          "source": "baoyu-image-gen",
+          "decision": "excluded",
+          "targets": [],
+          "reason": "The runtime-native image generation skill is the canonical backend."
+        },
+        {
+          "source": "baoyu-infographic",
+          "decision": "merged",
+          "targets": [
+            "visual-content"
+          ]
+        },
+        {
+          "source": "baoyu-markdown-to-html",
+          "decision": "merged",
+          "targets": [
+            "content-workbench"
+          ]
+        },
+        {
+          "source": "baoyu-post-to-wechat",
+          "decision": "merged",
+          "targets": [
+            "content-workbench",
+            "visual-content",
+            "open-agent-bridge"
+          ],
+          "reason": "Retain content preparation and preview ideas; publish and share only through Open Agent Bridge Pages."
+        },
+        {
+          "source": "baoyu-post-to-weibo",
+          "decision": "merged",
+          "targets": [
+            "content-workbench",
+            "visual-content",
+            "open-agent-bridge"
+          ],
+          "reason": "Retain content preparation and preview ideas; direct account automation is outside the workspace publishing path."
+        },
+        {
+          "source": "baoyu-post-to-x",
+          "decision": "merged",
+          "targets": [
+            "content-workbench",
+            "visual-content",
+            "open-agent-bridge"
+          ],
+          "reason": "Retain content preparation and preview ideas; direct account automation is outside the workspace publishing path."
+        },
+        {
+          "source": "baoyu-slide-deck",
+          "decision": "merged",
+          "targets": [
+            "visual-content"
+          ]
+        },
+        {
+          "source": "baoyu-translate",
+          "decision": "merged",
+          "targets": [
+            "content-workbench"
+          ]
+        },
+        {
+          "source": "baoyu-url-to-markdown",
+          "decision": "merged",
+          "targets": [
+            "knowledge-capture"
+          ]
+        },
+        {
+          "source": "baoyu-wechat-summary",
+          "decision": "deferred",
+          "targets": [],
+          "reason": "Requires wx-cli, local WeChat data access, and a separate privacy review."
+        },
+        {
+          "source": "baoyu-xhs-images",
+          "decision": "merged",
+          "targets": [
+            "visual-content"
+          ]
+        },
+        {
+          "source": "baoyu-youtube-transcript",
+          "decision": "merged",
+          "targets": [
+            "knowledge-capture"
+          ]
+        }
+      ]
     }
   ]
 }
