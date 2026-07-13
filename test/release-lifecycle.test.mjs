@@ -6,9 +6,19 @@ import { spawnSync } from 'node:child_process';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { harnessLinks, materializeHarnessLinks, verifyHarnessLinks } from '../scripts/harness-links.mjs';
+import { canonicalInstallRoot } from '../scripts/install-root.mjs';
 import { installPersonalAgentCommand } from '../scripts/personal-agent-command.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+
+test('install roots resolve filesystem aliases before release pointers are created', () => {
+  const requested = fs.mkdtempSync(path.join('/tmp', 'personal-agent-install-root-'));
+  try {
+    assert.equal(canonicalInstallRoot(requested), fs.realpathSync(requested));
+  } finally {
+    fs.rmSync(requested, { recursive: true, force: true });
+  }
+});
 
 test('rollback atomically swaps current and previous immutable releases', () => {
   const installRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'personal-agent-release-'));

@@ -4,6 +4,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
+import { canonicalInstallRoot } from './install-root.mjs';
 
 const args = parseArgs(process.argv.slice(2));
 const repository = args.repository || 'chenchen428/personal-agent-node';
@@ -30,7 +31,7 @@ try {
   const command = [installer, releaseRoot];
   if (args.installRoot) command.push('--install-root', path.resolve(args.installRoot));
   run(process.execPath, command);
-  const installRoot = path.resolve(args.installRoot || path.join(os.homedir(), '.private-site-node'));
+  const installRoot = canonicalInstallRoot(args.installRoot || path.join(os.homedir(), '.private-site-node'));
   console.log(JSON.stringify({ ok: true, repository, tag, verifiedSha256: actual, installRoot, current: path.join(installRoot, 'current'), connectCommand: 'personal-agent cloud connect --json', connectEntrypoint: `node ${path.join(installRoot, 'current', 'projects', 'core', 'node', 'bin', 'personal-agent.mjs')} cloud connect --json` }, null, 2));
 } finally { fs.rmSync(temporary, { recursive: true, force: true }); }
 

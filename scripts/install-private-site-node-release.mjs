@@ -5,6 +5,7 @@ import path from "node:path";
 import { spawnSync } from "node:child_process";
 import { pruneInactiveRelease } from "../projects/core/node/src/release-pruning.mjs";
 import { materializeHarnessLinks, verifyHarnessLinks } from "./harness-links.mjs";
+import { canonicalInstallRoot } from "./install-root.mjs";
 import { installPersonalAgentCommand } from "./personal-agent-command.mjs";
 
 const args = parseArgs(process.argv.slice(2));
@@ -16,7 +17,7 @@ const verified = spawnSync(process.execPath, [verifier, source], { encoding: "ut
 if (verified.status !== 0) throw new Error(`Release verification failed: ${String(verified.stderr || verified.stdout || "unknown error").trim()}`);
 const manifest = JSON.parse(fs.readFileSync(path.join(source, "release-manifest.json"), "utf8"));
 if (manifest.releaseType !== "private-site-node" || !manifest.releaseId) throw new Error("Source is not a private Site Node release");
-const installRoot = path.resolve(args.installRoot || path.join(os.homedir(), ".private-site-node"));
+const installRoot = canonicalInstallRoot(args.installRoot || path.join(os.homedir(), ".private-site-node"));
 const releasesRoot = path.join(installRoot, "releases");
 const target = path.join(releasesRoot, manifest.releaseId);
 const temporary = `${target}.${process.pid}.tmp`;
