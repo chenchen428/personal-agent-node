@@ -127,8 +127,8 @@ test("private preview is authenticated, range-aware, and covered by the Nginx ga
   assert.match(batchHtml, /家庭清单\.txt/);
 
   const distribution = JSON.parse(fs.readFileSync(path.join(workspaceRoot, "registry", "site-distribution.json"), "utf8"));
-  const route = distribution.routing.paths.find((entry) => entry.prefix === "/files");
-  assert.equal(route.access, "private");
+  const route = distribution.routing.paths.find((entry) => entry.prefix === "/app/files");
+  assert.equal(route.access, "authenticated");
   assert.equal(route.upstreamPath, "/private-files");
 });
 

@@ -57,13 +57,13 @@ export function createPrivateSiteGateway(options = {}) {
         await serveStatic(route, request, response, url);
         return;
       }
-      const authorized = route.access !== "private" || await authorizeRequest(request, config);
+      const authorized = await authorizeRoute(request, route, config);
       if (!authorized) {
         response.writeHead(302, { Location: `/login?return_to=${encodeURIComponent(`${url.pathname}${url.search}`)}`, "Cache-Control": "no-store" });
         response.end();
         return;
       }
-      proxyHttp(proxy, route, request, response, config, route.access === "private", url);
+      proxyHttp(proxy, route, request, response, config, route.access !== "public", url);
     } catch (error) {
       if (!response.headersSent) sendText(response, 500, "Gateway request failed\n", request.method === "HEAD");
       else response.end();
@@ -84,13 +84,14 @@ export function createPrivateSiteGateway(options = {}) {
 
   server.on("upgrade", async (request, socket, head) => {
     try {
+      if (!edgeClientAuthorized(request, config)) return rejectUpgrade(socket, 403);
       const host = normalizeRequestHost(request.headers.host);
       if (!hostAllowed(host, config) || !requestPathAllowed(request.url)) return rejectUpgrade(socket, 404);
       const url = new URL(request.url || "/", `http://${host || "localhost"}`);
       const route = matchRoute(routes, host, url.pathname, config);
       if (!route?.target || !route.websocket) return rejectUpgrade(socket, 404);
-      if (route.access === "private" && !await authorizeRequest(request, config)) return rejectUpgrade(socket, 401);
-      prepareProxyHeaders(request, config, route.access === "private");
+      if (!await authorizeRoute(request, route, config)) return rejectUpgrade(socket, 401);
+      prepareProxyHeaders(request, config, route.access !== "public");
       rewriteProxyUrl(request, route, url);
       proxy.ws(request, socket, head, { target: route.target });
     } catch {
@@ -151,6 +152,21 @@ async function authorizeRequest(request, config) {
   });
 }
 
+export async function authorizeRoute(request, route, config) {
+  const access = route.access || "public";
+  if (access === "public") return true;
+  if (access === "internal") return false;
+  if (!await authorizeRequest(request, config)) return false;
+  if (access === "authenticated") return true;
+  if (access === "local-admin") return isLoopbackAddress(request.socket.remoteAddress);
+  return false;
+}
+
+function isLoopbackAddress(value) {
+  const address = normalizeRemoteAddress(value);
+  return address === "127.0.0.1" || address === "::1";
+}
+
 function proxyHttp(proxy, route, request, response, config, authenticated, url) {
   prepareProxyHeaders(request, config, authenticated);
   if (url) rewriteProxyUrl(request, route, url);
@@ -209,6 +225,7 @@ function normalizeRoute(entry, config) {
   const toolsRoot = path.join(workspaceRoot, "projects", "personal", "lmt_tools");
   const toolsInstalled = fs.existsSync(path.join(toolsRoot, "server.js"));
   const localTargets = {
+    console: `http://127.0.0.1:${config.ports.admin}`,
     admin: `http://127.0.0.1:${config.ports.admin}`,
     agent: `http://127.0.0.1:${config.ports.bridge}`,
     tools: `http://127.0.0.1:${toolsInstalled ? config.ports.tools : config.ports.admin}`,
@@ -237,6 +254,7 @@ function normalizePathRoute(entry, config) {
   const targetKey = entry.targetKey || entry.key;
   const extension = listExtensions(config).find((candidate) => candidate.enabled !== false && candidate.hostKey === targetKey && candidate.port);
   const localTargets = {
+    console: `http://127.0.0.1:${config.ports.admin}`,
     admin: `http://127.0.0.1:${config.ports.admin}`,
     agent: `http://127.0.0.1:${config.ports.bridge}`,
     mail: `http://127.0.0.1:${config.ports.bridge}`,

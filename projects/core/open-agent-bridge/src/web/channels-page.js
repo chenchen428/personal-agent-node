@@ -18,7 +18,7 @@ export function renderChannelsPage() {
 </head>
 <body>
   <main class="shell">
-    <header class="topbar"><a class="back" href="/admin" aria-label="返回站点导航" title="返回站点导航">A</a><a class="back" href="/agent" aria-label="返回 Agent" title="返回 Agent">←</a><div class="brand"><strong>渠道管理</strong><span>Personal Agent /agent/channels</span></div><button class="refresh" type="button" data-refresh aria-label="刷新状态" title="刷新">↻</button></header>
+    <header class="topbar"><a class="back" href="/app" aria-label="返回工作台" title="返回工作台">A</a><a class="back" href="/app/chat" aria-label="返回对话" title="返回对话">←</a><div class="brand"><strong>渠道管理</strong><span>Personal Agent /app/channels</span></div><button class="refresh" type="button" data-refresh aria-label="刷新状态" title="刷新">↻</button></header>
     <section class="header"><div><p class="kicker">CHANNEL 01</p><h1>小红书</h1></div><span class="route">direct-required · 只读</span></section>
     <section class="status" aria-live="polite"><span class="seal" aria-hidden="true">红</span><div class="status-copy"><div class="status-line"><span class="dot warn" data-dot></span><span data-status>状态检测中</span></div><p data-detail>正在读取 Agent 维护的渠道状态。</p></div></section>
     <section class="guide" aria-labelledby="guide-title">
@@ -34,7 +34,7 @@ export function renderChannelsPage() {
   </main>
   <script>
     const dot=document.querySelector('[data-dot]');const statusLabel=document.querySelector('[data-status]');const statusDetail=document.querySelector('[data-detail]');const refresh=document.querySelector('[data-refresh]');
-    async function loadStatus(){refresh.disabled=true;try{const response=await fetch('/api/agent/channels/xiaohongshu/status',{cache:'no-store'});const data=await response.json();if(!response.ok||data.ok===false)throw new Error(data.error||response.statusText);dot.className='dot '+(data.state==='logged_in'?'good':data.state==='needs_login'?'bad':'warn');statusLabel.textContent=data.statusLabel||'状态未知';statusDetail.textContent=data.error||(data.loggedIn?'服务器登录状态可用，Agent 可以执行只读任务。':'需要通过微信与 Agent 协作登录。')}catch(error){dot.className='dot warn';statusLabel.textContent='状态不可用';statusDetail.textContent=error.message}finally{refresh.disabled=false}}
+    async function loadStatus(){refresh.disabled=true;try{const response=await fetch('/api/channels/xiaohongshu/status',{cache:'no-store'});const data=await response.json();if(!response.ok||data.ok===false)throw new Error(data.error||response.statusText);dot.className='dot '+(data.state==='logged_in'?'good':data.state==='needs_login'?'bad':'warn');statusLabel.textContent=data.statusLabel||'状态未知';statusDetail.textContent=data.error||(data.loggedIn?'服务器登录状态可用，Agent 可以执行只读任务。':'需要通过微信与 Agent 协作登录。')}catch(error){dot.className='dot warn';statusLabel.textContent='状态不可用';statusDetail.textContent=error.message}finally{refresh.disabled=false}}
     refresh.addEventListener('click',loadStatus);loadStatus();
   </script>
 </body>

@@ -8,7 +8,7 @@ export function renderMailPage({
   filter = "all",
   basePath = "/",
   adminUrl = "/admin",
-  automationUrl = "/agent/automations",
+  automationUrl = "/app/automations",
 } = {}) {
   const selected = Boolean(selectedEvent);
   const backHref = mailHref(basePath, { q: query, filter });
@@ -103,7 +103,7 @@ function renderMailDetail({ event, runs, content, backHref, basePath }) {
     <section class="mail-judgement ${matchedRun ? "matched" : ""}" aria-label="Agent 处理状态">
       <span>${icon(matchedRun ? "sparkles" : "archive")}</span>
       <div><strong>${matchedRun ? "Agent 已关注" : "已安全归档"}</strong><p>${escapeHtml(matchedRun?.reason || runs[0]?.reason || "邮件已保存，当前没有自动化规则需要进一步处理。")}</p></div>
-      ${matchedRun?.sessionId ? `<a href="/agent/session/${escapeAttr(matchedRun.sessionId)}/live">查看处理</a>` : ""}
+      ${matchedRun?.sessionId ? `<a href="/app/chat/session/${escapeAttr(matchedRun.sessionId)}/live">查看处理</a>` : ""}
     </section>
     ${content?.error ? `<div class="mail-error">${icon("alert-circle")}<span>${escapeHtml(content.error)}</span></div>` : ""}
     ${attachments.length ? `<section class="mail-attachments" aria-label="附件"><strong>${attachments.length} 个附件</strong><div>${attachments.map((attachment) => `<a href="${escapeAttr(`${archiveBase}/attachments/${attachment.index}`)}">${icon("paperclip")}<span><strong>${escapeHtml(attachment.name)}</strong><small>${escapeHtml(`${attachment.contentType} · ${formatFileSize(attachment.sizeBytes)}`)}</small></span>${icon("download")}</a>`).join("")}</div></section>` : ""}

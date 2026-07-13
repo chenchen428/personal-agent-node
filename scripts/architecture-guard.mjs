@@ -7,6 +7,7 @@ const capabilities = readJson('registry/capabilities.json');
 const routes = readJson('registry/routes.json');
 const extensions = readJson('registry/extensions.json');
 const commands = readJson('registry/commands.json');
+const distribution = readJson('registry/site-distribution.json');
 const projectNames = new Set(projects.projects.map((entry) => entry.name));
 const capabilityIds = new Set(capabilities.capabilities.map((entry) => entry.id));
 
@@ -22,6 +23,9 @@ checks.push({ name: 'route policy defaults to deny', ok: routes.defaultPolicy ==
 checks.push({ name: 'route patterns are unique', ok: new Set(routes.routes.map((entry) => entry.pattern)).size === routes.routes.length });
 checks.push({ name: 'routes reference capabilities', ok: routes.routes.every((entry) => capabilityIds.has(entry.capability)) });
 checks.push({ name: 'local administration routes are explicit', ok: ['/api/system/*', '/api/extensions/*'].every((pattern) => routes.routes.some((entry) => entry.pattern === pattern && entry.access === 'local-admin')) });
+checks.push({ name: 'distribution is path-only and deny-by-default', ok: distribution.routing?.defaultMode === 'path' && distribution.routing?.defaultPolicy === 'deny' && (distribution.domain?.legacyHosts || []).length === 0 });
+checks.push({ name: 'distribution exposes only unified private routes', ok: distribution.routing.paths.every((entry) => !['/admin', '/agent', '/api/agent', '/api/files'].some((legacy) => entry.prefix === legacy || entry.prefix.startsWith(`${legacy}/`))) });
+checks.push({ name: 'unified console is mounted', ok: distribution.routing.paths.some((entry) => entry.prefix === '/app' && entry.access === 'authenticated') });
 checks.push({ name: 'extension ids are unique', ok: new Set(extensions.extensions.map((entry) => entry.id)).size === extensions.extensions.length });
 checks.push({ name: 'extensions declare permissions', ok: extensions.extensions.every((entry) => Array.isArray(entry.permissions) && entry.permissions.length > 0) });
 checks.push({ name: 'unified CLI is partially implemented', ok: commands.binary === 'personal-agent' && commands.implementationStatus === 'partial' && exists('projects/core/node/bin/personal-agent.mjs') });

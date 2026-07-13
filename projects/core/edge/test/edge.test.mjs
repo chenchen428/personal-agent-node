@@ -37,15 +37,16 @@ function fixture() {
   return { root, config };
 }
 
-test("expands one apex into the complete fixed distribution", () => {
+test("keeps one Site hostname and mounts services by path", () => {
   const { root, config } = fixture();
   try {
     const site = readSites(config).sites[0];
     const distribution = JSON.parse(fs.readFileSync(config.distributionFile, "utf8"));
     const hosts = siteHostnames(site, distribution);
-    for (const host of ["example.site", "a.example.site", "agent.example.site", "tools.example.site", "pages.example.site"]) {
-      assert.ok(hosts.includes(host));
-    }
+    assert.deepEqual(hosts, ["example.site"]);
+    assert.ok(distribution.routing.paths.some((entry) => entry.prefix === "/app"));
+    assert.ok(distribution.routing.paths.some((entry) => entry.prefix === "/pages"));
+    assert.equal(distribution.domain.legacyHosts.length, 0);
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
   }

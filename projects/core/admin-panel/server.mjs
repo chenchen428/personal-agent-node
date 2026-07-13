@@ -143,8 +143,7 @@ async function handleRequest(request, response) {
     return;
   }
   if (url.pathname === '/channels' && (request.method === 'GET' || request.method === 'HEAD')) {
-    const localMode = String(request.headers.host || '').split(':')[0].endsWith('.personal-agent.local');
-    sendRedirect(response, `${localMode ? 'http://agent.personal-agent.local' : 'https://agent.personal-agent.local'}/agent-channels`, request.method === 'HEAD');
+    sendRedirect(response, '/app/channels', request.method === 'HEAD');
     return;
   }
   send(response, 404, 'text/plain; charset=utf-8', 'Not Found');

@@ -263,7 +263,7 @@ async function handleRequest(request: http.IncomingMessage, response: http.Serve
   }
 
   if (url.pathname === "/" && (request.method === "GET" || request.method === "HEAD")) {
-    sendRedirect(response, "/agent-bridge", request.method === "HEAD");
+    sendRedirect(response, "/app/chat", request.method === "HEAD");
     return;
   }
 
@@ -777,7 +777,7 @@ async function handleRequest(request: http.IncomingMessage, response: http.Serve
       sendHtml(response, 200, html, request.method === "HEAD");
       return;
     }
-    sendRedirect(response, `/agent-bridge/session/${encodeURIComponent(session.id)}/live`, request.method === "HEAD");
+    sendRedirect(response, `/app/chat/session/${encodeURIComponent(session.id)}/live`, request.method === "HEAD");
     return;
   }
 
@@ -1234,7 +1234,7 @@ async function serveMailPage(
     }
   }
   const localMode = hostname.endsWith(".local");
-  const basePath = isMailHost ? "/" : "/mail";
+  const basePath = isMailHost ? "/" : "/app/mail";
   const events = filteredEvents.slice(0, 100).map((event) => ({
     ...event,
     matched: (runsByEvent.get(event.id) || []).some((run) => run.matched),
@@ -1248,8 +1248,8 @@ async function serveMailPage(
     query,
     filter,
     basePath,
-    adminUrl: `${localMode ? "http" : "https"}://a.${localMode ? "personal-agent.local" : "personal-agent.local"}`,
-    automationUrl: `${localMode ? "http" : "https"}://agent.${localMode ? "personal-agent.local" : "personal-agent.local"}/agent-automations`,
+    adminUrl: "/app",
+    automationUrl: "/app/automations",
   }), request.method === "HEAD");
 }
 
@@ -1375,7 +1375,7 @@ async function servePrivateFile(
     const kind = privateFilePreviewKind(mimeType);
 
     if (mode === "view") {
-      const rawUrl = `/private-files/raw/${encodedPath}`;
+      const rawUrl = `/app/files/raw/${encodedPath}`;
       let textContent = "";
       if (kind === "text" && sizeBytes <= 512 * 1024) {
         const content = localStat

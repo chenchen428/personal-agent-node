@@ -7,8 +7,8 @@ import { renderChannelsPage } from "../src/web/channels-page.js";
 test("channel page is status-only and explains the Agent collaboration workflow", () => {
   const html = renderChannelsPage();
   assert.match(html, /<h1>小红书<\/h1>/);
-  assert.match(html, /Personal Agent \/agent\/channels/);
-  assert.match(html, /href="\/agent"/);
+  assert.match(html, /Personal Agent \/app\/channels/);
+  assert.match(html, /href="\/app\/chat"/);
   assert.match(html, /direct-required · 只读/);
   assert.match(html, /在微信中发起登录协作/);
   assert.match(html, /登录小红书/);
@@ -17,7 +17,8 @@ test("channel page is status-only and explains the Agent collaboration workflow"
   assert.match(html, /短信验证码只会由当前登录会话一次性代填/);
   assert.match(html, /不进入普通 Agent 会话、记忆或日志/);
   assert.doesNotMatch(html, /完成后回复/);
-  assert.match(html, /\/api\/agent\/channels\/xiaohongshu\/status/);
+  assert.match(html, /\/api\/channels\/xiaohongshu\/status/);
+  assert.doesNotMatch(html, /href="\/(?:admin|agent)|\/api\/agent/);
   assert.doesNotMatch(html, /\/api\/channels\/xiaohongshu\/(?:login|logout|search|detail)/);
   assert.doesNotMatch(html, /data-login|data-logout|data-search-form|<form|<dialog/);
   assert.doesNotMatch(html, /Twitter|Facebook|Instagram|YouTube|Reddit|LinkedIn/);

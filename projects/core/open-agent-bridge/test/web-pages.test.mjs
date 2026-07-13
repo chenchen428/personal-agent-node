@@ -38,17 +38,18 @@ test("token usage dialog carries an opaque themed surface", () => {
   assert.match(html, /loadTokenUsage\(button\.dataset\.tokenRange/);
   assert.match(html, /token-dialog-fallback/);
   assert.match(html, /data-console-menu/);
-  assert.match(html, /href="\/agent\/release-notes"[^>]*>[\s\S]*?<span>Release Notes<\/span>/);
+  assert.match(html, /href="\/app\/releases"[^>]*>[\s\S]*?<span>Release Notes<\/span>/);
   assert.match(html, /\.console-header\{position:relative;z-index:40;[^}]*overflow:visible/);
   assert.match(html, /\.console-menu-popover\{position:absolute;z-index:60;[^}]*background:#fffdf8/);
-  assert.match(html, /href="\/agent\/memory"/);
-  assert.match(html, /href="\/agent\/data"/);
-  assert.match(html, /href="\/agent\/automations"/);
-  assert.match(html, /href="\/agent\/skills"/);
-  assert.match(html, /href="\/agent\/schedules"/);
-  assert.match(html, /href="\/agent\/channels"[^>]*>[\s\S]*?<span>渠道管理<\/span>/);
+  assert.match(html, /href="\/app\/chat\/memory"/);
+  assert.match(html, /href="\/app\/data"/);
+  assert.match(html, /href="\/app\/automations"/);
+  assert.match(html, /href="\/app\/skills"/);
+  assert.match(html, /href="\/app\/schedules"/);
+  assert.match(html, /href="\/app\/channels"[^>]*>[\s\S]*?<span>渠道管理<\/span>/);
   assert.match(html, /class="compose-fab wechat-only-hidden"/);
-  assert.match(html, /href="\/admin"[^>]*aria-label="返回站点导航"/);
+  assert.match(html, /href="\/app"[^>]*aria-label="返回工作台"/);
+  assert.doesNotMatch(html, /href="\/(?:admin|agent)(?:[\/"?])/);
 });
 
 test("release notes page renders history and detailed acceptance evidence", () => {
@@ -69,7 +70,7 @@ test("release notes page renders history and detailed acceptance evidence", () =
   assert.match(html, /GMT\+8/);
   assert.match(html, /Add governed release history/);
   assert.match(html, /Installed runtime acceptance passed/);
-  assert.match(html, /href="\/agent\/release-notes\/20260713T120000Z-bbbbbbbbbbbb" aria-current="page"/);
+  assert.match(html, /href="\/app\/releases\/20260713T120000Z-bbbbbbbbbbbb" aria-current="page"/);
   assert.match(html, /@media\(max-width:767px\)\{\.release-notes-workspace/);
 });
 
@@ -178,8 +179,8 @@ test("dashboard renders immediately and hydrates sessions and token usage asynch
   assert.equal((html.match(/class="console-loading-row"/g) || []).length, 5);
   assert.match(html, /loadPage\(\{ reset: true \}\);/);
   assert.match(html, /loadTokenUsage\(\);/);
-  assert.match(html, /fetch\('\/api\/agent\/sessions\?'/);
-  assert.match(html, /fetch\('\/api\/agent\/token-usage\?range='/);
+  assert.match(html, /fetch\('\/api\/chat\/sessions\?'/);
+  assert.match(html, /fetch\('\/api\/chat\/token-usage\?range='/);
   assert.match(html, /data\.totalSessions/);
   assert.match(html, /暂时无法加载会话/);
   assert.doesNotThrow(() => new vm.Script(html.match(/<script>([\s\S]*)<\/script>/)?.[1] || ""));
@@ -227,7 +228,7 @@ test("memory management defaults to a main session and exposes hit statistics", 
   assert.match(html, /发布完成后检查所有域名/);
   assert.match(html, /命中 7 次/);
   assert.match(html, /data-memory-delete-dialog/);
-  assert.match(html, /location\.assign\('\/agent\/memory' \+ \(value \? '\?session=' \+ encodeURIComponent\(value\)/);
+  assert.match(html, /location\.assign\('\/app\/chat\/memory' \+ \(value \? '\?session=' \+ encodeURIComponent\(value\)/);
   assert.match(html, /dialog\.hidden = false/);
   assert.match(html, /new CustomEvent\('memoryclose'/);
   const inlineScript = html.match(/<script>([\s\S]*)<\/script>/)?.[1] || "";
@@ -323,7 +324,11 @@ test("session detail uses browser history for an immediate dashboard return", ()
     },
   });
   assert.match(html, /data-session-back/);
-  assert.match(html, /href="\/admin"/);
+  assert.match(html, /href="\/app"/);
+  assert.match(html, /href="\/app\/chat"/);
+  assert.match(html, /\/api\/chat\/bridge\/sessions/);
+  assert.match(html, /\/api\/chat\/ws/);
+  assert.doesNotMatch(html, /href="\/(?:admin|agent)(?:[\/"?])|\/api\/agent/);
   assert.match(html, /scroll-padding-bottom:calc\(2rem \+ env\(safe-area-inset-bottom,0px\)\)/);
   assert.match(html, /history\.back\(\)/);
   assert.match(html, /pagehide[^]*ws\.close\(\)/);

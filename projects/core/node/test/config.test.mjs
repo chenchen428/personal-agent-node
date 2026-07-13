@@ -26,9 +26,10 @@ test("initializes one stable Site identity and fixed path routes", () => {
     assert.equal(first.config.site.siteId, second.config.site.siteId);
     const config = resolveNodeConfig({ PRIVATE_SITE_DATA_ROOT: dataRoot });
     const routes = buildRoutes(config);
-    for (const prefix of ["/", "/admin", "/agent", "/mail", "/files", "/pages", "/resources", "/blog", "/docs", "/tools", "/api/agent", "/api/files", "/api/pages"]) {
+    for (const prefix of ["/", "/app", "/app/chat", "/app/channels", "/app/files", "/app/mail", "/app/automations", "/app/data", "/app/schedules", "/app/releases", "/api/app", "/api/chat", "/api/channels", "/api/managed-platforms", "/api/publications", "/api/system", "/api/extensions", "/pages", "/resources", "/blog", "/docs"]) {
       assert.ok(routes.has(prefix), prefix);
     }
+    for (const legacy of ["/admin", "/agent", "/api/agent", "/api/files"]) assert.equal(routes.has(legacy), false, legacy);
     assert.equal(config.routingMode, "path");
     assert.deepEqual(config.allowedHosts, ["example.site", "example.site.local", "localhost", "127.0.0.1"]);
     assert.ok(fs.existsSync(config.envPath));
@@ -37,13 +38,10 @@ test("initializes one stable Site identity and fixed path routes", () => {
   }
 });
 
-test("host routing remains an explicit compatibility mode", () => {
-  assert.equal(normalizeRoutingMode("host"), "host");
+test("routing is path-only without a host compatibility mode", () => {
+  assert.equal(normalizeRoutingMode("path"), "path");
+  assert.throws(() => normalizeRoutingMode("host"), /only path routing/i);
   assert.throws(() => normalizeRoutingMode("auto"), /routing mode/i);
-  const config = resolveNodeConfig({ SITE_DOMAIN: "example.site", PERSONAL_AGENT_ROUTING_MODE: "host" });
-  const routes = buildRoutes(config);
-  assert.ok(routes.has("agent.example.site"));
-  assert.ok(!routes.has("/agent"));
 });
 
 test("prefers the Windows desktop Codex executable over a stale npm installation", () => {

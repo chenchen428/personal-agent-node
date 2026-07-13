@@ -1,61 +1,24 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
-const domainPresentation = {
-  'personal-agent.local': ['主页', '个人站点与服务入口', 'C'],
-  'agent.personal-agent.local': ['Agent', '会话、记忆与定时任务', 'A'],
-  'mail.personal-agent.local': ['邮件', 'Agent 收件与处理记录', '邮'],
-  'pages.personal-agent.local': ['Pages', '发布页面与静态内容', 'P'],
-  'tools.personal-agent.local': ['工具箱', '日常业务工具', 'T'],
-  'blog.personal-agent.local': ['博客', '文章与长期内容', 'B'],
-  'docs.personal-agent.local': ['文档', '文档与资料入口', 'D'],
-  'demo.personal-agent.local': ['Demo', '产品演示与实验', 'M'],
-  'sgtools.personal-agent.local': ['SG Tools', '新加坡常用工具', 'S'],
-  'tjcds.personal-agent.local': ['TJCDS', '专题服务入口', 'J'],
-  'sg.personal-agent.local': ['旅行页', '行程与旅行资料', '旅'],
-  'resources.personal-agent.local': ['资源', '公开资源与文件', 'R'],
-};
+const consoleSections = [
+  ['chat', '/app/chat', '对话', '与个人 Agent 对话并查看会话', '对'],
+  ['channels', '/app/channels', '对话渠道', '管理微信等消息入口', '信'],
+  ['files', '/app/files', '文件', '查看与管理本机文件', '文'],
+  ['mail', '/app/mail', '邮件', '处理 Agent 收件与附件', '邮'],
+  ['automations', '/app/automations', '自动化', '规则、事件与执行记录', '自'],
+  ['data', '/app/data', '数据', '结构化数据与快照', '数'],
+  ['schedules', '/app/schedules', '计划任务', '定时任务与运行状态', '时'],
+  ['releases', '/app/releases', '版本', '发行记录与回滚信息', '版'],
+  ['pages', '/pages', 'Pages', '已公开的页面与内容', '页'],
+];
 
 export function buildNavigationItems({ registry, panelConfig, hostHeader = '', clickState = {} }) {
-  const hostname = String(hostHeader).split(':')[0].toLowerCase();
-  const localMode = hostname === panelConfig.localBaseDomain || hostname.endsWith(`.${panelConfig.localBaseDomain}`);
   const clicks = clickState.clicks && typeof clickState.clicks === 'object' ? clickState.clicks : {};
-  const items = [];
-  let order = 0;
-  const channelClick = clicks['admin:channels'] || {};
-  items.push({
-    id: 'admin:channels',
-    domain: hostname || panelConfig.primaryDomain,
-    href: `${localMode ? 'http://agent.personal-agent.local' : 'https://agent.personal-agent.local'}/agent-channels`,
-    label: '小红书',
-    description: '登录状态与只读检索',
-    mark: '红',
-    projectName: 'xiaohongshu-channel',
-    clickCount: Number(channelClick.count) || 0,
-    lastClickedAt: String(channelClick.lastClickedAt || ''),
-    order: order++,
+  const items = consoleSections.map(([id, href, label, description, mark], order) => {
+    const click = clicks[id] || {};
+    return { id, domain: href, href, label, description, mark, projectName: 'personal-agent-node', clickCount: Number(click.count) || 0, lastClickedAt: String(click.lastClickedAt || ''), order };
   });
-  for (const project of registry.projects || []) {
-    if (project.status === 'retired') continue;
-    for (const domain of project.domains || []) {
-      if (domain === panelConfig.primaryDomain) continue;
-      const presentation = domainPresentation[domain] || [domain.split('.')[0], project.description || domain, domain[0].toUpperCase()];
-      const localDomain = toLocalDomain(domain, panelConfig);
-      const click = clicks[domain] || {};
-      items.push({
-        id: domain,
-        domain: localMode ? localDomain : domain,
-        href: `${localMode ? 'http' : 'https'}://${localMode ? localDomain : domain}`,
-        label: presentation[0],
-        description: presentation[1],
-        mark: presentation[2],
-        projectName: project.name,
-        clickCount: Number(click.count) || 0,
-        lastClickedAt: String(click.lastClickedAt || ''),
-        order: order++,
-      });
-    }
-  }
   return items.sort((left, right) => (
     right.clickCount - left.clickCount
     || right.lastClickedAt.localeCompare(left.lastClickedAt)
@@ -103,7 +66,7 @@ export function renderNavigationPage({ title, items }) {
   <meta name="theme-color" content="#f7eedb">
   <title>${escapeHtml(title)}</title>
   <style>
-    :root{color-scheme:light;--canvas:#d8c8aa;--paper:#f7eedb;--paper-light:#fff9eb;--ink:#261f1a;--muted:#73685c;--line:#c8b99d;--red:#d8492f;--red-deep:#a52f20;--green:#486052;--green-bright:#1d8b62;--blue:#526d83;--amber:#ad7b24;font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC",sans-serif}
+    :root{color-scheme:light;--canvas:#e5e8e5;--paper:#f7f8f5;--paper-light:#fff;--ink:#1d2421;--muted:#66706b;--line:#c9cfcb;--red:#c83f35;--red-deep:#952d27;--green:#315c4c;--green-bright:#147a54;--blue:#416b86;--amber:#9b6b18;font-family:"Avenir Next","PingFang SC","Segoe UI",sans-serif}
     *{box-sizing:border-box}html,body{min-height:100%}body{margin:0;background:var(--canvas);color:var(--ink)}button{font:inherit}a{color:inherit;text-decoration:none}.app{position:relative;width:min(100%,74rem);min-height:100dvh;margin:0 auto;overflow:hidden;border-inline:1px solid rgba(73,58,43,.24);background-color:var(--paper);box-shadow:0 26px 80px rgba(38,31,26,.16)}.app:before{position:absolute;inset:0;z-index:0;pointer-events:none;content:"";opacity:.22;background-size:7px 7px;background-image:linear-gradient(90deg,rgba(72,96,82,.08) 1px,transparent 1px),linear-gradient(rgba(216,73,47,.05) 1px,transparent 1px)}.app>*{position:relative;z-index:1}
     .topbar{min-height:4rem;display:flex;align-items:center;gap:.85rem;padding:.55rem 1.25rem;border-bottom:1px solid var(--ink);background:rgba(247,238,219,.95);position:sticky;top:0;z-index:20}.brand-stamp{width:2.35rem;height:2.35rem;display:grid;place-items:center;border:2px solid var(--red);color:var(--red);font-family:"Songti SC","STSong",serif;font-size:1.25rem;font-weight:800;transform:rotate(-3deg)}.brand{min-width:0;flex:1;display:grid;gap:.08rem}.brand strong{font-family:"Songti SC","STSong",serif;font-size:1.05rem}.brand span{color:var(--muted);font-size:.68rem;text-transform:uppercase}.refresh{width:2.45rem;height:2.45rem;border:1px solid var(--ink);border-radius:4px;background:transparent;color:var(--ink);cursor:pointer;font-size:1.15rem}.refresh:hover,.refresh:focus-visible{border-color:var(--red);color:var(--red);outline:0}
     .editorial-intro{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(15rem,.75fr);gap:2rem;align-items:end;padding:2.25rem 1.25rem 1.5rem;border-bottom:1px solid var(--line)}.intro-kicker{margin:0 0 .55rem;color:var(--red-deep);font-size:.7rem;font-weight:800;text-transform:uppercase}.editorial-intro h1{max-width:11ch;margin:0;font-family:"Songti SC","STSong",serif;font-size:clamp(2rem,5vw,4.6rem);line-height:.98;letter-spacing:0}.intro-note{margin:0 0 .2rem;border-left:4px solid var(--green);padding:.2rem 0 .2rem 1rem;color:var(--muted);font-size:.82rem;line-height:1.7}.intro-note strong{display:block;margin-bottom:.2rem;color:var(--ink);font-family:"Songti SC","STSong",serif;font-size:1.05rem}
@@ -119,15 +82,15 @@ export function renderNavigationPage({ title, items }) {
   <main class="app">
     <header class="topbar">
       <span class="brand-stamp" aria-hidden="true">陈</span>
-      <div class="brand"><strong>personal-agent.local</strong><span>Personal service ledger</span></div>
+      <div class="brand"><strong>Personal Agent</strong><span>Local-first control console</span></div>
       <button class="refresh" type="button" data-refresh title="刷新状态" aria-label="刷新状态">↻</button>
     </header>
     <section class="editorial-intro">
       <div>
         <p class="intro-kicker">Navigation · Status · Daily tools</p>
-        <h1>站点导航</h1>
+        <h1>工作台</h1>
       </div>
-      <p class="intro-note"><strong>把常用服务放在顺手的位置</strong>访问过的入口会自动向前排列；这里只保留导航和当前可用状态。</p>
+      <p class="intro-note"><strong>你的 Agent，运行在你的设备上</strong>在一个控制台中管理对话、渠道、文件、自动化和本机运行状态。</p>
     </section>
     <section class="status-band" aria-labelledby="wechat-title">
       <span class="status-index" aria-hidden="true">微</span>
@@ -154,13 +117,13 @@ export function renderNavigationPage({ title, items }) {
     </section>
     <section class="content">
       <div class="section-head">
-        <div class="section-head-title"><span class="section-no">01</span><h2>常用入口</h2></div>
+        <div class="section-head-title"><span class="section-no">01</span><h2>功能</h2></div>
         <span class="detect-state" data-detect-state>服务检测中</span>
       </div>
-      <nav class="nav-grid" aria-label="站点导航">
+      <nav class="nav-grid" aria-label="Personal Agent 功能">
         ${items.map(renderNavigationItem).join('')}
       </nav>
-      <footer class="footer-line"><span>personal-agent.local / service index</span><span>按使用频率自动排序</span></footer>
+      <footer class="footer-line"><span>Personal Agent / local-first</span><span>按使用频率自动排序</span></footer>
     </section>
   </main>
   <script>
@@ -178,7 +141,7 @@ export function renderNavigationPage({ title, items }) {
 
     document.querySelectorAll('[data-nav-id]').forEach((link) => link.addEventListener('click', () => {
       const body = new Blob([JSON.stringify({ id: link.dataset.navId })], { type: 'application/json' });
-      navigator.sendBeacon('/api/navigation/click', body);
+      navigator.sendBeacon('/api/system/navigation/click', body);
     }));
 
     async function readJson(response) {
@@ -191,7 +154,7 @@ export function renderNavigationPage({ title, items }) {
     async function loadProjects() {
       detectState.textContent = '服务检测中';
       try {
-        const data = await readJson(await fetch('/api/projects', { cache: 'no-store' }));
+        const data = await readJson(await fetch('/api/system/projects', { cache: 'no-store' }));
         const byName = new Map((data.projects || []).map((project) => [project.name, project]));
         document.querySelectorAll('[data-project]').forEach((item) => {
           const project = byName.get(item.dataset.project);
@@ -218,7 +181,7 @@ export function renderNavigationPage({ title, items }) {
 
     async function loadCapacity() {
       try {
-        const data = await readJson(await fetch('/api/server-status', { cache: 'no-store' }));
+        const data = await readJson(await fetch('/api/system/server-status', { cache: 'no-store' }));
         capacityBand.dataset.state = data.state || 'healthy';
         capacityState.textContent = data.state === 'critical' ? '需要处理' : data.state === 'warning' ? '容量偏高' : '容量正常';
         document.querySelector('[data-capacity-value="disk"]').textContent = data.disk.usedPercent + '%';
@@ -241,7 +204,7 @@ export function renderNavigationPage({ title, items }) {
     async function loadWechat() {
       action.disabled = true;
       try {
-        const data = await readJson(await fetch('/api/wechat/status', { cache: 'no-store' }));
+        const data = await readJson(await fetch('/api/system/wechat/status', { cache: 'no-store' }));
         wechat.loggedIn = data.loggedIn === true;
         dot.className = 'dot ' + (wechat.loggedIn ? 'good' : 'bad');
         label.textContent = wechat.loggedIn ? '微信已登录' : '微信未登录';
@@ -264,7 +227,7 @@ export function renderNavigationPage({ title, items }) {
     async function startLogin() {
       stopPolling();
       action.disabled = true;
-      const data = await readJson(await fetch('/api/wechat/login/start', { method: 'POST' }));
+      const data = await readJson(await fetch('/api/system/wechat/login/start', { method: 'POST' }));
       wechat.session = data.session || '';
       qrBox.innerHTML = data.qrSvg || '';
       qrCopy.textContent = '请使用微信扫码并在手机上确认。';
@@ -276,7 +239,7 @@ export function renderNavigationPage({ title, items }) {
     async function pollLogin() {
       if (!wechat.session) return;
       try {
-        const data = await readJson(await fetch('/api/wechat/login/status?session=' + encodeURIComponent(wechat.session), { cache: 'no-store' }));
+        const data = await readJson(await fetch('/api/system/wechat/login/status?session=' + encodeURIComponent(wechat.session), { cache: 'no-store' }));
         if (data.connected || data.status === 'confirmed') {
           qrCopy.textContent = '登录成功。';
           stopPolling();
@@ -294,7 +257,7 @@ export function renderNavigationPage({ title, items }) {
     async function unlinkWechat() {
       if (!window.confirm('确认在这台服务器上解绑微信账号？')) return;
       action.disabled = true;
-      await readJson(await fetch('/api/wechat/logout', { method: 'POST' }));
+      await readJson(await fetch('/api/system/wechat/logout', { method: 'POST' }));
       wechat.loggedIn = false;
       await loadWechat();
     }

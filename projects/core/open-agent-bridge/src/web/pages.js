@@ -24,13 +24,13 @@ export function renderDashboard({ sessions = [], totalSessions = sessions.length
               <div class="console-menu-wrap">
                 <button class="console-icon-button" type="button" data-console-menu-trigger title="更多" aria-label="更多" aria-haspopup="menu" aria-expanded="false">${icon("more-horizontal")}</button>
                 <div class="console-menu-popover" data-console-menu role="menu" hidden>
-                  <a href="/agent/release-notes" role="menuitem">${icon("file-text")}<span>Release Notes</span></a>
-                  <a href="/agent/memory" role="menuitem">${icon("brain")}<span>记忆管理</span></a>
-                  <a href="/agent/data" role="menuitem">${icon("database")}<span>数据</span></a>
-                  <a href="/agent/automations" role="menuitem">${icon("workflow")}<span>自动化</span></a>
-                  <a href="/agent/channels" role="menuitem">${icon("radio")}<span>渠道管理</span></a>
-                  <a href="/agent/skills" role="menuitem">${icon("book-open")}<span>技能清单</span></a>
-                  <a href="/agent/schedules" role="menuitem">${icon("calendar-clock")}<span>定时任务</span></a>
+                  <a href="/app/releases" role="menuitem">${icon("file-text")}<span>Release Notes</span></a>
+                  <a href="/app/chat/memory" role="menuitem">${icon("brain")}<span>记忆管理</span></a>
+                  <a href="/app/data" role="menuitem">${icon("database")}<span>数据</span></a>
+                  <a href="/app/automations" role="menuitem">${icon("workflow")}<span>自动化</span></a>
+                  <a href="/app/channels" role="menuitem">${icon("radio")}<span>渠道管理</span></a>
+                  <a href="/app/skills" role="menuitem">${icon("book-open")}<span>技能清单</span></a>
+                  <a href="/app/schedules" role="menuitem">${icon("calendar-clock")}<span>定时任务</span></a>
                   <button type="button" data-refresh role="menuitem">${icon("rotate-cw")}<span>刷新</span></button>
                 </div>
               </div>
@@ -52,7 +52,7 @@ export function renderDashboard({ sessions = [], totalSessions = sessions.length
             </button>
           </main>
 
-          <a class="compose-fab wechat-only-hidden" href="/agent/new" aria-hidden="true" tabindex="-1">${icon("square-pen")}<span>聊天</span></a>
+          <a class="compose-fab wechat-only-hidden" href="/app/chat/new" aria-hidden="true" tabindex="-1">${icon("square-pen")}<span>聊天</span></a>
         </div>
       </section>
       ${renderTokenUsageDialog(tokenUsage)}
@@ -134,7 +134,7 @@ function renderTokenHeatmap(days = []) {
 
 function renderTokenSessionRows(sessions = []) {
   if (!sessions.length) return `<div class="token-empty">暂无会话用量</div>`;
-  return sessions.map((session) => `<a class="token-session-row" href="/agent/session/${encodeURIComponent(session.sessionId)}/live">
+  return sessions.map((session) => `<a class="token-session-row" href="/app/chat/session/${encodeURIComponent(session.sessionId)}/live">
     <span><strong>${escapeHtml(session.title || "未命名会话")}</strong><small>${escapeHtml(session.threadCount === 1 ? "1 个线程" : `${session.threadCount} 个线程`)}</small></span>
     <span><b>${escapeHtml(formatTokenCount(session.totalTokens))}</b><time>${escapeHtml(timeAgo(session.updatedAt))}</time></span>
   </a>`).join("");
@@ -230,7 +230,7 @@ export function renderCronPage({ tasks = [], workspaces = [] }) {
                 <p>说明任务内容、触发时间和是否需要微信通知。任务周期最短为 15 分钟。</p>
                 <blockquote>${escapeHtml(examplePrompt)}</blockquote>
               </div>
-              <a class="cron-agent-guide-action" href="/agent/new?prompt=${encodeURIComponent(examplePrompt)}">${icon("message-square")}<span>告诉 Agent</span></a>
+              <a class="cron-agent-guide-action" href="/app/chat/new?prompt=${encodeURIComponent(examplePrompt)}">${icon("message-square")}<span>告诉 Agent</span></a>
             </section>
 
             <div class="cron-list-heading"><strong>任务列表</strong><span>${tasks.length} 个</span></div>
@@ -321,7 +321,7 @@ export function renderDataPage({ status = {}, selectedObject = "", result = null
     const values = { ...query, object: selected?.name || "", ...patch };
     const params = new URLSearchParams();
     for (const [key, value] of Object.entries(values)) if (value !== undefined && value !== null && value !== "") params.set(key, String(value));
-    return `/agent/data?${params}`;
+    return `/app/data?${params}`;
   };
   return layout({
     title: "数据 · Agent Bridge",
@@ -345,7 +345,7 @@ export function renderDataPage({ status = {}, selectedObject = "", result = null
                   <div><span>${selected.type === "view" ? "视图" : "数据表"}</span><h1>${escapeHtml(selected.name)}</h1></div>
                   <dl><div><dt>记录</dt><dd>${escapeHtml(formatInteger(selected.rowCount || 0))}</dd></div><div><dt>字段</dt><dd>${escapeHtml(formatInteger(selected.columnCount || 0))}</dd></div></dl>
                 </div>
-                <form class="data-query-toolbar" method="get" action="/agent/data">
+                <form class="data-query-toolbar" method="get" action="/app/data">
                   <input type="hidden" name="object" value="${escapeAttr(selected.name)}">
                   <label class="data-search">${icon("search")}<input type="search" name="search" value="${escapeAttr(query.search || "")}" placeholder="搜索当前表" aria-label="搜索当前表"></label>
                   <button class="data-tool-button" type="button" data-data-filter-toggle aria-expanded="${query.field ? "true" : "false"}">${icon("filter")}<span>筛选</span></button>
@@ -363,7 +363,7 @@ export function renderDataPage({ status = {}, selectedObject = "", result = null
                   <input type="hidden" name="sortField" value="${escapeAttr(query.sortField || "")}">
                   <input type="hidden" name="sortDirection" value="${escapeAttr(query.sortDirection || "asc")}">
                   <button class="data-query-submit" type="submit">${icon("search")}<span>查询</span></button>
-                  <a class="data-query-reset" href="/agent/data?object=${encodeURIComponent(selected.name)}" title="清除查询" aria-label="清除查询">${icon("rotate-cw")}</a>
+                  <a class="data-query-reset" href="/app/data?object=${encodeURIComponent(selected.name)}" title="清除查询" aria-label="清除查询">${icon("rotate-cw")}</a>
                 </form>
                 <div class="data-result-meta"><span>共 ${escapeHtml(formatInteger(page.totalRows))} 条</span>${query.groupBy || query.metricField ? `<span>聚合结果</span>` : ""}</div>
                 ${renderDataGrid({ rows, columns: result?.columns || columns.map((column) => column.name), query, queryString })}
@@ -496,7 +496,7 @@ export function renderReleaseNotesPage({ releases = [], selectedRelease = null }
 }
 
 function renderReleaseNotesListItem(release, selected) {
-  return `<a class="release-notes-list-item${selected ? " selected" : ""}" href="/agent/release-notes/${encodeURIComponent(release.releaseId)}" ${selected ? 'aria-current="page"' : ""}>
+  return `<a class="release-notes-list-item${selected ? " selected" : ""}" href="/app/releases/${encodeURIComponent(release.releaseId)}" ${selected ? 'aria-current="page"' : ""}>
     <span class="release-list-status" aria-hidden="true"></span>
     <span class="release-list-copy"><strong>${escapeHtml(release.summary)}</strong><small>${escapeHtml(release.releaseId)}</small></span>
     <time datetime="${escapeAttr(release.releasedAt)}">${escapeHtml(formatReleaseDate(release.releasedAt))}</time>
@@ -547,7 +547,7 @@ export function renderSessionDetail({ session }) {
         <div class="agent-bridge-theme agent-bridge-mobile-chat">
           <header class="mobile-chat-topbar">
             <div class="mobile-chat-topbar-inner">
-              <span class="mobile-chat-leading">${siteHomeButton("mobile-chat-icon-button ghost")}<a class="mobile-chat-icon-button ghost" href="/agent" data-session-back title="返回 Agent Bridge" aria-label="返回 Agent Bridge">${icon("arrow-left")}</a></span>
+              <span class="mobile-chat-leading">${siteHomeButton("mobile-chat-icon-button ghost")}<a class="mobile-chat-icon-button ghost" href="/app/chat" data-session-back title="返回对话" aria-label="返回对话">${icon("arrow-left")}</a></span>
               <div class="mobile-chat-title">
                 <div class="mobile-chat-title-row">
                   <h1 class="session-name-mobile">${escapeHtml(conciseTitle(session.title))}</h1>
@@ -563,7 +563,7 @@ export function renderSessionDetail({ session }) {
             </div>
           </header>
           <main class="chat-surface">
-            ${session.childSessions.length ? `<nav class="child-strip">${session.childSessions.map((child) => `<a href="/agent/session/${escapeAttr(child.id)}/live"><span>${escapeHtml(child.title)}</span><small>${escapeHtml(statusLabel(child.status))}</small></a>`).join("")}</nav>` : ""}
+            ${session.childSessions.length ? `<nav class="child-strip">${session.childSessions.map((child) => `<a href="/app/chat/session/${escapeAttr(child.id)}/live"><span>${escapeHtml(child.title)}</span><small>${escapeHtml(statusLabel(child.status))}</small></a>`).join("")}</nav>` : ""}
             <div class="mobile-chat-messages" data-messages>
               ${renderMessagesFragment({ session })}
             </div>
@@ -607,7 +607,7 @@ export function renderPagesIndex({ assets }) {
     title: "Open Agent Bridge Pages",
     body: `
       <main class="pages-index">
-        <a class="pages-home-link" href="/admin">${icon("grid")}<span>返回站点导航</span></a>
+        <a class="pages-home-link" href="/app">${icon("grid")}<span>返回工作台</span></a>
         <p class="eyebrow">pages.personal-agent.local</p>
         <h1>Online Pages</h1>
         <div class="asset-list wide">
@@ -646,7 +646,7 @@ export function renderPrivateFilePreview({ fileName, rawUrl, mimeType, sizeBytes
     @media(max-width:640px){.private-preview-header{padding:.55rem .75rem}.private-preview-copy span{display:none}.private-preview-stage{padding:.75rem}.private-preview-download{padding:0 .65rem}}
   </style>
 </head>
-<body><main class="private-preview-page"><header class="private-preview-header"><a class="private-preview-home" href="/admin" title="返回站点导航" aria-label="返回站点导航">A</a><span class="private-preview-mark">私</span><span class="private-preview-copy"><strong>${safeName}</strong><span>${escapeHtml(mimeType || "文件")}${sizeBytes ? ` · ${escapeHtml(formatFileSize(sizeBytes))}` : ""}</span></span><a class="private-preview-download" href="${safeRawUrl}?download=1">下载</a></header><section class="private-preview-stage">${preview}</section></main></body>
+<body><main class="private-preview-page"><header class="private-preview-header"><a class="private-preview-home" href="/app" title="返回工作台" aria-label="返回工作台">A</a><span class="private-preview-mark">私</span><span class="private-preview-copy"><strong>${safeName}</strong><span>${escapeHtml(mimeType || "文件")}${sizeBytes ? ` · ${escapeHtml(formatFileSize(sizeBytes))}` : ""}</span></span><a class="private-preview-download" href="${safeRawUrl}?download=1">下载</a></header><section class="private-preview-stage">${preview}</section></main></body>
 </html>`;
 }
 
@@ -682,7 +682,7 @@ export function renderPrivateFileBatch({ title, createdAt, items = [] }) {
 
 function renderDataCatalog(objects, selectedName) {
   if (!objects.length) return `<p class="data-side-empty">暂无表或视图</p>`;
-  return `<nav class="data-catalog-list">${objects.map((object) => `<a href="/agent/data?object=${encodeURIComponent(object.name)}" aria-current="${object.name === selectedName ? "page" : "false"}">
+  return `<nav class="data-catalog-list">${objects.map((object) => `<a href="/app/data?object=${encodeURIComponent(object.name)}" aria-current="${object.name === selectedName ? "page" : "false"}">
     <span class="data-object-icon">${icon(object.type === "view" ? "eye" : "table")}</span>
     <span><strong>${escapeHtml(object.name)}</strong><small>${escapeHtml(`${formatInteger(object.rowCount || 0)} 条 · ${object.columnCount} 字段`)}</small></span>
   </a>`).join("")}</nav>`;
@@ -692,7 +692,7 @@ function renderDataCatalogSheet(objects, selectedName) {
   return `<div class="memory-overlay memory-sheet data-catalog-sheet" data-data-catalog-sheet role="dialog" aria-modal="true" aria-labelledby="data-catalog-sheet-title" hidden>
     <div class="memory-sheet-content">
       <header class="memory-sheet-header"><div><span>数据</span><h2 id="data-catalog-sheet-title">选择表或视图</h2></div><button type="button" data-data-catalog-close aria-label="关闭">${icon("x")}</button></header>
-      <div class="memory-sheet-options">${objects.length ? objects.map((object) => `<a class="memory-sheet-option" href="/agent/data?object=${encodeURIComponent(object.name)}" aria-current="${object.name === selectedName ? "page" : "false"}"><span class="memory-sheet-option-mark">${icon(object.type === "view" ? "eye" : "table")}</span><span><strong>${escapeHtml(object.name)}</strong><small>${escapeHtml(`${formatInteger(object.rowCount || 0)} 条记录 · ${object.columnCount} 个字段`)}</small></span></a>`).join("") : `<p class="memory-sheet-empty">暂无数据对象</p>`}</div>
+      <div class="memory-sheet-options">${objects.length ? objects.map((object) => `<a class="memory-sheet-option" href="/app/data?object=${encodeURIComponent(object.name)}" aria-current="${object.name === selectedName ? "page" : "false"}"><span class="memory-sheet-option-mark">${icon(object.type === "view" ? "eye" : "table")}</span><span><strong>${escapeHtml(object.name)}</strong><small>${escapeHtml(`${formatInteger(object.rowCount || 0)} 条记录 · ${object.columnCount} 个字段`)}</small></span></a>`).join("") : `<p class="memory-sheet-empty">暂无数据对象</p>`}</div>
     </div>
   </div>`;
 }
@@ -774,7 +774,7 @@ function renderAutomationSource(source) {
 function renderAutomationRun(run, rules, events) {
   const rule = rules.find((item) => item.id === run.ruleId);
   const event = events.find((item) => item.id === run.eventId);
-  return `<article class="automation-item automation-run"><div class="automation-source-row"><span class="automation-item-icon">${icon(run.matched ? "play" : "archive")}</span><span class="automation-item-copy"><strong>${escapeHtml(rule?.name || run.ruleId || "已删除规则")}</strong><small>${escapeHtml(event?.title || run.eventId || "无事件")} · ${escapeHtml(timeAgo(run.createdAt))}</small></span><span class="automation-status ${run.status === "failed" ? "failed" : run.matched ? "enabled" : "disabled"}">${escapeHtml(run.status)}</span></div><p class="automation-run-reason">${escapeHtml(run.reason || run.error || "暂无判断理由")}</p>${run.sessionId ? `<a class="automation-session-link" href="/agent/session/${escapeAttr(run.sessionId)}/live">查看 Agent 会话 ${icon("chevron-right")}</a>` : ""}</article>`;
+  return `<article class="automation-item automation-run"><div class="automation-source-row"><span class="automation-item-icon">${icon(run.matched ? "play" : "archive")}</span><span class="automation-item-copy"><strong>${escapeHtml(rule?.name || run.ruleId || "已删除规则")}</strong><small>${escapeHtml(event?.title || run.eventId || "无事件")} · ${escapeHtml(timeAgo(run.createdAt))}</small></span><span class="automation-status ${run.status === "failed" ? "failed" : run.matched ? "enabled" : "disabled"}">${escapeHtml(run.status)}</span></div><p class="automation-run-reason">${escapeHtml(run.reason || run.error || "暂无判断理由")}</p>${run.sessionId ? `<a class="automation-session-link" href="/app/chat/session/${escapeAttr(run.sessionId)}/live">查看 Agent 会话 ${icon("chevron-right")}</a>` : ""}</article>`;
 }
 
 export function renderAutomationRunsFragment(runs = [], rules = [], events = []) {
@@ -901,7 +901,7 @@ function automationPageScript() {
   return `
 const automationMore=document.querySelector('[data-automation-more]');
 for(const button of document.querySelectorAll('[data-automation-tab]'))button.addEventListener('click',()=>{for(const item of document.querySelectorAll('[data-automation-tab]'))item.setAttribute('aria-pressed',String(item===button));for(const panel of document.querySelectorAll('[data-automation-panel]'))panel.hidden=panel.dataset.automationPanel!==button.dataset.automationTab;if(button.dataset.automationTab==='runs')setTimeout(()=>automationMore?.scrollIntoView({block:'nearest'}),0);});
-async function loadMoreAutomationRuns(){if(!automationMore||automationMore.hidden||automationMore.disabled)return;automationMore.disabled=true;automationMore.dataset.loading='true';const label=automationMore.querySelector('[data-automation-more-label]');if(label)label.textContent='正在加载';try{const offset=Number(automationMore.dataset.offset||0);const response=await fetch('/api/agent/automations/runs?format=html&limit=20&offset='+offset,{headers:{accept:'application/json'},cache:'no-store'});const result=await response.json();if(!response.ok||result.ok===false)throw new Error(result.error||response.statusText);document.querySelector('[data-automation-runs]')?.insertAdjacentHTML('beforeend',result.html||'');const next=offset+(result.runs||[]).length;automationMore.dataset.offset=String(next);automationMore.hidden=!result.hasMore;if(label)label.textContent=result.hasMore?'下滑加载更多':'已加载全部';}catch(error){if(label)label.textContent='加载失败，点击重试';}finally{automationMore.disabled=false;automationMore.dataset.loading='false';}}
+async function loadMoreAutomationRuns(){if(!automationMore||automationMore.hidden||automationMore.disabled)return;automationMore.disabled=true;automationMore.dataset.loading='true';const label=automationMore.querySelector('[data-automation-more-label]');if(label)label.textContent='正在加载';try{const offset=Number(automationMore.dataset.offset||0);const response=await fetch('/api/app/automations/runs?format=html&limit=20&offset='+offset,{headers:{accept:'application/json'},cache:'no-store'});const result=await response.json();if(!response.ok||result.ok===false)throw new Error(result.error||response.statusText);document.querySelector('[data-automation-runs]')?.insertAdjacentHTML('beforeend',result.html||'');const next=offset+(result.runs||[]).length;automationMore.dataset.offset=String(next);automationMore.hidden=!result.hasMore;if(label)label.textContent=result.hasMore?'下滑加载更多':'已加载全部';}catch(error){if(label)label.textContent='加载失败，点击重试';}finally{automationMore.disabled=false;automationMore.dataset.loading='false';}}
 automationMore?.addEventListener('click',()=>void loadMoreAutomationRuns());
 if(automationMore&&'IntersectionObserver'in window){const observer=new IntersectionObserver((entries)=>{const runsTab=document.querySelector('[data-automation-tab="runs"]');if(entries.some((entry)=>entry.isIntersecting)&&runsTab?.getAttribute('aria-pressed')==='true')void loadMoreAutomationRuns();},{root:document.querySelector('.automation-scroll'),rootMargin:'180px 0px'});observer.observe(automationMore);}`;
 }
@@ -947,7 +947,7 @@ function renderConsoleSession(session) {
   const title = sessionTitle(session);
   const workspace = workspaceNameFromSession(session);
   const searchText = `${title} ${workspace} ${session.status}`;
-  return `<a class="console-session" href="/agent/session/${escapeAttr(session.id)}/live" data-console-session data-search-text="${escapeAttr(searchText)}">
+  return `<a class="console-session" href="/app/chat/session/${escapeAttr(session.id)}/live" data-console-session data-search-text="${escapeAttr(searchText)}">
     <i class="session-state ${escapeAttr(statusClass(session.status))}" aria-hidden="true"></i>
     <span class="console-session-copy">
       <span>${escapeHtml(title)}</span>
@@ -1437,11 +1437,11 @@ function icon(name) {
 }
 
 function siteHomeButton(className = "console-icon-button") {
-  return `<a class="${escapeAttr(className)} site-home-button" href="/admin" title="返回站点导航" aria-label="返回站点导航">${icon("grid")}</a>`;
+  return `<a class="${escapeAttr(className)} site-home-button" href="/app" title="返回工作台" aria-label="返回工作台">${icon("grid")}</a>`;
 }
 
 function consoleBackButtons() {
-  return `<span class="console-header-leading">${siteHomeButton()}<a class="console-icon-button" href="/agent" title="返回 Agent Bridge" aria-label="返回 Agent Bridge">${icon("arrow-left")}</a></span>`;
+  return `<span class="console-header-leading">${siteHomeButton()}<a class="console-icon-button" href="/app/chat" title="返回对话" aria-label="返回对话">${icon("arrow-left")}</a></span>`;
 }
 
 function conciseTitle(value) {
@@ -1515,7 +1515,7 @@ async function loadPage({ reset = false } = {}) {
   if (!reset && nextCursor) params.set('cursor', nextCursor);
   if (query) params.set('query', query);
   try {
-    const response = await fetch('/api/agent/sessions?' + params, { signal: controller.signal });
+    const response = await fetch('/api/chat/sessions?' + params, { signal: controller.signal });
     const text = await response.text();
     const data = text ? JSON.parse(text) : {};
     if (!response.ok || data.ok === false) throw new Error(data.error || text || response.statusText);
@@ -1609,7 +1609,7 @@ async function loadTokenUsage(range = tokenRange) {
   tokenRanges.forEach((button) => button.setAttribute('aria-pressed', button.dataset.tokenRange === tokenRange ? 'true' : 'false'));
   if (tokenError) tokenError.hidden = true;
   try {
-    const response = await fetch('/api/agent/token-usage?range=' + encodeURIComponent(tokenRange));
+    const response = await fetch('/api/chat/token-usage?range=' + encodeURIComponent(tokenRange));
     const data = await response.json();
     if (!response.ok || data.ok === false) throw new Error(data.error || response.statusText);
     updateTokenUsage(data.tokenUsage || {});
@@ -1681,7 +1681,7 @@ function renderTokenSessions(sessions) {
   for (const session of sessions) {
     const row = document.createElement('a');
     row.className = 'token-session-row';
-    row.href = '/agent/session/' + encodeURIComponent(session.sessionId) + '/live';
+    row.href = '/app/chat/session/' + encodeURIComponent(session.sessionId) + '/live';
     const primary = document.createElement('span');
     const title = document.createElement('strong');
     title.textContent = session.title || '未命名会话';
@@ -1748,7 +1748,7 @@ form?.addEventListener('submit', async (event) => {
   if (error) error.hidden = true;
   try {
     const workspaceName = hiddenWorkspace?.value || workspaceSelect?.value || '';
-    const created = await json('/api/agent/bridge/sessions', {
+    const created = await json('/api/chat/bridge/sessions', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
@@ -1759,12 +1759,12 @@ form?.addEventListener('submit', async (event) => {
         title: content.slice(0, 80),
       }),
     });
-    await json('/api/agent/bridge/sessions/' + encodeURIComponent(created.session.id) + '/actions', {
+    await json('/api/chat/bridge/sessions/' + encodeURIComponent(created.session.id) + '/actions', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ action: 'send', content, workspaceName }),
     });
-    location.href = '/agent/session/' + encodeURIComponent(created.session.id) + '/live';
+    location.href = '/app/chat/session/' + encodeURIComponent(created.session.id) + '/live';
   } catch (err) {
     if (error) {
       error.textContent = err.message || String(err);
@@ -1821,7 +1821,7 @@ function openTaskDialog(task) {
   const sessionLink = taskDialog.querySelector('[data-task-last-session]');
   if (sessionLink) {
     sessionLink.hidden = !task.taskLastSessionId;
-    sessionLink.href = task.taskLastSessionId ? '/agent/session/' + encodeURIComponent(task.taskLastSessionId) + '/live' : '#';
+    sessionLink.href = task.taskLastSessionId ? '/app/chat/session/' + encodeURIComponent(task.taskLastSessionId) + '/live' : '#';
   }
   const lastError = taskDialog.querySelector('[data-task-last-error]');
   if (lastError) {
@@ -1861,7 +1861,7 @@ taskForm?.addEventListener('submit', async (event) => {
   event.preventDefault();
   const id = taskForm.dataset.taskId;
   const error = taskForm.querySelector('[data-task-error]');
-  await submitCronForm(taskForm, '/api/agent/schedules/tasks/' + encodeURIComponent(id), 'PATCH', error);
+  await submitCronForm(taskForm, '/api/app/schedules/tasks/' + encodeURIComponent(id), 'PATCH', error);
 });
 taskForm?.querySelector('[data-delete-task]')?.addEventListener('click', () => openActionDialog('delete'));
 taskForm?.querySelector('[data-run-task]')?.addEventListener('click', () => openActionDialog('run'));
@@ -1904,12 +1904,12 @@ actionConfirm?.addEventListener('click', async () => {
   if (actionDialogError) actionDialogError.hidden = true;
   try {
     if (pendingAction.type === 'delete') {
-      await json('/api/agent/schedules/tasks/' + encodeURIComponent(pendingAction.id), { method: 'DELETE' });
+      await json('/api/app/schedules/tasks/' + encodeURIComponent(pendingAction.id), { method: 'DELETE' });
       actionDialog.close('complete');
       location.reload();
       return;
     }
-    const result = await json('/api/agent/schedules/tasks/' + encodeURIComponent(pendingAction.id) + '/run', { method: 'POST' });
+    const result = await json('/api/app/schedules/tasks/' + encodeURIComponent(pendingAction.id) + '/run', { method: 'POST' });
     actionDialog.close('complete');
     if (result.session?.url) location.href = result.session.url;
     else location.reload();
@@ -2077,7 +2077,7 @@ for (const option of document.querySelectorAll('[data-memory-session-option]')) 
   option.addEventListener('click', () => {
     const value = option.dataset.value || '';
     closeMemoryModal(sessionSheet, 'selected');
-    location.assign('/agent/memory' + (value ? '?session=' + encodeURIComponent(value) : ''));
+    location.assign('/app/chat/memory' + (value ? '?session=' + encodeURIComponent(value) : ''));
   });
 }
 memoryType?.addEventListener('click', () => {
@@ -2196,7 +2196,7 @@ memoryForm?.addEventListener('submit', async (event) => {
   submit.disabled = true;
   if (error) error.hidden = true;
   try {
-    await memoryJson('/api/agent/memories/' + encodeURIComponent(id), {
+    await memoryJson('/api/chat/memories/' + encodeURIComponent(id), {
       method: 'PATCH',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
@@ -2232,7 +2232,7 @@ deleteConfirm?.addEventListener('click', async () => {
   deleteConfirm.disabled = true;
   if (deleteError) deleteError.hidden = true;
   try {
-    await memoryJson('/api/agent/memories/' + encodeURIComponent(id), { method: 'DELETE' });
+    await memoryJson('/api/chat/memories/' + encodeURIComponent(id), { method: 'DELETE' });
     location.reload();
   } catch (err) {
     if (deleteError) {
@@ -2261,7 +2261,7 @@ let lastSeq = Number(Array.from(messages?.querySelectorAll('[data-seq]') || []).
 messages.scrollTop = messages.scrollHeight;
 document.querySelector('[data-session-back]')?.addEventListener('click', (event) => {
   const referrer = document.referrer ? new URL(document.referrer) : null;
-  if (referrer?.origin === location.origin && referrer.pathname === '/agent') {
+  if (referrer?.origin === location.origin && referrer.pathname === '/app/chat') {
     event.preventDefault();
     history.back();
   }
@@ -2273,7 +2273,7 @@ document.querySelector('[data-composer]')?.addEventListener('submit', async (eve
   if (!content) return;
   textarea.value = '';
   textarea.style.height = '';
-  await fetch('/api/agent/bridge/sessions/' + encodeURIComponent(sessionId) + '/actions', {
+  await fetch('/api/chat/bridge/sessions/' + encodeURIComponent(sessionId) + '/actions', {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify({ action: 'send', content }),
@@ -2285,13 +2285,13 @@ document.querySelector('[data-composer] textarea')?.addEventListener('input', (e
   textarea.style.height = Math.min(textarea.scrollHeight, window.innerHeight * 0.4) + 'px';
 });
 document.querySelector('[data-stop]')?.addEventListener('click', () => {
-  fetch('/api/agent/bridge/sessions/' + encodeURIComponent(sessionId) + '/actions', {
+  fetch('/api/chat/bridge/sessions/' + encodeURIComponent(sessionId) + '/actions', {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify({ action: 'stop' }),
   });
 });
-const ws = new WebSocket((location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/api/agent/ws');
+const ws = new WebSocket((location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/api/chat/ws');
 window.addEventListener('pagehide', () => ws.close(), { once: true });
 ws.addEventListener('message', (event) => {
   const message = JSON.parse(event.data);

@@ -4,7 +4,7 @@
   "type": "object", "additionalProperties": false,
   "required": ["schemaVersion", "defaultPolicy", "routes"],
   "properties": {
-    "schemaVersion": { "const": 1 },
+    "schemaVersion": { "const": 2 },
     "defaultPolicy": { "const": "deny" },
     "routes": { "type": "array", "items": { "type": "object", "additionalProperties": false, "required": ["pattern", "access", "capability"], "properties": {
       "pattern": { "type": "string", "pattern": "^/" },

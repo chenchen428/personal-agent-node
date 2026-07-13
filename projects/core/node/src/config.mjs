@@ -305,7 +305,7 @@ export function normalizeApexDomain(value) {
 
 export function normalizeRoutingMode(value) {
   const mode = String(value || "").trim().toLowerCase();
-  if (mode !== "path" && mode !== "host") throw new Error(`Invalid Personal Agent routing mode: ${mode || "empty"}`);
+  if (mode !== "path") throw new Error(`Invalid Personal Agent routing mode: ${mode || "empty"}; only path routing is supported`);
   return mode;
 }
 
@@ -315,7 +315,7 @@ function normalizeHostList(value, defaults) {
 }
 
 function serviceBaseUrl(config, service) {
-  return config.routingMode === "path" ? `https://${config.domain}/${service}` : `https://${service}.${config.domain}`;
+  return `https://${config.domain}/${service}`;
 }
 
 export function readEnvFile(filePath) {
