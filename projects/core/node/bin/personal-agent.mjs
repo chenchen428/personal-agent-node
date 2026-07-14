@@ -9,7 +9,7 @@ import { listExtensions } from '../src/extensions.mjs';
 import { readBackupState } from '../src/backup-scheduler.mjs';
 import { providerStatus } from '../src/providers.mjs';
 import { requestControl } from '../src/control-service.mjs';
-import { enrollWithCloudDeviceAuthorization } from '../src/cloud-enrollment.mjs';
+import { DEFAULT_CLOUD_URL, enrollWithCloudDeviceAuthorization, resolveCloudUrl } from '../src/cloud-enrollment.mjs';
 import { commandKey, expandCommandName, HANDLED_COMMAND_KEYS } from '../src/command-surface.mjs';
 import { localMailPlan, localMailStatus } from '../src/mail.mjs';
 
@@ -150,7 +150,7 @@ function cloudStatus() {
 }
 
 async function cloudConnect(args) {
-  const cloudUrl = args.cloudUrl || process.env.PERSONAL_AGENT_CLOUD_URL || 'https://personal-agent.cn';
+  const cloudUrl = resolveCloudUrl({ cloudUrl: args.cloudUrl });
   const packageMetadata = readJsonIfExists(path.join(workspaceRoot, 'projects', 'core', 'node', 'package.json'));
   const enrolled = await enrollWithCloudDeviceAuthorization({
     cloudUrl,
@@ -236,7 +236,7 @@ function commandHelp(command, descriptor) {
       description: descriptor.description,
       options: [
         ...commonOptions,
-        { name: '--cloud-url', type: 'https-url', required: false, secret: false, default: 'https://personal-agent.cn', description: 'Select the trusted Cloud origin.' },
+        { name: '--cloud-url', type: 'https-url', required: false, secret: false, default: DEFAULT_CLOUD_URL, environment: 'PERSONAL_AGENT_CLOUD_URL', description: 'Select the trusted Cloud origin; the command-line value overrides the environment.' },
         { name: '--no-open', type: 'boolean', required: false, secret: false, description: 'Do not launch a browser; use verificationUrlComplete from progress output.' },
       ],
       authorization: {

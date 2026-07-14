@@ -6,7 +6,7 @@ import { initializeSite, mergeSecretEnv, resolveNodeConfig, setConnectionMode, w
 import { installManagedWireGuardTunnel, prepareManagedWireGuardIdentity } from './identity.mjs';
 import { setProvider } from './providers.mjs';
 
-const DEFAULT_CLOUD_URL = 'https://personal-agent.cn';
+export const DEFAULT_CLOUD_URL = 'https://chenjianhui.site';
 const DEFAULT_POLL_INTERVAL_SECONDS = 5;
 const MAX_POLL_INTERVAL_SECONDS = 30;
 const REQUEST_TIMEOUT_MILLISECONDS = 15_000;
@@ -45,6 +45,10 @@ export async function enrollWithCloudDeviceAuthorization({
   writeJsonAtomic(pendingPath, resumable, 0o600);
   const result = await finalizeEnrollment({ pending: resumable, pendingPath, dataRoot: preliminary.dataRoot, wireGuardExecutor, fetchImpl });
   return { ...result, authorization: { ...publicAuthorization, browserOpened } };
+}
+
+export function resolveCloudUrl({ cloudUrl, env = process.env } = {}) {
+  return cloudUrl || env.PERSONAL_AGENT_CLOUD_URL || DEFAULT_CLOUD_URL;
 }
 
 export async function startCloudDeviceAuthorization({ baseUrl, cloudUrl, fetchImpl = fetch, clientName = 'personal-agent-cli', clientVersion = '0.1.0-beta' } = {}) {
