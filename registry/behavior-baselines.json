@@ -8,7 +8,7 @@
       "label": "Immutable release installation",
       "case": "test/fixtures/baseline-cases/release-installation/case.json",
       "command": ["node", "--test", "test/release-lifecycle.test.mjs"],
-      "requirements": ["Installation switches an immutable current release", "One previous release remains available"]
+      "requirements": ["Installation switches an immutable current release", "One previous release remains available", "Fresh installation immediately prompts the user to bind WeChat"]
     },
     {
       "id": "authenticated-login",
@@ -28,8 +28,8 @@
       "id": "wechat-conversation-channel",
       "label": "WeChat conversation channel",
       "case": "test/fixtures/baseline-cases/wechat-conversation-channel/case.json",
-      "command": ["node", "--test", "projects/core/open-agent-bridge/test/store.test.mjs", "projects/core/open-agent-bridge/test/orchestrator.test.mjs", "projects/core/open-agent-bridge/test/cli.test.mjs"],
-      "requirements": ["WeChat identity maps to a reusable local Agent session", "Health failure asks for confirmation before login", "Verification codes are bounded and are not persisted as conversation input"]
+      "command": ["node", "--test", "projects/core/open-agent-bridge/test/store.test.mjs", "projects/core/open-agent-bridge/test/orchestrator.test.mjs", "projects/core/open-agent-bridge/test/cli.test.mjs", "projects/core/open-agent-bridge/test/cloud-binding-coordinator.test.mjs"],
+      "requirements": ["WeChat identity maps to a reusable local Agent session", "Health failure asks for confirmation before login", "Verification codes are bounded and are not persisted as conversation input", "Cloud passwords are intercepted by a one-time binding flow and never persisted as conversation input"]
     },
     {
       "id": "xiaohongshu-managed-platform",

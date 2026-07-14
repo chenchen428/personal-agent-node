@@ -135,10 +135,11 @@ export function renderNavigationPage({ title, items }) {
     .editorial-intro{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(15rem,.75fr);gap:2rem;align-items:end;padding:2.25rem 1.25rem 1.5rem;border-bottom:1px solid var(--line)}.intro-kicker{margin:0 0 .55rem;color:var(--red-deep);font-size:.7rem;font-weight:800;text-transform:uppercase}.editorial-intro h1{max-width:11ch;margin:0;font-family:"Songti SC","STSong",serif;font-size:clamp(2rem,5vw,4.6rem);line-height:.98;letter-spacing:0}.intro-note{margin:0 0 .2rem;border-left:4px solid var(--green);padding:.2rem 0 .2rem 1rem;color:var(--muted);font-size:.82rem;line-height:1.7}.intro-note strong{display:block;margin-bottom:.2rem;color:var(--ink);font-family:"Songti SC","STSong",serif;font-size:1.05rem}
     .status-band{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:1rem;align-items:center;margin:0 1.25rem;padding:1rem 0;border-bottom:1px solid var(--ink)}.status-index{width:3.35rem;height:3.35rem;display:grid;place-items:center;border:2px solid var(--green);border-radius:50%;color:var(--green);font-family:"Songti SC","STSong",serif;font-size:1.35rem;font-weight:800}.status-copy{min-width:0;display:grid;gap:.25rem}.status-title{display:flex;align-items:center;gap:.55rem;font-size:.95rem;font-weight:800}.status-detail{margin:0;color:var(--muted);font-size:.78rem;line-height:1.5}.dot{width:.5rem;height:.5rem;border-radius:50%;background:var(--muted);flex:0 0 auto}.dot.good{background:#16a36f;box-shadow:0 0 0 3px rgba(22,163,111,.14)}.dot.bad{background:var(--red)}.dot.warn{background:var(--amber)}.wechat-actions{display:flex;gap:.45rem}.action{min-width:4rem;height:2.35rem;border:1px solid var(--ink);border-radius:4px;background:transparent;color:var(--ink);padding:0 .8rem;font-weight:700;font-size:.78rem;cursor:pointer}.action:hover,.action:focus-visible{background:var(--green);border-color:var(--green);color:#fff;outline:0}.action.danger{border-color:var(--red-deep);color:var(--red-deep)}.action.danger:hover{background:var(--red);border-color:var(--red);color:#fff}
     .qr-panel{display:grid;grid-template-columns:minmax(12rem,16rem) minmax(0,1fr);gap:1.25rem;align-items:center;margin:0 1.25rem;padding:1.25rem 0;border-bottom:1px solid var(--line)}.qr-panel[hidden]{display:none}.qr-box{aspect-ratio:1;width:100%;display:grid;place-items:center;border:1px solid var(--ink);background:#fff;padding:.65rem}.qr-box svg{display:block;width:100%;height:auto}.qr-copy{max-width:28rem;color:var(--muted);font-family:"Songti SC","STSong",serif;font-size:.95rem;line-height:1.7}
+    .managed-band{margin:0 1.25rem;padding:1rem 0;border-bottom:1px solid var(--ink)}.managed-heading{display:flex;align-items:center;justify-content:space-between;gap:1rem;margin-bottom:.65rem}.managed-heading strong{font-family:"Songti SC","STSong",serif;font-size:.95rem}.managed-heading span{color:var(--muted);font-size:.68rem}.managed-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));border-top:1px solid var(--line);border-left:1px solid var(--line)}.managed-item{min-width:0;display:grid;gap:.25rem;border-right:1px solid var(--line);border-bottom:1px solid var(--line);padding:.75rem .85rem;background:rgba(255,249,235,.26)}.managed-item span{color:var(--muted);font-size:.68rem}.managed-item strong{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:"Songti SC","STSong",serif;font-size:.9rem}.managed-item small{color:var(--muted);font-size:.65rem;overflow-wrap:anywhere}.managed-band[data-state="enabled"] .managed-heading span{color:var(--green-bright);font-weight:700}.managed-band[data-state="disabled"] .managed-heading span{color:var(--amber)}
     .capacity-band{margin:0 1.25rem;padding:1rem 0;border-bottom:1px solid var(--ink)}.capacity-heading{display:flex;align-items:center;justify-content:space-between;gap:1rem;margin-bottom:.65rem}.capacity-heading strong{font-family:"Songti SC","STSong",serif;font-size:.95rem}.capacity-heading span{color:var(--muted);font-size:.68rem}.capacity-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));border-top:1px solid var(--line);border-left:1px solid var(--line)}.capacity-item{min-width:0;display:grid;gap:.25rem;border-right:1px solid var(--line);border-bottom:1px solid var(--line);padding:.75rem .85rem;background:rgba(255,249,235,.26)}.capacity-item span{color:var(--muted);font-size:.68rem}.capacity-item strong{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:"Songti SC","STSong",serif;font-size:1rem}.capacity-item small{color:var(--muted);font-size:.65rem}.capacity-band[data-state="warning"] .capacity-heading span{color:var(--amber)}.capacity-band[data-state="critical"] .capacity-heading span{color:var(--red-deep);font-weight:700}.content{padding:1.4rem 1.25rem 2.5rem}.section-head{display:flex;align-items:end;justify-content:space-between;gap:1rem;margin-bottom:.85rem}.section-head-title{display:flex;align-items:baseline;gap:.65rem}.section-no{color:var(--red);font-family:"Songti SC","STSong",serif;font-size:1.55rem;font-weight:800}.section-head h2{margin:0;font-family:"Songti SC","STSong",serif;font-size:1.2rem;letter-spacing:0}.detect-state{color:var(--muted);font-size:.7rem}.nav-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));border-top:1px solid var(--ink);border-left:1px solid var(--ink)}.nav-item{position:relative;min-width:0;min-height:6.6rem;display:grid;grid-template-columns:3rem minmax(0,1fr) auto;align-items:center;gap:.9rem;border-right:1px solid var(--ink);border-bottom:1px solid var(--ink);background:rgba(255,249,235,.38);padding:1rem;transition:background-color .15s ease,box-shadow .15s ease}.nav-item:hover{z-index:1;background:rgba(255,249,235,.86);box-shadow:inset 0 0 0 2px rgba(72,96,82,.2)}.nav-item:focus-visible{z-index:1;background:var(--paper-light);outline:2px solid var(--red);outline-offset:-3px}.nav-item:active{background:rgba(216,73,47,.08)}.nav-mark{width:2.85rem;height:2.85rem;display:grid;place-items:center;border:1px solid currentColor;border-radius:50%;color:var(--green);font-family:"Songti SC","STSong",serif;font-size:1rem;font-weight:800}.nav-item:nth-child(4n+2) .nav-mark{color:var(--red)}.nav-item:nth-child(4n+3) .nav-mark{color:var(--blue)}.nav-item:nth-child(4n) .nav-mark{border-radius:3px;color:var(--red-deep);transform:rotate(-2deg)}.nav-copy{min-width:0;display:grid;gap:.3rem}.nav-copy strong{font-family:"Songti SC","STSong",serif;font-size:1rem}.nav-copy small{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--muted);font-size:.73rem}.nav-meta{display:grid;justify-items:end;gap:.45rem;color:var(--muted);font-size:.66rem}.nav-state{display:flex;align-items:center;gap:.35rem;white-space:nowrap}.nav-arrow{font-size:1.15rem;color:currentColor}
     .refresh:hover{border-color:var(--ink);color:var(--ink)}.action:hover{background:transparent;border-color:var(--ink);color:var(--ink)}.action.danger:hover{background:transparent;border-color:var(--red-deep);color:var(--red-deep)}.nav-item:hover,.nav-item:active{z-index:auto;background:rgba(255,249,235,.38);box-shadow:none}
     .footer-line{display:flex;justify-content:space-between;gap:1rem;border-top:1px solid var(--line);margin-top:1.5rem;padding-top:.75rem;color:var(--muted);font-size:.65rem;text-transform:uppercase}
-    @media(max-width:700px){body{background:var(--paper)}.app{border:0;box-shadow:none}.topbar{padding-inline:.85rem}.editorial-intro{grid-template-columns:1fr;gap:1rem;padding:1.6rem .85rem 1.25rem}.editorial-intro h1{font-size:2.8rem}.status-band{grid-template-columns:auto minmax(0,1fr);margin-inline:.85rem}.wechat-actions{grid-column:1 / -1;width:100%}.action{flex:1}.qr-panel{grid-template-columns:1fr;margin-inline:.85rem}.qr-box{width:min(100%,16rem);margin:auto}.capacity-band{margin-inline:.85rem}.capacity-grid{grid-template-columns:1fr}.content{padding:1.2rem .85rem 2rem}.nav-grid{grid-template-columns:1fr}.nav-item{min-height:5.8rem}.section-head{align-items:center}.footer-line{flex-direction:column;gap:.25rem}}
+    @media(max-width:700px){body{background:var(--paper)}.app{border:0;box-shadow:none}.topbar{padding-inline:.85rem}.editorial-intro{grid-template-columns:1fr;gap:1rem;padding:1.6rem .85rem 1.25rem}.editorial-intro h1{font-size:2.8rem}.status-band{grid-template-columns:auto minmax(0,1fr);margin-inline:.85rem}.wechat-actions{grid-column:1 / -1;width:100%}.action{flex:1}.qr-panel{grid-template-columns:1fr;margin-inline:.85rem}.qr-box{width:min(100%,16rem);margin:auto}.managed-band,.capacity-band{margin-inline:.85rem}.managed-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.capacity-grid{grid-template-columns:1fr}.content{padding:1.2rem .85rem 2rem}.nav-grid{grid-template-columns:1fr}.nav-item{min-height:5.8rem}.section-head{align-items:center}.footer-line{flex-direction:column;gap:.25rem}}
   </style>
 </head>
 <body>
@@ -168,6 +169,15 @@ export function renderNavigationPage({ title, items }) {
     <section class="qr-panel" data-qr-panel hidden>
       <div class="qr-box" data-qr-box></div>
       <div class="qr-copy" data-qr-copy>请使用微信扫码并在手机上确认。</div>
+    </section>
+    <section class="managed-band" data-managed-band data-state="loading" aria-labelledby="managed-title">
+      <div class="managed-heading"><strong id="managed-title">邮件与配置服务</strong><span data-managed-state>检测中</span></div>
+      <div class="managed-grid">
+        <div class="managed-item"><span>公网域名</span><strong data-managed-value="domain">检测中</strong><small data-managed-detail="domain">绑定后才能启用</small></div>
+        <div class="managed-item"><span>Agent 邮箱</span><strong data-managed-value="mail">检测中</strong><small data-managed-detail="mail">需匹配公网域名</small></div>
+        <div class="managed-item"><span>邮件服务</span><strong data-managed-value="mail-service">默认关闭</strong><small>两项前置条件均通过后启用</small></div>
+        <div class="managed-item"><span>配置服务</span><strong data-managed-value="config-service">默认关闭</strong><small>两项前置条件均通过后启用</small></div>
+      </div>
     </section>
     <section class="capacity-band" data-capacity-band data-state="loading" aria-labelledby="capacity-title">
       <div class="capacity-heading"><strong id="capacity-title">服务器容量</strong><span data-capacity-state>检测中</span></div>
@@ -200,6 +210,8 @@ export function renderNavigationPage({ title, items }) {
     const detectState = document.querySelector('[data-detect-state]');
     const capacityBand = document.querySelector('[data-capacity-band]');
     const capacityState = document.querySelector('[data-capacity-state]');
+    const managedBand = document.querySelector('[data-managed-band]');
+    const managedState = document.querySelector('[data-managed-state]');
 
     document.querySelectorAll('[data-nav-id]').forEach((link) => link.addEventListener('click', () => {
       const body = new Blob([JSON.stringify({ id: link.dataset.navId })], { type: 'application/json' });
@@ -258,6 +270,24 @@ export function renderNavigationPage({ title, items }) {
       }
     }
 
+    async function loadManagedServices() {
+      try {
+        const data = await readJson(await fetch('/api/system/onboarding/status', { cache: 'no-store' }));
+        const services = data.services || {};
+        managedBand.dataset.state = services.state || 'disabled';
+        managedState.textContent = services.state === 'enabled' ? '全部可用' : '默认关闭';
+        document.querySelector('[data-managed-value="domain"]').textContent = services.publicDomain?.ready ? '已检测' : '未检测';
+        document.querySelector('[data-managed-detail="domain"]').textContent = services.publicDomain?.value || '需要公网域名';
+        document.querySelector('[data-managed-value="mail"]').textContent = services.agentMail?.ready ? '已检测' : '未检测';
+        document.querySelector('[data-managed-detail="mail"]').textContent = services.agentMail?.value || '需要匹配域名的 Agent 邮箱';
+        document.querySelector('[data-managed-value="mail-service"]').textContent = services.managedMail?.enabled ? '已启用' : '默认关闭';
+        document.querySelector('[data-managed-value="config-service"]').textContent = services.managedConfiguration?.enabled ? '已启用' : '默认关闭';
+      } catch {
+        managedBand.dataset.state = 'disabled';
+        managedState.textContent = '检测暂不可用';
+      }
+    }
+
     function stopPolling() {
       if (wechat.timer) clearTimeout(wechat.timer);
       wechat.timer = 0;
@@ -306,6 +336,7 @@ export function renderNavigationPage({ title, items }) {
           qrCopy.textContent = '登录成功。';
           stopPolling();
           await loadWechat();
+          await loadManagedServices();
           return;
         }
         if (data.status === 'scaned') qrCopy.textContent = '已扫码，请在手机上确认。';
@@ -329,8 +360,8 @@ export function renderNavigationPage({ title, items }) {
       catch (error) { detail.textContent = error.message || String(error); action.disabled = false; }
     });
     document.querySelector('[data-wechat-refresh]').addEventListener('click', loadWechat);
-    document.querySelector('[data-refresh]').addEventListener('click', () => Promise.all([loadProjects(), loadWechat(), loadCapacity()]));
-    Promise.all([loadProjects(), loadWechat(), loadCapacity()]);
+    document.querySelector('[data-refresh]').addEventListener('click', () => Promise.all([loadProjects(), loadWechat(), loadManagedServices(), loadCapacity()]));
+    Promise.all([loadProjects(), loadWechat(), loadManagedServices(), loadCapacity()]);
   </script>
 </body>
 </html>`;

@@ -515,6 +515,27 @@ function renderHtml(items) {
       font-size: 12px;
       line-height: 1.4;
     }
+    .service-readiness {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 10px;
+      margin: 18px 0;
+    }
+    .service-readiness article {
+      min-width: 0;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--card);
+      padding: 14px;
+      box-shadow: var(--shadow-sm);
+    }
+    .service-readiness span,
+    .service-readiness small {
+      display: block;
+      color: var(--muted-foreground);
+      overflow-wrap: anywhere;
+    }
+    .service-readiness strong { display: block; margin: 7px 0 4px; color: var(--foreground); }
     .wechat-qr {
       display: grid;
       gap: 12px;
@@ -820,6 +841,7 @@ function renderHtml(items) {
       .wechat-grid {
         grid-template-columns: 1fr;
       }
+      .service-readiness { grid-template-columns: repeat(2, minmax(0, 1fr)); }
       .projects-grid {
         grid-template-columns: 1fr;
       }
@@ -890,6 +912,12 @@ function renderHtml(items) {
       ${renderMetric('Needs attention', attentionCount, 'Stopped, failed, or missing checks')}
       ${renderMetric('Unknown', counts.unknown || 0, 'Checks that cannot be resolved here')}
     </section>
+    <section class="service-readiness" aria-label="Managed service readiness" data-service-readiness>
+      <article><span>Public domain</span><strong data-service-domain>Checking</strong><small data-service-domain-detail>Waiting for local detection.</small></article>
+      <article><span>Agent mail</span><strong data-service-mail>Checking</strong><small data-service-mail-detail>Waiting for local detection.</small></article>
+      <article><span>Mail service</span><strong data-service-mail-enabled>Checking</strong><small>Disabled until both prerequisites pass.</small></article>
+      <article><span>Configuration service</span><strong data-service-config-enabled>Checking</strong><small>Disabled until both prerequisites pass.</small></article>
+    </section>
     <section class="panel wechat-panel" aria-labelledby="wechat-status-title">
       <div class="panel-header">
         <div>
@@ -942,6 +970,14 @@ ${projectCards}
       session: '',
       pollTimer: 0,
     };
+    const services = {
+      domain: document.querySelector('[data-service-domain]'),
+      domainDetail: document.querySelector('[data-service-domain-detail]'),
+      mail: document.querySelector('[data-service-mail]'),
+      mailDetail: document.querySelector('[data-service-mail-detail]'),
+      mailEnabled: document.querySelector('[data-service-mail-enabled]'),
+      configEnabled: document.querySelector('[data-service-config-enabled]'),
+    };
 
     function setBadge(label, tone) {
       wechat.badge.className = 'status-badge tone-' + tone;
@@ -982,6 +1018,22 @@ ${projectCards}
       } catch (error) {
         setBadge('Error', 'bad');
         wechat.detail.textContent = error instanceof Error ? error.message : String(error);
+      }
+    }
+
+    async function loadServiceReadiness() {
+      try {
+        const data = await readJson(await fetch('/api/onboarding/status', { cache: 'no-store' }));
+        const state = data.services || {};
+        services.domain.textContent = state.publicDomain?.ready ? 'Ready' : 'Not detected';
+        services.domainDetail.textContent = state.publicDomain?.value || 'A public DNS domain is required.';
+        services.mail.textContent = state.agentMail?.ready ? 'Ready' : 'Not detected';
+        services.mailDetail.textContent = state.agentMail?.value || 'A matching Agent mailbox is required.';
+        services.mailEnabled.textContent = state.managedMail?.enabled ? 'Enabled' : 'Disabled';
+        services.configEnabled.textContent = state.managedConfiguration?.enabled ? 'Enabled' : 'Disabled';
+      } catch (error) {
+        for (const node of [services.domain, services.mail, services.mailEnabled, services.configEnabled]) node.textContent = 'Unavailable';
+        services.domainDetail.textContent = error instanceof Error ? error.message : String(error);
       }
     }
 
@@ -1069,6 +1121,7 @@ ${projectCards}
     wechat.startButton?.addEventListener('click', startWechatLogin);
     wechat.pageRefreshButton?.addEventListener('click', () => window.location.reload());
     loadWechatStatus();
+    loadServiceReadiness();
   </script>
 </body>
 </html>`;

@@ -7,6 +7,7 @@ import { WebSocketServer } from "ws";
 import { config, ensureRuntimeDirs } from "../config.js";
 import { PersonalAuth } from "../auth/personal-auth.js";
 import { WeChatConnector } from "../channels/wechat/connector.ts";
+import { CloudBindingCoordinator } from "../channels/cloud-binding-coordinator.js";
 import { ChannelInputError, XiaohongshuChannel } from "../channels/xiaohongshu/channel.js";
 import { XiaohongshuLoginCoordinator } from "../channels/xiaohongshu/login-coordinator.js";
 import { createOnlinePagesMcpServer } from "../online-pages/mcp.js";
@@ -98,8 +99,14 @@ const xiaohongshu = new XiaohongshuChannel({
   logger,
 });
 const xiaohongshuLogin = new XiaohongshuLoginCoordinator({ channel: xiaohongshu, wechat, logger });
+const cloudBinding = new CloudBindingCoordinator({ wechat, dataRoot: config.siteDataRoot });
 const personalAuth = new PersonalAuth({ ...config.personalAuth, apiToken: config.apiToken });
-const orchestrator = new SessionOrchestrator({ store, hub, channels: { wechat }, managedFiles, channelLoginCoordinator: xiaohongshuLogin });
+const channelLoginCoordinator = {
+  async consumeWechatMessage(message) {
+    return await cloudBinding.consumeWechatMessage(message) || await xiaohongshuLogin.consumeWechatMessage(message);
+  },
+};
+const orchestrator = new SessionOrchestrator({ store, hub, channels: { wechat }, managedFiles, channelLoginCoordinator });
 const scheduledTasks = new ScheduledTaskRunner({ store, broker: agentBridgeBroker, channels: { wechat }, logger });
 wechat.attach(orchestrator);
 if (config.channelPollEnabled) wechat.start();
@@ -1062,8 +1069,9 @@ async function handleRequest(request: http.IncomingMessage, response: http.Serve
 
   if (url.pathname === "/api/channels/wechat/notify" && request.method === "POST") {
     const body = await readJsonBody(request);
-    const recipientId = await wechat.sendText(body.recipientId || body.recipient_id || store.getLastWechatRecipient(), String(body.message || body.text || ""));
-    sendJson(response, 200, { ok: true, recipientId });
+    const recipientId = body.recipientId || body.recipient_id || store.getLastWechatRecipient();
+    const delivery = await orchestrator.notifyWechatRecipient(recipientId, String(body.message || body.text || ""));
+    sendJson(response, 200, { ok: true, recipientId, ...delivery });
     return;
   }
 

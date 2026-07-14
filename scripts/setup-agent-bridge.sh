@@ -3,6 +3,7 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 MODE="${1:---check}"
 [[ "$MODE" == "--check" || "$MODE" == "--force" ]] || { echo "Usage: scripts/setup-agent-bridge.sh [--check|--force]" >&2; exit 2; }
+if [[ "${OS:-}" == "Windows_NT" ]]; then exec node "$ROOT_DIR/scripts/harness-links.mjs" "$MODE"; fi
 ensure_link() {
   local link_path="$1" target="$2" full="$ROOT_DIR/$1"
   if [[ "$MODE" == "--check" ]]; then

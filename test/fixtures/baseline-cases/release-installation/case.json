@@ -7,6 +7,7 @@
   "when": "The release lifecycle advances the current link and retains its predecessor",
   "acceptance": [
     "Installation switches an immutable current release",
-    "One previous release remains available"
+    "One previous release remains available",
+    "Fresh installation immediately prompts the user to bind WeChat"
   ]
 }

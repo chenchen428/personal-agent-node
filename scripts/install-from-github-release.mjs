@@ -59,7 +59,7 @@ async function main() {
       PRIVATE_SITE_DATA_ROOT: dataRoot,
     };
     run(process.execPath, [prepareEntrypoint, 'prepare'], { env: prepareEnvironment });
-    console.log(JSON.stringify({ ok: true, repository, tag, verifiedSha256: actual, prepared: true, installRoot, current, connectCommand: 'personal-agent cloud connect --json', connectEntrypoint: `node ${path.join(current, 'projects', 'core', 'node', 'bin', 'personal-agent.mjs')} cloud connect --json` }, null, 2));
+    console.log(JSON.stringify({ ok: true, repository, tag, verifiedSha256: actual, prepared: true, installRoot, current, onboarding: { requiredAction: 'bind-wechat', message: 'Open the local Personal Agent console and bind WeChat first. The channel will send a capability-check message after binding.', statusCommand: 'personal-agent status --json' }, connectCommand: 'personal-agent cloud connect --json', connectEntrypoint: `node ${path.join(current, 'projects', 'core', 'node', 'bin', 'personal-agent.mjs')} cloud connect --json` }, null, 2));
   } finally { fs.rmSync(temporary, { recursive: true, force: true }); }
 }
 

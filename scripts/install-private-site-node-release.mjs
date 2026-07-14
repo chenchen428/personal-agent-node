@@ -48,6 +48,11 @@ const installation = {
   current,
   previous: oldCurrent && path.resolve(oldCurrent) !== path.resolve(target) ? oldCurrent : pointerTarget(previous),
   personalAgentCommand: personalAgentCommand.commandPath,
+  onboarding: {
+    requiredAction: "bind-wechat",
+    message: "Open the local Personal Agent console and bind WeChat first. After binding, the channel will send a capability-check message.",
+    statusCommand: "personal-agent status --json",
+  },
 };
 fs.writeFileSync(path.join(installRoot, "installation.json"), `${JSON.stringify(installation, null, 2)}\n`, { mode: 0o600 });
 
@@ -65,7 +70,7 @@ if (deferredPrune.length) {
   fs.writeFileSync(path.join(installRoot, "installation.json"), `${JSON.stringify(installation, null, 2)}\n`, { mode: 0o600 });
 }
 
-process.stdout.write(`${JSON.stringify({ ok: true, releaseId: manifest.releaseId, profile: manifest.profile, installRoot, current, target, previous: pointerTarget(previous) || "", personalAgentCommand: personalAgentCommand.commandPath, deferredPrune }, null, 2)}\n`);
+process.stdout.write(`${JSON.stringify({ ok: true, releaseId: manifest.releaseId, profile: manifest.profile, installRoot, current, target, previous: pointerTarget(previous) || "", personalAgentCommand: personalAgentCommand.commandPath, onboarding: installation.onboarding, deferredPrune }, null, 2)}\n`);
 
 function replacePointer(linkPath, targetPath) {
   if (fs.existsSync(linkPath) || fs.lstatSync(path.dirname(linkPath)).isDirectory() && isDanglingLink(linkPath)) fs.rmSync(linkPath, { force: true, recursive: false });

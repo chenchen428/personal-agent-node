@@ -17,6 +17,7 @@ import {
   renderUpdatePage,
 } from './page.mjs';
 import { capacityState, readServerCapacity } from './capacity.mjs';
+import { onboardingStatus } from '../node/src/cloud-resources.mjs';
 
 const projectRoot = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(projectRoot, '..', '..', '..');
@@ -35,6 +36,7 @@ const accountFile = path.join(bridgeDataDir, 'account.json');
 const syncBufFile = path.join(bridgeDataDir, 'sync_buf.txt');
 const contextCacheFile = path.join(bridgeDataDir, 'context_tokens.json');
 const daemonEndpointFile = path.join(bridgeDataDir, 'daemon-endpoint.json');
+const onboardingNotificationFile = path.join(siteDataRoot, 'config', 'wechat-onboarding-notification.json');
 const wechatBaseUrl = (process.env.WECHAT_ILINK_BASE_URL || 'https://ilinkai.weixin.qq.com').trim();
 const wechatBotType = process.env.WECHAT_BOT_TYPE || '3';
 const require = createRequire(import.meta.url);
@@ -108,6 +110,14 @@ async function handleRequest(request, response) {
       return;
     }
     await sendJson(response, await getWechatStatus(), request.method === 'HEAD');
+    return;
+  }
+  if (url.pathname === '/api/onboarding/status') {
+    if (request.method !== 'GET' && request.method !== 'HEAD') {
+      send(response, 405, 'text/plain; charset=utf-8', 'Method Not Allowed');
+      return;
+    }
+    await sendJson(response, { ok: true, ...onboardingStatus({ dataRoot: siteDataRoot }) }, request.method === 'HEAD');
     return;
   }
   if (url.pathname === '/api/wechat/login/start') {
@@ -534,7 +544,12 @@ async function startWechatLogin() {
 
 async function pollWechatLoginStatus(sessionId) {
   const bridgeStatus = await requestOpenAgentBridge(`/api/channels/wechat/login/status?session=${encodeURIComponent(sessionId || '')}`).catch(() => null);
-  if (bridgeStatus?.status) return bridgeStatus;
+  if (bridgeStatus?.status) {
+    if (bridgeStatus.connected || bridgeStatus.status === 'confirmed') {
+      return { ...bridgeStatus, ...await completeWechatOnboarding(bridgeStatus.account || {}) };
+    }
+    return bridgeStatus;
+  }
   pruneLoginSessions();
   const session = sessionId ? loginSessions.get(sessionId) : null;
   if (!session) {
@@ -560,6 +575,7 @@ async function pollWechatLoginStatus(sessionId) {
   };
   writeAccount(account);
   loginSessions.delete(sessionId);
+  const completion = await completeWechatOnboarding(account);
   return {
     status: 'confirmed',
     connected: true,
@@ -569,7 +585,47 @@ async function pollWechatLoginStatus(sessionId) {
       savedAt: account.savedAt,
       baseUrl: account.baseUrl,
     },
+    ...completion,
   };
+}
+
+async function completeWechatOnboarding(account) {
+  const onboarding = onboardingStatus({ dataRoot: siteDataRoot });
+  const recipientId = String(account?.userId || '').trim();
+  if (!recipientId) return { onboarding, notification: { sent: false, reason: 'wechat-user-id-missing' } };
+  const digest = crypto.createHash('sha256').update(JSON.stringify({ accountId: account.accountId || '', recipientId, services: onboarding.services })).digest('hex');
+  const previous = readJsonFile(onboardingNotificationFile);
+  if (previous?.digest === digest) return { onboarding, notification: { sent: true, replay: true } };
+  const message = buildOnboardingMessage(onboarding);
+  try {
+    const delivery = await requestOpenAgentBridge('/api/channels/wechat/notify', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ recipientId, message }),
+    });
+    fs.mkdirSync(path.dirname(onboardingNotificationFile), { recursive: true, mode: 0o700 });
+    fs.writeFileSync(onboardingNotificationFile, `${JSON.stringify({ schemaVersion: 1, digest, sentAt: new Date().toISOString() }, null, 2)}\n`, { mode: 0o600 });
+    return { onboarding, notification: { sent: delivery?.sent === true, deferred: delivery?.deferred === true, replay: false } };
+  } catch (error) {
+    return { onboarding, notification: { sent: false, reason: 'bridge-notify-failed', detail: error instanceof Error ? error.message : String(error) } };
+  }
+}
+
+function buildOnboardingMessage(onboarding) {
+  const services = onboarding.services;
+  const lines = [
+    'Personal Agent 微信绑定已完成。',
+    `公网域名：${services.publicDomain.ready ? services.publicDomain.value : '未绑定'}`,
+    `Agent 邮箱：${services.agentMail.ready ? services.agentMail.value : '未绑定'}`,
+    `邮件服务：${services.managedMail.enabled ? '已启用' : '默认关闭'}`,
+    `配置服务：${services.managedConfiguration.enabled ? '已启用' : '默认关闭'}`,
+  ];
+  if (services.state !== 'enabled') {
+    lines.push('', '请先在 Personal Agent Cloud 使用 GitHub 免登并补充密码，然后回复“云账号绑定 <GitHub数字用户ID>”。下一条密码消息会被专用绑定流程截获，不会进入 Agent 会话历史。');
+  } else {
+    lines.push('', '功能检测已完成，域名、邮箱和渠道绑定均可用。');
+  }
+  return lines.join('\n');
 }
 
 async function requestOpenAgentBridge(pathname, options = {}) {
@@ -578,7 +634,7 @@ async function requestOpenAgentBridge(pathname, options = {}) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 6000);
   try {
-    const response = await fetch(`http://127.0.0.1:8788${pathname}`, {
+    const response = await fetch(`${openAgentBridgeBaseUrl}${pathname}`, {
       ...options,
       headers: { ...(options.headers || {}), authorization: `Bearer ${token}` },
       signal: controller.signal,

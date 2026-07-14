@@ -8,6 +8,7 @@
   "acceptance": [
     "WeChat identity maps to a reusable local Agent session",
     "Health failure asks for confirmation before login",
-    "Verification codes are bounded and are not persisted as conversation input"
+    "Verification codes are bounded and are not persisted as conversation input",
+    "Cloud passwords are intercepted by a one-time binding flow and never persisted as conversation input"
   ]
 }

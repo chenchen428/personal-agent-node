@@ -32,6 +32,8 @@ An artifact surface smoke, deterministic runner or source test cannot set `realA
 
 Managed Cloud is not a prerequisite for the Node core gate. For an integrated customer journey, additionally verify browser device authorization, same-origin verification URLs, bounded polling/slow-down, expiry and denial, single-use enrollment credentials, recoverable pending enrollment, device enrollment, heartbeat, tenant assignment and managed data plane. Verify CLI/browser output never contains a device code, enrollment credential, Node token, generated local password or tunnel secret.
 
+Also verify the first GitHub Owner login requires a separate CLI password; the password is scrypt-hashed by Cloud; `personal-agent cloud login` accepts it only through `--password-stdin`; local state contains the short-lived CLI token and redacted resources but never the password; and password rotation revokes prior CLI sessions. Managed mail and managed configuration must remain disabled until a public domain and matching Agent mailbox are both detected. The Console displays each prerequisite and resulting state. WeChat binding sends one proactive state summary, while its one-time Cloud binding coordinator intercepts the password before normal Agent message persistence.
+
 ## Decision
 
 Treat every missing required fact as failure. Source presence does not prove runtime behavior. Keep Node core and Cloud integration results separate so Cloud outages cannot invalidate the local-first product.

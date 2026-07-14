@@ -28,6 +28,8 @@
     { "name": "connection status", "risk": "R0", "capability": "gateway", "implementationStatus": "implemented", "description": "Show the canonical connection mode and redacted provider readiness." },
     { "name": "connection set|verify", "risk": "R2", "capability": "gateway", "implementationStatus": "planned", "description": "Declare or verify local-only, managed-cloud, or self-hosted-edge connectivity." },
     { "name": "cloud connect", "risk": "R2", "capability": "gateway", "implementationStatus": "implemented", "description": "Authorize an optional managed Cloud connection through browser-based device authorization." },
+    { "name": "cloud login", "risk": "R2", "capability": "gateway", "implementationStatus": "implemented", "description": "Authenticate with the immutable GitHub user ID and a stdin-only Cloud password, then bind redacted Cloud resources locally." },
+    { "name": "cloud resources", "risk": "R0", "capability": "gateway", "implementationStatus": "implemented", "description": "Refresh and show the redacted public domain, Agent mail identity, and managed-service readiness from the stored CLI session." },
     { "name": "cloud status", "risk": "R0", "capability": "gateway", "implementationStatus": "implemented", "description": "Show redacted optional managed Cloud enrollment state." },
     { "name": "cloud disconnect", "risk": "R2", "capability": "gateway", "implementationStatus": "planned", "description": "Disconnect an optional managed Cloud connection without deleting local data." },
     { "name": "edge plan|apply|status|verify|rollback", "risk": "R3", "capability": "edge-transport", "implementationStatus": "planned", "description": "Plan, apply, verify, and roll back a self-hosted Edge transport." },

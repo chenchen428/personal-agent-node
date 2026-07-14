@@ -541,6 +541,20 @@ export class SessionOrchestrator {
     return this.enqueueWechatText(sessionId, session.senderId, content, options);
   }
 
+  notifyWechatRecipient(recipientId, content) {
+    const normalizedRecipient = String(recipientId || '').trim();
+    const normalizedContent = String(content || '').trim();
+    if (!normalizedRecipient || !normalizedContent) throw new Error('WeChat recipient and message are required');
+    const session = this.store.getOrCreateMainSessionForChannel({
+      channel: 'wechat',
+      senderId: normalizedRecipient,
+      senderName: normalizedRecipient,
+      workspaceRoot: config.workspaceRoot,
+    });
+    this.store.setLastWechatRecipient(normalizedRecipient);
+    return this.enqueueWechatText(session.id, normalizedRecipient, normalizedContent, { persistOnStale: true });
+  }
+
   enqueueWechatText(sessionId, recipientId, content, { persistOnStale = true } = {}) {
     const previous = this.wechatNotificationQueues.get(recipientId) || Promise.resolve();
     const queued = previous.then(async () => {
@@ -598,7 +612,7 @@ function isFinalWechatTurnCandidate(event) {
 }
 
 function isWechatContextStaleError(error) {
-  return error?.ret === -2 || /sendmessage failed: ret=-2\b/.test(String(error?.message || error || ""));
+  return error?.ret === -2 || /(?:sendmessage failed: ret=-2\b|no cached context token)/i.test(String(error?.message || error || ""));
 }
 
 export function progressTimerInterval(progressIntervalMs) {

@@ -110,6 +110,31 @@ test("routes non-WeChat channel messages directly to worker sessions", async () 
   assert.doesNotMatch(calls[0].stdin, /open-abg session start/);
 });
 
+test("proactive WeChat onboarding is durably deferred until the first inbound context", async () => {
+  const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), "oab-orchestrator-onboarding-"));
+  const store = new BridgeStore({ dataDir, consoleBaseUrl: "https://agent.example.test" });
+  const sent = [];
+  const orchestrator = new SessionOrchestrator({
+    store,
+    hub: { broadcast: () => {} },
+    channels: { wechat: { sendText: async () => { throw new Error("No cached context token for wx-user."); } } },
+    runner: { runAppServerCommand: async () => ({ ok: true }), steerActiveTurn: async () => false, stopAppServerCommand: () => false },
+  });
+  try {
+    const scheduled = await orchestrator.notifyWechatRecipient("wx-user", "微信绑定完成，功能检测已完成。");
+    assert.deepEqual(scheduled, { sent: false, deferred: true });
+    assert.equal(store.listPendingWechatNotifications("wx-user").length, 1);
+    orchestrator.channels.wechat.sendText = async (_recipientId, content) => { sent.push(content); };
+    await orchestrator.handleChannelMessage("wechat", { senderId: "wx-user", senderName: "用户", text: "你好", attachments: [] });
+    await waitFor(() => sent.some((content) => content.includes("微信绑定完成")));
+    assert.equal(store.listPendingWechatNotifications("wx-user").length, 0);
+  } finally {
+    orchestrator.stop();
+    store.close();
+    fs.rmSync(dataDir, { recursive: true, force: true });
+  }
+});
+
 test("acknowledges WeChat immediately and queues the completed reply behind the receipt", async () => {
   const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), "oab-orchestrator-wechat-"));
   const store = new BridgeStore({ dataDir, consoleBaseUrl: "https://agent.example.test" });

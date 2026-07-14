@@ -5,7 +5,7 @@
 Personal Agent Node Beta requires Node.js 22.x. On macOS or Linux, install the exact release asset without cloning this repository:
 
 ```bash
-TAG=v0.1.0-beta.18
+TAG=v0.1.0-beta.19
 INSTALLER="$(mktemp "${TMPDIR:-/tmp}/personal-agent-installer.XXXXXX.mjs")"
 curl --fail --silent --show-error --location --proto '=https' --tlsv1.2 \
   --output "$INSTALLER" -- \
@@ -19,7 +19,7 @@ personal-agent doctor --json
 On Windows PowerShell:
 
 ```powershell
-$Tag = "v0.1.0-beta.18"
+$Tag = "v0.1.0-beta.19"
 $Installer = Join-Path $env:TEMP "personal-agent-$Tag-installer.mjs"
 Invoke-WebRequest -UseBasicParsing -Uri "https://github.com/chenchen428/personal-agent-node/releases/download/$Tag/personal-agent-node-$Tag-installer.mjs" -OutFile $Installer
 node $Installer --tag $Tag
@@ -29,13 +29,25 @@ Remove-Item $Installer
 
 The installer is a standalone release asset. It downloads the immutable universal archive for the same tag, verifies its SHA256 checksum, activates `current`, retains `previous`, prepares the local data root, and installs a current-following `personal-agent` command shim. The default data root is `~/.personal-agent`; pass `--data-root <path>` to the installer and later CLI commands when using a custom location.
 
-For the managed Free Edge path, register at `https://chenjianhui.site`, wait for an administrator to assign the dedicated domain, and run:
+Immediately after installation, open the local Personal Agent console and complete WeChat QR binding. The channel sends a proactive confirmation with the detected public-domain, Agent-mail, managed-mail, and managed-configuration states. Mail and configuration integration stay disabled until both a public domain and its matching Agent mailbox are present; this does not make WeChat a prerequisite for the local Web conversation acceptance gate.
+
+For the managed Free Edge path, sign in at `https://chenjianhui.site` with the allowlisted GitHub account. The first successful login assigns the dedicated domain and requires a separate Cloud password for CLI resource access. Then run:
 
 ```bash
 personal-agent cloud connect --json
 ```
 
-The CLI opens the short-lived authorization page on `chenjianhui.site` and prints only a user code plus same-origin fallback URL. Sign in with the registered email account, confirm the assigned Site, and return to the terminal. The CLI polls within the advertised expiry, consumes a one-time enrollment credential, enrolls the local device, verifies a heartbeat, and stores the long-lived Node token only in the mode-600 local secret file. It never prints the device code, enrollment credential, token, generated local password, or tunnel secret.
+The CLI opens the short-lived authorization page on `chenjianhui.site` and prints only a user code plus same-origin fallback URL. Sign in with GitHub, confirm the assigned Site, and return to the terminal. The CLI polls within the advertised expiry, consumes a one-time enrollment credential, enrolls the local device, verifies a heartbeat, and stores the long-lived Node token only in the mode-600 local secret file. It never prints the device code, enrollment credential, token, generated local password, or tunnel secret.
+
+To bind the public domain and Agent mail identity to the local Node without placing the Cloud password in process arguments:
+
+```bash
+printf '%s\n' "$PERSONAL_AGENT_CLOUD_PASSWORD" | \
+  personal-agent cloud login --github-user-id 12345678 --password-stdin --json
+personal-agent cloud resources --json
+```
+
+The password is used once and is never persisted. The resulting 24-hour CLI session is stored under the mode-600 local secrets directory; only redacted domain, mailbox, and readiness metadata is written under local configuration. From WeChat, reply `云账号绑定 <GitHub数字用户ID>` and send the password as the next standalone message. The dedicated coordinator intercepts that next message before Agent conversation persistence and never echoes or stores it.
 
 The managed Cloud origin is configurable. `PERSONAL_AGENT_CLOUD_URL=https://cloud.example` changes the default for the current process, while `personal-agent cloud connect --cloud-url https://cloud.example --json` is an explicit per-command override and takes priority over the environment. Custom origins must use HTTPS.
 
@@ -65,6 +77,7 @@ personal-agent help --json           # implemented commands only
 personal-agent help --preview --json # implemented and preview commands
 personal-agent help --all --json     # implemented, preview, and planned metadata
 personal-agent cloud connect --help --json # exact browser-authorization options and secret boundary
+personal-agent cloud login --help --json   # GitHub numeric ID plus stdin-only password boundary
 ```
 
 Preview execution requires an explicit `--preview` flag and returns a `PREVIEW_COMMAND` warning. `--all` works only with help and never enables planned commands. Planned and unknown commands fail closed with `CAPABILITY_UNAVAILABLE`.

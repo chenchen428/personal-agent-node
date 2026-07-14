@@ -110,6 +110,16 @@ test('release installation materializes Harness links before immutable verificat
   assert.match(installer, /verifyHarnessLinks\(source\)/);
 });
 
+test('fresh release installation immediately returns a WeChat onboarding prompt', () => {
+  const installer = fs.readFileSync(path.join(root, 'scripts', 'install-private-site-node-release.mjs'), 'utf8');
+  const githubInstaller = fs.readFileSync(path.join(root, 'scripts', 'install-from-github-release.mjs'), 'utf8');
+  for (const source of [installer, githubInstaller]) {
+    assert.match(source, /requiredAction:\s*["']bind-wechat["']/);
+    assert.match(source, /bind WeChat first/);
+    assert.match(source, /personal-agent status --json/);
+  }
+});
+
 test('installed personal-agent command follows the immutable current release', () => {
   const files = new Map();
   const fileSystem = { mkdirSync() {}, chmodSync() {}, writeFileSync(file, content) { files.set(file, content); } };

@@ -66,3 +66,15 @@ test('update page reports immutable release status without exposing an apply act
     fs.rmSync(fixtureRoot, { recursive: true, force: true });
   }
 });
+
+test('workbench reports managed service prerequisites and post-WeChat onboarding notification', () => {
+  const pageSource = fs.readFileSync(new URL('../projects/core/admin-panel/page.mjs', import.meta.url), 'utf8');
+  const serverSource = fs.readFileSync(new URL('../projects/core/admin-panel/server.mjs', import.meta.url), 'utf8');
+  for (const marker of ['data-managed-value="domain"', 'data-managed-value="mail"', 'data-managed-value="mail-service"', 'data-managed-value="config-service"', '/api/system/onboarding/status']) {
+    assert.match(pageSource, new RegExp(marker.replaceAll('/', '\\/')));
+  }
+  assert.match(serverSource, /completeWechatOnboarding/);
+  assert.match(serverSource, /Personal Agent 微信绑定已完成/);
+  assert.match(serverSource, /云账号绑定 <GitHub数字用户ID>/);
+  assert.match(serverSource, /wechat-onboarding-notification\.json/);
+});

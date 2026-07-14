@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 export const harnessLinks = Object.freeze([
   { link: 'CLAUDE.md', target: 'AGENTS.md', kind: 'file' },
@@ -62,4 +63,16 @@ export function verifyHarnessLinks(root, { platform = process.platform, fileSyst
     verified.push({ ...spec, actual });
   }
   return verified;
+}
+
+if (isMain()) {
+  const mode = process.argv[2] || '--check';
+  if (!['--check', '--force'].includes(mode)) throw new Error('Usage: harness-links.mjs [--check|--force]');
+  const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+  const links = mode === '--force' ? materializeHarnessLinks(root) : verifyHarnessLinks(root);
+  for (const link of links) process.stdout.write(`[OK] ${link.link} -> ${link.target}\n`);
+}
+
+function isMain() {
+  try { return fs.realpathSync(process.argv[1] || '') === fs.realpathSync(fileURLToPath(import.meta.url)); } catch { return false; }
 }

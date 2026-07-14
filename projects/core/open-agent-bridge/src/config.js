@@ -28,6 +28,7 @@ export const config = {
   rootDir,
   projectDir,
   workspaceRoot: resolvedWorkspaceRoot,
+  siteDataRoot,
   dataDir: resolvedDataDir,
   publicDir: path.resolve(process.env.OPEN_AGENT_BRIDGE_PUBLIC_DIR || path.join(projectDir, "public")),
   pagesDir: path.resolve(process.env.OPEN_AGENT_BRIDGE_PAGES_DIR || path.join(resolvedDataDir, "pages")),

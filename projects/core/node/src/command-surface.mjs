@@ -9,6 +9,8 @@ export const HANDLED_COMMAND_KEYS = Object.freeze([
   'skill verify',
   'connection status',
   'cloud connect',
+  'cloud login',
+  'cloud resources',
   'cloud status',
   'backup status',
   'mail status',
