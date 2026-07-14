@@ -83,11 +83,14 @@ test("canonical Console and domain API routes authenticate and rewrite to intern
       assert.equal((await request({ port, host: "example.site", path: "/app" })).status, 302);
       assert.equal((await request({ port, host: "example.site", path: "/app", headers: { cookie: "session=ok" } })).status, 200);
       assert.equal((await request({ port, host: "example.site", path: "/app/chat", headers: { cookie: "session=ok" } })).status, 200);
+      assert.equal((await request({ port, host: "example.site", path: "/app/mail", headers: { cookie: "session=ok" } })).status, 200);
+      assert.equal((await request({ port, host: "example.site", path: "/mail", headers: { cookie: "session=ok" } })).status, 404);
       assert.equal((await request({ port, host: "example.site", path: "/api/chat/sessions", headers: { cookie: "session=ok" } })).status, 200);
       assert.equal((await request({ port, host: "example.site", path: "/api/system/projects", headers: { cookie: "session=ok" } })).status, 200);
       assert.deepEqual(received.map(({ service, url }) => ({ service, url })), [
         { service: "console", url: "/" },
         { service: "bridge", url: "/agent-bridge" },
+        { service: "bridge", url: "/mail" },
         { service: "bridge", url: "/api/sessions" },
         { service: "console", url: "/api/projects" },
       ]);

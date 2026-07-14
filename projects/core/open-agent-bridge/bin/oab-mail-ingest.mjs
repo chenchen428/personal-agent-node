@@ -2,15 +2,23 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { ingestRawEmail } from "../src/automation/mail-ingest.js";
+import { ingestRawEmail, MAX_MAIL_BYTES } from "../src/automation/mail-ingest.js";
 
-const siteDataRoot = path.resolve(process.env.PRIVATE_SITE_DATA_ROOT || path.join(os.homedir(), ".personal-agent.local"));
-const mailDataDir = path.join(siteDataRoot, "mail-ingress");
-loadServiceEnv(process.env.OPEN_AGENT_BRIDGE_MAIL_ENV_FILE || path.join(mailDataDir, "mail-ingest.env"));
+const explicitEnvFile = process.env.OPEN_AGENT_BRIDGE_MAIL_ENV_FILE || process.env.OPEN_AGENT_BRIDGE_ENV_FILE || "";
+if (explicitEnvFile) loadServiceEnv(explicitEnvFile);
+const siteDataRoot = path.resolve(process.env.PRIVATE_SITE_DATA_ROOT || path.join(os.homedir(), ".personal-agent"));
+const mailDataDir = path.resolve(process.env.OPEN_AGENT_BRIDGE_MAIL_DATA_DIR || path.join(siteDataRoot, "mail"));
+if (!explicitEnvFile) loadServiceEnv(path.join(mailDataDir, "mail-ingest.env"));
 
 try {
   const chunks = [];
-  for await (const chunk of process.stdin) chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+  let totalBytes = 0;
+  for await (const chunk of process.stdin) {
+    const buffer = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
+    totalBytes += buffer.length;
+    if (totalBytes > MAX_MAIL_BYTES) throw new Error(`email exceeds ${MAX_MAIL_BYTES} bytes`);
+    chunks.push(buffer);
+  }
   const result = await ingestRawEmail(Buffer.concat(chunks), {
     dataDir: process.env.OPEN_AGENT_BRIDGE_MAIL_DATA_DIR || mailDataDir,
     apiBase: process.env.OPEN_AGENT_BRIDGE_API_BASE || `http://127.0.0.1:${process.env.OPEN_AGENT_BRIDGE_PORT || "8788"}`,

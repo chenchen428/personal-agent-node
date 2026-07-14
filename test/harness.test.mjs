@@ -15,8 +15,33 @@ test('customer Harness contains architecture registries and Agent guidance', () 
 
 test('customer Harness carries the portable Node acceptance standard', () => {
   const standard = fs.readFileSync(path.join(root, 'skills/personal-agent/references/acceptance.md'), 'utf8');
-  for (const requirement of ['Node Core Gate', 'Optional Managed Cloud Integration', 'local-admin', 'ten minutes', 'previous-release rollback']) assert.match(standard, new RegExp(requirement));
+  for (const requirement of ['Node Core Gate', 'Optional Managed Cloud Integration', 'local-admin', 'ten minutes', 'previous-release rollback', 'public GitHub Release asset', '"route": "/app/chat"', '"uniquePrompt": true', '"realAgentRuntime": true', '"sameSessionAgentReply": true', '"wechatRequired": false', 'WeChat is optional and never blocks', 'current-following shims']) assert.match(standard, new RegExp(requirement));
   assert.equal(fs.existsSync(path.join(root, 'test/fixtures/skill-cases/personal-agent-acceptance/case.json')), true);
+  const expected = JSON.parse(fs.readFileSync(path.join(root, 'test/fixtures/skill-cases/personal-agent-acceptance/expected.json'), 'utf8'));
+  assert.deepEqual(Object.keys(expected.node.webConversation), [
+    'releaseAssetRuntime',
+    'route',
+    'authenticated',
+    'uniquePrompt',
+    'realAgentRuntime',
+    'sameSessionAgentReply',
+    'wechatRequired'
+  ]);
+  assert.equal(expected.node.webConversation.route, '/app/chat');
+  assert.equal(expected.node.webConversation.wechatRequired, false);
+  const releaseWorkflow = fs.readFileSync(path.join(root, 'workflows/release.md'), 'utf8');
+  for (const requirement of ['Post-release Node gate', 'exact public asset', 'authenticate to its local `/app/chat`', 'real Agent runtime', 'same session', '"wechatRequired": false']) assert.match(releaseWorkflow, new RegExp(requirement));
+  const artifactVerifier = fs.readFileSync(path.join(root, 'scripts/verify-private-site-node-dist.mjs'), 'utf8');
+  assert.match(artifactVerifier, /webConversation:\s*\{/);
+  assert.match(artifactVerifier, /releaseAssetRuntime: false/);
+  assert.match(artifactVerifier, /realAgentRuntime: false/);
+  assert.match(artifactVerifier, /sameSessionAgentReply: false/);
+});
+
+test('seeded Node home links only to current path-based application routes', () => {
+  const source = fs.readFileSync(path.join(root, 'projects/core/node/bin/private-site.mjs'), 'utf8');
+  for (const route of ['/app', '/app/chat', '/app/mail', '/app/files']) assert.match(source, new RegExp(`href="${route}"`));
+  for (const legacy of ['/admin', '/agent', '/mail', '/files']) assert.doesNotMatch(source, new RegExp(`href="${legacy}"`));
 });
 
 test('Phase 0 behavior baseline registry and cases are complete', () => {

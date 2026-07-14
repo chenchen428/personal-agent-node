@@ -96,6 +96,7 @@ async function bundleNodeApplications() {
     [path.join(bridgeSource, "vendor", "agent-bridge", "lib", "_worker-entry.mjs"), path.join(outputRoot, "projects", "core", "open-agent-bridge", "app", "worker.mjs")],
     [path.join(bridgeSource, "src", "automation", "template-worker.mjs"), path.join(outputRoot, "projects", "core", "open-agent-bridge", "app", "template-worker.mjs")],
     [path.join(bridgeSource, "bin", "oab.mjs"), path.join(outputRoot, "projects", "core", "open-agent-bridge", "bin", "oab.mjs")],
+    [path.join(bridgeSource, "bin", "oab-mail-ingest.mjs"), path.join(outputRoot, "projects", "core", "open-agent-bridge", "bin", "oab-mail-ingest.mjs")],
     [path.join(root, "projects", "core", "admin-panel", "server.mjs"), path.join(outputRoot, "projects", "core", "admin-panel", "server.mjs")],
   ];
   await Promise.all(entries.map(([entryPoint, outfile]) => build({
@@ -125,7 +126,7 @@ function writeRuntimePackages() {
     version: bridgePackage.version,
     private: true,
     type: "module",
-    bin: { "open-abg": "bin/oab.mjs", oab: "bin/oab.mjs" },
+    bin: { "open-abg": "bin/oab.mjs", oab: "bin/oab.mjs", "open-abg-mail-ingest": "bin/oab-mail-ingest.mjs" },
     scripts: { start: "node app/server.mjs", worker: "node app/worker.mjs" },
     engines: { node: ">=22 <24" },
   }, null, 2)}\n`);
@@ -138,6 +139,7 @@ function writeManifest() {
     bridge: "projects/core/open-agent-bridge/app/server.mjs",
     worker: "projects/core/open-agent-bridge/app/worker.mjs",
     harnessCli: "projects/core/open-agent-bridge/bin/oab.mjs",
+    mailIngest: "projects/core/open-agent-bridge/bin/oab-mail-ingest.mjs",
     admin: "projects/core/admin-panel/server.mjs",
   };
   const manifest = {

@@ -8,6 +8,9 @@
   "acceptance": [
     "A local session stores ordered commands and events",
     "Concurrent input is serialized",
-    "Conversation execution does not require Cloud"
+    "Conversation execution does not require Cloud",
+    "Release and final acceptance install the GitHub Release asset and use authenticated /app/chat",
+    "A unique prompt reaches the real Agent runtime and its Agent reply is observed in the same session",
+    "wechatRequired is false and WeChat remains optional"
   ]
 }

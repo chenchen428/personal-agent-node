@@ -1,6 +1,6 @@
 {
   "name": "open-agent-bridge",
-  "version": "0.1.0-beta.10",
+  "version": "0.1.0-beta.11",
   "private": true,
   "type": "module",
   "description": "Open channel-first Agent Bridge for personal-agent.local with WeChat, Codex sessions, web conversation views, and Open Agent Bridge Pages publishing.",
@@ -16,7 +16,7 @@
     "start": "tsx src/server/server.ts",
     "cli": "node bin/oab.mjs",
     "test": "node --test --test-concurrency=4 test/*.test.mjs",
-    "check": "node --check bin/oab.mjs && node --test --test-concurrency=4 test/*.test.mjs",
+    "check": "node --check bin/oab.mjs && node --check bin/oab-mail-ingest.mjs && node --check src/automation/mail-ingest.js && node --test --test-concurrency=4 test/*.test.mjs",
     "smoke": "node --test --test-concurrency=4 test/*.test.mjs"
   },
   "dependencies": {

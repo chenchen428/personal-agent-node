@@ -6,12 +6,27 @@ Use this standard for installed Node milestone, release and final decisions. Nev
 
 - The exact public commit passes Linux, macOS and Windows CI. The prerelease has an installable GitHub asset, checksums and SBOM.
 - Install from the GitHub Release asset, never a source checkout or local build. Verify installed version, doctor, complete customer Harness and `CLAUDE.md`, `.agents/skills`, `.codex/skills`, `.claude/skills`, `.cursor/skills`.
-- With Cloud disconnected, verify authenticated `/app`, conversation, BYOK, channels, managed platforms, files, automation, Pages and encrypted backup/restore.
+- With Cloud disconnected, verify authenticated `/app`, local Web conversation, BYOK, channels, managed platforms, files, automation, Pages and encrypted backup/restore. For release and final acceptance, install the public GitHub Release asset, authenticate to its local `/app/chat`, send a unique prompt to the real Agent runtime and observe the Agent reply in that same session. Use exactly this sanitized object and never record the prompt, reply or session identifier:
+
+```json
+{
+  "releaseAssetRuntime": true,
+  "route": "/app/chat",
+  "authenticated": true,
+  "uniquePrompt": true,
+  "realAgentRuntime": true,
+  "sameSessionAgentReply": true,
+  "wechatRequired": false
+}
+```
+
+An artifact surface smoke, deterministic runner or source test cannot set `realAgentRuntime` or `sameSessionAgentReply` to true. WeChat is optional and never blocks the Node core gate.
 - Verify desktop and mobile Console use, public/authenticated/local-admin/internal route classes and default denial for unknown routes. `local-admin` accepts authenticated loopback only.
 - Verify registered stable capabilities through the versioned `personal-agent --json` contract, exit codes and redaction. Do not read internal databases or call internal ports.
 - Verify R2/R3 plans expire in ten minutes, bind a digest and require explicit local human approval. Reject Agent self-approval, remote approval and changed or expired plans.
 - Verify Worker and Extension failures are isolated and all mutable data stays under the configured data root.
-- Verify fresh installation, upgrade and previous-release rollback.
+- Verify fresh installation, upgrade and previous-release rollback. The GitHub Release installer must explicitly run packaged preparation so fresh and upgraded Nodes receive missing local secrets and current-following shims. Legacy mail migration must be idempotent, fail closed on conflicts and retain its source for rollback.
+- For release and final acceptance, verify a user-managed local MTA, absence of a bundled SMTP server, an installed current-following `open-abg-mail-ingest` shim, real EML plus attachment ingestion into local-only storage, authenticated `/app/mail`, ordinary encrypted backup/restore of `mail/`, absence of managed raw SMTP and IMAPS tunnels, read-only `mail status`, and preview-only `mail plan`. Evidence must omit real recipients, message bodies, attachments and secrets.
 
 ## Optional Managed Cloud Integration
 

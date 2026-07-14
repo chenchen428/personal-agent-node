@@ -13,6 +13,8 @@ test("creates and verifies an encrypted SQLite-aware backup", async () => {
   fs.mkdirSync(databaseDir, { recursive: true });
   fs.mkdirSync(path.join(dataRoot, "config"), { recursive: true });
   fs.writeFileSync(path.join(dataRoot, "config", "site.json"), "{}");
+  fs.mkdirSync(path.join(dataRoot, "mail", "archive", "2026-07-14"), { recursive: true });
+  fs.writeFileSync(path.join(dataRoot, "mail", "archive", "2026-07-14", "message.eml"), "Subject: retained\r\n\r\nmail body");
   const databasePath = path.join(databaseDir, "state.sqlite");
   const database = new DatabaseSync(databasePath);
   database.exec("CREATE TABLE item (id INTEGER PRIMARY KEY, value TEXT); INSERT INTO item(value) VALUES ('kept');");
@@ -31,6 +33,7 @@ test("creates and verifies an encrypted SQLite-aware backup", async () => {
     assert.notEqual(fs.readFileSync(archivePath).subarray(0, 16).toString(), "SQLite format 3");
     const restored = await verifyEncryptedBackup(config, { archivePath, keyFile, targetDir: target });
     assert.equal(restored.ok, true);
+    assert.equal(fs.readFileSync(path.join(target, "mail", "archive", "2026-07-14", "message.eml"), "utf8"), "Subject: retained\r\n\r\nmail body");
     const restoredDatabase = new DatabaseSync(path.join(target, "databases", "state.sqlite"), { readOnly: true });
     assert.equal(restoredDatabase.prepare("SELECT value FROM item").get().value, "kept");
     restoredDatabase.close();

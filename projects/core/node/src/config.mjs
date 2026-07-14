@@ -10,7 +10,7 @@ export const workspaceRoot = path.resolve(projectRoot, "..", "..", "..");
 export const distributionPath = path.join(workspaceRoot, "registry", "site-distribution.json");
 export const CONNECTION_MODES = Object.freeze(["local-only", "managed-cloud", "self-hosted-edge"]);
 
-export function resolveNodeConfig(env = process.env) {
+export function resolveNodeConfig(env = process.env, options = {}) {
   const dataRoot = path.resolve(env.PRIVATE_SITE_DATA_ROOT || path.join(os.homedir(), ".personal-agent"));
   const configDir = path.join(dataRoot, "config");
   const configPath = path.join(configDir, "site.json");
@@ -19,7 +19,9 @@ export function resolveNodeConfig(env = process.env) {
   const runtimeDir = path.join(dataRoot, "runtime");
   const logsDir = path.join(dataRoot, "logs");
   const distribution = readJson(distributionPath);
-  const site = fs.existsSync(configPath) ? migrateSiteConnectionMode(configPath, configDir) : null;
+  const siteResolution = fs.existsSync(configPath) ? resolveSiteConnectionMode(configPath, configDir) : null;
+  if (options.migrateSite === true && siteResolution?.changed) writeJsonAtomic(configPath, siteResolution.site, 0o600);
+  const site = siteResolution?.site || null;
   const fileEnv = readEnvFile(envPath);
   const mergedEnv = { ...fileEnv, ...env };
   const providers = readProviderDocument(providersPath);
@@ -28,6 +30,7 @@ export function resolveNodeConfig(env = process.env) {
   const agentWorkspaceRoot = path.resolve(mergedEnv.PRIVATE_SITE_AGENT_WORKSPACE || path.join(dataRoot, "workspace"));
   return {
     dataRoot,
+    mailDir: path.join(dataRoot, "mail"),
     configDir,
     configPath,
     providersPath,
@@ -68,13 +71,14 @@ export function initializeSite({ domain, dataRoot, connectionMode = "local-only"
   if (normalizedConnectionMode === "managed-cloud") {
     throw new Error("managed-cloud can only be activated by a completed personal-agent cloud connect flow");
   }
-  const config = resolveNodeConfig({ ...process.env, PRIVATE_SITE_DATA_ROOT: dataRoot || process.env.PRIVATE_SITE_DATA_ROOT, SITE_DOMAIN: normalizedDomain });
+  const config = resolveNodeConfig({ ...process.env, PRIVATE_SITE_DATA_ROOT: dataRoot || process.env.PRIVATE_SITE_DATA_ROOT, SITE_DOMAIN: normalizedDomain }, { migrateSite: true });
   ensureNodeDirectories(config);
   if (fs.existsSync(config.configPath)) {
     const existing = readJson(config.configPath);
     if (existing.asciiDomain !== normalizedDomain) {
       throw new Error(`Site data root already belongs to ${existing.asciiDomain}`);
     }
+    ensureMailIngressSecret(config);
     return { config: resolveNodeConfig({ ...process.env, PRIVATE_SITE_DATA_ROOT: config.dataRoot }), created: false };
   }
   const now = new Date().toISOString();
@@ -96,6 +100,7 @@ export function initializeSite({ domain, dataRoot, connectionMode = "local-only"
     SITE_DOMAIN: normalizedDomain,
     OPEN_AGENT_BRIDGE_API_TOKEN: randomSecret(),
     OPEN_AGENT_BRIDGE_UPLOAD_TOKEN: randomSecret(),
+    OPEN_AGENT_BRIDGE_MAIL_INGEST_TOKEN: randomSecret(),
     PERSONAL_AGENT_AUTH_COOKIE_SECRET: randomSecret(),
     ...(fs.existsSync(path.join(workspaceRoot, "projects", "personal", "lmt_tools")) ? { LMT_SESSION_SECRET: randomSecret() } : {}),
   });
@@ -122,7 +127,7 @@ export function setConnectionMode(config, mode) {
   return site;
 }
 
-function migrateSiteConnectionMode(configPath, configDir) {
+function resolveSiteConnectionMode(configPath, configDir) {
   const site = readJson(configPath);
   const completedCloudEnrollment = hasCompletedCloudEnrollment(configDir);
   let connectionMode;
@@ -137,8 +142,7 @@ function migrateSiteConnectionMode(configPath, configDir) {
   }
   const migrated = { ...site, schemaVersion: 2, connectionMode };
   delete migrated.edgeMode;
-  if (JSON.stringify(migrated) !== JSON.stringify(site)) writeJsonAtomic(configPath, migrated, 0o600);
-  return migrated;
+  return { site: migrated, changed: JSON.stringify(migrated) !== JSON.stringify(site) };
 }
 
 function hasCompletedCloudEnrollment(configDir) {
@@ -175,7 +179,9 @@ export function ensureNodeDirectories(config) {
     path.join(config.dataRoot, "channels"),
     path.join(config.dataRoot, "channels", "wechat"),
     path.join(config.dataRoot, "channels", "xiaohongshu"),
-    path.join(config.dataRoot, "channels", "mail"),
+    config.mailDir,
+    path.join(config.mailDir, "archive"),
+    path.join(config.mailDir, "spool", "tmp"),
     path.join(config.dataRoot, "files", "inbound"),
     path.join(config.dataRoot, "files", "managed"),
     path.join(config.dataRoot, "files", "materialized"),
@@ -199,6 +205,7 @@ export function requireRuntimeSecrets(config) {
     "PERSONAL_AGENT_AUTH_COOKIE_SECRET",
     "OPEN_AGENT_BRIDGE_API_TOKEN",
     "OPEN_AGENT_BRIDGE_UPLOAD_TOKEN",
+    "OPEN_AGENT_BRIDGE_MAIL_INGEST_TOKEN",
   ];
   if (fs.existsSync(path.join(workspaceRoot, "projects", "personal", "lmt_tools"))) required.push("LMT_SESSION_SECRET");
   const missing = required.filter((name) => !String(config.env[name] || "").trim());
@@ -225,6 +232,7 @@ export function buildServiceEnvironment(config) {
     OPEN_AGENT_BRIDGE_AGENT_DATA_DIR: path.join(config.dataRoot, "databases", "agent-data"),
     OPEN_AGENT_BRIDGE_AGENT_DATA_DATABASE: path.join(config.dataRoot, "databases", "agent-data", "agent-data.sqlite"),
     OPEN_AGENT_BRIDGE_AUTOMATION_DATA_DIR: path.join(config.dataRoot, "databases", "automations"),
+    OPEN_AGENT_BRIDGE_MAIL_DATA_DIR: config.mailDir,
     OPEN_AGENT_BRIDGE_PRIVATE_PUBLICATIONS_DIR: path.join(config.dataRoot, "publications", "private"),
     OPEN_AGENT_BRIDGE_CONSOLE_BASE_URL: serviceBaseUrl(config, "agent"),
     OPEN_AGENT_BRIDGE_CODEX_APP_SERVER_COMMAND: codexAppServer.appServerCommand,
@@ -232,6 +240,7 @@ export function buildServiceEnvironment(config) {
     OPEN_AGENT_BRIDGE_PAGES_BASE_URL: serviceBaseUrl(config, "pages"),
     OPEN_AGENT_BRIDGE_API_TOKEN: config.env.OPEN_AGENT_BRIDGE_API_TOKEN,
     OPEN_AGENT_BRIDGE_UPLOAD_TOKEN: config.env.OPEN_AGENT_BRIDGE_UPLOAD_TOKEN,
+    OPEN_AGENT_BRIDGE_MAIL_INGEST_TOKEN: config.env.OPEN_AGENT_BRIDGE_MAIL_INGEST_TOKEN,
     ONLINE_PAGES_UPLOAD_TOKEN: config.env.OPEN_AGENT_BRIDGE_UPLOAD_TOKEN,
     CLI_BRIDGE_DATA_DIR: path.join(config.dataRoot, "channels", "wechat"),
     WECHAT_INBOUND_ATTACHMENTS_DIR: path.join(config.dataRoot, "files", "inbound"),
@@ -404,6 +413,76 @@ export function mergeSecretEnv(filePath, incoming, allowlist = null) {
   writeEnvAtomic(filePath, { ...existing, ...filtered });
 }
 
+export function ensureMailIngressSecret(config) {
+  if (!config?.envPath) throw new Error("Personal Agent mail ingress requires a Site environment path");
+  const existing = readEnvFile(config.envPath);
+  if (String(existing.OPEN_AGENT_BRIDGE_MAIL_INGEST_TOKEN || "").trim()) return false;
+  writeEnvAtomic(config.envPath, { ...existing, OPEN_AGENT_BRIDGE_MAIL_INGEST_TOKEN: randomSecret() });
+  return true;
+}
+
+export function migrateLegacyMailData(config) {
+  if (!config?.dataRoot || !config?.mailDir) throw new Error("Personal Agent mail migration requires a resolved Node configuration");
+  const dataRoot = path.resolve(config.dataRoot);
+  const targetRoot = confinedPath(dataRoot, config.mailDir, "mail migration target");
+  const legacyRoots = [
+    path.join(dataRoot, "mail-ingress"),
+    path.join(dataRoot, "channels", "mail"),
+  ].filter((candidate) => fs.existsSync(candidate));
+  if (!legacyRoots.length) return { migrated: false, copied: 0, identical: 0, sources: [], sourcesRetained: true, rollbackSafe: true };
+
+  const targetEntries = fs.existsSync(targetRoot) ? inspectMailTree(targetRoot, targetRoot, "target") : { directories: [], files: [] };
+  const targetDirectories = new Set(targetEntries.directories);
+  const targetFiles = new Map(targetEntries.files.map((entry) => [entry.relative, entry.path]));
+  const sourceFiles = new Map();
+  const sourceDirectories = new Set();
+  for (const sourceRoot of legacyRoots) {
+    confinedPath(dataRoot, sourceRoot, "legacy mail source");
+    const inspected = inspectMailTree(sourceRoot, sourceRoot, "legacy source");
+    for (const relative of inspected.directories) sourceDirectories.add(relative);
+    for (const entry of inspected.files) {
+      const existing = sourceFiles.get(entry.relative);
+      if (existing && !sameFileContent(existing.path, entry.path)) {
+        throw new Error(`Legacy mail migration conflict between sources: ${entry.relative}`);
+      }
+      if (!existing) sourceFiles.set(entry.relative, entry);
+    }
+  }
+
+  for (const relative of sourceDirectories) {
+    if (sourceFiles.has(relative)) throw new Error(`Legacy mail migration source type conflict: ${relative}`);
+    if (targetFiles.has(relative)) throw new Error(`Legacy mail migration directory conflicts with target file: ${relative}`);
+  }
+  let identical = 0;
+  const copies = [];
+  for (const [relative, source] of sourceFiles) {
+    if (targetDirectories.has(relative)) throw new Error(`Legacy mail migration file conflicts with target directory: ${relative}`);
+    const target = path.join(targetRoot, ...relative.split("/"));
+    const existing = targetFiles.get(relative);
+    if (!existing) copies.push({ ...source, target });
+    else if (sameFileContent(source.path, existing)) identical += 1;
+    else throw new Error(`Legacy mail migration target conflict: ${relative}`);
+  }
+
+  fs.mkdirSync(targetRoot, { recursive: true, mode: 0o700 });
+  fs.chmodSync(targetRoot, 0o700);
+  for (const relative of [...sourceDirectories].sort((left, right) => left.split("/").length - right.split("/").length)) {
+    const directory = path.join(targetRoot, ...relative.split("/"));
+    fs.mkdirSync(directory, { recursive: true, mode: 0o700 });
+    fs.chmodSync(directory, 0o700);
+  }
+  for (const existing of targetFiles.values()) fs.chmodSync(existing, 0o600);
+  for (const entry of copies) copyMailFileAtomic(entry.path, entry.target);
+  return {
+    migrated: copies.length > 0,
+    copied: copies.length,
+    identical,
+    sources: legacyRoots.map((source) => path.relative(dataRoot, source).replaceAll("\\", "/")),
+    sourcesRetained: true,
+    rollbackSafe: true,
+  };
+}
+
 export function writeJsonAtomic(filePath, value, mode = 0o600) {
   fs.mkdirSync(path.dirname(filePath), { recursive: true, mode: 0o700 });
   const temporary = `${filePath}.${process.pid}.tmp`;
@@ -432,6 +511,61 @@ function quoteEnv(value) {
 
 function randomSecret() {
   return crypto.randomBytes(32).toString("base64url");
+}
+
+function confinedPath(root, candidate, label) {
+  const resolved = path.resolve(candidate);
+  if (resolved !== root && !resolved.startsWith(`${root}${path.sep}`)) throw new Error(`${label} escapes PRIVATE_SITE_DATA_ROOT`);
+  return resolved;
+}
+
+function inspectMailTree(root, current, label) {
+  const rootStat = fs.lstatSync(root);
+  if (!rootStat.isDirectory() || rootStat.isSymbolicLink()) throw new Error(`${label} must be a real directory: ${root}`);
+  const output = { directories: [], files: [] };
+  const walk = (directory) => {
+    for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
+      const entryPath = path.join(directory, entry.name);
+      const stat = fs.lstatSync(entryPath);
+      const relative = path.relative(root, entryPath).replaceAll("\\", "/");
+      if (!relative || relative.startsWith("../") || path.isAbsolute(relative)) throw new Error(`${label} contains an unsafe path`);
+      if (stat.isSymbolicLink()) throw new Error(`${label} contains a symbolic link: ${relative}`);
+      if (stat.isDirectory()) {
+        output.directories.push(relative);
+        walk(entryPath);
+      } else if (stat.isFile()) output.files.push({ relative, path: entryPath });
+      else throw new Error(`${label} contains an unsupported entry: ${relative}`);
+    }
+  };
+  walk(current);
+  return output;
+}
+
+function sameFileContent(left, right) {
+  const leftStat = fs.statSync(left);
+  const rightStat = fs.statSync(right);
+  if (leftStat.size !== rightStat.size) return false;
+  return crypto.createHash("sha256").update(fs.readFileSync(left)).digest("hex")
+    === crypto.createHash("sha256").update(fs.readFileSync(right)).digest("hex");
+}
+
+function copyMailFileAtomic(source, target) {
+  fs.mkdirSync(path.dirname(target), { recursive: true, mode: 0o700 });
+  fs.chmodSync(path.dirname(target), 0o700);
+  const temporary = `${target}.${process.pid}.${crypto.randomBytes(6).toString("hex")}.migrating`;
+  try {
+    fs.copyFileSync(source, temporary, fs.constants.COPYFILE_EXCL);
+    fs.chmodSync(temporary, 0o600);
+    const descriptor = fs.openSync(temporary, "r");
+    try { fs.fsyncSync(descriptor); } finally { fs.closeSync(descriptor); }
+    try {
+      fs.linkSync(temporary, target);
+    } catch (error) {
+      if (error?.code !== "EEXIST" || !sameFileContent(temporary, target)) throw error;
+    }
+  } finally {
+    fs.rmSync(temporary, { force: true });
+  }
 }
 
 function opaqueId(prefix) {

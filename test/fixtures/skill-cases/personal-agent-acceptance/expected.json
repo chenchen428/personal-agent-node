@@ -1,9 +1,29 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "acceptanceLevel": "release",
-  "nodeCore": {
-    "ok": false,
-    "reason": "runtime evidence required"
+  "node": {
+    "webConversation": {
+      "releaseAssetRuntime": true,
+      "route": "/app/chat",
+      "authenticated": true,
+      "uniquePrompt": true,
+      "realAgentRuntime": false,
+      "sameSessionAgentReply": false,
+      "wechatRequired": false
+    },
+    "localMail": {
+      "requiredAt": ["release", "final"],
+      "containsRecipients": false,
+      "containsBodies": false,
+      "containsAttachments": false,
+      "containsSecrets": false
+    }
+  },
+  "decision": {
+    "nodeCore": {
+      "ok": false,
+      "reason": "runtime evidence required"
+    }
   },
   "managedCloudIntegration": {
     "required": false,

@@ -1,0 +1,12 @@
+# Non-secret shape only. Render locally after reviewing workflows/local-mail.md.
+#
+# transport_maps entry:
+# <site-domain>  personal_agent:
+#
+# master.cf pipe service. Run as the same unprivileged user that owns the
+# Personal Agent data root so the current-following shim can read its 0600 env.
+personal_agent unix  -       n       n       -       -       pipe
+  flags=Rq user=<personal-agent-user> argv=<user-home>/.local/bin/open-abg-mail-ingest --recipient ${recipient} --sender ${sender}
+
+# Apply a strict recipient allowlist before this transport. The trusted MTA must
+# strip untrusted Authentication-Results and add its own verified result.

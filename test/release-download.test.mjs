@@ -143,4 +143,8 @@ test('GitHub installer keeps checksum verification after transport fallback', ()
   assert.match(installer, /createHash\('sha256'\)/);
   assert.match(installer, /Release checksum mismatch/);
   assert.match(installer, /install-private-site-node-release\.mjs/);
+  assert.match(installer, /prepareEntrypoint/);
+  assert.match(installer, /\[prepareEntrypoint, 'prepare'\]/);
+  assert.match(installer, /PRIVATE_SITE_INSTALL_ROOT/);
+  assert.match(installer, /PRIVATE_SITE_DATA_ROOT/);
 });

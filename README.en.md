@@ -53,6 +53,8 @@ personal-agent cloud connect --json
 
 The CLI opens a short-lived authorization page on `personal-agent.cn` and exposes only a verification URL and user code. After browser confirmation, it consumes a one-time enrollment credential. The long-lived Node token is never shown in the browser, terminal output, or `cloud.json`.
 
+Release and final Node acceptance use the GitHub Release installation's authenticated local `/app/chat`: send a unique prompt to the real Agent runtime and verify the Agent reply in the same session. Canonical evidence always records `wechatRequired=false`; WeChat is optional and never blocks the Node core gate.
+
 ## Customer-machine Harness
 
 This repository contains the complete customer-machine Agent Harness: project and skill registries, Agent constraints, portable Skills, reproducible fixtures, workspace guards, runtime workflows, and compatibility bridges for Codex, Claude, Cursor, and generic Agent clients.

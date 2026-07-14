@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import crypto from 'node:crypto';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -142,6 +143,49 @@ test('connection status uses the canonical mode in the standard JSON envelope', 
   }
 });
 
+test('mail status is R0 read-only while mail plan is preview-only', () => {
+  const dataRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'personal-agent-mail-cli-'));
+  try {
+    const initialized = initializeSite({ domain: 'local.example', dataRoot });
+    const envPath = initialized.config.envPath;
+    const withoutMailToken = fs.readFileSync(envPath, 'utf8')
+      .split(/\r?\n/)
+      .filter((line) => !line.startsWith('OPEN_AGENT_BRIDGE_MAIL_INGEST_TOKEN='))
+      .join('\n');
+    fs.writeFileSync(envPath, `${withoutMailToken.replace(/\n*$/, '')}\n`, { mode: 0o600 });
+    fs.writeFileSync(initialized.config.configPath, `${JSON.stringify({ ...initialized.config.site, schemaVersion: 1, edgeMode: 'local-only' }, null, 2)}\n`, { mode: 0o600 });
+    const before = snapshotDataRoot(dataRoot);
+
+    const status = run(['mail', 'status', '--json', '--data-root', dataRoot]);
+    assert.equal(status.status, 0, status.stderr);
+    const statusBody = JSON.parse(status.stdout);
+    assert.equal(statusBody.result.mail.ingress.tokenConfigured, false);
+    assert.equal(statusBody.result.mail.policy.mtaUserManaged, true);
+    assert.equal(statusBody.result.mail.policy.smtpServerBundled, false);
+    assert.equal(statusBody.result.mail.policy.managedRawMailTunnelBundled, false);
+    assert.deepEqual(snapshotDataRoot(dataRoot), before, 'R0 mail status must not rewrite any Site state');
+
+    const doctor = run(['doctor', '--json', '--data-root', dataRoot]);
+    assert.equal(doctor.status, 0, doctor.stderr);
+    const doctorBody = JSON.parse(doctor.stdout);
+    assert.equal(doctorBody.result.checks.find((check) => check.id === 'mail-ingress-token').ok, false);
+    assert.deepEqual(snapshotDataRoot(dataRoot), before, 'doctor must remain read-only across the complete data root');
+
+    const blockedPlan = run(['mail', 'plan', '--json', '--data-root', dataRoot]);
+    assert.equal(blockedPlan.status, 7);
+    assert.equal(JSON.parse(blockedPlan.stderr).error.code, 'CAPABILITY_UNAVAILABLE');
+    const plan = run(['mail', 'plan', '--preview', '--json', '--data-root', dataRoot]);
+    assert.equal(plan.status, 0, plan.stderr);
+    const planBody = JSON.parse(plan.stdout);
+    assert.equal(planBody.result.plan.mutates, false);
+    assert.equal(planBody.result.plan.previewOnly, true);
+    assert.ok(planBody.warnings.some((warning) => warning.code === 'PREVIEW_COMMAND'));
+    assert.deepEqual(snapshotDataRoot(dataRoot), before, 'preview mail plan must remain read-only across the complete data root');
+  } finally {
+    fs.rmSync(dataRoot, { recursive: true, force: true });
+  }
+});
+
 function run(args, env = {}) {
   return spawnSync(process.execPath, [cli, ...args], { cwd: root, encoding: 'utf8', env: { ...process.env, ...env } });
 }
@@ -150,4 +194,23 @@ function runOk(args, env = {}) {
   const result = run(args, env);
   assert.equal(result.status, 0, `${args.join(' ')}\n${result.stdout}\n${result.stderr}`);
   return result;
+}
+
+function snapshotDataRoot(root) {
+  const entries = [];
+  const walk = (directory) => {
+    for (const entry of fs.readdirSync(directory, { withFileTypes: true }).sort((left, right) => left.name.localeCompare(right.name))) {
+      const target = path.join(directory, entry.name);
+      const relative = path.relative(root, target).replaceAll('\\', '/');
+      const stat = fs.lstatSync(target);
+      if (entry.isDirectory()) {
+        entries.push({ path: relative, type: 'directory', mode: stat.mode & 0o777 });
+        walk(target);
+      } else if (entry.isFile()) {
+        entries.push({ path: relative, type: 'file', mode: stat.mode & 0o777, sha256: crypto.createHash('sha256').update(fs.readFileSync(target)).digest('hex') });
+      } else entries.push({ path: relative, type: 'other' });
+    }
+  };
+  walk(root);
+  return entries;
 }

@@ -16,7 +16,7 @@ export async function createEncryptedBackup(config, { outputPath, keyFile, fullR
   const tarPath = path.join(staging, "payload.tar");
   try {
     fs.mkdirSync(payloadRoot, { recursive: true });
-    const roots = ["config", "databases", "files", "publications"];
+    const roots = ["config", "databases", "files", "mail", "publications"];
     if (fullRecovery) roots.push("secrets", "channels", "extensions");
     for (const name of roots) {
       const source = path.join(config.dataRoot, name);

@@ -22,7 +22,7 @@
       "label": "Local Agent conversation",
       "case": "test/fixtures/baseline-cases/agent-conversation/case.json",
       "command": ["node", "--test", "projects/core/open-agent-bridge/test/broker.test.mjs", "projects/core/open-agent-bridge/test/orchestrator.test.mjs"],
-      "requirements": ["A local session stores ordered commands and events", "Concurrent input is serialized", "Conversation execution does not require Cloud"]
+      "requirements": ["A local session stores ordered commands and events", "Concurrent input is serialized", "Conversation execution does not require Cloud", "Release and final acceptance install the GitHub Release asset and use authenticated /app/chat", "A unique prompt reaches the real Agent runtime and its Agent reply is observed in the same session", "wechatRequired is false and WeChat remains optional"]
     },
     {
       "id": "wechat-conversation-channel",

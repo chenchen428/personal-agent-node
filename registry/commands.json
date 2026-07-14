@@ -32,6 +32,8 @@
     { "name": "cloud disconnect", "risk": "R2", "capability": "gateway", "implementationStatus": "planned", "description": "Disconnect an optional managed Cloud connection without deleting local data." },
     { "name": "edge plan|apply|status|verify|rollback", "risk": "R3", "capability": "edge-transport", "implementationStatus": "planned", "description": "Plan, apply, verify, and roll back a self-hosted Edge transport." },
     { "name": "backup status", "risk": "R0", "capability": "runtime", "implementationStatus": "implemented", "description": "Show the local backup policy and most recent scheduler state." },
+    { "name": "mail status", "risk": "R0", "capability": "mail", "implementationStatus": "implemented", "description": "Show redacted local MTA pipe, ingress shim, archive, and authenticated Web readiness." },
+    { "name": "mail plan", "risk": "R0", "capability": "mail", "implementationStatus": "preview", "description": "Describe the non-mutating local MTA pipe contract without bundling or configuring an SMTP server." },
     { "name": "backup create|verify|restore-plan|restore-apply", "risk": "R3", "capability": "runtime", "implementationStatus": "planned", "description": "Create, verify, plan, or apply encrypted backup recovery through the unified CLI." },
     { "name": "update check|plan|apply|rollback", "risk": "R3", "capability": "runtime", "implementationStatus": "planned", "description": "Check, plan, apply, or roll back immutable Node releases." },
     { "name": "audit list|show", "risk": "R0", "capability": "runtime", "implementationStatus": "planned", "description": "Read redacted local audit records through the unified CLI." },

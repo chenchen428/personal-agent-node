@@ -11,6 +11,7 @@ import { providerStatus } from '../src/providers.mjs';
 import { requestControl } from '../src/control-service.mjs';
 import { enrollWithCloudDeviceAuthorization } from '../src/cloud-enrollment.mjs';
 import { commandKey, expandCommandName, HANDLED_COMMAND_KEYS } from '../src/command-surface.mjs';
+import { localMailPlan, localMailStatus } from '../src/mail.mjs';
 
 const handledCommandKeys = new Set(HANDLED_COMMAND_KEYS);
 
@@ -54,6 +55,8 @@ async function executeHandled({ resource, action, id, args, requestedCommand }) 
   if (resource === 'cloud' && action === 'connect') return cloudConnect(args);
   if (resource === 'cloud' && action === 'status') return cloudStatus();
   if (resource === 'backup' && action === 'status') return backupStatus();
+  if (resource === 'mail' && action === 'status') return mailStatus();
+  if (resource === 'mail' && action === 'plan') return mailPlan();
   if (resource === 'extension' && action === 'list') return extensionList();
   if (resource === 'extension' && action === 'inspect') return extensionInspect(id);
   if (resource === 'operation' && action === 'list') return controlResult(await requestControl(requireConfig(), 'operation.list'));
@@ -83,11 +86,19 @@ function statusResult() {
 
 function doctorResult() {
   const config = safeConfig();
+  const packaged = fs.existsSync(path.join(workspaceRoot, 'release-manifest.json'));
+  // Doctor is a bounded readiness probe. Archive accounting belongs to the
+  // explicit mail status command and must never make every doctor run rescan EML.
+  const mail = config ? localMailStatus(config, { scanArchive: false }) : null;
   const checks = [
     { id: 'node-version', ok: Number(process.versions.node.split('.')[0]) === 22 },
     { id: 'release-or-source', ok: fs.existsSync(path.join(workspaceRoot, 'release-manifest.json')) || fs.existsSync(path.join(workspaceRoot, 'package.json')) },
     { id: 'capability-registry', ok: fs.existsSync(path.join(workspaceRoot, 'registry', 'capabilities.json')) },
     { id: 'data-root-confined', ok: !config || path.isAbsolute(config.dataRoot) },
+    { id: 'mail-data-root', ok: !config || config.mailDir === path.join(config.dataRoot, 'mail') },
+    { id: 'mail-ingress-token', ok: !config || mail.ingress.tokenConfigured },
+    { id: 'mail-ingest-entrypoint', ok: fs.existsSync(path.join(workspaceRoot, 'projects', 'core', 'open-agent-bridge', 'bin', 'oab-mail-ingest.mjs')) },
+    { id: 'mail-ingest-shim', ok: !config || !packaged || mail.ingress.shimReady },
   ];
   return success('doctor', { healthy: checks.every((check) => check.ok), checks });
 }
@@ -158,6 +169,16 @@ async function cloudConnect(args) {
 function backupStatus() {
   const config = requireConfig();
   return success('backup status', { backup: readBackupState(config) });
+}
+
+function mailStatus() {
+  const config = requireConfig();
+  return success('mail status', { mail: localMailStatus(config) });
+}
+
+function mailPlan() {
+  const config = requireConfig();
+  return success('mail plan', { plan: localMailPlan(config) }, [], ['Review workflows/local-mail.md before configuring a local MTA pipe']);
 }
 
 function extensionList() {

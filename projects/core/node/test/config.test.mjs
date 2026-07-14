@@ -3,7 +3,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
-import { initializeSite, normalizeApexDomain, normalizeConnectionMode, normalizeRoutingMode, resolveCodexAppServer, resolveCodexCli, resolveNodeConfig } from "../src/config.mjs";
+import { ensureMailIngressSecret, initializeSite, migrateLegacyMailData, normalizeApexDomain, normalizeConnectionMode, normalizeRoutingMode, readEnvFile, resolveCodexAppServer, resolveCodexCli, resolveNodeConfig } from "../src/config.mjs";
 import { buildRoutes } from "../src/gateway.mjs";
 
 test("normalizes Unicode apex domains to ASCII", () => {
@@ -34,8 +34,30 @@ test("initializes one stable Site identity and fixed path routes", () => {
     assert.equal(config.site.connectionMode, "local-only");
     assert.equal(config.site.schemaVersion, 2);
     assert.equal("edgeMode" in config.site, false);
+    assert.equal(config.mailDir, path.join(dataRoot, "mail"));
+    assert.ok(readEnvFile(config.envPath).OPEN_AGENT_BRIDGE_MAIL_INGEST_TOKEN);
     assert.deepEqual(config.allowedHosts, ["example.site", "example.site.local", "localhost", "127.0.0.1"]);
     assert.ok(fs.existsSync(config.envPath));
+  } finally {
+    fs.rmSync(dataRoot, { recursive: true, force: true });
+  }
+});
+
+test("provisions a missing mail ingress token only at an explicit initialization or upgrade boundary", () => {
+  const dataRoot = fs.mkdtempSync(path.join(os.tmpdir(), "personal-agent-mail-secret-"));
+  try {
+    const initialized = initializeSite({ domain: "example.site", dataRoot });
+    const config = resolveNodeConfig({ PRIVATE_SITE_DATA_ROOT: dataRoot });
+    const env = readEnvFile(config.envPath);
+    delete env.OPEN_AGENT_BRIDGE_MAIL_INGEST_TOKEN;
+    fs.writeFileSync(config.envPath, `${Object.entries(env).map(([key, value]) => `${key}=${JSON.stringify(value)}`).join("\n")}\n`, { mode: 0o600 });
+    assert.equal(readEnvFile(config.envPath).OPEN_AGENT_BRIDGE_MAIL_INGEST_TOKEN, undefined);
+    assert.equal(ensureMailIngressSecret(config), true);
+    const token = readEnvFile(config.envPath).OPEN_AGENT_BRIDGE_MAIL_INGEST_TOKEN;
+    assert.ok(token);
+    assert.equal(ensureMailIngressSecret(resolveNodeConfig({ PRIVATE_SITE_DATA_ROOT: dataRoot })), false);
+    assert.equal(readEnvFile(config.envPath).OPEN_AGENT_BRIDGE_MAIL_INGEST_TOKEN, token);
+    assert.equal(initialized.created, true);
   } finally {
     fs.rmSync(dataRoot, { recursive: true, force: true });
   }
@@ -47,7 +69,7 @@ test("connection modes are canonical and managed Cloud cannot be declared before
   assert.throws(() => initializeSite({ domain: "example.site", connectionMode: "managed-cloud" }), /completed personal-agent cloud connect/i);
 });
 
-test("migrates legacy connection state without reporting incomplete Cloud enrollment as managed", () => {
+test("reads legacy connection state without mutation and migrates only at an explicit boundary", () => {
   for (const [completed, expected] of [[false, "local-only"], [true, "managed-cloud"]]) {
     const dataRoot = fs.mkdtempSync(path.join(os.tmpdir(), "personal-agent-mode-migration-"));
     try {
@@ -55,14 +77,52 @@ test("migrates legacy connection state without reporting incomplete Cloud enroll
       fs.mkdirSync(configDir, { recursive: true });
       fs.writeFileSync(path.join(configDir, "site.json"), `${JSON.stringify({ schemaVersion: 1, siteId: "site_old", nodeId: "node_old", asciiDomain: "legacy.example", displayDomain: "legacy.example", edgeMode: "managed", routingMode: "path" })}\n`);
       if (completed) fs.writeFileSync(path.join(configDir, "cloud.json"), `${JSON.stringify({ schemaVersion: 1, cloudUrl: "https://personal-agent.cn", managedHost: "legacy.personal-agent.cn", siteId: "site_cloud", enrolledAt: "2026-07-13T00:00:00.000Z", tunnel: { address: "10.77.0.2/32", endpoint: "edge.personal-agent.cn:51821" } })}\n`);
+      const sitePath = path.join(configDir, "site.json");
+      const before = fs.readFileSync(sitePath);
       const config = resolveNodeConfig({ PRIVATE_SITE_DATA_ROOT: dataRoot });
       assert.equal(config.site.connectionMode, expected);
       assert.equal(config.site.schemaVersion, 2);
       assert.equal("edgeMode" in config.site, false);
-      assert.deepEqual(JSON.parse(fs.readFileSync(config.configPath, "utf8")), config.site);
+      assert.deepEqual(fs.readFileSync(sitePath), before);
+      const migrated = resolveNodeConfig({ PRIVATE_SITE_DATA_ROOT: dataRoot }, { migrateSite: true });
+      assert.deepEqual(JSON.parse(fs.readFileSync(migrated.configPath, "utf8")), migrated.site);
     } finally {
       fs.rmSync(dataRoot, { recursive: true, force: true });
     }
+  }
+});
+
+test("migrates beta mail roots into mail without deleting rollback sources and fails closed on conflicts", () => {
+  const dataRoot = fs.mkdtempSync(path.join(os.tmpdir(), "personal-agent-mail-migration-"));
+  try {
+    const config = resolveNodeConfig({ PRIVATE_SITE_DATA_ROOT: dataRoot });
+    const firstLegacy = path.join(dataRoot, "mail-ingress", "archive", "2026-07-13");
+    const secondLegacy = path.join(dataRoot, "channels", "mail", "archive", "2026-07-13");
+    fs.mkdirSync(firstLegacy, { recursive: true });
+    fs.mkdirSync(secondLegacy, { recursive: true });
+    fs.writeFileSync(path.join(firstLegacy, "one.eml"), "Subject: one\r\n\r\nfirst", { mode: 0o644 });
+    fs.writeFileSync(path.join(secondLegacy, "one.eml"), "Subject: one\r\n\r\nfirst", { mode: 0o644 });
+    fs.writeFileSync(path.join(secondLegacy, "two.eml"), "Subject: two\r\n\r\nsecond", { mode: 0o644 });
+
+    const first = migrateLegacyMailData(config);
+    assert.equal(first.copied, 2);
+    assert.equal(first.sourcesRetained, true);
+    assert.equal(first.rollbackSafe, true);
+    assert.equal(fs.existsSync(path.join(firstLegacy, "one.eml")), true);
+    assert.equal(fs.readFileSync(path.join(config.mailDir, "archive", "2026-07-13", "two.eml"), "utf8"), "Subject: two\r\n\r\nsecond");
+    if (process.platform !== "win32") assert.equal(fs.statSync(path.join(config.mailDir, "archive", "2026-07-13", "one.eml")).mode & 0o777, 0o600);
+
+    const second = migrateLegacyMailData(config);
+    assert.equal(second.copied, 0);
+    assert.equal(second.identical, 2);
+
+    fs.writeFileSync(path.join(firstLegacy, "conflict.eml"), "legacy");
+    fs.writeFileSync(path.join(config.mailDir, "archive", "2026-07-13", "conflict.eml"), "different");
+    fs.writeFileSync(path.join(firstLegacy, "not-copied.eml"), "must remain only in legacy");
+    assert.throws(() => migrateLegacyMailData(config), /target conflict/);
+    assert.equal(fs.existsSync(path.join(config.mailDir, "archive", "2026-07-13", "not-copied.eml")), false);
+  } finally {
+    fs.rmSync(dataRoot, { recursive: true, force: true });
   }
 });
 

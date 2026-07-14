@@ -12,7 +12,7 @@ const resolvedWorkspaceRoot = path.resolve(process.env.OPEN_AGENT_BRIDGE_WORKSPA
 const siteDataRoot = path.resolve(process.env.PRIVATE_SITE_DATA_ROOT || path.join(os.homedir(), ".personal-agent"));
 const defaultDataDir = path.join(siteDataRoot, "databases", "bridge");
 const resolvedDataDir = path.resolve(process.env.OPEN_AGENT_BRIDGE_DATA_DIR || defaultDataDir);
-const resolvedMailIngressDir = path.resolve(process.env.OPEN_AGENT_BRIDGE_MAIL_DATA_DIR || path.join(siteDataRoot, "mail-ingress"));
+const resolvedMailIngressDir = path.resolve(process.env.OPEN_AGENT_BRIDGE_MAIL_DATA_DIR || path.join(siteDataRoot, "mail"));
 const resolvedInboundAttachmentsDir = path.resolve(
   process.env.WECHAT_INBOUND_ATTACHMENTS_DIR || path.join(siteDataRoot, "files", "inbound"),
 );

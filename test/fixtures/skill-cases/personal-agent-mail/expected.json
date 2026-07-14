@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "mode": "local-mta-pipe",
+  "mtaUserManaged": true,
+  "bundledSmtpAbsent": true,
+  "ingestShimFollowsCurrent": true,
+  "messageLocalOnly": true,
+  "attachmentsLocalOnly": true,
+  "ordinaryBackupIncludesMail": true,
+  "appMailAuthenticated": true,
+  "managedRawSmtpTunnelAbsent": true,
+  "managedImapsTunnelAbsent": true,
+  "statusReadOnly": true,
+  "planPreviewOnly": true,
+  "containsRecipients": false,
+  "containsMessageBody": false,
+  "containsAttachments": false,
+  "containsSecrets": false
+}

@@ -231,6 +231,7 @@
         "test/fixtures/skill-cases/personal-agent-managed/case.json",
         "test/fixtures/skill-cases/personal-agent-content/case.json",
         "test/fixtures/skill-cases/personal-agent-lifecycle/case.json",
+        "test/fixtures/skill-cases/personal-agent-mail/case.json",
         "test/fixtures/skill-cases/personal-agent-acceptance/case.json"
       ],
       "caseRequired": true,

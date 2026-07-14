@@ -53,6 +53,8 @@ personal-agent cloud connect --json
 
 CLI 会打开 `personal-agent.cn` 的短期页面授权，只展示 verification URL 与 user code；网页确认后，CLI 使用一次性 enrollment credential 完成接入。长期 Node token 不会显示在浏览器、终端输出或 `cloud.json` 中。
 
+Node 的发行与最终验收以 GitHub Release 安装版的 authenticated `/app/chat` 为准：发送一条唯一提示词，由真实 Agent runtime 执行，并在同一 session 确认 Agent reply。统一证据固定 `wechatRequired=false`；微信只是可选渠道，不作为 Node 是否可用的前置条件。
+
 ## 客户机 Harness
 
 仓库包含完整的客户机 Agent Harness：项目与技能注册表、Agent 约束、可移植 Skills、可复现 fixtures、workspace guards、运行工作流，以及 Codex、Claude、Cursor 和通用 Agent 客户端的兼容桥接。

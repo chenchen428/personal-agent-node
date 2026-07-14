@@ -6,7 +6,7 @@ import net from "node:net";
 import path from "node:path";
 import { spawn, spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
-import { ensureNodeDirectories, gatewayUsesTls, initializeSite, mergeSecretEnv, readEnvFile, resolveNodeConfig, workspaceRoot, writeJsonAtomic } from "../src/config.mjs";
+import { ensureMailIngressSecret, ensureNodeDirectories, gatewayUsesTls, initializeSite, mergeSecretEnv, migrateLegacyMailData, readEnvFile, resolveNodeConfig, workspaceRoot, writeJsonAtomic } from "../src/config.mjs";
 import { runSupervisor } from "../src/supervisor.mjs";
 import { initializeOriginIdentity, initializeWireGuard, installOriginIdentity } from "../src/identity.mjs";
 import { preparePlatformService } from "../src/platform-service.mjs";
@@ -49,10 +49,7 @@ async function initCommand() {
 }
 
 async function prepareCommand() {
-  const config = resolveNodeConfig();
-  ensureNodeDirectories(config);
-  const workspaceFiles = ensureWorkspaceFiles(config);
-  seedAgentWorkspace(config);
+  let config = resolveNodeConfig(process.env, { migrateSite: true });
   const bridgeRoot = path.join(workspaceRoot, "projects", "core", "open-agent-bridge");
   const toolsRoot = path.join(workspaceRoot, "projects", "personal", "lmt_tools");
   const bundledBridge = fs.existsSync(path.join(bridgeRoot, "app", "server.mjs"));
@@ -62,6 +59,14 @@ async function prepareCommand() {
     throw new Error("private-site prepare must run from a verified packaged release");
   }
   if (fs.existsSync(toolsRoot) && !bundledTools) throw new Error("The owner profile is missing its packaged lmt_tools standalone runtime");
+  // Release activation is the explicit upgrade boundary for provisioning new
+  // runtime secrets. Read-only public commands never call this mutating helper.
+  ensureMailIngressSecret(config);
+  config = resolveNodeConfig();
+  const mailMigration = migrateLegacyMailData(config);
+  ensureNodeDirectories(config);
+  const workspaceFiles = ensureWorkspaceFiles(config);
+  seedAgentWorkspace(config);
   const xiaohongshuTarget = path.join(config.dataRoot, "runtime", "xiaohongshu", "xiaohongshu-mcp.exe");
   if (process.platform === "win32" && config.env.PRIVATE_SITE_BUILD_XIAOHONGSHU === "1" && !fs.existsSync(xiaohongshuTarget)) {
     const { buildLocalXiaohongshuAdapter } = await import("../../../../scripts/build-channel-runtimes.mjs");
@@ -72,7 +77,7 @@ async function prepareCommand() {
   const databasePath = path.join(config.dataRoot, "databases", "tools", "lmt-tools.sqlite");
   const migrationPath = path.join(toolsRoot, "prisma", "migrations", "0001_initial", "migration.sql");
   if (fs.existsSync(migrationPath)) run(process.execPath, [path.join(workspaceRoot, "scripts", "init-lmt-tools-database.mjs"), databasePath, migrationPath], workspaceRoot);
-  process.stdout.write(`${JSON.stringify({ ok: true, prepared: true, dataRoot: config.dataRoot, databasePath, bridgeCli, workspaceFiles }, null, 2)}\n`);
+  process.stdout.write(`${JSON.stringify({ ok: true, prepared: true, dataRoot: config.dataRoot, databasePath, bridgeCli, mailMigration, workspaceFiles }, null, 2)}\n`);
 }
 
 function seedPublications(config) {
@@ -104,7 +109,7 @@ function writeDefaultPublication(target, content) {
 }
 
 function defaultHomeHtml(domain) {
-  return `<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Personal Agent</title><style>*{box-sizing:border-box;letter-spacing:0}body{margin:0;background:#f3f5f2;color:#17201c;font-family:"Avenir Next","PingFang SC",sans-serif}main{width:min(760px,calc(100% - 32px));margin:0 auto;padding:64px 0}header{border-bottom:1px solid #b9c2bc;padding-bottom:24px}h1{margin:0 0 8px;font-family:"Iowan Old Style","Songti SC",serif;font-size:40px;font-weight:600}p{margin:0;color:#5a665f;line-height:1.7}.routes{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));border-top:1px solid #17201c;margin-top:36px}.routes a{min-height:84px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #cbd2cd;color:inherit;text-decoration:none}.routes a:nth-child(odd){padding-right:18px}.routes a:nth-child(even){border-left:1px solid #cbd2cd;padding-left:18px}.routes span{color:#18614c}@media(max-width:560px){main{padding-top:36px}.routes{grid-template-columns:1fr}.routes a:nth-child(n){border-left:0;padding:0}}</style></head><body><main><header><h1>Personal Agent</h1><p>${escapeHtml(domain)} · local-first private assistant</p></header><nav class="routes"><a href="/admin"><strong>管理</strong><span>Admin</span></a><a href="/agent"><strong>Agent</strong><span>Sessions</span></a><a href="/mail"><strong>邮件</strong><span>Mail</span></a><a href="/files"><strong>文件</strong><span>Files</span></a><a href="/pages"><strong>页面</strong><span>Pages</span></a><a href="/docs"><strong>文档</strong><span>Docs</span></a></nav></main></body></html>`;
+  return `<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Personal Agent</title><style>*{box-sizing:border-box;letter-spacing:0}body{margin:0;background:#f3f5f2;color:#17201c;font-family:"Avenir Next","PingFang SC",sans-serif}main{width:min(760px,calc(100% - 32px));margin:0 auto;padding:64px 0}header{border-bottom:1px solid #b9c2bc;padding-bottom:24px}h1{margin:0 0 8px;font-family:"Iowan Old Style","Songti SC",serif;font-size:40px;font-weight:600}p{margin:0;color:#5a665f;line-height:1.7}.routes{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));border-top:1px solid #17201c;margin-top:36px}.routes a{min-height:84px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #cbd2cd;color:inherit;text-decoration:none}.routes a:nth-child(odd){padding-right:18px}.routes a:nth-child(even){border-left:1px solid #cbd2cd;padding-left:18px}.routes span{color:#18614c}@media(max-width:560px){main{padding-top:36px}.routes{grid-template-columns:1fr}.routes a:nth-child(n){border-left:0;padding:0}}</style></head><body><main><header><h1>Personal Agent</h1><p>${escapeHtml(domain)} · local-first private assistant</p></header><nav class="routes"><a href="/app"><strong>管理</strong><span>Admin</span></a><a href="/app/chat"><strong>Agent</strong><span>Sessions</span></a><a href="/app/mail"><strong>邮件</strong><span>Mail</span></a><a href="/app/files"><strong>文件</strong><span>Files</span></a><a href="/pages"><strong>页面</strong><span>Pages</span></a><a href="/docs"><strong>文档</strong><span>Docs</span></a></nav></main></body></html>`;
 }
 
 function defaultTextPage(title, message) {

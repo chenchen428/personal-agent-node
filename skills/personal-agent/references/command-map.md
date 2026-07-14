@@ -12,7 +12,9 @@ Each command leaf has exactly one implementation status:
 
 `--all` changes help visibility only. It cannot enable a command. Unknown command leaves also fail closed with `CAPABILITY_UNAVAILABLE`.
 
-The current implemented surface is `help`, `status`, `doctor`, `capabilities list|inspect`, `skill list|inspect|verify`, `connection status`, `cloud connect|status`, and `backup status`. The current preview surface is `extension list|inspect` and `operation list|show|approve`. Read the Registry or `help --all --json` for the planned roadmap; do not treat roadmap entries as installed capabilities.
+The current implemented surface is `help`, `status`, `doctor`, `capabilities list|inspect`, `skill list|inspect|verify`, `connection status`, `cloud connect|status`, `backup status`, and `mail status`. The current preview surface is `mail plan`, `extension list|inspect`, and `operation list|show|approve`. Read the Registry or `help --all --json` for the planned roadmap; do not treat roadmap entries as installed capabilities.
+
+`personal-agent mail status --json` is an R0, secret-redacted readiness check. It never creates the mail ingress token and bounds archive accounting; `doctor` skips archive accounting entirely. `personal-agent mail plan --preview --json` is non-mutating and describes the user-managed local MTA pipe. It never installs Postfix, opens port 25, embeds an SMTP server, or creates managed raw SMTP/IMAPS transport. Use `workflows/local-mail.md` for the reviewed boundary and non-secret example.
 
 `personal-agent cloud connect --json [--cloud-url <https-url>] [--no-open]` performs browser device authorization. During the wait it emits a `cloud.device-authorization` progress envelope containing only `userCode`, `verificationUrl`, `verificationUrlComplete`, expiry and polling interval; its final stdout remains the standard command envelope. Never request an email, authorization code, slug, device code, enrollment credential, or Node token on the command line.
 

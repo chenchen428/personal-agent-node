@@ -2,7 +2,7 @@ import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 
-const MAX_MAIL_BYTES = 30 * 1024 * 1024;
+export const MAX_MAIL_BYTES = 30 * 1024 * 1024;
 const DEFAULT_DAILY_ARCHIVE_BYTES = 512 * 1024 * 1024;
 const DEFAULT_MIN_FREE_BYTES = 512 * 1024 * 1024;
 const DEFAULT_RETENTION_DAYS = 30;
@@ -23,9 +23,9 @@ export async function ingestRawEmail(raw, {
   const headers = parseHeaders(content);
   const receivedAt = new Date().toISOString();
   const day = receivedAt.slice(0, 10);
-  const archiveRoot = path.join(root, "mail", "archive");
+  const archiveRoot = path.join(root, "archive");
   const archiveDir = path.join(archiveRoot, day);
-  const tempDir = path.join(root, "mail", "spool", "tmp");
+  const tempDir = path.join(root, "spool", "tmp");
   pruneMailArchive(archiveRoot, receivedAt, boundedInteger(process.env.OPEN_AGENT_BRIDGE_MAIL_RETENTION_DAYS, 7, 365, DEFAULT_RETENTION_DAYS));
   fs.mkdirSync(archiveDir, { recursive: true, mode: 0o700 });
   fs.mkdirSync(tempDir, { recursive: true, mode: 0o700 });
