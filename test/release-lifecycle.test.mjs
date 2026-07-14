@@ -73,7 +73,7 @@ test('Windows link plan uses a hard link and directory junctions', () => {
   const calls = [];
   const hardLinkStat = { dev: 1n, ino: 2n, nlink: 2n, isFile: () => true };
   const fileSystem = {
-    mkdirSync() {}, unlinkSync() { throw Object.assign(new Error('missing'), { code: 'ENOENT' }); }, symlinkSync(target, link, type) { calls.push({ target, link, type }); },
+    mkdirSync() {}, unlinkSync() {}, rmSync() {}, symlinkSync(target, link, type) { calls.push({ target, link, type }); },
     linkSync(target, link) { calls.push({ target, link, type: 'hardlink' }); },
     statSync() { return hardLinkStat; },
     lstatSync() { return { isSymbolicLink: () => true }; },
@@ -83,6 +83,23 @@ test('Windows link plan uses a hard link and directory junctions', () => {
   assert.equal(calls.find((entry) => entry.link.endsWith('CLAUDE.md')).type, 'hardlink');
   assert.equal(calls.filter((entry) => entry.type === 'junction').length, 4);
   assert.equal(calls.filter((entry) => entry.type === 'file').length, 0);
+});
+
+test('Windows rematerializes bridge directories expanded by release copy', { skip: process.platform !== 'win32' }, () => {
+  const source = fs.mkdtempSync(path.join(os.tmpdir(), 'personal-agent-link-source-'));
+  const target = fs.mkdtempSync(path.join(os.tmpdir(), 'personal-agent-link-target-'));
+  try {
+    fs.mkdirSync(path.join(source, 'skills'));
+    fs.writeFileSync(path.join(source, 'AGENTS.md'), '# Agent\n');
+    materializeHarnessLinks(source);
+    fs.cpSync(source, target, { recursive: true, preserveTimestamps: true });
+    assert.equal(fs.lstatSync(path.join(target, '.agents', 'skills')).isDirectory(), true);
+    assert.doesNotThrow(() => materializeHarnessLinks(target));
+    assert.deepEqual(verifyHarnessLinks(target).map((entry) => entry.link), harnessLinks.map((entry) => entry.link));
+  } finally {
+    fs.rmSync(source, { recursive: true, force: true });
+    fs.rmSync(target, { recursive: true, force: true });
+  }
 });
 
 test('release installation materializes Harness links before immutable verification', () => {

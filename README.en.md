@@ -39,7 +39,7 @@ The current beta requires Node.js 22.x. Node 24 removed the permission-model fla
 macOS / Linux:
 
 ```bash
-TAG=v0.1.0-beta.16
+TAG=v0.1.0-beta.17
 INSTALLER="$(mktemp "${TMPDIR:-/tmp}/personal-agent-installer.XXXXXX.mjs")"
 curl --fail --silent --show-error --location --proto '=https' --tlsv1.2 \
   --output "$INSTALLER" -- \
@@ -53,7 +53,7 @@ personal-agent doctor --json
 Windows PowerShell:
 
 ```powershell
-$Tag = "v0.1.0-beta.16"
+$Tag = "v0.1.0-beta.17"
 $Installer = Join-Path $env:TEMP "personal-agent-$Tag-installer.mjs"
 Invoke-WebRequest -UseBasicParsing -Uri "https://github.com/chenchen428/personal-agent-node/releases/download/$Tag/personal-agent-node-$Tag-installer.mjs" -OutFile $Installer
 node $Installer --tag $Tag
@@ -81,7 +81,7 @@ If the browser does not open, copy `verificationUrlComplete` from the terminal. 
 
 After signing in to the website, you can give the following prompt to an Agent running on your computer. It contains only public release and CLI instructions—never an account, verification code, or secret:
 
-> Install Personal Agent Node v0.1.0-beta.16 on this computer. First confirm that Node.js is 22.x. Download only `personal-agent-node-v0.1.0-beta.16-installer.mjs` from the `chenchen428/personal-agent-node` GitHub Release and pass `--tag v0.1.0-beta.16` explicitly; do not clone the source repository as the runtime. After the installer completes SHA256 verification, add its CLI directory to this shell's PATH and run `personal-agent doctor --json`. If it passes, run `personal-agent cloud connect --json` and let me personally sign in and approve my dedicated domain in the chenjianhui.site browser page. Do not ask for, repeat, or retain a device code, one-time enrollment credential, Node token, local password, or tunnel secret. Finally run `personal-agent status --json` and report only the redacted release, connection mode, dedicated domain, and health state.
+> Install Personal Agent Node v0.1.0-beta.17 on this computer. First confirm that Node.js is 22.x. Download only `personal-agent-node-v0.1.0-beta.17-installer.mjs` from the `chenchen428/personal-agent-node` GitHub Release and pass `--tag v0.1.0-beta.17` explicitly; do not clone the source repository as the runtime. After the installer completes SHA256 verification, add its CLI directory to this shell's PATH and run `personal-agent doctor --json`. If it passes, run `personal-agent cloud connect --json` and let me personally sign in and approve my dedicated domain in the chenjianhui.site browser page. Do not ask for, repeat, or retain a device code, one-time enrollment credential, Node token, local password, or tunnel secret. Finally run `personal-agent status --json` and report only the redacted release, connection mode, dedicated domain, and health state.
 
 Release and final Node acceptance use the GitHub Release installation's authenticated local `/app/chat`: send a unique prompt to the real Agent runtime and verify the Agent reply in the same session. Canonical evidence always records `wechatRequired=false`; WeChat is optional and never blocks the Node core gate.
 
