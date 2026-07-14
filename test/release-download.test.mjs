@@ -139,6 +139,8 @@ test('release downloader rejects unsafe URLs before fetch or fallback', async ()
 
 test('GitHub installer keeps checksum verification after transport fallback', () => {
   const installer = fs.readFileSync(new URL('../scripts/install-from-github-release.mjs', import.meta.url), 'utf8');
+  assert.doesNotMatch(installer, /from ['"]\.\//, 'published installer must not require sibling files');
+  assert.match(installer, /if \(!tag\) throw new Error/);
   assert.match(installer, /downloadReleaseAsset\(`\$\{base\}\/SHA256SUMS`\)/);
   assert.match(installer, /createHash\('sha256'\)/);
   assert.match(installer, /Release checksum mismatch/);
@@ -147,4 +149,21 @@ test('GitHub installer keeps checksum verification after transport fallback', ()
   assert.match(installer, /\[prepareEntrypoint, 'prepare'\]/);
   assert.match(installer, /PRIVATE_SITE_INSTALL_ROOT/);
   assert.match(installer, /PRIVATE_SITE_DATA_ROOT/);
+});
+
+test('release packaging publishes the standalone immutable installer asset', () => {
+  const packager = fs.readFileSync(new URL('../scripts/release-package.mjs', import.meta.url), 'utf8');
+  assert.match(packager, /personal-agent-node-\$\{tag\}-installer\.mjs/);
+  assert.match(packager, /install-from-github-release\.mjs/);
+});
+
+test('public installation documentation pins the workspace release version', () => {
+  const root = new URL('..', import.meta.url);
+  const version = JSON.parse(fs.readFileSync(new URL('package.json', root), 'utf8')).version;
+  for (const relative of ['README.md', 'README.en.md', 'docs/getting-started.md']) {
+    const document = fs.readFileSync(new URL(relative, root), 'utf8');
+    assert.match(document, new RegExp(`TAG=v${version.replaceAll('.', '\\.')}`), relative);
+    assert.match(document, /personal-agent-node-\$(?:TAG|Tag)-installer\.mjs/, relative);
+    assert.match(document, /personal-agent cloud connect --json/, relative);
+  }
 });

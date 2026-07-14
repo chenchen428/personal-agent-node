@@ -196,6 +196,17 @@ function extensionInspect(id) {
 function helpResult(args) {
   if (args.preview && args.all) throw cliError('INVALID_ARGUMENT', '--preview and --all cannot be combined', 2);
   const commands = registry('commands.json');
+  if (args.help && args._[0] && args._[0] !== 'help') {
+    const requestedCommand = commandKey(args._[0], args._[1]);
+    const descriptor = commandDescriptor(requestedCommand);
+    if (!descriptor || !expandCommandName(descriptor.name).includes(requestedCommand)) throw unavailableCommand(requestedCommand);
+    return success('help', {
+      binary: commands.binary,
+      visibility: 'command',
+      command: commandHelp(requestedCommand, descriptor),
+      output: commands.output,
+    });
+  }
   const visibleStatuses = args.all ? ['implemented', 'preview', 'planned'] : args.preview ? ['implemented', 'preview'] : ['implemented'];
   const commandGroups = Object.fromEntries(visibleStatuses.map((status) => [status, commands.commands.filter((entry) => entry.implementationStatus === status)]));
   const visibleCommands = commands.commands.filter((entry) => visibleStatuses.includes(entry.implementationStatus));
@@ -208,6 +219,43 @@ function helpResult(args) {
     commands: visibleCommands,
     commandGroups,
   });
+}
+
+function commandHelp(command, descriptor) {
+  const commonOptions = [
+    { name: '--json', type: 'boolean', required: false, secret: false, description: 'Emit the versioned JSON envelope.' },
+    { name: '--data-root', type: 'path', required: false, secret: false, description: 'Use a non-default local data root.' },
+  ];
+  if (command === 'cloud connect') {
+    return {
+      name: command,
+      usage: 'personal-agent cloud connect [--cloud-url <https-url>] [--no-open] [--data-root <path>] --json',
+      risk: descriptor.risk,
+      capability: descriptor.capability,
+      implementationStatus: descriptor.implementationStatus,
+      description: descriptor.description,
+      options: [
+        ...commonOptions,
+        { name: '--cloud-url', type: 'https-url', required: false, secret: false, default: 'https://personal-agent.cn', description: 'Select the trusted Cloud origin.' },
+        { name: '--no-open', type: 'boolean', required: false, secret: false, description: 'Do not launch a browser; use verificationUrlComplete from progress output.' },
+      ],
+      authorization: {
+        method: 'browser-device-authorization',
+        userActionRequired: true,
+        oneTimeEnrollmentCredential: true,
+        forbiddenCommandLineInputs: ['deviceCode', 'enrollmentCredential', 'nodeToken', 'localPassword', 'tunnelSecret'],
+      },
+    };
+  }
+  return {
+    name: command,
+    usage: `personal-agent ${command} --json`,
+    risk: descriptor.risk,
+    capability: descriptor.capability,
+    implementationStatus: descriptor.implementationStatus,
+    description: descriptor.description,
+    options: commonOptions,
+  };
 }
 
 function unavailableCommand(command, nextActions = ['Run personal-agent help --all --json to inspect implemented, preview, and planned commands']) {

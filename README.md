@@ -2,7 +2,7 @@
 
 [English](README.en.md) | 简体中文
 
-Personal Agent Node 是一个开源、本地优先的个人助手运行时。对话、长期记忆、账号凭据、文件和 Agent 状态保存在你自己的电脑上；Personal Agent Cloud、自建公网入口和模型 Token 都是可选能力。
+Personal Agent Node 是 [Personal Agent](https://personal-agent.cn) 的开源、本地优先运行时。对话、长期记忆、账号凭据、文件和 Agent 状态保存在你自己的电脑上；Personal Agent Cloud、自建公网入口和模型 Token 都是可选能力。
 
 ## 为什么是本地 Node
 
@@ -32,26 +32,54 @@ Personal Agent Node 默认不需要连接 `personal-agent.cn`：
 
 连接模式与模型 Provider 相互独立。即使断开 Cloud，Local Console、BYOK、Skills、文件、自动化、Pages 与备份仍应可用。
 
-## 开始使用
+## 安装发行版
 
-当前 Beta 开发环境要求 Node.js 22.x。Node 24 移除了模板沙箱依赖的 permission-model flag，因此暂不支持。
+当前 Beta 要求 Node.js 22.x。Node 24 移除了模板沙箱依赖的 permission-model flag，因此暂不支持。正式用户请安装 GitHub Release 的不可变发行包，不要把源码 checkout 当作生产运行时。
+
+macOS / Linux：
 
 ```bash
-git clone https://github.com/chenchen428/personal-agent-node.git
-cd personal-agent-node
-npm install
-npm run doctor
+TAG=v0.1.0-beta.12
+INSTALLER="$(mktemp "${TMPDIR:-/tmp}/personal-agent-installer.XXXXXX.mjs")"
+curl --fail --silent --show-error --location --proto '=https' --tlsv1.2 \
+  --output "$INSTALLER" -- \
+  "https://github.com/chenchen428/personal-agent-node/releases/download/$TAG/personal-agent-node-$TAG-installer.mjs"
+node "$INSTALLER" --tag "$TAG"
+rm -f "$INSTALLER"
+export PATH="$HOME/.local/bin:$PATH"
+personal-agent doctor --json
 ```
 
-开发启动与本地初始化参见 [入门文档](docs/getting-started.md)。正式用户应优先安装 GitHub Release 的不可变发行包，而不是使用源码目录作为生产运行时。
+Windows PowerShell：
 
-如果已经在 Personal Agent Cloud 注册且管理员分配了专属域名，可运行：
+```powershell
+$Tag = "v0.1.0-beta.12"
+$Installer = Join-Path $env:TEMP "personal-agent-$Tag-installer.mjs"
+Invoke-WebRequest -UseBasicParsing -Uri "https://github.com/chenchen428/personal-agent-node/releases/download/$Tag/personal-agent-node-$Tag-installer.mjs" -OutFile $Installer
+node $Installer --tag $Tag
+Remove-Item $Installer
+& "$env:APPDATA\npm\personal-agent.cmd" doctor --json
+```
+
+这个独立引导器不依赖源码目录或 `npm install`；它只下载指定 tag 的发行包，核对 Release 中的 `SHA256SUMS`，再切换不可变的 `current` / `previous`。开发者从源码启动、定制数据目录和平台差异见 [入门文档](docs/getting-started.md)。
+
+## 注册并接入专属域名
+
+先在 [personal-agent.cn](https://personal-agent.cn) 使用邮箱验证码注册。管理员分配专属域名后，在安装 Node 的同一台电脑运行：
 
 ```bash
 personal-agent cloud connect --json
 ```
 
-CLI 会打开 `personal-agent.cn` 的短期页面授权，只展示 verification URL 与 user code；网页确认后，CLI 使用一次性 enrollment credential 完成接入。长期 Node token 不会显示在浏览器、终端输出或 `cloud.json` 中。
+CLI 会打开 `personal-agent.cn` 的短期页面授权，只展示 verification URL 与 user code。请使用刚注册的同一账户登录网页，核对专属域名并确认；CLI 随后使用一次性 enrollment credential 登记本机、验证 heartbeat 并完成自接入。不要把 user code 当成长期凭据，也不要通过聊天发送它。长期 Node token、生成的本地密码和隧道秘密不会显示在浏览器、终端输出或 `cloud.json` 中。
+
+如果浏览器没有自动打开，可复制终端给出的 `verificationUrlComplete`。授权过期、被拒绝或账户与 Site 不匹配时会失败关闭；重新运行命令即可开始一个新的短期授权。
+
+### 复制给本机 Agent 的一键提示词
+
+登录官网后也可以把下面这段交给本机 Agent。它只描述公开发行版和公开 CLI，不包含账号、验证码或任何秘密：
+
+> 请在我的这台电脑上安装 Personal Agent Node v0.1.0-beta.12。先确认 Node.js 为 22.x；只从 `chenchen428/personal-agent-node` 的 GitHub Release 下载 `personal-agent-node-v0.1.0-beta.12-installer.mjs`，运行时显式传入 `--tag v0.1.0-beta.12`，不要 clone 源码作为运行时。安装器完成 SHA256 校验后，把 CLI 目录加入当前会话 PATH，运行 `personal-agent doctor --json`。如果检查通过，再运行 `personal-agent cloud connect --json`，让我在 personal-agent.cn 浏览器页面亲自登录并确认专属域名；不要索取、复述或保存 device code、一次性 enrollment credential、Node token、本地密码或隧道秘密。最后运行 `personal-agent status --json`，只汇报脱敏后的 release、连接模式、专属域名和健康状态。
 
 Node 的发行与最终验收以 GitHub Release 安装版的 authenticated `/app/chat` 为准：发送一条唯一提示词，由真实 Agent runtime 执行，并在同一 session 确认 Agent reply。统一证据固定 `wechatRequired=false`；微信只是可选渠道，不作为 Node 是否可用的前置条件。
 
@@ -60,6 +88,7 @@ Node 的发行与最终验收以 GitHub Release 安装版的 authenticated `/app
 仓库包含完整的客户机 Agent Harness：项目与技能注册表、Agent 约束、可移植 Skills、可复现 fixtures、workspace guards、运行工作流，以及 Codex、Claude、Cursor 和通用 Agent 客户端的兼容桥接。
 
 ```bash
+npm install
 npm run doctor
 npm run guard
 npm run baseline:verify

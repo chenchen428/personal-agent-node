@@ -18,4 +18,6 @@ The current implemented surface is `help`, `status`, `doctor`, `capabilities lis
 
 `personal-agent cloud connect --json [--cloud-url <https-url>] [--no-open]` performs browser device authorization. During the wait it emits a `cloud.device-authorization` progress envelope containing only `userCode`, `verificationUrl`, `verificationUrlComplete`, expiry and polling interval; its final stdout remains the standard command envelope. Never request an email, authorization code, slug, device code, enrollment credential, or Node token on the command line.
 
+Run `personal-agent cloud connect --help --json` for the machine-readable usage, options, R2 classification, browser-authorization method, required human action, and forbidden secret inputs. This help call is read-only and does not begin authorization.
+
 Use `result.commands` from the appropriate help view for executable commands. `result.commandGroups.planned` is roadmap metadata only. Never fall back to an internal HTTP endpoint, database, `private-site`, or `open-abg` when the public CLI reports `CAPABILITY_UNAVAILABLE`.

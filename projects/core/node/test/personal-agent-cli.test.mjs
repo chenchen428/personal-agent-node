@@ -39,6 +39,15 @@ test('personal-agent exposes machine-readable help and capability discovery', ()
   const capabilities = run(['capabilities', 'list', '--json']);
   assert.equal(capabilities.status, 0);
   assert.ok(JSON.parse(capabilities.stdout).result.capabilities.some((entry) => entry.id === 'runtime'));
+
+  const cloudConnectHelp = JSON.parse(runOk(['cloud', 'connect', '--help', '--json']).stdout);
+  assert.equal(cloudConnectHelp.result.visibility, 'command');
+  assert.equal(cloudConnectHelp.result.command.usage, 'personal-agent cloud connect [--cloud-url <https-url>] [--no-open] [--data-root <path>] --json');
+  assert.equal(cloudConnectHelp.result.command.risk, 'R2');
+  assert.equal(cloudConnectHelp.result.command.authorization.method, 'browser-device-authorization');
+  assert.equal(cloudConnectHelp.result.command.authorization.userActionRequired, true);
+  assert.ok(cloudConnectHelp.result.command.options.some((option) => option.name === '--no-open'));
+  assert.ok(cloudConnectHelp.result.command.authorization.forbiddenCommandLineInputs.includes('nodeToken'));
 });
 
 test('personal-agent uses stable JSON errors and fails closed for unavailable commands', () => {

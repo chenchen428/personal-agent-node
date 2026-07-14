@@ -4,12 +4,18 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
-import { canonicalInstallRoot } from './install-root.mjs';
-import { downloadReleaseAsset } from './release-download.mjs';
+
+// Keep this installer self-contained. The release workflow publishes this exact
+// file as an individual immutable asset so a new machine does not need a source
+// checkout, npm install, or any sibling scripts before it can verify and install
+// the complete release archive.
+const USER_AGENT = 'personal-agent-node-installer/0.1';
+const FETCH_TIMEOUT_MILLISECONDS = 10_000;
 
 const args = parseArgs(process.argv.slice(2));
 const repository = args.repository || 'chenchen428/personal-agent-node';
-const tag = args.tag || 'v0.1.0-beta.11';
+const tag = args.tag;
+if (!tag) throw new Error('Usage: node personal-agent-node-<tag>-installer.mjs --tag <tag> [--install-root <path>] [--data-root <path>]');
 if (!/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(repository) || !/^v[0-9][0-9A-Za-z.-]+$/.test(tag)) throw new Error('Invalid repository or tag');
 const base = `https://github.com/${repository}/releases/download/${tag}`;
 const archiveName = `personal-agent-node-${tag}-universal.tar.gz`;
@@ -46,4 +52,79 @@ try {
 
 function checksumFor(text, name) { const line=text.split(/\r?\n/).find((entry)=>entry.endsWith(`  ${name}`)); const match=/^([a-f0-9]{64})  /.exec(line||''); if(!match) throw new Error(`SHA256SUMS does not contain ${name}`); return match[1]; }
 function run(command, commandArgs, options = {}) { const result=spawnSync(command, commandArgs, { stdio:'inherit', windowsHide:true, ...options }); if(result.status!==0) throw new Error(`${path.basename(command)} failed with ${result.status}`); }
-function parseArgs(argv) { const output={}; for(let index=0;index<argv.length;index+=1){ if(argv[index]==='--repository') output.repository=argv[++index]; else if(argv[index]==='--tag') output.tag=argv[++index]; else if(argv[index]==='--install-root') output.installRoot=argv[++index]; else if(argv[index]==='--data-root') output.dataRoot=argv[++index]; } return output; }
+function parseArgs(argv) {
+  const output = {};
+  for (let index = 0; index < argv.length; index += 1) {
+    const option = argv[index];
+    if (option === '--repository') output.repository = requiredValue(argv, ++index, option);
+    else if (option === '--tag') output.tag = requiredValue(argv, ++index, option);
+    else if (option === '--install-root') output.installRoot = requiredValue(argv, ++index, option);
+    else if (option === '--data-root') output.dataRoot = requiredValue(argv, ++index, option);
+    else throw new Error(`Unknown installer option: ${option}`);
+  }
+  return output;
+}
+function requiredValue(argv, index, option) { const value=argv[index]; if(!value || value.startsWith('--')) throw new Error(`Missing value for ${option}`); return value; }
+function canonicalInstallRoot(value) { const requested=path.resolve(value); fs.mkdirSync(requested,{recursive:true}); return fs.realpathSync(requested); }
+
+async function downloadReleaseAsset(value) {
+  const url = validateReleaseUrl(value);
+  try {
+    const response = await fetch(url, {
+      redirect: 'follow',
+      headers: { 'user-agent': USER_AGENT },
+      signal: AbortSignal.timeout(FETCH_TIMEOUT_MILLISECONDS),
+    });
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    return Buffer.from(await response.arrayBuffer());
+  } catch (fetchError) {
+    return downloadWithPlatformClient(url, fetchError);
+  }
+}
+
+function validateReleaseUrl(value) {
+  const url = new URL(String(value || ''));
+  if (url.protocol !== 'https:' || url.hostname !== 'github.com' || url.username || url.password || url.hash) {
+    throw new Error('Release download URL must be an HTTPS github.com URL without credentials or fragments');
+  }
+  return url.toString();
+}
+
+function downloadWithPlatformClient(url, fetchError) {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'personal-agent-download-'));
+  const target = path.join(directory, 'asset');
+  try {
+    const invocation = process.platform === 'win32' ? powershellInvocation(url, target, directory) : curlInvocation(url, target);
+    const result = spawnSync(invocation.command, invocation.args, {
+      encoding: 'utf8',
+      shell: false,
+      windowsHide: true,
+      timeout: 120_000,
+      maxBuffer: 1024 * 1024,
+    });
+    if (!result.error && result.status === 0 && fs.existsSync(target)) return fs.readFileSync(target);
+    const fetchDetail = fetchError instanceof Error ? fetchError.message : 'unknown fetch failure';
+    const fallbackDetail = String(result.error?.message || result.stderr || `exit ${result.status}`).trim().slice(0, 300);
+    throw new Error(`Release download failed with fetch (${fetchDetail}) and ${invocation.label} (${fallbackDetail})`);
+  } finally {
+    fs.rmSync(directory, { recursive: true, force: true });
+  }
+}
+
+function curlInvocation(url, target) {
+  return {
+    command: 'curl',
+    label: 'curl',
+    args: ['--fail', '--silent', '--show-error', '--location', '--proto', '=https', '--proto-redir', '=https', '--tlsv1.2', '--connect-timeout', '10', '--max-time', '90', '--output', target, '--', url],
+  };
+}
+
+function powershellInvocation(url, target, directory) {
+  const scriptPath = path.join(directory, 'download.ps1');
+  fs.writeFileSync(scriptPath, "param([Parameter(Mandatory=$true)][string]$Uri,[Parameter(Mandatory=$true)][string]$OutFile)\n$ErrorActionPreference='Stop'\n[Net.ServicePointManager]::SecurityProtocol=[Net.SecurityProtocolType]::Tls12\nInvoke-WebRequest -UseBasicParsing -Uri $Uri -OutFile $OutFile\n", { mode: 0o600 });
+  return {
+    command: 'powershell.exe',
+    label: 'PowerShell Invoke-WebRequest',
+    args: ['-NoLogo', '-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-File', scriptPath, '-Uri', url, '-OutFile', target],
+  };
+}
