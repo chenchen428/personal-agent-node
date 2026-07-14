@@ -17,19 +17,33 @@ export function materializeHarnessLinks(root, { platform = process.platform, fil
     catch (error) {
       if (error.code !== 'ENOENT') throw error;
     }
-    const type = platform === 'win32' ? (spec.kind === 'dir' ? 'junction' : 'file') : spec.kind;
+    if (platform === 'win32' && spec.kind === 'file') {
+      fileSystem.linkSync(path.resolve(path.dirname(linkPath), spec.target), linkPath);
+      continue;
+    }
+    const type = platform === 'win32' ? 'junction' : spec.kind;
     const target = platform === 'win32' && spec.kind === 'dir'
       ? path.resolve(path.dirname(linkPath), spec.target)
       : spec.target;
     fileSystem.symlinkSync(target, linkPath, type);
   }
-  return verifyHarnessLinks(root, { fileSystem });
+  return verifyHarnessLinks(root, { platform, fileSystem });
 }
 
-export function verifyHarnessLinks(root, { fileSystem = fs } = {}) {
+export function verifyHarnessLinks(root, { platform = process.platform, fileSystem = fs } = {}) {
   const verified = [];
   for (const spec of harnessLinks) {
     const linkPath = path.join(root, spec.link);
+    if (platform === 'win32' && spec.kind === 'file') {
+      const targetPath = path.resolve(path.dirname(linkPath), spec.target);
+      const linkStat = fileSystem.statSync(linkPath, { bigint: true });
+      const targetStat = fileSystem.statSync(targetPath, { bigint: true });
+      if (!linkStat.isFile() || linkStat.dev !== targetStat.dev || linkStat.ino !== targetStat.ino || linkStat.nlink < 2n) {
+        throw new Error(`Harness bridge must be a hard link to its target: ${spec.link}`);
+      }
+      verified.push({ ...spec, actual: spec.target });
+      continue;
+    }
     const stat = fileSystem.lstatSync(linkPath);
     if (!stat.isSymbolicLink()) throw new Error(`Harness bridge must be a symbolic link: ${spec.link}`);
     const actual = fileSystem.readlinkSync(linkPath);
