@@ -26,9 +26,21 @@ test("initializes one stable Site identity and fixed path routes", () => {
     assert.equal(first.config.site.siteId, second.config.site.siteId);
     const config = resolveNodeConfig({ PRIVATE_SITE_DATA_ROOT: dataRoot });
     const routes = buildRoutes(config);
-    for (const prefix of ["/", "/app", "/app/chat", "/app/channels", "/app/files", "/app/mail", "/app/automations", "/app/data", "/app/schedules", "/app/releases", "/api/app", "/api/chat", "/api/channels", "/api/managed-platforms", "/api/publications", "/api/system", "/api/extensions", "/pages", "/resources", "/blog", "/docs"]) {
+    for (const prefix of ["/", "/app", "/app/chat", "/app/channels", "/app/files", "/app/mail", "/app/automations", "/app/data", "/app/schedules", "/app/pages", "/app/releases", "/app/skills", "/app/update", "/api/app", "/api/chat", "/api/channels", "/api/managed-platforms", "/api/publications", "/api/system", "/api/extensions", "/pages", "/resources", "/blog", "/docs"]) {
       assert.ok(routes.has(prefix), prefix);
     }
+    assert.deepEqual(
+      Object.fromEntries(Object.entries(routes.get("/app/pages")).filter(([key]) => ["access", "targetKey", "upstreamPath"].includes(key))),
+      { access: "authenticated", targetKey: "pages", upstreamPath: "/online-pages" },
+    );
+    assert.deepEqual(
+      Object.fromEntries(Object.entries(routes.get("/app/skills")).filter(([key]) => ["access", "targetKey", "upstreamPath"].includes(key))),
+      { access: "authenticated", targetKey: "agent", upstreamPath: "/agent-skills" },
+    );
+    assert.deepEqual(
+      Object.fromEntries(Object.entries(routes.get("/app/update")).filter(([key]) => ["access", "targetKey", "upstreamPath"].includes(key))),
+      { access: "local-admin", targetKey: "console", upstreamPath: "/update" },
+    );
     for (const legacy of ["/admin", "/agent", "/api/agent", "/api/files"]) assert.equal(routes.has(legacy), false, legacy);
     assert.equal(config.routingMode, "path");
     assert.equal(config.site.connectionMode, "local-only");

@@ -220,6 +220,12 @@ async function handleRequest(request: http.IncomingMessage, response: http.Serve
     return;
   }
 
+  if (url.pathname === "/online-pages" && (request.method === "GET" || request.method === "HEAD")) {
+    const assets = await listUploadedAssets(200);
+    sendPrivateHtml(response, 200, renderPagesIndex({ assets }), request.method === "HEAD");
+    return;
+  }
+
   const privateFileBatchMatch = /^\/private-files\/batches\/([^/]+)$/.exec(url.pathname);
   if (privateFileBatchMatch && (request.method === "GET" || request.method === "HEAD")) {
     const batch = store.getPrivateFileBatch(decodeURIComponent(privateFileBatchMatch[1]));

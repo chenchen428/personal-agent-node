@@ -24,13 +24,13 @@ export function renderDashboard({ sessions = [], totalSessions = sessions.length
               <div class="console-menu-wrap">
                 <button class="console-icon-button" type="button" data-console-menu-trigger title="更多" aria-label="更多" aria-haspopup="menu" aria-expanded="false">${icon("more-horizontal")}</button>
                 <div class="console-menu-popover" data-console-menu role="menu" hidden>
-                  <a href="/app/releases" role="menuitem">${icon("file-text")}<span>Release Notes</span></a>
                   <a href="/app/chat/memory" role="menuitem">${icon("brain")}<span>记忆管理</span></a>
                   <a href="/app/data" role="menuitem">${icon("database")}<span>数据</span></a>
                   <a href="/app/automations" role="menuitem">${icon("workflow")}<span>自动化</span></a>
                   <a href="/app/channels" role="menuitem">${icon("radio")}<span>渠道管理</span></a>
                   <a href="/app/skills" role="menuitem">${icon("book-open")}<span>技能清单</span></a>
                   <a href="/app/schedules" role="menuitem">${icon("calendar-clock")}<span>定时任务</span></a>
+                  <a href="/app/update" role="menuitem">${icon("rotate-cw")}<span>更新与回滚</span></a>
                   <button type="button" data-refresh role="menuitem">${icon("rotate-cw")}<span>刷新</span></button>
                 </div>
               </div>

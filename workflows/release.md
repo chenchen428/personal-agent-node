@@ -12,7 +12,7 @@ Install releases with `scripts/install-private-site-node-release.mjs`. It atomic
 To install directly from a published GitHub Release artifact:
 
 ```bash
-node scripts/install-from-github-release.mjs --tag v0.1.0-beta.17
+node scripts/install-from-github-release.mjs --tag v0.1.0-beta.18
 personal-agent cloud connect --json
 ```
 

@@ -113,12 +113,14 @@ test('release installation materializes Harness links before immutable verificat
 test('installed personal-agent command follows the immutable current release', () => {
   const files = new Map();
   const fileSystem = { mkdirSync() {}, chmodSync() {}, writeFileSync(file, content) { files.set(file, content); } };
-  const posix = installPersonalAgentCommand({ installRoot: '/home/user/.private-site-node', homeDir: '/home/user', platform: 'linux', fileSystem });
+  const posix = installPersonalAgentCommand({ installRoot: '/home/user/.private-site-node', dataRoot: '/srv/personal-agent', homeDir: '/home/user', platform: 'linux', fileSystem });
   assert.equal(posix.commandPath, '/home/user/.local/bin/personal-agent');
   assert.match(files.get(posix.commandPath), /current\/projects\/core\/node\/bin\/personal-agent\.mjs/);
   assert.match(files.get(posix.commandPath), /PRIVATE_SITE_INSTALL_ROOT='\/home\/user\/\.private-site-node'/);
-  const windows = installPersonalAgentCommand({ installRoot: 'C:\\Users\\user\\.private-site-node', homeDir: 'C:\\Users\\user', platform: 'win32', env: { APPDATA: 'C:\\Users\\user\\AppData\\Roaming' }, fileSystem });
-  assert.match(windows.commandPath, /personal-agent\.cmd$/);
+  assert.match(files.get(posix.commandPath), /PRIVATE_SITE_DATA_ROOT='\/srv\/personal-agent'/);
+  const windows = installPersonalAgentCommand({ installRoot: 'C:\\Users\\user\\.private-site-node', dataRoot: 'D:\\personal-agent-data', homeDir: 'C:\\Users\\user', platform: 'win32', env: { APPDATA: 'C:\\Users\\user\\AppData\\Roaming' }, fileSystem });
+  assert.equal(windows.commandPath, 'C:\\Users\\user\\AppData\\Roaming\\npm\\personal-agent.cmd');
   assert.match(files.get(windows.commandPath), /personal-agent\.mjs/);
   assert.match(files.get(windows.commandPath), /PRIVATE_SITE_INSTALL_ROOT=C:\\Users\\user\\\.private-site-node/);
+  assert.match(files.get(windows.commandPath), /PRIVATE_SITE_DATA_ROOT=D:\\personal-agent-data/);
 });

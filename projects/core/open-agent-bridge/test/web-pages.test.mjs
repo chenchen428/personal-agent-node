@@ -38,7 +38,7 @@ test("token usage dialog carries an opaque themed surface", () => {
   assert.match(html, /loadTokenUsage\(button\.dataset\.tokenRange/);
   assert.match(html, /token-dialog-fallback/);
   assert.match(html, /data-console-menu/);
-  assert.match(html, /href="\/app\/releases"[^>]*>[\s\S]*?<span>Release Notes<\/span>/);
+  assert.doesNotMatch(html, /href="\/app\/releases"/);
   assert.match(html, /\.console-header\{position:relative;z-index:40;[^}]*overflow:visible/);
   assert.match(html, /\.console-menu-popover\{position:absolute;z-index:60;[^}]*background:#fffdf8/);
   assert.match(html, /href="\/app\/chat\/memory"/);
@@ -46,6 +46,7 @@ test("token usage dialog carries an opaque themed surface", () => {
   assert.match(html, /href="\/app\/automations"/);
   assert.match(html, /href="\/app\/skills"/);
   assert.match(html, /href="\/app\/schedules"/);
+  assert.match(html, /href="\/app\/update"[^>]*>[\s\S]*?<span>更新与回滚<\/span>/);
   assert.match(html, /href="\/app\/channels"[^>]*>[\s\S]*?<span>渠道管理<\/span>/);
   assert.match(html, /class="compose-fab wechat-only-hidden"/);
   assert.match(html, /href="\/app"[^>]*aria-label="返回工作台"/);

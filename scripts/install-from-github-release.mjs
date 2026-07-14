@@ -47,16 +47,16 @@ async function main() {
     if (entries.length !== 1 || !entries[0].isDirectory() || entries[0].name !== layout.root) throw new Error('Release archive has an invalid root layout');
     const releaseRoot = path.join(extracted, layout.root);
     const installer = path.join(releaseRoot, 'scripts', 'install-private-site-node-release.mjs');
-    const command = [installer, releaseRoot];
-    if (args.installRoot) command.push('--install-root', path.resolve(args.installRoot));
-    run(process.execPath, command);
     const installRoot = canonicalInstallRoot(args.installRoot || path.join(os.homedir(), '.private-site-node'));
+    const dataRoot = path.resolve(args.dataRoot || process.env.PRIVATE_SITE_DATA_ROOT || path.join(os.homedir(), '.personal-agent'));
+    const command = [installer, releaseRoot, '--install-root', installRoot, '--data-root', dataRoot];
+    run(process.execPath, command);
     const current = path.join(installRoot, 'current');
     const prepareEntrypoint = path.join(current, 'projects', 'core', 'node', 'bin', 'private-site.mjs');
     const prepareEnvironment = {
       ...process.env,
       PRIVATE_SITE_INSTALL_ROOT: installRoot,
-      ...(args.dataRoot ? { PRIVATE_SITE_DATA_ROOT: path.resolve(args.dataRoot) } : {}),
+      PRIVATE_SITE_DATA_ROOT: dataRoot,
     };
     run(process.execPath, [prepareEntrypoint, 'prepare'], { env: prepareEnvironment });
     console.log(JSON.stringify({ ok: true, repository, tag, verifiedSha256: actual, prepared: true, installRoot, current, connectCommand: 'personal-agent cloud connect --json', connectEntrypoint: `node ${path.join(current, 'projects', 'core', 'node', 'bin', 'personal-agent.mjs')} cloud connect --json` }, null, 2));

@@ -4,13 +4,13 @@ import path from 'node:path';
 const consoleSections = [
   ['chat', '/app/chat', '对话', '与个人 Agent 对话并查看会话', '对'],
   ['channels', '/app/channels', '对话渠道', '管理微信等消息入口', '信'],
-  ['files', '/app/files', '文件', '查看与管理本机文件', '文'],
+  ['skills', '/app/skills', '技能列表', '查看已安装技能、分类与风险说明', '技'],
   ['mail', '/app/mail', '邮件', '处理 Agent 收件与附件', '邮'],
   ['automations', '/app/automations', '自动化', '规则、事件与执行记录', '自'],
   ['data', '/app/data', '数据', '结构化数据与快照', '数'],
   ['schedules', '/app/schedules', '计划任务', '定时任务与运行状态', '时'],
-  ['releases', '/app/releases', '版本', '发行记录与回滚信息', '版'],
-  ['pages', '/pages', 'Pages', '已公开的页面与内容', '页'],
+  ['pages', '/app/pages', 'Online Pages', '查看已发布的页面与静态内容', '页'],
+  ['update', '/app/update', '更新与回滚', '查看版本状态与安全更新流程', '更'],
 ];
 
 export function buildNavigationItems({ registry, panelConfig, hostHeader = '', clickState = {} }) {
@@ -57,6 +57,69 @@ export function recordNavigationClick(filePath, id, allowedIds) {
   return state;
 }
 
+export function readUpdateStatus({ releaseRoot, installRoot, commandRegistryPath } = {}) {
+  const manifest = readJson(path.join(releaseRoot || '', 'release-manifest.json'));
+  const packageMetadata = readJson(path.join(releaseRoot || '', 'package.json'));
+  const commandRegistry = readJson(commandRegistryPath || path.join(releaseRoot || '', 'registry', 'commands.json'));
+  const updateCommand = commandRegistry?.commands?.find((command) => String(command.name || '').startsWith('update '));
+  const previousReleaseId = releaseIdAtPointer(path.join(installRoot || '', 'previous'));
+  return {
+    currentReleaseId: String(manifest?.releaseId || packageMetadata?.version || 'development'),
+    revision: String(manifest?.revision || ''),
+    profile: String(manifest?.profile || 'development'),
+    source: manifest?.releaseType === 'private-site-node' ? 'GitHub Release' : '开发工作区',
+    previousReleaseId,
+    canRollback: Boolean(previousReleaseId),
+    commandStatus: String(updateCommand?.implementationStatus || 'planned'),
+    repositoryUrl: 'https://github.com/chenchen428/personal-agent-node/releases',
+  };
+}
+
+export function renderUpdatePage({ title = 'Personal Agent', status = {} } = {}) {
+  const revision = status.revision ? status.revision.slice(0, 12) : '未记录';
+  const commandLabel = status.commandStatus === 'implemented' ? '可用' : status.commandStatus === 'preview' ? '预览' : '规划中';
+  return `<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f7eedb">
+  <title>更新与回滚 · ${escapeHtml(title)}</title>
+  <style>
+    :root{color-scheme:light;--canvas:#e5e8e5;--paper:#f7f8f5;--paper-light:#fff;--ink:#1d2421;--muted:#66706b;--line:#c9cfcb;--red:#c83f35;--red-deep:#952d27;--green:#315c4c;font-family:"Avenir Next","PingFang SC","Segoe UI",sans-serif}
+    *{box-sizing:border-box}body{min-height:100vh;margin:0;background:var(--canvas);color:var(--ink)}a{color:inherit}.update-app{width:min(100%,74rem);min-height:100vh;margin:0 auto;border-inline:1px solid rgba(73,58,43,.24);background:var(--paper)}.update-topbar{min-height:4rem;display:flex;align-items:center;gap:1rem;border-bottom:1px solid var(--ink);padding:.55rem 1.25rem;background:rgba(247,238,219,.95)}.update-back{display:inline-flex;align-items:center;gap:.4rem;text-decoration:none;font-size:.78rem;font-weight:700}.update-brand{margin-left:auto;display:grid;text-align:right}.update-brand strong{font-family:"Songti SC","STSong",serif}.update-brand span{color:var(--muted);font-size:.65rem;text-transform:uppercase}.update-main{padding:2rem 1.25rem 3rem}.update-kicker{margin:0 0 .55rem;color:var(--red-deep);font-size:.7rem;font-weight:800;text-transform:uppercase}.update-main h1{margin:0;font-family:"Songti SC","STSong",serif;font-size:clamp(2.2rem,6vw,4.4rem);line-height:1}.update-lead{max-width:44rem;margin:1rem 0 1.5rem;color:var(--muted);line-height:1.75}.update-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));border-top:1px solid var(--ink);border-left:1px solid var(--ink)}.update-card{min-width:0;border-right:1px solid var(--ink);border-bottom:1px solid var(--ink);padding:1rem;background:rgba(255,255,255,.25)}.update-card span{display:block;color:var(--muted);font-size:.7rem}.update-card strong{display:block;margin-top:.35rem;overflow-wrap:anywhere;font-family:"Songti SC","STSong",serif;font-size:1rem}.update-section{margin-top:1.75rem;border-top:1px solid var(--ink);padding-top:1rem}.update-section h2{margin:0 0 .8rem;font-family:"Songti SC","STSong",serif;font-size:1.15rem}.update-notice{border-left:4px solid var(--green);background:rgba(49,92,76,.06);padding:1rem;line-height:1.7}.update-notice strong{display:block;margin-bottom:.25rem}.update-steps{margin:.5rem 0 0;padding-left:1.25rem;line-height:1.8}.update-actions{display:flex;flex-wrap:wrap;gap:.65rem;margin-top:1rem}.update-button{display:inline-flex;align-items:center;min-height:2.5rem;border:1px solid var(--ink);border-radius:4px;padding:0 .85rem;text-decoration:none;font-size:.78rem;font-weight:750}.update-button.primary{background:var(--green);border-color:var(--green);color:#fff}.update-meta{margin-top:1.5rem;color:var(--muted);font-size:.72rem;line-height:1.7}.update-code{overflow:auto;border:1px solid var(--line);background:var(--paper-light);padding:.85rem;font:12px/1.65 Consolas,monospace;white-space:pre-wrap}.update-pill{display:inline-flex;margin-left:.35rem;border:1px solid var(--line);border-radius:999px;padding:.1rem .45rem;color:var(--muted);font-size:.65rem;vertical-align:middle}
+    @media(max-width:700px){body{background:var(--paper)}.update-app{border:0}.update-main{padding:1.5rem .85rem 2rem}.update-topbar{padding-inline:.85rem}.update-grid{grid-template-columns:1fr}.update-brand span{display:none}}
+  </style>
+</head>
+<body>
+  <main class="update-app">
+    <header class="update-topbar"><a class="update-back" href="/app">← 返回工作台</a><div class="update-brand"><strong>Personal Agent</strong><span>Local-first control console</span></div></header>
+    <section class="update-main">
+      <p class="update-kicker">System · Release lifecycle</p>
+      <h1>更新与回滚</h1>
+      <p class="update-lead">Node 使用经过校验的不可变发行包更新，并保留一个上一版本。更新属于本机高风险操作，不能由远程页面或 Agent 自动确认。</p>
+      <div class="update-grid">
+        <article class="update-card"><span>当前版本</span><strong>${escapeHtml(status.currentReleaseId || '未知')}</strong></article>
+        <article class="update-card"><span>上一版本</span><strong>${escapeHtml(status.previousReleaseId || '暂无')}</strong></article>
+        <article class="update-card"><span>安装来源</span><strong>${escapeHtml(status.source || '未知')}</strong></article>
+      </div>
+      <section class="update-section">
+        <h2>如何更新 <span class="update-pill">update 命令：${escapeHtml(commandLabel)}</span></h2>
+        <div class="update-notice"><strong>${status.commandStatus === 'implemented' ? '统一更新命令已可用。' : '统一的一键更新仍未开放。'}</strong>当前只使用公开 GitHub Release 的安装器；不要用 Git 拉取或直接覆盖 current 目录。</div>
+        <ol class="update-steps"><li>在 Releases 页面选择目标版本并核对发布说明。</li><li>在本机运行该版本安装器，校验 SHA256 后切换 current，并保留 previous。</li><li>重新注册本机启动服务，运行 doctor、路由检查和真实对话验收。</li><li>验收失败时切回 previous，并重新启动与复核。</li></ol>
+        <div class="update-actions"><a class="update-button primary" href="${escapeAttr(status.repositoryUrl || '#')}" target="_blank" rel="noopener noreferrer">查看 GitHub Releases</a><a class="update-button" href="/app/skills">查看随版本交付的技能</a></div>
+      </section>
+      <section class="update-section"><h2>安装器示例</h2><pre class="update-code">$Tag = "vX.Y.Z"
+$Installer = Join-Path $env:TEMP "personal-agent-$Tag-installer.mjs"
+Invoke-WebRequest -UseBasicParsing -Uri "https://github.com/chenchen428/personal-agent-node/releases/download/$Tag/personal-agent-node-$Tag-installer.mjs" -OutFile $Installer
+node $Installer --tag $Tag --install-root "&lt;现有安装目录&gt;" --data-root "&lt;现有数据目录&gt;"</pre></section>
+      <p class="update-meta">Revision ${escapeHtml(revision)} · Profile ${escapeHtml(status.profile || '未知')} · 此页面仅展示状态和流程，不执行下载、安装或回滚。</p>
+    </section>
+  </main>
+</body>
+</html>`;
+}
+
 export function renderNavigationPage({ title, items }) {
   return `<!doctype html>
 <html lang="zh-CN">
@@ -68,7 +131,7 @@ export function renderNavigationPage({ title, items }) {
   <style>
     :root{color-scheme:light;--canvas:#e5e8e5;--paper:#f7f8f5;--paper-light:#fff;--ink:#1d2421;--muted:#66706b;--line:#c9cfcb;--red:#c83f35;--red-deep:#952d27;--green:#315c4c;--green-bright:#147a54;--blue:#416b86;--amber:#9b6b18;font-family:"Avenir Next","PingFang SC","Segoe UI",sans-serif}
     *{box-sizing:border-box}html,body{min-height:100%}body{margin:0;background:var(--canvas);color:var(--ink)}button{font:inherit}a{color:inherit;text-decoration:none}.app{position:relative;width:min(100%,74rem);min-height:100dvh;margin:0 auto;overflow:hidden;border-inline:1px solid rgba(73,58,43,.24);background-color:var(--paper);box-shadow:0 26px 80px rgba(38,31,26,.16)}.app:before{position:absolute;inset:0;z-index:0;pointer-events:none;content:"";opacity:.22;background-size:7px 7px;background-image:linear-gradient(90deg,rgba(72,96,82,.08) 1px,transparent 1px),linear-gradient(rgba(216,73,47,.05) 1px,transparent 1px)}.app>*{position:relative;z-index:1}
-    .topbar{min-height:4rem;display:flex;align-items:center;gap:.85rem;padding:.55rem 1.25rem;border-bottom:1px solid var(--ink);background:rgba(247,238,219,.95);position:sticky;top:0;z-index:20}.brand-stamp{width:2.35rem;height:2.35rem;display:grid;place-items:center;border:2px solid var(--red);color:var(--red);font-family:"Songti SC","STSong",serif;font-size:1.25rem;font-weight:800;transform:rotate(-3deg)}.brand{min-width:0;flex:1;display:grid;gap:.08rem}.brand strong{font-family:"Songti SC","STSong",serif;font-size:1.05rem}.brand span{color:var(--muted);font-size:.68rem;text-transform:uppercase}.refresh{width:2.45rem;height:2.45rem;border:1px solid var(--ink);border-radius:4px;background:transparent;color:var(--ink);cursor:pointer;font-size:1.15rem}.refresh:hover,.refresh:focus-visible{border-color:var(--red);color:var(--red);outline:0}
+    .topbar{min-height:4rem;display:flex;align-items:center;gap:.85rem;padding:.55rem 1.25rem;border-bottom:1px solid var(--ink);background:rgba(247,238,219,.95);position:sticky;top:0;z-index:20}.brand{min-width:0;flex:1;display:grid;gap:.08rem}.brand strong{font-family:"Songti SC","STSong",serif;font-size:1.05rem}.brand span{color:var(--muted);font-size:.68rem;text-transform:uppercase}.refresh{width:2.45rem;height:2.45rem;border:1px solid var(--ink);border-radius:4px;background:transparent;color:var(--ink);cursor:pointer;font-size:1.15rem}.refresh:hover,.refresh:focus-visible{border-color:var(--red);color:var(--red);outline:0}
     .editorial-intro{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(15rem,.75fr);gap:2rem;align-items:end;padding:2.25rem 1.25rem 1.5rem;border-bottom:1px solid var(--line)}.intro-kicker{margin:0 0 .55rem;color:var(--red-deep);font-size:.7rem;font-weight:800;text-transform:uppercase}.editorial-intro h1{max-width:11ch;margin:0;font-family:"Songti SC","STSong",serif;font-size:clamp(2rem,5vw,4.6rem);line-height:.98;letter-spacing:0}.intro-note{margin:0 0 .2rem;border-left:4px solid var(--green);padding:.2rem 0 .2rem 1rem;color:var(--muted);font-size:.82rem;line-height:1.7}.intro-note strong{display:block;margin-bottom:.2rem;color:var(--ink);font-family:"Songti SC","STSong",serif;font-size:1.05rem}
     .status-band{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:1rem;align-items:center;margin:0 1.25rem;padding:1rem 0;border-bottom:1px solid var(--ink)}.status-index{width:3.35rem;height:3.35rem;display:grid;place-items:center;border:2px solid var(--green);border-radius:50%;color:var(--green);font-family:"Songti SC","STSong",serif;font-size:1.35rem;font-weight:800}.status-copy{min-width:0;display:grid;gap:.25rem}.status-title{display:flex;align-items:center;gap:.55rem;font-size:.95rem;font-weight:800}.status-detail{margin:0;color:var(--muted);font-size:.78rem;line-height:1.5}.dot{width:.5rem;height:.5rem;border-radius:50%;background:var(--muted);flex:0 0 auto}.dot.good{background:#16a36f;box-shadow:0 0 0 3px rgba(22,163,111,.14)}.dot.bad{background:var(--red)}.dot.warn{background:var(--amber)}.wechat-actions{display:flex;gap:.45rem}.action{min-width:4rem;height:2.35rem;border:1px solid var(--ink);border-radius:4px;background:transparent;color:var(--ink);padding:0 .8rem;font-weight:700;font-size:.78rem;cursor:pointer}.action:hover,.action:focus-visible{background:var(--green);border-color:var(--green);color:#fff;outline:0}.action.danger{border-color:var(--red-deep);color:var(--red-deep)}.action.danger:hover{background:var(--red);border-color:var(--red);color:#fff}
     .qr-panel{display:grid;grid-template-columns:minmax(12rem,16rem) minmax(0,1fr);gap:1.25rem;align-items:center;margin:0 1.25rem;padding:1.25rem 0;border-bottom:1px solid var(--line)}.qr-panel[hidden]{display:none}.qr-box{aspect-ratio:1;width:100%;display:grid;place-items:center;border:1px solid var(--ink);background:#fff;padding:.65rem}.qr-box svg{display:block;width:100%;height:auto}.qr-copy{max-width:28rem;color:var(--muted);font-family:"Songti SC","STSong",serif;font-size:.95rem;line-height:1.7}
@@ -81,7 +144,6 @@ export function renderNavigationPage({ title, items }) {
 <body>
   <main class="app">
     <header class="topbar">
-      <span class="brand-stamp" aria-hidden="true">陈</span>
       <div class="brand"><strong>Personal Agent</strong><span>Local-first control console</span></div>
       <button class="refresh" type="button" data-refresh title="刷新状态" aria-label="刷新状态">↻</button>
     </header>
@@ -90,7 +152,7 @@ export function renderNavigationPage({ title, items }) {
         <p class="intro-kicker">Navigation · Status · Daily tools</p>
         <h1>工作台</h1>
       </div>
-      <p class="intro-note"><strong>你的 Agent，运行在你的设备上</strong>在一个控制台中管理对话、渠道、文件、自动化和本机运行状态。</p>
+      <p class="intro-note"><strong>你的 Agent，运行在你的设备上</strong>在一个控制台中管理对话、渠道、自动化、页面和本机运行状态。</p>
     </section>
     <section class="status-band" aria-labelledby="wechat-title">
       <span class="status-index" aria-hidden="true">微</span>
@@ -295,4 +357,21 @@ function escapeHtml(value) {
 
 function escapeAttr(value) {
   return escapeHtml(value).replaceAll('`', '&#96;');
+}
+
+function readJson(filePath) {
+  try {
+    return JSON.parse(fs.readFileSync(filePath, 'utf8'));
+  } catch {
+    return null;
+  }
+}
+
+function releaseIdAtPointer(pointerPath) {
+  try {
+    const target = fs.realpathSync(pointerPath);
+    return String(readJson(path.join(target, 'release-manifest.json'))?.releaseId || '');
+  } catch {
+    return '';
+  }
 }

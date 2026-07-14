@@ -11,8 +11,10 @@ import { fileURLToPath } from 'node:url';
 import {
   buildNavigationItems,
   readNavigationState,
+  readUpdateStatus,
   recordNavigationClick,
   renderNavigationPage,
+  renderUpdatePage,
 } from './page.mjs';
 import { capacityState, readServerCapacity } from './capacity.mjs';
 
@@ -26,6 +28,7 @@ const panelConfig = readJsonFile(path.join(root, 'registry', 'admin-panel.json')
 const siteDataRoot = path.resolve(process.env.PRIVATE_SITE_DATA_ROOT || path.join(os.homedir(), '.personal-agent.local'));
 const adminDataDir = path.resolve(process.env.ADMIN_PANEL_DATA_DIR || path.join(siteDataRoot, 'databases', 'admin'));
 const navigationStateFile = path.join(adminDataDir, 'navigation-clicks.json');
+const installRoot = path.resolve(process.env.PRIVATE_SITE_INSTALL_ROOT || path.join(os.homedir(), '.private-site-node'));
 const bridgeDir = path.join(root, 'projects', 'core', 'open-agent-bridge');
 const bridgeDataDir = path.resolve(process.env.CLI_BRIDGE_DATA_DIR || path.join(siteDataRoot, 'channels', 'wechat'));
 const accountFile = path.join(bridgeDataDir, 'account.json');
@@ -140,6 +143,11 @@ async function handleRequest(request, response) {
       clickState: readNavigationState(navigationStateFile),
     });
     send(response, 200, 'text/html; charset=utf-8', renderNavigationPage({ title: panelConfig.title, items }), request.method === 'HEAD');
+    return;
+  }
+  if (url.pathname === '/update' && (request.method === 'GET' || request.method === 'HEAD')) {
+    const status = readUpdateStatus({ releaseRoot: root, installRoot });
+    send(response, 200, 'text/html; charset=utf-8', renderUpdatePage({ title: panelConfig.title, status }), request.method === 'HEAD');
     return;
   }
   if (url.pathname === '/channels' && (request.method === 'GET' || request.method === 'HEAD')) {

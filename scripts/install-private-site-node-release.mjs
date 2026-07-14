@@ -10,7 +10,7 @@ import { installPersonalAgentCommand } from "./personal-agent-command.mjs";
 
 const args = parseArgs(process.argv.slice(2));
 const source = path.resolve(args._[0] || "");
-if (!source || !fs.existsSync(source)) throw new Error("Usage: install-private-site-node-release.mjs <release-root> [--install-root <path>]");
+if (!source || !fs.existsSync(source)) throw new Error("Usage: install-private-site-node-release.mjs <release-root> [--install-root <path>] [--data-root <path>]");
 const verifier = path.join(source, "scripts", "verify-private-site-node-dist.mjs");
 if (!fs.existsSync(verifier)) throw new Error("Release verifier is missing");
 materializeHarnessLinks(source);
@@ -38,7 +38,7 @@ verifyHarnessLinks(target);
 const oldCurrent = pointerTarget(current);
 if (oldCurrent && path.resolve(oldCurrent) !== path.resolve(target)) replacePointer(previous, oldCurrent);
 replacePointer(current, target);
-const personalAgentCommand = installPersonalAgentCommand({ installRoot });
+const personalAgentCommand = installPersonalAgentCommand({ installRoot, dataRoot: args.dataRoot });
 const installation = {
   schemaVersion: 1,
   activeReleaseId: manifest.releaseId,
@@ -84,6 +84,7 @@ function parseArgs(argv) {
   const result = { _: [] };
   for (let index = 0; index < argv.length; index += 1) {
     if (argv[index] === "--install-root") result.installRoot = argv[++index];
+    else if (argv[index] === "--data-root") result.dataRoot = argv[++index];
     else result._.push(argv[index]);
   }
   return result;
