@@ -13,10 +13,7 @@ export function materializeHarnessLinks(root, { platform = process.platform, fil
   for (const spec of harnessLinks) {
     const linkPath = path.join(root, spec.link);
     fileSystem.mkdirSync(path.dirname(linkPath), { recursive: true });
-    try { fileSystem.unlinkSync(linkPath); }
-    catch (error) {
-      if (error.code !== 'ENOENT') throw error;
-    }
+    removeExistingBridge(linkPath, fileSystem);
     if (platform === 'win32' && spec.kind === 'file') {
       fileSystem.linkSync(path.resolve(path.dirname(linkPath), spec.target), linkPath);
       continue;
@@ -28,6 +25,18 @@ export function materializeHarnessLinks(root, { platform = process.platform, fil
     fileSystem.symlinkSync(target, linkPath, type);
   }
   return verifyHarnessLinks(root, { platform, fileSystem });
+}
+
+function removeExistingBridge(linkPath, fileSystem) {
+  let stat;
+  try { stat = fileSystem.lstatSync(linkPath); }
+  catch (error) {
+    if (error.code === 'ENOENT') return;
+    throw error;
+  }
+  if (stat.isSymbolicLink() || stat.isFile()) fileSystem.unlinkSync(linkPath);
+  else if (stat.isDirectory()) fileSystem.rmSync(linkPath, { recursive: true, force: true });
+  else throw new Error(`Unsupported Harness bridge entry: ${linkPath}`);
 }
 
 export function verifyHarnessLinks(root, { platform = process.platform, fileSystem = fs } = {}) {
