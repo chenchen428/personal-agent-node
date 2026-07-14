@@ -570,14 +570,36 @@ async function availablePort() {
 
 async function stopChild(child) {
   if (!child || child.exitCode !== null) return;
+  const exited = new Promise((resolve) => child.once("exit", resolve));
   child.kill("SIGTERM");
-  await new Promise((resolve, reject) => {
-    const timer = setTimeout(() => reject(new Error("Bundled Bridge did not stop after SIGTERM")), 10_000);
-    child.once("exit", () => {
-      clearTimeout(timer);
-      resolve();
-    });
-  });
+  if (await exitsWithin(exited, 5_000)) return;
+  if (process.platform === "win32") {
+    const terminated = spawnSync("taskkill", ["/pid", String(child.pid), "/t", "/f"], { stdio: "ignore", windowsHide: true });
+    if (terminated.status === 0 || !processExists(child.pid)) return;
+    throw new Error(`Bundled Bridge taskkill failed with ${terminated.status}`);
+  }
+  child.kill("SIGKILL");
+  if (!await exitsWithin(exited, 5_000)) throw new Error("Bundled Bridge did not stop after forced termination");
+}
+
+function processExists(pid) {
+  try { process.kill(pid, 0); return true; }
+  catch (error) {
+    if (error?.code === "ESRCH") return false;
+    throw error;
+  }
+}
+
+async function exitsWithin(exited, timeoutMilliseconds) {
+  let timer;
+  try {
+    return await Promise.race([
+      exited.then(() => true),
+      new Promise((resolve) => { timer = setTimeout(() => resolve(false), timeoutMilliseconds); }),
+    ]);
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 function snapshotTree(root) {
