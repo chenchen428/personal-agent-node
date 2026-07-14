@@ -1,6 +1,6 @@
 {
   "name": "open-agent-bridge",
-  "version": "0.1.0-beta.15",
+  "version": "0.1.0-beta.16",
   "private": true,
   "type": "module",
   "description": "Open channel-first Agent Bridge for personal-agent.local with WeChat, Codex sessions, web conversation views, and Open Agent Bridge Pages publishing.",
