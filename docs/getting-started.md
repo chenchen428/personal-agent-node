@@ -5,7 +5,7 @@
 Personal Agent Node Beta requires Node.js 22.x. On macOS or Linux, install the exact release asset without cloning this repository:
 
 ```bash
-TAG=v0.1.0-beta.13
+TAG=v0.1.0-beta.14
 INSTALLER="$(mktemp "${TMPDIR:-/tmp}/personal-agent-installer.XXXXXX.mjs")"
 curl --fail --silent --show-error --location --proto '=https' --tlsv1.2 \
   --output "$INSTALLER" -- \
@@ -19,7 +19,7 @@ personal-agent doctor --json
 On Windows PowerShell:
 
 ```powershell
-$Tag = "v0.1.0-beta.13"
+$Tag = "v0.1.0-beta.14"
 $Installer = Join-Path $env:TEMP "personal-agent-$Tag-installer.mjs"
 Invoke-WebRequest -UseBasicParsing -Uri "https://github.com/chenchen428/personal-agent-node/releases/download/$Tag/personal-agent-node-$Tag-installer.mjs" -OutFile $Installer
 node $Installer --tag $Tag

@@ -30,8 +30,8 @@ test('rollback atomically swaps current and previous immutable releases', () => 
   fs.mkdirSync(second, { recursive: true });
   fs.writeFileSync(path.join(first, 'release-manifest.json'), JSON.stringify({ releaseId: '0.0.1', revision: 'first' }));
   fs.writeFileSync(path.join(second, 'release-manifest.json'), JSON.stringify({ releaseId: '0.0.2', revision: 'second' }));
-  fs.symlinkSync(path.relative(installRoot, second), path.join(installRoot, 'current'), 'dir');
-  fs.symlinkSync(path.relative(installRoot, first), path.join(installRoot, 'previous'), 'dir');
+  fs.symlinkSync(process.platform === 'win32' ? second : path.relative(installRoot, second), path.join(installRoot, 'current'), process.platform === 'win32' ? 'junction' : 'dir');
+  fs.symlinkSync(process.platform === 'win32' ? first : path.relative(installRoot, first), path.join(installRoot, 'previous'), process.platform === 'win32' ? 'junction' : 'dir');
   const result = spawnSync(process.execPath, ['scripts/rollback-private-site-node-release.mjs', '--install-root', installRoot], { cwd: root, encoding: 'utf8' });
   assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`);
   assert.equal(fs.realpathSync(path.join(installRoot, 'current')), fs.realpathSync(first));
@@ -41,7 +41,7 @@ test('rollback atomically swaps current and previous immutable releases', () => 
   fs.rmSync(installRoot, { recursive: true, force: true });
 });
 
-test('installed Harness uses real relative symlinks for every Agent client', () => {
+test('installed Harness uses verified platform links for every Agent client', () => {
   const releaseRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'personal-agent-links-'));
   try {
     fs.mkdirSync(path.join(releaseRoot, 'skills'));
@@ -51,22 +51,44 @@ test('installed Harness uses real relative symlinks for every Agent client', () 
     assert.deepEqual(verifyHarnessLinks(releaseRoot).map((entry) => entry.link), harnessLinks.map((entry) => entry.link));
     for (const spec of harnessLinks) {
       const link = path.join(releaseRoot, spec.link);
-      assert.equal(fs.lstatSync(link).isSymbolicLink(), true, spec.link);
-      assert.equal(path.resolve(path.dirname(link), fs.readlinkSync(link)), path.resolve(path.dirname(link), spec.target));
+      if (process.platform === 'win32' && spec.kind === 'file') {
+        const target = path.resolve(path.dirname(link), spec.target);
+        const linkStat = fs.statSync(link, { bigint: true });
+        const targetStat = fs.statSync(target, { bigint: true });
+        assert.equal(linkStat.isFile(), true, spec.link);
+        assert.equal(linkStat.dev, targetStat.dev, spec.link);
+        assert.equal(linkStat.ino, targetStat.ino, spec.link);
+        assert.ok(linkStat.nlink >= 2n, spec.link);
+      } else {
+        assert.equal(fs.lstatSync(link).isSymbolicLink(), true, spec.link);
+        assert.equal(path.resolve(path.dirname(link), fs.readlinkSync(link)), path.resolve(path.dirname(link), spec.target));
+      }
     }
   } finally { fs.rmSync(releaseRoot, { recursive: true, force: true }); }
 });
 
-test('Windows link plan uses a file link and directory junctions', () => {
+test('Windows link plan uses a hard link and directory junctions', () => {
   const calls = [];
+  const hardLinkStat = { dev: 1n, ino: 2n, nlink: 2n, isFile: () => true };
   const fileSystem = {
     mkdirSync() {}, rmSync() {}, symlinkSync(target, link, type) { calls.push({ target, link, type }); },
+    linkSync(target, link) { calls.push({ target, link, type: 'hardlink' }); },
+    statSync() { return hardLinkStat; },
     lstatSync() { return { isSymbolicLink: () => true }; },
     readlinkSync(link) { return calls.find((entry) => entry.link === link).target; },
   };
   materializeHarnessLinks('C:\\personal-agent', { platform: 'win32', fileSystem });
-  assert.equal(calls.find((entry) => entry.link.endsWith('CLAUDE.md')).type, 'file');
+  assert.equal(calls.find((entry) => entry.link.endsWith('CLAUDE.md')).type, 'hardlink');
   assert.equal(calls.filter((entry) => entry.type === 'junction').length, 4);
+  assert.equal(calls.filter((entry) => entry.type === 'file').length, 0);
+});
+
+test('release installation materializes Harness links before immutable verification', () => {
+  const installer = fs.readFileSync(path.join(root, 'scripts', 'install-private-site-node-release.mjs'), 'utf8');
+  const materialize = installer.indexOf('materializeHarnessLinks(source)');
+  const verifyRelease = installer.indexOf('spawnSync(process.execPath, [verifier, source]');
+  assert.ok(materialize >= 0 && materialize < verifyRelease);
+  assert.match(installer, /verifyHarnessLinks\(source\)/);
 });
 
 test('installed personal-agent command follows the immutable current release', () => {

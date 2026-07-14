@@ -13,6 +13,8 @@ const source = path.resolve(args._[0] || "");
 if (!source || !fs.existsSync(source)) throw new Error("Usage: install-private-site-node-release.mjs <release-root> [--install-root <path>]");
 const verifier = path.join(source, "scripts", "verify-private-site-node-dist.mjs");
 if (!fs.existsSync(verifier)) throw new Error("Release verifier is missing");
+materializeHarnessLinks(source);
+verifyHarnessLinks(source);
 const verified = spawnSync(process.execPath, [verifier, source], { encoding: "utf8", timeout: 10 * 60_000 });
 if (verified.status !== 0) throw new Error(`Release verification failed: ${String(verified.stderr || verified.stdout || "unknown error").trim()}`);
 const manifest = JSON.parse(fs.readFileSync(path.join(source, "release-manifest.json"), "utf8"));

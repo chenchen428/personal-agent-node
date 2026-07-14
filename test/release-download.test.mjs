@@ -4,6 +4,7 @@ import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 import { downloadReleaseAsset, validateReleaseUrl } from '../scripts/release-download.mjs';
+import { archiveExtractionArgs, validateArchiveListing } from '../scripts/install-from-github-release.mjs';
 
 const assetUrl = 'https://github.com/example/personal-agent-node/releases/download/v1.0.0/asset.tar.gz';
 
@@ -149,6 +150,33 @@ test('GitHub installer keeps checksum verification after transport fallback', ()
   assert.match(installer, /\[prepareEntrypoint, 'prepare'\]/);
   assert.match(installer, /PRIVATE_SITE_INSTALL_ROOT/);
   assert.match(installer, /PRIVATE_SITE_DATA_ROOT/);
+});
+
+test('Windows release extraction skips only controlled Harness bridge links', () => {
+  const layout = validateArchiveListing([
+    '0.1.0/','0.1.0/AGENTS.md','0.1.0/CLAUDE.md','0.1.0/.agents/','0.1.0/.agents/skills',
+  ].join('\n'));
+  assert.deepEqual(archiveExtractionArgs('release.tar.gz', 'extracted', layout, 'win32'), [
+    '-xzf', 'release.tar.gz', '-C', 'extracted',
+    '--exclude', '0.1.0/CLAUDE.md',
+    '--exclude', '0.1.0/.agents/skills',
+    '--exclude', '0.1.0/.claude/skills',
+    '--exclude', '0.1.0/.codex/skills',
+    '--exclude', '0.1.0/.cursor/skills',
+  ]);
+  assert.deepEqual(archiveExtractionArgs('release.tar.gz', 'extracted', layout, 'linux'), [
+    '-xzf', 'release.tar.gz', '-C', 'extracted',
+  ]);
+});
+
+test('release extraction rejects path traversal and multiple archive roots before unpacking', () => {
+  for (const listing of [
+    '0.1.0/../outside',
+    '/absolute/path',
+    'C:/absolute/path',
+    '0.1.0\\windows-path',
+    '0.1.0/file\nother-root/file',
+  ]) assert.throws(() => validateArchiveListing(listing), /unsafe path|multiple roots/);
 });
 
 test('release packaging publishes the standalone immutable installer asset', () => {
