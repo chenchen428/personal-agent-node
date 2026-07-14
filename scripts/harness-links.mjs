@@ -13,7 +13,7 @@ export function materializeHarnessLinks(root, { platform = process.platform, fil
   for (const spec of harnessLinks) {
     const linkPath = path.join(root, spec.link);
     fileSystem.mkdirSync(path.dirname(linkPath), { recursive: true });
-    try { fileSystem.rmSync(linkPath, { recursive: false, force: true }); }
+    try { fileSystem.unlinkSync(linkPath); }
     catch (error) {
       if (error.code !== 'ENOENT') throw error;
     }
