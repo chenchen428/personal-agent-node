@@ -556,7 +556,8 @@ function copyMailFileAtomic(source, target) {
   try {
     fs.copyFileSync(source, temporary, fs.constants.COPYFILE_EXCL);
     fs.chmodSync(temporary, 0o600);
-    const descriptor = fs.openSync(temporary, "r");
+    // Windows FlushFileBuffers requires a handle opened with write access.
+    const descriptor = fs.openSync(temporary, "r+");
     try { fs.fsyncSync(descriptor); } finally { fs.closeSync(descriptor); }
     try {
       fs.linkSync(temporary, target);
