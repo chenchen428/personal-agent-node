@@ -47,7 +47,9 @@ test('installed Harness uses verified platform links for every Agent client', ()
     fs.mkdirSync(path.join(releaseRoot, 'skills'));
     fs.writeFileSync(path.join(releaseRoot, 'AGENTS.md'), '# Agent\n');
     const links = materializeHarnessLinks(releaseRoot);
+    const repeated = materializeHarnessLinks(releaseRoot);
     assert.equal(links.length, 5);
+    assert.equal(repeated.length, 5);
     assert.deepEqual(verifyHarnessLinks(releaseRoot).map((entry) => entry.link), harnessLinks.map((entry) => entry.link));
     for (const spec of harnessLinks) {
       const link = path.join(releaseRoot, spec.link);
@@ -71,7 +73,7 @@ test('Windows link plan uses a hard link and directory junctions', () => {
   const calls = [];
   const hardLinkStat = { dev: 1n, ino: 2n, nlink: 2n, isFile: () => true };
   const fileSystem = {
-    mkdirSync() {}, rmSync() {}, symlinkSync(target, link, type) { calls.push({ target, link, type }); },
+    mkdirSync() {}, unlinkSync() { throw Object.assign(new Error('missing'), { code: 'ENOENT' }); }, symlinkSync(target, link, type) { calls.push({ target, link, type }); },
     linkSync(target, link) { calls.push({ target, link, type: 'hardlink' }); },
     statSync() { return hardLinkStat; },
     lstatSync() { return { isSymbolicLink: () => true }; },
