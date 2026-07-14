@@ -4,8 +4,14 @@ import http from 'node:http';
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
-import { enrollWithCloudDeviceAuthorization, pollCloudDeviceAuthorization, startCloudDeviceAuthorization } from '../src/cloud-enrollment.mjs';
+import { enrollWithCloudDeviceAuthorization, pollCloudDeviceAuthorization, resolveCloudUrl, startCloudDeviceAuthorization } from '../src/cloud-enrollment.mjs';
 import { initializeSite } from '../src/config.mjs';
+
+test('Cloud URL resolution prefers an explicit CLI value, then environment, then the managed default', () => {
+  assert.equal(resolveCloudUrl({ cloudUrl: 'https://explicit.example', env: { PERSONAL_AGENT_CLOUD_URL: 'https://environment.example' } }), 'https://explicit.example');
+  assert.equal(resolveCloudUrl({ env: { PERSONAL_AGENT_CLOUD_URL: 'https://environment.example' } }), 'https://environment.example');
+  assert.equal(resolveCloudUrl({ env: {} }), 'https://chenjianhui.site');
+});
 
 test('browser device authorization emits only public codes then consumes a one-time enrollment credential', async (t) => {
   const cloud = await mockCloud();
@@ -25,7 +31,7 @@ test('browser device authorization emits only public codes then consumes a one-t
     now: () => clock,
   });
   assert.equal(result.ok, true);
-  assert.equal(result.site.managedHost, 'user-one.personal-agent.cn');
+  assert.equal(result.site.managedHost, 'user-one.chenjianhui.site');
   assert.deepEqual(cloud.calls, ['auth-start', 'auth-poll', 'auth-poll', 'auth-poll', 'enroll', 'heartbeat']);
   assert.deepEqual(delays, [1000, 2000, 9000]);
   assert.equal(opened[0], `${cloud.url}/connect?code=PA-1234`);
@@ -56,10 +62,10 @@ test('browser authorization attaches an existing local-only Node without replaci
     sleep: async () => {},
   });
   const attached = JSON.parse(fs.readFileSync(initialized.config.configPath, 'utf8'));
-  assert.equal(result.site.managedHost, 'user-one.personal-agent.cn');
+  assert.equal(result.site.managedHost, 'user-one.chenjianhui.site');
   assert.equal(attached.siteId, original.siteId);
   assert.equal(attached.nodeId, original.nodeId);
-  assert.equal(attached.asciiDomain, 'user-one.personal-agent.cn');
+  assert.equal(attached.asciiDomain, 'user-one.chenjianhui.site');
   assert.equal(attached.connectionMode, 'managed-cloud');
   assert.equal('edgeMode' in attached, false);
   assert.equal(fs.readFileSync(path.join(dataRoot, 'workspace', 'memory.txt'), 'utf8'), 'preserve me');
@@ -127,7 +133,7 @@ async function mockCloud(options = {}) {
       calls.push('enroll'); assert.deepEqual(Object.keys(body).sort(), ['enrollmentCredential', 'publicKey']);
       assert.equal(body.enrollmentCredential, 'enrollment-credential-123456');
       assert.match(body.publicKey, /^[A-Za-z0-9+/]{43}=$/);
-      return send(response, 201, { ok: true, site: { id: 'site-1', slug: 'user-one', managed_host: 'user-one.personal-agent.cn', plan: 'free', status: 'active' }, nodeToken: 'node-secret-token', tunnel: { schemaVersion: 1, endpoint: 'edge.personal-agent.cn:51821', edgePublicKey: `${'E'.repeat(43)}=`, address: '10.77.0.2/32', dns: ['10.77.0.1'], allowedIPs: ['10.77.0.1/32'], persistentKeepalive: 25, originUrl: 'http://10.77.0.2:8843' } });
+      return send(response, 201, { ok: true, site: { id: 'site-1', slug: 'user-one', managed_host: 'user-one.chenjianhui.site', plan: 'free', status: 'active' }, nodeToken: 'node-secret-token', tunnel: { schemaVersion: 1, endpoint: 'edge.chenjianhui.site:51821', edgePublicKey: `${'E'.repeat(43)}=`, address: '10.77.0.2/32', dns: ['10.77.0.1'], allowedIPs: ['10.77.0.1/32'], persistentKeepalive: 25, originUrl: 'http://10.77.0.2:8843' } });
     }
     if (request.url === '/api/node/heartbeat') {
       calls.push('heartbeat'); assert.equal(request.headers.authorization, 'Bearer node-secret-token'); return send(response, 200, { ok: true, siteId: 'site-1', status: 'active', tunnelGeneration: 1 });

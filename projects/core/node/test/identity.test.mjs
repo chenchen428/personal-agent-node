@@ -39,7 +39,7 @@ test("managed WireGuard identity remains local and contract rejects lateral rout
     assert.match(first.publicKey, /^[A-Za-z0-9+/]{43}=$/);
     assert.ok(fs.statSync(first.privateKeyPath).isFile());
     if (process.platform !== "win32") assert.equal(fs.statSync(first.privateKeyPath).mode & 0o777, 0o600);
-    const base = { schemaVersion: 1, edgePublicKey: `${"E".repeat(43)}=`, endpoint: "edge.personal-agent.cn:51821", address: "10.77.0.2/32", allowedIPs: ["10.77.0.1/32"], dns: ["10.77.0.1"], persistentKeepalive: 25 };
+    const base = { schemaVersion: 1, edgePublicKey: `${"E".repeat(43)}=`, endpoint: "edge.chenjianhui.site:51821", address: "10.77.0.2/32", allowedIPs: ["10.77.0.1/32"], dns: ["10.77.0.1"], persistentKeepalive: 25 };
     assert.doesNotThrow(() => validateManagedTunnelContract(base));
     assert.throws(() => validateManagedTunnelContract({ ...base, allowedIPs: ["10.77.0.0/24", "192.168.0.0/16"] }), /AllowedIPs/);
     assert.throws(() => validateManagedTunnelContract({ ...base, address: "10.77.0.1/32" }), /address/);

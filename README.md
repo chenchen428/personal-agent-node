@@ -2,7 +2,7 @@
 
 [English](README.en.md) | 简体中文
 
-Personal Agent Node 是 [Personal Agent](https://personal-agent.cn) 的开源、本地优先运行时。对话、长期记忆、账号凭据、文件和 Agent 状态保存在你自己的电脑上；Personal Agent Cloud、自建公网入口和模型 Token 都是可选能力。
+Personal Agent Node 是 [Personal Agent](https://chenjianhui.site) 的开源、本地优先运行时。对话、长期记忆、账号凭据、文件和 Agent 状态保存在你自己的电脑上；Personal Agent Cloud、自建公网入口和模型 Token 都是可选能力。
 
 ## 为什么是本地 Node
 
@@ -24,7 +24,7 @@ Personal Agent Node 是 [Personal Agent](https://personal-agent.cn) 的开源、
 
 ## 连接模式
 
-Personal Agent Node 默认不需要连接 `personal-agent.cn`：
+Personal Agent Node 默认不需要连接 `chenjianhui.site` 或任何已配置的 Cloud：
 
 1. `local-only`：只在本机或局域网使用；
 2. `self-hosted-edge`：使用自己的域名和 Edge；
@@ -39,7 +39,7 @@ Personal Agent Node 默认不需要连接 `personal-agent.cn`：
 macOS / Linux：
 
 ```bash
-TAG=v0.1.0-beta.12
+TAG=v0.1.0-beta.13
 INSTALLER="$(mktemp "${TMPDIR:-/tmp}/personal-agent-installer.XXXXXX.mjs")"
 curl --fail --silent --show-error --location --proto '=https' --tlsv1.2 \
   --output "$INSTALLER" -- \
@@ -53,7 +53,7 @@ personal-agent doctor --json
 Windows PowerShell：
 
 ```powershell
-$Tag = "v0.1.0-beta.12"
+$Tag = "v0.1.0-beta.13"
 $Installer = Join-Path $env:TEMP "personal-agent-$Tag-installer.mjs"
 Invoke-WebRequest -UseBasicParsing -Uri "https://github.com/chenchen428/personal-agent-node/releases/download/$Tag/personal-agent-node-$Tag-installer.mjs" -OutFile $Installer
 node $Installer --tag $Tag
@@ -65,13 +65,15 @@ Remove-Item $Installer
 
 ## 注册并接入专属域名
 
-先在 [personal-agent.cn](https://personal-agent.cn) 使用邮箱验证码注册。管理员分配专属域名后，在安装 Node 的同一台电脑运行：
+先在 [chenjianhui.site](https://chenjianhui.site) 使用邮箱验证码注册。管理员分配专属域名后，在安装 Node 的同一台电脑运行：
 
 ```bash
 personal-agent cloud connect --json
 ```
 
-CLI 会打开 `personal-agent.cn` 的短期页面授权，只展示 verification URL 与 user code。请使用刚注册的同一账户登录网页，核对专属域名并确认；CLI 随后使用一次性 enrollment credential 登记本机、验证 heartbeat 并完成自接入。不要把 user code 当成长期凭据，也不要通过聊天发送它。长期 Node token、生成的本地密码和隧道秘密不会显示在浏览器、终端输出或 `cloud.json` 中。
+CLI 会打开 `chenjianhui.site` 的短期页面授权，只展示 verification URL 与 user code。请使用刚注册的同一账户登录网页，核对专属域名并确认；CLI 随后使用一次性 enrollment credential 登记本机、验证 heartbeat 并完成自接入。不要把 user code 当成长期凭据，也不要通过聊天发送它。长期 Node token、生成的本地密码和隧道秘密不会显示在浏览器、终端输出或 `cloud.json` 中。
+
+托管 Cloud 地址是配置项：`PERSONAL_AGENT_CLOUD_URL=https://cloud.example` 可设置当前进程的默认地址；`personal-agent cloud connect --cloud-url https://cloud.example --json` 是单次命令的显式覆盖，并且优先于环境变量。自定义地址必须使用 HTTPS。
 
 如果浏览器没有自动打开，可复制终端给出的 `verificationUrlComplete`。授权过期、被拒绝或账户与 Site 不匹配时会失败关闭；重新运行命令即可开始一个新的短期授权。
 
@@ -79,7 +81,7 @@ CLI 会打开 `personal-agent.cn` 的短期页面授权，只展示 verification
 
 登录官网后也可以把下面这段交给本机 Agent。它只描述公开发行版和公开 CLI，不包含账号、验证码或任何秘密：
 
-> 请在我的这台电脑上安装 Personal Agent Node v0.1.0-beta.12。先确认 Node.js 为 22.x；只从 `chenchen428/personal-agent-node` 的 GitHub Release 下载 `personal-agent-node-v0.1.0-beta.12-installer.mjs`，运行时显式传入 `--tag v0.1.0-beta.12`，不要 clone 源码作为运行时。安装器完成 SHA256 校验后，把 CLI 目录加入当前会话 PATH，运行 `personal-agent doctor --json`。如果检查通过，再运行 `personal-agent cloud connect --json`，让我在 personal-agent.cn 浏览器页面亲自登录并确认专属域名；不要索取、复述或保存 device code、一次性 enrollment credential、Node token、本地密码或隧道秘密。最后运行 `personal-agent status --json`，只汇报脱敏后的 release、连接模式、专属域名和健康状态。
+> 请在我的这台电脑上安装 Personal Agent Node v0.1.0-beta.13。先确认 Node.js 为 22.x；只从 `chenchen428/personal-agent-node` 的 GitHub Release 下载 `personal-agent-node-v0.1.0-beta.13-installer.mjs`，运行时显式传入 `--tag v0.1.0-beta.13`，不要 clone 源码作为运行时。安装器完成 SHA256 校验后，把 CLI 目录加入当前会话 PATH，运行 `personal-agent doctor --json`。如果检查通过，再运行 `personal-agent cloud connect --json`，让我在 chenjianhui.site 浏览器页面亲自登录并确认专属域名；不要索取、复述或保存 device code、一次性 enrollment credential、Node token、本地密码或隧道秘密。最后运行 `personal-agent status --json`，只汇报脱敏后的 release、连接模式、专属域名和健康状态。
 
 Node 的发行与最终验收以 GitHub Release 安装版的 authenticated `/app/chat` 为准：发送一条唯一提示词，由真实 Agent runtime 执行，并在同一 session 确认 Agent reply。统一证据固定 `wechatRequired=false`；微信只是可选渠道，不作为 Node 是否可用的前置条件。
 
