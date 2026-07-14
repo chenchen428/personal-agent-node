@@ -1,13 +1,14 @@
 import fs from 'node:fs';
 import net from 'node:net';
+import os from 'node:os';
 import path from 'node:path';
 import { domainToASCII } from 'node:url';
-import { resolveNodeConfig, writeJsonAtomic } from './config.mjs';
+import { writeJsonAtomic } from './config.mjs';
 
 const REQUEST_TIMEOUT_MILLISECONDS = 15_000;
 
 export async function loginCloudResources({ githubUserId, password, cloudUrl, dataRoot, fetchImpl = fetch, now = () => new Date() } = {}) {
-  const config = resolveNodeConfig({ ...process.env, PRIVATE_SITE_DATA_ROOT: dataRoot || process.env.PRIVATE_SITE_DATA_ROOT });
+  const resolvedDataRoot = resolveDataRoot({ dataRoot });
   const baseUrl = normalizeCloudUrl(cloudUrl || process.env.PERSONAL_AGENT_CLOUD_URL || 'https://chenjianhui.site');
   const userId = normalizeGitHubUserId(githubUserId);
   const secret = String(password || '');
@@ -19,30 +20,30 @@ export async function loginCloudResources({ githubUserId, password, cloudUrl, da
   const token = boundedString(session.token, 24, 1024, 'Cloud did not return a valid CLI session');
   const expiresAt = validFutureTimestamp(session.expiresAt, now(), 'Cloud returned an invalid CLI session expiry');
   const resources = normalizeResources(session.resources);
-  const paths = resourcePaths(config.dataRoot);
+  const paths = resourcePaths(resolvedDataRoot);
   writeJsonAtomic(paths.session, { schemaVersion: 1, cloudUrl: baseUrl, token, expiresAt, githubUserId: userId }, 0o600);
   writeJsonAtomic(paths.resources, { schemaVersion: 1, cloudUrl: baseUrl, resources, syncedAt: now().toISOString() }, 0o600);
-  return { resources, serviceReadiness: managedServiceReadiness({ dataRoot: config.dataRoot }), expiresAt };
+  return { resources, serviceReadiness: managedServiceReadiness({ dataRoot: resolvedDataRoot }), expiresAt };
 }
 
 export async function refreshCloudResources({ dataRoot, fetchImpl = fetch, now = () => new Date() } = {}) {
-  const config = resolveNodeConfig({ ...process.env, PRIVATE_SITE_DATA_ROOT: dataRoot || process.env.PRIVATE_SITE_DATA_ROOT });
-  const paths = resourcePaths(config.dataRoot);
+  const resolvedDataRoot = resolveDataRoot({ dataRoot });
+  const paths = resourcePaths(resolvedDataRoot);
   const session = readJson(paths.session);
-  if (!session?.token || !session?.cloudUrl || !session?.expiresAt) return { refreshed: false, reason: 'cli-session-missing', serviceReadiness: managedServiceReadiness({ dataRoot: config.dataRoot }) };
-  if (new Date(session.expiresAt).getTime() <= now().getTime()) return { refreshed: false, reason: 'cli-session-expired', serviceReadiness: managedServiceReadiness({ dataRoot: config.dataRoot }) };
+  if (!session?.token || !session?.cloudUrl || !session?.expiresAt) return { refreshed: false, reason: 'cli-session-missing', serviceReadiness: managedServiceReadiness({ dataRoot: resolvedDataRoot }) };
+  if (new Date(session.expiresAt).getTime() <= now().getTime()) return { refreshed: false, reason: 'cli-session-expired', serviceReadiness: managedServiceReadiness({ dataRoot: resolvedDataRoot }) };
   const payload = await requestJson(fetchImpl, `${normalizeCloudUrl(session.cloudUrl)}/api/cli/resources`, {
     method: 'GET',
     token: boundedString(session.token, 24, 1024, 'Stored Cloud CLI session is invalid'),
   });
   const resources = normalizeResources(payload.resources);
   writeJsonAtomic(paths.resources, { schemaVersion: 1, cloudUrl: session.cloudUrl, resources, syncedAt: now().toISOString() }, 0o600);
-  return { refreshed: true, resources, serviceReadiness: managedServiceReadiness({ dataRoot: config.dataRoot }) };
+  return { refreshed: true, resources, serviceReadiness: managedServiceReadiness({ dataRoot: resolvedDataRoot }) };
 }
 
 export function managedServiceReadiness({ dataRoot, env = process.env } = {}) {
-  const config = resolveNodeConfig({ ...env, PRIVATE_SITE_DATA_ROOT: dataRoot || env.PRIVATE_SITE_DATA_ROOT });
-  const document = readJson(resourcePaths(config.dataRoot).resources);
+  const resolvedDataRoot = resolveDataRoot({ dataRoot, env });
+  const document = readJson(resourcePaths(resolvedDataRoot).resources);
   const resources = document?.schemaVersion === 1 ? document.resources : null;
   const publicDomain = normalizePublicDomain(resources?.site?.publicDomain || resources?.site?.customDomain || resources?.site?.managedHost || '');
   const agentMailAddress = normalizeBoundMail(resources?.agentMailAddress, publicDomain);
@@ -63,15 +64,19 @@ export function managedServiceReadiness({ dataRoot, env = process.env } = {}) {
 }
 
 export function onboardingStatus({ dataRoot, env = process.env } = {}) {
-  const config = resolveNodeConfig({ ...env, PRIVATE_SITE_DATA_ROOT: dataRoot || env.PRIVATE_SITE_DATA_ROOT });
-  const account = readJson(path.join(config.dataRoot, 'channels', 'wechat', 'account.json'));
+  const resolvedDataRoot = resolveDataRoot({ dataRoot, env });
+  const account = readJson(path.join(resolvedDataRoot, 'channels', 'wechat', 'account.json'));
   const wechat = { bound: Boolean(account?.accountId && account?.userId), savedAt: account?.savedAt || null };
-  const services = managedServiceReadiness({ dataRoot: config.dataRoot, env });
+  const services = managedServiceReadiness({ dataRoot: resolvedDataRoot, env });
   const nextActions = [];
   if (!wechat.bound) nextActions.push('Open the local console and complete WeChat QR binding');
   if (!services.cloudBinding.configured) nextActions.push('Complete GitHub sign-in, set the Cloud password, then bind Cloud resources');
   else if (services.state !== 'enabled') nextActions.push('Finish the public domain and Agent mail binding shown in Cloud');
   return { complete: wechat.bound && services.state === 'enabled', wechat, services, nextActions };
+}
+
+function resolveDataRoot({ dataRoot, env = process.env } = {}) {
+  return path.resolve(dataRoot || env.PRIVATE_SITE_DATA_ROOT || path.join(os.homedir(), '.personal-agent'));
 }
 
 function resourcePaths(dataRoot) {

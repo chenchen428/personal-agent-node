@@ -353,7 +353,9 @@ async function verifyMailArtifact(mailTransportBoundary) {
   const installRoot = path.join(root, "install");
   const binDir = path.join(root, "bin");
   const port = await availablePort();
+  const adminPort = await availablePort();
   let output = "";
+  let adminOutput = "";
   const [{ initializeSite }, { prepareBridgeCliShims, bridgeCliInvocation }, backup, { createPrivateSiteGateway }] = await Promise.all([
     import(pathToFileURL(at("projects/core/node/src/config.mjs"))),
     import(pathToFileURL(at("projects/core/node/src/cli-shims.mjs"))),
@@ -388,6 +390,7 @@ async function verifyMailArtifact(mailTransportBoundary) {
     OPEN_AGENT_BRIDGE_AUTOMATION_DATA_DIR: path.join(dataRoot, "databases", "automations"),
     OPEN_AGENT_BRIDGE_MAIL_DATA_DIR: mailDir,
     OPEN_AGENT_BRIDGE_API_BASE: `http://127.0.0.1:${port}`,
+    OPEN_AGENT_BRIDGE_INTERNAL_URL: `http://127.0.0.1:${port}`,
     OPEN_AGENT_BRIDGE_API_TOKEN: apiToken,
     OPEN_AGENT_BRIDGE_MAIL_INGEST_TOKEN: ingestToken,
     PRIVATE_SITE_INSTALL_ROOT: installRoot,
@@ -397,6 +400,8 @@ async function verifyMailArtifact(mailTransportBoundary) {
     PERSONAL_AGENT_AUTH_COOKIE_SECRET: "artifact-mail-cookie-secret-with-enough-length",
     OPEN_AGENT_BRIDGE_CHANNEL_POLL: "0",
     OPEN_AGENT_BRIDGE_SCHEDULER: "0",
+    ADMIN_PANEL_HOST: "127.0.0.1",
+    ADMIN_PANEL_PORT: String(adminPort),
   };
   const child = spawn(process.execPath, [at(manifest.entrypoints.bridge)], {
     cwd: path.dirname(at(manifest.entrypoints.bridge)),
@@ -405,12 +410,20 @@ async function verifyMailArtifact(mailTransportBoundary) {
   });
   child.stdout.on("data", (chunk) => { output += chunk; });
   child.stderr.on("data", (chunk) => { output += chunk; });
+  const adminChild = spawn(process.execPath, [at("projects/core/admin-panel/server.mjs")], {
+    cwd: path.dirname(at("projects/core/admin-panel/server.mjs")),
+    env: environment,
+    stdio: ["ignore", "pipe", "pipe"],
+  });
+  adminChild.stdout.on("data", (chunk) => { adminOutput += chunk; });
+  adminChild.stderr.on("data", (chunk) => { adminOutput += chunk; });
   let gateway = null;
   try {
     await waitForHttp(`http://127.0.0.1:${port}/health`, child, () => output);
+    await waitForHttp(`http://127.0.0.1:${adminPort}/healthz`, adminChild, () => adminOutput);
     gateway = createPrivateSiteGateway({ config: {
       ...initialized.config,
-      ports: { ...initialized.config.ports, bridge: port },
+      ports: { ...initialized.config.ports, bridge: port, admin: adminPort },
       gateway: { ...initialized.config.gateway, host: "127.0.0.1", port: 0 },
     } }).server;
     await new Promise((resolve, reject) => {
@@ -419,6 +432,15 @@ async function verifyMailArtifact(mailTransportBoundary) {
     });
     const gatewayPort = gateway.address().port;
     const gatewayHeaders = { host: initialized.config.domain };
+    const authenticatedGatewayHeaders = { ...gatewayHeaders, authorization: `Bearer ${apiToken}` };
+    const onboardingResponse = await fetch(`http://127.0.0.1:${gatewayPort}/api/system/onboarding/status`, { headers: authenticatedGatewayHeaders });
+    const onboarding = await onboardingResponse.json();
+    assert(onboardingResponse.ok && onboarding.ok === true, "Bundled Console onboarding status is not reachable through the installed gateway");
+    assert(onboarding.services?.state === "disabled" && onboarding.services?.reason === "cloud-binding-required", "Bundled managed services are not disabled before Cloud binding");
+    assert(onboarding.services?.managedMail?.enabled === false && onboarding.services?.managedConfiguration?.enabled === false, "Bundled managed services enabled without prerequisites");
+    const consoleResponse = await fetch(`http://127.0.0.1:${gatewayPort}/app`, { headers: authenticatedGatewayHeaders });
+    const consoleHtml = await consoleResponse.text();
+    assert(consoleResponse.ok && consoleHtml.includes("data-managed-value=\"domain\"") && consoleHtml.includes("data-managed-value=\"config-service\""), "Bundled Console does not display managed-service prerequisites");
     const raw = Buffer.from([
       "From: Release Fixture <sender@example.test>",
       "To: bills@example.site",
@@ -553,6 +575,7 @@ async function verifyMailArtifact(mailTransportBoundary) {
   } finally {
     if (gateway?.listening) await new Promise((resolve) => gateway.close(resolve));
     await stopChild(child);
+    await stopChild(adminChild);
     fs.rmSync(root, { recursive: true, force: true });
   }
 }
