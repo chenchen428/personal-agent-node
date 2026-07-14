@@ -12,7 +12,7 @@ import { requestControl } from '../src/control-service.mjs';
 import { DEFAULT_CLOUD_URL, enrollWithCloudDeviceAuthorization, resolveCloudUrl } from '../src/cloud-enrollment.mjs';
 import { commandKey, expandCommandName, HANDLED_COMMAND_KEYS } from '../src/command-surface.mjs';
 import { localMailPlan, localMailStatus } from '../src/mail.mjs';
-import { loginCloudResources, managedServiceReadiness, onboardingStatus, refreshCloudResources } from '../src/cloud-resources.mjs';
+import { authorizeCloudResources, managedServiceReadiness, onboardingStatus, refreshCloudResources } from '../src/cloud-resources.mjs';
 
 const handledCommandKeys = new Set(HANDLED_COMMAND_KEYS);
 
@@ -154,20 +154,20 @@ function cloudStatus() {
 }
 
 async function cloudLogin(args) {
-  if (!args.passwordStdin) throw cliError('PASSWORD_STDIN_REQUIRED', 'Use --password-stdin; Cloud passwords are never accepted as command-line arguments', 2);
-  const password = readPasswordStdin();
-  const result = await loginCloudResources({
-    githubUserId: args.githubUserId,
-    password,
+  const packageMetadata = readJsonIfExists(path.join(workspaceRoot, 'projects', 'core', 'node', 'package.json'));
+  const result = await authorizeCloudResources({
     cloudUrl: resolveCloudUrl({ cloudUrl: args.cloudUrl }),
     dataRoot: args.dataRoot,
+    clientVersion: packageMetadata?.version || 'unknown',
+    ...(args.noOpen ? { openBrowser: async () => false } : {}),
+    onAuthorization: (authorization) => emitProgress('cloud.resource-authorization', authorization),
   });
-  return success('cloud login', { expiresAt: result.expiresAt, resources: result.resources, services: result.serviceReadiness }, [], ['Run personal-agent cloud resources --json']);
+  return success('cloud login', { expiresAt: result.expiresAt, resources: result.resources, services: result.serviceReadiness, authorization: result.authorization }, [], ['Run personal-agent cloud resources --json']);
 }
 
 async function cloudResources(args) {
   const result = await refreshCloudResources({ dataRoot: args.dataRoot });
-  return success('cloud resources', result, [], result.refreshed ? [] : ['Run personal-agent cloud login --github-user-id <id> --password-stdin --json']);
+  return success('cloud resources', result, [], result.refreshed ? [] : ['Run personal-agent cloud login --json']);
 }
 
 async function cloudConnect(args) {
@@ -271,18 +271,22 @@ function commandHelp(command, descriptor) {
   if (command === 'cloud login') {
     return {
       name: command,
-      usage: 'personal-agent cloud login --github-user-id <numeric-id> --password-stdin [--cloud-url <https-url>] [--data-root <path>] --json',
+      usage: 'personal-agent cloud login [--cloud-url <https-url>] [--no-open] [--data-root <path>] --json',
       risk: descriptor.risk,
       capability: descriptor.capability,
       implementationStatus: descriptor.implementationStatus,
       description: descriptor.description,
       options: [
         ...commonOptions,
-        { name: '--github-user-id', type: 'numeric-string', required: true, secret: false, description: 'The immutable numeric GitHub user ID bound by Cloud.' },
-        { name: '--password-stdin', type: 'boolean', required: true, secret: true, description: 'Read one password line from standard input without placing it in process arguments.' },
         { name: '--cloud-url', type: 'https-url', required: false, secret: false, default: DEFAULT_CLOUD_URL, environment: 'PERSONAL_AGENT_CLOUD_URL', description: 'Select the trusted Cloud origin.' },
+        { name: '--no-open', type: 'boolean', required: false, secret: false, description: 'Do not launch a browser; use verificationUrlComplete from progress output.' },
       ],
-      authorization: { method: 'github-user-id-and-password', passwordTransport: 'stdin-only', passwordPersisted: false },
+      authorization: {
+        method: 'browser-device-authorization',
+        userActionRequired: true,
+        shortLivedResourceToken: true,
+        forbiddenCommandLineInputs: ['githubUserId', 'password', 'deviceCode', 'token'],
+      },
     };
   }
   return {
@@ -353,14 +357,6 @@ function readJsonIfExists(file) {
   return JSON.parse(fs.readFileSync(file, 'utf8'));
 }
 
-function readPasswordStdin() {
-  const input = fs.readFileSync(0, 'utf8');
-  if (Buffer.byteLength(input, 'utf8') > 4096) throw cliError('INVALID_ARGUMENT', 'Password input is too large', 2);
-  const password = input.replace(/\r?\n$/, '');
-  if (!password || /[\r\n]/.test(password)) throw cliError('INVALID_ARGUMENT', 'Password input must contain exactly one non-empty line', 2);
-  return password;
-}
-
 function resolveInstallRoot() {
   return path.resolve(process.env.PRIVATE_SITE_INSTALL_ROOT || path.join(process.env.HOME || process.env.USERPROFILE || '', '.private-site-node'));
 }
@@ -376,8 +372,6 @@ function parseArgs(argv) {
     else if (value === '--data-root') result.dataRoot = argv[++index];
     else if (value === '--digest') result.digest = argv[++index];
     else if (value === '--cloud-url') result.cloudUrl = argv[++index];
-    else if (value === '--github-user-id') result.githubUserId = argv[++index];
-    else if (value === '--password-stdin') result.passwordStdin = true;
     else if (value === '--no-open') result.noOpen = true;
     else if (value.startsWith('-')) throw cliError('INVALID_ARGUMENT', `Unknown option: ${value}`, 2);
     else result._.push(value);

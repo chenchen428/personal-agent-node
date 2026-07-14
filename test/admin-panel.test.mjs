@@ -75,6 +75,7 @@ test('workbench reports managed service prerequisites and post-WeChat onboarding
   }
   assert.match(serverSource, /completeWechatOnboarding/);
   assert.match(serverSource, /Personal Agent 微信绑定已完成/);
-  assert.match(serverSource, /云账号绑定 <GitHub数字用户ID>/);
+  assert.match(serverSource, /云账号绑定.*浏览器免密授权链接/);
+  assert.match(serverSource, /无需提供 GitHub 用户 ID 或密码/);
   assert.match(serverSource, /wechat-onboarding-notification\.json/);
 });

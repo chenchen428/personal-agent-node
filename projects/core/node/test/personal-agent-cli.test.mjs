@@ -130,7 +130,7 @@ test('cloud enrollment does not accept long-lived or invitation credentials on t
   }
 });
 
-test('cloud password login requires stdin and emits only redacted resources', async (t) => {
+test('cloud login uses browser authorization and emits only public authorization plus redacted resources', async (t) => {
   const dataRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'personal-agent-cloud-login-cli-'));
   const server = http.createServer(async (request, response) => {
     const body = await new Promise((resolve) => {
@@ -138,11 +138,24 @@ test('cloud password login requires stdin and emits only redacted resources', as
       request.on('data', (chunk) => chunks.push(chunk));
       request.on('end', () => resolve(JSON.parse(Buffer.concat(chunks).toString('utf8') || '{}')));
     });
-    assert.equal(request.url, '/api/cli/session');
-    assert.deepEqual(body, { githubUserId: '12345678', password: 'correct horse battery staple' });
-    response.writeHead(201, { 'content-type': 'application/json' });
-    response.end(JSON.stringify({
-      ok: true,
+    response.setHeader('content-type', 'application/json');
+    if (request.url === '/api/cli/auth/start') {
+      assert.equal(body.clientName, 'personal-agent-cli');
+      response.writeHead(201);
+      response.end(JSON.stringify({
+        deviceCode: 'private-device-code-that-is-long-enough',
+        userCode: 'ABCD-EFGH',
+        verificationUrl: `http://127.0.0.1:${server.address().port}/connect`,
+        verificationUrlComplete: `http://127.0.0.1:${server.address().port}/connect?code=ABCD-EFGH`,
+        expiresIn: 60,
+        interval: 1,
+      }));
+      return;
+    }
+    assert.equal(request.url, '/api/cli/auth/poll');
+    assert.deepEqual(body, { deviceCode: 'private-device-code-that-is-long-enough' });
+    response.writeHead(200);
+    response.end(JSON.stringify({ status: 'approved',
       token: 'cli-session-token-that-is-long-enough',
       expiresAt: new Date(Date.now() + 60 * 60_000).toISOString(),
       resources: {
@@ -158,12 +171,13 @@ test('cloud password login requires stdin and emits only redacted resources', as
   await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
   t.after(async () => { await new Promise((resolve) => server.close(resolve)); fs.rmSync(dataRoot, { recursive: true, force: true }); });
   const cloudUrl = `http://127.0.0.1:${server.address().port}`;
-  const result = await runAsync(['cloud', 'login', '--github-user-id', '12345678', '--password-stdin', '--cloud-url', cloudUrl, '--data-root', dataRoot, '--json'], 'correct horse battery staple\n');
+  const result = await runAsync(['cloud', 'login', '--no-open', '--cloud-url', cloudUrl, '--data-root', dataRoot, '--json']);
   assert.equal(result.status, 0, result.stderr);
   const output = JSON.parse(result.stdout);
   assert.equal(output.result.services.state, 'enabled');
-  assert.doesNotMatch(result.stdout, /correct horse|cli-session-token/);
-  const rejected = run(['cloud', 'login', '--github-user-id', '12345678', '--password', 'DO_NOT_ECHO', '--json']);
+  assert.match(result.stderr, /cloud\.resource-authorization|ABCD-EFGH/);
+  assert.doesNotMatch(`${result.stdout}\n${result.stderr}`, /private-device-code|cli-session-token/);
+  const rejected = run(['cloud', 'login', '--password', 'DO_NOT_ECHO', '--json']);
   assert.equal(rejected.status, 2);
   assert.doesNotMatch(rejected.stderr, /DO_NOT_ECHO/);
 });

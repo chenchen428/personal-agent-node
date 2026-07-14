@@ -621,7 +621,7 @@ function buildOnboardingMessage(onboarding) {
     `配置服务：${services.managedConfiguration.enabled ? '已启用' : '默认关闭'}`,
   ];
   if (services.state !== 'enabled') {
-    lines.push('', '请先在 Personal Agent Cloud 使用 GitHub 免登并补充密码，然后回复“云账号绑定 <GitHub数字用户ID>”。下一条密码消息会被专用绑定流程截获，不会进入 Agent 会话历史。');
+    lines.push('', '请回复“云账号绑定”获取 Personal Agent Cloud 浏览器免密授权链接。授权完成后会自动检测并同步公网域名、Agent 邮箱及服务状态，无需提供 GitHub 用户 ID 或密码。');
   } else {
     lines.push('', '功能检测已完成，域名、邮箱和渠道绑定均可用。');
   }

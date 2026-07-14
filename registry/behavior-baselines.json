@@ -29,7 +29,7 @@
       "label": "WeChat conversation channel",
       "case": "test/fixtures/baseline-cases/wechat-conversation-channel/case.json",
       "command": ["node", "--test", "projects/core/open-agent-bridge/test/store.test.mjs", "projects/core/open-agent-bridge/test/orchestrator.test.mjs", "projects/core/open-agent-bridge/test/cli.test.mjs", "projects/core/open-agent-bridge/test/cloud-binding-coordinator.test.mjs"],
-      "requirements": ["WeChat identity maps to a reusable local Agent session", "Health failure asks for confirmation before login", "Verification codes are bounded and are not persisted as conversation input", "Cloud passwords are intercepted by a one-time binding flow and never persisted as conversation input"]
+      "requirements": ["WeChat identity maps to a reusable local Agent session", "Health failure asks for confirmation before login", "Verification codes are bounded and are not persisted as conversation input", "Cloud resource binding sends a same-origin browser authorization link without intercepting ordinary conversation or exposing the resource token"]
     },
     {
       "id": "xiaohongshu-managed-platform",

@@ -81,7 +81,7 @@ CLI 会打开 `chenjianhui.site` 的短期页面授权，只展示 verification 
 
 登录官网后也可以把下面这段交给本机 Agent。它只描述公开发行版和公开 CLI，不包含账号、验证码或任何秘密：
 
-> 请在我的这台电脑上安装 Personal Agent Node v0.1.0-beta.19。先确认 Node.js 为 22.x；只从 `chenchen428/personal-agent-node` 的 GitHub Release 下载 `personal-agent-node-v0.1.0-beta.19-installer.mjs`，运行时显式传入 `--tag v0.1.0-beta.19`，不要 clone 源码作为运行时。安装器完成 SHA256 校验后，把 CLI 目录加入当前会话 PATH，运行 `personal-agent doctor --json`，并第一时间打开本地控制台完成微信绑定。微信会返回域名、邮箱、邮件与配置服务的检测状态。如果检查通过，再运行 `personal-agent cloud connect --json`，让我在 chenjianhui.site 浏览器页面亲自登录、补充 CLI 密码并确认专属域名；不要索取、复述或保存 device code、一次性 enrollment credential、Node token、本地密码或隧道秘密。需要通过微信绑定 Cloud 资源时，只使用一次性“云账号绑定 <GitHub数字用户ID>”流程，下一条密码不得进入普通 Agent 会话。最后运行 `personal-agent status --json`，只汇报脱敏后的 release、连接模式、专属域名、邮箱、能力状态和健康状态。
+> 请在我的这台电脑上安装 Personal Agent Node v0.1.0-beta.19。先确认 Node.js 为 22.x；只从 `chenchen428/personal-agent-node` 的 GitHub Release 下载 `personal-agent-node-v0.1.0-beta.19-installer.mjs`，运行时显式传入 `--tag v0.1.0-beta.19`，不要 clone 源码作为运行时。安装器完成 SHA256 校验后，把 CLI 目录加入当前会话 PATH，运行 `personal-agent doctor --json`，并第一时间打开本地控制台完成微信绑定。微信会返回域名、邮箱、邮件与配置服务的检测状态。如果检查通过，再运行 `personal-agent cloud connect --json`，让我在 chenjianhui.site 浏览器页面亲自登录并确认专属域名；不要索取、复述或保存 device code、一次性 enrollment credential、Node token、本地密码或隧道秘密。需要通过微信绑定 Cloud 资源时，只发送“云账号绑定”，再由我在同源浏览器页面批准免密资源授权；无需提供 GitHub 用户 ID 或密码。最后运行 `personal-agent status --json`，只汇报脱敏后的 release、连接模式、专属域名、邮箱、能力状态和健康状态。
 
 Node 的发行与最终验收以 GitHub Release 安装版的 authenticated `/app/chat` 为准：发送一条唯一提示词，由真实 Agent runtime 执行，并在同一 session 确认 Agent reply。统一证据固定 `wechatRequired=false`；微信只是可选渠道，不作为 Node 是否可用的前置条件。
 

@@ -15,7 +15,7 @@ Follow the R0-R3 model in [safety-and-confirmation.md](references/safety-and-con
 
 After every mutation, run the matching `status` or `verify` command and report redacted evidence. Keep local-only fully functional; never require or enroll Managed Cloud without an explicit user choice. See [connectivity.md](references/connectivity.md) and [command-map.md](references/command-map.md).
 
-For Cloud resource binding, use `cloud login` only with `--password-stdin`; never place a password in argv, logs, evidence or an ordinary Agent conversation. The WeChat command `云账号绑定 <GitHub数字用户ID>` creates a five-minute one-time interception window for the next password message. Report only the resulting domain, Agent mail and enabled/disabled service states.
+For Cloud resource binding, use `cloud login` browser authorization. Never request a GitHub user ID, password, private device code or resource token in argv, logs, evidence or an ordinary Agent conversation. The WeChat command `云账号绑定` returns the same-origin authorization link and proactively reports only the resulting domain, Agent mail and enabled/disabled service states after approval.
 
 For local email ingress, use only `personal-agent mail status --json` and the opt-in `personal-agent mail plan --preview --json`. Read `workflows/local-mail.md` before proposing MTA changes. Keep SMTP, IMAP, queues, credentials, DKIM keys, raw messages, bodies and attachments on the user Node; Personal Agent bundles only the authenticated ingest shim and `/app/mail`, never an SMTP server or managed raw SMTP/IMAPS tunnel.
 
