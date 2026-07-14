@@ -171,7 +171,11 @@ function writeManifest() {
     excluded: ["secrets", "environment-files", "runtime-data", "development-servers", "platform-specific-channel-binaries"],
   };
   fs.writeFileSync(path.join(outputRoot, "release-manifest.json"), `${JSON.stringify(manifest, null, 2)}\n`);
-  const sbom = execFileSync("npm", ["sbom", "--omit=dev", "--sbom-format", "cyclonedx"], {
+  const npmArguments = ["sbom", "--omit=dev", "--sbom-format", "cyclonedx"];
+  const npmExecPath = process.platform === "win32"
+    ? (path.isAbsolute(process.env.npm_execpath || "") ? process.env.npm_execpath : path.join(path.dirname(process.execPath), "node_modules", "npm", "bin", "npm-cli.js"))
+    : null;
+  const sbom = execFileSync(process.platform === "win32" ? process.execPath : "npm", npmExecPath ? [npmExecPath, ...npmArguments] : npmArguments, {
     cwd: root,
     encoding: "utf8",
     maxBuffer: 20 * 1024 * 1024,
