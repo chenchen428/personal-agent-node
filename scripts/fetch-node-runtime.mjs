@@ -28,7 +28,8 @@ try {
   fs.writeFileSync(archivePath, archive, { mode: 0o600 });
   const extracted = path.join(temporary, 'extracted');
   fs.mkdirSync(extracted);
-  run('tar', ['-xf', archivePath, '-C', extracted, descriptor.member]);
+  const tarArgs = platform === 'win32' ? ['--force-local'] : [];
+  run('tar', [...tarArgs, '-xf', archivePath, '-C', extracted, descriptor.member]);
   const source = path.join(extracted, ...descriptor.member.split('/'));
   fs.mkdirSync(path.dirname(output), { recursive: true });
   fs.copyFileSync(source, output);

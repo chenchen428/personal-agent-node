@@ -38,6 +38,7 @@ jobs:
           name: immutable-node-payload
           path: dist/release-payload
           if-no-files-found: error
+          include-hidden-files: true
           retention-days: 7
       - uses: actions/upload-artifact@v4
         with:

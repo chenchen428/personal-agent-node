@@ -122,6 +122,7 @@ test('GitHub release chain is version-gated and publishes verifiable artifacts',
     'macos-15',
     'ubuntu-24.04',
     'ubuntu-24.04-arm',
+    'include-hidden-files: true',
     '--require-signing',
     'WINDOWS_SIGNING_PFX_BASE64',
     'APPLE_INSTALLER_IDENTITY',
@@ -133,6 +134,8 @@ test('GitHub release chain is version-gated and publishes verifiable artifacts',
     'cosign sign-blob',
     'actions/attest-build-provenance@v2',
   ]) assert.match(workflow, new RegExp(requirement.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
+  const runtimeFetcher = fs.readFileSync(path.join(root, 'scripts/fetch-node-runtime.mjs'), 'utf8');
+  assert.match(runtimeFetcher, /platform === 'win32' \? \['--force-local'\] : \[\]/);
   const metadataRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'personal-agent-release-security-'));
   try {
     const metadataFile = path.join(metadataRoot, 'RELEASE-SECURITY.json');

@@ -12,13 +12,13 @@ Releases use immutable `v<package-version>` tags. The tag must exactly match eve
 
 The native setup executable owns install, upgrade, rollback, and uninstall. It atomically advances `current`, retains `previous`, activates the per-user service, and opens `/app/setup`. A failed candidate restores the previous pointer and service definition. Rollback never deletes mutable data; uninstall requires `--confirm-remove-binaries` and preserves the data root by default.
 
-For `v0.1.0-beta.20`, the primary customer assets are:
+For `v0.1.0-beta.21`, the primary customer assets are:
 
-- `personal-agent-node-v0.1.0-beta.20-windows-x64-installer.exe`
-- `personal-agent-node-v0.1.0-beta.20-macos-x64.pkg`
-- `personal-agent-node-v0.1.0-beta.20-macos-arm64.pkg`
-- `personal-agent-node-v0.1.0-beta.20-linux-x64.tar.zst`
-- `personal-agent-node-v0.1.0-beta.20-linux-arm64.tar.zst`
+- `personal-agent-node-v0.1.0-beta.21-windows-x64-installer.exe`
+- `personal-agent-node-v0.1.0-beta.21-macos-x64.pkg`
+- `personal-agent-node-v0.1.0-beta.21-macos-arm64.pkg`
+- `personal-agent-node-v0.1.0-beta.21-linux-x64.tar.zst`
+- `personal-agent-node-v0.1.0-beta.21-linux-arm64.tar.zst`
 
 ## Post-release Node gate
 
