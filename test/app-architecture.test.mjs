@@ -10,6 +10,7 @@ test("Next.js owns the application shell, Setup Center, BFF and Plugin Studio", 
   const setup = read("core/app/src/components/setup-dashboard.tsx");
   const proxy = read("core/app/src/app/api/[...path]/route.ts");
   const plugins = read("core/plugins/runtime/store.ts");
+  const distribution = JSON.parse(read("registry/site-distribution.json"));
   assert.match(shell, /\/app\/chat/);
   assert.match(shell, /\/app\/plugins/);
   assert.match(setup, /installation/);
@@ -19,6 +20,10 @@ test("Next.js owns the application shell, Setup Center, BFF and Plugin Studio", 
   assert.match(proxy, /PERSONAL_AGENT_CONTROL_URL/);
   assert.match(proxy, /x-personal-agent-authenticated/);
   assert.match(plugins, /personal-agent\.plugin\.json/);
+  assert.deepEqual(
+    distribution.routing.paths.find((route) => route.key === "next-static"),
+    { key: "next-static", prefix: "/_next/static", access: "public", kind: "proxy", targetKey: "console", upstreamPath: "/_next/static" },
+  );
 });
 
 test("the internal control service exposes APIs but no handwritten HTML renderer", () => {

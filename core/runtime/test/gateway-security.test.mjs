@@ -47,6 +47,7 @@ test("path gateway rejects unknown hosts, prefix confusion, and encoded traversa
     assert.equal((await request({ port, host: "unknown.site", path: "/" })).status, 404);
     for (const legacy of ["/admin", "/agent", "/agentx", "/api/agent", "/api/files"]) assert.equal((await request({ port, host: "example.site", path: legacy })).status, 404, legacy);
     assert.equal((await request({ port, host: "example.site", path: "/unknown" })).status, 404);
+    assert.equal((await request({ port, host: "example.site", path: "/_next/staticx/app.css" })).status, 404);
     assert.equal((await request({ port, host: "example.site", path: "/blog/%2e%2e/admin" })).status, 400);
     assert.equal((await request({ port, host: "example.site", path: "/blog/%2fprivate" })).status, 400);
   } finally {
@@ -82,6 +83,7 @@ test("canonical Console and domain API routes authenticate and rewrite to intern
     await listen(server);
     try {
       const port = server.address().port;
+      assert.equal((await request({ port, host: "example.site", path: "/_next/static/app.css" })).status, 200);
       assert.equal((await request({ port, host: "example.site", path: "/app" })).status, 302);
       assert.equal((await request({ port, host: "example.site", path: "/app", headers: { cookie: "session=ok" } })).status, 200);
       assert.equal((await request({ port, host: "example.site", path: "/app/setup", headers: { cookie: "session=ok" } })).status, 200);
@@ -92,6 +94,7 @@ test("canonical Console and domain API routes authenticate and rewrite to intern
       assert.equal((await request({ port, host: "example.site", path: "/api/system/projects", headers: { cookie: "session=ok" } })).status, 200);
       assert.equal((await request({ port, host: "example.site", path: "/api/system/setup", headers: { cookie: "session=ok" } })).status, 200);
       assert.deepEqual(received.map(({ service, url }) => ({ service, url })), [
+        { service: "console", url: "/_next/static/app.css" },
         { service: "console", url: "/app" },
         { service: "console", url: "/app/setup" },
         { service: "bridge", url: "/agent-bridge" },
@@ -100,7 +103,8 @@ test("canonical Console and domain API routes authenticate and rewrite to intern
         { service: "console", url: "/api/projects" },
         { service: "console", url: "/api/setup" },
       ]);
-      assert.ok(received.every((entry) => entry.authenticated === "1"));
+      assert.equal(received[0].authenticated, undefined);
+      assert.ok(received.slice(1).every((entry) => entry.authenticated === "1"));
     } finally {
       await close(server);
     }

@@ -6,6 +6,7 @@
     "defaultPolicy": "deny",
     "paths": [
       { "key": "home", "prefix": "/", "exact": true, "access": "public", "kind": "static" },
+      { "key": "next-static", "prefix": "/_next/static", "access": "public", "kind": "proxy", "targetKey": "console", "upstreamPath": "/_next/static" },
       { "key": "app-chat", "prefix": "/app/chat", "access": "authenticated", "kind": "proxy", "targetKey": "agent", "upstreamPath": "/agent-bridge", "websocket": true },
       { "key": "app-chat-memory", "prefix": "/app/chat/memory", "access": "authenticated", "kind": "proxy", "targetKey": "agent", "upstreamPath": "/agent-memory" },
       { "key": "app-channels", "prefix": "/app/channels", "access": "authenticated", "kind": "proxy", "targetKey": "agent", "upstreamPath": "/agent-channels" },
