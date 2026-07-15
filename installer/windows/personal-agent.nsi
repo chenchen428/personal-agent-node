@@ -14,6 +14,9 @@ SetCompressor /SOLID lzma
 !ifndef PRODUCT_VERSION
   !error "PRODUCT_VERSION is required"
 !endif
+!ifndef PRODUCT_FILE_VERSION
+  !error "PRODUCT_FILE_VERSION is required"
+!endif
 !ifndef PRODUCT_ICON
   !error "PRODUCT_ICON is required"
 !endif
@@ -31,6 +34,7 @@ BrandingText "Personal Agent ${PRODUCT_VERSION}"
 ShowInstDetails show
 ShowUninstDetails show
 
+VIProductVersion "${PRODUCT_FILE_VERSION}"
 VIAddVersionKey /LANG=2052 "ProductName" "Personal Agent"
 VIAddVersionKey /LANG=2052 "FileDescription" "Personal Agent 安装向导"
 VIAddVersionKey /LANG=2052 "FileVersion" "${PRODUCT_VERSION}"

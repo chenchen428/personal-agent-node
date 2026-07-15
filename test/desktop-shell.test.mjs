@@ -42,6 +42,9 @@ test('Windows installation uses a guided wizard and rollback-safe desktop integr
   }
   assert.match(wizard, /已有 Workspace 数据不会被删除/);
   assert.match(builder, /smokeTestWindowsInstaller/);
+  assert.match(builder, /'\/INPUTCHARSET',[\s\S]*'UTF8'/);
+  assert.match(builder, /PRODUCT_FILE_VERSION=.*windowsProductVersion/);
+  assert.match(wizard, /VIProductVersion "\$\{PRODUCT_FILE_VERSION\}"/);
   assert.match(builder, /desktop-entries.*Personal Agent\.lnk/s);
   assert.match(workflow, /choco install nsis --version=3\.12/);
   assert.match(installer, /stopSupervisor/);

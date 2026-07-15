@@ -118,9 +118,12 @@ function packageAsset({ platform, architecture, tag, setupBinary, output, tempor
     const target = path.join(output, `personal-agent-node-${tag}-windows-${label}-installer.exe`);
     const template = path.join(root, 'installer', 'windows', 'personal-agent.nsi');
     run(resolveMakensis(), [
+      '/INPUTCHARSET',
+      'UTF8',
       `/DBOOTSTRAP=${setupBinary}`,
       `/DOUTFILE=${target}`,
       `/DPRODUCT_VERSION=${tag.replace(/^v/, '')}`,
+      `/DPRODUCT_FILE_VERSION=${windowsProductVersion(tag)}`,
       `/DPRODUCT_ICON=${path.join(root, 'core', 'desktop', 'src-tauri', 'icons', 'icon.ico')}`,
       `/DLICENSE_FILE=${path.join(root, 'LICENSE')}`,
       template,
@@ -176,6 +179,16 @@ function packageAsset({ platform, architecture, tag, setupBinary, output, tempor
     return target;
   }
   throw new Error(`Unsupported platform: ${platform}`);
+}
+
+function windowsProductVersion(value) {
+  const match = String(value).match(/^v?(\d+)\.(\d+)\.(\d+)(?:-[0-9A-Za-z.-]*?(\d+))?$/);
+  if (!match) throw new Error(`Cannot map release tag to a Windows product version: ${value}`);
+  const components = [match[1], match[2], match[3], match[4] || '0'].map(Number);
+  if (components.some((component) => !Number.isInteger(component) || component < 0 || component > 65535)) {
+    throw new Error(`Windows product version components must be between 0 and 65535: ${value}`);
+  }
+  return components.join('.');
 }
 
 function smokeTestWindowsInstaller(installer, temporary, tag) {
