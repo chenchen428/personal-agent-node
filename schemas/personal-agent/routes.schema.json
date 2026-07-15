@@ -8,7 +8,7 @@
     "defaultPolicy": { "const": "deny" },
     "routes": { "type": "array", "items": { "type": "object", "additionalProperties": false, "required": ["pattern", "access", "capability"], "properties": {
       "pattern": { "type": "string", "pattern": "^/" },
-      "access": { "enum": ["public", "authenticated", "local-admin", "internal"] },
+            "access": { "enum": ["public", "authenticated", "local-bootstrap", "local-admin", "internal"] },
       "capability": { "type": "string" }
     }} }
   }

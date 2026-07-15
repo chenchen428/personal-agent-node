@@ -125,7 +125,6 @@ function seedAgentWorkspace(config) {
     ? path.join(workspaceRoot, "infra", "node", "AGENTS.md")
     : path.join(workspaceRoot, "AGENTS.md");
   copyMissing(nodeGuide, path.join(config.agentWorkspaceRoot, "AGENTS.md"));
-  copyMissing(path.join(config.agentWorkspaceRoot, "AGENTS.md"), path.join(config.agentWorkspaceRoot, "CLAUDE.md"));
   for (const directory of ["skills", "workflows", "registry"]) {
     copyMissing(path.join(workspaceRoot, directory), path.join(config.agentWorkspaceRoot, directory));
   }
@@ -133,7 +132,7 @@ function seedAgentWorkspace(config) {
     copyMissing(path.join(workspaceRoot, "scripts", script), path.join(config.agentWorkspaceRoot, "scripts", script));
   }
   createDirectoryPointer(config.extensionsDir, path.join(config.agentWorkspaceRoot, "extensions"));
-  for (const bridge of [".agents", ".codex", ".claude", ".cursor"]) {
+  for (const bridge of [".codex"]) {
     createDirectoryPointer(path.join(config.agentWorkspaceRoot, "skills"), path.join(config.agentWorkspaceRoot, bridge, "skills"));
   }
 }

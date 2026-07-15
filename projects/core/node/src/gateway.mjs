@@ -156,6 +156,7 @@ export async function authorizeRoute(request, route, config) {
   const access = route.access || "public";
   if (access === "public") return true;
   if (access === "internal") return false;
+  if (access === "local-bootstrap") return isLoopbackAddress(request.socket.remoteAddress);
   if (!await authorizeRequest(request, config)) return false;
   if (access === "authenticated") return true;
   if (access === "local-admin") return isLoopbackAddress(request.socket.remoteAddress);

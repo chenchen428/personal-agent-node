@@ -63,6 +63,8 @@ export const config = {
       .split(",")
       .map((value) => value.trim())
       .filter(Boolean),
+    setupBootstrapFile: path.join(siteDataRoot, "runtime", "setup", "bootstrap.json"),
+    verifierFile: process.env.PERSONAL_AGENT_AUTH_VERIFIER_FILE || path.join(siteDataRoot, "config", "local-auth.json"),
   },
   codexCommand: process.env.OPEN_AGENT_BRIDGE_CODEX_COMMAND || "codex",
   codexAppServerCommand: process.env.OPEN_AGENT_BRIDGE_CODEX_APP_SERVER_COMMAND || "",

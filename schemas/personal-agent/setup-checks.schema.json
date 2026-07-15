@@ -1,0 +1,59 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://personal-agent.local/schemas/setup-checks.schema.json",
+  "title": "Personal Agent Setup Check Registry",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "states", "requirements", "readinessDimensions", "groups", "checks"],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "states": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "enum": ["ready", "action-required", "blocked", "not-selected", "checking"] }
+    },
+    "requirements": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "enum": ["required-for-console", "required-for-agent", "conditional", "optional"] }
+    },
+    "readinessDimensions": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "enum": ["console", "agent", "remote", "mail"] }
+    },
+    "groups": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "label", "order"],
+        "properties": {
+          "id": { "type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$" },
+          "label": { "type": "string", "minLength": 1 },
+          "order": { "type": "integer", "minimum": 0 }
+        }
+      }
+    },
+    "checks": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "group", "requirement", "dimension", "actionIds"],
+        "properties": {
+          "id": { "type": "string", "pattern": "^[a-z0-9]+(?:[.-][a-z0-9]+)*$" },
+          "group": { "type": "string" },
+          "requirement": { "enum": ["required-for-console", "required-for-agent", "conditional", "optional"] },
+          "dimension": { "type": ["string", "null"], "enum": ["console", "agent", "remote", "mail", null] },
+          "actionIds": {
+            "type": "array",
+            "items": { "type": "string", "pattern": "^[a-z0-9]+(?:[.-][a-z0-9]+)*$" }
+          }
+        }
+      }
+    }
+  }
+}

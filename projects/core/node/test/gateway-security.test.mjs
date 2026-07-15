@@ -18,6 +18,8 @@ test("route access model keeps local administration on authenticated loopback", 
   try {
     assert.equal(await authorizeRoute(request("203.0.113.8"), { access: "public" }, config), true);
     assert.equal(await authorizeRoute(request("203.0.113.8"), { access: "authenticated" }, config), true);
+    assert.equal(await authorizeRoute(request("203.0.113.8"), { access: "local-bootstrap" }, config), false);
+    assert.equal(await authorizeRoute(request("127.0.0.1"), { access: "local-bootstrap" }, config), true);
     assert.equal(await authorizeRoute(request("203.0.113.8"), { access: "local-admin" }, config), false);
     assert.equal(await authorizeRoute(request("127.0.0.1"), { access: "local-admin" }, config), true);
     assert.equal(await authorizeRoute(request("127.0.0.1"), { access: "internal" }, config), false);
@@ -82,17 +84,21 @@ test("canonical Console and domain API routes authenticate and rewrite to intern
       const port = server.address().port;
       assert.equal((await request({ port, host: "example.site", path: "/app" })).status, 302);
       assert.equal((await request({ port, host: "example.site", path: "/app", headers: { cookie: "session=ok" } })).status, 200);
+      assert.equal((await request({ port, host: "example.site", path: "/app/setup", headers: { cookie: "session=ok" } })).status, 200);
       assert.equal((await request({ port, host: "example.site", path: "/app/chat", headers: { cookie: "session=ok" } })).status, 200);
       assert.equal((await request({ port, host: "example.site", path: "/app/mail", headers: { cookie: "session=ok" } })).status, 200);
       assert.equal((await request({ port, host: "example.site", path: "/mail", headers: { cookie: "session=ok" } })).status, 404);
       assert.equal((await request({ port, host: "example.site", path: "/api/chat/sessions", headers: { cookie: "session=ok" } })).status, 200);
       assert.equal((await request({ port, host: "example.site", path: "/api/system/projects", headers: { cookie: "session=ok" } })).status, 200);
+      assert.equal((await request({ port, host: "example.site", path: "/api/system/setup", headers: { cookie: "session=ok" } })).status, 200);
       assert.deepEqual(received.map(({ service, url }) => ({ service, url })), [
         { service: "console", url: "/" },
+        { service: "console", url: "/setup" },
         { service: "bridge", url: "/agent-bridge" },
         { service: "bridge", url: "/mail" },
         { service: "bridge", url: "/api/sessions" },
         { service: "console", url: "/api/projects" },
+        { service: "console", url: "/api/setup" },
       ]);
       assert.ok(received.every((entry) => entry.authenticated === "1"));
     } finally {

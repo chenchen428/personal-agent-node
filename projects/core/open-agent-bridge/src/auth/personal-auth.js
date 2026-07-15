@@ -1,4 +1,6 @@
 import crypto from "node:crypto";
+import fs from "node:fs";
+import path from "node:path";
 
 export const PERSONAL_AUTH_DEFAULT_TTL_SECONDS = 365 * 24 * 60 * 60;
 
@@ -12,6 +14,8 @@ export class PersonalAuth {
     cookieHostOnly = true,
     apiToken = "",
     now = () => Date.now(),
+    setupBootstrapFile = "",
+    verifierFile = "",
   } = {}) {
     this.password = String(password || "");
     this.cookieSecret = String(cookieSecret || "");
@@ -22,7 +26,9 @@ export class PersonalAuth {
     this.cookieHostOnly = cookieHostOnly !== false;
     this.apiToken = String(apiToken || "");
     this.now = now;
-    if (!this.password) throw new Error("PERSONAL_AGENT_AUTH_PASSWORD is required");
+    this.setupBootstrapFile = String(setupBootstrapFile || "");
+    this.verifierFile = String(verifierFile || "");
+    if (!this.password && !readVerifier(this.verifierFile)) throw new Error("PERSONAL_AGENT_AUTH_PASSWORD or a local auth verifier is required");
     if (!this.cookieSecret) throw new Error("PERSONAL_AGENT_AUTH_COOKIE_SECRET is required");
   }
 
@@ -33,6 +39,10 @@ export class PersonalAuth {
     }
     if (url.pathname === "/login") {
       await this.handleLogin(request, response, url);
+      return true;
+    }
+    if (url.pathname === "/setup/bootstrap") {
+      this.handleSetupBootstrap(request, response, url);
       return true;
     }
     if (url.pathname === "/logout") {
@@ -66,7 +76,7 @@ export class PersonalAuth {
 
     const form = await readForm(request);
     const submittedReturnTo = normalizeReturnTo(form.get("return_to") || returnTo);
-    if (!timingSafeTextEqual(form.get("password") || "", this.password)) {
+    if (!this.matchesPassword(form.get("password") || "")) {
       sendLoginPage(response, {
         returnTo: submittedReturnTo,
         host: requestHost(request),
@@ -85,11 +95,55 @@ export class PersonalAuth {
     response.end();
   }
 
+  matchesPassword(candidate) {
+    const verifier = readVerifier(this.verifierFile);
+    if (verifier) return verifyPasswordVerifier(candidate, verifier);
+    return timingSafeTextEqual(candidate, this.password);
+  }
+
   handleLogout(request, response) {
     response.writeHead(303, {
       ...authResponseHeaders(),
       Location: "/login",
       "Set-Cookie": this.clearCookie(request),
+    });
+    response.end();
+  }
+
+  handleSetupBootstrap(request, response, url) {
+    if (request.method !== "GET" && request.method !== "HEAD") {
+      response.writeHead(405, { ...authResponseHeaders(), Allow: "GET, HEAD" });
+      response.end();
+      return;
+    }
+    const sourceAddress = String(request.headers["x-real-ip"] || request.socket?.remoteAddress || "").replace(/^::ffff:/, "");
+    const token = String(url.searchParams.get("token") || "");
+    const document = readBootstrap(this.setupBootstrapFile);
+    const valid = ["127.0.0.1", "::1"].includes(sourceAddress)
+      && /^[A-Za-z0-9_-]{43,128}$/.test(token)
+      && document?.schemaVersion === 1
+      && Number.isFinite(Date.parse(document.expiresAt))
+      && Date.parse(document.expiresAt) > this.now()
+      && timingSafeTextEqual(document.sha256 || "", crypto.createHash("sha256").update(token).digest("hex"));
+    if (!valid) {
+      response.writeHead(401, authResponseHeaders());
+      response.end();
+      return;
+    }
+    const consumed = `${this.setupBootstrapFile}.consumed-${process.pid}-${crypto.randomBytes(6).toString("hex")}`;
+    try {
+      fs.renameSync(this.setupBootstrapFile, consumed);
+      fs.rmSync(consumed, { force: true });
+    }
+    catch {
+      response.writeHead(409, authResponseHeaders());
+      response.end();
+      return;
+    }
+    response.writeHead(303, {
+      ...authResponseHeaders(),
+      Location: "/app/setup",
+      "Set-Cookie": this.issueCookie(request),
     });
     response.end();
   }
@@ -159,6 +213,59 @@ export class PersonalAuth {
   sign(payload) {
     return crypto.createHmac("sha256", this.cookieSecret).update(payload).digest("base64url");
   }
+}
+
+function readBootstrap(filePath) {
+  if (!filePath) return null;
+  try { return JSON.parse(fs.readFileSync(filePath, "utf8")); }
+  catch { return null; }
+}
+
+export function createPasswordVerifier(password, { salt = crypto.randomBytes(16) } = {}) {
+  const normalized = String(password || "");
+  if (normalized.length < 12 || normalized.length > 256) throw new Error("Local access password must contain 12 to 256 characters");
+  const saltBuffer = Buffer.isBuffer(salt) ? salt : Buffer.from(salt);
+  if (saltBuffer.length < 16) throw new Error("Local access password salt is too short");
+  const parameters = { N: 32768, r: 8, p: 1, maxmem: 64 * 1024 * 1024 };
+  const derived = crypto.scryptSync(normalized, saltBuffer, 32, parameters);
+  return {
+    schemaVersion: 1,
+    algorithm: "scrypt",
+    parameters: { N: parameters.N, r: parameters.r, p: parameters.p, keyLength: 32 },
+    salt: saltBuffer.toString("base64url"),
+    verifier: derived.toString("base64url"),
+  };
+}
+
+export function writePasswordVerifier(filePath, password) {
+  const document = createPasswordVerifier(password);
+  fs.mkdirSync(path.dirname(filePath), { recursive: true, mode: 0o700 });
+  const temporary = `${filePath}.${process.pid}.${crypto.randomBytes(6).toString("hex")}.tmp`;
+  fs.writeFileSync(temporary, `${JSON.stringify(document, null, 2)}\n`, { mode: 0o600, flag: "wx" });
+  try { fs.renameSync(temporary, filePath); } finally { fs.rmSync(temporary, { force: true }); }
+  try { fs.chmodSync(filePath, 0o600); } catch {}
+  return document;
+}
+
+export function verifyPasswordVerifier(password, document) {
+  try {
+    if (document?.schemaVersion !== 1 || document.algorithm !== "scrypt") return false;
+    const { N, r, p, keyLength } = document.parameters || {};
+    if (N !== 32768 || r !== 8 || p !== 1 || keyLength !== 32) return false;
+    const salt = Buffer.from(String(document.salt || ""), "base64url");
+    const expected = Buffer.from(String(document.verifier || ""), "base64url");
+    if (salt.length < 16 || expected.length !== keyLength) return false;
+    const actual = crypto.scryptSync(String(password || ""), salt, keyLength, { N, r, p, maxmem: 64 * 1024 * 1024 });
+    return actual.length === expected.length && crypto.timingSafeEqual(actual, expected);
+  } catch { return false; }
+}
+
+function readVerifier(filePath) {
+  if (!filePath) return null;
+  try {
+    const document = JSON.parse(fs.readFileSync(filePath, "utf8"));
+    return document?.schemaVersion === 1 && document.algorithm === "scrypt" ? document : null;
+  } catch { return null; }
 }
 
 function sendLoginPage(response, { returnTo, host, error = "", statusCode = 200, head = false }) {

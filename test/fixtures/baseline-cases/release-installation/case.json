@@ -8,6 +8,6 @@
   "acceptance": [
     "Installation switches an immutable current release",
     "One previous release remains available",
-    "Fresh installation immediately prompts the user to bind WeChat"
+    "Fresh installation opens the authenticated local Setup Center without requiring WeChat or a development Agent"
   ]
 }

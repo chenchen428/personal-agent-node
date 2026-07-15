@@ -71,6 +71,25 @@ test('personal-agent uses stable JSON errors and fails closed for unavailable co
   assert.equal(JSON.parse(allIsHelpOnly.stderr).error.code, 'INVALID_ARGUMENT');
 });
 
+test('setup status exposes separate readiness dimensions and remains read-only', () => {
+  const dataRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'personal-agent-setup-cli-'));
+  try {
+    const before = snapshotDataRoot(dataRoot);
+    const result = run(['setup', 'status', '--json', '--data-root', dataRoot], {
+      PRIVATE_SITE_CODEX_EXECUTABLE: path.join(dataRoot, 'missing-codex'),
+    });
+    assert.equal(result.status, 0, result.stderr);
+    const body = JSON.parse(result.stdout);
+    assert.equal(body.command, 'setup status');
+    assert.deepEqual(Object.keys(body.result.readiness), ['console', 'agent', 'remote', 'mail']);
+    assert.equal(body.result.readiness.remote, 'not-selected');
+    assert.equal(body.result.checks.find((check) => check.id === 'channels.wechat').requirement, 'optional');
+    assert.deepEqual(snapshotDataRoot(dataRoot), before);
+  } finally {
+    fs.rmSync(dataRoot, { recursive: true, force: true });
+  }
+});
+
 test('every planned command leaf remains unavailable by default and with preview opt-in', () => {
   const help = JSON.parse(runOk(['help', '--all', '--json']).stdout);
   const planned = help.result.commandGroups.planned.flatMap((entry) => expandCommandName(entry.name));
@@ -230,7 +249,9 @@ test('mail status is R0 read-only while mail plan is preview-only', () => {
     assert.equal(statusBody.result.mail.policy.managedRawMailTunnelBundled, false);
     assert.deepEqual(snapshotDataRoot(dataRoot), before, 'R0 mail status must not rewrite any Site state');
 
-    const doctor = run(['doctor', '--json', '--data-root', dataRoot]);
+    const doctor = run(['doctor', '--json', '--data-root', dataRoot], {
+      PRIVATE_SITE_CODEX_EXECUTABLE: path.join(dataRoot, 'missing-codex'),
+    });
     assert.equal(doctor.status, 0, doctor.stderr);
     const doctorBody = JSON.parse(doctor.stdout);
     assert.equal(doctorBody.result.checks.find((check) => check.id === 'mail-ingress-token').ok, false);

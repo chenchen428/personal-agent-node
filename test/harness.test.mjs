@@ -15,7 +15,7 @@ test('customer Harness contains architecture registries and Agent guidance', () 
 
 test('customer Harness carries the portable Node acceptance standard', () => {
   const standard = fs.readFileSync(path.join(root, 'skills/personal-agent/references/acceptance.md'), 'utf8');
-  for (const requirement of ['Node Core Gate', 'Optional Managed Cloud Integration', 'local-admin', 'ten minutes', 'previous-release rollback', 'public GitHub Release asset', '"route": "/app/chat"', '"uniquePrompt": true', '"realAgentRuntime": true', '"sameSessionAgentReply": true', '"wechatRequired": false', 'WeChat is optional and never blocks', 'current-following shims']) assert.match(standard, new RegExp(requirement));
+  for (const requirement of ['Node Core Gate', 'Optional Managed Cloud Integration', 'local-admin', 'ten minutes', 'previous-release rollback', 'public GitHub Release asset', '"route": "/app/chat"', '"uniquePrompt": true', '"realAgentRuntime": true', '"sameSessionAgentReply": true', '"wechatRequired": false', 'WeChat is optional and never blocks', 'Stable Go launchers', 'Setup Center']) assert.match(standard, new RegExp(requirement));
   assert.equal(fs.existsSync(path.join(root, 'test/fixtures/skill-cases/personal-agent-acceptance/case.json')), true);
   const expected = JSON.parse(fs.readFileSync(path.join(root, 'test/fixtures/skill-cases/personal-agent-acceptance/expected.json'), 'utf8'));
   assert.deepEqual(Object.keys(expected.node.webConversation), [
@@ -30,7 +30,7 @@ test('customer Harness carries the portable Node acceptance standard', () => {
   assert.equal(expected.node.webConversation.route, '/app/chat');
   assert.equal(expected.node.webConversation.wechatRequired, false);
   const releaseWorkflow = fs.readFileSync(path.join(root, 'workflows/release.md'), 'utf8');
-  for (const requirement of ['Post-release Node gate', 'exact public asset', 'authenticate to its local `/app/chat`', 'real Agent runtime', 'same session', '"wechatRequired": false']) assert.match(releaseWorkflow, new RegExp(requirement));
+  for (const requirement of ['Post-release Node gate', 'exact public asset', 'authenticated `/app/setup`', 'real Codex reply', 'same authenticated `/app/chat` session', '"wechatRequired": false']) assert.match(releaseWorkflow, new RegExp(requirement));
   const artifactVerifier = fs.readFileSync(path.join(root, 'scripts/verify-private-site-node-dist.mjs'), 'utf8');
   assert.match(artifactVerifier, /webConversation:\s*\{/);
   assert.match(artifactVerifier, /releaseAssetRuntime: false/);
@@ -113,4 +113,19 @@ test('GitHub release chain is version-gated and publishes verifiable artifacts',
   assert.equal(gate.status, 0, `${gate.stdout}\n${gate.stderr}`);
   const bad = run(process.execPath, ['scripts/release-check.mjs', '--tag', 'v999.0.0', '--allow-dirty']);
   assert.notEqual(bad.status, 0);
+  const workflow = fs.readFileSync(path.join(root, '.github/workflows/release.yml'), 'utf8');
+  for (const requirement of [
+    'NODE_VERSION: 22.23.1',
+    'windows-2025',
+    'macos-15-intel',
+    'macos-15',
+    'ubuntu-24.04',
+    'ubuntu-24.04-arm',
+    '--require-signing',
+    'WINDOWS_SIGNING_PFX_BASE64',
+    'APPLE_INSTALLER_IDENTITY',
+    'APPLE_NOTARY_KEY_BASE64',
+    'cosign sign-blob',
+    'actions/attest-build-provenance@v2',
+  ]) assert.match(workflow, new RegExp(requirement.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
 });

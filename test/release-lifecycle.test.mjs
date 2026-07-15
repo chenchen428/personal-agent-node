@@ -41,7 +41,7 @@ test('rollback atomically swaps current and previous immutable releases', () => 
   fs.rmSync(installRoot, { recursive: true, force: true });
 });
 
-test('installed Harness uses verified platform links for every Agent client', () => {
+test('repository development Harness supports verified compatibility links for Agent clients', () => {
   const releaseRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'personal-agent-links-'));
   try {
     fs.mkdirSync(path.join(releaseRoot, 'skills'));
@@ -102,21 +102,20 @@ test('Windows rematerializes bridge directories expanded by release copy', { ski
   }
 });
 
-test('release installation materializes Harness links before immutable verification', () => {
+test('release installation does not materialize repository Agent compatibility links', () => {
   const installer = fs.readFileSync(path.join(root, 'scripts', 'install-private-site-node-release.mjs'), 'utf8');
-  const materialize = installer.indexOf('materializeHarnessLinks(source)');
-  const verifyRelease = installer.indexOf('spawnSync(process.execPath, [verifier, source]');
-  assert.ok(materialize >= 0 && materialize < verifyRelease);
-  assert.match(installer, /verifyHarnessLinks\(source\)/);
+  assert.doesNotMatch(installer, /materializeHarnessLinks|verifyHarnessLinks/);
 });
 
-test('fresh release installation immediately returns a WeChat onboarding prompt', () => {
+test('fresh release installation points to the local Setup Center without requiring WeChat', () => {
   const installer = fs.readFileSync(path.join(root, 'scripts', 'install-private-site-node-release.mjs'), 'utf8');
   const githubInstaller = fs.readFileSync(path.join(root, 'scripts', 'install-from-github-release.mjs'), 'utf8');
   for (const source of [installer, githubInstaller]) {
-    assert.match(source, /requiredAction:\s*["']bind-wechat["']/);
-    assert.match(source, /bind WeChat first/);
-    assert.match(source, /personal-agent status --json/);
+    assert.match(source, /requiredAction:\s*["']open-setup-center["']/);
+    assert.match(source, /\/app\/setup/);
+    assert.match(source, /wechatRequired:\s*false/);
+    assert.match(source, /personal-agent setup status --json/);
+    assert.doesNotMatch(source, /bind WeChat first/);
   }
 });
 

@@ -5,6 +5,7 @@ import path from 'node:path';
 import test from 'node:test';
 
 import { buildNavigationItems, readUpdateStatus, renderNavigationPage, renderUpdatePage } from '../projects/core/admin-panel/page.mjs';
+import { renderSetupPage } from '../projects/core/admin-panel/setup-page.mjs';
 
 test('workbench exposes only current open-project capabilities', () => {
   const items = buildNavigationItems({ registry: {}, panelConfig: {} });
@@ -28,9 +29,32 @@ test('workbench exposes only current open-project capabilities', () => {
     { pattern: '/app/skills', access: 'authenticated', capability: 'skills' },
   );
   assert.deepEqual(
+    routes.routes.find((route) => route.pattern === '/app/setup/bootstrap'),
+    { pattern: '/app/setup/bootstrap', access: 'local-bootstrap', capability: 'runtime' },
+  );
+  assert.deepEqual(
+    routes.routes.find((route) => route.pattern === '/app/setup'),
+    { pattern: '/app/setup', access: 'local-admin', capability: 'runtime' },
+  );
+  assert.deepEqual(
     routes.routes.find((route) => route.pattern === '/app/update'),
     { pattern: '/app/update', access: 'local-admin', capability: 'runtime' },
   );
+});
+
+test('Setup Center renders independent readiness dimensions and a semantic check surface', () => {
+  const html = renderSetupPage({ title: 'Personal Agent' });
+  for (const dimension of ['console', 'agent', 'remote', 'mail']) assert.match(html, new RegExp(`data-readiness="${dimension}"`));
+  assert.match(html, /data-setup-groups/);
+  assert.match(html, /\/api\/system\/setup/);
+  assert.match(html, /未选择的可选能力不会被标成故障/);
+  assert.match(html, /developers\.openai\.com\/codex\/cli/);
+  assert.match(html, /\/api\/system\/setup\/actions\//);
+  assert.match(html, /\/api\/system\/setup\/diagnostics/);
+  assert.match(html, /data-local-password/);
+  assert.match(html, /不可逆校验器/);
+  assert.doesNotMatch(html, /执行入口会在计划与本机确认就绪后开放/);
+  assert.doesNotMatch(html, /复制整段提示词|bind WeChat first/);
 });
 
 test('workbench branding is project-neutral', () => {

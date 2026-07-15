@@ -6,7 +6,6 @@ import os from "node:os";
 import path from "node:path";
 import { spawn, spawnSync } from "node:child_process";
 import { pathToFileURL } from "node:url";
-import { harnessLinks, verifyHarnessLinks } from "./harness-links.mjs";
 
 const requestedReleaseRoot = path.resolve(process.argv[2] || "");
 if (!requestedReleaseRoot || !fs.existsSync(requestedReleaseRoot)) throw new Error("Usage: verify-private-site-node-dist.mjs <release-root>");
@@ -159,6 +158,7 @@ function verifyLayout() {
   assert(manifest.harness?.owner === "node", "Harness execution owner must be the user Node");
   assert(manifest.harness?.supportedAgentRuntime === "codex", "Node release must declare Codex as its supported Agent runtime");
   assert(manifest.harness?.developmentWorkspace === "full-git-clone", "Node release must preserve the full-clone evolution contract");
+  assert(manifest.harness?.runtimeAgentBridge === ".codex/skills", "Installed runtime must expose only the Codex skill bridge");
   assert(manifest.profile === "universal", "Node release profile is invalid");
   assert(manifest.entrypoints?.personalAgent === "projects/core/node/bin/personal-agent.mjs", "Node release must declare the public personal-agent entrypoint");
   assert(manifest.entrypoints?.mailIngest === "projects/core/open-agent-bridge/bin/oab-mail-ingest.mjs", "Node release must declare the local MTA mail-ingest entrypoint");
@@ -167,7 +167,6 @@ function verifyLayout() {
     "AGENTS.md",
     "README.md",
     "README.en.md",
-    "CLAUDE.md",
     ".gitignore",
     "release-manifest.json",
     "SHA256SUMS",
@@ -193,6 +192,8 @@ function verifyLayout() {
     "projects/core/node/src/cli-shims.mjs",
     "projects/core/node/src/mail.mjs",
     "projects/core/node/src/cloud-enrollment.mjs",
+    "projects/core/node/src/setup.mjs",
+    "projects/core/node/src/setup-actions.mjs",
     "projects/core/node/src/control-service.mjs",
     "projects/core/node/src/operations.mjs",
     "projects/core/node/src/release-pruning.mjs",
@@ -205,6 +206,7 @@ function verifyLayout() {
     "projects/core/open-agent-bridge/bin/oab.mjs",
     "projects/core/open-agent-bridge/bin/oab-mail-ingest.mjs",
     "projects/core/admin-panel/server.mjs",
+    "projects/core/admin-panel/setup-page.mjs",
     "scripts/install-private-site-node-release.mjs",
     "scripts/personal-agent-command.mjs",
     "scripts/deploy-private-site-node.mjs",
@@ -213,11 +215,15 @@ function verifyLayout() {
     "registry/routes.json",
     "registry/extensions.json",
     "registry/commands.json",
+    "registry/setup-checks.json",
+    "registry/node-runtime.json",
     "schemas/personal-agent/capabilities.schema.json",
     "schemas/personal-agent/commands.schema.json",
+    "schemas/personal-agent/setup-checks.schema.json",
     "schemas/personal-agent/operations.schema.json",
     "registry/behavior-baselines.json",
     "docs/adr/0001-node-product-boundary-freeze.md",
+    "docs/adr/0002-self-contained-installation-and-setup-center.md",
     "test/fixtures/baseline-cases/release-installation/case.json",
     "test/fixtures/baseline-cases/authenticated-login/case.json",
     "test/fixtures/baseline-cases/agent-conversation/case.json",
@@ -285,9 +291,10 @@ function verifyHarness() {
   const skillNames = (catalog.skills || []).map((skill) => skill.name || skill.id).filter(Boolean);
   assert(skillNames.length > 0, "Skill catalog is empty");
   for (const name of skillNames) assert(fs.existsSync(at("skills", name, "SKILL.md")), `Cataloged skill is missing: ${name}`);
-  verifyHarnessLinks(releaseRoot);
-  assert(harnessLinks.length === 5, "Harness link contract is incomplete");
-  for (const bridge of manifest.harness.compatibilityBridges) for (const name of skillNames) assert(fs.existsSync(at(bridge, name, "SKILL.md")), `${bridge} is missing ${name}`);
+  assert(!fs.existsSync(at("CLAUDE.md")), "Installed runtime must not package a Claude compatibility guide");
+  for (const bridge of [".agents", ".codex", ".claude", ".cursor"]) {
+    assert(!fs.existsSync(at(bridge)), `Installed release must not package repository compatibility bridge: ${bridge}`);
+  }
   const server = fs.readFileSync(at("projects/core/open-agent-bridge/app/server.mjs"), "utf8");
   const worker = fs.readFileSync(at("projects/core/open-agent-bridge/app/worker.mjs"), "utf8");
   assert(server.includes("worker/hook/completed"), "Bridge bundle is missing Harness completion hooks");
@@ -528,7 +535,9 @@ async function verifyMailArtifact(mailTransportBoundary) {
     assert(!status.stdout.includes(apiToken) && !status.stdout.includes(ingestToken), "Bundled mail status exposed a token");
     assert(JSON.stringify(snapshotTree(dataRoot)) === JSON.stringify(stateBeforeReadOnlyCommands), "Bundled R0 mail status rewrote Site state");
     const doctor = spawnSync(process.execPath, [at(manifest.entrypoints.personalAgent), "doctor", "--json", "--data-root", dataRoot], { env: cliEnvironment, encoding: "utf8", timeout: 30_000 });
-    assert(doctor.status === 0 && JSON.parse(doctor.stdout).result?.healthy === true, `Bundled doctor failed: ${String(doctor.stderr || "").trim()}`);
+    const doctorBody = doctor.status === 0 ? JSON.parse(doctor.stdout) : null;
+    assert(doctor.status === 0 && typeof doctorBody?.result?.healthy === "boolean" && ["ready", "action-required", "blocked"].includes(doctorBody?.result?.setup?.readiness?.console), `Bundled doctor failed: ${String(doctor.stderr || "").trim()}`);
+    assert(doctorBody.result.healthy === false && doctorBody.result.setup.readiness.console !== "ready", "Bundled doctor must report that the artifact-only smoke is not a complete installed service");
     assert(JSON.stringify(snapshotTree(dataRoot)) === JSON.stringify(stateBeforeReadOnlyCommands), "Bundled R0 doctor rewrote Site state");
     const blockedPlan = spawnSync(process.execPath, [at(manifest.entrypoints.personalAgent), "mail", "plan", "--json", "--data-root", dataRoot], { env: cliEnvironment, encoding: "utf8", timeout: 30_000 });
     assert(blockedPlan.status === 7 && JSON.parse(blockedPlan.stderr).error?.code === "CAPABILITY_UNAVAILABLE", "Bundled mail plan executed without preview opt-in");

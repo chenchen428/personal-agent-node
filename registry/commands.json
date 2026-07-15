@@ -12,6 +12,7 @@
     { "name": "help", "risk": "R0", "capability": "runtime", "implementationStatus": "implemented", "description": "Discover the implemented, preview, and planned public command surface." },
     { "name": "status", "risk": "R0", "capability": "runtime", "implementationStatus": "implemented", "description": "Show release, initialization, connection, Cloud enrollment, and bridge readiness." },
     { "name": "doctor", "risk": "R0", "capability": "runtime", "implementationStatus": "implemented", "description": "Run read-only local runtime and installation checks." },
+    { "name": "setup status|open", "risk": "R0", "capability": "runtime", "implementationStatus": "implemented", "description": "Inspect the versioned Setup Center readiness contract or open the authenticated loopback setup page." },
     { "name": "capabilities list|inspect", "risk": "R0", "capability": "runtime", "implementationStatus": "implemented", "description": "Discover registered capabilities or inspect one capability." },
     { "name": "chat list|start|show|send|cancel", "risk": "R1", "capability": "agent", "implementationStatus": "planned", "description": "Manage local Agent conversations through the unified CLI." },
     { "name": "skill list|inspect|verify", "risk": "R0", "capability": "skills", "implementationStatus": "implemented", "description": "Discover installed skills, inspect metadata, and run registered skill verification." },

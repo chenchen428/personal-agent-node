@@ -2,6 +2,8 @@ export const HANDLED_COMMAND_KEYS = Object.freeze([
   'help',
   'status',
   'doctor',
+  'setup status',
+  'setup open',
   'capabilities list',
   'capabilities inspect',
   'skill list',

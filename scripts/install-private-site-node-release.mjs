@@ -4,7 +4,6 @@ import os from "node:os";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
 import { pruneInactiveRelease } from "../projects/core/node/src/release-pruning.mjs";
-import { materializeHarnessLinks, verifyHarnessLinks } from "./harness-links.mjs";
 import { canonicalInstallRoot } from "./install-root.mjs";
 import { installPersonalAgentCommand } from "./personal-agent-command.mjs";
 
@@ -13,8 +12,6 @@ const source = path.resolve(args._[0] || "");
 if (!source || !fs.existsSync(source)) throw new Error("Usage: install-private-site-node-release.mjs <release-root> [--install-root <path>] [--data-root <path>]");
 const verifier = path.join(source, "scripts", "verify-private-site-node-dist.mjs");
 if (!fs.existsSync(verifier)) throw new Error("Release verifier is missing");
-materializeHarnessLinks(source);
-verifyHarnessLinks(source);
 const verified = spawnSync(process.execPath, [verifier, source], { encoding: "utf8", timeout: 10 * 60_000 });
 if (verified.status !== 0) throw new Error(`Release verification failed: ${String(verified.stderr || verified.stdout || "unknown error").trim()}`);
 const manifest = JSON.parse(fs.readFileSync(path.join(source, "release-manifest.json"), "utf8"));
@@ -32,9 +29,6 @@ if (!fs.existsSync(target)) {
   fs.cpSync(source, temporary, { recursive: true, preserveTimestamps: true });
   fs.renameSync(temporary, target);
 }
-materializeHarnessLinks(target);
-verifyHarnessLinks(target);
-
 const oldCurrent = pointerTarget(current);
 if (oldCurrent && path.resolve(oldCurrent) !== path.resolve(target)) replacePointer(previous, oldCurrent);
 replacePointer(current, target);
@@ -49,9 +43,11 @@ const installation = {
   previous: oldCurrent && path.resolve(oldCurrent) !== path.resolve(target) ? oldCurrent : pointerTarget(previous),
   personalAgentCommand: personalAgentCommand.commandPath,
   onboarding: {
-    requiredAction: "bind-wechat",
-    message: "Open the local Personal Agent console and bind WeChat first. After binding, the channel will send a capability-check message.",
-    statusCommand: "personal-agent status --json",
+    requiredAction: "open-setup-center",
+    message: "Open the authenticated local Setup Center. WeChat and managed connectivity are optional and do not block local Web use.",
+    setupPath: "/app/setup",
+    wechatRequired: false,
+    statusCommand: "personal-agent setup status --json",
   },
 };
 fs.writeFileSync(path.join(installRoot, "installation.json"), `${JSON.stringify(installation, null, 2)}\n`, { mode: 0o600 });

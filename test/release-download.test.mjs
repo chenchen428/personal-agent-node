@@ -152,17 +152,12 @@ test('GitHub installer keeps checksum verification after transport fallback', ()
   assert.match(installer, /PRIVATE_SITE_DATA_ROOT/);
 });
 
-test('Windows release extraction skips only controlled Harness bridge links', () => {
+test('platform release extraction needs no Agent compatibility-link exceptions', () => {
   const layout = validateArchiveListing([
-    '0.1.0/','0.1.0/AGENTS.md','0.1.0/CLAUDE.md','0.1.0/.agents/','0.1.0/.agents/skills',
+    '0.1.0/','0.1.0/AGENTS.md','0.1.0/skills/','0.1.0/skills/example/SKILL.md',
   ].join('\n'));
   assert.deepEqual(archiveExtractionArgs('release.tar.gz', 'extracted', layout, 'win32'), [
     '-xzf', 'release.tar.gz', '-C', 'extracted',
-    '--exclude', '0.1.0/CLAUDE.md',
-    '--exclude', '0.1.0/.agents/skills',
-    '--exclude', '0.1.0/.claude/skills',
-    '--exclude', '0.1.0/.codex/skills',
-    '--exclude', '0.1.0/.cursor/skills',
   ]);
   assert.deepEqual(archiveExtractionArgs('release.tar.gz', 'extracted', layout, 'linux'), [
     '-xzf', 'release.tar.gz', '-C', 'extracted',
@@ -179,10 +174,13 @@ test('release extraction rejects path traversal and multiple archive roots befor
   ]) assert.throws(() => validateArchiveListing(listing), /unsafe path|multiple roots/);
 });
 
-test('release packaging publishes the standalone immutable installer asset', () => {
+test('release packaging delegates customer installation to self-contained Go platform artifacts', () => {
   const packager = fs.readFileSync(new URL('../scripts/release-package.mjs', import.meta.url), 'utf8');
-  assert.match(packager, /personal-agent-node-\$\{tag\}-installer\.mjs/);
-  assert.match(packager, /install-from-github-release\.mjs/);
+  const platformBuilder = fs.readFileSync(new URL('../scripts/build-platform-installer.mjs', import.meta.url), 'utf8');
+  assert.doesNotMatch(packager, /installer\.mjs|install-from-github-release\.mjs/);
+  assert.match(platformBuilder, /personal-agent-setup/);
+  assert.match(platformBuilder, /projects['"], ['"]core['"], ['"]node['"], ['"]native/);
+  assert.match(platformBuilder, /nodeRuntime/);
 });
 
 test('public installation documentation pins the workspace release version', () => {
@@ -190,8 +188,8 @@ test('public installation documentation pins the workspace release version', () 
   const version = JSON.parse(fs.readFileSync(new URL('package.json', root), 'utf8')).version;
   for (const relative of ['README.md', 'README.en.md', 'docs/getting-started.md']) {
     const document = fs.readFileSync(new URL(relative, root), 'utf8');
-    assert.match(document, new RegExp(`TAG=v${version.replaceAll('.', '\\.')}`), relative);
-    assert.match(document, /personal-agent-node-\$(?:TAG|Tag)-installer\.mjs/, relative);
-    assert.match(document, /personal-agent cloud connect --json/, relative);
+    assert.match(document, new RegExp(`personal-agent-node-v${version.replaceAll('.', '\\.')}-(?:windows|macos|linux)`), relative);
+    assert.match(document, /Setup Center/i, relative);
+    assert.doesNotMatch(document, /installer\.mjs|Copyable one-click Agent prompt|复制给本机 Agent/, relative);
   }
 });

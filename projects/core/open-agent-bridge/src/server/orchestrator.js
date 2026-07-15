@@ -1,3 +1,4 @@
+import fs from "node:fs";
 import path from "node:path";
 import { runAppServerCommand, steerActiveTurn, stopAppServerCommand } from "../agent/app-server-runner.mjs";
 import { config } from "../config.js";
@@ -446,6 +447,9 @@ export class SessionOrchestrator {
         onSessionEvent: async (event) => {
           const persisted = this.appendAndBroadcast(event.sessionId, event.kind, event.payload);
           this.captureWorkerHookEvent(event.sessionId, persisted);
+          if (isCompletedAssistantMessage(persisted) && isWebConversationSession(session)) {
+            recordWebConversationAcceptance();
+          }
           if (options.notifyWechat && isFinalWechatTurnCandidate(persisted)) {
             pendingWechatEvent = persisted;
           }
@@ -602,6 +606,35 @@ export class SessionOrchestrator {
     }
     return { delivered, remaining: this.store.listPendingWechatNotifications(recipientId).length };
   }
+}
+
+function isCompletedAssistantMessage(event) {
+  if (event.kind !== "session.assistant_message") return false;
+  const streamState = event.payload?.metadata?.streamState;
+  return !streamState || streamState === "completed";
+}
+
+function isWebConversationSession(session) {
+  return session.role === "worker"
+    && !session.channel
+    && ["api", "web"].includes(String(session.metadata?.createdBy || ""));
+}
+
+function recordWebConversationAcceptance() {
+  const directory = path.join(config.siteDataRoot, "runtime", "setup");
+  const target = path.join(directory, "web-conversation.json");
+  const temporary = `${target}.${process.pid}.tmp`;
+  fs.mkdirSync(directory, { recursive: true, mode: 0o700 });
+  fs.writeFileSync(temporary, `${JSON.stringify({
+    schemaVersion: 1,
+    route: "/app/chat",
+    authenticated: true,
+    realAgentRuntime: true,
+    sameSessionAgentReply: true,
+    wechatRequired: false,
+    verifiedAt: new Date().toISOString(),
+  }, null, 2)}\n`, { mode: 0o600 });
+  fs.renameSync(temporary, target);
 }
 
 function isFinalWechatTurnCandidate(event) {

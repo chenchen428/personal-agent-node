@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "agentRuntime": {
     "supported": ["codex"],
-    "workspaceDelivery": "full-repository",
+    "workspaceDelivery": "canonical-runtime",
     "compatibilityOnly": ["agents", "claude", "cursor"]
   },
   "core": {

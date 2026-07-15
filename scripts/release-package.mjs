@@ -20,7 +20,6 @@ const base = `personal-agent-node-${tag}-universal`;
 const archive = path.join(output, `${base}.tar.gz`);
 execFileSync('tar', ['-czf', archive, '-C', path.dirname(stage), path.basename(stage)], { cwd: root, stdio: 'inherit' });
 for (const name of ['release-manifest.json', 'SBOM.cdx.json']) fs.copyFileSync(path.join(stage, name), path.join(output, `${base}-${name}`));
-fs.copyFileSync(path.join(root, 'scripts', 'install-from-github-release.mjs'), path.join(output, `personal-agent-node-${tag}-installer.mjs`));
 const files = fs.readdirSync(output).filter((name) => name !== 'SHA256SUMS').sort();
 fs.writeFileSync(path.join(output, 'SHA256SUMS'), `${files.map((name) => `${sha256(path.join(output, name))}  ${name}`).join('\n')}\n`);
 console.log(JSON.stringify({ ok: true, tag, releaseId, stage, output, artifacts: [...files, 'SHA256SUMS'] }, null, 2));

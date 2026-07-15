@@ -5,10 +5,25 @@ import path from "node:path";
 import { spawnSync } from "node:child_process";
 import { domainToASCII, fileURLToPath } from "node:url";
 
-export const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-export const workspaceRoot = path.resolve(projectRoot, "..", "..", "..");
+const moduleProjectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+export const workspaceRoot = findWorkspaceRoot([moduleProjectRoot, path.dirname(path.resolve(process.argv[1] || process.cwd())), process.cwd()]);
+export const projectRoot = path.join(workspaceRoot, "projects", "core", "node");
 export const distributionPath = path.join(workspaceRoot, "registry", "site-distribution.json");
 export const CONNECTION_MODES = Object.freeze(["local-only", "managed-cloud", "self-hosted-edge"]);
+
+function findWorkspaceRoot(starts) {
+  for (const start of starts) {
+    let current = path.resolve(start);
+    for (let depth = 0; depth < 8; depth += 1) {
+      if (fs.existsSync(path.join(current, "registry", "site-distribution.json"))
+        && fs.existsSync(path.join(current, "projects", "core", "node"))) return current;
+      const parent = path.dirname(current);
+      if (parent === current) break;
+      current = parent;
+    }
+  }
+  return path.resolve(moduleProjectRoot, "..", "..", "..");
+}
 
 export function resolveNodeConfig(env = process.env, options = {}) {
   const dataRoot = path.resolve(env.PRIVATE_SITE_DATA_ROOT || path.join(os.homedir(), ".personal-agent"));
@@ -101,6 +116,7 @@ export function initializeSite({ domain, dataRoot, connectionMode = "local-only"
     OPEN_AGENT_BRIDGE_API_TOKEN: randomSecret(),
     OPEN_AGENT_BRIDGE_UPLOAD_TOKEN: randomSecret(),
     OPEN_AGENT_BRIDGE_MAIL_INGEST_TOKEN: randomSecret(),
+    PERSONAL_AGENT_AUTH_PASSWORD: randomSecret(),
     PERSONAL_AGENT_AUTH_COOKIE_SECRET: randomSecret(),
     ...(fs.existsSync(path.join(workspaceRoot, "projects", "personal", "lmt_tools")) ? { LMT_SESSION_SECRET: randomSecret() } : {}),
   });
@@ -201,12 +217,14 @@ export function ensureNodeDirectories(config) {
 
 export function requireRuntimeSecrets(config) {
   const required = [
-    "PERSONAL_AGENT_AUTH_PASSWORD",
     "PERSONAL_AGENT_AUTH_COOKIE_SECRET",
     "OPEN_AGENT_BRIDGE_API_TOKEN",
     "OPEN_AGENT_BRIDGE_UPLOAD_TOKEN",
     "OPEN_AGENT_BRIDGE_MAIL_INGEST_TOKEN",
   ];
+  if (!String(config.env.PERSONAL_AGENT_AUTH_PASSWORD || "").trim() && !fs.existsSync(path.join(config.dataRoot, "config", "local-auth.json"))) {
+    required.unshift("PERSONAL_AGENT_AUTH_PASSWORD or local-auth.json");
+  }
   if (fs.existsSync(path.join(workspaceRoot, "projects", "personal", "lmt_tools"))) required.push("LMT_SESSION_SECRET");
   const missing = required.filter((name) => !String(config.env[name] || "").trim());
   if (gatewayUsesTls(config) && !config.gateway.edgeClientFingerprint) missing.push("PRIVATE_SITE_EDGE_CLIENT_FINGERPRINT");
@@ -250,6 +268,7 @@ export function buildServiceEnvironment(config) {
     OPEN_AGENT_BRIDGE_CHANNEL_POLL: config.env.OPEN_AGENT_BRIDGE_CHANNEL_POLL === "0" ? "0" : "1",
     OPEN_AGENT_BRIDGE_SCHEDULER: config.env.OPEN_AGENT_BRIDGE_SCHEDULER === "0" ? "0" : "1",
     PERSONAL_AGENT_AUTH_PASSWORD: config.env.PERSONAL_AGENT_AUTH_PASSWORD,
+    PERSONAL_AGENT_AUTH_VERIFIER_FILE: path.join(config.dataRoot, "config", "local-auth.json"),
     PERSONAL_AGENT_AUTH_COOKIE_SECRET: config.env.PERSONAL_AGENT_AUTH_COOKIE_SECRET,
     PERSONAL_AGENT_AUTH_COOKIE_NAME: config.routingMode === "path" ? "__Host-personal_agent" : "personal_agent",
     PERSONAL_AGENT_AUTH_COOKIE_HOST_ONLY: config.routingMode === "path" ? "1" : "0",
@@ -411,6 +430,12 @@ export function mergeSecretEnv(filePath, incoming, allowlist = null) {
     (!allowed || allowed.has(key)) && String(value || "").trim()
   )));
   writeEnvAtomic(filePath, { ...existing, ...filtered });
+}
+
+export function removeSecretEnvKeys(filePath, keys) {
+  const next = readEnvFile(filePath);
+  for (const key of keys || []) delete next[key];
+  writeEnvAtomic(filePath, next);
 }
 
 export function ensureMailIngressSecret(config) {

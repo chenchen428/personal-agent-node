@@ -5,33 +5,179 @@ on:
     tags: ['v*']
 
 permissions:
-  contents: write
+  contents: read
+
+env:
+  NODE_VERSION: 22.23.1
+  GO_VERSION: 1.24.x
 
 jobs:
-  release:
-    runs-on: ubuntu-latest
+  source:
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: ${{ env.NODE_VERSION }}
           cache: npm
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache-dependency-path: projects/core/node/native/go.mod
       - run: npm ci
       - run: node scripts/release-check.mjs --tag "${GITHUB_REF_NAME}"
       - run: npm run doctor
       - run: npm run guard
       - run: npm test
       - run: npm run check
-      - run: node scripts/release-package.mjs --tag "${GITHUB_REF_NAME}"
+      - run: node scripts/release-package.mjs --tag "${GITHUB_REF_NAME}" --stage dist/release-payload --output dist/source-release
       - uses: actions/upload-artifact@v4
         with:
-          name: personal-agent-node-${{ github.ref_name }}
-          path: dist/releases/${{ github.ref_name }}/*
+          name: immutable-node-payload
+          path: dist/release-payload
           if-no-files-found: error
+          retention-days: 7
+      - uses: actions/upload-artifact@v4
+        with:
+          name: source-release-metadata
+          path: dist/source-release
+          if-no-files-found: error
+          retention-days: 7
+
+  platform:
+    needs: source
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: windows-2025
+            platform: win32
+            arch: x64
+            asset: windows-x64
+          - runner: macos-15-intel
+            platform: darwin
+            arch: x64
+            asset: macos-x64
+          - runner: macos-15
+            platform: darwin
+            arch: arm64
+            asset: macos-arm64
+          - runner: ubuntu-24.04
+            platform: linux
+            arch: x64
+            asset: linux-x64
+          - runner: ubuntu-24.04-arm
+            platform: linux
+            arch: arm64
+            asset: linux-arm64
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache-dependency-path: projects/core/node/native/go.mod
+      - uses: actions/download-artifact@v4
+        with:
+          name: immutable-node-payload
+          path: dist/release-payload
+      - name: Verify signing inputs (Windows)
+        if: matrix.platform == 'win32'
+        shell: pwsh
+        env:
+          CERTIFICATE: ${{ secrets.WINDOWS_SIGNING_PFX_BASE64 }}
+          PASSWORD: ${{ secrets.WINDOWS_SIGNING_PFX_PASSWORD }}
+        run: |
+          if ([string]::IsNullOrWhiteSpace($env:CERTIFICATE) -or [string]::IsNullOrWhiteSpace($env:PASSWORD)) { throw 'Windows signing secrets are required' }
+          [IO.File]::WriteAllBytes("$env:RUNNER_TEMP\personal-agent-signing.pfx", [Convert]::FromBase64String($env:CERTIFICATE))
+      - name: Import signing identities (macOS)
+        if: matrix.platform == 'darwin'
+        shell: bash
+        env:
+          P12_BASE64: ${{ secrets.APPLE_SIGNING_P12_BASE64 }}
+          P12_PASSWORD: ${{ secrets.APPLE_SIGNING_P12_PASSWORD }}
+          NOTARY_KEY_BASE64: ${{ secrets.APPLE_NOTARY_KEY_BASE64 }}
+          APPLICATION_IDENTITY: ${{ secrets.APPLE_APPLICATION_IDENTITY }}
+          INSTALLER_IDENTITY: ${{ secrets.APPLE_INSTALLER_IDENTITY }}
+          NOTARY_KEY_ID: ${{ secrets.APPLE_NOTARY_KEY_ID }}
+          NOTARY_ISSUER: ${{ secrets.APPLE_NOTARY_ISSUER }}
+        run: |
+          test -n "$P12_BASE64" && test -n "$P12_PASSWORD" && test -n "$NOTARY_KEY_BASE64"
+          test -n "$APPLICATION_IDENTITY" && test -n "$INSTALLER_IDENTITY" && test -n "$NOTARY_KEY_ID" && test -n "$NOTARY_ISSUER"
+          echo "$P12_BASE64" | base64 --decode > "$RUNNER_TEMP/personal-agent-signing.p12"
+          echo "$NOTARY_KEY_BASE64" | base64 --decode > "$RUNNER_TEMP/personal-agent-notary.p8"
+          security create-keychain -p "$RUNNER_TEMP" "$RUNNER_TEMP/personal-agent.keychain-db"
+          security set-keychain-settings -lut 21600 "$RUNNER_TEMP/personal-agent.keychain-db"
+          security unlock-keychain -p "$RUNNER_TEMP" "$RUNNER_TEMP/personal-agent.keychain-db"
+          security import "$RUNNER_TEMP/personal-agent-signing.p12" -P "$P12_PASSWORD" -A -t cert -f pkcs12 -k "$RUNNER_TEMP/personal-agent.keychain-db"
+          security list-keychain -d user -s "$RUNNER_TEMP/personal-agent.keychain-db"
+          security set-key-partition-list -S apple-tool:,apple: -s -k "$RUNNER_TEMP" "$RUNNER_TEMP/personal-agent.keychain-db"
+      - name: Fetch and verify pinned Node runtime
+        shell: bash
+        run: node scripts/fetch-node-runtime.mjs --platform "${{ matrix.platform }}" --arch "${{ matrix.arch }}" --output "${RUNNER_TEMP}/node-runtime${{ matrix.platform == 'win32' && '.exe' || '' }}"
+      - name: Build, smoke-test, sign, and package platform installer
+        shell: bash
+        env:
+          PERSONAL_AGENT_WINDOWS_SIGNING_CERTIFICATE: ${{ matrix.platform == 'win32' && format('{0}/personal-agent-signing.pfx', runner.temp) || '' }}
+          PERSONAL_AGENT_WINDOWS_SIGNING_PASSWORD: ${{ secrets.WINDOWS_SIGNING_PFX_PASSWORD }}
+          PERSONAL_AGENT_APPLE_APPLICATION_IDENTITY: ${{ secrets.APPLE_APPLICATION_IDENTITY }}
+          PERSONAL_AGENT_APPLE_INSTALLER_IDENTITY: ${{ secrets.APPLE_INSTALLER_IDENTITY }}
+          PERSONAL_AGENT_APPLE_NOTARY_KEY: ${{ matrix.platform == 'darwin' && format('{0}/personal-agent-notary.p8', runner.temp) || '' }}
+          PERSONAL_AGENT_APPLE_NOTARY_KEY_ID: ${{ secrets.APPLE_NOTARY_KEY_ID }}
+          PERSONAL_AGENT_APPLE_NOTARY_ISSUER: ${{ secrets.APPLE_NOTARY_ISSUER }}
+        run: node scripts/build-platform-installer.mjs --tag "$GITHUB_REF_NAME" --release-root dist/release-payload --node-runtime "${RUNNER_TEMP}/node-runtime${{ matrix.platform == 'win32' && '.exe' || '' }}" --output dist/platform --platform "${{ matrix.platform }}" --arch "${{ matrix.arch }}" --require-signing
+      - uses: actions/upload-artifact@v4
+        with:
+          name: platform-${{ matrix.asset }}
+          path: dist/platform/*
+          if-no-files-found: error
+          retention-days: 7
+
+  publish:
+    needs: platform
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: platform-*
+          path: dist/release
+          merge-multiple: true
+      - uses: actions/download-artifact@v4
+        with:
+          name: source-release-metadata
+          path: dist/source-release
+      - name: Assemble immutable release checksums
+        shell: bash
+        run: |
+          cp dist/source-release/*release-manifest.json dist/release/
+          cp dist/source-release/*SBOM.cdx.json dist/release/
+          cd dist/release
+          find . -maxdepth 1 -type f ! -name SHA256SUMS -printf '%f\n' | sort | xargs sha256sum > SHA256SUMS
+      - uses: sigstore/cosign-installer@v3
+      - name: Keyless-sign every published byte
+        shell: bash
+        run: |
+          for asset in dist/release/*; do
+            case "$asset" in *.sigstore.json) continue;; esac
+            cosign sign-blob --yes --bundle "${asset}.sigstore.json" "$asset"
+          done
+      - uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: dist/release/*
       - uses: softprops/action-gh-release@v2
         with:
-          files: dist/releases/${{ github.ref_name }}/*
+          files: dist/release/*
           generate_release_notes: true
           prerelease: ${{ contains(github.ref_name, '-') }}
+          fail_on_unmatched_files: true

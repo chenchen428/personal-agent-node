@@ -1,4 +1,3 @@
-import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { spawn } from 'node:child_process';
@@ -106,8 +105,7 @@ async function finalizeEnrollment({ pending, pendingPath, dataRoot, wireGuardExe
     config = initializeSite({ domain: activationSite.managedHost, dataRoot }).config;
   }
   const tunnel = installManagedWireGuardTunnel(config, enrolled.tunnel, { ...(wireGuardExecutor ? { executor: wireGuardExecutor } : {}) });
-  const localPassword = crypto.randomBytes(18).toString('base64url');
-  mergeSecretEnv(config.envPath, { SITE_DOMAIN: activationSite.managedHost, PERSONAL_AGENT_CLOUD_TOKEN: enrolled.nodeToken, PERSONAL_AGENT_AUTH_PASSWORD: localPassword }, ['SITE_DOMAIN', 'PERSONAL_AGENT_CLOUD_TOKEN', 'PERSONAL_AGENT_AUTH_PASSWORD']);
+  mergeSecretEnv(config.envPath, { SITE_DOMAIN: activationSite.managedHost, PERSONAL_AGENT_CLOUD_TOKEN: enrolled.nodeToken }, ['SITE_DOMAIN', 'PERSONAL_AGENT_CLOUD_TOKEN']);
   config = resolveNodeConfig({ ...process.env, PRIVATE_SITE_DATA_ROOT: config.dataRoot });
   setProvider(resolveNodeConfig({ ...process.env, PRIVATE_SITE_DATA_ROOT: config.dataRoot }), { kind: 'tunnel', provider: 'personal-agent-cloud', endpoint: `${pending.baseUrl}/${selectedSlug}`, credentialEnv: 'PERSONAL_AGENT_CLOUD_TOKEN' });
   const heartbeat = await requestJson(fetchImpl, `${pending.baseUrl}/api/node/heartbeat`, undefined, { authorization: `Bearer ${enrolled.nodeToken}` });

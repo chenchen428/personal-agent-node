@@ -1,30 +1,30 @@
 # GitHub release
 
-Releases use immutable `v<package-version>` tags. The tag must exactly match the root `package.json` version and the worktree must be clean.
+Releases use immutable `v<package-version>` tags. The tag must exactly match every workspace package version and the worktree must be clean.
 
 1. Run `npm ci`, `npm run doctor`, `npm run guard`, `npm test`, and `npm run check`.
-2. Run `node scripts/release-package.mjs --tag vX.Y.Z`.
-3. Verify the universal archive, CycloneDX SBOM, release manifest, and `SHA256SUMS` under `dist/releases/vX.Y.Z/`.
-4. Push the signed or annotated tag. GitHub Actions repeats every gate and uploads the immutable files to the matching GitHub Release.
+2. Build the clean immutable Node payload and verify its manifest, checksums, CycloneDX SBOM, and public-surface boundary.
+3. On native GitHub runners, fetch Node.js `22.23.1` from `nodejs.org`, verify the upstream checksum, and build the Windows x64, macOS x64/ARM64, and Linux x64/ARM64 packages.
+4. Run each embedded Go installer's `inspect` smoke check before packaging.
+5. Authenticode-sign Windows, Developer-ID-sign and notarize macOS, and fail closed when signing inputs are missing.
+6. Generate `SHA256SUMS`, keyless Sigstore bundles, and GitHub build provenance for every published byte.
+7. Publish the artifacts to the matching GitHub Release only after every platform job succeeds.
 
-Install releases with `scripts/install-private-site-node-release.mjs`. It atomically advances `current`, retains one `previous`, and prunes older inactive releases. Use `npm run release:rollback -- --install-root <path>` to swap `current` and `previous`; restart and acceptance remain the operator's responsibility.
+The native setup executable owns install, upgrade, rollback, and uninstall. It atomically advances `current`, retains `previous`, activates the per-user service, and opens `/app/setup`. A failed candidate restores the previous pointer and service definition. Rollback never deletes mutable data; uninstall requires `--confirm-remove-binaries` and preserves the data root by default.
 
-To install directly from a published GitHub Release artifact:
+For `v0.1.0-beta.20`, the primary customer assets are:
 
-```bash
-node scripts/install-from-github-release.mjs --tag v0.1.0-beta.19
-personal-agent cloud connect --json
-```
-
-The downloader verifies the archive against the Release `SHA256SUMS`, then the embedded installer verifies every packaged file before atomically advancing `current`. The CLI uses a short-lived browser device authorization and consumes a one-time enrollment credential after the signed-in user confirms the administrator-assigned Site. No long-lived Node token is displayed.
+- `personal-agent-node-v0.1.0-beta.20-windows-x64-installer.exe`
+- `personal-agent-node-v0.1.0-beta.20-macos-x64.pkg`
+- `personal-agent-node-v0.1.0-beta.20-macos-arm64.pkg`
+- `personal-agent-node-v0.1.0-beta.20-linux-x64.tar.zst`
+- `personal-agent-node-v0.1.0-beta.20-linux-arm64.tar.zst`
 
 ## Post-release Node gate
 
-CI artifact smoke is not final runtime evidence. After GitHub publishes the Release, install that exact public asset
-with `install-from-github-release.mjs`; do not use the source checkout or the local `dist` archive. Start the
-installed runtime, authenticate to its local `/app/chat`, submit a unique prompt to the real Agent runtime and
-observe the Agent reply in the same session. Record only this canonical object, without the prompt, reply or
-session identifier:
+CI smoke tests are not final runtime evidence. Install the exact public asset on a fresh customer-like machine without a source checkout, host Node.js, or development Agent. Verify restart, authenticated `/app/setup`, durable local auth, and a real Codex reply in the same authenticated `/app/chat` session.
+
+Record only the canonical sanitized object, without prompt, reply, or session identifier:
 
 ```json
 {
@@ -38,6 +38,4 @@ session identifier:
 }
 ```
 
-Any missing or false required boolean, a different route, a deterministic/mock runner or a reply observed in a
-different session fails release/final acceptance. WeChat login, polling and notification are optional and do not
-affect this gate.
+Any missing required boolean, mock runtime, cross-session reply, unsigned platform artifact, or unavailable rollback fails release acceptance. Cloud, public mail, and WeChat remain optional and do not affect the local Web gate.

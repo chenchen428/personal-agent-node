@@ -19,17 +19,19 @@ export function prepareBridgeCliShims(config, options = {}) {
   const mailEntrypoint = fs.existsSync(currentMailEntrypoint) ? currentMailEntrypoint : developmentMailEntrypoint;
   if (!fs.existsSync(mailEntrypoint)) throw new Error("The bundled open-abg-mail-ingest entrypoint is missing");
   const binDir = path.resolve(options.binDir || defaultUserBin({ platform, env, homeDir: options.homeDir }));
+  const nodeRuntime = resolveShimNodeRuntime({ platform, installRoot, configured: options.nodeRuntime });
   fs.mkdirSync(binDir, { recursive: true, mode: 0o700 });
   const commandPaths = [];
   for (const name of bridgeCommandNames) {
     const commandPath = path.join(binDir, platform === "win32" ? `${name}.cmd` : name);
-    fs.writeFileSync(commandPath, renderShim({ platform, entrypoint, envPath: config.envPath }), { encoding: "utf8", mode: platform === "win32" ? 0o600 : 0o700 });
+    fs.writeFileSync(commandPath, renderShim({ platform, nodeRuntime, entrypoint, envPath: config.envPath }), { encoding: "utf8", mode: platform === "win32" ? 0o600 : 0o700 });
     if (platform !== "win32") fs.chmodSync(commandPath, 0o700);
     commandPaths.push(commandPath);
   }
   const mailCommandPath = path.join(binDir, platform === "win32" ? `${mailIngestCommandName}.cmd` : mailIngestCommandName);
   fs.writeFileSync(mailCommandPath, renderShim({
     platform,
+    nodeRuntime,
     entrypoint: mailEntrypoint,
     envPath: config.envPath,
     environment: {
@@ -47,16 +49,18 @@ export function bridgeCliStatus(config, options = {}) {
   const env = options.env || process.env;
   const installRoot = canonicalDirectory(options.installRoot || env.PRIVATE_SITE_INSTALL_ROOT || path.join(os.homedir(), ".private-site-node"));
   const binDir = path.resolve(options.binDir || defaultUserBin({ platform, env, homeDir: options.homeDir }));
+  const nodeRuntime = resolveShimNodeRuntime({ platform, installRoot, configured: options.nodeRuntime });
   const entrypoint = options.entrypoint || path.join(installRoot, "current", "projects", "core", "open-agent-bridge", "bin", "oab.mjs");
   const commandPaths = options.commandPaths || bridgeCommandNames.map((name) => path.join(binDir, platform === "win32" ? `${name}.cmd` : name));
   const mailEntrypoint = options.mailEntrypoint || path.join(installRoot, "current", "projects", "core", "open-agent-bridge", "bin", "oab-mail-ingest.mjs");
   const mailCommandPath = options.mailCommandPath || path.join(binDir, platform === "win32" ? `${mailIngestCommandName}.cmd` : mailIngestCommandName);
   const expectedBridgeShims = commandPaths.map((commandPath) => ({
     commandPath,
-    content: renderShim({ platform, entrypoint, envPath: config.envPath }),
+    content: renderShim({ platform, nodeRuntime, entrypoint, envPath: config.envPath }),
   }));
   const expectedMailShim = renderShim({
     platform,
+    nodeRuntime,
     entrypoint: mailEntrypoint,
     envPath: config.envPath,
     environment: {
@@ -96,14 +100,20 @@ export function defaultUserBin({ platform = process.platform, env = process.env,
   return existing || candidates[0];
 }
 
-export function renderShim({ platform = process.platform, entrypoint, envPath, environment = {} }) {
+export function renderShim({ platform = process.platform, nodeRuntime = process.execPath, entrypoint, envPath, environment = {} }) {
   const values = { OPEN_AGENT_BRIDGE_ENV_FILE: envPath, ...environment };
   if (platform === "win32") {
     const assignments = Object.entries(values).map(([key, value]) => `set "${key}=${windowsEnvironmentValue(value)}"`).join("\r\n");
-    return `@echo off\r\nsetlocal\r\n${assignments}\r\nnode "${cmdValue(entrypoint).replaceAll("/", "\\")}" %*\r\n`;
+    return `@echo off\r\nsetlocal\r\n${assignments}\r\n"${cmdValue(nodeRuntime).replaceAll("/", "\\")}" "${cmdValue(entrypoint).replaceAll("/", "\\")}" %*\r\n`;
   }
   const assignments = Object.entries(values).map(([key, value]) => `${key}=${shellValue(value)}`).join(" ");
-  return `#!/bin/sh\n${assignments} exec node ${shellValue(entrypoint)} "$@"\n`;
+  return `#!/bin/sh\n${assignments} exec ${shellValue(nodeRuntime)} ${shellValue(entrypoint)} "$@"\n`;
+}
+
+function resolveShimNodeRuntime({ platform, installRoot, configured }) {
+  if (configured) return path.resolve(configured);
+  const candidate = path.join(installRoot, "current", "runtime", platform === "win32" ? "node.exe" : "node");
+  return fs.existsSync(candidate) ? candidate : process.execPath;
 }
 
 export function bridgeCliInvocation(commandPath, args, { platform = process.platform, env = process.env } = {}) {

@@ -9,10 +9,11 @@ import { listExtensions } from '../src/extensions.mjs';
 import { readBackupState } from '../src/backup-scheduler.mjs';
 import { providerStatus } from '../src/providers.mjs';
 import { requestControl } from '../src/control-service.mjs';
-import { DEFAULT_CLOUD_URL, enrollWithCloudDeviceAuthorization, resolveCloudUrl } from '../src/cloud-enrollment.mjs';
+import { DEFAULT_CLOUD_URL, enrollWithCloudDeviceAuthorization, openExternalUrl, resolveCloudUrl } from '../src/cloud-enrollment.mjs';
 import { commandKey, expandCommandName, HANDLED_COMMAND_KEYS } from '../src/command-surface.mjs';
 import { localMailPlan, localMailStatus } from '../src/mail.mjs';
 import { authorizeCloudResources, managedServiceReadiness, onboardingStatus, refreshCloudResources } from '../src/cloud-resources.mjs';
+import { setupStatus } from '../src/setup.mjs';
 
 const handledCommandKeys = new Set(HANDLED_COMMAND_KEYS);
 
@@ -47,6 +48,8 @@ async function execute(args) {
 async function executeHandled({ resource, action, id, args, requestedCommand }) {
   if (resource === 'status') return statusResult();
   if (resource === 'doctor') return doctorResult();
+  if (resource === 'setup' && action === 'status') return setupStatusResult();
+  if (resource === 'setup' && action === 'open') return setupOpen(args);
   if (resource === 'capabilities' && action === 'list') return capabilityList();
   if (resource === 'capabilities' && action === 'inspect') return capabilityInspect(id);
   if (resource === 'skill' && action === 'list') return skillList();
@@ -88,7 +91,7 @@ function statusResult() {
   });
 }
 
-function doctorResult() {
+async function doctorResult() {
   const config = safeConfig();
   const packaged = fs.existsSync(path.join(workspaceRoot, 'release-manifest.json'));
   // Doctor is a bounded readiness probe. Archive accounting belongs to the
@@ -104,7 +107,19 @@ function doctorResult() {
     { id: 'mail-ingest-entrypoint', ok: fs.existsSync(path.join(workspaceRoot, 'projects', 'core', 'open-agent-bridge', 'bin', 'oab-mail-ingest.mjs')) },
     { id: 'mail-ingest-shim', ok: !config || !packaged || mail.ingress.shimReady },
   ];
-  return success('doctor', { healthy: checks.every((check) => check.ok), checks });
+  const setup = await setupStatus({ dataRoot: config?.dataRoot || process.env.PRIVATE_SITE_DATA_ROOT, installRoot: resolveInstallRoot() });
+  return success('doctor', { healthy: checks.every((check) => check.ok) && setup.readiness.console === 'ready', checks, setup: { readiness: setup.readiness } });
+}
+
+async function setupStatusResult() {
+  return success('setup status', await setupStatus({ dataRoot: process.env.PRIVATE_SITE_DATA_ROOT, installRoot: resolveInstallRoot() }));
+}
+
+async function setupOpen(args) {
+  const config = requireConfig();
+  const url = `http://127.0.0.1:${config.gateway.port}/app/setup`;
+  const opened = args.noOpen ? false : await openExternalUrl(url);
+  return success('setup open', { url, opened }, [], opened ? [] : ['Open the local Setup Center URL in a browser on this computer']);
 }
 
 function capabilityList() {

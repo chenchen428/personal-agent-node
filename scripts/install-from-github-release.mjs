@@ -12,14 +12,6 @@ import { fileURLToPath } from 'node:url';
 // the complete release archive.
 const USER_AGENT = 'personal-agent-node-installer/0.1';
 const FETCH_TIMEOUT_MILLISECONDS = 10_000;
-const HARNESS_BRIDGE_PATHS = Object.freeze([
-  'CLAUDE.md',
-  '.agents/skills',
-  '.claude/skills',
-  '.codex/skills',
-  '.cursor/skills',
-]);
-
 if (isMainModule()) await main();
 
 async function main() {
@@ -59,7 +51,7 @@ async function main() {
       PRIVATE_SITE_DATA_ROOT: dataRoot,
     };
     run(process.execPath, [prepareEntrypoint, 'prepare'], { env: prepareEnvironment });
-    console.log(JSON.stringify({ ok: true, repository, tag, verifiedSha256: actual, prepared: true, installRoot, current, onboarding: { requiredAction: 'bind-wechat', message: 'Open the local Personal Agent console and bind WeChat first. The channel will send a capability-check message after binding.', statusCommand: 'personal-agent status --json' }, connectCommand: 'personal-agent cloud connect --json', connectEntrypoint: `node ${path.join(current, 'projects', 'core', 'node', 'bin', 'personal-agent.mjs')} cloud connect --json` }, null, 2));
+    console.log(JSON.stringify({ ok: true, repository, tag, verifiedSha256: actual, prepared: true, installRoot, current, onboarding: { requiredAction: 'open-setup-center', message: 'Open the authenticated local Setup Center. WeChat and managed connectivity are optional.', setupPath: '/app/setup', wechatRequired: false, statusCommand: 'personal-agent setup status --json' }, connectCommand: 'personal-agent cloud connect --json', connectEntrypoint: `node ${path.join(current, 'projects', 'core', 'node', 'bin', 'personal-agent.mjs')} cloud connect --json` }, null, 2));
   } finally { fs.rmSync(temporary, { recursive: true, force: true }); }
 }
 
@@ -86,11 +78,9 @@ export function validateArchiveListing(listing) {
 }
 
 export function archiveExtractionArgs(archivePath, extracted, layout, platform = process.platform) {
-  const args = ['-xzf', archivePath, '-C', extracted];
-  if (platform === 'win32') {
-    for (const relative of HARNESS_BRIDGE_PATHS) args.push('--exclude', `${layout.root}/${relative}`);
-  }
-  return args;
+  void layout;
+  void platform;
+  return ['-xzf', archivePath, '-C', extracted];
 }
 function parseArgs(argv) {
   const output = {};

@@ -17,6 +17,8 @@
       { "key": "app-pages", "prefix": "/app/pages", "access": "authenticated", "kind": "proxy", "targetKey": "pages", "upstreamPath": "/online-pages" },
       { "key": "app-releases", "prefix": "/app/releases", "access": "authenticated", "kind": "proxy", "targetKey": "agent", "upstreamPath": "/release-notes" },
       { "key": "app-skills", "prefix": "/app/skills", "access": "authenticated", "kind": "proxy", "targetKey": "agent", "upstreamPath": "/agent-skills" },
+      { "key": "app-setup-bootstrap", "prefix": "/app/setup/bootstrap", "exact": true, "access": "local-bootstrap", "kind": "proxy", "targetKey": "agent", "upstreamPath": "/setup/bootstrap" },
+      { "key": "app-setup", "prefix": "/app/setup", "access": "local-admin", "kind": "proxy", "targetKey": "console", "upstreamPath": "/setup" },
       { "key": "app-update", "prefix": "/app/update", "access": "local-admin", "kind": "proxy", "targetKey": "console", "upstreamPath": "/update" },
       { "key": "app", "prefix": "/app", "access": "authenticated", "kind": "proxy", "targetKey": "console", "upstreamPath": "/" },
       { "key": "api-app-data", "prefix": "/api/app/data", "access": "authenticated", "kind": "proxy", "targetKey": "agent", "upstreamPath": "/api/agent-data" },

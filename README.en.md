@@ -34,60 +34,22 @@ Connectivity and model providers are independent. Disconnecting Cloud must not d
 
 ## Install a release
 
-The current beta requires Node.js 22.x. Node 24 removed the permission-model flag used by the template sandbox and is not supported yet. End users should install an immutable GitHub Release instead of using a source checkout as their production runtime.
+End users download one complete package for their operating system. No preinstalled Node.js, npm, development Agent, or source checkout is required. The current release is `v0.1.0-beta.20`:
 
-macOS / Linux:
+- Windows x86-64: `personal-agent-node-v0.1.0-beta.20-windows-x64-installer.exe`
+- macOS Apple Silicon: `personal-agent-node-v0.1.0-beta.20-macos-arm64.pkg`
+- macOS Intel: `personal-agent-node-v0.1.0-beta.20-macos-x64.pkg`
+- Linux x86-64 / ARM64: the matching `personal-agent-node-v0.1.0-beta.20-linux-*.tar.zst`
 
-```bash
-TAG=v0.1.0-beta.19
-INSTALLER="$(mktemp "${TMPDIR:-/tmp}/personal-agent-installer.XXXXXX.mjs")"
-curl --fail --silent --show-error --location --proto '=https' --tlsv1.2 \
-  --output "$INSTALLER" -- \
-  "https://github.com/chenchen428/personal-agent-node/releases/download/$TAG/personal-agent-node-$TAG-installer.mjs"
-node "$INSTALLER" --tag "$TAG"
-rm -f "$INSTALLER"
-export PATH="$HOME/.local/bin:$PATH"
-personal-agent doctor --json
-```
+The installer verifies the complete immutable release and bundled Node.js `22.23.1`, retains rollback-safe `current` / `previous` pointers, registers the per-user background service, and opens a one-time authenticated local Setup Center. The user establishes a durable local password there and sees separate checks for installation, Codex, optional public connectivity, Agent mail identity, actual mail delivery, and optional channels.
 
-Windows PowerShell:
+Local-only mode works by default. A public domain, mail, and WeChat never block the local Console. When a dedicated domain is wanted, choose “Connect Personal Agent Cloud” in Setup Center and approve the purpose-bound short-lived browser flows. See the [getting-started guide](docs/getting-started.md) for signatures, rollback, and source development.
 
-```powershell
-$Tag = "v0.1.0-beta.19"
-$Installer = Join-Path $env:TEMP "personal-agent-$Tag-installer.mjs"
-Invoke-WebRequest -UseBasicParsing -Uri "https://github.com/chenchen428/personal-agent-node/releases/download/$Tag/personal-agent-node-$Tag-installer.mjs" -OutFile $Installer
-node $Installer --tag $Tag
-Remove-Item $Installer
-& "$env:APPDATA\npm\personal-agent.cmd" doctor --json
-```
-
-The standalone bootstrapper needs neither a source checkout nor `npm install`. It downloads only the requested tag, verifies the archive against the Release `SHA256SUMS`, and then switches immutable `current` / `previous` pointers. See the [getting-started guide](docs/getting-started.md) for source development, custom data roots, and platform details.
-
-## Register and attach a dedicated domain
-
-First register at [chenjianhui.site](https://chenjianhui.site) with an email verification code. After an administrator assigns your dedicated domain, run this on the same computer where Node is installed:
-
-```bash
-personal-agent cloud connect --json
-```
-
-The CLI opens a short-lived authorization page on `chenjianhui.site` and exposes only a verification URL and user code. Sign in with the same account, verify the dedicated domain, and approve it in the browser. The CLI then consumes a one-time enrollment credential, registers this machine, verifies its heartbeat, and completes the attachment. Do not treat the user code as a long-lived credential or send it through chat. The long-lived Node token, generated local password, and tunnel secrets are never shown in the browser, terminal output, or `cloud.json`.
-
-The managed Cloud origin is configurable. `PERSONAL_AGENT_CLOUD_URL=https://cloud.example` changes the default for the current process, while `personal-agent cloud connect --cloud-url https://cloud.example --json` is an explicit per-command override and takes priority over the environment. Custom origins must use HTTPS.
-
-If the browser does not open, copy `verificationUrlComplete` from the terminal. Expired, denied, or account/Site-mismatched authorization fails closed; rerun the command to start a new short-lived flow.
-
-### Copyable one-click Agent prompt
-
-After signing in to the website, you can give the following prompt to an Agent running on your computer. It contains only public release and CLI instructions—never an account, verification code, or secret:
-
-> Install Personal Agent Node v0.1.0-beta.19 on this computer. First confirm that Node.js is 22.x. Download only `personal-agent-node-v0.1.0-beta.19-installer.mjs` from the `chenchen428/personal-agent-node` GitHub Release and pass `--tag v0.1.0-beta.19` explicitly; do not clone the source repository as the runtime. After SHA256 verification, add the CLI directory to PATH, run `personal-agent doctor --json`, and immediately open the local Console to bind WeChat. The channel will report the domain, mail, managed-mail, and configuration states. Then run `personal-agent cloud connect --json` and let me personally sign in with GitHub and approve my dedicated domain. Never ask for, repeat, or retain a device code, one-time enrollment credential, Node token, local password, or tunnel secret. If Cloud resources are bound through WeChat, send only `云账号绑定`, then let me approve the passwordless resource authorization in the same-origin browser; no GitHub user ID or password is required. Finally run `personal-agent status --json` and report only redacted release, connection mode, domain, mail, capability, and health state.
-
-Release and final Node acceptance use the GitHub Release installation's authenticated local `/app/chat`: send a unique prompt to the real Agent runtime and verify the Agent reply in the same session. Canonical evidence always records `wechatRequired=false`; WeChat is optional and never blocks the Node core gate.
+Advanced users may run `personal-agent setup status --json` or `personal-agent doctor --json` for sanitized, read-only diagnostics. Normal installation and repair do not depend on giving a prompt to an Agent.
 
 ## Customer-machine Harness
 
-This repository contains the complete customer-machine Agent Harness: project and skill registries, Agent constraints, portable Skills, reproducible fixtures, workspace guards, runtime workflows, and compatibility bridges for Codex, Claude, Cursor, and generic Agent clients.
+This repository contains the complete customer-machine Agent Harness: project and skill registries, Agent constraints, portable Skills, reproducible fixtures, workspace guards, and runtime workflows. A product installation creates only the canonical workspace and Codex integration. Claude, Cursor, and generic bridges remain source-repository development compatibility, not customer prerequisites.
 
 ```bash
 npm install

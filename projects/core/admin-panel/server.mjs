@@ -18,6 +18,10 @@ import {
 } from './page.mjs';
 import { capacityState, readServerCapacity } from './capacity.mjs';
 import { onboardingStatus } from '../node/src/cloud-resources.mjs';
+import { setupDiagnostics, setupStatus } from '../node/src/setup.mjs';
+import { executeSetupAction, planSetupAction } from '../node/src/setup-actions.mjs';
+import { createOperationStore } from '../node/src/operations.mjs';
+import { renderSetupPage } from './setup-page.mjs';
 
 const projectRoot = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(projectRoot, '..', '..', '..');
@@ -44,6 +48,7 @@ const loginSessions = new Map();
 const channelVersion = '0.3.0';
 const openAgentBridgeBaseUrl = String(process.env.OPEN_AGENT_BRIDGE_INTERNAL_URL || 'http://127.0.0.1:8788').replace(/\/+$/, '');
 const openAgentBridgeApiToken = String(process.env.OPEN_AGENT_BRIDGE_API_TOKEN || '');
+const setupOperations = createOperationStore({ dataRoot: siteDataRoot });
 
 const server = http.createServer((request, response) => {
   handleRequest(request, response).catch((error) => {
@@ -120,6 +125,55 @@ async function handleRequest(request, response) {
     await sendJson(response, { ok: true, ...onboardingStatus({ dataRoot: siteDataRoot }) }, request.method === 'HEAD');
     return;
   }
+  if (url.pathname === '/api/setup') {
+    if (request.method !== 'GET' && request.method !== 'HEAD') {
+      send(response, 405, 'text/plain; charset=utf-8', 'Method Not Allowed');
+      return;
+    }
+    await sendJson(response, await setupStatus({ dataRoot: siteDataRoot, installRoot }), request.method === 'HEAD');
+    return;
+  }
+  if (url.pathname === '/api/setup/diagnostics') {
+    if (request.method !== 'GET' && request.method !== 'HEAD') {
+      send(response, 405, 'text/plain; charset=utf-8', 'Method Not Allowed');
+      return;
+    }
+    const snapshot = await setupStatus({ dataRoot: siteDataRoot, installRoot });
+    await sendJson(response, setupDiagnostics(snapshot), request.method === 'HEAD');
+    return;
+  }
+  const setupActionRoute = /^\/api\/setup\/actions\/([a-z0-9.-]+)\/(plan|approve|execute)$/.exec(url.pathname);
+  if (setupActionRoute) {
+    if (request.method !== 'POST') {
+      send(response, 405, 'text/plain; charset=utf-8', 'Method Not Allowed');
+      return;
+    }
+    const [, actionId, phase] = setupActionRoute;
+    const input = await readRequestJson(request);
+    try {
+      if (phase === 'plan') {
+        await sendJson(response, { ok: true, operation: planSetupAction({ actionId, operations: setupOperations, dataRoot: siteDataRoot }) });
+        return;
+      }
+      const operation = setupOperations.inspect(input.operationId);
+      if (operation.command !== `setup ${actionId}`) throw Object.assign(new Error('操作计划与启用动作不匹配'), { code: 'ACTION_PLAN_MISMATCH' });
+      if (phase === 'approve') {
+        if (input.approved !== true) throw Object.assign(new Error('需要本机用户明确确认'), { code: 'APPROVAL_REQUIRED' });
+        const actor = { kind: 'human', authenticated: true, loopback: true, channel: 'local-console' };
+        await sendJson(response, { ok: true, operation: setupOperations.approve(operation.id, { digest: input.digest, actor }) });
+        return;
+      }
+      const executed = await setupOperations.execute(operation.id, {
+        digest: input.digest,
+        actor: { kind: 'runtime' },
+        handler: () => executeSetupAction({ actionId, input: input.input || {}, dataRoot: siteDataRoot }),
+      });
+      await sendJson(response, { ok: true, operation: executed });
+    } catch (error) {
+      sendJsonStatus(response, setupActionStatus(error), { ok: false, error: { code: error?.code || 'SETUP_ACTION_FAILED', message: String(error?.message || '启用动作失败').slice(0, 300) } });
+    }
+    return;
+  }
   if (url.pathname === '/api/wechat/login/start') {
     if (request.method !== 'POST') {
       send(response, 405, 'text/plain; charset=utf-8', 'Method Not Allowed');
@@ -158,6 +212,10 @@ async function handleRequest(request, response) {
   if (url.pathname === '/update' && (request.method === 'GET' || request.method === 'HEAD')) {
     const status = readUpdateStatus({ releaseRoot: root, installRoot });
     send(response, 200, 'text/html; charset=utf-8', renderUpdatePage({ title: panelConfig.title, status }), request.method === 'HEAD');
+    return;
+  }
+  if (url.pathname === '/setup' && (request.method === 'GET' || request.method === 'HEAD')) {
+    send(response, 200, 'text/html; charset=utf-8', renderSetupPage({ title: panelConfig.title }), request.method === 'HEAD');
     return;
   }
   if (url.pathname === '/channels' && (request.method === 'GET' || request.method === 'HEAD')) {
@@ -217,6 +275,22 @@ function send(response, statusCode, contentType, body, headOnly = false) {
 
 function sendJson(response, value, headOnly = false) {
   send(response, 200, 'application/json; charset=utf-8', `${JSON.stringify(value, null, 2)}\n`, headOnly);
+}
+
+function sendJsonStatus(response, statusCode, value) {
+  response.writeHead(statusCode, {
+    'Content-Type': 'application/json; charset=utf-8',
+    'Cache-Control': 'no-store',
+    'X-Content-Type-Options': 'nosniff',
+  });
+  response.end(`${JSON.stringify(value, null, 2)}\n`);
+}
+
+function setupActionStatus(error) {
+  if (['APPROVAL_REQUIRED', 'DIGEST_MISMATCH', 'ACTION_PLAN_MISMATCH', 'PASSWORD_CONFIRMATION_MISMATCH', 'INVALID_ARGUMENT'].includes(error?.code)) return 400;
+  if (['INVALID_STATE', 'PLAN_EXPIRED'].includes(error?.code)) return 409;
+  if (error?.code === 'NOT_FOUND') return 404;
+  return 500;
 }
 
 function sendRedirect(response, location, headOnly = false) {

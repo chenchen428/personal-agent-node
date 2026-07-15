@@ -2,81 +2,93 @@
 
 ## Install an immutable release
 
-Personal Agent Node Beta requires Node.js 22.x. On macOS or Linux, install the exact release asset without cloning this repository:
+Set `TAG=v0.1.0-beta.20` and open the matching [GitHub Release](https://github.com/chenchen428/personal-agent-node/releases/tag/v0.1.0-beta.20). A customer machine does not need Node.js, npm, Git, a source checkout, or a development Agent.
+
+| Computer | Asset |
+| --- | --- |
+| Windows x86-64 | `personal-agent-node-v0.1.0-beta.20-windows-x64-installer.exe` |
+| macOS Apple Silicon | `personal-agent-node-v0.1.0-beta.20-macos-arm64.pkg` |
+| macOS Intel | `personal-agent-node-v0.1.0-beta.20-macos-x64.pkg` |
+| Linux x86-64 | `personal-agent-node-v0.1.0-beta.20-linux-x64.tar.zst` |
+| Linux ARM64 | `personal-agent-node-v0.1.0-beta.20-linux-arm64.tar.zst` |
+
+On Windows, run the signed installer. On macOS, open the signed and notarized package. On Linux, unpack the matching archive with the desktop archive manager or `tar --zstd`, then run `./personal-agent-setup` from the extracted directory.
+
+Each package contains the Go setup executable, stable launcher, exact Node.js `22.23.1` runtime, and immutable application payload. Setup verifies embedded checksums, stages the release, initializes the data root, switches `current` while retaining `previous`, registers the per-user service, waits for the local gateway, and opens a single-use loopback Setup Center session. The default roots are `~/.private-site-node` for immutable binaries and `~/.personal-agent` for mutable data.
+
+Release assets include `SHA256SUMS`, Sigstore bundles, provenance, SBOM, and native platform signatures where available. A release fails closed when the required Windows or Apple signing credentials are absent.
+
+## Finish setup in the browser
+
+The browser opens `/app/setup` automatically. Work through the cards in order:
+
+1. Set your own local access password. Only a salted scrypt verifier is retained; the install-time migration password is removed.
+2. Install or sign in to Codex when requested, retry the app-server handshake, and complete one real authenticated `/app/chat` reply.
+3. Keep `local-only` when no public access is needed, or select Personal Agent Cloud and approve the browser authorization flow.
+4. Treat the public domain and Agent mail address as identity checks. Mail becomes operational only after a real local message and recovery check pass.
+5. Bind WeChat only when wanted. It is optional and never blocks local Web use.
+
+Setup repairs that mutate the machine use a digest-bound R2 plan, an explicit local confirmation, one execution, and a local audit record. Read-only retry and guidance actions do not mutate state.
+
+If the browser does not open, run:
 
 ```bash
-TAG=v0.1.0-beta.19
-INSTALLER="$(mktemp "${TMPDIR:-/tmp}/personal-agent-installer.XXXXXX.mjs")"
-curl --fail --silent --show-error --location --proto '=https' --tlsv1.2 \
-  --output "$INSTALLER" -- \
-  "https://github.com/chenchen428/personal-agent-node/releases/download/$TAG/personal-agent-node-$TAG-installer.mjs"
-node "$INSTALLER" --tag "$TAG"
-rm -f "$INSTALLER"
-export PATH="$HOME/.local/bin:$PATH"
+personal-agent setup open
+personal-agent setup status --json
 personal-agent doctor --json
 ```
 
-On Windows PowerShell:
+`setup status` and `doctor` are read-only and return sanitized evidence. They never print setup nonces, passwords, cookies, device codes, tokens, mail content, or conversation content.
 
-```powershell
-$Tag = "v0.1.0-beta.19"
-$Installer = Join-Path $env:TEMP "personal-agent-$Tag-installer.mjs"
-Invoke-WebRequest -UseBasicParsing -Uri "https://github.com/chenchen428/personal-agent-node/releases/download/$Tag/personal-agent-node-$Tag-installer.mjs" -OutFile $Installer
-node $Installer --tag $Tag
-Remove-Item $Installer
-& "$env:APPDATA\npm\personal-agent.cmd" doctor --json
-```
+## Managed connectivity is optional
 
-The installer is a standalone release asset. It downloads the immutable universal archive for the same tag, verifies its SHA256 checksum, activates `current`, retains `previous`, prepares the local data root, and installs a current-following `personal-agent` command shim. The default data root is `~/.personal-agent`; pass `--data-root <path>` to the installer and later CLI commands when using a custom location.
+The Setup Center starts both purpose-bound browser approvals required by Personal Agent Cloud: Node enrollment and redacted resource access. Long-lived Node and tunnel credentials remain under the mode-600 local secrets directory. Only redacted domain, mailbox, and readiness metadata is written to normal configuration.
 
-Immediately after installation, open the local Personal Agent console and complete WeChat QR binding. The channel sends a proactive confirmation with the detected public-domain, Agent-mail, managed-mail, and managed-configuration states. Mail and configuration integration stay disabled until both a public domain and its matching Agent mailbox are present; this does not make WeChat a prerequisite for the local Web conversation acceptance gate.
+Advanced operators may still use `personal-agent cloud connect --json`, `personal-agent cloud login --json`, and `personal-agent cloud resources --json`. The managed origin can be overridden with `PERSONAL_AGENT_CLOUD_URL=https://cloud.example`; custom origins must use HTTPS.
 
-For the managed Free Edge path, sign in at `https://chenjianhui.site` with the allowlisted GitHub account. The first successful login assigns the dedicated domain. Then run:
+## Upgrade and rollback
+
+Running a newer platform package uses the same verified transaction. A failed candidate restores the old `current` pointer and service definition. The native recovery command remains available even when Node cannot start:
 
 ```bash
-personal-agent cloud connect --json
+personal-agent-setup rollback
 ```
 
-The CLI opens the short-lived authorization page on `chenjianhui.site` and prints only a user code plus same-origin fallback URL. Sign in with GitHub, confirm the assigned Site, and return to the terminal. The CLI polls within the advertised expiry, consumes a one-time enrollment credential, enrolls the local device, verifies a heartbeat, and stores the long-lived Node token only in the mode-600 local secret file. It never prints the device code, enrollment credential, token, generated local password, or tunnel secret.
+Rollback changes immutable binaries and service registration only. It does not delete the data root. Keep backups before schema-changing upgrades.
 
-To bind the public domain and Agent mail identity to the local Node, start the separate browser resource authorization:
+## Uninstall
+
+Uninstall requires an explicit binary-removal confirmation. It unregisters the per-user service and removes the installed program, while preserving the data root by default:
 
 ```bash
-personal-agent cloud login --json
-personal-agent cloud resources --json
+personal-agent-setup uninstall --confirm-remove-binaries
 ```
 
-The CLI opens a same-origin Personal Agent Cloud page and polls only until the signed-in owner approves resource access. The resulting 24-hour resource token is stored under the mode-600 local secrets directory; only redacted domain, mailbox, and readiness metadata is written under local configuration. No GitHub user ID or password is accepted. From WeChat, reply `云账号绑定`; the channel sends the browser link and proactively reports the resource and service checks after approval while ordinary conversation continues normally.
-
-The managed Cloud origin is configurable. `PERSONAL_AGENT_CLOUD_URL=https://cloud.example` changes the default for the current process, while `personal-agent cloud connect --cloud-url https://cloud.example --json` is an explicit per-command override and takes priority over the environment. Custom origins must use HTTPS.
+The uninstaller accepts only a directory with a valid Personal Agent `installation.json`, rejects filesystem roots and the user home directory, and refuses layouts where mutable data is nested inside the installation root. Delete the reported data root separately only when you intentionally want to remove local identity, configuration, mail, files, and conversation state.
 
 ## Develop from source
 
-Install Node.js 22.x, then run:
+Source development uses Node.js `22.23.1`, Go `1.24.x`, and repository compatibility bridges:
 
 ```bash
 npm install
 bash scripts/setup-agent-bridge.sh --force
 npm run doctor
+npm run guard
 npm test
+npm run check
 ```
 
-The bridge command creates ignored local links for `.agents`, `.codex`, `.claude`, `.cursor`, and `CLAUDE.md`. Runtime configuration belongs under `PRIVATE_SITE_DATA_ROOT`; the default local data directory is `~/.personal-agent`.
+The bridge command creates ignored development-only links for `.agents`, `.codex`, `.claude`, `.cursor`, and `CLAUDE.md`. The installed product creates only the canonical workspace and `.codex/skills` bridge.
 
-Personal Agent Node must start in local-only mode without contacting `chenjianhui.site` or any configured Cloud origin. Managed Cloud enrollment is an optional provider selected explicitly by the user. Fresh release installs and upgrades provision a missing local mail-ingress token, render current-following CLI shims, and non-destructively copy legacy `mail-ingress/` data into `mail/` while retaining the old source for rollback.
-
-Final Node acceptance uses the GitHub Release installation's authenticated local `/app/chat`: send a unique prompt to the real Agent runtime and verify the Agent reply in the same session. Canonical evidence records `releaseAssetRuntime=true`, `route=/app/chat`, `authenticated=true`, `uniquePrompt=true`, `realAgentRuntime=true`, `sameSessionAgentReply=true`, and `wechatRequired=false`; it stores no prompt, reply or session identifier.
+Final Node acceptance uses the public GitHub Release installation's authenticated local `/app/chat`. Sanitized evidence records `releaseAssetRuntime=true`, `route=/app/chat`, `authenticated=true`, `uniquePrompt=true`, `realAgentRuntime=true`, `sameSessionAgentReply=true`, and `wechatRequired=false`; it stores no prompt, reply, or session identifier.
 
 ## Discover CLI capabilities
 
-The public CLI reports capability maturity instead of presenting roadmap commands as available:
-
 ```bash
-personal-agent help --json           # implemented commands only
-personal-agent help --preview --json # implemented and preview commands
-personal-agent help --all --json     # implemented, preview, and planned metadata
-personal-agent cloud connect --help --json # exact browser-authorization options and secret boundary
-personal-agent cloud login --help --json   # separate browser resource-authorization boundary
+personal-agent help --json
+personal-agent help --preview --json
+personal-agent help --all --json
 ```
 
-Preview execution requires an explicit `--preview` flag and returns a `PREVIEW_COMMAND` warning. `--all` works only with help and never enables planned commands. Planned and unknown commands fail closed with `CAPABILITY_UNAVAILABLE`.
+Preview execution requires `--preview` and returns a `PREVIEW_COMMAND` warning. Planned and unknown commands fail closed with `CAPABILITY_UNAVAILABLE`.

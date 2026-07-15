@@ -6,7 +6,6 @@ import { execFileSync } from "node:child_process";
 import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
 import { pruneLocalDist } from "./prune-local-dist.mjs";
-import { materializeHarnessLinks } from "./harness-links.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const workspacePackage = JSON.parse(fs.readFileSync(path.join(root, "package.json"), "utf8"));
@@ -33,7 +32,6 @@ async function main() {
 
   copyRuntimeInputs();
   await bundleNodeApplications();
-  materializeHarnessBridges();
   writeRuntimePackages();
   normalizeShellScripts();
   writeManifest();
@@ -59,6 +57,7 @@ function copyRuntimeInputs() {
     "projects/core/node/src",
     "projects/core/node/package.json",
     "projects/core/node/README.md",
+    "projects/core/node/native",
     "skills",
     "workflows",
     "registry",
@@ -115,10 +114,6 @@ async function bundleNodeApplications() {
   for (const [, filePath] of entries) fs.chmodSync(filePath, 0o755);
 }
 
-function materializeHarnessBridges() {
-  materializeHarnessLinks(outputRoot);
-}
-
 function writeRuntimePackages() {
   const bridgePackage = JSON.parse(fs.readFileSync(path.join(bridgeSource, "package.json"), "utf8"));
   fs.writeFileSync(path.join(outputRoot, "projects", "core", "open-agent-bridge", "package.json"), `${JSON.stringify({
@@ -163,7 +158,8 @@ function writeManifest() {
       owner: "node",
       supportedAgentRuntime: "codex",
       developmentWorkspace: "full-git-clone",
-      compatibilityBridges: [".agents/skills", ".codex/skills", ".claude/skills", ".cursor/skills"],
+      runtimeAgentBridge: ".codex/skills",
+      repositoryCompatibilityBridges: [".agents/skills", ".codex/skills", ".claude/skills", ".cursor/skills"],
       catalog: "registry/skills.json",
       workflows: "workflows",
       sessionState: "PRIVATE_SITE_DATA_ROOT/databases/bridge",

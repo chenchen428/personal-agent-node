@@ -11,6 +11,8 @@ const routes = readJson('registry/routes.json');
 const extensions = readJson('registry/extensions.json');
 const commands = readJson('registry/commands.json');
 const commandsSchema = readJson('schemas/personal-agent/commands.schema.json');
+const setupChecks = readJson('registry/setup-checks.json');
+const nodeRuntime = readJson('registry/node-runtime.json');
 const distribution = readJson('registry/site-distribution.json');
 const projectNames = new Set(projects.projects.map((entry) => entry.name));
 const capabilityIds = new Set(capabilities.capabilities.map((entry) => entry.id));
@@ -19,10 +21,18 @@ const commandContract = validateCommandRegistry({ registry: commands, schema: co
 
 checks.push({ name: 'only Node and Edge are registered products', ok: projectNames.size === 2 && projectNames.has('personal-agent-node') && projectNames.has('private-site-edge') });
 checks.push({ name: 'project registry has target schema version', ok: projects.schemaVersion === 2 });
-for (const file of ['capabilities', 'routes', 'extensions', 'commands']) {
+for (const file of ['capabilities', 'routes', 'extensions', 'commands', 'setup-checks']) {
   checks.push({ name: `${file} registry`, ok: exists(`registry/${file}.json`) });
   checks.push({ name: `${file} schema`, ok: exists(`schemas/personal-agent/${file}.schema.json`) });
 }
+const setupGroupIds = new Set(setupChecks.groups.map((entry) => entry.id));
+const setupCheckIds = new Set(setupChecks.checks.map((entry) => entry.id));
+checks.push({ name: 'setup check registry has the accepted state contract', ok: setupChecks.schemaVersion === 1 && ['ready', 'action-required', 'blocked', 'not-selected', 'checking'].every((state) => setupChecks.states.includes(state)) });
+checks.push({ name: 'setup readiness dimensions are explicit', ok: ['console', 'agent', 'remote', 'mail'].every((dimension) => setupChecks.readinessDimensions.includes(dimension)) });
+checks.push({ name: 'setup groups and checks are unique', ok: setupGroupIds.size === setupChecks.groups.length && setupCheckIds.size === setupChecks.checks.length });
+checks.push({ name: 'setup checks reference declared groups and dimensions', ok: setupChecks.checks.every((entry) => setupGroupIds.has(entry.group) && (entry.dimension === null || setupChecks.readinessDimensions.includes(entry.dimension))) });
+checks.push({ name: 'WeChat is optional setup, not core readiness', ok: setupChecks.checks.some((entry) => entry.id === 'channels.wechat' && entry.requirement === 'optional' && entry.dimension === null) });
+checks.push({ name: 'bundled Node runtime is exact and covers the release matrix', ok: /^22\.\d+\.\d+$/.test(nodeRuntime.version) && nodeRuntime.source.endsWith(`/v${nodeRuntime.version}`) && ['win32-x64', 'darwin-x64', 'darwin-arm64', 'linux-x64', 'linux-arm64'].every((target) => nodeRuntime.platforms.includes(target)) });
 checks.push({ name: 'capability ids are unique', ok: capabilityIds.size === capabilities.capabilities.length });
 checks.push({ name: 'capabilities have registered owners', ok: capabilities.capabilities.every((entry) => projectNames.has(entry.owner)) });
 checks.push({ name: 'route policy defaults to deny', ok: routes.defaultPolicy === 'deny' });

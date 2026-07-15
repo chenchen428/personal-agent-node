@@ -8,7 +8,7 @@
       "label": "Immutable release installation",
       "case": "test/fixtures/baseline-cases/release-installation/case.json",
       "command": ["node", "--test", "test/release-lifecycle.test.mjs"],
-      "requirements": ["Installation switches an immutable current release", "One previous release remains available", "Fresh installation immediately prompts the user to bind WeChat"]
+      "requirements": ["Installation switches an immutable current release", "One previous release remains available", "Fresh installation opens the authenticated local Setup Center without requiring WeChat or a development Agent"]
     },
     {
       "id": "authenticated-login",

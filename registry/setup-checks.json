@@ -1,0 +1,38 @@
+{
+  "schemaVersion": 1,
+  "states": ["ready", "action-required", "blocked", "not-selected", "checking"],
+  "requirements": ["required-for-console", "required-for-agent", "conditional", "optional"],
+  "readinessDimensions": ["console", "agent", "remote", "mail"],
+  "groups": [
+    { "id": "installation", "label": "本机安装", "order": 10 },
+    { "id": "agent", "label": "Codex Agent", "order": 20 },
+    { "id": "connectivity", "label": "公网连接", "order": 30 },
+    { "id": "mail-identity", "label": "Agent 邮箱身份", "order": 40 },
+    { "id": "local-mail", "label": "本地邮件", "order": 50 },
+    { "id": "optional-channels", "label": "可选渠道", "order": 60 }
+  ],
+  "checks": [
+    { "id": "installation.release", "group": "installation", "requirement": "required-for-console", "dimension": "console", "actionIds": ["installation.repair"] },
+    { "id": "installation.data-root", "group": "installation", "requirement": "required-for-console", "dimension": "console", "actionIds": ["installation.repair"] },
+    { "id": "installation.service", "group": "installation", "requirement": "required-for-console", "dimension": "console", "actionIds": ["installation.service-repair"] },
+    { "id": "installation.gateway", "group": "installation", "requirement": "required-for-console", "dimension": "console", "actionIds": ["installation.service-repair"] },
+    { "id": "installation.console-auth", "group": "installation", "requirement": "required-for-console", "dimension": "console", "actionIds": ["installation.local-auth"] },
+    { "id": "agent.codex.executable", "group": "agent", "requirement": "required-for-agent", "dimension": "agent", "actionIds": ["agent.codex.install-guide"] },
+    { "id": "agent.codex.version", "group": "agent", "requirement": "required-for-agent", "dimension": "agent", "actionIds": ["agent.codex.update-guide"] },
+    { "id": "agent.codex.authentication", "group": "agent", "requirement": "required-for-agent", "dimension": "agent", "actionIds": ["agent.codex.login-guide"] },
+    { "id": "agent.codex.handshake", "group": "agent", "requirement": "required-for-agent", "dimension": "agent", "actionIds": ["agent.codex.retry"] },
+    { "id": "agent.web-conversation", "group": "agent", "requirement": "required-for-agent", "dimension": "agent", "actionIds": ["agent.open-chat"] },
+    { "id": "connectivity.mode", "group": "connectivity", "requirement": "conditional", "dimension": "remote", "actionIds": ["connectivity.choose-mode"] },
+    { "id": "connectivity.enrollment", "group": "connectivity", "requirement": "conditional", "dimension": "remote", "actionIds": ["connectivity.managed-authorize"] },
+    { "id": "connectivity.heartbeat", "group": "connectivity", "requirement": "conditional", "dimension": "remote", "actionIds": ["connectivity.retry"] },
+    { "id": "connectivity.tunnel", "group": "connectivity", "requirement": "conditional", "dimension": "remote", "actionIds": ["connectivity.repair"] },
+    { "id": "connectivity.dns", "group": "connectivity", "requirement": "conditional", "dimension": "remote", "actionIds": ["connectivity.retry"] },
+    { "id": "connectivity.tls", "group": "connectivity", "requirement": "conditional", "dimension": "remote", "actionIds": ["connectivity.retry"] },
+    { "id": "connectivity.remote-app", "group": "connectivity", "requirement": "conditional", "dimension": "remote", "actionIds": ["connectivity.retry"] },
+    { "id": "mail.identity", "group": "mail-identity", "requirement": "conditional", "dimension": "mail", "actionIds": ["connectivity.managed-authorize"] },
+    { "id": "mail.local-ingest", "group": "local-mail", "requirement": "optional", "dimension": "mail", "actionIds": ["mail.enable"] },
+    { "id": "mail.delivery", "group": "local-mail", "requirement": "optional", "dimension": "mail", "actionIds": ["mail.test-delivery"] },
+    { "id": "mail.recovery", "group": "local-mail", "requirement": "optional", "dimension": "mail", "actionIds": ["mail.test-recovery"] },
+    { "id": "channels.wechat", "group": "optional-channels", "requirement": "optional", "dimension": null, "actionIds": ["channels.wechat.bind"] }
+  ]
+}

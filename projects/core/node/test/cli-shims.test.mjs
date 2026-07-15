@@ -25,6 +25,7 @@ test("prepares Windows bridge CLI shims that follow current without embedding se
   assert.equal(result.mailIngest.followsCurrent, true);
   assert.match(content, /OPEN_AGENT_BRIDGE_ENV_FILE=/);
   assert.match(content, /\\current\\projects\\core\\open-agent-bridge\\bin\\oab\.mjs/);
+  assert.doesNotMatch(content, /\r\nnode /);
   assert.match(mailContent, /OPEN_AGENT_BRIDGE_MAIL_DATA_DIR=.*\\data\\mail/);
   assert.match(mailContent, /set "OPEN_AGENT_BRIDGE_API_BASE=http:\/\/127\.0\.0\.1:9876"/);
   assert.match(mailContent, /\\current\\projects\\core\\open-agent-bridge\\bin\\oab-mail-ingest\.mjs/);
@@ -46,9 +47,10 @@ test("renders a quoted executable POSIX shim and selects the user-local bin", ()
   const homeDir = path.join(root, "example user");
   const bin = path.join(homeDir, ".local", "bin");
   assert.equal(defaultUserBin({ platform: "linux", homeDir, env: { PATH: `/usr/bin${path.delimiter}${bin}` } }), path.resolve(bin));
-  const content = renderShim({ platform: "linux", entrypoint: "/release/current/oab.mjs", envPath: "/data/site env" });
+  const content = renderShim({ platform: "linux", nodeRuntime: "/release/current/runtime/node", entrypoint: "/release/current/oab.mjs", envPath: "/data/site env" });
   assert.match(content, /^#!\/bin\/sh/);
   assert.match(content, /OPEN_AGENT_BRIDGE_ENV_FILE='\/data\/site env'/);
+  assert.match(content, /exec '\/release\/current\/runtime\/node'/);
   assert.match(content, /"\$@"/);
   fs.rmSync(root, { recursive: true, force: true });
 });
@@ -56,6 +58,7 @@ test("renders a quoted executable POSIX shim and selects the user-local bin", ()
 test("renders a stable POSIX mail shim with paths but without credentials", () => {
   const content = renderShim({
     platform: "linux",
+    nodeRuntime: "/home/example/.private-site-node/current/runtime/node",
     entrypoint: "/home/example/.private-site-node/current/projects/core/open-agent-bridge/bin/oab-mail-ingest.mjs",
     envPath: "/home/example/.personal-agent/secrets/applications/site.env",
     environment: {
@@ -67,6 +70,7 @@ test("renders a stable POSIX mail shim with paths but without credentials", () =
   assert.match(content, /PRIVATE_SITE_DATA_ROOT='\/home\/example\/\.personal-agent'/);
   assert.match(content, /OPEN_AGENT_BRIDGE_MAIL_DATA_DIR='\/home\/example\/\.personal-agent\/mail'/);
   assert.match(content, /\/current\/projects\/core\/open-agent-bridge\/bin\/oab-mail-ingest\.mjs/);
+  assert.match(content, /\/current\/runtime\/node/);
   assert.doesNotMatch(content, /MAIL_INGEST_TOKEN|API_TOKEN|UPLOAD_TOKEN/);
 });
 
