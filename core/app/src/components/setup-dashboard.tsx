@@ -1,6 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { Button } from "@/components/ui/button";
+import { RefreshCw } from "lucide-react";
 
 type SetupState = "ready" | "checking" | "action-required" | "blocked" | "not-selected";
 type SetupCheck = { id: string; group: string; state: SetupState; summary: string };
@@ -15,6 +17,14 @@ const groups = [
 
 const labels: Record<SetupState, string> = {
   ready: "可用", checking: "检查中", "action-required": "需要处理", blocked: "被前置项阻塞", "not-selected": "尚未选择",
+};
+
+const guidance: Record<SetupState, string> = {
+  ready: "这组能力已经可以正常使用。",
+  checking: "正在读取本机事实，请稍候。",
+  "action-required": "按红色或黄色项目完成配置，然后重新检测。",
+  blocked: "请先处理被标红的前置项目。",
+  "not-selected": "这是可选能力，不启用也不影响本机使用。",
 };
 
 export function SetupDashboard() {
@@ -42,10 +52,11 @@ export function SetupDashboard() {
         const state = loading ? "checking" : snapshot?.readiness[group.readiness] || "action-required";
         const checks = snapshot?.checks.filter((check) => check.group === group.key) || [];
         return (
-          <article className="setup-group" key={group.key}>
-            <header><span>{group.index}</span><div><h2>{group.title}</h2><small>{labels[state]}</small></div><i className={state === "checking" ? "pulse" : `state-${state}`} /></header>
-            <ul>{checks.length ? checks.map((check) => <li key={check.id}><span>{check.summary}</span><em>{labels[check.state]}</em></li>) : <li><span>{error || "正在读取本机状态"}</span><em>{labels[state]}</em></li>}</ul>
-            <button className="button button-secondary" type="button" onClick={() => void refresh()} disabled={loading}>重新检测</button>
+          <article className={`setup-group setup-${state}`} key={group.key}>
+            <header><span>{group.index}</span><div><h2>{group.title}</h2><small className={`status-label status-${state}`}>{labels[state]}</small></div><i className={`setup-light state-${state}`} /></header>
+            <ul>{checks.length ? checks.map((check) => <li className={`check-${check.state}`} key={check.id}><span>{check.summary}</span><em>{labels[check.state]}</em></li>) : <li className={`check-${state}`}><span>{error || guidance[state]}</span><em>{labels[state]}</em></li>}</ul>
+            <p className={`setup-guidance guidance-${state}`}>{guidance[state]}</p>
+            <Button variant="outline" type="button" onClick={() => void refresh()} disabled={loading}><RefreshCw className="size-3.5" />重新检测</Button>
           </article>
         );
       })}

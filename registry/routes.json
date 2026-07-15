@@ -8,6 +8,7 @@
     { "pattern": "/docs/*", "access": "public", "capability": "publications" },
     { "pattern": "/resources/*", "access": "public", "capability": "publications" },
     { "pattern": "/_next/static/*", "access": "public", "capability": "console" },
+    { "pattern": "/app/channels", "access": "authenticated", "capability": "channels" },
     { "pattern": "/app/pages", "access": "authenticated", "capability": "publications" },
     { "pattern": "/app/skills", "access": "authenticated", "capability": "skills" },
     { "pattern": "/app/setup/bootstrap", "access": "local-bootstrap", "capability": "runtime" },

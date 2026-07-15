@@ -1,4 +1,4 @@
-export const CHANNEL_MANAGEMENT_URL = "/agent/channels";
+export const CHANNEL_MANAGEMENT_URL = "/app/channels";
 
 export async function runChannelHealthCheck({
   fetchImpl = fetch,
@@ -9,9 +9,11 @@ export async function runChannelHealthCheck({
   const request = (pathname, options = {}) => requestJson(fetchImpl, baseUrl, apiToken, pathname, options);
   const response = await request("/api/channels");
   const channels = Array.isArray(response.channels) ? response.channels.map(normalizeChannel) : [];
-  const unhealthy = channels.filter((channel) => channel.state !== "logged_in");
+  const monitored = channels.filter((channel) => channel.healthCheck);
+  const healthyStates = new Set(["ready", "connected", "logged_in"]);
+  const unhealthy = monitored.filter((channel) => !healthyStates.has(channel.state));
 
-  if (!unhealthy.length && channels.length) {
+  if (!unhealthy.length && monitored.length) {
     return { ok: true, healthy: true, notified: false, channels };
   }
 
@@ -60,6 +62,7 @@ function normalizeChannel(channel) {
     error: String(channel?.error || ""),
     readOnly: channel?.readOnly === true,
     egress: String(channel?.egress || ""),
+    healthCheck: channel?.healthCheck === true || (channel?.healthCheck !== false && channel?.provider === "xiaohongshu"),
   };
 }
 

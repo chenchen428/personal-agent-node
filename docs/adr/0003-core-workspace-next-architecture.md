@@ -23,7 +23,7 @@ two explicit ownership domains: product-owned `core` and user-owned `workspace`.
 ## Decision drivers
 
 1. One product must have one understandable application architecture.
-2. The Web Console, Setup Center, chat, mail, files, data, skills, channels, and
+2. The Web Console, Setup Center, chat, mail, Online Pages, data, skills, channels, and
    update surfaces must share one design system and routing model.
 3. Long-lived Codex, worker, WebSocket, backup, gateway, and service processes
    must retain stable Node process boundaries even when the source project is
@@ -66,9 +66,9 @@ and launch.
 `core/app` uses Next.js App Router, React, and TypeScript. It owns:
 
 - the authenticated application shell and navigation;
-- Setup Center, chat, mail, files, data, skills, channels, plugins, and updates;
+- Setup Center, chat, mail, Online Pages, data, skills, channels, plugins, and updates;
 - Server Components for local reads and Route Handlers for the versioned BFF;
-- shared components and design tokens derived from `DESIGN.md`;
+- shadcn/ui source-owned primitives, Radix interaction behavior, and design tokens derived from `DESIGN.md`;
 - production standalone output included in the immutable core release.
 
 The application runs only on the Node.js runtime. Edge/serverless runtime
@@ -84,6 +84,11 @@ background job system.
 The standalone build copies its public and static assets into the release. The
 build ID is the immutable release revision so browser assets cannot drift across
 `current` activation.
+
+Private attachment storage and authenticated previews remain an internal Agent
+capability, but there is no generic top-level Files product page. Online Pages
+is the user-facing publishing surface and provides distinct desktop and mobile
+preview modes.
 
 ### 3. Adopt one installed Personal Agent home
 

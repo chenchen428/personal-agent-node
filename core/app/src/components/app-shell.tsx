@@ -1,9 +1,11 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
+import { buttonVariants } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 const navigation = [
-  ["对话", "/app/chat"], ["邮件", "/app/mail"], ["文件", "/app/files"],
-  ["数据", "/app/data"], ["技能", "/app/skills"], ["渠道", "/app/channels"],
+  ["对话", "/app/chat"], ["邮件", "/app/mail"], ["页面", "/app/pages"],
+  ["渠道", "/app/channels"], ["数据", "/app/data"], ["技能", "/app/skills"],
   ["插件", "/app/plugins"],
 ];
 
@@ -13,7 +15,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       <header className="top-nav">
         <Link className="brand" href="/app"><span className="radial-mark" aria-hidden="true">✣</span><span>Personal Agent</span></Link>
         <nav aria-label="主导航">{navigation.map(([label, href]) => <Link href={href} key={href}>{label}</Link>)}</nav>
-        <Link className="button button-primary nav-cta" href="/app/setup">本机设置</Link>
+        <Link className={cn(buttonVariants(), "nav-cta")} href="/app/setup">本机设置</Link>
       </header>
       {children}
       <footer className="footer">

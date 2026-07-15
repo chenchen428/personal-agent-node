@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ArchitecturePanel } from "@/components/architecture-panel";
 import { StatusCard } from "@/components/status-card";
+import { buttonVariants } from "@/components/ui/button";
 
 export default function OverviewPage() {
   return (
@@ -11,8 +12,8 @@ export default function OverviewPage() {
           <h1>你的 Agent，住在自己的工作空间里。</h1>
           <p className="hero-lead">Core 负责可靠运行，Workspace 保存你的 Harness、文件与记忆。升级产品，不搬走生活。</p>
           <div className="button-row">
-            <Link className="button button-primary" href="/app/chat">开始对话</Link>
-            <Link className="button button-secondary" href="/app/setup">检查本机</Link>
+            <Link className={buttonVariants()} href="/app/chat">开始对话</Link>
+            <Link className={buttonVariants({ variant: "outline" })} href="/app/setup">检查本机</Link>
           </div>
         </div>
         <div className="reveal reveal-two"><ArchitecturePanel /></div>

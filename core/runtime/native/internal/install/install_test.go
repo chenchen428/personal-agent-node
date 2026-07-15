@@ -24,6 +24,35 @@ type failingRunner struct {
 	needle string
 }
 
+type lifecycleRunner struct {
+	calls      []string
+	running    bool
+	failNeedle string
+}
+
+func (runner *lifecycleRunner) Run(_ context.Context, command string, args []string, _ []string) ([]byte, error) {
+	call := command + " " + strings.Join(args, " ")
+	runner.calls = append(runner.calls, call)
+	if runner.failNeedle != "" && strings.Contains(call, runner.failNeedle) {
+		return nil, errors.New("injected candidate failure")
+	}
+	if strings.Contains(call, "service-prepare") {
+		if runner.running {
+			return nil, errors.New("service must be stopped before service-prepare")
+		}
+		return []byte(`{"platform":"windows","serviceId":"PrivateSiteNode","taskName":"PrivateSiteNode","taskXmlPath":"C:\\PrivateSiteNode.xml"}`), nil
+	}
+	if command == "schtasks.exe" && len(args) > 0 {
+		switch args[0] {
+		case "/End":
+			runner.running = false
+		case "/Run":
+			runner.running = true
+		}
+	}
+	return []byte(`{}`), nil
+}
+
 func (runner *failingRunner) Run(ctx context.Context, command string, args []string, env []string) ([]byte, error) {
 	call := command + " " + strings.Join(args, " ")
 	runner.calls = append(runner.calls, call)
@@ -110,6 +139,93 @@ func TestFailedCandidateRestoresPointers(t *testing.T) {
 	}
 	if got := pointerTarget(filepath.Join(installRoot, "previous")); got != "" {
 		t.Fatalf("unexpected previous after failed candidate: %s", got)
+	}
+}
+
+func TestUpgradeStopsManagedServiceBeforeCandidatePreparation(t *testing.T) {
+	root := t.TempDir()
+	installRoot := filepath.Join(root, "install")
+	dataRoot := filepath.Join(root, "data")
+	nodeRuntime := filepath.Join(root, "node.exe")
+	if err := os.WriteFile(nodeRuntime, []byte("bundled-node"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	runner := &lifecycleRunner{}
+	opts := func(release string) Options {
+		return Options{ReleaseRoot: fixtureRelease(t, release), NodeRuntime: nodeRuntime, InstallRoot: installRoot, DataRoot: dataRoot, SkipStartWait: true, NoOpen: true, Platform: "windows"}
+	}
+	if _, err := Install(context.Background(), opts("release-one"), runner); err != nil {
+		t.Fatal(err)
+	}
+	if !runner.running {
+		t.Fatal("first install did not start the managed service")
+	}
+	start := len(runner.calls)
+	if _, err := Install(context.Background(), opts("release-two"), runner); err != nil {
+		t.Fatal(err)
+	}
+	assertStoppedBeforePrepare(t, runner.calls[start:], "release-two")
+	if !runner.running {
+		t.Fatal("upgrade did not restart the managed service")
+	}
+
+	start = len(runner.calls)
+	rolledBack, err := Rollback(context.Background(), installRoot, "windows", runner)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if rolledBack.ReleaseID != "release-one" {
+		t.Fatalf("rollback=%#v", rolledBack)
+	}
+	assertStoppedBeforePrepare(t, runner.calls[start:], "release-one")
+	if !runner.running {
+		t.Fatal("rollback did not restart the managed service")
+	}
+}
+
+func TestFailedManagedUpgradeRestoresPointersAndService(t *testing.T) {
+	root := t.TempDir()
+	installRoot := filepath.Join(root, "install")
+	dataRoot := filepath.Join(root, "data")
+	nodeRuntime := filepath.Join(root, "node.exe")
+	if err := os.WriteFile(nodeRuntime, []byte("bundled-node"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	runner := &lifecycleRunner{}
+	base := Options{ReleaseRoot: fixtureRelease(t, "release-one"), NodeRuntime: nodeRuntime, InstallRoot: installRoot, DataRoot: dataRoot, SkipStartWait: true, NoOpen: true, Platform: "windows"}
+	if _, err := Install(context.Background(), base, runner); err != nil {
+		t.Fatal(err)
+	}
+	runner.failNeedle = "release-two"
+	candidate := base
+	candidate.ReleaseRoot = fixtureRelease(t, "release-two")
+	if _, err := Install(context.Background(), candidate, runner); err == nil {
+		t.Fatal("expected candidate failure")
+	}
+	if got := filepath.Base(pointerTarget(filepath.Join(installRoot, "current"))); got != "release-one" {
+		t.Fatalf("current=%s", got)
+	}
+	if got := pointerTarget(filepath.Join(installRoot, "previous")); got != "" {
+		t.Fatalf("unexpected previous after failed candidate: %s", got)
+	}
+	if !runner.running {
+		t.Fatal("failed upgrade did not restore the previous service")
+	}
+}
+
+func assertStoppedBeforePrepare(t *testing.T, calls []string, release string) {
+	t.Helper()
+	stop, prepare := -1, -1
+	for index, call := range calls {
+		if stop == -1 && strings.Contains(call, "schtasks.exe /End") {
+			stop = index
+		}
+		if prepare == -1 && strings.Contains(call, release) && strings.Contains(call, "service-prepare") {
+			prepare = index
+		}
+	}
+	if stop == -1 || prepare == -1 || stop >= prepare {
+		t.Fatalf("service stop must precede %s service preparation: %v", release, calls)
 	}
 }
 

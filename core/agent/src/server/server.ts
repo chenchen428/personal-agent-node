@@ -8,6 +8,7 @@ import { config, ensureRuntimeDirs } from "../config.js";
 import { PersonalAuth } from "../auth/personal-auth.js";
 import { WeChatConnector } from "../channels/wechat/connector.ts";
 import { CloudBindingCoordinator } from "../channels/cloud-binding-coordinator.js";
+import { buildChannelCatalog } from "../channels/catalog.ts";
 import { ChannelInputError, XiaohongshuChannel } from "../channels/xiaohongshu/channel.js";
 import { XiaohongshuLoginCoordinator } from "../channels/xiaohongshu/login-coordinator.js";
 import { createOnlinePagesMcpServer } from "../online-pages/mcp.js";
@@ -415,7 +416,8 @@ async function handleRequest(request: http.IncomingMessage, response: http.Serve
   }
 
   if (url.pathname === "/api/channels" && request.method === "GET") {
-    sendChannelJson(response, 200, { ok: true, channels: [await xiaohongshu.status()] });
+    const [wechatStatus, xiaohongshuStatus] = await Promise.all([wechat.status(), xiaohongshu.status()]);
+    sendChannelJson(response, 200, { ok: true, channels: buildChannelCatalog({ wechat: wechatStatus, managedPlatform: xiaohongshuStatus }) });
     return;
   }
   if (url.pathname === "/api/channels/xiaohongshu/status" && request.method === "GET") {
@@ -1102,6 +1104,11 @@ async function handleRequest(request: http.IncomingMessage, response: http.Serve
   if (url.pathname === "/api/pages/upload" && request.method === "POST") {
     const body = await readJsonBody(request);
     sendJson(response, 200, { ok: true, asset: await uploadStaticAsset(body) });
+    return;
+  }
+
+  if (url.pathname === "/api/pages" && request.method === "GET") {
+    sendJson(response, 200, { ok: true, assets: await listUploadedAssets(200) });
     return;
   }
 

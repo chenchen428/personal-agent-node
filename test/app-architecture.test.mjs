@@ -13,6 +13,9 @@ test("Next.js owns the application shell, Setup Center, BFF and Plugin Studio", 
   const distribution = JSON.parse(read("registry/site-distribution.json"));
   assert.match(shell, /\/app\/chat/);
   assert.match(shell, /\/app\/plugins/);
+  assert.match(shell, /\/app\/pages/);
+  assert.match(shell, /\/app\/channels/);
+  assert.doesNotMatch(shell, /\/app\/files/);
   assert.match(setup, /installation/);
   assert.match(setup, /Codex Agent/);
   assert.match(setup, /connectivity/);
@@ -24,6 +27,24 @@ test("Next.js owns the application shell, Setup Center, BFF and Plugin Studio", 
     distribution.routing.paths.find((route) => route.key === "next-static"),
     { key: "next-static", prefix: "/_next/static", access: "public", kind: "proxy", targetKey: "console", upstreamPath: "/_next/static" },
   );
+  assert.equal(distribution.routing.paths.find((route) => route.key === "app-pages").targetKey, "console");
+  assert.equal(distribution.routing.paths.find((route) => route.key === "app-channels").targetKey, "console");
+});
+
+test("the application reuses shadcn primitives for setup, channels, and responsive page previews", () => {
+  const config = JSON.parse(read("core/app/components.json"));
+  const setup = read("core/app/src/components/setup-dashboard.tsx");
+  const channels = read("core/app/src/components/channels-dashboard.tsx");
+  const pages = read("core/app/src/components/pages-dashboard.tsx");
+  const css = read("core/app/src/app/globals.css");
+  assert.equal(config.rsc, true);
+  assert.match(setup, /components\/ui\/button/);
+  assert.match(channels, /components\/ui\/(?:badge|card)/);
+  assert.match(pages, /components\/ui\/tabs/);
+  assert.match(pages, /value="mobile"/);
+  assert.match(css, /setup-ready/);
+  assert.match(css, /preview-mobile/);
+  assert.match(css, /@media \(max-width: 767px\)/);
 });
 
 test("the internal control service exposes APIs but no handwritten HTML renderer", () => {

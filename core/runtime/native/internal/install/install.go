@@ -96,8 +96,10 @@ func Install(ctx context.Context, opts Options, runner Runner) (result Result, r
 	previous := filepath.Join(resolved.InstallRoot, "previous")
 	oldCurrent := pointerTarget(current)
 	oldPrevious := pointerTarget(previous)
+	oldState := readInstallationState(filepath.Join(resolved.InstallRoot, "installation.json"))
+	hadManagedService := oldCurrent != "" && serviceIsManaged(oldState.Service)
 	activated := false
-	serviceAttempted := false
+	serviceNeedsRecovery := false
 
 	defer func() {
 		if returnedErr == nil {
@@ -116,15 +118,14 @@ func Install(ctx context.Context, opts Options, runner Runner) (result Result, r
 				_ = removePointer(previous)
 			}
 		}
-		if serviceAttempted {
+		if serviceNeedsRecovery {
 			recoveryCtx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 			defer cancel()
-			if oldCurrent != "" {
+			_ = deactivateService(recoveryCtx, resolved, runner, envFor(resolved))
+			if hadManagedService {
 				oldNode := bundledNode(oldCurrent, resolved.Platform)
 				oldPrivateSite := privateSiteEntrypoint(oldCurrent)
 				_, _ = activateService(recoveryCtx, resolved, oldCurrent, oldNode, oldPrivateSite, runner, envFor(resolved))
-			} else {
-				_ = deactivateService(recoveryCtx, resolved, runner, envFor(resolved))
 			}
 		}
 	}()
@@ -152,7 +153,17 @@ func Install(ctx context.Context, opts Options, runner Runner) (result Result, r
 			return result, fmt.Errorf("activate staged directory: %w", err)
 		}
 	}
+	if !resolved.SkipService && hadManagedService {
+		serviceCtx, cancel := context.WithTimeout(ctx, 2*time.Minute)
+		err := deactivateService(serviceCtx, resolved, runner, envFor(resolved))
+		cancel()
+		if err != nil {
+			return result, fmt.Errorf("stop active platform service: %w", err)
+		}
+		serviceNeedsRecovery = true
+	}
 
+	activated = true
 	if oldCurrent != "" && filepath.Clean(oldCurrent) != filepath.Clean(target) {
 		if err := replacePointer(previous, oldCurrent, resolved.Platform, runner); err != nil {
 			return result, fmt.Errorf("retain previous: %w", err)
@@ -161,7 +172,6 @@ func Install(ctx context.Context, opts Options, runner Runner) (result Result, r
 	if err := replacePointer(current, target, resolved.Platform, runner); err != nil {
 		return result, fmt.Errorf("switch current: %w", err)
 	}
-	activated = true
 	launcherName := "personal-agent"
 	if resolved.Platform == "windows" {
 		launcherName += ".exe"
@@ -190,7 +200,7 @@ func Install(ctx context.Context, opts Options, runner Runner) (result Result, r
 
 	service := "skipped"
 	if !resolved.SkipService {
-		serviceAttempted = true
+		serviceNeedsRecovery = true
 		serviceCtx, cancel := context.WithTimeout(ctx, 2*time.Minute)
 		service, err = activateService(serviceCtx, resolved, target, node, privateSite, runner, env)
 		cancel()
@@ -271,23 +281,41 @@ func Rollback(ctx context.Context, installRoot, platform string, runner Runner) 
 	if err != nil {
 		return Result{}, err
 	}
+	state := readInstallationState(filepath.Join(root, "installation.json"))
+	managedService := serviceIsManaged(state.Service) && state.DataRoot != ""
+	opts := Options{InstallRoot: root, DataRoot: state.DataRoot, Platform: platform}
+	restoreCurrentService := func() {
+		if !managedService || currentTarget == "" {
+			return
+		}
+		_ = deactivateService(ctx, opts, runner, envFor(opts))
+		node := bundledNode(currentTarget, platform)
+		privateSite := privateSiteEntrypoint(currentTarget)
+		_, _ = activateService(ctx, opts, currentTarget, node, privateSite, runner, envFor(opts))
+	}
+	if managedService {
+		if err := deactivateService(ctx, opts, runner, envFor(opts)); err != nil {
+			return Result{}, fmt.Errorf("stop active platform service: %w", err)
+		}
+	}
 	if err := replacePointer(current, previousTarget, platform, runner); err != nil {
+		restoreCurrentService()
 		return Result{}, err
 	}
 	if currentTarget != "" {
 		if err := replacePointer(previous, currentTarget, platform, runner); err != nil {
 			_ = replacePointer(current, currentTarget, platform, runner)
+			restoreCurrentService()
 			return Result{}, err
 		}
 	}
-	state := readInstallationState(filepath.Join(root, "installation.json"))
-	if state.Service != "" && state.Service != "skipped" && state.DataRoot != "" {
-		opts := Options{InstallRoot: root, DataRoot: state.DataRoot, Platform: platform}
+	if managedService {
 		node := bundledNode(previousTarget, platform)
-		privateSite := filepath.Join(previousTarget, "core", "runtime", "bin", "private-site.mjs")
+		privateSite := privateSiteEntrypoint(previousTarget)
 		if _, serviceErr := activateService(ctx, opts, previousTarget, node, privateSite, runner, envFor(opts)); serviceErr != nil {
 			_ = replacePointer(current, currentTarget, platform, runner)
 			_ = replacePointer(previous, previousTarget, platform, runner)
+			restoreCurrentService()
 			return Result{}, fmt.Errorf("restore previous service: %w", serviceErr)
 		}
 	}
@@ -378,6 +406,10 @@ func readInstallationState(file string) installationState {
 		_ = json.Unmarshal(data, &state)
 	}
 	return state
+}
+
+func serviceIsManaged(service string) bool {
+	return service != "" && service != "skipped" && service != "not-registered" && service != "removed"
 }
 
 func VerifyRelease(root string) (Manifest, error) {
