@@ -28,6 +28,8 @@ test('desktop shell stays inside the immutable platform release', () => {
   const installer = read('scripts/build-platform-installer.mjs');
   assert.match(build, /manifest\.desktopShell/);
   assert.match(build, /writeChecksums\(releaseRoot\)/);
+  assert.match(build, /platform === 'linux' \? 16 : 10/);
+  assert.match(build, /compressedBytes: 5 \* 1024 \* 1024/);
   assert.match(installer, /buildGo\('personal-agent'/);
 });
 

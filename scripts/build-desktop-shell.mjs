@@ -28,7 +28,10 @@ function main() {
   const copied = copyArtifact(output);
   const bytes = directoryBytes(copied);
   const compressedBytes = gzipBytes(copied);
-  const packageBudget = { rawBytes: 10 * 1024 * 1024, compressedBytes: 5 * 1024 * 1024 };
+  const packageBudget = {
+    rawBytes: (platform === 'linux' ? 16 : 10) * 1024 * 1024,
+    compressedBytes: 5 * 1024 * 1024,
+  };
   if (bytes > packageBudget.rawBytes || compressedBytes > packageBudget.compressedBytes) {
     throw new Error(`Desktop shell exceeds package budget: raw=${bytes}/${packageBudget.rawBytes} compressed=${compressedBytes}/${packageBudget.compressedBytes}`);
   }

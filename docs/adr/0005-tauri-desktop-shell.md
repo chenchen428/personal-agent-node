@@ -50,6 +50,9 @@ native repair message instead of failing invisibly.
 - Each target is built on its native CI runner and included in checksum, SBOM, signing, provenance,
   installation, upgrade, and rollback acceptance.
 - Linux packages depend on a compatible system WebKitGTK runtime instead of bundling a browser.
+- The compressed desktop-shell increment remains capped at 5 MiB on every platform. The raw
+  executable cap is 10 MiB on Windows/macOS and 16 MiB on Linux, where WebKitGTK/GTK linking makes
+  the ARM64 executable larger without increasing the downloaded shell by the same amount.
 - The NSIS stub adds a small Windows-only wrapper but no browser or application runtime.
 - Visual appearance and browser interaction remain user-owned acceptance. Automated checks cover
   build contracts, URL policy, single-instance behavior, packaging, installation, and lifecycle
