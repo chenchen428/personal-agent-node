@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { buildSetupTaskModel, type SetupCheck, type SetupState, type SetupTask } from "@/lib/setup-tasks";
+import { buildSetupTaskModel, validateLocalPasswordInput, type SetupCheck, type SetupState, type SetupTask } from "@/lib/setup-tasks";
 import { Check, CheckCircle2, ChevronDown, Circle, ExternalLink, Mail, MessageCircle, RefreshCw, ShieldCheck, Wrench } from "lucide-react";
 
 type ManagedCloudAction = { state: "idle" | "starting" | "running" | "succeeded" | "failed"; phase: "idle" | "enrollment" | "resources" | "complete"; code?: string };
@@ -83,18 +83,28 @@ export function SetupDashboard() {
   };
 
   const renderAction = (requestedAction: string) => {
-    if (requestedAction === "installation.local-auth") return (
-      <form className="grid gap-3" onSubmit={(event) => { event.preventDefault(); void runAction(requestedAction, { password, confirmation }); }}>
+    if (requestedAction === "installation.local-auth") {
+      const passwordIssue = validateLocalPasswordInput(password, confirmation);
+      return (
+      <form className="grid gap-3" noValidate onSubmit={(event) => {
+        event.preventDefault();
+        if (passwordIssue) {
+          setActionMessage((current) => ({ ...current, [requestedAction]: passwordIssue }));
+          return;
+        }
+        void runAction(requestedAction, { password, confirmation });
+      }}>
         <div className="grid gap-2 sm:grid-cols-2">
-          <Input aria-label="本机登录密码" type="password" autoComplete="new-password" minLength={12} maxLength={256} placeholder="至少 12 个字符" value={password} onChange={(event) => setPassword(event.target.value)} />
-          <Input aria-label="确认本机登录密码" type="password" autoComplete="new-password" minLength={12} maxLength={256} placeholder="再次输入密码" value={confirmation} onChange={(event) => setConfirmation(event.target.value)} />
+          <Input aria-label="本机登录密码" type="password" autoComplete="new-password" required minLength={12} maxLength={256} placeholder="至少 12 个字符" value={password} onChange={(event) => setPassword(event.target.value)} />
+          <Input aria-label="确认本机登录密码" type="password" autoComplete="new-password" required minLength={12} maxLength={256} placeholder="再次输入密码" value={confirmation} onChange={(event) => setConfirmation(event.target.value)} />
         </div>
         <div className="flex flex-wrap items-center gap-3">
-          <Button type="submit" disabled={password.length < 12 || password !== confirmation || actionId === requestedAction}>{actionId === requestedAction ? "设置中" : "确认设置"}</Button>
-          {actionMessage[requestedAction] ? <small className="text-xs text-[var(--muted)]" role="status">{actionMessage[requestedAction]}</small> : null}
+          <Button type="submit" disabled={actionId === requestedAction}>{actionId === requestedAction ? "设置中" : "确认设置"}</Button>
+          <small className="text-xs text-[var(--muted)]" role="status">{actionMessage[requestedAction] || (password || confirmation ? passwordIssue || "两次输入一致，可以确认设置。" : "密码仅保存在本机，并以不可逆校验器存储。")}</small>
         </div>
       </form>
-    );
+      );
+    }
 
     if (["installation.repair", "installation.service-repair"].includes(requestedAction)) return <a className={buttonVariants({ variant: "outline", size: "sm" })} href={RELEASES} target="_blank" rel="noreferrer"><Wrench className="size-3.5" />打开安装包<ExternalLink className="size-3.5" /></a>;
     if (["agent.codex.install-guide", "agent.codex.update-guide", "agent.codex.login-guide"].includes(requestedAction)) return <a className={buttonVariants({ variant: "outline", size: "sm" })} href={CODEX_GUIDE} target="_blank" rel="noreferrer">Codex 官方指南<ExternalLink className="size-3.5" /></a>;
@@ -104,7 +114,7 @@ export function SetupDashboard() {
     if (["connectivity.choose-mode", "connectivity.managed-authorize", "connectivity.repair"].includes(requestedAction)) {
       const cloudAction = snapshot?.actions?.managedCloud;
       const cloudPending = ["starting", "running"].includes(cloudAction?.state || "idle");
-      const cloudMessage = cloudAction?.state === "failed" ? `页面验证未完成（${cloudAction.code || "请重试"}）。`
+      const cloudMessage = cloudAction?.state === "failed" ? cloudFailureMessage(cloudAction.code)
         : cloudAction?.phase === "resources" ? "本机接入已确认，正在验证公网域名和 Agent 邮箱。"
           : cloudPending ? "已打开 chenjianhui.site，请在已登录的页面确认这台电脑。"
             : cloudAction?.state === "succeeded" ? "页面验证已完成，正在刷新资源状态。" : "";
@@ -124,16 +134,17 @@ export function SetupDashboard() {
 
   const checks = snapshot?.checks || [];
   const tasks = buildSetupTaskModel(checks);
-  const requiredDone = !loading && !error && tasks.totalRequired > 0 && tasks.requiredTasks.length === 0 && tasks.blockedChecks.length === 0;
-  const headline = loading ? "正在检查这台电脑" : error ? "暂时无法完成检查" : requiredDone ? "本机已经可以使用" : `${tasks.requiredTasks.length} 项待完成`;
-  const summary = loading ? "正在读取安装、Codex 和对话链路的本机事实。" : error || (requiredDone ? "安装和 Codex Agent 已通过核心检查。" : "先完成左侧必做项；公网、邮箱和渠道可以稍后再配。" );
+  const coreReady = !loading && !error && tasks.totalRequired > 0 && tasks.completedRequired === tasks.totalRequired && tasks.blockedChecks.length === 0;
+  const currentDone = !loading && !error && tasks.requiredTasks.length === 0 && tasks.blockedChecks.length === 0;
+  const headline = loading ? "正在检查这台电脑" : error ? "暂时无法完成检查" : currentDone ? "当前设置已经完成" : `${tasks.requiredTasks.length} 项待完成`;
+  const summary = loading ? "正在读取安装、Codex 和对话链路的本机事实。" : error || (currentDone ? "安装、Codex、公网域名与 Agent 邮箱已经完成检查。" : coreReady ? "本机已经可用；继续完成公网域名与 Agent 邮箱验证。" : "先完成本机、Codex、公网域名与 Agent 邮箱的当前事项。" );
 
   return <section className="grid gap-6 pt-8" aria-label="Setup readiness" aria-live="polite">
     <Card className="overflow-hidden border-0 bg-[var(--surface-dark)] text-[#d2cec6] shadow-[0_20px_60px_rgba(20,20,19,.12)]">
       <CardContent className="grid gap-8 p-6 sm:p-8 lg:grid-cols-[minmax(0,1fr)_240px] lg:items-end">
         <div className="min-w-0">
           <div className="mb-5 flex items-center gap-2.5 text-[11px] font-medium tracking-[.12em] text-[#c8c4bc]">
-            <span className={`size-2 rounded-full ${loading ? "animate-pulse bg-[var(--coral)]" : requiredDone ? "bg-[var(--success)]" : error ? "bg-[var(--error)]" : "bg-[var(--warning)]"}`} />
+            <span className={`size-2 rounded-full ${loading ? "animate-pulse bg-[var(--coral)]" : coreReady ? "bg-[var(--success)]" : error ? "bg-[var(--error)]" : "bg-[var(--warning)]"}`} />
             CORE READINESS
           </div>
           <h2 className="m-0 text-4xl leading-none text-[#faf9f5] sm:text-5xl">{headline}</h2>
@@ -153,18 +164,18 @@ export function SetupDashboard() {
       <Card className="min-w-0 shadow-[0_10px_32px_rgba(20,20,19,.05)]">
         <CardHeader className="flex flex-row items-start justify-between gap-4 border-b border-[var(--hairline)] pb-5">
           <div className="min-w-0">
-            <div className="mb-2 font-[var(--mono)] text-[10px] tracking-[.12em] text-[var(--coral)]">01 · REQUIRED</div>
+            <div className="mb-2 font-[var(--mono)] text-[10px] tracking-[.12em] text-[var(--coral)]">01 · NOW</div>
             <CardTitle>现在处理</CardTitle>
-            <CardDescription className="mt-1">这里只保留当前能执行、且影响本机使用的事项。</CardDescription>
+            <CardDescription className="mt-1">本机核心保持独立；这里集中完成当前安装引导。</CardDescription>
           </div>
-          <Badge variant={requiredDone ? "ready" : tasks.requiredTasks.length ? "warning" : "neutral"}>{loading ? "检查中" : requiredDone ? "已完成" : `${tasks.requiredTasks.length} 项`}</Badge>
+          <Badge variant={currentDone ? "ready" : tasks.requiredTasks.length ? "warning" : "neutral"}>{loading ? "检查中" : currentDone ? "已完成" : `${tasks.requiredTasks.length} 项`}</Badge>
         </CardHeader>
         <CardContent className="grid gap-3 p-4 sm:p-5">
           {tasks.requiredTasks.length ? <ol className="grid list-none gap-3 p-0">
             {tasks.requiredTasks.map((task, index) => <TodoItem key={task.check.id} task={task} index={index + 1} action={renderAction(task.actionId)} />)}
           </ol> : <div className="flex min-h-36 items-center gap-4 rounded-lg border border-dashed border-[var(--hairline)] bg-[var(--surface-soft)] p-5">
-            {requiredDone ? <CheckCircle2 className="size-7 shrink-0 text-[var(--success)]" /> : <Circle className="size-7 shrink-0 text-[var(--muted-soft)]" />}
-            <div><strong className="block text-sm font-medium text-[var(--ink)]">{loading ? "正在生成任务清单" : requiredDone ? "没有阻塞本机使用的任务" : error || "正在等待检测结果"}</strong><span className="mt-1 block text-xs leading-relaxed text-[var(--muted)]">{requiredDone ? "可以直接进入对话；公网和邮件仍可稍后配置。" : "检测完成后，这里只会留下需要你处理的事项。"}</span></div>
+            {currentDone ? <CheckCircle2 className="size-7 shrink-0 text-[var(--success)]" /> : <Circle className="size-7 shrink-0 text-[var(--muted-soft)]" />}
+            <div><strong className="block text-sm font-medium text-[var(--ink)]">{loading ? "正在生成任务清单" : currentDone ? "当前引导已经完成" : error || "正在等待检测结果"}</strong><span className="mt-1 block text-xs leading-relaxed text-[var(--muted)]">{currentDone ? "本机、Codex、公网域名与 Agent 邮箱均已完成检查。" : "检测完成后，这里只会留下需要你处理的事项。"}</span></div>
           </div>}
         </CardContent>
       </Card>
@@ -236,4 +247,15 @@ function StatusIcon({ state }: { state: SetupState }) {
   if (state === "checking") return <RefreshCw className="size-3.5 animate-spin text-[var(--coral)]" />;
   if (state === "blocked") return <Circle className="size-3.5 text-[var(--error)]" />;
   return <Circle className="size-3.5 text-[var(--warning)]" />;
+}
+
+function cloudFailureMessage(code = "") {
+  const messages: Record<string, string> = {
+    CLOUD_AUTH_DENIED: "页面验证已取消，请重新验证并确认这台电脑。",
+    CLOUD_AUTH_EXPIRED: "页面验证已过期，请重新发起验证。",
+    CLOUD_AUTH_FAILED: "Cloud 登录状态未通过，请确认 chenjianhui.site 已登录后重试。",
+    CLOUD_REQUEST_FAILED: "Cloud 授权接口暂时未完成请求，请确认 Cloud 已发布最新版本后重试。",
+    DEPENDENCY_UNAVAILABLE: "Cloud 授权服务暂时不可用，请稍后重新验证。",
+  };
+  return messages[code] || `页面验证未完成（${code || "请重试"}）。`;
 }

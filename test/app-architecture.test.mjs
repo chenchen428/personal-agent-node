@@ -63,6 +63,10 @@ test("the application reuses shadcn primitives for setup, channels, and responsi
   assert.match(setup, /chenjianhui\.site/);
   assert.match(setup, /managedCloud/);
   assert.match(setup, /window\.setTimeout/);
+  assert.match(setup, /01 · NOW/);
+  assert.match(setup, /Cloud 授权接口暂时未完成请求/);
+  assert.match(setup, /noValidate/);
+  assert.match(setup, /两次输入一致，可以确认设置/);
   assert.match(setup, /text-\[#faf9f5\]/);
   assert.doesNotMatch(setup, /text-\[var\(--on-dark\)\]/);
   assert.doesNotMatch(setup, /text-\[clamp/);

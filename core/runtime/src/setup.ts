@@ -77,6 +77,7 @@ export async function setupStatus({
   const remote = remoteSelected && remoteHost
     ? await remoteProbe({ host: remoteHost, token: config?.env?.OPEN_AGENT_BRIDGE_API_TOKEN || '' })
     : { dns: false, tls: false, remoteApp: false };
+  const managedCloudComplete = enrolled && managed.publicDomain.ready && managed.agentMail.ready;
 
   const checks = [
     makeCheck('installation.release', releaseReady, releaseReady ? '已安装可信发行版' : '需要完成发行版安装', { installed: releaseReady, releaseId: releaseReady ? String(installation.activeReleaseId).slice(0, 128) : '' }, generatedAt),
@@ -114,7 +115,7 @@ export async function setupStatus({
     },
     groups: setupRegistry.groups,
     checks,
-    actions: { managedCloud: publicManagedCloudAction(managedCloudAction) },
+    actions: { managedCloud: publicManagedCloudAction(managedCloudComplete ? { state: 'succeeded', phase: 'complete' } : managedCloudAction) },
   };
 }
 

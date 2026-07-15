@@ -3,6 +3,7 @@ import path from 'node:path';
 import { spawn } from 'node:child_process';
 
 import { writePasswordVerifier } from '../../agent/src/auth/personal-auth.js';
+import { managedServiceReadiness } from './cloud-resources.ts';
 import { removeSecretEnvKeys, resolveNodeConfig, writeJsonAtomic, workspaceRoot } from './config.ts';
 
 const mutationActions = Object.freeze({
@@ -70,18 +71,17 @@ function launchManagedCloudSetup({ dataRoot }) {
   }
   const cli = path.join(workspaceRoot, 'core', 'runtime', 'bin', 'personal-agent.mjs');
   const startingPhase = managedCloudAuthorizationPhase({ dataRoot });
+  if (startingPhase === 'complete') {
+    writeActionStatus(statusFile, { state: 'succeeded', phase: 'complete' });
+    return { started: false, state: 'succeeded', phase: 'complete' };
+  }
   const startResourceAuthorization = () => {
-    const resource = spawn(process.execPath, [cli, 'cloud', 'login', '--data-root', dataRoot, '--json'], {
-      detached: false,
-      stdio: 'ignore',
-      windowsHide: true,
-      env: { ...process.env, PRIVATE_SITE_DATA_ROOT: dataRoot },
-    });
+    const { child: resource, diagnostics } = spawnManagedCli(cli, ['cloud', 'login', '--data-root', dataRoot, '--json'], dataRoot);
     writeActionStatus(statusFile, { state: 'running', phase: 'resources', pid: resource.pid || 0 });
     resource.once('error', (error) => writeActionStatus(statusFile, { state: 'failed', phase: 'resources', code: safeCode(error) }));
     resource.once('exit', (resourceCode) => writeActionStatus(statusFile, resourceCode === 0
       ? { state: 'succeeded', phase: 'complete' }
-      : { state: 'failed', phase: 'resources', code: `CLI_EXIT_${Number(resourceCode ?? -1)}` }));
+      : { state: 'failed', phase: 'resources', code: safeCliFailureCode(diagnostics.value, resourceCode) }));
     return resource;
   };
   if (startingPhase === 'resources') {
@@ -90,17 +90,12 @@ function launchManagedCloudSetup({ dataRoot }) {
     return { started: true, state: 'running', phase: 'resources' };
   }
   writeActionStatus(statusFile, { state: 'starting', phase: 'enrollment' });
-  const first = spawn(process.execPath, [cli, 'cloud', 'connect', '--data-root', dataRoot, '--json'], {
-    detached: false,
-    stdio: 'ignore',
-    windowsHide: true,
-    env: { ...process.env, PRIVATE_SITE_DATA_ROOT: dataRoot },
-  });
+  const { child: first, diagnostics } = spawnManagedCli(cli, ['cloud', 'connect', '--data-root', dataRoot, '--json'], dataRoot);
   writeActionStatus(statusFile, { state: 'running', phase: 'enrollment', pid: first.pid || 0 });
   first.once('error', (error) => writeActionStatus(statusFile, { state: 'failed', phase: 'enrollment', code: safeCode(error) }));
   first.once('exit', (code) => {
     if (code !== 0) {
-      writeActionStatus(statusFile, { state: 'failed', phase: 'enrollment', code: `CLI_EXIT_${Number(code ?? -1)}` });
+      writeActionStatus(statusFile, { state: 'failed', phase: 'enrollment', code: safeCliFailureCode(diagnostics.value, code) });
       return;
     }
     startResourceAuthorization();
@@ -108,9 +103,35 @@ function launchManagedCloudSetup({ dataRoot }) {
   return { started: true, state: 'running', phase: 'enrollment' };
 }
 
+function spawnManagedCli(cli, args, dataRoot) {
+  const diagnostics = { value: '' };
+  const child = spawn(process.execPath, [cli, ...args], {
+    detached: false,
+    stdio: ['ignore', 'ignore', 'pipe'],
+    windowsHide: true,
+    env: { ...process.env, PRIVATE_SITE_DATA_ROOT: dataRoot },
+  });
+  child.stderr?.setEncoding('utf8');
+  child.stderr?.on('data', (chunk) => { diagnostics.value = `${diagnostics.value}${chunk}`.slice(-16_384); });
+  return { child, diagnostics };
+}
+
+export function safeCliFailureCode(output, exitCode) {
+  const lines = String(output || '').split(/\r?\n/).reverse();
+  for (const line of lines) {
+    if (!line.trim().startsWith('{')) continue;
+    try {
+      const code = String(JSON.parse(line).error?.code || '');
+      if (/^[A-Z0-9_]{1,64}$/.test(code)) return code;
+    } catch {}
+  }
+  return `CLI_EXIT_${Number.isInteger(Number(exitCode)) ? Number(exitCode) : -1}`;
+}
+
 export function managedCloudAuthorizationPhase({ dataRoot }) {
   const config = resolveNodeConfig({ ...process.env, PRIVATE_SITE_DATA_ROOT: dataRoot });
-  return fs.existsSync(path.join(config.configDir, 'cloud.json')) ? 'resources' : 'enrollment';
+  if (!fs.existsSync(path.join(config.configDir, 'cloud.json'))) return 'enrollment';
+  return managedServiceReadiness({ dataRoot }).state === 'enabled' ? 'complete' : 'resources';
 }
 
 function writeActionStatus(filePath, value) {

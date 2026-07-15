@@ -7,7 +7,7 @@ import test from 'node:test';
 import { verifyPasswordVerifier } from '../../agent/src/auth/personal-auth.js';
 import { initializeSite, readEnvFile } from '../src/config.ts';
 import { createOperationStore } from '../src/operations.ts';
-import { executeSetupAction, managedCloudAuthorizationPhase, planSetupAction } from '../src/setup-actions.ts';
+import { executeSetupAction, managedCloudAuthorizationPhase, planSetupAction, safeCliFailureCode } from '../src/setup-actions.ts';
 
 test('local auth setup uses an approved R2 plan and removes the migration plaintext', async () => {
   const dataRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'personal-agent-setup-action-'));
@@ -57,12 +57,31 @@ test('mail setup explicitly selects optional readiness without storing secrets',
   } finally { fs.rmSync(dataRoot, { recursive: true, force: true }); }
 });
 
-test('managed verification skips repeated Node enrollment after Cloud is already connected', () => {
+test('managed verification skips completed enrollment and resource authorization phases', () => {
   const dataRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'personal-agent-setup-cloud-phase-'));
   try {
     const { config } = initializeSite({ dataRoot, domain: 'personal-agent.local' });
     assert.equal(managedCloudAuthorizationPhase({ dataRoot }), 'enrollment');
     fs.writeFileSync(path.join(config.configDir, 'cloud.json'), `${JSON.stringify({ schemaVersion: 1, managedHost: 'node.chenjianhui.site' })}\n`);
     assert.equal(managedCloudAuthorizationPhase({ dataRoot }), 'resources');
+    fs.writeFileSync(path.join(config.configDir, 'cloud-resources.json'), `${JSON.stringify({
+      schemaVersion: 1,
+      resources: {
+        site: { managedHost: 'node.chenjianhui.site', publicDomain: 'node.chenjianhui.site' },
+        agentMailAddress: 'agent@node.chenjianhui.site',
+        eligibility: { managedMail: true, managedConfiguration: true },
+      },
+      syncedAt: '2026-07-15T00:00:00.000Z',
+    })}\n`);
+    assert.equal(managedCloudAuthorizationPhase({ dataRoot }), 'complete');
   } finally { fs.rmSync(dataRoot, { recursive: true, force: true }); }
+});
+
+test('managed verification exposes only a safe CLI failure code', () => {
+  const output = [
+    JSON.stringify({ ok: true, event: 'cloud.device-authorization', result: { userCode: 'PRIVATE-CODE', verificationUrl: 'https://chenjianhui.site/connect' } }),
+    JSON.stringify({ ok: false, error: { code: 'CLOUD_REQUEST_FAILED', message: 'private upstream detail' } }),
+  ].join('\n');
+  assert.equal(safeCliFailureCode(output, 7), 'CLOUD_REQUEST_FAILED');
+  assert.equal(safeCliFailureCode('not-json', 7), 'CLI_EXIT_7');
 });

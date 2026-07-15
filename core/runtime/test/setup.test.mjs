@@ -94,9 +94,20 @@ test('managed remote readiness requires a fresh reverse application tunnel inste
       enrolledAt: now.toISOString(),
       tunnel: { protocol: 'pa-reverse-ws-v1', endpoint: 'wss://relay.chenjianhui.site/v1/connect', heartbeatSeconds: 20, maxFrameBytes: 131072, generation: 1 },
     })}\n`);
+    fs.writeFileSync(path.join(dataRoot, 'config', 'cloud-resources.json'), `${JSON.stringify({
+      schemaVersion: 1,
+      resources: {
+        site: { managedHost: 'owner.chenjianhui.site', publicDomain: 'owner.chenjianhui.site' },
+        agentMailAddress: 'agent@owner.chenjianhui.site',
+        eligibility: { managedMail: true, managedConfiguration: true },
+      },
+      syncedAt: now.toISOString(),
+    })}\n`);
     fs.writeFileSync(initialized.config.configPath, `${JSON.stringify({ ...initialized.config.site, connectionMode: 'managed-cloud' })}\n`);
     fs.mkdirSync(path.join(dataRoot, 'runtime'), { recursive: true });
+    fs.mkdirSync(path.join(dataRoot, 'runtime', 'setup'), { recursive: true });
     fs.writeFileSync(path.join(dataRoot, 'runtime', 'reverse-tunnel.json'), `${JSON.stringify({ schemaVersion: 1, protocol: 'pa-reverse-ws-v1', state: 'ready', generation: 1, lastPongAt: now.toISOString() })}\n`);
+    fs.writeFileSync(path.join(dataRoot, 'runtime', 'setup', 'managed-cloud-action.json'), `${JSON.stringify({ schemaVersion: 1, state: 'failed', phase: 'enrollment', code: 'CLI_EXIT_7' })}\n`);
     const status = await setupStatus({
       dataRoot,
       installRoot: path.join(dataRoot, 'install'),
@@ -110,6 +121,7 @@ test('managed remote readiness requires a fresh reverse application tunnel inste
     assert.equal(status.checks.find((check) => check.id === 'connectivity.tunnel').state, 'ready');
     assert.match(status.checks.find((check) => check.id === 'connectivity.tunnel').summary, /应用层反向隧道/);
     assert.equal(status.readiness.remote, 'ready');
+    assert.deepEqual(status.actions.managedCloud, { state: 'succeeded', phase: 'complete' });
   } finally { fs.rmSync(dataRoot, { recursive: true, force: true }); }
 });
 

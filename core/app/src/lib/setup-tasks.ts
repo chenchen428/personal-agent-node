@@ -31,7 +31,6 @@ const categoryLabels: Record<string, string> = {
 };
 
 const optionalTitles: Record<string, string> = {
-  "connectivity.mode": "验证公网域名与 Agent 邮箱",
   "mail.local-ingest": "接入自己的邮件来源",
 };
 
@@ -39,16 +38,25 @@ export function canonicalSetupAction(id: string) {
   return ["connectivity.choose-mode", "connectivity.repair"].includes(id) ? "connectivity.managed-authorize" : id;
 }
 
+export function validateLocalPasswordInput(password: string, confirmation: string) {
+  if (!password) return "请输入本机登录密码。";
+  if (password.length < 12) return `密码至少需要 12 个字符，还差 ${12 - password.length} 个。`;
+  if (!confirmation) return "请再次输入密码进行确认。";
+  if (password !== confirmation) return "两次输入的密码不一致。";
+  return "";
+}
+
 export function buildSetupTaskModel(checks: SetupCheck[]) {
   const requiredChecks = checks.filter((check) => requiredRequirements.has(check.requirement));
   const blockedChecks = requiredChecks.filter((check) => check.state === "blocked");
-  const requiredTasks = checks
+  const coreTasks = checks
     .filter((check) => requiredRequirements.has(check.requirement) && check.state === "action-required")
     .map((check) => toTask(check, blockedChecks));
+  const onlineTask = buildOnlineIdentityTask(checks);
+  const requiredTasks = [...coreTasks, ...(onlineTask ? [onlineTask] : [])];
+  const onlineReady = !onlineTask;
   const optionalCandidates = [
-    checks.find((check) => check.group === "connectivity" && check.state === "action-required")
-      || checks.find((check) => check.id === "connectivity.mode" && check.state === "not-selected"),
-    checks.find((check) => check.group === "mail-identity" && check.state === "action-required"),
+    onlineReady ? checks.find((check) => check.group === "connectivity" && check.state === "action-required") : undefined,
     checks.find((check) => check.group === "local-mail" && check.state === "action-required")
       || checks.find((check) => check.id === "mail.local-ingest" && check.state === "not-selected"),
   ].filter(Boolean) as SetupCheck[];
@@ -66,10 +74,27 @@ export function buildSetupTaskModel(checks: SetupCheck[]) {
     optionalTasks,
     requiredChecks,
     blockedChecks,
+    onlineReady,
     completedRequired,
     totalRequired: requiredChecks.length,
     progress: requiredChecks.length ? Math.round((completedRequired / requiredChecks.length) * 100) : 0,
   };
+}
+
+function buildOnlineIdentityTask(checks: SetupCheck[]): SetupTask | null {
+  const enrollment = checks.find((check) => check.id === "connectivity.enrollment");
+  const mailIdentity = checks.find((check) => check.id === "mail.identity");
+  if (!enrollment || !mailIdentity || (enrollment.state === "ready" && mailIdentity.state === "ready")) return null;
+  const check: SetupCheck = {
+    ...enrollment,
+    id: "connectivity.public-and-mail",
+    state: "action-required",
+    summary: "验证公网域名与 Agent 邮箱",
+    why: "一次统一引导完成这台 Node 的公网接入，并同步属于你的 Agent 邮箱身份。",
+    guidance: "点击验证，在已登录的 chenjianhui.site 页面确认；完成后本机会自动继续检查公网域名与 Agent 邮箱。",
+    actionIds: ["connectivity.managed-authorize"],
+  };
+  return toTask(check, [], check.summary);
 }
 
 function toTask(check: SetupCheck, blockedChecks: SetupCheck[], title = check.summary): SetupTask {
