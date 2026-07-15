@@ -37,6 +37,7 @@ test("Next.js owns the application shell, Setup Center, BFF and Plugin Studio", 
 test("the application reuses shadcn primitives for setup, channels, and responsive page previews", () => {
   const config = JSON.parse(read("core/app/components.json"));
   const setup = read("core/app/src/components/setup-dashboard.tsx");
+  const setupPage = read("core/app/src/app/app/setup/page.tsx");
   const channels = read("core/app/src/components/channels-dashboard.tsx");
   const pages = read("core/app/src/components/pages-dashboard.tsx");
   const css = read("core/app/src/app/globals.css");
@@ -61,6 +62,10 @@ test("the application reuses shadcn primitives for setup, channels, and responsi
   assert.match(setup, /chenjianhui\.site/);
   assert.match(setup, /managedCloud/);
   assert.match(setup, /window\.setTimeout/);
+  assert.match(setup, /text-\[#faf9f5\]/);
+  assert.doesNotMatch(setup, /text-\[var\(--on-dark\)\]/);
+  assert.doesNotMatch(setup, /text-\[clamp/);
+  assert.doesNotMatch(setupPage, /text-\[clamp/);
   assert.match(channels, /components\/ui\/(?:badge|card)/);
   assert.match(pages, /components\/ui\/tabs/);
   assert.match(pages, /value="mobile"/);

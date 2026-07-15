@@ -129,22 +129,22 @@ export function SetupDashboard() {
   const summary = loading ? "正在读取安装、Codex 和对话链路的本机事实。" : error || (requiredDone ? "安装和 Codex Agent 已通过核心检查。" : "先完成左侧必做项；公网、邮箱和渠道可以稍后再配。" );
 
   return <section className="grid gap-6 pt-8" aria-label="Setup readiness" aria-live="polite">
-    <Card className="overflow-hidden border-0 bg-[var(--surface-dark)] text-[#b7b3ab] shadow-[0_20px_60px_rgba(20,20,19,.12)]">
+    <Card className="overflow-hidden border-0 bg-[var(--surface-dark)] text-[#d2cec6] shadow-[0_20px_60px_rgba(20,20,19,.12)]">
       <CardContent className="grid gap-8 p-6 sm:p-8 lg:grid-cols-[minmax(0,1fr)_240px] lg:items-end">
         <div className="min-w-0">
-          <div className="mb-5 flex items-center gap-2.5 text-[11px] font-medium tracking-[.12em] text-[#a09d96]">
+          <div className="mb-5 flex items-center gap-2.5 text-[11px] font-medium tracking-[.12em] text-[#c8c4bc]">
             <span className={`size-2 rounded-full ${loading ? "animate-pulse bg-[var(--coral)]" : requiredDone ? "bg-[var(--success)]" : error ? "bg-[var(--error)]" : "bg-[var(--warning)]"}`} />
             CORE READINESS
           </div>
-          <h2 className="m-0 text-[clamp(34px,5vw,50px)] leading-none text-[var(--on-dark)]">{headline}</h2>
-          <p className="mt-4 max-w-2xl text-sm leading-6 text-[#b7b3ab]">{summary}</p>
+          <h2 className="m-0 text-4xl leading-none text-[#faf9f5] sm:text-5xl">{headline}</h2>
+          <p className="mt-4 max-w-2xl text-sm leading-6 text-[#d2cec6]">{summary}</p>
         </div>
         <div className="grid gap-3">
           <div className="flex items-end justify-between gap-4">
-            <div className="flex items-baseline gap-1.5"><strong className="font-[var(--display)] text-4xl font-normal leading-none text-[var(--on-dark)]">{tasks.completedRequired}</strong><span className="font-[var(--mono)] text-xs text-[#77736d]">/ {tasks.totalRequired || 10}</span></div>
-            <span className="text-xs text-[#a09d96]">核心检查</span>
+            <div className="flex items-baseline gap-1.5"><strong className="font-[var(--display)] text-4xl font-normal leading-none text-[#faf9f5]">{tasks.completedRequired}</strong><span className="font-[var(--mono)] text-xs text-[#aaa69f]">/ {tasks.totalRequired || 10}</span></div>
+            <span className="text-xs text-[#c8c4bc]">核心检查</span>
           </div>
-          <Progress className="bg-[#34312d] [&_[data-slot=progress-indicator]]:bg-[var(--coral)]" value={tasks.progress} aria-label="核心检查进度" />
+          <Progress className="bg-[#484541] [&_[data-slot=progress-indicator]]:bg-[var(--coral)]" value={tasks.progress} aria-label="核心检查进度" />
         </div>
       </CardContent>
     </Card>
