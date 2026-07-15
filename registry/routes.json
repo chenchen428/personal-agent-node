@@ -17,6 +17,7 @@
     { "pattern": "/app/*", "access": "authenticated", "capability": "console" },
     { "pattern": "/api/app/*", "access": "authenticated", "capability": "console" },
     { "pattern": "/api/chat/*", "access": "authenticated", "capability": "agent" },
+    { "pattern": "/api/app/mail/*", "access": "authenticated", "capability": "mail" },
     { "pattern": "/api/channels/*", "access": "authenticated", "capability": "channels" },
     { "pattern": "/api/managed-platforms/*", "access": "authenticated", "capability": "managed-platforms" },
     { "pattern": "/api/publications/*", "access": "authenticated", "capability": "publications" },

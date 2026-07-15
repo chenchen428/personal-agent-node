@@ -5,8 +5,10 @@ import test from "node:test";
 
 const root = path.resolve(import.meta.dirname, "..");
 
-test("Next.js owns the application shell, Setup Center, BFF and Plugin Studio", () => {
+test("Next.js owns the application shell, conversation, mail, Setup Center, BFF and Plugin Studio", () => {
   const shell = read("core/app/src/components/app-shell.tsx");
+  const chat = read("core/app/src/components/chat-dashboard.tsx");
+  const mail = read("core/app/src/components/mail-dashboard.tsx");
   const setup = read("core/app/src/components/setup-dashboard.tsx");
   const setupPage = read("core/app/src/app/app/setup/page.tsx");
   const proxy = read("core/app/src/app/api/[...path]/route.ts");
@@ -17,6 +19,12 @@ test("Next.js owns the application shell, Setup Center, BFF and Plugin Studio", 
   assert.match(shell, /\/app\/pages/);
   assert.match(shell, /\/app\/channels/);
   assert.doesNotMatch(shell, /\/app\/files/);
+  assert.match(shell, /mobile-nav/);
+  assert.match(chat, /createdBy: "web"/);
+  assert.match(chat, /\/api\/chat\/sessions/);
+  assert.match(mail, /\/api\/app\/mail\/import/);
+  assert.match(mail, /导入 EML/);
+  assert.match(mail, /open-abg-mail-ingest/);
   assert.match(setup, /buildSetupTaskModel/);
   assert.match(setup, /现在处理/);
   assert.match(setup, /以后配置/);
@@ -32,6 +40,9 @@ test("Next.js owns the application shell, Setup Center, BFF and Plugin Studio", 
   );
   assert.equal(distribution.routing.paths.find((route) => route.key === "app-pages").targetKey, "console");
   assert.equal(distribution.routing.paths.find((route) => route.key === "app-channels").targetKey, "console");
+  assert.equal(distribution.routing.paths.find((route) => route.key === "app-chat").targetKey, "console");
+  assert.equal(distribution.routing.paths.find((route) => route.key === "app-mail").targetKey, "console");
+  assert.equal(distribution.routing.paths.find((route) => route.key === "api-app-mail").targetKey, "agent");
 });
 
 test("the application reuses shadcn primitives for setup, channels, and responsive page previews", () => {
@@ -60,11 +71,11 @@ test("the application reuses shadcn primitives for setup, channels, and responsi
   assert.match(setup, /developers\.openai\.com\/codex\/cli/);
   assert.match(setup, /打开安装包/);
   assert.match(setup, /打开邮件页/);
-  assert.match(setup, /chenjianhui\.site/);
+  assert.match(setup, /personal-agent\.cn/);
   assert.match(setup, /managedCloud/);
   assert.match(setup, /window\.setTimeout/);
   assert.match(setup, /01 · NOW/);
-  assert.match(setup, /Cloud 授权接口暂时未完成请求/);
+  assert.match(setup, /无法连接 personal-agent\.cn/);
   assert.match(setup, /noValidate/);
   assert.match(setup, /两次输入一致，可以确认设置/);
   assert.match(setup, /text-\[#faf9f5\]/);
@@ -78,7 +89,8 @@ test("the application reuses shadcn primitives for setup, channels, and responsi
   assert.match(read("core/app/src/components/ui/progress.tsx"), /data-slot="progress"/);
   assert.match(button, /bg-\[var\(--coral\)\][^\n]*text-white/);
   assert.match(css, /@layer base \{[\s\S]*a \{ color: inherit;[\s\S]*h1, h2, h3 \{/);
-  assert.match(setup, /lg:grid-cols-\[minmax\(0,1\.45fr\)_minmax\(320px,\.75fr\)\]/);
+  assert.doesNotMatch(setup, /lg:grid-cols-\[minmax\(0,1\.45fr\)_minmax\(320px,\.75fr\)\]/);
+  assert.match(setup, /setup-task-row/);
   assert.match(setup, /sm:grid-cols-2/);
   assert.match(css, /preview-mobile/);
   assert.match(css, /@media \(max-width: 767px\)/);

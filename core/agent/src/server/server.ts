@@ -20,6 +20,7 @@ import { LocalManagedProvider } from "../managed-files/local-provider.js";
 import { ManagedFileService } from "../managed-files/service.js";
 import { AgentDataStore } from "../data/agent-data.js";
 import { AutomationEngine } from "../automation/engine.js";
+import { ingestRawEmail, MAX_MAIL_BYTES } from "../automation/mail-ingest.js";
 import { parseMailForDisplay, readMailAttachment } from "../automation/mail-reader.js";
 import { TemplateRuntime } from "../automation/template-runtime.js";
 import { BridgeStore } from "../store/store.js";
@@ -225,6 +226,24 @@ async function handleRequest(request: http.IncomingMessage, response: http.Serve
     && isMailIngestAuthorized(request);
   if (!isAuthorized(request) && !authorizedMailIngress) {
     sendUnauthorized(request, response, url);
+    return;
+  }
+
+  if (url.pathname === "/api/mail/messages" && request.method === "GET") {
+    sendJson(response, 200, { ok: true, ...(await buildMailViewData(url)) });
+    return;
+  }
+
+  if (url.pathname === "/api/mail/import" && request.method === "POST") {
+    const raw = await readRawBody(request, MAX_MAIL_BYTES);
+    const result = await ingestRawEmail(raw, {
+      dataDir: config.mailIngressDir,
+      apiBase: `http://127.0.0.1:${config.port}`,
+      apiToken: config.mailIngestToken,
+      envelopeRecipient: String(url.searchParams.get("recipient") || "").slice(0, 320),
+      envelopeSender: String(url.searchParams.get("sender") || "").slice(0, 320),
+    });
+    sendJson(response, 201, { ok: true, imported: true, eventId: result.event?.id || "" });
     return;
   }
 
@@ -1207,8 +1226,19 @@ async function serveMailPage(
   request: http.IncomingMessage,
   response: http.ServerResponse,
   url: URL,
-  { isMailHost, hostname }: { isMailHost: boolean; hostname: string },
+  { isMailHost }: { isMailHost: boolean; hostname: string },
 ) {
+  const data = await buildMailViewData(url);
+  const basePath = isMailHost ? "/" : "/app/mail";
+  sendPrivateHtml(response, 200, renderMailPage({
+    ...data,
+    basePath,
+    adminUrl: "/app",
+    automationUrl: "/app/automations",
+  }), request.method === "HEAD");
+}
+
+async function buildMailViewData(url: URL) {
   const query = String(url.searchParams.get("q") || "").trim().slice(0, 160);
   const requestedFilter = String(url.searchParams.get("filter") || "all");
   const filter = ["all", "matched", "attachments"].includes(requestedFilter) ? requestedFilter : "all";
@@ -1254,24 +1284,58 @@ async function serveMailPage(
       };
     }
   }
-  const localMode = hostname.endsWith(".local");
-  const basePath = isMailHost ? "/" : "/app/mail";
   const events = filteredEvents.slice(0, 100).map((event) => ({
     ...event,
     matched: (runsByEvent.get(event.id) || []).some((run) => run.matched),
   }));
-  sendPrivateHtml(response, 200, renderMailPage({
-    events,
+  return {
+    events: events.map(publicMailEvent),
     total: filteredEvents.length,
-    selectedEvent: safeSelectedEvent,
-    selectedRuns,
-    content,
+    selectedEvent: safeSelectedEvent ? publicMailEvent({ ...safeSelectedEvent, matched: selectedRuns.some((run) => run.matched) }) : null,
+    selectedRuns: selectedRuns.map((run) => ({ matched: run.matched === true, reason: String(run.reason || run.error || "").slice(0, 1000), sessionId: String(run.sessionId || ""), status: String(run.status || "") })),
+    content: publicMailContent(content),
     query,
     filter,
-    basePath,
-    adminUrl: "/app",
-    automationUrl: "/app/automations",
-  }), request.method === "HEAD");
+  };
+}
+
+function publicMailEvent(event: any) {
+  if (!event) return null;
+  return {
+    id: String(event.id || ""),
+    title: String(event.title || "").slice(0, 500),
+    sender: {
+      address: String(event.sender?.address || "").slice(0, 320),
+      displayName: String(event.sender?.displayName || event.sender?.name || "").slice(0, 200),
+    },
+    receivedAt: String(event.receivedAt || ""),
+    matched: event.matched === true,
+    payload: {
+      recipients: (Array.isArray(event.payload?.recipients) ? event.payload.recipients : []).slice(0, 50).map((value: unknown) => String(value).slice(0, 320)),
+      textPreview: String(event.payload?.textPreview || "").slice(0, 4000),
+      attachments: (Array.isArray(event.payload?.attachments) ? event.payload.attachments : []).slice(0, 100).map((attachment: any) => ({ name: String(attachment?.name || "attachment").slice(0, 300) })),
+    },
+  };
+}
+
+function publicMailContent(content: any) {
+  if (!content) return null;
+  const addresses = (values: any[]) => (Array.isArray(values) ? values : []).slice(0, 50).map((value) => ({ name: String(value?.name || "").slice(0, 200), address: String(value?.address || "").slice(0, 320) }));
+  return {
+    subject: String(content.subject || "").slice(0, 500),
+    from: addresses(content.from),
+    to: addresses(content.to),
+    date: String(content.date || ""),
+    body: String(content.body || "").slice(0, 200_000),
+    bodyTruncated: content.bodyTruncated === true,
+    error: String(content.error || "").slice(0, 500),
+    attachments: (Array.isArray(content.attachments) ? content.attachments : []).slice(0, 100).map((attachment: any) => ({
+      index: Number(attachment?.index || 0),
+      name: String(attachment?.name || "attachment").slice(0, 300),
+      contentType: String(attachment?.contentType || "application/octet-stream").slice(0, 200),
+      sizeBytes: Math.max(0, Number(attachment?.sizeBytes || 0)),
+    })),
+  };
 }
 
 async function serveMailRaw(request: http.IncomingMessage, response: http.ServerResponse, eventId: string) {
@@ -1576,6 +1640,19 @@ async function readJsonBody(request: http.IncomingMessage) {
   for await (const chunk of request) chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
   const text = Buffer.concat(chunks).toString("utf8");
   return text ? JSON.parse(text) : {};
+}
+
+async function readRawBody(request: http.IncomingMessage, maximumBytes: number) {
+  const chunks: Buffer[] = [];
+  let total = 0;
+  for await (const chunk of request) {
+    const buffer = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
+    total += buffer.length;
+    if (total > maximumBytes) throw Object.assign(new Error(`request exceeds ${maximumBytes} bytes`), { statusCode: 413 });
+    chunks.push(buffer);
+  }
+  if (!total) throw Object.assign(new Error("email file is empty"), { statusCode: 400 });
+  return Buffer.concat(chunks);
 }
 
 async function resolveLocalMediaFile(input: unknown) {

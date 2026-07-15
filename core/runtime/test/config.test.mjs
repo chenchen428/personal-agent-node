@@ -47,7 +47,15 @@ test("initializes one stable Site identity and fixed path routes", () => {
     );
     assert.deepEqual(
       Object.fromEntries(Object.entries(routes.get("/app/skills")).filter(([key]) => ["access", "targetKey", "upstreamPath"].includes(key))),
-      { access: "authenticated", targetKey: "agent", upstreamPath: "/agent-skills" },
+      { access: "authenticated", targetKey: "console", upstreamPath: "/app/skills" },
+    );
+    assert.deepEqual(
+      Object.fromEntries(Object.entries(routes.get("/app/chat")).filter(([key]) => ["access", "targetKey", "upstreamPath"].includes(key))),
+      { access: "authenticated", targetKey: "console", upstreamPath: "/app/chat" },
+    );
+    assert.deepEqual(
+      Object.fromEntries(Object.entries(routes.get("/app/mail")).filter(([key]) => ["access", "targetKey", "upstreamPath"].includes(key))),
+      { access: "authenticated", targetKey: "console", upstreamPath: "/app/mail" },
     );
     assert.deepEqual(
       Object.fromEntries(Object.entries(routes.get("/app/update")).filter(([key]) => ["access", "targetKey", "upstreamPath"].includes(key))),

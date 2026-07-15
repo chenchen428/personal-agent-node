@@ -5,7 +5,7 @@ import { initializeSite, mergeSecretEnv, resolveNodeConfig, setConnectionMode, w
 import { setProvider } from './providers.ts';
 import { validateReverseTunnelContract } from './reverse-tunnel.ts';
 
-export const DEFAULT_CLOUD_URL = 'https://chenjianhui.site';
+export const DEFAULT_CLOUD_URL = 'https://personal-agent.cn';
 const DEFAULT_POLL_INTERVAL_SECONDS = 5;
 const MAX_POLL_INTERVAL_SECONDS = 30;
 const REQUEST_TIMEOUT_MILLISECONDS = 15_000;
@@ -145,14 +145,18 @@ function publicDeviceAuthorization(value) {
 
 async function requestJson(fetchImpl, url, body, headers = {}) {
   const { response, payload } = await requestJsonResponse(fetchImpl, url, body, headers);
-  if (!response.ok) throw new Error(payload.error || payload.message || `Cloud 请求失败 (${response.status})`);
+  if (!response.ok) throw cloudAuthError(response.status >= 500 ? 'CLOUD_REQUEST_FAILED' : 'CLOUD_AUTH_FAILED', payload.error || payload.message || `Cloud 请求失败 (${response.status})`);
   return payload;
 }
 
 async function requestJsonResponse(fetchImpl, url, body, headers = {}) {
-  const response = await fetchImpl(url, { method: 'POST', headers: { accept: 'application/json', ...(body ? { 'content-type': 'application/json' } : {}), ...headers }, ...(body ? { body: JSON.stringify(body) } : {}), signal: AbortSignal.timeout(REQUEST_TIMEOUT_MILLISECONDS) });
-  const payload = await response.json().catch(() => ({}));
-  return { response, payload };
+  try {
+    const response = await fetchImpl(url, { method: 'POST', headers: { accept: 'application/json', ...(body ? { 'content-type': 'application/json' } : {}), ...headers }, ...(body ? { body: JSON.stringify(body) } : {}), signal: AbortSignal.timeout(REQUEST_TIMEOUT_MILLISECONDS) });
+    const payload = await response.json().catch(() => ({}));
+    return { response, payload };
+  } catch {
+    throw cloudAuthError('CLOUD_NETWORK_UNREACHABLE', '无法连接 Personal Agent Cloud，请检查 DNS 和网络后重试');
+  }
 }
 
 function normalizeCloudUrl(value) {

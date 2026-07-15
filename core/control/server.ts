@@ -9,6 +9,8 @@ import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 import { capacityState, readServerCapacity } from './capacity.ts';
 import { onboardingStatus } from '../runtime/src/cloud-resources.ts';
+import { resolveNodeConfig } from '../runtime/src/config.ts';
+import { localMailPlan, localMailStatus } from '../runtime/src/mail.ts';
 import { setupDiagnostics, setupStatus } from '../runtime/src/setup.ts';
 import { executeSetupAction, planSetupAction } from '../runtime/src/setup-actions.ts';
 import { createOperationStore } from '../runtime/src/operations.ts';
@@ -127,6 +129,24 @@ async function handleRequest(request, response) {
     }
     const snapshot = await setupStatus({ dataRoot: siteDataRoot, installRoot });
     await sendJson(response, setupDiagnostics(snapshot), request.method === 'HEAD');
+    return;
+  }
+  if (url.pathname === '/api/mail/status') {
+    if (request.method !== 'GET' && request.method !== 'HEAD') {
+      send(response, 405, 'text/plain; charset=utf-8', 'Method Not Allowed');
+      return;
+    }
+    const config = resolveNodeConfig({ ...process.env, PRIVATE_SITE_DATA_ROOT: siteDataRoot });
+    await sendJson(response, { ok: true, status: localMailStatus(config, { installRoot }) }, request.method === 'HEAD');
+    return;
+  }
+  if (url.pathname === '/api/mail/plan') {
+    if (request.method !== 'GET' && request.method !== 'HEAD') {
+      send(response, 405, 'text/plain; charset=utf-8', 'Method Not Allowed');
+      return;
+    }
+    const config = resolveNodeConfig({ ...process.env, PRIVATE_SITE_DATA_ROOT: siteDataRoot });
+    await sendJson(response, { ok: true, plan: localMailPlan(config) }, request.method === 'HEAD');
     return;
   }
   const setupActionRoute = /^\/api\/setup\/actions\/([a-z0-9.-]+)\/(plan|approve|execute)$/.exec(url.pathname);

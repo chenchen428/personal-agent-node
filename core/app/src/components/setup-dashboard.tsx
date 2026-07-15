@@ -72,7 +72,7 @@ export function SetupDashboard() {
       const plan = await post("plan", {});
       await post("approve", { operationId: plan.id, digest: plan.digest, approved: true });
       await post("execute", { operationId: plan.id, digest: plan.digest, input });
-      setActionMessage((current) => ({ ...current, [requestedAction]: requestedAction === "connectivity.managed-authorize" ? "已打开 chenjianhui.site，请在浏览器页面确认。" : "已完成，正在重新检测。" }));
+      setActionMessage((current) => ({ ...current, [requestedAction]: requestedAction === "connectivity.managed-authorize" ? "已打开 personal-agent.cn，请在浏览器页面确认。" : "已完成，正在重新检测。" }));
       if (requestedAction === "installation.local-auth") { setPassword(""); setConfirmation(""); }
       await refresh();
     } catch (actionError) {
@@ -116,7 +116,7 @@ export function SetupDashboard() {
       const cloudPending = ["starting", "running"].includes(cloudAction?.state || "idle");
       const cloudMessage = cloudAction?.state === "failed" ? cloudFailureMessage(cloudAction.code)
         : cloudAction?.phase === "resources" ? "本机接入已确认，正在验证公网域名和 Agent 邮箱。"
-          : cloudPending ? "已打开 chenjianhui.site，请在已登录的页面确认这台电脑。"
+          : cloudPending ? "已打开 personal-agent.cn，请在已登录的页面确认这台电脑。"
             : cloudAction?.state === "succeeded" ? "页面验证已完成，正在刷新资源状态。" : "";
       return <div className="grid justify-items-start gap-2">
         <Button size="sm" type="button" disabled={actionId === "connectivity.managed-authorize" || cloudPending} onClick={() => void runAction("connectivity.managed-authorize")}>{cloudPending ? "等待页面确认" : "验证公网与邮箱"}</Button>
@@ -124,8 +124,9 @@ export function SetupDashboard() {
       </div>;
     }
 
-    if (requestedAction === "mail.enable") return <div className="grid justify-items-start gap-2">
+    if (requestedAction === "mail.enable") return <div className="flex flex-wrap items-center gap-2">
       <Button variant="outline" size="sm" type="button" disabled={actionId === requestedAction} onClick={() => void runAction(requestedAction)}><Mail className="size-3.5" />{actionId === requestedAction ? "启用中" : "启用邮件检测"}</Button>
+      <Link className={buttonVariants({ variant: "ghost", size: "sm" })} href="/app/mail">查看接入指南</Link>
       {actionMessage[requestedAction] ? <small className="text-xs text-[var(--muted)]" role="status">{actionMessage[requestedAction]}</small> : null}
     </div>;
     if (["mail.test-delivery", "mail.test-recovery"].includes(requestedAction)) return <Link className={buttonVariants({ variant: "outline", size: "sm" })} href="/app/mail"><Mail className="size-3.5" />打开邮件页</Link>;
@@ -160,8 +161,8 @@ export function SetupDashboard() {
       </CardContent>
     </Card>
 
-    <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1.45fr)_minmax(320px,.75fr)]">
-      <Card className="min-w-0 shadow-[0_10px_32px_rgba(20,20,19,.05)]">
+    <div className="grid gap-6">
+      <Card className="min-w-0">
         <CardHeader className="flex flex-row items-start justify-between gap-4 border-b border-[var(--hairline)] pb-5">
           <div className="min-w-0">
             <div className="mb-2 font-[var(--mono)] text-[10px] tracking-[.12em] text-[var(--coral)]">01 · NOW</div>
@@ -170,7 +171,7 @@ export function SetupDashboard() {
           </div>
           <Badge variant={currentDone ? "ready" : tasks.requiredTasks.length ? "warning" : "neutral"}>{loading ? "检查中" : currentDone ? "已完成" : `${tasks.requiredTasks.length} 项`}</Badge>
         </CardHeader>
-        <CardContent className="grid gap-3 p-4 sm:p-5">
+        <CardContent className="grid gap-3 p-3 sm:p-4">
           {tasks.requiredTasks.length ? <ol className="grid list-none gap-3 p-0">
             {tasks.requiredTasks.map((task, index) => <TodoItem key={task.check.id} task={task} index={index + 1} action={renderAction(task.actionId)} />)}
           </ol> : <div className="flex min-h-36 items-center gap-4 rounded-lg border border-dashed border-[var(--hairline)] bg-[var(--surface-soft)] p-5">
@@ -180,7 +181,7 @@ export function SetupDashboard() {
         </CardContent>
       </Card>
 
-      <Card className="min-w-0 overflow-hidden shadow-[0_10px_32px_rgba(20,20,19,.05)]">
+      <Card className="min-w-0 overflow-hidden">
         <Tabs defaultValue="optional">
           <CardHeader className="gap-4 border-b border-[var(--hairline)] pb-5">
             <div className="flex items-start justify-between gap-3">
@@ -193,9 +194,9 @@ export function SetupDashboard() {
             </TabsList>
           </CardHeader>
           <TabsContent value="optional" className="m-0">
-            <CardContent className="grid p-0">
+            <CardContent className="grid p-0 sm:grid-cols-2">
               {tasks.optionalTasks.length ? tasks.optionalTasks.map((task, index) => <div key={task.check.id}>
-                {index ? <Separator /> : null}
+                {index ? <Separator className="sm:hidden" /> : null}
                 <div className="grid gap-4 p-5">
                   <div className="flex items-start gap-3"><Circle className="mt-0.5 size-4 shrink-0 text-[var(--muted-soft)]" /><div className="min-w-0"><strong className="block text-sm font-medium text-[var(--ink)]">{task.title}</strong><span className="mt-1 block text-xs leading-relaxed text-[var(--muted)]">{task.check.guidance}</span></div></div>
                   <div className="pl-7">{renderAction(task.actionId)}</div>
@@ -223,22 +224,20 @@ export function SetupDashboard() {
 }
 
 function TodoItem({ task, index, action }: { task: SetupTask; index: number; action: React.ReactNode }) {
-  return <li>
-    <Card className="bg-[var(--surface-soft)]">
-      <CardHeader className="flex flex-row items-start justify-between gap-4 p-5 pb-4">
-        <div className="flex min-w-0 items-start gap-3">
-          <span className="grid size-7 shrink-0 place-items-center rounded-full bg-[var(--canvas)] font-[var(--mono)] text-[10px] text-[var(--coral)] ring-1 ring-[var(--hairline)]">{String(index).padStart(2, "0")}</span>
-          <div className="min-w-0"><Badge variant="warning">{task.category}</Badge><h3 className="mt-2 mb-0 text-2xl leading-tight">{task.title}</h3></div>
-        </div>
-        <Badge variant="warning">需处理</Badge>
-      </CardHeader>
-      <CardContent className="grid gap-4 px-5 pt-0 pb-5 sm:pl-15">
-        <p className="m-0 text-sm leading-6 text-[var(--body)]">{task.check.guidance}</p>
-        <details className="group text-xs text-[var(--muted)]"><summary className="flex w-max cursor-pointer list-none items-center gap-1">为什么需要这一步<ChevronDown className="size-3.5 transition-transform group-open:rotate-180" /></summary><p className="mt-2 mb-0 border-l-2 border-[var(--hairline)] pl-3 leading-relaxed">{task.check.why}</p></details>
-        {task.waitingCount ? <small className="text-xs text-[var(--coral)]">完成后会继续检查同组的 {task.waitingCount} 个等待项。</small> : null}
-        <div>{action}</div>
-      </CardContent>
-    </Card>
+  const [open, setOpen] = useState(index === 1);
+  return <li className={`setup-task-row ${open ? "is-open" : ""}`}>
+    <button type="button" className="setup-task-summary" aria-expanded={open} onClick={() => setOpen((current) => !current)}>
+      <span className="grid size-7 shrink-0 place-items-center rounded-full bg-[var(--canvas)] font-[var(--mono)] text-[10px] text-[var(--coral)] ring-1 ring-[var(--hairline)]">{String(index).padStart(2, "0")}</span>
+      <span className="setup-task-title"><small>{task.category}</small><strong>{task.title}</strong></span>
+      {task.waitingCount ? <span className="setup-task-waiting">后续 {task.waitingCount} 项</span> : null}
+      <Badge variant="warning">需处理</Badge>
+      <ChevronDown className="setup-task-chevron size-4" />
+    </button>
+    {open ? <div className="setup-task-content">
+      <p>{task.check.guidance}</p>
+      <details className="group text-xs text-[var(--muted)]"><summary className="flex w-max cursor-pointer list-none items-center gap-1">为什么需要这一步<ChevronDown className="size-3.5 transition-transform group-open:rotate-180" /></summary><p className="mt-2 mb-0 border-l-2 border-[var(--hairline)] pl-3 leading-relaxed">{task.check.why}</p></details>
+      <div>{action}</div>
+    </div> : null}
   </li>;
 }
 
@@ -253,7 +252,8 @@ function cloudFailureMessage(code = "") {
   const messages: Record<string, string> = {
     CLOUD_AUTH_DENIED: "页面验证已取消，请重新验证并确认这台电脑。",
     CLOUD_AUTH_EXPIRED: "页面验证已过期，请重新发起验证。",
-    CLOUD_AUTH_FAILED: "Cloud 登录状态未通过，请确认 chenjianhui.site 已登录后重试。",
+    CLOUD_AUTH_FAILED: "Cloud 登录状态未通过，请确认 personal-agent.cn 已登录后重试。",
+    CLOUD_NETWORK_UNREACHABLE: "无法连接 personal-agent.cn，请检查 DNS 或本机网络后重试。",
     CLOUD_REQUEST_FAILED: "Cloud 授权接口暂时未完成请求，请确认 Cloud 已发布最新版本后重试。",
     DEPENDENCY_UNAVAILABLE: "Cloud 授权服务暂时不可用，请稍后重新验证。",
   };

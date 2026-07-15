@@ -91,7 +91,7 @@ function buildOnlineIdentityTask(checks: SetupCheck[]): SetupTask | null {
     state: "action-required",
     summary: "验证公网域名与 Agent 邮箱",
     why: "一次统一引导完成这台 Node 的公网接入，并同步属于你的 Agent 邮箱身份。",
-    guidance: "点击验证，在已登录的 chenjianhui.site 页面确认；完成后本机会自动继续检查公网域名与 Agent 邮箱。",
+    guidance: "点击验证，在已登录的 personal-agent.cn 页面确认；完成后本机会自动继续检查公网域名与 Agent 邮箱。",
     actionIds: ["connectivity.managed-authorize"],
   };
   return toTask(check, [], check.summary);

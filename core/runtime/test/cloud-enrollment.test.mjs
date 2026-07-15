@@ -10,7 +10,14 @@ import { initializeSite } from '../src/config.ts';
 test('Cloud URL resolution prefers an explicit CLI value, then environment, then the managed default', () => {
   assert.equal(resolveCloudUrl({ cloudUrl: 'https://explicit.example', env: { PERSONAL_AGENT_CLOUD_URL: 'https://environment.example' } }), 'https://explicit.example');
   assert.equal(resolveCloudUrl({ env: { PERSONAL_AGENT_CLOUD_URL: 'https://environment.example' } }), 'https://environment.example');
-  assert.equal(resolveCloudUrl({ env: {} }), 'https://chenjianhui.site');
+  assert.equal(resolveCloudUrl({ env: {} }), 'https://personal-agent.cn');
+});
+
+test('Cloud connection failures expose a stable network error instead of an authorization error', async () => {
+  await assert.rejects(
+    startCloudDeviceAuthorization({ cloudUrl: 'https://personal-agent.cn', fetchImpl: async () => { throw new TypeError('fetch failed'); } }),
+    (error) => error.code === 'CLOUD_NETWORK_UNREACHABLE' && /DNS|网络/.test(error.message),
+  );
 });
 
 test('browser device authorization emits only public codes then consumes a one-time enrollment credential', async (t) => {

@@ -14,7 +14,7 @@ const mutationActions = Object.freeze({
   },
   'connectivity.managed-authorize': {
     risk: 'R2',
-    summary: 'Verify chenjianhui.site and bind public domain and Agent mail resources',
+    summary: 'Verify personal-agent.cn and bind public domain and Agent mail resources',
     target: 'managed-cloud',
   },
   'mail.enable': {

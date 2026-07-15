@@ -48,7 +48,7 @@ test('personal-agent exposes machine-readable help and capability discovery', ()
   assert.equal(cloudConnectHelp.result.command.authorization.method, 'browser-device-authorization');
   assert.equal(cloudConnectHelp.result.command.authorization.userActionRequired, true);
   const cloudUrlOption = cloudConnectHelp.result.command.options.find((option) => option.name === '--cloud-url');
-  assert.equal(cloudUrlOption.default, 'https://chenjianhui.site');
+  assert.equal(cloudUrlOption.default, 'https://personal-agent.cn');
   assert.equal(cloudUrlOption.environment, 'PERSONAL_AGENT_CLOUD_URL');
   assert.ok(cloudConnectHelp.result.command.options.some((option) => option.name === '--no-open'));
   assert.ok(cloudConnectHelp.result.command.authorization.forbiddenCommandLineInputs.includes('nodeToken'));

@@ -107,6 +107,7 @@ test("mail web requires authentication and serves message, raw EML, and attachme
       OPEN_AGENT_BRIDGE_PORT: String(port),
       OPEN_AGENT_BRIDGE_DATA_DIR: dataDir,
       OPEN_AGENT_BRIDGE_MAIL_DATA_DIR: mailDir,
+      PRIVATE_SITE_DATA_ROOT: dataDir,
       WECHAT_INBOUND_ATTACHMENTS_DIR: path.join(dataDir, "inbound"),
       OPEN_AGENT_BRIDGE_API_TOKEN: "mail-web-api-token",
       OPEN_AGENT_BRIDGE_MAIL_INGEST_TOKEN: "mail-web-ingest-token",
@@ -184,6 +185,37 @@ test("mail web requires authentication and serves message, raw EML, and attachme
   assert.match(html, /Authenticated mail body/);
   assert.match(html, /receipt\.txt/);
   assert.doesNotMatch(html, new RegExp(escapeRegExp(ingested.archivePath)));
+
+  const apiView = await fetch(`http://127.0.0.1:${port}/api/mail/messages?message=${encodeURIComponent(ingested.event.id)}`, { headers });
+  const apiPayload = await apiView.json();
+  assert.equal(apiView.status, 200);
+  assert.equal(apiPayload.ok, true);
+  assert.equal(apiPayload.selectedEvent.id, ingested.event.id);
+  assert.equal(apiPayload.content.subject, "Authenticated statement");
+  assert.doesNotMatch(JSON.stringify(apiPayload), new RegExp(escapeRegExp(ingested.archivePath)));
+
+  const importedRaw = Buffer.from([
+    "From: Local Tester <tester@example.com>",
+    "To: agent@personal-agent.local",
+    "Subject: Imported from setup guide",
+    "Message-ID: <mail-import-api@example.com>",
+    "Content-Type: text/plain; charset=utf-8",
+    "",
+    "This message validates the self-service EML import.",
+  ].join("\r\n"));
+  const imported = await fetch(`http://127.0.0.1:${port}/api/mail/import`, {
+    method: "POST",
+    headers: { ...headers, "content-type": "message/rfc822" },
+    body: importedRaw,
+  });
+  const importedPayload = await imported.json();
+  assert.equal(imported.status, 201);
+  assert.equal(importedPayload.ok, true);
+  assert.match(importedPayload.eventId, /^aevt_/);
+
+  const importedView = await fetch(`http://127.0.0.1:${port}/api/mail/messages?message=${encodeURIComponent(importedPayload.eventId)}`, { headers });
+  const importedViewPayload = await importedView.json();
+  assert.equal(importedViewPayload.content.subject, "Imported from setup guide");
 
   const original = await fetch(`http://127.0.0.1:${port}/mail/messages/${encodeURIComponent(ingested.event.id)}/raw`, { headers });
   assert.equal(original.status, 200);

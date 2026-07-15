@@ -4,7 +4,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { domainToASCII } from 'node:url';
 import { writeJsonAtomic } from './config.ts';
-import { openExternalUrl } from './cloud-enrollment.ts';
+import { DEFAULT_CLOUD_URL, openExternalUrl } from './cloud-enrollment.ts';
 
 const REQUEST_TIMEOUT_MILLISECONDS = 15_000;
 const DEFAULT_POLL_INTERVAL_SECONDS = 5;
@@ -30,7 +30,7 @@ export async function authorizeCloudResources({
 }
 
 export async function startCloudResourceAuthorization({ cloudUrl, fetchImpl = fetch, clientName = 'personal-agent-cli', clientVersion = 'unknown' } = {}) {
-  const baseUrl = normalizeCloudUrl(cloudUrl || process.env.PERSONAL_AGENT_CLOUD_URL || 'https://chenjianhui.site');
+  const baseUrl = normalizeCloudUrl(cloudUrl || process.env.PERSONAL_AGENT_CLOUD_URL || DEFAULT_CLOUD_URL);
   const response = await requestJson(fetchImpl, `${baseUrl}/api/cli/auth/start`, {
     method: 'POST',
     body: { clientName: String(clientName).slice(0, 80), clientVersion: String(clientVersion).slice(0, 40) },
@@ -158,14 +158,18 @@ async function requestJson(fetchImpl, url, { method, body, token } = {}) {
 }
 
 async function requestJsonResponse(fetchImpl, url, { method, body, token } = {}) {
-  const response = await fetchImpl(url, {
-    method,
-    headers: { accept: 'application/json', ...(body ? { 'content-type': 'application/json' } : {}), ...(token ? { authorization: `Bearer ${token}` } : {}) },
-    ...(body ? { body: JSON.stringify(body) } : {}),
-    signal: AbortSignal.timeout(REQUEST_TIMEOUT_MILLISECONDS),
-  });
-  const payload = await response.json().catch(() => ({}));
-  return { response, payload };
+  try {
+    const response = await fetchImpl(url, {
+      method,
+      headers: { accept: 'application/json', ...(body ? { 'content-type': 'application/json' } : {}), ...(token ? { authorization: `Bearer ${token}` } : {}) },
+      ...(body ? { body: JSON.stringify(body) } : {}),
+      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MILLISECONDS),
+    });
+    const payload = await response.json().catch(() => ({}));
+    return { response, payload };
+  } catch {
+    throw cloudResourceError('CLOUD_NETWORK_UNREACHABLE', 'Unable to reach Personal Agent Cloud; check DNS and network connectivity');
+  }
 }
 
 function normalizeResources(value) {
