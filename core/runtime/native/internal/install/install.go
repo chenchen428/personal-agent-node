@@ -172,14 +172,18 @@ func Install(ctx context.Context, opts Options, runner Runner) (result Result, r
 			return result, fmt.Errorf("activate staged directory: %w", err)
 		}
 	}
-	if !resolved.SkipService && oldCurrent != "" {
+	if !resolved.SkipService {
 		serviceCtx, cancel := context.WithTimeout(ctx, 2*time.Minute)
 		if hadManagedService {
 			err = deactivateService(serviceCtx, resolved, runner, envFor(resolved))
 			serviceNeedsRecovery = true
 		}
 		if err == nil {
-			err = stopSupervisor(serviceCtx, resolved, oldCurrent, runner, envFor(resolved))
+			supervisorRelease := oldCurrent
+			if supervisorRelease == "" {
+				supervisorRelease = target
+			}
+			err = stopSupervisor(serviceCtx, resolved, supervisorRelease, runner, envFor(resolved))
 		}
 		cancel()
 		if err != nil {

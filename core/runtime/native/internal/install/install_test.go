@@ -42,6 +42,9 @@ func (runner *lifecycleRunner) Run(_ context.Context, command string, args []str
 		}
 		return []byte(`{"platform":"windows","serviceId":"PrivateSiteNode","taskName":"PrivateSiteNode","taskXmlPath":"C:\\PrivateSiteNode.xml"}`), nil
 	}
+	if len(args) > 1 && args[1] == "stop" {
+		runner.running = false
+	}
 	if command == "schtasks.exe" && len(args) > 0 {
 		switch args[0] {
 		case "/End":
@@ -51,6 +54,33 @@ func (runner *lifecycleRunner) Run(_ context.Context, command string, args []str
 		}
 	}
 	return []byte(`{}`), nil
+}
+
+func TestFreshInstallStopsUnmanagedSupervisorBeforeServicePreparation(t *testing.T) {
+	root := t.TempDir()
+	installRoot := filepath.Join(root, "install")
+	dataRoot := filepath.Join(root, "data")
+	nodeRuntime := filepath.Join(root, "node.exe")
+	if err := os.WriteFile(nodeRuntime, []byte("bundled-node"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	runner := &lifecycleRunner{running: true}
+	opts := Options{ReleaseRoot: fixtureRelease(t, "release-one"), NodeRuntime: nodeRuntime, InstallRoot: installRoot, DataRoot: dataRoot, SkipStartWait: true, NoOpen: true, Platform: "windows"}
+	if _, err := Install(context.Background(), opts, runner); err != nil {
+		t.Fatal(err)
+	}
+	stop, prepare := -1, -1
+	for index, call := range runner.calls {
+		if stop == -1 && strings.Contains(call, "private-site.mjs stop") {
+			stop = index
+		}
+		if prepare == -1 && strings.Contains(call, "service-prepare") {
+			prepare = index
+		}
+	}
+	if stop == -1 || prepare == -1 || stop >= prepare {
+		t.Fatalf("unmanaged supervisor stop must precede service preparation: %v", runner.calls)
+	}
 }
 
 func (runner *failingRunner) Run(ctx context.Context, command string, args []string, env []string) ([]byte, error) {
