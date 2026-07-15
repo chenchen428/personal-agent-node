@@ -413,12 +413,18 @@ func Uninstall(ctx context.Context, installRoot, platform string, runner Runner)
 		return UninstallResult{}, errors.New("refusing to uninstall because the data root is inside the installation root")
 	}
 	service := "not-registered"
+	opts := Options{InstallRoot: root, DataRoot: dataRoot, Platform: platform}
 	if state.Service != "" && state.Service != "skipped" {
-		opts := Options{InstallRoot: root, DataRoot: dataRoot, Platform: platform}
 		if err := deactivateService(ctx, opts, runner, envFor(opts)); err != nil {
 			return UninstallResult{}, fmt.Errorf("deactivate platform service: %w", err)
 		}
 		service = "removed"
+	}
+	currentRelease := pointerTarget(filepath.Join(root, "current"))
+	if currentRelease != "" {
+		if err := stopSupervisor(ctx, opts, currentRelease, runner, envFor(opts)); err != nil {
+			return UninstallResult{}, fmt.Errorf("stop Personal Agent supervisor: %w", err)
+		}
 	}
 	if err := removeDesktopEntry(root, platform); err != nil {
 		return UninstallResult{}, fmt.Errorf("remove desktop entry: %w", err)

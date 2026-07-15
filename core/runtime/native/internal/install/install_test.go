@@ -503,6 +503,35 @@ func TestUninstallRemovesProgramAndPreservesData(t *testing.T) {
 	}
 }
 
+func TestUninstallStopsDetachedSupervisorBeforeRemovingProgram(t *testing.T) {
+	root := t.TempDir()
+	installRoot := filepath.Join(root, "install")
+	dataRoot := filepath.Join(root, "data")
+	nodeRuntime := filepath.Join(root, "node.exe")
+	if err := os.WriteFile(nodeRuntime, []byte("bundled-node"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	runner := &lifecycleRunner{}
+	opts := Options{ReleaseRoot: fixtureRelease(t, "release-one"), NodeRuntime: nodeRuntime, InstallRoot: installRoot, DataRoot: dataRoot, SkipStartWait: true, NoOpen: true, Platform: "windows"}
+	if _, err := Install(context.Background(), opts, runner); err != nil {
+		t.Fatal(err)
+	}
+	start := len(runner.calls)
+	if _, err := Uninstall(context.Background(), installRoot, "windows", runner); err != nil {
+		t.Fatal(err)
+	}
+	stopped := false
+	for _, call := range runner.calls[start:] {
+		if strings.Contains(call, "private-site.mjs stop") {
+			stopped = true
+			break
+		}
+	}
+	if !stopped {
+		t.Fatalf("uninstall did not stop the detached supervisor: %v", runner.calls[start:])
+	}
+}
+
 func TestUninstallRejectsUnsafeOrUnrecognizedRoots(t *testing.T) {
 	if _, err := Uninstall(context.Background(), string(filepath.Separator), "darwin", &fakeRunner{}); err == nil {
 		t.Fatal("expected filesystem root rejection")

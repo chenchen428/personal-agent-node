@@ -85,7 +85,11 @@ Section "Personal Agent" MainSection
     ${If} $TestHome == ""
       IfSilent silent_install_error
       MessageBox MB_OK|MB_ICONSTOP "Personal Agent 安装未完成。$\r$\n$\r$\n$1$\r$\n$\r$\n请关闭正在运行的旧版或开发服务后重试；已有 Workspace 数据不会被删除。"
+      SetErrorLevel $0
+      Abort
       silent_install_error:
+      SetErrorLevel $0
+      Quit
     ${EndIf}
     SetErrorLevel $0
     Abort
@@ -110,9 +114,13 @@ Section "Uninstall"
   Pop $1
   ${If} $0 != "0"
     DetailPrint "$1"
+    IfSilent silent_uninstall_error
     MessageBox MB_OK|MB_ICONSTOP "卸载未完成。$\r$\n$\r$\n$1"
     SetErrorLevel $0
     Abort
+    silent_uninstall_error:
+    SetErrorLevel $0
+    Quit
   ${EndIf}
   DeleteRegKey HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\PersonalAgent"
   Delete "$INSTDIR\personal-agent-setup.exe"

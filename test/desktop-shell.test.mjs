@@ -42,6 +42,8 @@ test('Windows installation uses a guided wizard and rollback-safe desktop integr
   }
   assert.match(wizard, /已有 Workspace 数据不会被删除/);
   assert.match(wizard, /IfSilent silent_install_error/);
+  assert.match(wizard, /IfSilent silent_uninstall_error/);
+  assert.match(wizard, /silent_uninstall_error:[\s\S]*SetErrorLevel \$0[\s\S]*Quit/);
   assert.match(builder, /smokeTestWindowsInstaller/);
   assert.match(builder, /'\/INPUTCHARSET',[\s\S]*'UTF8'/);
   assert.match(builder, /PRODUCT_FILE_VERSION=.*windowsProductVersion/);
