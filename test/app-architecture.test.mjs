@@ -40,6 +40,7 @@ test("the application reuses shadcn primitives for setup, channels, and responsi
   const setupPage = read("core/app/src/app/app/setup/page.tsx");
   const channels = read("core/app/src/components/channels-dashboard.tsx");
   const pages = read("core/app/src/components/pages-dashboard.tsx");
+  const button = read("core/app/src/components/ui/button.tsx");
   const css = read("core/app/src/app/globals.css");
   assert.equal(config.rsc, true);
   assert.match(setup, /components\/ui\/button/);
@@ -71,6 +72,8 @@ test("the application reuses shadcn primitives for setup, channels, and responsi
   assert.match(pages, /value="mobile"/);
   assert.doesNotMatch(setup, /setup-todo-list|setup-summary-band|setup-secondary-grid/);
   assert.match(read("core/app/src/components/ui/progress.tsx"), /data-slot="progress"/);
+  assert.match(button, /bg-\[var\(--coral\)\][^\n]*text-white/);
+  assert.match(css, /@layer base \{[\s\S]*a \{ color: inherit;[\s\S]*h1, h2, h3 \{/);
   assert.match(setup, /lg:grid-cols-\[minmax\(0,1\.45fr\)_minmax\(320px,\.75fr\)\]/);
   assert.match(setup, /sm:grid-cols-2/);
   assert.match(css, /preview-mobile/);
