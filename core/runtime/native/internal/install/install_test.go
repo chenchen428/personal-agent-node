@@ -521,14 +521,23 @@ func TestUninstallStopsDetachedSupervisorBeforeRemovingProgram(t *testing.T) {
 		t.Fatal(err)
 	}
 	stopped := false
-	for _, call := range runner.calls[start:] {
+	stopIndex, deactivateIndex := -1, -1
+	for index, call := range runner.calls[start:] {
 		if strings.Contains(call, "private-site.mjs stop") {
 			stopped = true
-			break
+			if stopIndex == -1 {
+				stopIndex = index
+			}
+		}
+		if strings.Contains(call, "schtasks.exe /End") && deactivateIndex == -1 {
+			deactivateIndex = index
 		}
 	}
 	if !stopped {
 		t.Fatalf("uninstall did not stop the detached supervisor: %v", runner.calls[start:])
+	}
+	if deactivateIndex == -1 || stopIndex >= deactivateIndex {
+		t.Fatalf("supervisor stop must precede task removal: %v", runner.calls[start:])
 	}
 }
 

@@ -184,22 +184,22 @@ func Install(ctx context.Context, opts Options, runner Runner) (result Result, r
 	if !resolved.SkipService {
 		serviceCtx, cancel := context.WithTimeout(ctx, 2*time.Minute)
 		if hadManagedService {
-			err = deactivateService(serviceCtx, resolved, runner, envFor(resolved))
 			serviceNeedsRecovery = true
 		}
-		if err == nil {
-			supervisorRelease := oldCurrent
-			if supervisorRelease == "" || (targetNeedsReplace && filepath.Clean(supervisorRelease) == filepath.Clean(target)) {
-				if targetNeedsReplace {
-					supervisorRelease = temporary
-				} else {
-					supervisorRelease = target
-				}
-			}
-			if supervisorRelease == "" {
+		supervisorRelease := oldCurrent
+		if supervisorRelease == "" || (targetNeedsReplace && filepath.Clean(supervisorRelease) == filepath.Clean(target)) {
+			if targetNeedsReplace {
+				supervisorRelease = temporary
+			} else {
 				supervisorRelease = target
 			}
-			err = stopSupervisor(serviceCtx, resolved, supervisorRelease, runner, envFor(resolved))
+		}
+		if supervisorRelease == "" {
+			supervisorRelease = target
+		}
+		err = stopSupervisor(serviceCtx, resolved, supervisorRelease, runner, envFor(resolved))
+		if err == nil && hadManagedService {
+			err = deactivateService(serviceCtx, resolved, runner, envFor(resolved))
 		}
 		cancel()
 		if err != nil {
@@ -342,7 +342,7 @@ func Rollback(ctx context.Context, installRoot, platform string, runner Runner) 
 		return Result{}, err
 	}
 	state := readInstallationState(filepath.Join(root, "installation.json"))
-	managedService := serviceIsManaged(state.Service) && state.DataRoot != ""
+	managedService := serviceIsManaged(state.Service) && state.DataRoot != "" && currentTarget != ""
 	opts := Options{InstallRoot: root, DataRoot: state.DataRoot, Platform: platform}
 	restoreCurrentService := func() {
 		if !managedService || currentTarget == "" {
@@ -354,6 +354,9 @@ func Rollback(ctx context.Context, installRoot, platform string, runner Runner) 
 		_, _ = activateService(ctx, opts, currentTarget, node, privateSite, runner, envFor(opts))
 	}
 	if managedService {
+		if err := stopSupervisor(ctx, opts, currentTarget, runner, envFor(opts)); err != nil {
+			return Result{}, fmt.Errorf("stop active Personal Agent supervisor: %w", err)
+		}
 		if err := deactivateService(ctx, opts, runner, envFor(opts)); err != nil {
 			return Result{}, fmt.Errorf("stop active platform service: %w", err)
 		}
@@ -414,25 +417,36 @@ func Uninstall(ctx context.Context, installRoot, platform string, runner Runner)
 	}
 	service := "not-registered"
 	opts := Options{InstallRoot: root, DataRoot: dataRoot, Platform: platform}
-	if state.Service != "" && state.Service != "skipped" {
-		if err := deactivateService(ctx, opts, runner, envFor(opts)); err != nil {
-			return UninstallResult{}, fmt.Errorf("deactivate platform service: %w", err)
-		}
-		service = "removed"
-	}
 	currentRelease := pointerTarget(filepath.Join(root, "current"))
 	if currentRelease != "" {
 		if err := stopSupervisor(ctx, opts, currentRelease, runner, envFor(opts)); err != nil {
 			return UninstallResult{}, fmt.Errorf("stop Personal Agent supervisor: %w", err)
 		}
 	}
+	if state.Service != "" && state.Service != "skipped" {
+		if err := deactivateService(ctx, opts, runner, envFor(opts)); err != nil {
+			return UninstallResult{}, fmt.Errorf("deactivate platform service: %w", err)
+		}
+		service = "removed"
+	}
 	if err := removeDesktopEntry(root, platform); err != nil {
 		return UninstallResult{}, fmt.Errorf("remove desktop entry: %w", err)
 	}
-	if err := os.RemoveAll(root); err != nil {
+	if err := removeAllWithRetry(root, platform); err != nil {
 		return UninstallResult{}, fmt.Errorf("remove installed binaries: %w", err)
 	}
 	return UninstallResult{InstallRoot: root, DataRoot: dataRoot, DataPreserved: true, Service: service}, nil
+}
+
+func removeAllWithRetry(target, platform string) error {
+	deadline := time.Now().Add(10 * time.Second)
+	for {
+		err := os.RemoveAll(target)
+		if err == nil || platform != "windows" || time.Now().After(deadline) {
+			return err
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
 }
 
 func validateUninstallRoot(root string) error {
