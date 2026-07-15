@@ -208,6 +208,39 @@ func TestInstallSwitchesCurrentAndRetainsPreviousWithoutHostNode(t *testing.T) {
 	}
 }
 
+func TestReinstallRepairsCorruptedSameVersionRelease(t *testing.T) {
+	root := t.TempDir()
+	installRoot := filepath.Join(root, "install")
+	dataRoot := filepath.Join(root, "data")
+	nodeRuntime := filepath.Join(root, "node")
+	if err := os.WriteFile(nodeRuntime, []byte("bundled-node"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	release := fixtureRelease(t, "release-one")
+	opts := Options{ReleaseRoot: release, NodeRuntime: nodeRuntime, InstallRoot: installRoot, DataRoot: dataRoot, SkipService: true, NoOpen: true, Platform: "darwin"}
+	if _, err := Install(context.Background(), opts, &fakeRunner{}); err != nil {
+		t.Fatal(err)
+	}
+	installedEntrypoint := filepath.Join(installRoot, "releases", "release-one", "core", "runtime", "bin", "private-site.mjs")
+	if err := os.WriteFile(installedEntrypoint, []byte("corrupted"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := Install(context.Background(), opts, &fakeRunner{}); err != nil {
+		t.Fatal(err)
+	}
+	repaired, err := os.ReadFile(installedEntrypoint)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(repaired) != "// private-site" {
+		t.Fatalf("same-version reinstall did not repair the release: %q", repaired)
+	}
+	backups, err := filepath.Glob(filepath.Join(installRoot, "releases", "*.replaced"))
+	if err != nil || len(backups) != 0 {
+		t.Fatalf("replacement backups were not cleaned up: %v, %v", backups, err)
+	}
+}
+
 func TestInstallPreservesExistingWorkspaceDomainWhenOmitted(t *testing.T) {
 	root := t.TempDir()
 	installRoot := filepath.Join(root, "install")

@@ -83,7 +83,9 @@ Section "Personal Agent" MainSection
   ${If} $0 != "0"
     DetailPrint "$1"
     ${If} $TestHome == ""
+      IfSilent silent_install_error
       MessageBox MB_OK|MB_ICONSTOP "Personal Agent 安装未完成。$\r$\n$\r$\n$1$\r$\n$\r$\n请关闭正在运行的旧版或开发服务后重试；已有 Workspace 数据不会被删除。"
+      silent_install_error:
     ${EndIf}
     SetErrorLevel $0
     Abort

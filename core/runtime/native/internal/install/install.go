@@ -119,12 +119,24 @@ func Install(ctx context.Context, opts Options, runner Runner) (result Result, r
 	hadManagedService := oldCurrent != "" && serviceIsManaged(oldState.Service)
 	activated := false
 	serviceNeedsRecovery := false
+	targetNeedsReplace := !installedReleaseMatches(target, manifest, resolved.NodeRuntime, resolved.Platform)
+	targetBackup := ""
+	targetReplaced := false
 
 	defer func() {
 		if returnedErr == nil {
+			if targetBackup != "" {
+				_ = os.RemoveAll(targetBackup)
+			}
 			return
 		}
 		_ = os.RemoveAll(temporary)
+		if targetReplaced {
+			_ = os.RemoveAll(target)
+			if targetBackup != "" {
+				_ = os.Rename(targetBackup, target)
+			}
+		}
 		if activated {
 			if oldCurrent != "" {
 				_ = replacePointer(current, oldCurrent, resolved.Platform, runner)
@@ -152,7 +164,7 @@ func Install(ctx context.Context, opts Options, runner Runner) (result Result, r
 	if err := os.MkdirAll(releasesRoot, 0o700); err != nil {
 		return result, err
 	}
-	if _, err := os.Stat(target); errors.Is(err, os.ErrNotExist) {
+	if targetNeedsReplace {
 		_ = os.RemoveAll(temporary)
 		if err := copyTree(resolved.ReleaseRoot, temporary); err != nil {
 			return result, fmt.Errorf("stage release: %w", err)
@@ -168,9 +180,6 @@ func Install(ctx context.Context, opts Options, runner Runner) (result Result, r
 		if err := copyFile(resolved.NodeRuntime, filepath.Join(runtimeDir, nodeName), 0o700); err != nil {
 			return result, fmt.Errorf("stage Node runtime: %w", err)
 		}
-		if err := os.Rename(temporary, target); err != nil {
-			return result, fmt.Errorf("activate staged directory: %w", err)
-		}
 	}
 	if !resolved.SkipService {
 		serviceCtx, cancel := context.WithTimeout(ctx, 2*time.Minute)
@@ -180,6 +189,13 @@ func Install(ctx context.Context, opts Options, runner Runner) (result Result, r
 		}
 		if err == nil {
 			supervisorRelease := oldCurrent
+			if supervisorRelease == "" || (targetNeedsReplace && filepath.Clean(supervisorRelease) == filepath.Clean(target)) {
+				if targetNeedsReplace {
+					supervisorRelease = temporary
+				} else {
+					supervisorRelease = target
+				}
+			}
 			if supervisorRelease == "" {
 				supervisorRelease = target
 			}
@@ -189,6 +205,25 @@ func Install(ctx context.Context, opts Options, runner Runner) (result Result, r
 		if err != nil {
 			return result, fmt.Errorf("stop existing Personal Agent service: %w", err)
 		}
+	}
+	if targetNeedsReplace {
+		if _, statErr := os.Stat(target); statErr == nil {
+			targetBackup = target + fmt.Sprintf(".%d.replaced", os.Getpid())
+			_ = os.RemoveAll(targetBackup)
+			if err := os.Rename(target, targetBackup); err != nil {
+				return result, fmt.Errorf("retain replaced release: %w", err)
+			}
+		} else if !errors.Is(statErr, os.ErrNotExist) {
+			return result, fmt.Errorf("inspect installed release: %w", statErr)
+		}
+		if err := os.Rename(temporary, target); err != nil {
+			if targetBackup != "" {
+				_ = os.Rename(targetBackup, target)
+				targetBackup = ""
+			}
+			return result, fmt.Errorf("activate staged directory: %w", err)
+		}
+		targetReplaced = true
 	}
 
 	activated = true
@@ -740,6 +775,19 @@ func bundledNode(releaseRoot, platform string) string {
 		name = "node.exe"
 	}
 	return filepath.Join(releaseRoot, "runtime", name)
+}
+
+func installedReleaseMatches(target string, expected Manifest, nodeRuntime, platform string) bool {
+	installed, err := VerifyRelease(target)
+	if err != nil || installed.ReleaseID != expected.ReleaseID || installed.Revision != expected.Revision || installed.Dirty {
+		return false
+	}
+	installedNodeDigest, err := sha256File(bundledNode(target, platform))
+	if err != nil {
+		return false
+	}
+	expectedNodeDigest, err := sha256File(nodeRuntime)
+	return err == nil && installedNodeDigest == expectedNodeDigest
 }
 
 func waitForPort(ctx context.Context, host string, port int, timeout time.Duration) error {
