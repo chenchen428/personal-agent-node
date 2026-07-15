@@ -22,6 +22,7 @@ import {
 } from "./channel-config.ts";
 import { isWechatSyncSessionTimeout } from "./wechat-transport.ts";
 import { wechatFetch } from "./wechat-fetch.ts";
+import { isDirectWechatSetup } from "./entrypoint-guard.mjs";
 
 interface QRCodeResponse {
   qrcode: string;
@@ -376,7 +377,13 @@ async function main() {
   printPostLoginHelp((message) => console.log(message));
 }
 
-const isDirectRun = Boolean((import.meta as ImportMeta & { main?: boolean }).main);
+// Bundlers preserve import.meta.main for the final server entrypoint. Checking
+// the module filename as well prevents this optional setup CLI from running
+// when it is bundled into the long-lived Bridge server.
+const isDirectRun = isDirectWechatSetup({
+  metaMain: Boolean((import.meta as ImportMeta & { main?: boolean }).main),
+  metaUrl: import.meta.url,
+});
 if (isDirectRun) {
   main().catch((err) => {
     const message = err instanceof Error ? err.message : String(err);
