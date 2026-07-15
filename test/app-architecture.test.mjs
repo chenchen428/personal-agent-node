@@ -8,6 +8,7 @@ const root = path.resolve(import.meta.dirname, "..");
 test("Next.js owns the application shell, Setup Center, BFF and Plugin Studio", () => {
   const shell = read("core/app/src/components/app-shell.tsx");
   const setup = read("core/app/src/components/setup-dashboard.tsx");
+  const setupPage = read("core/app/src/app/app/setup/page.tsx");
   const proxy = read("core/app/src/app/api/[...path]/route.ts");
   const plugins = read("core/plugins/runtime/store.ts");
   const distribution = JSON.parse(read("registry/site-distribution.json"));
@@ -21,6 +22,7 @@ test("Next.js owns the application shell, Setup Center, BFF and Plugin Studio", 
   assert.match(setup, /以后配置/);
   assert.match(setup, /检测详情/);
   assert.match(setup, /Agent 邮箱/);
+  assert.match(setupPage, /把这台电脑准备好/);
   assert.match(proxy, /PERSONAL_AGENT_CONTROL_URL/);
   assert.match(proxy, /x-personal-agent-authenticated/);
   assert.match(plugins, /personal-agent\.plugin\.json/);
