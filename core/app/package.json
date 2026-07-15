@@ -1,0 +1,5 @@
+{
+  "name": "@personal-agent/app",
+  "private": true,
+  "type": "module"
+}

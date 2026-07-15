@@ -173,7 +173,7 @@ export async function buildLocalXiaohongshuAdapter({
   cacheRoot = path.join(workspaceRoot, ".local", "runtime-cache"),
 } = {}) {
   if (!outputRoot) throw new Error("outputRoot is required");
-  const manifest = readJson(path.join(workspaceRoot, "projects", "core", "channels", "xiaohongshu", "runtime.json"));
+  const manifest = readJson(path.join(workspaceRoot, "core", "channels", "xiaohongshu", "runtime.json"));
   const platform = process.platform === "win32" && process.arch === "x64" ? "win32-x64" : `${process.platform}-${process.arch}`;
   if (platform !== "win32-x64") throw new Error(`Local Xiaohongshu runtime is not supported on ${platform}`);
   const target = path.join(outputRoot, "xiaohongshu-mcp.exe");
@@ -187,7 +187,7 @@ export function validateSourcePatches(patches) {
   const normalized = patches.map((patch) => ({ file: String(patch?.file || "").replace(/\\/g, "/"), sha256: String(patch?.sha256 || "").toLowerCase() }));
   const files = new Set();
   for (const patch of normalized) {
-    if (!/^projects\/core\/channels\/xiaohongshu\/patches\/[A-Za-z0-9_.-]+\.patch$/.test(patch.file)) throw new Error(`Unsafe Xiaohongshu source patch path: ${patch.file}`);
+    if (!/^core\/channels\/xiaohongshu\/patches\/[A-Za-z0-9_.-]+\.patch$/.test(patch.file)) throw new Error(`Unsafe Xiaohongshu source patch path: ${patch.file}`);
     if (!/^[a-f0-9]{64}$/.test(patch.sha256)) throw new Error(`Invalid Xiaohongshu source patch checksum: ${patch.file}`);
     if (files.has(patch.file)) throw new Error(`Duplicate Xiaohongshu source patch: ${patch.file}`);
     files.add(patch.file);

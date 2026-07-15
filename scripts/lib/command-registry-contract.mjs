@@ -1,4 +1,13 @@
-import { expandCommandName, HANDLED_COMMAND_KEYS } from '../../projects/core/node/src/command-surface.mjs';
+import fs from 'node:fs';
+
+const HANDLED_COMMAND_KEYS = Object.freeze(JSON.parse(fs.readFileSync(new URL('../../core/runtime/contracts/handled-commands.json', import.meta.url), 'utf8')).commands);
+
+function expandCommandName(name) {
+  const parts = String(name || '').trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 1) return parts;
+  if (parts.length !== 2) throw new Error(`Invalid command group: ${name}`);
+  return parts[1].split('|').map((action) => `${parts[0]} ${action}`);
+}
 
 const COMMAND_NAME_PATTERN = /^[a-z][a-z0-9-]*(?: [a-z][a-z0-9-]*(?:\|[a-z][a-z0-9-]*)*)?$/;
 const STATUSES = Object.freeze(['implemented', 'preview', 'planned']);

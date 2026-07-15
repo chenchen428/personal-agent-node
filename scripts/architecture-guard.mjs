@@ -14,6 +14,7 @@ const commandsSchema = readJson('schemas/personal-agent/commands.schema.json');
 const setupChecks = readJson('registry/setup-checks.json');
 const nodeRuntime = readJson('registry/node-runtime.json');
 const distribution = readJson('registry/site-distribution.json');
+const delivery = readJson('registry/delivery.json');
 const projectNames = new Set(projects.projects.map((entry) => entry.name));
 const capabilityIds = new Set(capabilities.capabilities.map((entry) => entry.id));
 const commandStatuses = commands.implementationStatuses || {};
@@ -21,6 +22,12 @@ const commandContract = validateCommandRegistry({ registry: commands, schema: co
 
 checks.push({ name: 'only Node and Edge are registered products', ok: projectNames.size === 2 && projectNames.has('personal-agent-node') && projectNames.has('private-site-edge') });
 checks.push({ name: 'project registry has target schema version', ok: projects.schemaVersion === 2 });
+checks.push({ name: 'historical projects directory is absent', ok: !exists('projects') });
+checks.push({ name: 'Next.js application is the unified Web surface', ok: exists('core/app/next.config.ts') && exists('core/app/src/app/app/layout.tsx') });
+checks.push({ name: 'delivery separates immutable core from mutable workspace', ok: delivery.schemaVersion === 1 && delivery.core?.path === 'core' && delivery.core?.mutable === false && delivery.workspace?.path === 'workspace' && delivery.workspace?.mutable === true && delivery.workspace?.preserveOnUninstall === true });
+checks.push({ name: 'workspace carries the customer Harness contract', ok: ['AGENTS.md', 'registry', 'skills', 'workflows'].every((entry) => delivery.workspace?.harness?.includes(entry)) && exists('workspace/AGENTS.md') });
+checks.push({ name: 'plugin schema and SDK are versioned', ok: exists('core/plugins/schema/personal-agent.plugin.schema.json') && exists('core/plugins/sdk/manifest.ts') });
+checks.push({ name: 'application logic is TypeScript', ok: !containsExtension(['core/runtime/src', 'core/control', 'core/plugins'], '.mjs') && ['core/runtime/src/config.ts', 'core/runtime/src/supervisor.ts', 'core/control/server.ts', 'core/plugins/runtime/store.ts', 'core/agent/src/agent/app-server-runner.ts', 'core/edge/src/edge.ts'].every(exists) });
 for (const file of ['capabilities', 'routes', 'extensions', 'commands', 'setup-checks']) {
   checks.push({ name: `${file} registry`, ok: exists(`registry/${file}.json`) });
   checks.push({ name: `${file} schema`, ok: exists(`schemas/personal-agent/${file}.schema.json`) });
@@ -44,7 +51,7 @@ checks.push({ name: 'distribution exposes only unified private routes', ok: dist
 checks.push({ name: 'unified console is mounted', ok: distribution.routing.paths.some((entry) => entry.prefix === '/app' && entry.access === 'authenticated') });
 checks.push({ name: 'extension ids are unique', ok: new Set(extensions.extensions.map((entry) => entry.id)).size === extensions.extensions.length });
 checks.push({ name: 'extensions declare permissions', ok: extensions.extensions.every((entry) => Array.isArray(entry.permissions) && entry.permissions.length > 0) });
-checks.push({ name: 'unified CLI is partially implemented', ok: commands.schemaVersion === 2 && commands.binary === 'personal-agent' && commands.implementationStatus === 'partial' && exists('projects/core/node/bin/personal-agent.mjs') });
+checks.push({ name: 'unified CLI is partially implemented', ok: commands.schemaVersion === 2 && commands.binary === 'personal-agent' && commands.implementationStatus === 'partial' && exists('core/runtime/bin/personal-agent.mjs') });
 checks.push({ name: 'command registry satisfies the self-contained public contract', ok: commandContract.ok });
 checks.push({
   name: 'command implementation statuses are explicit',
@@ -67,6 +74,11 @@ checks.push({ name: 'commands declare R0-R3 risk', ok: commands.commands.every((
 checks.push({ name: 'agent output contract is JSON', ok: commands.output?.agentFormat === 'json' && commands.output?.formats?.includes('json') });
 checks.push({ name: 'personal-agent skill', ok: exists('skills/personal-agent/SKILL.md') });
 checks.push({ name: 'legacy bridge skill removed', ok: !exists('skills/open-agent-bridge/SKILL.md') });
-const cloudEnrollmentSource = fs.readFileSync(path.join(root, 'projects/core/node/src/cloud-enrollment.mjs'), 'utf8');
-checks.push({ name: 'legacy invitation onboarding removed', ok: !exists('projects/core/node/src/onboarding-server.mjs') && !cloudEnrollmentSource.includes('enrollWithCloud(') && !cloudEnrollmentSource.includes('/activate') });
+const cloudEnrollmentSource = fs.readFileSync(path.join(root, 'core/runtime/src/cloud-enrollment.ts'), 'utf8');
+checks.push({ name: 'legacy invitation onboarding removed', ok: !exists('core/runtime/src/onboarding-server.mjs') && !cloudEnrollmentSource.includes('enrollWithCloud(') && !cloudEnrollmentSource.includes('/activate') });
 report(checks);
+
+function containsExtension(directories, extension) {
+  const visit = (directory) => fs.readdirSync(path.join(root, directory), { withFileTypes: true }).some((entry) => entry.isDirectory() ? visit(path.join(directory, entry.name)) : entry.name.endsWith(extension));
+  return directories.some(visit);
+}

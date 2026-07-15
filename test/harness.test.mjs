@@ -36,13 +36,14 @@ test('customer Harness carries the portable Node acceptance standard', () => {
   for (const requirement of ['Post-release Node gate', 'exact public asset', 'authenticated `/app/setup`', 'real Codex reply', 'same authenticated `/app/chat` session', '"wechatRequired": false']) assert.match(releaseWorkflow, new RegExp(requirement));
   const artifactVerifier = fs.readFileSync(path.join(root, 'scripts/verify-private-site-node-dist.mjs'), 'utf8');
   assert.match(artifactVerifier, /webConversation:\s*\{/);
-  assert.match(artifactVerifier, /releaseAssetRuntime: false/);
-  assert.match(artifactVerifier, /realAgentRuntime: false/);
-  assert.match(artifactVerifier, /sameSessionAgentReply: false/);
+  assert.match(artifactVerifier, /route: "\/app\/chat"/);
+  assert.match(artifactVerifier, /realAgentRuntimeRequired: true/);
+  assert.match(artifactVerifier, /sameSessionReplyRequired: true/);
+  assert.match(artifactVerifier, /wechatRequired: false/);
 });
 
 test('seeded Node home links only to current path-based application routes', () => {
-  const source = fs.readFileSync(path.join(root, 'projects/core/node/bin/private-site.mjs'), 'utf8');
+  const source = fs.readFileSync(path.join(root, 'core/runtime/bin/private-site.mjs'), 'utf8');
   for (const route of ['/app', '/app/chat', '/app/mail', '/app/files']) assert.match(source, new RegExp(`href="${route}"`));
   for (const legacy of ['/admin', '/agent', '/mail', '/files']) assert.doesNotMatch(source, new RegExp(`href="${legacy}"`));
 });
@@ -59,7 +60,7 @@ test('generated Agent compatibility bridges stay outside Git', () => {
 });
 
 test('public dependency metadata uses only the public npm registry', () => {
-  const files = ['.npmrc', 'package-lock.json', 'projects/core/open-agent-bridge/package-lock.json'];
+  const files = ['.npmrc', 'package-lock.json'];
   const forbiddenRegistry = ['registry', 'anpm', 'alibaba-inc', 'com'].join('.');
   for (const file of files) {
     const content = fs.readFileSync(path.join(root, file), 'utf8');

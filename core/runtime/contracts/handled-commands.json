@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 1,
+  "commands": [
+    "help",
+    "status",
+    "doctor",
+    "setup status",
+    "setup open",
+    "capabilities list",
+    "capabilities inspect",
+    "skill list",
+    "skill inspect",
+    "skill verify",
+    "connection status",
+    "cloud connect",
+    "cloud login",
+    "cloud resources",
+    "cloud status",
+    "backup status",
+    "mail status",
+    "mail plan",
+    "extension list",
+    "extension inspect",
+    "operation list",
+    "operation show",
+    "operation approve"
+  ]
+}

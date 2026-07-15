@@ -1,0 +1,52 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://personal-agent.local/schemas/plugin-manifest-v1.json",
+  "title": "Personal Agent Plugin Manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["apiVersion", "id", "version", "name", "compatibility", "permissions", "contributes"],
+  "properties": {
+    "apiVersion": { "const": "personal-agent/v1" },
+    "id": { "type": "string", "pattern": "^[a-z][a-z0-9]*(?:[.-][a-z0-9]+)+$", "maxLength": 96 },
+    "version": { "type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+(?:-[0-9A-Za-z.-]+)?$" },
+    "name": { "type": "string", "minLength": 1, "maxLength": 80 },
+    "description": { "type": "string", "maxLength": 280 },
+    "compatibility": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["core"],
+      "properties": { "core": { "type": "string", "minLength": 1, "maxLength": 64 } }
+    },
+    "permissions": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "enum": ["workspace.files:read", "workspace.files:write", "workspace.data:read", "workspace.data:write", "network:read", "network:write", "agent:tool", "channel:receive", "channel:send", "schedule:run"] }
+    },
+    "contributes": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "navigation": { "type": "array", "items": { "$ref": "#/$defs/navigation" } },
+        "views": { "type": "array", "items": { "$ref": "#/$defs/view" } },
+        "tools": { "type": "array", "items": { "$ref": "#/$defs/entrypoint" } },
+        "workers": { "type": "array", "items": { "$ref": "#/$defs/entrypoint" } },
+        "channels": { "type": "array", "items": { "$ref": "#/$defs/entrypoint" } },
+        "schedules": { "type": "array", "items": { "$ref": "#/$defs/entrypoint" } }
+      }
+    }
+  },
+  "$defs": {
+    "entrypoint": {
+      "type": "object", "additionalProperties": false, "required": ["id", "entry"],
+      "properties": { "id": { "type": "string", "pattern": "^[a-z][a-z0-9-]*$" }, "entry": { "type": "string", "pattern": "^(?!/)(?!.*\\.\\.)(?!.*\\\\).+\\.(?:mjs|js)$" } }
+    },
+    "navigation": {
+      "type": "object", "additionalProperties": false, "required": ["id", "label", "slot", "view"],
+      "properties": { "id": { "type": "string", "pattern": "^[a-z][a-z0-9-]*$" }, "label": { "type": "string", "minLength": 1, "maxLength": 40 }, "slot": { "enum": ["primary", "secondary", "settings"] }, "view": { "type": "string", "pattern": "^[a-z][a-z0-9-]*$" } }
+    },
+    "view": {
+      "type": "object", "additionalProperties": false, "required": ["id", "renderer"],
+      "properties": { "id": { "type": "string", "pattern": "^[a-z][a-z0-9-]*$" }, "renderer": { "enum": ["cards", "table", "document", "status"] }, "dataEndpoint": { "type": "string", "pattern": "^/api/extensions/[a-z0-9.-]+/" } }
+    }
+  }
+}

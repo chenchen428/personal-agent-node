@@ -24,8 +24,8 @@ for (const workflow of registry?.workflows || []) {
   ids.add(prefix);
   if (!String(workflow?.label || "").trim()) fail(`${prefix}: label is required`);
   if (!Array.isArray(workflow?.requirements) || workflow.requirements.length < 2 || workflow.requirements.some((item) => !String(item).trim())) fail(`${prefix}: at least two requirements are required`);
-  if (!Array.isArray(workflow?.command) || workflow.command.length < 3 || workflow.command.some((item) => typeof item !== "string" || !item)) fail(`${prefix}: deterministic command array is required`);
-  if (workflow?.command?.[0] !== "node" || workflow?.command?.[1] !== "--test") fail(`${prefix}: baseline replay must use the local Node test runner`);
+  if (!Array.isArray(workflow?.command) || workflow.command.length < 5 || workflow.command.some((item) => typeof item !== "string" || !item)) fail(`${prefix}: deterministic command array is required`);
+  if (JSON.stringify(workflow?.command?.slice(0, 4)) !== JSON.stringify(["node", "--import", "tsx", "--test"])) fail(`${prefix}: baseline replay must use the local TypeScript Node test runner`);
   const casePath = requireTrackedFile(workflow?.case, `${prefix}: case`);
   const fixture = casePath ? readJson(casePath, workflow.case) : null;
   if (fixture?.schemaVersion !== 1 || fixture?.id !== prefix) fail(`${prefix}: case identity or schema is invalid`);
@@ -33,7 +33,7 @@ for (const workflow of registry?.workflows || []) {
   if (!Array.isArray(fixture?.acceptance) || fixture.acceptance.length !== workflow.requirements.length) fail(`${prefix}: case acceptance must cover every requirement`);
   if (JSON.stringify(fixture?.acceptance) !== JSON.stringify(workflow.requirements)) fail(`${prefix}: case acceptance differs from registry requirements`);
   if (!fixture?.cloudIndependent) fail(`${prefix}: case must declare whether the current behavior is Cloud-independent`);
-  for (const argument of workflow?.command?.slice(2) || []) {
+  for (const argument of workflow?.command?.slice(4) || []) {
     if (!argument.startsWith("-")) requireTrackedFile(argument, `${prefix}: replay input`);
   }
   if (replay && !failures.some((item) => item.startsWith(`${prefix}:`))) {
@@ -71,4 +71,3 @@ function readJson(target, label) {
 }
 
 function fail(message) { failures.push(message); }
-

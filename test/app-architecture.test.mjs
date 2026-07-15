@@ -1,0 +1,33 @@
+import assert from "node:assert/strict";
+import fs from "node:fs";
+import path from "node:path";
+import test from "node:test";
+
+const root = path.resolve(import.meta.dirname, "..");
+
+test("Next.js owns the application shell, Setup Center, BFF and Plugin Studio", () => {
+  const shell = read("core/app/src/components/app-shell.tsx");
+  const setup = read("core/app/src/components/setup-dashboard.tsx");
+  const proxy = read("core/app/src/app/api/[...path]/route.ts");
+  const plugins = read("core/plugins/runtime/store.ts");
+  assert.match(shell, /\/app\/chat/);
+  assert.match(shell, /\/app\/plugins/);
+  assert.match(setup, /installation/);
+  assert.match(setup, /Codex Agent/);
+  assert.match(setup, /connectivity/);
+  assert.match(setup, /Agent 邮箱/);
+  assert.match(proxy, /PERSONAL_AGENT_CONTROL_URL/);
+  assert.match(proxy, /x-personal-agent-authenticated/);
+  assert.match(plugins, /personal-agent\.plugin\.json/);
+});
+
+test("the internal control service exposes APIs but no handwritten HTML renderer", () => {
+  const server = read("core/control/server.ts");
+  assert.match(server, /\/api\/setup/);
+  assert.match(server, /\/api\/wechat\/status/);
+  assert.match(server, /\/api\/plugins/);
+  assert.doesNotMatch(server, /renderNavigationPage|renderSetupPage|text\/html/);
+  for (const file of ["page.ts", "setup-page.ts", "status.ts", "status-logic.ts"]) assert.equal(fs.existsSync(path.join(root, "core", "control", file)), false);
+});
+
+function read(relative) { return fs.readFileSync(path.join(root, relative), "utf8"); }

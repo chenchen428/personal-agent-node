@@ -10,7 +10,7 @@ const pkg = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'))
 const tag = args.tag || process.env.GITHUB_REF_NAME || `v${pkg.version}`;
 execFileSync(process.execPath, [path.join(root, 'scripts/release-check.mjs'), '--tag', tag], { cwd: root, stdio: 'inherit' });
 const releaseId = args.releaseId || tag.replace(/^v/, '');
-const stage = path.resolve(args.stage || path.join(root, 'dist', 'private-site-node', releaseId));
+const stage = path.resolve(args.stage || path.join(root, 'dist', 'personal-agent-node', releaseId));
 const output = path.resolve(args.output || path.join(root, 'dist', 'releases', tag));
 fs.rmSync(output, { recursive: true, force: true });
 fs.mkdirSync(output, { recursive: true });

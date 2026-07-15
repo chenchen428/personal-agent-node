@@ -179,7 +179,8 @@ test('release packaging delegates customer installation to self-contained Go pla
   const platformBuilder = fs.readFileSync(new URL('../scripts/build-platform-installer.mjs', import.meta.url), 'utf8');
   assert.doesNotMatch(packager, /installer\.mjs|install-from-github-release\.mjs/);
   assert.match(platformBuilder, /personal-agent-setup/);
-  assert.match(platformBuilder, /projects['"], ['"]core['"], ['"]node['"], ['"]native/);
+  assert.match(platformBuilder, /core['"], ['"]runtime['"], ['"]native/);
+  assert.doesNotMatch(platformBuilder, /projects['"], ['"]core/);
   assert.match(platformBuilder, /nodeRuntime/);
 });
 

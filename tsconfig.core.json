@@ -1,0 +1,26 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "lib": ["ES2023", "DOM"],
+    "types": ["node"],
+    "allowJs": true,
+    "checkJs": false,
+    "allowImportingTsExtensions": true,
+    "noEmit": true,
+    "noCheck": true,
+    "strict": false,
+    "skipLibCheck": true,
+    "resolveJsonModule": true,
+    "verbatimModuleSyntax": true
+  },
+  "include": [
+    "core/runtime/src/**/*.ts",
+    "core/control/**/*.ts",
+    "core/plugins/**/*.ts",
+    "core/agent/src/**/*.ts",
+    "core/edge/src/**/*.ts"
+  ],
+  "exclude": ["core/app/.next", "node_modules"]
+}

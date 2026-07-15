@@ -6,6 +6,8 @@
 coverage/
 dist/
 node_modules/
+.next/
+*.tsbuildinfo
 secrets/
 .agents/
 .claude/

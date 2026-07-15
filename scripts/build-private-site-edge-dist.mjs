@@ -3,6 +3,7 @@ import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import { execFileSync } from "node:child_process";
+import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
 import { pruneLocalDist } from "./prune-local-dist.mjs";
 
@@ -12,17 +13,15 @@ const source = sourceRevision();
 const releaseId = args.releaseId || `${timestamp()}-${source.commit.slice(0, 12)}${source.dirty ? "-dirty" : ""}`;
 const outputRoot = path.resolve(args.output || path.join(root, "dist", "private-site-edge", releaseId));
 const releasesRoot = path.join(root, "dist", "private-site-edge");
+const { buildSync } = createRequire(path.join(root, "package.json"))("esbuild");
 
 fs.rmSync(outputRoot, { recursive: true, force: true });
 fs.mkdirSync(outputRoot, { recursive: true });
 
 for (const relative of [
-  "projects/edge/bin",
-  "projects/edge/config",
-  "projects/edge/scripts",
-  "projects/edge/src",
-  "projects/edge/package.json",
-  "projects/edge/README.md",
+  "core/edge/config",
+  "core/edge/scripts",
+  "core/edge/README.md",
   "infra/edge",
   "infra/acme/install-acme.sh",
   "infra/nginx/conf.d/05-private-site-edge.conf",
@@ -30,6 +29,17 @@ for (const relative of [
   "schemas/private-site",
   "scripts/install-private-site-edge-release.sh",
 ]) copy(relative);
+
+fs.mkdirSync(path.join(outputRoot, "core", "edge", "bin"), { recursive: true });
+buildSync({
+  entryPoints: [path.join(root, "core", "edge", "bin", "private-site-edge.mjs")],
+  outfile: path.join(outputRoot, "core", "edge", "bin", "private-site-edge.mjs"),
+  bundle: true,
+  platform: "node",
+  target: "node22",
+  format: "esm",
+  legalComments: "none",
+});
 
 const manifest = {
   schemaVersion: 1,

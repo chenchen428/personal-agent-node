@@ -26,6 +26,6 @@ cleanup() {
 trap cleanup EXIT
 scp -q -i "$SSH_KEY" -o IdentitiesOnly=yes -o BatchMode=yes "$archive" "$SSH_USER@$SSH_HOST:$remote_archive"
 "$ROOT_DIR/scripts/ssh-server.sh" "tar -xzf '$remote_archive' -C '$EDGE_ROOT/releases/$release_id' && bash '$EDGE_ROOT/releases/$release_id/scripts/install-private-site-edge-release.sh' '$EDGE_ROOT/releases/$release_id'"
-"$ROOT_DIR/scripts/ssh-server.sh" "nginx -t >/dev/null && systemctl is-active --quiet wg-quick@wg0.service nginx.service && node '$EDGE_ROOT/current/projects/edge/bin/private-site-edge.mjs' verify >/dev/null"
+"$ROOT_DIR/scripts/ssh-server.sh" "nginx -t >/dev/null && systemctl is-active --quiet wg-quick@wg0.service nginx.service && node '$EDGE_ROOT/current/core/edge/bin/private-site-edge.mjs' verify >/dev/null"
 node "$ROOT_DIR/scripts/prune-local-dist.mjs" "$ROOT_DIR/dist/private-site-edge" 2 >/dev/null
 printf '[private-site-edge] Deployment accepted: %s; retained two local artifacts\n' "$release_id"

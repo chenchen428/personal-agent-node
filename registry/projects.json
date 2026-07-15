@@ -9,15 +9,14 @@
     {
       "name": "personal-agent-node",
       "scope": "product",
-      "path": "projects/core/node",
-      "targetPath": "projects/node",
-      "implementationStatus": "migrating",
+      "path": "core",
+      "implementationStatus": "implemented",
       "runtime": { "type": "node", "port": 8843, "host": "127.0.0.1", "dataDirEnv": "PRIVATE_SITE_DATA_ROOT" }
     },
     {
       "name": "private-site-edge",
       "scope": "product",
-      "path": "projects/edge",
+      "path": "core/edge",
       "implementationStatus": "implemented",
       "runtime": { "type": "native", "configDir": "/etc/private-site-edge", "stateDir": "/var/lib/private-site-edge" }
     }

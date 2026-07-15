@@ -2,19 +2,19 @@
 
 ## Install an immutable release
 
-Set `TAG=v0.1.0-beta.24` and open the matching [GitHub Release](https://github.com/chenchen428/personal-agent-node/releases/tag/v0.1.0-beta.24). A customer machine does not need Node.js, npm, Git, a source checkout, or a development Agent.
+Set `TAG=v0.2.0-beta.1` and open the matching [GitHub Release](https://github.com/chenchen428/personal-agent-node/releases/tag/v0.2.0-beta.1). A customer machine does not need Node.js, npm, Git, a source checkout, or a development Agent.
 
 | Computer | Asset |
 | --- | --- |
-| Windows x86-64 | `personal-agent-node-v0.1.0-beta.24-windows-x64-installer.exe` |
-| macOS Apple Silicon | `personal-agent-node-v0.1.0-beta.24-macos-arm64.pkg` |
-| macOS Intel | `personal-agent-node-v0.1.0-beta.24-macos-x64.pkg` |
-| Linux x86-64 | `personal-agent-node-v0.1.0-beta.24-linux-x64.tar.zst` |
-| Linux ARM64 | `personal-agent-node-v0.1.0-beta.24-linux-arm64.tar.zst` |
+| Windows x86-64 | `personal-agent-node-v0.2.0-beta.1-windows-x64-installer.exe` |
+| macOS Apple Silicon | `personal-agent-node-v0.2.0-beta.1-macos-arm64.pkg` |
+| macOS Intel | `personal-agent-node-v0.2.0-beta.1-macos-x64.pkg` |
+| Linux x86-64 | `personal-agent-node-v0.2.0-beta.1-linux-x64.tar.zst` |
+| Linux ARM64 | `personal-agent-node-v0.2.0-beta.1-linux-arm64.tar.zst` |
 
 On Windows, run the installer. On macOS, open the package. On Linux, unpack the matching archive with the desktop archive manager or `tar --zstd`, then run `./personal-agent-setup` from the extracted directory.
 
-Each package contains the Go setup executable, stable launcher, exact Node.js `22.23.1` runtime, and immutable application payload. Setup verifies embedded checksums, stages the release, initializes the data root, switches `current` while retaining `previous`, registers the per-user service, waits for the local gateway, and opens a single-use loopback Setup Center session. The default roots are `~/.private-site-node` for immutable binaries and `~/.personal-agent` for mutable data.
+Each package contains the Go setup executable, stable launcher, exact Node.js `22.23.1` runtime, and immutable application payload. Setup verifies embedded checksums, stages the release, initializes the Workspace, switches `current` while retaining `previous`, registers the per-user service, waits for the local gateway, and opens a single-use loopback Setup Center session. The only default home is `~/.personal-agent`: product releases live under `core/`, while Harness, plugins, files, databases, mail and other user-owned state live under `workspace/`.
 
 Release assets include `RELEASE-SECURITY.json`, `SHA256SUMS`, Sigstore bundles, provenance, and an SBOM. Beta/RC packages may defer paid Windows and Apple native signing and can therefore trigger an operating-system approval warning; the security metadata records that fact explicitly. Stable releases require Authenticode plus Apple Developer ID/notarization and fail closed when either is absent.
 

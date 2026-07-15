@@ -51,7 +51,7 @@ function verifyInputs() {
 }
 
 function buildGo(name, packagePath, outputFile, target) {
-  const nativeRoot = path.join(root, 'projects', 'core', 'node', 'native');
+  const nativeRoot = path.join(root, 'core', 'runtime', 'native');
   const environment = { ...process.env, CGO_ENABLED: '0', GOOS: target.goos, GOARCH: target.goarch };
   run('go', ['build', '-trimpath', '-ldflags', `-s -w -X main.buildVersion=${tag}`, '-o', outputFile, packagePath], { cwd: nativeRoot, env: environment });
   if (platform !== 'win32') fs.chmodSync(outputFile, 0o755);

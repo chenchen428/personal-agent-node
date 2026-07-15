@@ -7,19 +7,19 @@ import { exists, executable, report, root, trackedFiles } from './harness-lib.mj
 const checks = [];
 const nodeMajor = Number(process.versions.node.split('.')[0]);
 checks.push({ name: 'Node.js 22.x', ok: nodeMajor >= 22 && nodeMajor < 24, detail: process.version });
-for (const file of ['AGENTS.md', 'README.md', 'docs/adr/0001-node-product-boundary-freeze.md', 'registry/projects.json', 'registry/skills.json', 'registry/behavior-baselines.json', 'registry/capabilities.json', 'registry/routes.json', 'registry/extensions.json', 'registry/commands.json', 'scripts/project-guard.mjs', 'scripts/architecture-guard.mjs', 'scripts/skill-guard.mjs', 'scripts/skill-tree.mjs', 'scripts/verify-behavior-baselines.mjs', 'scripts/setup-agent-bridge.sh']) checks.push({ name: `harness file ${file}`, ok: exists(file) });
+for (const file of ['AGENTS.md', 'README.md', 'DESIGN.md', 'docs/adr/0001-node-product-boundary-freeze.md', 'docs/adr/0003-core-workspace-next-architecture.md', 'registry/projects.json', 'registry/delivery.json', 'registry/skills.json', 'registry/behavior-baselines.json', 'registry/capabilities.json', 'registry/routes.json', 'registry/extensions.json', 'registry/commands.json', 'workspace/AGENTS.md', 'scripts/project-guard.mjs', 'scripts/architecture-guard.mjs', 'scripts/skill-guard.mjs', 'scripts/skill-tree.mjs', 'scripts/verify-behavior-baselines.mjs', 'scripts/setup-agent-bridge.sh']) checks.push({ name: `harness file ${file}`, ok: exists(file) });
 for (const file of ['scripts/project-guard.mjs', 'scripts/architecture-guard.mjs', 'scripts/skill-guard.mjs', 'scripts/skill-tree.mjs', 'scripts/setup-agent-bridge.sh']) checks.push({ name: `executable ${file}`, ok: exists(file) && executable(file) });
 const installedRelease = exists('release-manifest.json');
 if (installedRelease) {
   const manifest = JSON.parse(fs.readFileSync(path.join(root, 'release-manifest.json'), 'utf8'));
   checks.push({
     name: 'installed release manifest',
-    ok: manifest.releaseType === 'private-site-node' && Boolean(manifest.releaseId) && Boolean(manifest.profile),
+    ok: manifest.releaseType === 'personal-agent-node' && manifest.schemaVersion === 2 && Boolean(manifest.releaseId),
     detail: manifest.releaseId || 'invalid release manifest'
   });
   for (const file of [
-    'projects/core/node/bin/private-site.mjs',
-    'projects/core/open-agent-bridge/package.json',
+    'core/runtime/bin/private-site.mjs',
+    'core/agent/package.json',
     'scripts/install-private-site-node-release.mjs'
   ]) checks.push({ name: `packaged runtime ${file}`, ok: exists(file) });
 } else {

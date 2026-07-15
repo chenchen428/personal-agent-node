@@ -18,7 +18,7 @@ async function main() {
   const args = parseArgs(process.argv.slice(2));
   const repository = args.repository || 'chenchen428/personal-agent-node';
   const tag = args.tag;
-  if (!tag) throw new Error('Usage: node personal-agent-node-<tag>-installer.mjs --tag <tag> [--install-root <path>] [--data-root <path>]');
+  if (!tag) throw new Error('Usage: node personal-agent-node-<tag>-installer.mjs --tag <tag> [--home <path>]');
   if (!/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(repository) || !/^v[0-9][0-9A-Za-z.-]+$/.test(tag)) throw new Error('Invalid repository or tag');
   const base = `https://github.com/${repository}/releases/download/${tag}`;
   const archiveName = `personal-agent-node-${tag}-universal.tar.gz`;
@@ -39,19 +39,22 @@ async function main() {
     if (entries.length !== 1 || !entries[0].isDirectory() || entries[0].name !== layout.root) throw new Error('Release archive has an invalid root layout');
     const releaseRoot = path.join(extracted, layout.root);
     const installer = path.join(releaseRoot, 'scripts', 'install-private-site-node-release.mjs');
-    const installRoot = canonicalInstallRoot(args.installRoot || path.join(os.homedir(), '.private-site-node'));
-    const dataRoot = path.resolve(args.dataRoot || process.env.PRIVATE_SITE_DATA_ROOT || path.join(os.homedir(), '.personal-agent'));
-    const command = [installer, releaseRoot, '--install-root', installRoot, '--data-root', dataRoot];
+    const homeRoot = path.resolve(args.home || process.env.PERSONAL_AGENT_HOME || path.join(os.homedir(), '.personal-agent'));
+    const installRoot = canonicalInstallRoot(args.installRoot || path.join(homeRoot, 'core'));
+    const dataRoot = path.resolve(args.dataRoot || process.env.PRIVATE_SITE_DATA_ROOT || path.join(homeRoot, 'workspace'));
+    const command = [installer, releaseRoot, '--home', homeRoot, '--install-root', installRoot, '--data-root', dataRoot];
     run(process.execPath, command);
     const current = path.join(installRoot, 'current');
-    const prepareEntrypoint = path.join(current, 'projects', 'core', 'node', 'bin', 'private-site.mjs');
+    const prepareEntrypoint = path.join(current, 'core', 'runtime', 'bin', 'private-site.mjs');
     const prepareEnvironment = {
       ...process.env,
+      PERSONAL_AGENT_HOME: homeRoot,
       PRIVATE_SITE_INSTALL_ROOT: installRoot,
       PRIVATE_SITE_DATA_ROOT: dataRoot,
     };
+    run(process.execPath, [prepareEntrypoint, 'init', '--domain', args.domain || 'personal-agent.local'], { env: prepareEnvironment });
     run(process.execPath, [prepareEntrypoint, 'prepare'], { env: prepareEnvironment });
-    console.log(JSON.stringify({ ok: true, repository, tag, verifiedSha256: actual, prepared: true, installRoot, current, onboarding: { requiredAction: 'open-setup-center', message: 'Open the authenticated local Setup Center. WeChat and managed connectivity are optional.', setupPath: '/app/setup', wechatRequired: false, statusCommand: 'personal-agent setup status --json' }, connectCommand: 'personal-agent cloud connect --json', connectEntrypoint: `node ${path.join(current, 'projects', 'core', 'node', 'bin', 'personal-agent.mjs')} cloud connect --json` }, null, 2));
+    console.log(JSON.stringify({ ok: true, repository, tag, verifiedSha256: actual, prepared: true, homeRoot, installRoot, dataRoot, current, onboarding: { requiredAction: 'open-setup-center', message: 'Open the authenticated local Setup Center. WeChat and managed connectivity are optional.', setupPath: '/app/setup', wechatRequired: false, statusCommand: 'personal-agent setup status --json' }, connectCommand: 'personal-agent cloud connect --json', connectEntrypoint: `node ${path.join(current, 'core', 'runtime', 'bin', 'personal-agent.mjs')} cloud connect --json` }, null, 2));
   } finally { fs.rmSync(temporary, { recursive: true, force: true }); }
 }
 
@@ -88,6 +91,8 @@ function parseArgs(argv) {
     const option = argv[index];
     if (option === '--repository') output.repository = requiredValue(argv, ++index, option);
     else if (option === '--tag') output.tag = requiredValue(argv, ++index, option);
+    else if (option === '--home') output.home = requiredValue(argv, ++index, option);
+    else if (option === '--domain') output.domain = requiredValue(argv, ++index, option);
     else if (option === '--install-root') output.installRoot = requiredValue(argv, ++index, option);
     else if (option === '--data-root') output.dataRoot = requiredValue(argv, ++index, option);
     else throw new Error(`Unknown installer option: ${option}`);

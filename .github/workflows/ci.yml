@@ -30,7 +30,7 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version: '1.24.x'
-          cache-dependency-path: projects/core/node/native/go.mod
+          cache-dependency-path: core/runtime/native/go.mod
       - run: npm ci
       - run: npm run doctor
       - run: npm run guard

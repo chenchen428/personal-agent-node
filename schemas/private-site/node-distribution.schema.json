@@ -1,46 +1,15 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://personal-agent.local/schemas/private-site/node-distribution.schema.json",
+  "$id": "https://personal-agent.local/schemas/node-distribution.schema.json",
   "type": "object",
-  "required": ["schemaVersion", "agentRuntime", "core", "edge", "extensions", "profiles", "extensionContract"],
+  "additionalProperties": false,
+  "required": ["schemaVersion", "architecture", "agentRuntime", "delivery", "services", "pluginContract"],
   "properties": {
-    "schemaVersion": { "const": 1 },
-    "agentRuntime": {
-      "type": "object",
-      "required": ["supported", "workspaceDelivery", "compatibilityOnly"],
-      "properties": {
-        "supported": { "const": ["codex"] },
-        "workspaceDelivery": { "const": "full-repository" },
-        "compatibilityOnly": { "type": "array", "items": { "type": "string" } }
-      }
-    },
-    "core": { "$ref": "#/$defs/layer" },
-    "edge": { "$ref": "#/$defs/layer" },
-    "extensions": {
-      "type": "array",
-      "items": {
-        "type": "object",
-        "required": ["id", "project", "scope", "owner", "portable"],
-        "properties": {
-          "id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]*$" },
-          "project": { "type": "string" },
-          "scope": { "enum": ["optional", "personal"] },
-          "owner": { "type": "string" },
-          "portable": { "type": "boolean" }
-        }
-      }
-    },
-    "profiles": { "type": "object", "required": ["universal"] },
-    "extensionContract": { "type": "object" }
-  },
-  "$defs": {
-    "layer": {
-      "type": "object",
-      "required": ["projects", "capabilities"],
-      "properties": {
-        "projects": { "type": "array", "items": { "type": "string" } },
-        "capabilities": { "type": "array", "items": { "type": "string" } }
-      }
-    }
+    "schemaVersion": { "const": 2 },
+    "architecture": { "const": "next-core-workspace" },
+    "agentRuntime": { "type": "object" },
+    "delivery": { "type": "object" },
+    "services": { "type": "array" },
+    "pluginContract": { "type": "object" }
   }
 }

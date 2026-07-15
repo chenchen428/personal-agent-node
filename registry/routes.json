@@ -20,6 +20,7 @@
     { "pattern": "/api/publications/*", "access": "authenticated", "capability": "publications" },
     { "pattern": "/api/system/*", "access": "local-admin", "capability": "runtime" },
     { "pattern": "/api/extensions/*", "access": "local-admin", "capability": "extensions" },
+    { "pattern": "/api/plugins/*", "access": "local-admin", "capability": "extensions" },
     { "pattern": "/internal/*", "access": "internal", "capability": "runtime" }
   ]
 }

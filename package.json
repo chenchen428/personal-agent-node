@@ -1,29 +1,66 @@
 {
-  "name": "personal-agent-node-workspace",
-  "version": "0.1.0-beta.24",
+  "name": "personal-agent-node",
+  "version": "0.2.0-beta.1",
   "private": true,
   "license": "Apache-2.0",
   "type": "module",
-  "workspaces": [
-    "projects/core/node",
-    "projects/core/open-agent-bridge",
-    "projects/edge"
-  ],
+  "description": "One local-first Personal Agent core with a user-owned workspace.",
+  "bin": {
+    "personal-agent": "core/runtime/bin/personal-agent.mjs",
+    "private-site": "core/runtime/bin/private-site.mjs",
+    "open-abg": "core/agent/bin/oab.mjs",
+    "open-abg-mail-ingest": "core/agent/bin/oab-mail-ingest.mjs",
+    "private-site-edge": "core/edge/bin/private-site-edge.mjs"
+  },
   "scripts": {
+    "app:dev": "next dev core/app",
+    "app:build": "next build core/app",
+    "app:start": "HOSTNAME=127.0.0.1 PORT=8791 node core/app/.next/standalone/core/app/server.js",
+    "app:typecheck": "tsc -p core/app/tsconfig.json --noEmit",
+    "core:typecheck": "tsc -p tsconfig.core.json && tsc -p tsconfig.contracts.json",
     "doctor": "node scripts/workspace-doctor.mjs",
     "guard": "node scripts/project-guard.mjs --working && node scripts/architecture-guard.mjs && node scripts/skill-guard.mjs --working",
-    "harness:test": "node --test test/*.test.mjs && node scripts/skill-tree.mjs cases verify",
+    "harness:test": "tsx --test test/*.test.mjs && node scripts/skill-tree.mjs cases verify",
     "baseline:verify": "node scripts/verify-behavior-baselines.mjs",
     "baseline:replay": "node scripts/verify-behavior-baselines.mjs --run",
     "release:check": "node scripts/release-check.mjs",
     "release:build": "node scripts/release-package.mjs",
     "release:rollback": "node scripts/rollback-private-site-node-release.mjs",
-    "native:test": "cd projects/core/node/native && go test ./...",
-    "check": "node --check scripts/build-platform-installer.mjs && node --check scripts/fetch-node-runtime.mjs && node --check scripts/lib/zip-member.mjs && node --check scripts/write-release-security-metadata.mjs && node --check projects/core/admin-panel/server.mjs && node --check projects/core/admin-panel/setup-page.mjs && npm run check -w personal-agent-node && npm run check -w open-agent-bridge",
-    "test": "npm run native:test && npm run harness:test && npm run test -w personal-agent-node && npm run test -w private-site-edge && npm run test -w open-agent-bridge",
-    "test:node": "npm run test -w personal-agent-node",
-    "test:bridge": "npm run test -w open-agent-bridge",
-    "test:edge": "npm run test -w private-site-edge"
+    "native:test": "cd core/runtime/native && go test ./...",
+    "check": "node --check scripts/build-platform-installer.mjs && node --check scripts/fetch-node-runtime.mjs && node --check scripts/lib/zip-member.mjs && node --check scripts/write-release-security-metadata.mjs && node --check core/runtime/bin/personal-agent.mjs && node --check core/runtime/bin/private-site.mjs && node --check core/agent/bin/oab.mjs && node --check core/agent/bin/oab-mail-ingest.mjs && npm run core:typecheck && npm run app:typecheck",
+    "test": "npm run native:test && npm run harness:test && npm run test:runtime && npm run test:edge && npm run test:agent",
+    "test:runtime": "tsx --test core/runtime/test/*.test.mjs",
+    "test:agent": "tsx --test --test-concurrency=4 core/agent/test/*.test.mjs",
+    "test:edge": "tsx --test core/edge/test/*.test.mjs",
+    "build": "npm run app:build"
+  },
+  "dependencies": {
+    "@fontsource/cormorant-garamond": "5.2.11",
+    "@fontsource/inter": "5.2.8",
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "http-proxy": "1.18.1",
+    "mailparser": "^3.9.14",
+    "markdown-it": "14.3.0",
+    "mime-types": "2.1.35",
+    "next": "16.2.10",
+    "qrcode": "^1.5.4",
+    "qrcode-terminal": "^0.12.0",
+    "react": "19.2.7",
+    "react-dom": "19.2.7",
+    "tsx": "^4.20.6",
+    "undici": "^7.28.0",
+    "ws": "^8.18.3",
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "@types/react": "19.2.17",
+    "@types/react-dom": "19.2.3",
+    "esbuild": "^0.28.1",
+    "typescript": "5.9.3"
+  },
+  "overrides": {
+    "postcss": "8.5.19"
   },
   "engines": {
     "node": ">=22 <24"

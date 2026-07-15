@@ -1,66 +1,30 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
+  "architecture": "next-core-workspace",
   "agentRuntime": {
     "supported": ["codex"],
-    "workspaceDelivery": "canonical-runtime",
+    "workspaceDelivery": "workspace-harness",
     "compatibilityOnly": ["agents", "claude", "cursor"]
   },
-  "core": {
-    "projects": [
-      "personal-agent-node",
-      "open-agent-bridge",
-      "workspace-admin-panel",
-      "xiaohongshu-channel",
-      "channel-egress"
-    ],
-    "capabilities": [
-      "node-lifecycle",
-      "local-gateway",
-      "agent-harness",
-      "codex-app-server-worker",
-      "skill-catalog",
-      "workflows",
-      "wechat-channel",
-      "sqlite-data",
-      "managed-files",
-      "pages",
-      "blog-and-static-sites",
-      "local-resources",
-      "backup-restore",
-      "extension-runtime"
-    ]
+  "delivery": {
+    "homeEnvironment": "PERSONAL_AGENT_HOME",
+    "defaultHome": "~/.personal-agent",
+    "core": ["app", "runtime", "agent", "channels", "plugins"],
+    "workspace": ["AGENTS.md", "registry", "skills", "workflows", "plugins", "files", "data", "databases", "mail", "backups", "config", "secrets", "runtime", "logs"]
   },
-  "edge": {
-    "projects": ["private-site-edge"],
-    "capabilities": ["https-entry", "acme", "wireguard-relay", "origin-mtls", "routing-metadata"]
-  },
-  "extensions": [
-    {
-      "id": "xiaohongshu-channel",
-      "project": "xiaohongshu-channel",
-      "scope": "core",
-      "owner": "platform",
-      "portable": false
-    },
-    {
-      "id": "channel-egress",
-      "project": "channel-egress",
-      "scope": "core",
-      "owner": "platform",
-      "portable": false
-    }
+  "services": [
+    { "id": "personal-agent-control", "kind": "local-socket" },
+    { "id": "agent-runtime", "port": 8788 },
+    { "id": "personal-agent-app", "port": 8791, "framework": "nextjs" },
+    { "id": "personal-agent-control-api", "port": 8792, "visibility": "internal" },
+    { "id": "personal-agent-gateway", "port": 8843 }
   ],
-  "profiles": {
-    "universal": {
-      "description": "Reusable private Site Node Core without owner-specific applications or content.",
-      "extensions": []
-    }
-  },
-  "extensionContract": {
-    "manifest": "private-site-extension.json",
-    "runtimeRoot": "PRIVATE_SITE_DATA_ROOT/extensions",
-    "workspaceRoot": "PRIVATE_SITE_DATA_ROOT/workspace",
-    "requiredFields": ["schemaVersion", "id", "version", "entrypoint"],
+  "pluginContract": {
+    "apiVersion": "personal-agent/v1",
+    "manifest": "personal-agent.plugin.json",
+    "schema": "core/plugins/schema/personal-agent.plugin.schema.json",
+    "installRoot": "workspace/plugins",
+    "dataRoot": "workspace/data/plugins",
     "mutableByLocalAgent": true,
     "edgeChangesRequired": false
   }

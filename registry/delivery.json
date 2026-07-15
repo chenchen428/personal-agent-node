@@ -1,0 +1,31 @@
+{
+  "schemaVersion": 1,
+  "homeEnvironment": "PERSONAL_AGENT_HOME",
+  "defaultHome": "~/.personal-agent",
+  "core": {
+    "path": "core",
+    "ownership": "product",
+    "mutable": false,
+    "releasePointers": ["current", "previous"],
+    "directories": ["bin", "releases"]
+  },
+  "workspace": {
+    "path": "workspace",
+    "ownership": "user",
+    "mutable": true,
+    "preserveOnUninstall": true,
+    "harness": ["AGENTS.md", "registry", "skills", "workflows"],
+    "directories": [
+      "plugins",
+      "files",
+      "publications",
+      "databases",
+      "mail",
+      "backups",
+      "config",
+      "secrets",
+      "runtime",
+      "logs"
+    ]
+  }
+}
