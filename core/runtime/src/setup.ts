@@ -254,7 +254,15 @@ function requiredComponentsReady(supervisor) {
 }
 
 function pointerExists(target) {
-  try { return fs.statSync(target).isDirectory(); } catch { return false; }
+  try {
+    const stat = fs.statSync(target);
+    if (stat.isDirectory()) return true;
+    if (!stat.isFile() || stat.size < 1 || stat.size > 4096) return false;
+    const pointer = fs.readFileSync(target, 'utf8').trim();
+    return path.isAbsolute(pointer) && fs.statSync(pointer, { throwIfNoEntry: false })?.isDirectory() === true;
+  } catch {
+    return false;
+  }
 }
 
 function defaultProcessAlive(pid) {

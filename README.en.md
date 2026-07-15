@@ -34,14 +34,14 @@ Connectivity and model providers are independent. Disconnecting Cloud must not d
 
 ## Install a release
 
-Beta users download one complete package for their operating system. No preinstalled Node.js, npm, development Agent, or source checkout is required. The current release is `v0.2.0-beta.12`:
+Beta users download one complete package for their operating system. No preinstalled Node.js, npm, development Agent, or source checkout is required. The current release is `v0.2.0-beta.13`:
 
-- Windows x86-64: `personal-agent-node-v0.2.0-beta.12-windows-x64-installer.exe`
-- macOS Apple Silicon: `personal-agent-node-v0.2.0-beta.12-macos-arm64.pkg`
-- macOS Intel: `personal-agent-node-v0.2.0-beta.12-macos-x64.pkg`
-- Linux x86-64 / ARM64: the matching `personal-agent-node-v0.2.0-beta.12-linux-*.tar.zst`
+- Windows x86-64: `personal-agent-node-v0.2.0-beta.13-windows-x64-installer.exe`
+- macOS Apple Silicon: `personal-agent-node-v0.2.0-beta.13-macos-arm64.pkg`
+- macOS Intel: `personal-agent-node-v0.2.0-beta.13-macos-x64.pkg`
+- Linux x86-64 / ARM64: the matching `personal-agent-node-v0.2.0-beta.13-linux-*.tar.zst`
 
-The installer verifies the complete immutable release and bundled Node.js `22.23.1`, retains rollback-safe `current` / `previous` pointers, registers the per-user background service, and opens a one-time authenticated local Setup Center. The user establishes a durable local password there and sees separate checks for installation, Codex, optional public connectivity, Agent mail identity, actual mail delivery, and optional channels.
+The installer verifies the complete immutable release and bundled Node.js `22.23.1`, retains rollback-safe `current` / `previous` pointers, registers the per-user background service, and opens a one-time authenticated local Setup Center in the lightweight Tauri 2 desktop shell. The shell reuses the system WebView and bundles neither Chromium nor a second Node.js runtime; browser and CLI recovery remain available. The user establishes a durable local password there and sees separate checks for installation, Codex, optional public connectivity, Agent mail identity, actual mail delivery, and optional channels.
 
 Installation has one home: `~/.personal-agent/core` is the replaceable product runtime, while `~/.personal-agent/workspace` holds the user-owned Harness, plugins, files, and data. Uninstall removes Core and preserves Workspace by default.
 

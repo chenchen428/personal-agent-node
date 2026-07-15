@@ -24,15 +24,20 @@ try {
   buildGo('personal-agent-setup', './cmd/personal-agent-setup', setupBinary, target);
   const launcherBinary = path.join(temporary, platform === 'win32' ? 'personal-agent.exe' : 'personal-agent');
   buildGo('personal-agent', './cmd/personal-agent', launcherBinary, target);
+  const uiLauncherBinary = path.join(temporary, platform === 'win32' ? 'personal-agent-ui.exe' : 'personal-agent-ui');
+  buildGo('personal-agent-ui', './cmd/personal-agent-ui', uiLauncherBinary, target, { gui: true });
 
   const payloadRoot = path.join(temporary, 'payload');
   fs.mkdirSync(path.join(payloadRoot, 'node'), { recursive: true });
-  fs.cpSync(releaseRoot, path.join(payloadRoot, 'release'), { recursive: true, preserveTimestamps: true });
+  const payloadRelease = path.join(payloadRoot, 'release');
+  fs.cpSync(releaseRoot, payloadRelease, { recursive: true, preserveTimestamps: true });
   fs.copyFileSync(nodeRuntime, path.join(payloadRoot, 'node', platform === 'win32' ? 'node.exe' : 'node'));
-  fs.copyFileSync(launcherBinary, path.join(payloadRoot, 'release', platform === 'win32' ? 'personal-agent.exe' : 'personal-agent'));
+  fs.copyFileSync(launcherBinary, path.join(payloadRelease, platform === 'win32' ? 'personal-agent.exe' : 'personal-agent'));
+  fs.copyFileSync(uiLauncherBinary, path.join(payloadRelease, platform === 'win32' ? 'personal-agent-ui.exe' : 'personal-agent-ui'));
+  signPlatformPayload(payloadRelease);
+  finalizePlatformRelease(payloadRelease);
   const payload = path.join(temporary, 'payload.tar.gz');
-  const tarArgs = platform === 'win32' ? ['--force-local'] : [];
-  run('tar', [...tarArgs, '-czf', payload, '-C', payloadRoot, 'release', 'node']);
+  run('tar', ['-czf', path.basename(payload), '-C', path.basename(payloadRoot), 'release', 'node'], { cwd: temporary });
   appendPayload(setupBinary, payload);
   run(setupBinary, ['inspect']);
 
@@ -47,14 +52,54 @@ try {
 function verifyInputs() {
   const manifest = JSON.parse(fs.readFileSync(path.join(releaseRoot, 'release-manifest.json'), 'utf8'));
   if (manifest.releaseId !== tag.replace(/^v/, '') || manifest.dirty === true) throw new Error('Platform installer requires the exact clean tagged release payload');
+  if (manifest.desktopShell?.framework !== 'tauri' || manifest.desktopShell?.platform !== `${platform}-${architecture}`) throw new Error('Platform installer requires the matching Tauri desktop overlay');
+  const desktopEntrypoint = path.join(releaseRoot, ...String(manifest.desktopShell.entrypoint || '').split('/'));
+  if (!manifest.desktopShell.entrypoint || !fs.existsSync(desktopEntrypoint)) throw new Error('Tauri desktop entrypoint is missing');
   if (!fs.statSync(nodeRuntime).isFile()) throw new Error('Bundled Node runtime is not a file');
 }
 
-function buildGo(name, packagePath, outputFile, target) {
+function buildGo(name, packagePath, outputFile, target, options = {}) {
   const nativeRoot = path.join(root, 'core', 'runtime', 'native');
   const environment = { ...process.env, CGO_ENABLED: '0', GOOS: target.goos, GOARCH: target.goarch };
-  run('go', ['build', '-trimpath', '-ldflags', `-s -w -X main.buildVersion=${tag}`, '-o', outputFile, packagePath], { cwd: nativeRoot, env: environment });
+  const subsystem = platform === 'win32' && options.gui ? ' -H windowsgui' : '';
+  run('go', ['build', '-trimpath', '-ldflags', `-s -w${subsystem} -X main.buildVersion=${tag}`, '-o', outputFile, packagePath], { cwd: nativeRoot, env: environment });
   if (platform !== 'win32') fs.chmodSync(outputFile, 0o755);
+}
+
+function signPlatformPayload(payloadRelease) {
+  if (platform === 'win32') {
+    const certificate = String(process.env.PERSONAL_AGENT_WINDOWS_SIGNING_CERTIFICATE || '').trim();
+    const password = String(process.env.PERSONAL_AGENT_WINDOWS_SIGNING_PASSWORD || '');
+    if (args.requireSigning && (!certificate || !password)) throw new Error('Windows release signing certificate and password are required');
+    if (!certificate) return;
+    for (const file of listFiles(payloadRelease).filter((entry) => entry.toLowerCase().endsWith('.exe'))) {
+      run(resolveSignTool(), ['sign', '/fd', 'SHA256', '/td', 'SHA256', '/tr', 'http://timestamp.digicert.com', '/f', certificate, '/p', password, file]);
+      run(resolveSignTool(), ['verify', '/pa', '/v', file]);
+    }
+    return;
+  }
+  if (platform === 'darwin') {
+    const identity = String(process.env.PERSONAL_AGENT_APPLE_APPLICATION_IDENTITY || '').trim();
+    if (args.requireSigning && !identity) throw new Error('macOS application signing identity is required');
+    if (!identity) return;
+    const app = path.join(payloadRelease, 'desktop', 'Personal Agent.app');
+    run('codesign', ['--force', '--deep', '--options', 'runtime', '--timestamp', '--sign', identity, app]);
+    for (const binary of [path.join(payloadRelease, 'personal-agent'), path.join(payloadRelease, 'personal-agent-ui')]) {
+      run('codesign', ['--force', '--options', 'runtime', '--timestamp', '--sign', identity, binary]);
+    }
+    run('codesign', ['--verify', '--deep', '--strict', '--verbose=2', app]);
+  }
+}
+
+function finalizePlatformRelease(payloadRelease) {
+  const manifestPath = path.join(payloadRelease, 'release-manifest.json');
+  const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
+  manifest.desktopShell.stableLauncher = platform === 'win32' ? 'personal-agent-ui.exe' : 'personal-agent-ui';
+  fs.writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
+  const entries = listFiles(payloadRelease)
+    .map((file) => path.relative(payloadRelease, file).replaceAll('\\', '/'))
+    .filter((relative) => relative !== 'SHA256SUMS');
+  fs.writeFileSync(path.join(payloadRelease, 'SHA256SUMS'), `${entries.map((relative) => `${sha256(path.join(payloadRelease, relative))}  ${relative}`).join('\n')}\n`);
 }
 
 function appendPayload(binaryPath, payloadPath) {
@@ -135,6 +180,19 @@ function resolveSignTool() {
     if (fs.existsSync(candidate)) return candidate;
   }
   return 'signtool.exe';
+}
+
+function listFiles(directory) {
+  const files = [];
+  const walk = (current) => {
+    for (const entry of fs.readdirSync(current, { withFileTypes: true })) {
+      const target = path.join(current, entry.name);
+      if (entry.isDirectory()) walk(target);
+      else if (entry.isFile()) files.push(target);
+    }
+  };
+  walk(directory);
+  return files.sort();
 }
 
 function infoPlist(version) {

@@ -54,9 +54,26 @@ function archiveDescriptor(version, platform, architecture) {
 async function download(url) {
   const parsed = new URL(url);
   if (parsed.protocol !== 'https:' || parsed.hostname !== 'nodejs.org') throw new Error('Node runtime source must be HTTPS nodejs.org');
-  const response = await fetch(parsed, { redirect: 'error', signal: AbortSignal.timeout(120_000) });
-  if (!response.ok) throw new Error(`Node runtime download failed (${response.status})`);
-  return Buffer.from(await response.arrayBuffer());
+  if (process.platform === 'win32') return downloadWithCurl(parsed);
+  try {
+    const response = await fetch(parsed, { redirect: 'error', signal: AbortSignal.timeout(30_000) });
+    if (!response.ok) throw new Error(`Node runtime download failed (${response.status})`);
+    return Buffer.from(await response.arrayBuffer());
+  } catch (fetchError) {
+    return downloadWithCurl(parsed, fetchError);
+  }
+}
+
+function downloadWithCurl(url, fetchError = null) {
+  const curl = process.platform === 'win32' ? 'curl.exe' : 'curl';
+  const result = spawnSync(curl, ['--fail', '--silent', '--show-error', '--proto', '=https', '--max-time', '180', url.href], {
+    encoding: null,
+    windowsHide: true,
+    maxBuffer: 128 * 1024 * 1024,
+  });
+  if (result.status === 0 && Buffer.isBuffer(result.stdout)) return result.stdout;
+  const detail = String(result.stderr || result.error || fetchError || '').trim();
+  throw new Error(`Node runtime download failed: ${detail}`);
 }
 
 function run(command, commandArgs) {

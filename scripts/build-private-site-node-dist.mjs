@@ -9,6 +9,7 @@ import { pruneLocalDist } from "./prune-local-dist.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const metadata = readJson(path.join(root, "package.json"));
+const npmInvocation = resolveNpmInvocation();
 const args = parseArgs(process.argv.slice(2));
 const revision = sourceRevision();
 const releaseId = args.releaseId || `${timestamp()}-${revision.commit.slice(0, 12)}${revision.dirty ? "-dirty" : ""}`;
@@ -20,7 +21,7 @@ await main();
 
 async function main() {
   assertInputs();
-  if (!args.skipNextBuild) execFileSync("npm", ["run", "app:build"], { cwd: root, stdio: "inherit" });
+  if (!args.skipNextBuild) execFileSync(npmInvocation.command, [...npmInvocation.prefixArgs, "run", "app:build"], { cwd: root, stdio: "inherit" });
   fs.rmSync(outputRoot, { recursive: true, force: true });
   fs.mkdirSync(outputRoot, { recursive: true });
   copySupportFiles();
@@ -135,9 +136,37 @@ function writeManifest() {
 }
 
 function writeSbom() {
-  const output = execFileSync("npm", ["sbom", "--omit=dev", "--sbom-format", "cyclonedx"], { cwd: root, encoding: "utf8", maxBuffer: 30 * 1024 * 1024 });
-  fs.writeFileSync(path.join(outputRoot, "SBOM.cdx.json"), `${JSON.stringify(JSON.parse(output), null, 2)}\n`);
+  const output = execFileSync(npmInvocation.command, [...npmInvocation.prefixArgs, "sbom", "--omit=dev", "--sbom-format", "cyclonedx"], { cwd: root, encoding: "utf8", maxBuffer: 30 * 1024 * 1024 });
+  const sbom = JSON.parse(output);
+  const cargo = JSON.parse(execFileSync("cargo", ["metadata", "--format-version", "1", "--locked", "--manifest-path", path.join(root, "core", "desktop", "src-tauri", "Cargo.toml")], { cwd: root, encoding: "utf8", maxBuffer: 30 * 1024 * 1024 }));
+  const cargoRefs = new Map(cargo.packages.map((entry) => [entry.id, cargoPurl(entry)]));
+  const cargoComponents = cargo.packages.map((entry) => ({
+    type: entry.name === "personal-agent-desktop" ? "application" : "library",
+    "bom-ref": cargoPurl(entry),
+    name: entry.name,
+    version: entry.version,
+    purl: cargoPurl(entry),
+    ...(entry.license ? { licenses: [{ expression: entry.license }] } : {}),
+    ...(entry.repository ? { externalReferences: [{ type: "vcs", url: entry.repository }] } : {}),
+    properties: [{ name: "personal-agent:ecosystem", value: "cargo" }],
+  }));
+  const existingComponents = Array.isArray(sbom.components) ? sbom.components : [];
+  const existingRefs = new Set(existingComponents.map((entry) => entry["bom-ref"] || entry.purl).filter(Boolean));
+  sbom.components = [...existingComponents, ...cargoComponents.filter((entry) => !existingRefs.has(entry["bom-ref"]))]
+    .sort((left, right) => String(left["bom-ref"] || left.name).localeCompare(String(right["bom-ref"] || right.name)));
+  const existingDependencies = Array.isArray(sbom.dependencies) ? sbom.dependencies : [];
+  const dependencyRefs = new Set(existingDependencies.map((entry) => entry.ref));
+  const cargoDependencies = (cargo.resolve?.nodes || []).map((node) => ({
+    ref: cargoRefs.get(node.id),
+    dependsOn: node.dependencies.map((id) => cargoRefs.get(id)).filter(Boolean).sort(),
+  })).filter((entry) => entry.ref && !dependencyRefs.has(entry.ref));
+  sbom.dependencies = [...existingDependencies, ...cargoDependencies].sort((left, right) => String(left.ref).localeCompare(String(right.ref)));
+  sbom.metadata ||= {};
+  sbom.metadata.properties = [...(sbom.metadata.properties || []), { name: "personal-agent:desktop-shell", value: "tauri-2" }];
+  fs.writeFileSync(path.join(outputRoot, "SBOM.cdx.json"), `${JSON.stringify(sbom, null, 2)}\n`);
 }
+
+function cargoPurl(entry) { return `pkg:cargo/${encodeURIComponent(entry.name)}@${entry.version}`; }
 
 function writeChecksums() {
   const lines = listFiles(outputRoot)
@@ -197,6 +226,12 @@ function assertInputs() {
 }
 
 function readJson(file) { return JSON.parse(fs.readFileSync(file, "utf8")); }
+function resolveNpmInvocation() {
+  if (process.platform !== "win32") return { command: "npm", prefixArgs: [] };
+  const npmCli = process.env.npm_execpath || path.join(path.dirname(process.execPath), "node_modules", "npm", "bin", "npm-cli.js");
+  if (!fs.statSync(npmCli, { throwIfNoEntry: false })?.isFile()) throw new Error(`Unable to locate npm CLI: ${npmCli}`);
+  return { command: process.execPath, prefixArgs: [npmCli] };
+}
 function sourceRevision() {
   try { return { commit: execFileSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).trim(), dirty: Boolean(execFileSync("git", ["status", "--porcelain"], { cwd: root, encoding: "utf8" }).trim()) }; }
   catch { return { commit: "unknown", dirty: true }; }

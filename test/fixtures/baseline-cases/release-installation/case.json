@@ -8,6 +8,8 @@
   "acceptance": [
     "Installation switches an immutable current release",
     "One previous release remains available",
-    "Fresh installation opens the authenticated local Setup Center without requiring WeChat or a development Agent"
+    "Fresh installation opens the authenticated local Setup Center in the Tauri desktop shell without requiring WeChat or a development Agent",
+    "The desktop shell uses the system WebView, exposes no native page API, and remains bound to current/previous rollback",
+    "Browser and CLI recovery remain available"
   ]
 }

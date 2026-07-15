@@ -2,25 +2,25 @@
 
 ## Install an immutable release
 
-Set `TAG=v0.2.0-beta.12` and open the matching [GitHub Release](https://github.com/chenchen428/personal-agent-node/releases/tag/v0.2.0-beta.12). A customer machine does not need Node.js, npm, Git, a source checkout, or a development Agent.
+Set `TAG=v0.2.0-beta.13` and open the matching [GitHub Release](https://github.com/chenchen428/personal-agent-node/releases/tag/v0.2.0-beta.13). A customer machine does not need Node.js, npm, Git, a source checkout, or a development Agent.
 
 | Computer | Asset |
 | --- | --- |
-| Windows x86-64 | `personal-agent-node-v0.2.0-beta.12-windows-x64-installer.exe` |
-| macOS Apple Silicon | `personal-agent-node-v0.2.0-beta.12-macos-arm64.pkg` |
-| macOS Intel | `personal-agent-node-v0.2.0-beta.12-macos-x64.pkg` |
-| Linux x86-64 | `personal-agent-node-v0.2.0-beta.12-linux-x64.tar.zst` |
-| Linux ARM64 | `personal-agent-node-v0.2.0-beta.12-linux-arm64.tar.zst` |
+| Windows x86-64 | `personal-agent-node-v0.2.0-beta.13-windows-x64-installer.exe` |
+| macOS Apple Silicon | `personal-agent-node-v0.2.0-beta.13-macos-arm64.pkg` |
+| macOS Intel | `personal-agent-node-v0.2.0-beta.13-macos-x64.pkg` |
+| Linux x86-64 | `personal-agent-node-v0.2.0-beta.13-linux-x64.tar.zst` |
+| Linux ARM64 | `personal-agent-node-v0.2.0-beta.13-linux-arm64.tar.zst` |
 
 On Windows, run the installer. On macOS, open the package. On Linux, unpack the matching archive with the desktop archive manager or `tar --zstd`, then run `./personal-agent-setup` from the extracted directory.
 
-Each package contains the Go setup executable, stable launcher, exact Node.js `22.23.1` runtime, and immutable application payload. Setup verifies embedded checksums, stages the release, initializes the Workspace, switches `current` while retaining `previous`, registers the per-user service, waits for the local gateway, and opens a single-use loopback Setup Center session. The only default home is `~/.personal-agent`: product releases live under `core/`, while Harness, plugins, files, databases, mail and other user-owned state live under `workspace/`.
+Each package contains the Go setup executable, stable CLI and desktop launchers, the exact Node.js `22.23.1` runtime, the platform Tauri 2 shell, and the immutable application payload. Setup verifies embedded checksums, stages the release, initializes the Workspace, switches `current` while retaining `previous`, registers the per-user service, waits for the local gateway, installs the desktop entry, and opens a single-use loopback Setup Center session in the shell. The shell uses the system WebView and does not own the background service. The only default home is `~/.personal-agent`: product releases live under `core/`, while Harness, plugins, files, databases, mail and other user-owned state live under `workspace/`.
 
 Release assets include `RELEASE-SECURITY.json`, `SHA256SUMS`, Sigstore bundles, provenance, and an SBOM. Beta/RC packages may defer paid Windows and Apple native signing and can therefore trigger an operating-system approval warning; the security metadata records that fact explicitly. Stable releases require Authenticode plus Apple Developer ID/notarization and fail closed when either is absent.
 
-## Finish setup in the browser
+## Finish setup in the desktop shell or browser
 
-The browser opens `/app/setup` automatically. Work through the cards in order:
+The Personal Agent desktop window opens `/app/setup` automatically. If the shell cannot start, the browser recovery path opens the same route. Work through the cards in order:
 
 1. Set your own local access password. Only a salted scrypt verifier is retained; the install-time migration password is removed.
 2. Install or sign in to Codex when requested, retry the app-server handshake, and complete one real authenticated `/app/chat` reply.

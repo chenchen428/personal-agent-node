@@ -75,6 +75,63 @@ func TestVerifyReleaseRejectsChangedFiles(t *testing.T) {
 	}
 }
 
+func TestVerifyReleaseRequiresCompleteDesktopShellChecksums(t *testing.T) {
+	release := fixtureRelease(t, "release-desktop")
+	manifestPath := filepath.Join(release, "release-manifest.json")
+	manifest := map[string]any{}
+	data, err := os.ReadFile(manifestPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := json.Unmarshal(data, &manifest); err != nil {
+		t.Fatal(err)
+	}
+	manifest["desktopShell"] = map[string]any{
+		"framework":      "tauri",
+		"platform":       "win32-x64",
+		"entrypoint":     "desktop/personal-agent-ui.exe",
+		"stableLauncher": "personal-agent-ui.exe",
+	}
+	updated, _ := json.Marshal(manifest)
+	if err := os.WriteFile(manifestPath, updated, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	for relative, content := range map[string][]byte{
+		"desktop/personal-agent-ui.exe": []byte("tauri-runtime"),
+		"personal-agent-ui.exe":         []byte("stable-launcher"),
+	} {
+		target := filepath.Join(release, filepath.FromSlash(relative))
+		if err := os.MkdirAll(filepath.Dir(target), 0o700); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(target, content, 0o700); err != nil {
+			t.Fatal(err)
+		}
+	}
+	rewriteFixtureChecksums(t, release)
+	if _, err := VerifyRelease(release); err != nil {
+		t.Fatalf("desktop release should verify: %v", err)
+	}
+	checksumPath := filepath.Join(release, "SHA256SUMS")
+	checksums, err := os.ReadFile(checksumPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	lines := strings.Split(strings.TrimSpace(string(checksums)), "\n")
+	kept := lines[:0]
+	for _, line := range lines {
+		if !strings.HasSuffix(line, "  personal-agent-ui.exe") {
+			kept = append(kept, line)
+		}
+	}
+	if err := os.WriteFile(checksumPath, []byte(strings.Join(kept, "\n")+"\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := VerifyRelease(release); err == nil || !strings.Contains(err.Error(), "stable launcher") {
+		t.Fatalf("expected stable launcher checksum rejection, got %v", err)
+	}
+}
+
 func TestInstallSwitchesCurrentAndRetainsPreviousWithoutHostNode(t *testing.T) {
 	root := t.TempDir()
 	installRoot := filepath.Join(root, "install")
@@ -357,4 +414,34 @@ func fixtureRelease(t *testing.T, releaseID string) string {
 		t.Fatal(err)
 	}
 	return root
+}
+
+func rewriteFixtureChecksums(t *testing.T, root string) {
+	t.Helper()
+	lines := []string{}
+	err := filepath.Walk(root, func(target string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		if info.IsDir() || filepath.Base(target) == "SHA256SUMS" {
+			return nil
+		}
+		data, err := os.ReadFile(target)
+		if err != nil {
+			return err
+		}
+		digest := sha256.Sum256(data)
+		relative, err := filepath.Rel(root, target)
+		if err != nil {
+			return err
+		}
+		lines = append(lines, hex.EncodeToString(digest[:])+"  "+filepath.ToSlash(relative))
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, "SHA256SUMS"), []byte(strings.Join(lines, "\n")+"\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
 }

@@ -25,6 +25,16 @@ The production release may include these pinned, unmodified runtime components:
 - CloakBrowser Chromium `146.0.7680.177.5`, source `https://github.com/CloakHQ/CloakBrowser`, MIT.
 - xiaohongshu-mcp PR #509 revision `0cf885c2d02745678ec6cc91b401d898373064e9`, source `https://github.com/xpzouying/xiaohongshu-mcp`. The pinned upstream revision declares no license (`NOASSERTION`); a checksum-pinned minimal source set is compiled locally into an external, unmodified private runtime, no upstream source is committed or shipped, and the resulting binary is used only by this private workspace.
 
+## Desktop shell components
+
+The platform release includes a compiled Tauri 2 desktop shell. Direct runtime dependencies are pinned in `core/desktop/src-tauri/Cargo.lock` and enumerated with their licenses in `SBOM.cdx.json`.
+
+- Tauri `2.11.5`, source `https://github.com/tauri-apps/tauri`, Apache-2.0 OR MIT.
+- Tauri single-instance plugin `2.4.3`, source `https://github.com/tauri-apps/plugins-workspace`, Apache-2.0 OR MIT.
+- opener `0.8.5`, source `https://github.com/Seeneva/opener`, Apache-2.0 OR MIT.
+
+The shell links to the operating system WebView runtime rather than redistributing Chromium, WebView2, WKWebView, or WebKitGTK inside the immutable Node payload.
+
 ## baoyu-skills
 
 Source: https://github.com/JimLiu/baoyu-skills

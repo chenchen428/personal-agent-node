@@ -409,6 +409,8 @@ therefore add build and contributor complexity without enough current benefit.
 Reconsider Rust if Personal Agent later owns a persistent native tunnel, OS
 credential broker, filesystem watcher with elevated privileges, or desktop tray.
 That decision would be scoped to the native subsystem, not a Node product rewrite.
+ADR 0005 subsequently selects Rust and Tauri only for the optional desktop window;
+the Go setup and launcher remain the installation and recovery root of trust.
 
 ### Not selected: Node.js Single Executable Applications
 

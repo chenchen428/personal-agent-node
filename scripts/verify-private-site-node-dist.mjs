@@ -86,6 +86,10 @@ function verifyPublicBoundary() {
   assert(packageMetadata.workspaces === undefined, "Release must be one package, not an npm workspace graph");
   const dependencyText = JSON.stringify(packageMetadata.dependencies || {});
   assert(!/smtp-server|imapflow|haraka/i.test(dependencyText), "Raw mail server dependency is bundled");
+  const sbom = readJson("SBOM.cdx.json");
+  const componentPurls = new Set((sbom.components || []).map((entry) => entry.purl));
+  assert(componentPurls.has("pkg:cargo/tauri@2.11.5"), "Desktop Tauri runtime is missing from the SBOM");
+  assert(componentPurls.has("pkg:cargo/tauri-plugin-single-instance@2.4.3"), "Desktop single-instance runtime is missing from the SBOM");
 }
 
 function verifyCompiledCli() {
