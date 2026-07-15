@@ -41,7 +41,7 @@ Beta 用户只需要下载对应系统的完整安装包，不需要预装 Node.
 - macOS Intel：`personal-agent-node-v0.2.0-beta.13-macos-x64.pkg`
 - Linux x86-64 / ARM64：对应的 `personal-agent-node-v0.2.0-beta.13-linux-*.tar.zst`
 
-安装器会验证完整发行版和内置 Node.js `22.23.1`，保留可回滚的 `current` / `previous`，注册当前用户的后台服务，然后在 Tauri 2 轻量桌面壳中自动打开一次性授权的本机 Setup Center。桌面壳复用系统 WebView，不内置 Chromium 或第二份 Node.js；浏览器和 CLI 恢复入口继续保留。用户在这里完成自己的本机密码，并分别查看：
+Windows 原生安装向导会验证完整发行版和内置 Node.js `22.23.1`，安全替换当前用户的后台服务，并创建开始菜单和桌面图标，然后在 Tauri 2 轻量桌面壳中打开一次性授权的本机 Setup Center。候选安装失败时会恢复旧服务、发行指针、稳定启动器、安装状态和快捷方式。桌面壳复用系统 WebView，不内置 Chromium 或第二份 Node.js；浏览器和 CLI 恢复入口继续保留。用户在这里完成自己的本机密码，并分别查看：
 
 安装后只有一个目录：`~/.personal-agent/core` 是可升级和回滚的产品运行时，`~/.personal-agent/workspace` 是用户拥有的 Harness、插件、文件和数据；卸载默认只移除 Core。
 

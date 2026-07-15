@@ -30,3 +30,24 @@ test('desktop shell stays inside the immutable platform release', () => {
   assert.match(build, /writeChecksums\(releaseRoot\)/);
   assert.match(installer, /buildGo\('personal-agent'/);
 });
+
+test('Windows installation uses a guided wizard and rollback-safe desktop integration', () => {
+  const wizard = read('installer/windows/personal-agent.nsi');
+  const builder = read('scripts/build-platform-installer.mjs');
+  const installer = read('core/runtime/native/internal/install/install.go');
+  const launcher = read('core/runtime/native/cmd/personal-agent-ui/main.go');
+  const workflow = read('.github/workflows/release.yml');
+  for (const requirement of ['MUI_PAGE_WELCOME', 'MUI_PAGE_LICENSE', 'MUI_PAGE_INSTFILES', 'MUI_PAGE_FINISH', 'Personal Agent 安装向导', 'nsExec::ExecToStack']) {
+    assert.match(wizard, new RegExp(requirement));
+  }
+  assert.match(wizard, /已有 Workspace 数据不会被删除/);
+  assert.match(builder, /smokeTestWindowsInstaller/);
+  assert.match(builder, /desktop-entries.*Personal Agent\.lnk/s);
+  assert.match(workflow, /choco install nsis --version=3\.12/);
+  assert.match(installer, /stopSupervisor/);
+  assert.match(installer, /commitDesktopIntegration/);
+  assert.ok(installer.indexOf('waitForPort') < installer.indexOf('commitDesktopIntegration(resolved'));
+  assert.match(installer, /"Desktop", "Personal Agent\.lnk"/);
+  assert.match(installer, /personal-agent\.ico/);
+  assert.match(launcher, /请重新运行安装向导进行修复/);
+});

@@ -80,12 +80,14 @@ function overlayRelease(releaseRoot, artifact) {
   if (fs.statSync(artifact).isDirectory()) fs.cpSync(artifact, target, { recursive: true, preserveTimestamps: true });
   else fs.copyFileSync(artifact, target);
   fs.copyFileSync(path.join(desktopRoot, 'icon.svg'), path.join(desktopDirectory, 'icon.svg'));
+  if (platform === 'win32') fs.copyFileSync(path.join(nativeRoot, 'icons', 'icon.ico'), path.join(desktopDirectory, 'icon.ico'));
   const manifest = readJson(manifestPath);
   manifest.desktopShell = {
     framework: 'tauri',
     version: packageMetadata.version,
     platform: `${platform}-${architecture}`,
     entrypoint: platform === 'darwin' ? 'desktop/Personal Agent.app' : `desktop/${path.basename(artifact)}`,
+    icon: platform === 'win32' ? 'desktop/icon.ico' : 'desktop/icon.svg',
     origin: 'http://127.0.0.1:8843',
     serviceOwner: 'node-runtime',
   };

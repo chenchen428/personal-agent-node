@@ -35,6 +35,8 @@ The platform release includes a compiled Tauri 2 desktop shell. Direct runtime d
 
 The shell links to the operating system WebView runtime rather than redistributing Chromium, WebView2, WKWebView, or WebKitGTK inside the immutable Node payload.
 
+Windows release packages use NSIS `3.12` to provide the native installation wizard. NSIS is distributed under the zlib/libpng license; source: `https://nsis.sourceforge.io/`.
+
 ## baoyu-skills
 
 Source: https://github.com/JimLiu/baoyu-skills

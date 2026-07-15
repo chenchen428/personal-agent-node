@@ -84,6 +84,7 @@ func installCommand(args []string) {
 	skipService := set.Bool("skip-service", false, "test-only: do not register the platform service")
 	skipWait := set.Bool("skip-start-wait", false, "test-only: do not wait for gateway readiness")
 	skipDesktopEntry := set.Bool("skip-desktop-entry", false, "test-only: do not install the platform desktop entry")
+	desktopEntryRoot := set.String("desktop-entry-root", "", "test-only: redirect desktop entries into this directory")
 	_ = set.Parse(args)
 	if *installRoot == "" {
 		*installRoot = filepath.Join(*homeRoot, "core")
@@ -108,7 +109,7 @@ func installCommand(args []string) {
 	} else if resolvedReleaseRoot == "" || resolvedNodeRuntime == "" {
 		fail("--release-root and --node-runtime must be provided together")
 	}
-	result, err := installer.Install(context.Background(), installer.Options{ReleaseRoot: resolvedReleaseRoot, NodeRuntime: resolvedNodeRuntime, InstallRoot: *installRoot, DataRoot: *dataRoot, Domain: *domain, NoOpen: *noOpen, SkipService: *skipService, SkipStartWait: *skipWait, SkipDesktopEntry: *skipDesktopEntry, Platform: runtime.GOOS}, nil)
+	result, err := installer.Install(context.Background(), installer.Options{ReleaseRoot: resolvedReleaseRoot, NodeRuntime: resolvedNodeRuntime, InstallRoot: *installRoot, DataRoot: *dataRoot, Domain: *domain, NoOpen: *noOpen, SkipService: *skipService, SkipStartWait: *skipWait, SkipDesktopEntry: *skipDesktopEntry, DesktopEntryRoot: *desktopEntryRoot, Platform: runtime.GOOS}, nil)
 	if err != nil {
 		fail(err.Error())
 	}

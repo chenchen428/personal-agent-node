@@ -91,6 +91,7 @@ func TestVerifyReleaseRequiresCompleteDesktopShellChecksums(t *testing.T) {
 		"platform":       "win32-x64",
 		"entrypoint":     "desktop/personal-agent-ui.exe",
 		"stableLauncher": "personal-agent-ui.exe",
+		"icon":           "desktop/icon.ico",
 	}
 	updated, _ := json.Marshal(manifest)
 	if err := os.WriteFile(manifestPath, updated, 0o600); err != nil {
@@ -98,6 +99,7 @@ func TestVerifyReleaseRequiresCompleteDesktopShellChecksums(t *testing.T) {
 	}
 	for relative, content := range map[string][]byte{
 		"desktop/personal-agent-ui.exe": []byte("tauri-runtime"),
+		"desktop/icon.ico":              []byte("product-icon"),
 		"personal-agent-ui.exe":         []byte("stable-launcher"),
 	} {
 		target := filepath.Join(release, filepath.FromSlash(relative))
@@ -222,6 +224,46 @@ func TestFailedCandidateRestoresPointers(t *testing.T) {
 	}
 }
 
+func TestFailedDesktopCandidateLeavesStableLaunchersAndStateUntouched(t *testing.T) {
+	root := t.TempDir()
+	installRoot := filepath.Join(root, "install")
+	dataRoot := filepath.Join(root, "data")
+	nodeRuntime := filepath.Join(root, "node.exe")
+	if err := os.WriteFile(nodeRuntime, []byte("bundled-node"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	base := Options{ReleaseRoot: fixtureDesktopRelease(t, "release-one", "one"), NodeRuntime: nodeRuntime, InstallRoot: installRoot, DataRoot: dataRoot, SkipService: true, SkipDesktopEntry: true, NoOpen: true, Platform: "windows"}
+	if _, err := Install(context.Background(), base, &fakeRunner{}); err != nil {
+		t.Fatal(err)
+	}
+	stableUI := filepath.Join(installRoot, "bin", "personal-agent-ui.exe")
+	beforeUI, err := os.ReadFile(stableUI)
+	if err != nil {
+		t.Fatal(err)
+	}
+	beforeState, err := os.ReadFile(filepath.Join(installRoot, "installation.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	candidate := base
+	candidate.ReleaseRoot = fixtureDesktopRelease(t, "release-two", "two")
+	if _, err := Install(context.Background(), candidate, &failingRunner{needle: "release-two"}); err == nil {
+		t.Fatal("expected candidate failure")
+	}
+	afterUI, _ := os.ReadFile(stableUI)
+	afterState, _ := os.ReadFile(filepath.Join(installRoot, "installation.json"))
+	if string(afterUI) != string(beforeUI) || string(afterUI) != "stable-ui-one" {
+		t.Fatalf("stable UI launcher changed after failed candidate: %q", afterUI)
+	}
+	if string(afterState) != string(beforeState) {
+		t.Fatal("installation state changed after failed candidate")
+	}
+	if got := filepath.Base(pointerTarget(filepath.Join(installRoot, "current"))); got != "release-one" {
+		t.Fatalf("current=%s", got)
+	}
+}
+
 func TestUpgradeStopsManagedServiceBeforeCandidatePreparation(t *testing.T) {
 	root := t.TempDir()
 	installRoot := filepath.Join(root, "install")
@@ -335,6 +377,27 @@ func TestWindowsPointersUseAtomicFilesWithoutShell(t *testing.T) {
 	}
 }
 
+func TestWindowsDesktopEntriesIncludeProgramFolderAndDesktopIcon(t *testing.T) {
+	root := t.TempDir()
+	entries, err := desktopEntryPaths(Options{Platform: "windows", DesktopEntryRoot: root})
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := []string{
+		filepath.Join(root, "Programs", "Personal Agent", "Personal Agent.lnk"),
+		filepath.Join(root, "Desktop", "Personal Agent.lnk"),
+		filepath.Join(root, "Programs", "Personal Agent.lnk"),
+	}
+	if len(entries) != len(want) {
+		t.Fatalf("entries=%v", entries)
+	}
+	for index := range want {
+		if entries[index] != want[index] {
+			t.Fatalf("entry[%d]=%s want %s", index, entries[index], want[index])
+		}
+	}
+}
+
 func TestUninstallRemovesProgramAndPreservesData(t *testing.T) {
 	root := t.TempDir()
 	installRoot := filepath.Join(root, "install")
@@ -413,6 +476,47 @@ func fixtureRelease(t *testing.T, releaseID string) string {
 	if err := os.WriteFile(filepath.Join(root, "SHA256SUMS"), []byte(strings.Join(lines, "\n")+"\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
+	return root
+}
+
+func fixtureDesktopRelease(t *testing.T, releaseID, marker string) string {
+	t.Helper()
+	root := fixtureRelease(t, releaseID)
+	manifestPath := filepath.Join(root, "release-manifest.json")
+	manifest := map[string]any{}
+	data, err := os.ReadFile(manifestPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := json.Unmarshal(data, &manifest); err != nil {
+		t.Fatal(err)
+	}
+	manifest["desktopShell"] = map[string]any{
+		"framework":      "tauri",
+		"platform":       "win32-x64",
+		"entrypoint":     "desktop/personal-agent-ui.exe",
+		"stableLauncher": "personal-agent-ui.exe",
+		"icon":           "desktop/icon.ico",
+	}
+	updated, _ := json.Marshal(manifest)
+	if err := os.WriteFile(manifestPath, updated, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	for relative, content := range map[string][]byte{
+		"desktop/personal-agent-ui.exe": []byte("tauri-" + marker),
+		"desktop/icon.ico":              []byte("icon-" + marker),
+		"personal-agent.exe":            []byte("stable-cli-" + marker),
+		"personal-agent-ui.exe":         []byte("stable-ui-" + marker),
+	} {
+		target := filepath.Join(root, filepath.FromSlash(relative))
+		if err := os.MkdirAll(filepath.Dir(target), 0o700); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(target, content, 0o700); err != nil {
+			t.Fatal(err)
+		}
+	}
+	rewriteFixtureChecksums(t, root)
 	return root
 }
 

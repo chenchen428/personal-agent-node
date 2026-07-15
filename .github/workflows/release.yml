@@ -89,6 +89,10 @@ jobs:
           cache-dependency-path: core/runtime/native/go.mod
       - uses: dtolnay/rust-toolchain@stable
       - run: npm ci
+      - name: Install Windows installer wizard toolchain
+        if: matrix.platform == 'win32'
+        shell: pwsh
+        run: choco install nsis --version=3.12 --no-progress --yes
       - name: Install Linux desktop build dependencies
         if: matrix.platform == 'linux'
         shell: bash

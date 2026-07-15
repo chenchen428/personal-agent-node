@@ -36,12 +36,21 @@ creates the platform application entry, waits for the gateway, and opens the she
 single-use Setup Center URL. The runtime stays inside the immutable release so switching
 `current` / `previous` also switches the desktop shell.
 
+Windows packages use a pinned NSIS wizard around the self-verifying Go bootstrap. The wizard owns
+only visible progress, failure guidance, Add/Remove Programs registration, and the final launch
+choice. The Go bootstrap remains the cross-platform installation authority. Stable launchers,
+installation state, product icons, and shortcuts are committed only after the candidate service
+and gateway pass; failure restores their previous bytes together with the service and release
+pointers. Windows installs both Start menu and desktop shortcuts, and a stale launcher displays a
+native repair message instead of failing invisibly.
+
 ## Consequences
 
 - Rust and Tauri become pinned build dependencies in the native platform jobs.
 - Each target is built on its native CI runner and included in checksum, SBOM, signing, provenance,
   installation, upgrade, and rollback acceptance.
 - Linux packages depend on a compatible system WebKitGTK runtime instead of bundling a browser.
+- The NSIS stub adds a small Windows-only wrapper but no browser or application runtime.
 - Visual appearance and browser interaction remain user-owned acceptance. Automated checks cover
   build contracts, URL policy, single-instance behavior, packaging, installation, and lifecycle
   semantics without browser automation.

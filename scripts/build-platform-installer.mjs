@@ -116,7 +116,16 @@ function packageAsset({ platform, architecture, tag, setupBinary, output, tempor
   const label = architecture === 'x64' ? 'x64' : 'arm64';
   if (platform === 'win32') {
     const target = path.join(output, `personal-agent-node-${tag}-windows-${label}-installer.exe`);
-    fs.copyFileSync(setupBinary, target);
+    const template = path.join(root, 'installer', 'windows', 'personal-agent.nsi');
+    run(resolveMakensis(), [
+      `/DBOOTSTRAP=${setupBinary}`,
+      `/DOUTFILE=${target}`,
+      `/DPRODUCT_VERSION=${tag.replace(/^v/, '')}`,
+      `/DPRODUCT_ICON=${path.join(root, 'core', 'desktop', 'src-tauri', 'icons', 'icon.ico')}`,
+      `/DLICENSE_FILE=${path.join(root, 'LICENSE')}`,
+      template,
+    ]);
+    smokeTestWindowsInstaller(target, temporary, tag);
     const certificate = String(process.env.PERSONAL_AGENT_WINDOWS_SIGNING_CERTIFICATE || '').trim();
     const password = String(process.env.PERSONAL_AGENT_WINDOWS_SIGNING_PASSWORD || '');
     if (args.requireSigning && (!certificate || !password)) throw new Error('Windows release signing certificate and password are required');
@@ -169,6 +178,26 @@ function packageAsset({ platform, architecture, tag, setupBinary, output, tempor
   throw new Error(`Unsupported platform: ${platform}`);
 }
 
+function smokeTestWindowsInstaller(installer, temporary, tag) {
+  const testHome = path.join(temporary, 'windows-installer-smoke');
+  run(installer, ['/S'], { env: { ...process.env, PERSONAL_AGENT_INSTALL_TEST_HOME: testHome } });
+  const installRoot = path.join(testHome, 'core');
+  const installation = JSON.parse(fs.readFileSync(path.join(installRoot, 'installation.json'), 'utf8'));
+  const releaseRoot = path.join(installRoot, 'releases', installation.activeReleaseId);
+  const manifest = JSON.parse(fs.readFileSync(path.join(releaseRoot, 'release-manifest.json'), 'utf8'));
+  for (const required of [
+    path.join(installRoot, 'bin', 'personal-agent-ui.exe'),
+    path.join(installRoot, 'bin', 'personal-agent.ico'),
+    path.join(testHome, 'desktop-entries', 'Programs', 'Personal Agent', 'Personal Agent.lnk'),
+    path.join(testHome, 'desktop-entries', 'Desktop', 'Personal Agent.lnk'),
+  ]) {
+    if (!fs.statSync(required, { throwIfNoEntry: false })?.isFile()) throw new Error(`Windows installer wizard smoke test is missing ${required}`);
+  }
+  if (manifest.releaseId !== tag.replace(/^v/, '') || manifest.desktopShell?.framework !== 'tauri') {
+    throw new Error('Windows installer wizard smoke test installed the wrong release');
+  }
+}
+
 function resolveSignTool() {
   const configured = String(process.env.PERSONAL_AGENT_SIGNTOOL || '').trim();
   if (configured) return configured;
@@ -180,6 +209,19 @@ function resolveSignTool() {
     if (fs.existsSync(candidate)) return candidate;
   }
   return 'signtool.exe';
+}
+
+function resolveMakensis() {
+  const configured = String(process.env.PERSONAL_AGENT_MAKENSIS || '').trim();
+  if (configured) return configured;
+  const names = process.platform === 'win32'
+    ? [
+        path.join(process.env['ProgramFiles(x86)'] || '', 'NSIS', 'makensis.exe'),
+        path.join(process.env.ProgramFiles || '', 'NSIS', 'makensis.exe'),
+        'makensis.exe',
+      ]
+    : ['makensis'];
+  return names.find((candidate) => candidate === 'makensis' || candidate === 'makensis.exe' || fs.existsSync(candidate)) || names.at(-1);
 }
 
 function listFiles(directory) {

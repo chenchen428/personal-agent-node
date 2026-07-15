@@ -64,6 +64,8 @@ func resolveCurrent(pointer string) (string, error) {
 }
 
 func fail(err error) {
-	_, _ = fmt.Fprintln(os.Stderr, err)
+	message := fmt.Sprintf("Personal Agent 无法启动。\n\n%v\n\n请重新运行安装向导进行修复；你的 Workspace 数据会保留。", err)
+	showError(message)
+	_, _ = fmt.Fprintln(os.Stderr, message)
 	os.Exit(1)
 }
