@@ -464,12 +464,29 @@ func normalizeOptions(opts Options) (Options, error) {
 		return opts, err
 	}
 	if opts.Domain == "" {
-		opts.Domain = "personal-agent.local"
+		opts.Domain = existingWorkspaceDomain(opts.DataRoot)
+		if opts.Domain == "" {
+			opts.Domain = "personal-agent.local"
+		}
 	}
 	if opts.Platform == "" {
 		opts.Platform = runtime.GOOS
 	}
 	return opts, nil
+}
+
+func existingWorkspaceDomain(dataRoot string) string {
+	data, err := os.ReadFile(filepath.Join(dataRoot, "config", "site.json"))
+	if err != nil {
+		return ""
+	}
+	var site struct {
+		ASCIIName string `json:"asciiDomain"`
+	}
+	if json.Unmarshal(data, &site) != nil {
+		return ""
+	}
+	return strings.TrimSpace(site.ASCIIName)
 }
 
 func activateService(ctx context.Context, opts Options, releaseRoot, node, privateSite string, runner Runner, env []string) (string, error) {
@@ -518,6 +535,7 @@ func deactivateService(ctx context.Context, opts Options, runner Runner, env []s
 	case "darwin":
 		serviceID := "site.personal-agent.private-site-node"
 		_, _ = runner.Run(ctx, "launchctl", []string{"bootout", fmt.Sprintf("gui/%d/%s", os.Getuid(), serviceID)}, env)
+		waitForSupervisorShutdown(ctx, opts.DataRoot, 5*time.Second)
 		err := os.Remove(filepath.Join(userHome(), "Library", "LaunchAgents", serviceID+".plist"))
 		if errors.Is(err, os.ErrNotExist) {
 			return nil
@@ -535,6 +553,28 @@ func deactivateService(ctx context.Context, opts Options, runner Runner, env []s
 		return err
 	default:
 		return fmt.Errorf("unsupported service platform: %s", opts.Platform)
+	}
+}
+
+func waitForSupervisorShutdown(ctx context.Context, dataRoot string, timeout time.Duration) {
+	statusPath := filepath.Join(dataRoot, "runtime", "supervisor.json")
+	deadline := time.Now().Add(timeout)
+	for {
+		var status struct {
+			State string `json:"status"`
+		}
+		data, err := os.ReadFile(statusPath)
+		if errors.Is(err, os.ErrNotExist) || (err == nil && json.Unmarshal(data, &status) == nil && status.State == "stopped") {
+			return
+		}
+		if time.Now().After(deadline) {
+			return
+		}
+		select {
+		case <-ctx.Done():
+			return
+		case <-time.After(100 * time.Millisecond):
+		}
 	}
 }
 

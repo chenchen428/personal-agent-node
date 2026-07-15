@@ -79,7 +79,7 @@ func installCommand(args []string) {
 	homeRoot := set.String("home", filepath.Join(home, ".personal-agent"), "Personal Agent home containing core and workspace")
 	installRoot := set.String("install-root", "", "legacy override for the immutable core root")
 	dataRoot := set.String("data-root", "", "legacy override for the mutable workspace root")
-	domain := set.String("domain", "personal-agent.local", "initial local domain")
+	domain := set.String("domain", "", "initial local domain (preserves an existing Workspace domain when omitted)")
 	noOpen := set.Bool("no-open", false, "do not open the Setup Center")
 	skipService := set.Bool("skip-service", false, "test-only: do not register the platform service")
 	skipWait := set.Bool("skip-start-wait", false, "test-only: do not wait for gateway readiness")

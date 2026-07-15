@@ -119,6 +119,29 @@ func TestInstallSwitchesCurrentAndRetainsPreviousWithoutHostNode(t *testing.T) {
 	}
 }
 
+func TestInstallPreservesExistingWorkspaceDomainWhenOmitted(t *testing.T) {
+	root := t.TempDir()
+	installRoot := filepath.Join(root, "install")
+	dataRoot := filepath.Join(root, "data")
+	if err := os.MkdirAll(filepath.Join(dataRoot, "config"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dataRoot, "config", "site.json"), []byte(`{"asciiDomain":"owner.example"}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	nodeRuntime := filepath.Join(root, "node")
+	if err := os.WriteFile(nodeRuntime, []byte("bundled-node"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	runner := &fakeRunner{}
+	if _, err := Install(context.Background(), Options{ReleaseRoot: fixtureRelease(t, "release-domain"), NodeRuntime: nodeRuntime, InstallRoot: installRoot, DataRoot: dataRoot, SkipService: true, NoOpen: true, Platform: "darwin"}, runner); err != nil {
+		t.Fatal(err)
+	}
+	if len(runner.calls) == 0 || !strings.Contains(runner.calls[0], "init --domain owner.example") {
+		t.Fatalf("existing Workspace domain was not preserved: %v", runner.calls)
+	}
+}
+
 func TestFailedCandidateRestoresPointers(t *testing.T) {
 	root := t.TempDir()
 	installRoot := filepath.Join(root, "install")
