@@ -19,9 +19,15 @@ export function readWorkspaceSkillCatalog(workspaceRoot) {
     return {
       name: String(entry.name || frontmatter.name || ""),
       description: String(frontmatter.description || "暂无描述。"),
+      directory: String(entry.directory || ""),
       category: String(entry.category || ""),
       maturity: String(entry.maturity || ""),
+      risks: Array.isArray(entry.risks) ? entry.risks.map(String) : [],
+      security: entry.security && typeof entry.security === "object" ? { ...entry.security } : {},
+      origin: entry.origin && typeof entry.origin === "object" ? { ...entry.origin } : {},
       cli: Array.isArray(entry.cli) ? entry.cli.map(String) : [],
+      examples: Array.isArray(entry.examples) ? entry.examples.map(String) : [],
+      caseRequired: entry.caseRequired === true,
       related: Array.isArray(entry.related) ? entry.related.map(String) : [],
     };
   }).sort((left, right) => {

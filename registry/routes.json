@@ -21,6 +21,7 @@
     { "pattern": "/api/channels/*", "access": "authenticated", "capability": "channels" },
     { "pattern": "/api/managed-platforms/*", "access": "authenticated", "capability": "managed-platforms" },
     { "pattern": "/api/publications/*", "access": "authenticated", "capability": "publications" },
+    { "pattern": "/api/skills", "access": "authenticated", "capability": "skills" },
     { "pattern": "/api/system/*", "access": "local-admin", "capability": "runtime" },
     { "pattern": "/api/extensions/*", "access": "local-admin", "capability": "extensions" },
     { "pattern": "/api/plugins/*", "access": "local-admin", "capability": "extensions" },

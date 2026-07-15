@@ -322,6 +322,11 @@ async function handleRequest(request: http.IncomingMessage, response: http.Serve
     return;
   }
 
+  if (url.pathname === "/api/skills" && (request.method === "GET" || request.method === "HEAD")) {
+    sendJson(response, 200, { ok: true, ...readWorkspaceSkillCatalog(config.workspaceRoot) }, request.method === "HEAD");
+    return;
+  }
+
   if (url.pathname === "/agent-bridge/memory" && (request.method === "GET" || request.method === "HEAD")) {
     sendRedirect(response, "/agent-memory", request.method === "HEAD");
     return;

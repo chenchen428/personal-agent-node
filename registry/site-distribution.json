@@ -34,6 +34,7 @@
       { "key": "api-channels", "prefix": "/api/channels", "access": "authenticated", "kind": "proxy", "targetKey": "agent", "upstreamPath": "/api/channels" },
       { "key": "api-managed-platforms", "prefix": "/api/managed-platforms", "access": "authenticated", "kind": "proxy", "targetKey": "agent", "upstreamPath": "/api/managed-platforms" },
       { "key": "api-publications", "prefix": "/api/publications", "access": "authenticated", "kind": "proxy", "targetKey": "agent", "upstreamPath": "/api/pages" },
+      { "key": "api-skills", "prefix": "/api/skills", "access": "authenticated", "kind": "proxy", "targetKey": "agent", "upstreamPath": "/api/skills" },
       { "key": "api-system", "prefix": "/api/system", "access": "local-admin", "kind": "proxy", "targetKey": "console", "upstreamPath": "/api" },
       { "key": "api-extensions", "prefix": "/api/extensions", "access": "local-admin", "kind": "proxy", "targetKey": "console", "upstreamPath": "/api/extensions" },
       { "key": "api-plugins", "prefix": "/api/plugins", "access": "local-admin", "kind": "proxy", "targetKey": "console", "upstreamPath": "/api/plugins" },

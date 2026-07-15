@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "./data-skills.css";
 
 :root {
   --coral: #cc785c; --coral-active: #a9583e; --ink: #141413; --body: #3d3d3a;

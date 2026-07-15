@@ -5,12 +5,14 @@ import test from "node:test";
 
 const root = path.resolve(import.meta.dirname, "..");
 
-test("Next.js owns the application shell, conversation, mail, Setup Center, BFF and Plugin Studio", () => {
+test("Next.js owns the application shell, primary workspaces, Setup Center, BFF and Plugin Studio", () => {
   const shell = read("core/app/src/components/app-shell.tsx");
   const chat = read("core/app/src/components/chat-dashboard.tsx");
   const mail = read("core/app/src/components/mail-dashboard.tsx");
   const setup = read("core/app/src/components/setup-dashboard.tsx");
   const setupPage = read("core/app/src/app/app/setup/page.tsx");
+  const data = read("core/app/src/components/data-dashboard.tsx");
+  const skills = read("core/app/src/components/skills-dashboard.tsx");
   const proxy = read("core/app/src/app/api/[...path]/route.ts");
   const plugins = read("core/plugins/runtime/store.ts");
   const distribution = JSON.parse(read("registry/site-distribution.json"));
@@ -25,6 +27,9 @@ test("Next.js owns the application shell, conversation, mail, Setup Center, BFF 
   assert.match(mail, /\/api\/app\/mail\/import/);
   assert.match(mail, /导入 EML/);
   assert.match(mail, /open-abg-mail-ingest/);
+  assert.match(data, /\/api\/app\/data\/query/);
+  assert.match(data, /\/api\/app\/data\/snapshots/);
+  assert.match(skills, /\/api\/skills/);
   assert.match(setup, /buildSetupTaskModel/);
   assert.match(setup, /现在处理/);
   assert.match(setup, /以后配置/);
@@ -43,6 +48,7 @@ test("Next.js owns the application shell, conversation, mail, Setup Center, BFF 
   assert.equal(distribution.routing.paths.find((route) => route.key === "app-chat").targetKey, "console");
   assert.equal(distribution.routing.paths.find((route) => route.key === "app-mail").targetKey, "console");
   assert.equal(distribution.routing.paths.find((route) => route.key === "api-app-mail").targetKey, "agent");
+  assert.equal(distribution.routing.paths.find((route) => route.key === "api-skills").targetKey, "agent");
 });
 
 test("the application reuses shadcn primitives for setup, channels, and responsive page previews", () => {
@@ -51,6 +57,8 @@ test("the application reuses shadcn primitives for setup, channels, and responsi
   const setupPage = read("core/app/src/app/app/setup/page.tsx");
   const channels = read("core/app/src/components/channels-dashboard.tsx");
   const pages = read("core/app/src/components/pages-dashboard.tsx");
+  const data = read("core/app/src/components/data-dashboard.tsx");
+  const skills = read("core/app/src/components/skills-dashboard.tsx");
   const button = read("core/app/src/components/ui/button.tsx");
   const css = read("core/app/src/app/globals.css");
   assert.equal(config.rsc, true);
@@ -84,6 +92,10 @@ test("the application reuses shadcn primitives for setup, channels, and responsi
   assert.doesNotMatch(setupPage, /text-\[clamp/);
   assert.match(channels, /components\/ui\/(?:badge|card)/);
   assert.match(pages, /components\/ui\/tabs/);
+  assert.match(data, /components\/ui\/tabs/);
+  assert.match(data, /components\/ui\/button/);
+  assert.match(skills, /components\/ui\/badge/);
+  assert.match(skills, /components\/ui\/input/);
   assert.match(pages, /value="mobile"/);
   assert.doesNotMatch(setup, /setup-todo-list|setup-summary-band|setup-secondary-grid/);
   assert.match(read("core/app/src/components/ui/progress.tsx"), /data-slot="progress"/);

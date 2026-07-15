@@ -27,8 +27,8 @@ test("reads the canonical skill registry and SKILL descriptions", () => {
         { id: "first", label: "First", order: 10 },
       ],
       skills: [
-        { name: "beta", directory: "skills/beta", category: "second", maturity: "beta", cli: [], related: ["alpha"] },
-        { name: "alpha", directory: "skills/alpha", category: "first", maturity: "stable", cli: ["alpha"], related: [] },
+        { name: "beta", directory: "skills/beta", category: "second", maturity: "beta", risks: ["network-read"], security: { network: "read" }, origin: { kind: "adapted" }, cli: [], examples: ["beta.json"], caseRequired: true, related: ["alpha"] },
+        { name: "alpha", directory: "skills/alpha", category: "first", maturity: "stable", risks: [], security: { network: "none" }, origin: { kind: "workspace" }, cli: ["alpha"], examples: [], caseRequired: false, related: [] },
       ],
     }));
     fs.writeFileSync(path.join(root, "skills", "alpha", "SKILL.md"), "---\nname: alpha\ndescription: Alpha description.\n---\n");
@@ -39,6 +39,10 @@ test("reads the canonical skill registry and SKILL descriptions", () => {
     assert.deepEqual(catalog.skills.map((skill) => skill.name), ["alpha", "beta"]);
     assert.equal(catalog.skills[1].description, "Beta first line. Beta second line.");
     assert.deepEqual(catalog.skills[0].cli, ["alpha"]);
+    assert.equal(catalog.skills[0].directory, "skills/alpha");
+    assert.deepEqual(catalog.skills[1].risks, ["network-read"]);
+    assert.deepEqual(catalog.skills[1].security, { network: "read" });
+    assert.equal(catalog.skills[1].caseRequired, true);
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
   }
