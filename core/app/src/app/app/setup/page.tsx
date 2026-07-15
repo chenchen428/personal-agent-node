@@ -3,10 +3,12 @@ import { SetupDashboard } from "@/components/setup-dashboard";
 export default function SetupPage() {
   return (
     <main className="page-frame">
-      <header className="page-hero">
-        <p className="eyebrow">SETUP CENTER</p>
-        <h1>先让本机可用，再选择远方。</h1>
-        <p>安装、Codex、域名和邮箱是四组独立事实。没有选择的能力不会显示成故障。</p>
+      <header className="grid gap-4 border-b border-[var(--hairline)] py-8 md:grid-cols-[minmax(0,1fr)_360px] md:items-end md:gap-12">
+        <div>
+          <p className="eyebrow mb-3">SETUP CENTER</p>
+          <h1 className="m-0 text-[clamp(40px,5vw,58px)] leading-none">把这台电脑准备好。</h1>
+        </div>
+        <p className="m-0 text-sm leading-6 text-[var(--muted)]">先处理本机和 Codex；公网、Agent 邮箱与渠道都是可选能力，不会阻塞本机使用。</p>
       </header>
       <SetupDashboard />
     </main>

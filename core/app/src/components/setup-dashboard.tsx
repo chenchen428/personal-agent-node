@@ -4,7 +4,11 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Progress } from "@/components/ui/progress";
+import { Separator } from "@/components/ui/separator";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { buildSetupTaskModel, type SetupCheck, type SetupState, type SetupTask } from "@/lib/setup-tasks";
 import { Check, CheckCircle2, ChevronDown, Circle, ExternalLink, Mail, MessageCircle, RefreshCw, ShieldCheck, Wrench } from "lucide-react";
 
@@ -13,17 +17,12 @@ type SetupSnapshot = { generatedAt?: string; readiness: Record<string, SetupStat
 
 const CODEX_GUIDE = "https://developers.openai.com/codex/cli/";
 const RELEASES = "https://github.com/chenchen428/personal-agent-node/releases";
-const labels: Record<SetupState, string> = {
-  ready: "可用",
-  checking: "检查中",
-  "action-required": "需要处理",
-  blocked: "等待前置项",
-  "not-selected": "可选",
-};
+const labels: Record<SetupState, string> = { ready: "可用", checking: "检查中", "action-required": "需处理", blocked: "等待", "not-selected": "可选" };
+const badgeTone: Record<SetupState, "ready" | "warning" | "error" | "neutral"> = { ready: "ready", checking: "neutral", "action-required": "warning", blocked: "error", "not-selected": "neutral" };
 const detailGroups = [
   { key: "core", label: "本机与 Codex", sources: ["installation", "agent"] },
-  { key: "online", label: "公网与邮箱", sources: ["connectivity", "mail-identity"] },
-  { key: "optional", label: "邮件与渠道", sources: ["local-mail", "optional-channels"] },
+  { key: "online", label: "公网与 Agent 邮箱", sources: ["connectivity", "mail-identity"] },
+  { key: "optional", label: "本地邮件与渠道", sources: ["local-mail", "optional-channels"] },
 ];
 
 export function SetupDashboard() {
@@ -84,22 +83,23 @@ export function SetupDashboard() {
   };
 
   const renderAction = (requestedAction: string) => {
-    if (requestedAction === "installation.local-auth") return <form className="todo-auth-form" onSubmit={(event) => { event.preventDefault(); void runAction(requestedAction, { password, confirmation }); }}>
-      <div className="todo-auth-fields">
-        <Input aria-label="本机登录密码" type="password" autoComplete="new-password" minLength={12} maxLength={256} placeholder="至少 12 个字符" value={password} onChange={(event) => setPassword(event.target.value)} />
-        <Input aria-label="确认本机登录密码" type="password" autoComplete="new-password" minLength={12} maxLength={256} placeholder="再次输入密码" value={confirmation} onChange={(event) => setConfirmation(event.target.value)} />
-      </div>
-      <Button type="submit" disabled={password.length < 12 || password !== confirmation || actionId === requestedAction}>{actionId === requestedAction ? "设置中" : "确认设置"}</Button>
-      {actionMessage[requestedAction] ? <small>{actionMessage[requestedAction]}</small> : null}
-    </form>;
+    if (requestedAction === "installation.local-auth") return (
+      <form className="grid gap-3" onSubmit={(event) => { event.preventDefault(); void runAction(requestedAction, { password, confirmation }); }}>
+        <div className="grid gap-2 sm:grid-cols-2">
+          <Input aria-label="本机登录密码" type="password" autoComplete="new-password" minLength={12} maxLength={256} placeholder="至少 12 个字符" value={password} onChange={(event) => setPassword(event.target.value)} />
+          <Input aria-label="确认本机登录密码" type="password" autoComplete="new-password" minLength={12} maxLength={256} placeholder="再次输入密码" value={confirmation} onChange={(event) => setConfirmation(event.target.value)} />
+        </div>
+        <div className="flex flex-wrap items-center gap-3">
+          <Button type="submit" disabled={password.length < 12 || password !== confirmation || actionId === requestedAction}>{actionId === requestedAction ? "设置中" : "确认设置"}</Button>
+          {actionMessage[requestedAction] ? <small className="text-xs text-[var(--muted)]" role="status">{actionMessage[requestedAction]}</small> : null}
+        </div>
+      </form>
+    );
 
-    if (["installation.repair", "installation.service-repair"].includes(requestedAction)) return <a className={buttonVariants({ variant: "outline" })} href={RELEASES} target="_blank" rel="noreferrer"><Wrench className="size-3.5" />打开安装包<ExternalLink className="size-3.5" /></a>;
-
-    if (["agent.codex.install-guide", "agent.codex.update-guide", "agent.codex.login-guide"].includes(requestedAction)) return <a className={buttonVariants({ variant: "outline" })} href={CODEX_GUIDE} target="_blank" rel="noreferrer">Codex 官方指南<ExternalLink className="size-3.5" /></a>;
-
-    if (requestedAction === "agent.open-chat") return <Link className={buttonVariants()} href="/app/chat"><MessageCircle className="size-3.5" />开始真实对话</Link>;
-
-    if (["agent.codex.retry", "connectivity.retry"].includes(requestedAction)) return <Button variant="outline" type="button" onClick={() => void refresh()} disabled={loading}><RefreshCw className="size-3.5" />重新检测</Button>;
+    if (["installation.repair", "installation.service-repair"].includes(requestedAction)) return <a className={buttonVariants({ variant: "outline", size: "sm" })} href={RELEASES} target="_blank" rel="noreferrer"><Wrench className="size-3.5" />打开安装包<ExternalLink className="size-3.5" /></a>;
+    if (["agent.codex.install-guide", "agent.codex.update-guide", "agent.codex.login-guide"].includes(requestedAction)) return <a className={buttonVariants({ variant: "outline", size: "sm" })} href={CODEX_GUIDE} target="_blank" rel="noreferrer">Codex 官方指南<ExternalLink className="size-3.5" /></a>;
+    if (requestedAction === "agent.open-chat") return <Link className={buttonVariants({ size: "sm" })} href="/app/chat"><MessageCircle className="size-3.5" />开始真实对话</Link>;
+    if (["agent.codex.retry", "connectivity.retry"].includes(requestedAction)) return <Button variant="outline" size="sm" type="button" onClick={() => void refresh()} disabled={loading}><RefreshCw className="size-3.5" />重新检测</Button>;
 
     if (["connectivity.choose-mode", "connectivity.managed-authorize", "connectivity.repair"].includes(requestedAction)) {
       const cloudAction = snapshot?.actions?.managedCloud;
@@ -108,18 +108,17 @@ export function SetupDashboard() {
         : cloudAction?.phase === "resources" ? "本机接入已确认，正在验证公网域名和 Agent 邮箱。"
           : cloudPending ? "已打开 chenjianhui.site，请在已登录的页面确认这台电脑。"
             : cloudAction?.state === "succeeded" ? "页面验证已完成，正在刷新资源状态。" : "";
-      return <div className="todo-cloud-action">
-        <Button type="button" disabled={actionId === "connectivity.managed-authorize" || cloudPending} onClick={() => void runAction("connectivity.managed-authorize")}>{cloudPending ? "等待页面确认" : "验证公网与邮箱"}</Button>
-        {cloudMessage || actionMessage["connectivity.managed-authorize"] ? <small>{cloudMessage || actionMessage["connectivity.managed-authorize"]}</small> : null}
+      return <div className="grid justify-items-start gap-2">
+        <Button size="sm" type="button" disabled={actionId === "connectivity.managed-authorize" || cloudPending} onClick={() => void runAction("connectivity.managed-authorize")}>{cloudPending ? "等待页面确认" : "验证公网与邮箱"}</Button>
+        {cloudMessage || actionMessage["connectivity.managed-authorize"] ? <small className="text-xs leading-relaxed text-[var(--muted)]" role="status">{cloudMessage || actionMessage["connectivity.managed-authorize"]}</small> : null}
       </div>;
     }
 
-    if (requestedAction === "mail.enable") return <div className="todo-cloud-action">
-      <Button variant="outline" type="button" disabled={actionId === requestedAction} onClick={() => void runAction(requestedAction)}><Mail className="size-3.5" />{actionId === requestedAction ? "启用中" : "启用邮件检测"}</Button>
-      {actionMessage[requestedAction] ? <small>{actionMessage[requestedAction]}</small> : null}
+    if (requestedAction === "mail.enable") return <div className="grid justify-items-start gap-2">
+      <Button variant="outline" size="sm" type="button" disabled={actionId === requestedAction} onClick={() => void runAction(requestedAction)}><Mail className="size-3.5" />{actionId === requestedAction ? "启用中" : "启用邮件检测"}</Button>
+      {actionMessage[requestedAction] ? <small className="text-xs text-[var(--muted)]" role="status">{actionMessage[requestedAction]}</small> : null}
     </div>;
-
-    if (["mail.test-delivery", "mail.test-recovery"].includes(requestedAction)) return <Link className={buttonVariants({ variant: "outline" })} href="/app/mail"><Mail className="size-3.5" />打开邮件页</Link>;
+    if (["mail.test-delivery", "mail.test-recovery"].includes(requestedAction)) return <Link className={buttonVariants({ variant: "outline", size: "sm" })} href="/app/mail"><Mail className="size-3.5" />打开邮件页</Link>;
     return null;
   };
 
@@ -127,80 +126,114 @@ export function SetupDashboard() {
   const tasks = buildSetupTaskModel(checks);
   const requiredDone = !loading && !error && tasks.totalRequired > 0 && tasks.requiredTasks.length === 0 && tasks.blockedChecks.length === 0;
   const headline = loading ? "正在检查这台电脑" : error ? "暂时无法完成检查" : requiredDone ? "本机已经可以使用" : `${tasks.requiredTasks.length} 项待完成`;
-  const summary = loading ? "正在读取安装、Codex 和对话链路的本机事实。" : error || (requiredDone ? "本机安装和 Codex Agent 已通过核心检查。" : "完成下面的任务即可使用；等待项会在前置任务完成后自动继续检查。");
+  const summary = loading ? "正在读取安装、Codex 和对话链路的本机事实。" : error || (requiredDone ? "安装和 Codex Agent 已通过核心检查。" : "先完成左侧必做项；公网、邮箱和渠道可以稍后再配。" );
 
-  return <section className="setup-workspace" aria-label="Setup readiness" aria-live="polite">
-    <section className={`setup-summary-band ${requiredDone ? "is-ready" : ""}`}>
-      <div className="setup-summary-copy">
-        <p className="setup-summary-kicker"><i className={loading ? "state-checking" : requiredDone ? "state-ready" : error ? "state-error" : "state-warning"} />CORE READINESS</p>
-        <h2>{headline}</h2>
-        <p>{summary}</p>
-      </div>
-      <div className="setup-progress-block">
-        <div><strong>{tasks.completedRequired}</strong><span>/ {tasks.totalRequired || 10}</span></div>
-        <small>核心检查已完成</small>
-        <div className="setup-progress-track" role="progressbar" aria-label="核心检查进度" aria-valuemin={0} aria-valuemax={100} aria-valuenow={tasks.progress}><i style={{ width: `${tasks.progress}%` }} /></div>
-      </div>
-    </section>
-
-    <section className="setup-todo-section" aria-labelledby="required-tasks-title">
-      <header className="setup-section-heading">
-        <div><span>01</span><div><h2 id="required-tasks-title">现在处理</h2><p>只列出当前可执行、且会影响本机使用的事项。</p></div></div>
-        <Badge variant={requiredDone ? "ready" : tasks.requiredTasks.length ? "warning" : "neutral"}>{loading ? "检查中" : requiredDone ? "全部完成" : `${tasks.requiredTasks.length} 项`}</Badge>
-      </header>
-      {tasks.requiredTasks.length ? <ol className="setup-todo-list">
-        {tasks.requiredTasks.map((task, index) => <TodoItem key={task.check.id} task={task} index={index + 1} action={renderAction(task.actionId)} />)}
-      </ol> : <div className={`setup-empty-state ${requiredDone ? "is-ready" : ""}`}>
-        {requiredDone ? <CheckCircle2 /> : <Circle />}
-        <div><strong>{loading ? "正在生成任务清单" : requiredDone ? "没有阻塞本机使用的任务" : error || "正在等待检测结果"}</strong><span>{requiredDone ? "你可以直接进入对话；公网和邮件仍可稍后配置。" : "检测完成后，这里只会保留需要你处理的事项。"}</span></div>
-      </div>}
-    </section>
-
-    <div className="setup-secondary-grid">
-      <section className="setup-todo-section setup-optional" aria-labelledby="optional-tasks-title">
-        <header className="setup-section-heading">
-          <div><span>02</span><div><h2 id="optional-tasks-title">以后配置</h2><p>不影响本机使用，按你的需要启用。</p></div></div>
-          <Badge variant="neutral">可选</Badge>
-        </header>
-        <ul className="setup-optional-list">
-          {tasks.optionalTasks.map((task) => <li key={task.check.id}><div className="optional-task-copy"><Circle /><div><strong>{task.title}</strong><span>{task.check.guidance}</span></div></div><div className="optional-task-action">{renderAction(task.actionId)}</div></li>)}
-        </ul>
-      </section>
-
-      <section className="setup-details-section" aria-labelledby="check-details-title">
-        <header className="setup-section-heading">
-          <div><span>03</span><div><h2 id="check-details-title">检测详情</h2><p>查看全部检测事实和状态。</p></div></div>
-          <Button variant="outline" size="sm" type="button" onClick={() => void refresh()} disabled={loading}><RefreshCw className={loading ? "size-3.5 spin" : "size-3.5"} />重新检测</Button>
-        </header>
-        <details className="setup-check-details">
-          <summary><ShieldCheck /><span>全部 {checks.length || 21} 项检查</span><ChevronDown /></summary>
-          <div className="setup-detail-groups">
-            {detailGroups.map((group) => {
-              const groupChecks = checks.filter((check) => group.sources.includes(check.group));
-              return <section key={group.key}><h3>{group.label}</h3><ul>{groupChecks.map((check) => <li key={check.id} className={`detail-${check.state}`}><StatusIcon state={check.state} /><span>{check.summary}</span><em>{labels[check.state]}</em></li>)}</ul></section>;
-            })}
+  return <section className="grid gap-6 pt-8" aria-label="Setup readiness" aria-live="polite">
+    <Card className="overflow-hidden border-0 bg-[var(--surface-dark)] text-[#b7b3ab] shadow-[0_20px_60px_rgba(20,20,19,.12)]">
+      <CardContent className="grid gap-8 p-6 sm:p-8 lg:grid-cols-[minmax(0,1fr)_240px] lg:items-end">
+        <div className="min-w-0">
+          <div className="mb-5 flex items-center gap-2.5 text-[11px] font-medium tracking-[.12em] text-[#a09d96]">
+            <span className={`size-2 rounded-full ${loading ? "animate-pulse bg-[var(--coral)]" : requiredDone ? "bg-[var(--success)]" : error ? "bg-[var(--error)]" : "bg-[var(--warning)]"}`} />
+            CORE READINESS
           </div>
-        </details>
-      </section>
+          <h2 className="m-0 text-[clamp(34px,5vw,50px)] leading-none text-[var(--on-dark)]">{headline}</h2>
+          <p className="mt-4 max-w-2xl text-sm leading-6 text-[#b7b3ab]">{summary}</p>
+        </div>
+        <div className="grid gap-3">
+          <div className="flex items-end justify-between gap-4">
+            <div className="flex items-baseline gap-1.5"><strong className="font-[var(--display)] text-4xl font-normal leading-none text-[var(--on-dark)]">{tasks.completedRequired}</strong><span className="font-[var(--mono)] text-xs text-[#77736d]">/ {tasks.totalRequired || 10}</span></div>
+            <span className="text-xs text-[#a09d96]">核心检查</span>
+          </div>
+          <Progress className="bg-[#34312d] [&_[data-slot=progress-indicator]]:bg-[var(--coral)]" value={tasks.progress} aria-label="核心检查进度" />
+        </div>
+      </CardContent>
+    </Card>
+
+    <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1.45fr)_minmax(320px,.75fr)]">
+      <Card className="min-w-0 shadow-[0_10px_32px_rgba(20,20,19,.05)]">
+        <CardHeader className="flex flex-row items-start justify-between gap-4 border-b border-[var(--hairline)] pb-5">
+          <div className="min-w-0">
+            <div className="mb-2 font-[var(--mono)] text-[10px] tracking-[.12em] text-[var(--coral)]">01 · REQUIRED</div>
+            <CardTitle>现在处理</CardTitle>
+            <CardDescription className="mt-1">这里只保留当前能执行、且影响本机使用的事项。</CardDescription>
+          </div>
+          <Badge variant={requiredDone ? "ready" : tasks.requiredTasks.length ? "warning" : "neutral"}>{loading ? "检查中" : requiredDone ? "已完成" : `${tasks.requiredTasks.length} 项`}</Badge>
+        </CardHeader>
+        <CardContent className="grid gap-3 p-4 sm:p-5">
+          {tasks.requiredTasks.length ? <ol className="grid list-none gap-3 p-0">
+            {tasks.requiredTasks.map((task, index) => <TodoItem key={task.check.id} task={task} index={index + 1} action={renderAction(task.actionId)} />)}
+          </ol> : <div className="flex min-h-36 items-center gap-4 rounded-lg border border-dashed border-[var(--hairline)] bg-[var(--surface-soft)] p-5">
+            {requiredDone ? <CheckCircle2 className="size-7 shrink-0 text-[var(--success)]" /> : <Circle className="size-7 shrink-0 text-[var(--muted-soft)]" />}
+            <div><strong className="block text-sm font-medium text-[var(--ink)]">{loading ? "正在生成任务清单" : requiredDone ? "没有阻塞本机使用的任务" : error || "正在等待检测结果"}</strong><span className="mt-1 block text-xs leading-relaxed text-[var(--muted)]">{requiredDone ? "可以直接进入对话；公网和邮件仍可稍后配置。" : "检测完成后，这里只会留下需要你处理的事项。"}</span></div>
+          </div>}
+        </CardContent>
+      </Card>
+
+      <Card className="min-w-0 overflow-hidden shadow-[0_10px_32px_rgba(20,20,19,.05)]">
+        <Tabs defaultValue="optional">
+          <CardHeader className="gap-4 border-b border-[var(--hairline)] pb-5">
+            <div className="flex items-start justify-between gap-3">
+              <div><div className="mb-2 font-[var(--mono)] text-[10px] tracking-[.12em] text-[var(--coral)]">02 · OVERVIEW</div><CardTitle>完成自己的配置</CardTitle></div>
+              <Button variant="outline" size="icon" type="button" aria-label="重新检测" onClick={() => void refresh()} disabled={loading}><RefreshCw className={loading ? "size-4 animate-spin" : "size-4"} /></Button>
+            </div>
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="optional">以后配置</TabsTrigger>
+              <TabsTrigger value="details">检测详情</TabsTrigger>
+            </TabsList>
+          </CardHeader>
+          <TabsContent value="optional" className="m-0">
+            <CardContent className="grid p-0">
+              {tasks.optionalTasks.length ? tasks.optionalTasks.map((task, index) => <div key={task.check.id}>
+                {index ? <Separator /> : null}
+                <div className="grid gap-4 p-5">
+                  <div className="flex items-start gap-3"><Circle className="mt-0.5 size-4 shrink-0 text-[var(--muted-soft)]" /><div className="min-w-0"><strong className="block text-sm font-medium text-[var(--ink)]">{task.title}</strong><span className="mt-1 block text-xs leading-relaxed text-[var(--muted)]">{task.check.guidance}</span></div></div>
+                  <div className="pl-7">{renderAction(task.actionId)}</div>
+                </div>
+              </div>) : <div className="p-5 text-sm text-[var(--muted)]">当前没有需要配置的可选能力。</div>}
+            </CardContent>
+          </TabsContent>
+          <TabsContent value="details" className="m-0">
+            <CardContent className="grid gap-5 p-5">
+              {detailGroups.map((group, groupIndex) => {
+                const groupChecks = checks.filter((check) => group.sources.includes(check.group));
+                return <section key={group.key} className="grid gap-2.5">
+                  {groupIndex ? <Separator className="mb-2" /> : null}
+                  <h3 className="m-0 font-[var(--mono)] text-[10px] font-medium tracking-[.08em] text-[var(--muted)] uppercase">{group.label}</h3>
+                  <ul className="grid list-none gap-1 p-0">{groupChecks.map((check) => <li key={check.id} className="grid grid-cols-[16px_minmax(0,1fr)_auto] items-center gap-2 py-1.5 text-xs text-[var(--body)]"><StatusIcon state={check.state} /><span>{check.summary}</span><Badge variant={badgeTone[check.state]}>{labels[check.state]}</Badge></li>)}</ul>
+                </section>;
+              })}
+              {!checks.length ? <div className="flex items-center gap-2 text-sm text-[var(--muted)]"><ShieldCheck className="size-4" />等待检测结果</div> : null}
+            </CardContent>
+          </TabsContent>
+        </Tabs>
+      </Card>
     </div>
   </section>;
 }
 
 function TodoItem({ task, index, action }: { task: SetupTask; index: number; action: React.ReactNode }) {
-  return <li className="setup-todo-item">
-    <div className="todo-index"><span>{String(index).padStart(2, "0")}</span><Circle /></div>
-    <div className="todo-main">
-      <div className="todo-title-row"><div><Badge variant="warning">{task.category}</Badge><h3>{task.title}</h3></div><span className="todo-state"><i />需要处理</span></div>
-      <p>{task.check.guidance}</p>
-      <details className="todo-why"><summary>为什么需要这一步<ChevronDown /></summary><span>{task.check.why}</span></details>
-      {task.waitingCount ? <small className="todo-waiting">完成后将继续检查同组的 {task.waitingCount} 个等待项。</small> : null}
-      <div className="todo-action">{action}</div>
-    </div>
+  return <li>
+    <Card className="bg-[var(--surface-soft)]">
+      <CardHeader className="flex flex-row items-start justify-between gap-4 p-5 pb-4">
+        <div className="flex min-w-0 items-start gap-3">
+          <span className="grid size-7 shrink-0 place-items-center rounded-full bg-[var(--canvas)] font-[var(--mono)] text-[10px] text-[var(--coral)] ring-1 ring-[var(--hairline)]">{String(index).padStart(2, "0")}</span>
+          <div className="min-w-0"><Badge variant="warning">{task.category}</Badge><h3 className="mt-2 mb-0 text-2xl leading-tight">{task.title}</h3></div>
+        </div>
+        <Badge variant="warning">需处理</Badge>
+      </CardHeader>
+      <CardContent className="grid gap-4 px-5 pt-0 pb-5 sm:pl-15">
+        <p className="m-0 text-sm leading-6 text-[var(--body)]">{task.check.guidance}</p>
+        <details className="group text-xs text-[var(--muted)]"><summary className="flex w-max cursor-pointer list-none items-center gap-1">为什么需要这一步<ChevronDown className="size-3.5 transition-transform group-open:rotate-180" /></summary><p className="mt-2 mb-0 border-l-2 border-[var(--hairline)] pl-3 leading-relaxed">{task.check.why}</p></details>
+        {task.waitingCount ? <small className="text-xs text-[var(--coral)]">完成后会继续检查同组的 {task.waitingCount} 个等待项。</small> : null}
+        <div>{action}</div>
+      </CardContent>
+    </Card>
   </li>;
 }
 
 function StatusIcon({ state }: { state: SetupState }) {
-  if (state === "ready") return <Check className="detail-icon" />;
-  if (state === "checking") return <RefreshCw className="detail-icon spin" />;
-  return <Circle className="detail-icon" />;
+  if (state === "ready") return <Check className="size-3.5 text-[var(--success)]" />;
+  if (state === "checking") return <RefreshCw className="size-3.5 animate-spin text-[var(--coral)]" />;
+  if (state === "blocked") return <Circle className="size-3.5 text-[var(--error)]" />;
+  return <Circle className="size-3.5 text-[var(--warning)]" />;
 }

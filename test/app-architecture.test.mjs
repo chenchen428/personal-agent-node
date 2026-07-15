@@ -40,6 +40,10 @@ test("the application reuses shadcn primitives for setup, channels, and responsi
   const css = read("core/app/src/app/globals.css");
   assert.equal(config.rsc, true);
   assert.match(setup, /components\/ui\/button/);
+  assert.match(setup, /components\/ui\/card/);
+  assert.match(setup, /components\/ui\/progress/);
+  assert.match(setup, /components\/ui\/separator/);
+  assert.match(setup, /components\/ui\/tabs/);
   assert.match(setup, /installation\.local-auth/);
   assert.match(setup, /mail-identity/);
   assert.match(setup, /local-mail/);
@@ -58,7 +62,10 @@ test("the application reuses shadcn primitives for setup, channels, and responsi
   assert.match(channels, /components\/ui\/(?:badge|card)/);
   assert.match(pages, /components\/ui\/tabs/);
   assert.match(pages, /value="mobile"/);
-  assert.match(css, /setup-todo-list/);
+  assert.doesNotMatch(setup, /setup-todo-list|setup-summary-band|setup-secondary-grid/);
+  assert.match(read("core/app/src/components/ui/progress.tsx"), /data-slot="progress"/);
+  assert.match(setup, /lg:grid-cols-\[minmax\(0,1\.45fr\)_minmax\(320px,\.75fr\)\]/);
+  assert.match(setup, /sm:grid-cols-2/);
   assert.match(css, /preview-mobile/);
   assert.match(css, /@media \(max-width: 767px\)/);
 });
