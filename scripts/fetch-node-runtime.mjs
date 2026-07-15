@@ -5,6 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import { extractZipMember } from './lib/zip-member.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const runtime = JSON.parse(fs.readFileSync(path.join(root, 'registry', 'node-runtime.json'), 'utf8'));
@@ -26,13 +27,15 @@ try {
   if (actual !== expected) throw new Error(`Pinned Node checksum mismatch for ${descriptor.archive}`);
   const archivePath = path.join(temporary, descriptor.archive);
   fs.writeFileSync(archivePath, archive, { mode: 0o600 });
-  const extracted = path.join(temporary, 'extracted');
-  fs.mkdirSync(extracted);
-  const tarArgs = platform === 'win32' ? ['--force-local'] : [];
-  run('tar', [...tarArgs, '-xf', archivePath, '-C', extracted, descriptor.member]);
-  const source = path.join(extracted, ...descriptor.member.split('/'));
   fs.mkdirSync(path.dirname(output), { recursive: true });
-  fs.copyFileSync(source, output);
+  if (platform === 'win32') {
+    fs.writeFileSync(output, extractZipMember(archive, descriptor.member), { mode: 0o700 });
+  } else {
+    const extracted = path.join(temporary, 'extracted');
+    fs.mkdirSync(extracted);
+    run('tar', ['-xf', archivePath, '-C', extracted, descriptor.member]);
+    fs.copyFileSync(path.join(extracted, ...descriptor.member.split('/')), output);
+  }
   if (platform !== 'win32') fs.chmodSync(output, 0o755);
   process.stdout.write(`${JSON.stringify({ ok: true, version: runtime.version, platform, architecture, archive: descriptor.archive, sha256: actual, output }, null, 2)}\n`);
 } finally {

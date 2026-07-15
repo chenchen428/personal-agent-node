@@ -5,7 +5,9 @@ import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
+import zlib from 'node:zlib';
 import { validateCommandRegistry } from '../scripts/lib/command-registry-contract.mjs';
+import { extractZipMember } from '../scripts/lib/zip-member.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 function run(command, args) { return spawnSync(command, args, { cwd: root, encoding: 'utf8' }); }
@@ -135,7 +137,7 @@ test('GitHub release chain is version-gated and publishes verifiable artifacts',
     'actions/attest-build-provenance@v2',
   ]) assert.match(workflow, new RegExp(requirement.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
   const runtimeFetcher = fs.readFileSync(path.join(root, 'scripts/fetch-node-runtime.mjs'), 'utf8');
-  assert.match(runtimeFetcher, /platform === 'win32' \? \['--force-local'\] : \[\]/);
+  assert.match(runtimeFetcher, /extractZipMember\(archive, descriptor\.member\)/);
   const metadataRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'personal-agent-release-security-'));
   try {
     const metadataFile = path.join(metadataRoot, 'RELEASE-SECURITY.json');
@@ -153,3 +155,55 @@ test('GitHub release chain is version-gated and publishes verifiable artifacts',
     fs.rmSync(metadataRoot, { recursive: true, force: true });
   }
 });
+
+test('Windows runtime extraction reads one verified ZIP member without tar or PowerShell', () => {
+  const member = 'node-v22.23.1-win-x64/node.exe';
+  const expected = Buffer.from('portable-node-runtime');
+  const archive = zipWithDeflatedMember(member, expected);
+  assert.deepEqual(extractZipMember(archive, member), expected);
+  assert.throws(() => extractZipMember(archive, '../node.exe'), /unsafe/);
+  const corrupted = Buffer.from(archive);
+  corrupted[35 + Buffer.byteLength(member)] ^= 0xff;
+  assert.throws(() => extractZipMember(corrupted, member), /invalid distance|invalid stored block|incorrect data|CRC mismatch|size mismatch/i);
+});
+
+function zipWithDeflatedMember(name, content) {
+  const nameBytes = Buffer.from(name);
+  const compressed = zlib.deflateRawSync(content);
+  const crc = crc32(content);
+  const local = Buffer.alloc(30);
+  local.writeUInt32LE(0x04034b50, 0);
+  local.writeUInt16LE(20, 4);
+  local.writeUInt16LE(8, 8);
+  local.writeUInt32LE(crc, 14);
+  local.writeUInt32LE(compressed.length, 18);
+  local.writeUInt32LE(content.length, 22);
+  local.writeUInt16LE(nameBytes.length, 26);
+  const central = Buffer.alloc(46);
+  central.writeUInt32LE(0x02014b50, 0);
+  central.writeUInt16LE(20, 4);
+  central.writeUInt16LE(20, 6);
+  central.writeUInt16LE(8, 10);
+  central.writeUInt32LE(crc, 16);
+  central.writeUInt32LE(compressed.length, 20);
+  central.writeUInt32LE(content.length, 24);
+  central.writeUInt16LE(nameBytes.length, 28);
+  const centralOffset = local.length + nameBytes.length + compressed.length;
+  const centralSize = central.length + nameBytes.length;
+  const end = Buffer.alloc(22);
+  end.writeUInt32LE(0x06054b50, 0);
+  end.writeUInt16LE(1, 8);
+  end.writeUInt16LE(1, 10);
+  end.writeUInt32LE(centralSize, 12);
+  end.writeUInt32LE(centralOffset, 16);
+  return Buffer.concat([local, nameBytes, compressed, central, nameBytes, end]);
+}
+
+function crc32(buffer) {
+  let value = 0xffffffff;
+  for (const byte of buffer) {
+    value ^= byte;
+    for (let bit = 0; bit < 8; bit += 1) value = (value >>> 1) ^ (0xedb88320 & -(value & 1));
+  }
+  return (value ^ 0xffffffff) >>> 0;
+}
