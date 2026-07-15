@@ -87,6 +87,7 @@ export function componentSpecs(config, workerConfig) {
   const controlSocket = executable(node, path.join(workspaceRoot, "core", "runtime", "app", "control-service.mjs"), path.join(workspaceRoot, "core", "runtime", "src", "control-service.ts"));
   const controlApi = executable(node, path.join(workspaceRoot, "core", "control", "server.mjs"), path.join(workspaceRoot, "core", "control", "server.ts"));
   const gateway = executable(node, path.join(workspaceRoot, "core", "runtime", "app", "gateway.mjs"), path.join(workspaceRoot, "core", "runtime", "src", "gateway.ts"));
+  const reverseTunnel = executable(node, path.join(workspaceRoot, "core", "runtime", "app", "reverse-tunnel.mjs"), path.join(workspaceRoot, "core", "runtime", "src", "reverse-tunnel-entry.ts"));
   const app = nextApplication(node, config);
   const toolsStandaloneRoot = toolsRoot;
   const components = [
@@ -141,6 +142,13 @@ export function componentSpecs(config, workerConfig) {
       env: {},
     },
   ];
+  components.push({
+    name: "personal-agent-tunnel",
+    ...reverseTunnel,
+    cwd: workspaceRoot,
+    waitFor: config.gateway.port,
+    env: {},
+  });
   if (fs.existsSync(path.join(toolsStandaloneRoot, "server.js"))) {
     components.splice(3, 0, {
       name: "lmt-tools",

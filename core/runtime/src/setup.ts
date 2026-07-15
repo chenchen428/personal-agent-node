@@ -29,7 +29,8 @@ export async function setupStatus({
   const resolvedDataRoot = path.resolve(dataRoot || env.PRIVATE_SITE_DATA_ROOT || path.join(homeRoot, 'workspace'));
   const resolvedInstallRoot = path.resolve(installRoot || env.PRIVATE_SITE_INSTALL_ROOT || path.join(homeRoot, 'core'));
   const effectiveEnv = { ...env, PRIVATE_SITE_DATA_ROOT: resolvedDataRoot, PRIVATE_SITE_INSTALL_ROOT: resolvedInstallRoot };
-  const generatedAt = now().toISOString();
+  const generatedDate = now();
+  const generatedAt = generatedDate.toISOString();
   const installation = readJson(path.join(resolvedInstallRoot, 'installation.json'));
   const config = safeConfig(effectiveEnv);
   const supervisor = readJson(path.join(resolvedDataRoot, 'runtime', 'supervisor.json'));
@@ -44,6 +45,7 @@ export async function setupStatus({
   const connectionMode = config?.site?.connectionMode || 'local-only';
   const remoteSelected = connectionMode !== 'local-only';
   const cloud = readJson(path.join(resolvedDataRoot, 'config', 'cloud.json'));
+  const reverseTunnel = readJson(path.join(resolvedDataRoot, 'runtime', 'reverse-tunnel.json'));
   const connectivityAcceptance = readJson(path.join(resolvedDataRoot, 'runtime', 'setup', 'connectivity.json'));
   const conversationAcceptance = readJson(path.join(resolvedDataRoot, 'runtime', 'setup', 'web-conversation.json'));
   const mailAcceptance = readJson(path.join(resolvedDataRoot, 'runtime', 'setup', 'mail.json'));
@@ -61,13 +63,15 @@ export async function setupStatus({
     && conversationAcceptance.sameSessionAgentReply === true
     && conversationAcceptance.route === '/app/chat';
   const enrolled = connectionMode === 'managed-cloud'
-    ? Boolean(cloud?.managedHost && cloud?.siteId && cloud?.enrolledAt)
+    ? Boolean(cloud?.managedHost && cloud?.siteId && cloud?.enrolledAt && cloud?.tunnel?.protocol === 'pa-reverse-ws-v1')
     : connectionMode === 'self-hosted-edge';
+  const tunnelHeartbeatSeconds = Number(cloud?.tunnel?.heartbeatSeconds || 20);
+  const lastPongAt = Date.parse(String(reverseTunnel?.lastPongAt || ''));
   const heartbeatReady = connectionMode === 'managed-cloud'
-    ? ['active', 'connected', 'ready'].includes(String(cloud?.status || '').toLowerCase())
+    ? reverseTunnel?.state === 'ready' && Number.isFinite(lastPongAt) && generatedDate.getTime() - lastPongAt <= tunnelHeartbeatSeconds * 3000
     : Boolean(connectivityAcceptance?.heartbeat === true);
   const tunnelReady = connectionMode === 'managed-cloud'
-    ? Boolean(cloud?.tunnel?.address && cloud?.tunnel?.endpoint)
+    ? Boolean(enrolled && reverseTunnel?.protocol === 'pa-reverse-ws-v1' && reverseTunnel?.state === 'ready')
     : Boolean(connectivityAcceptance?.tunnel === true);
   const remoteHost = connectionMode === 'managed-cloud' ? String(cloud?.managedHost || '') : String(config?.domain || '');
   const remote = remoteSelected && remoteHost
@@ -87,8 +91,8 @@ export async function setupStatus({
     makeCheck('agent.web-conversation', codexConversationReady, codexConversationReady ? '真实 Web 对话已验证' : '请在本机对话中完成一次真实回复', { route: '/app/chat', realAgentRuntime: codexConversationReady, sameSessionAgentReply: codexConversationReady }, generatedAt, codex.handshake ? undefined : 'blocked'),
     makeCheck('connectivity.mode', remoteSelected, remoteSelected ? `已选择 ${connectionMode}` : '保持纯本机模式', { selected: remoteSelected, mode: connectionMode }, generatedAt, remoteSelected ? undefined : 'not-selected'),
     makeCheck('connectivity.enrollment', enrolled, enrolled ? '公网连接身份已建立' : '需要完成公网连接授权', { enrolled }, generatedAt, remoteSelected ? undefined : 'not-selected'),
-    makeCheck('connectivity.heartbeat', heartbeatReady, heartbeatReady ? '公网连接心跳正常' : '公网连接心跳未就绪', { ready: heartbeatReady }, generatedAt, remoteSelected ? undefined : 'not-selected'),
-    makeCheck('connectivity.tunnel', tunnelReady, tunnelReady ? '公网隧道已就绪' : '公网隧道未就绪', { ready: tunnelReady }, generatedAt, remoteSelected ? undefined : 'not-selected'),
+    makeCheck('connectivity.heartbeat', heartbeatReady, heartbeatReady ? '应用隧道心跳正常' : '应用隧道心跳未就绪', { ready: heartbeatReady }, generatedAt, remoteSelected ? undefined : 'not-selected'),
+    makeCheck('connectivity.tunnel', tunnelReady, tunnelReady ? '应用层反向隧道已连接' : '应用层反向隧道未连接', { ready: tunnelReady, protocol: reverseTunnel?.protocol || '' }, generatedAt, remoteSelected ? undefined : 'not-selected'),
     acceptanceCheck('connectivity.dns', remote.dns || connectivityAcceptance?.dns === true, 'DNS', remoteSelected, generatedAt),
     acceptanceCheck('connectivity.tls', remote.tls || connectivityAcceptance?.tls === true, 'TLS', remoteSelected, generatedAt),
     acceptanceCheck('connectivity.remote-app', remote.remoteApp || connectivityAcceptance?.remoteApp === true, '远程 /app', remoteSelected, generatedAt),
@@ -244,7 +248,7 @@ function safeMailStatus(config, options) {
 }
 
 function requiredComponentsReady(supervisor) {
-  return ['personal-agent-control', 'open-agent-bridge', 'open-agent-bridge-worker', 'personal-agent-control-api', 'personal-agent-app', 'private-site-gateway']
+  return ['personal-agent-control', 'open-agent-bridge', 'open-agent-bridge-worker', 'personal-agent-control-api', 'personal-agent-app', 'private-site-gateway', 'personal-agent-tunnel']
     .every((name) => Number(supervisor?.components?.[name]?.pid) > 0);
 }
 

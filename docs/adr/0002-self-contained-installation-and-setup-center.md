@@ -1,5 +1,7 @@
 # ADR 0002: Self-contained installation and local Setup Center
 
+Managed Cloud tunnel implementation details in this ADR are superseded by [ADR 0004](0004-managed-cloud-reverse-tunnel.md).
+
 - Status: Accepted
 - Date: 2026-07-15
 - Scope: Public Personal Agent Node repository

@@ -2,8 +2,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { spawn } from 'node:child_process';
 import { initializeSite, mergeSecretEnv, resolveNodeConfig, setConnectionMode, writeJsonAtomic } from './config.ts';
-import { installManagedWireGuardTunnel, prepareManagedWireGuardIdentity } from './identity.ts';
 import { setProvider } from './providers.ts';
+import { validateReverseTunnelContract } from './reverse-tunnel.ts';
 
 export const DEFAULT_CLOUD_URL = 'https://chenjianhui.site';
 const DEFAULT_POLL_INTERVAL_SECONDS = 5;
@@ -14,7 +14,6 @@ export async function enrollWithCloudDeviceAuthorization({
   cloudUrl = DEFAULT_CLOUD_URL,
   dataRoot,
   fetchImpl = fetch,
-  wireGuardExecutor,
   openBrowser = openExternalUrl,
   onAuthorization = () => {},
   sleep = (milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds)),
@@ -26,7 +25,7 @@ export async function enrollWithCloudDeviceAuthorization({
   const preliminary = resolveNodeConfig({ ...process.env, PRIVATE_SITE_DATA_ROOT: dataRoot || process.env.PRIVATE_SITE_DATA_ROOT });
   const pendingPath = path.join(preliminary.dataRoot, 'secrets', 'applications', 'cloud-enrollment-pending.json');
   const pending = readDevicePendingEnrollment(pendingPath, baseUrl);
-  if (pending) return finalizeEnrollment({ pending, pendingPath, dataRoot: preliminary.dataRoot, wireGuardExecutor, fetchImpl });
+  if (pending) return finalizeEnrollment({ pending, pendingPath, dataRoot: preliminary.dataRoot, fetchImpl });
   if (fs.existsSync(path.join(preliminary.configDir, 'cloud.json'))) throw new Error('当前 Node 已接入 Cloud；请先检查 cloud status 或执行受控断开');
 
   const authorization = await startCloudDeviceAuthorization({ baseUrl, fetchImpl, clientName, clientVersion });
@@ -36,13 +35,12 @@ export async function enrollWithCloudDeviceAuthorization({
   try { browserOpened = await openBrowser(authorization.verificationUrlComplete || authorization.verificationUrl); } catch {}
 
   const enrollmentCredential = await pollCloudDeviceAuthorization({ baseUrl, fetchImpl, authorization, sleep, now });
-  const identity = prepareManagedWireGuardIdentity(preliminary);
-  const enrolled = await requestJson(fetchImpl, `${baseUrl}/api/node/enroll`, { enrollmentCredential, publicKey: identity.publicKey });
+  const enrolled = await requestJson(fetchImpl, `${baseUrl}/api/node/enroll`, { enrollmentCredential });
   const activationSite = normalizeEnrolledSite(enrolled.site);
   validateEnrollmentResponse(enrolled, activationSite);
-  const resumable = { schemaVersion: 2, flow: 'device-authorization', baseUrl, activationSite, enrolled, createdAt: new Date(now()).toISOString() };
+  const resumable = { schemaVersion: 3, flow: 'device-authorization', baseUrl, activationSite, enrolled, createdAt: new Date(now()).toISOString() };
   writeJsonAtomic(pendingPath, resumable, 0o600);
-  const result = await finalizeEnrollment({ pending: resumable, pendingPath, dataRoot: preliminary.dataRoot, wireGuardExecutor, fetchImpl });
+  const result = await finalizeEnrollment({ pending: resumable, pendingPath, dataRoot: preliminary.dataRoot, fetchImpl });
   return { ...result, authorization: { ...publicAuthorization, browserOpened } };
 }
 
@@ -93,7 +91,7 @@ export async function pollCloudDeviceAuthorization({ baseUrl, cloudUrl, fetchImp
   throw cloudAuthError('CLOUD_AUTH_EXPIRED', '页面授权已过期，请重新运行 cloud connect');
 }
 
-async function finalizeEnrollment({ pending, pendingPath, dataRoot, wireGuardExecutor, fetchImpl }) {
+async function finalizeEnrollment({ pending, pendingPath, dataRoot, fetchImpl }) {
   const { enrolled, activationSite } = pending;
   const selectedSlug = activationSite.slug;
   const before = resolveNodeConfig({ ...process.env, PRIVATE_SITE_DATA_ROOT: dataRoot });
@@ -104,22 +102,22 @@ async function finalizeEnrollment({ pending, pendingPath, dataRoot, wireGuardExe
   } else {
     config = initializeSite({ domain: activationSite.managedHost, dataRoot }).config;
   }
-  const tunnel = installManagedWireGuardTunnel(config, enrolled.tunnel, { ...(wireGuardExecutor ? { executor: wireGuardExecutor } : {}) });
+  const tunnel = validateReverseTunnelContract(enrolled.tunnel);
   mergeSecretEnv(config.envPath, { SITE_DOMAIN: activationSite.managedHost, PERSONAL_AGENT_CLOUD_TOKEN: enrolled.nodeToken }, ['SITE_DOMAIN', 'PERSONAL_AGENT_CLOUD_TOKEN']);
   config = resolveNodeConfig({ ...process.env, PRIVATE_SITE_DATA_ROOT: config.dataRoot });
   setProvider(resolveNodeConfig({ ...process.env, PRIVATE_SITE_DATA_ROOT: config.dataRoot }), { kind: 'tunnel', provider: 'personal-agent-cloud', endpoint: `${pending.baseUrl}/${selectedSlug}`, credentialEnv: 'PERSONAL_AGENT_CLOUD_TOKEN' });
   const heartbeat = await requestJson(fetchImpl, `${pending.baseUrl}/api/node/heartbeat`, undefined, { authorization: `Bearer ${enrolled.nodeToken}` });
-  const metadata = { schemaVersion: 1, cloudUrl: pending.baseUrl, slug: selectedSlug, managedHost: activationSite.managedHost, siteId: enrolled.site.id, plan: activationSite.plan || 'free', status: heartbeat.status || enrolled.site.status, tunnel: { address: enrolled.tunnel.address, endpoint: enrolled.tunnel.endpoint, generation: heartbeat.tunnelGeneration || 1 }, enrolledAt: new Date().toISOString() };
+  const metadata = { schemaVersion: 2, cloudUrl: pending.baseUrl, slug: selectedSlug, managedHost: activationSite.managedHost, siteId: enrolled.site.id, plan: activationSite.plan || 'free', status: heartbeat.status || enrolled.site.status, tunnel: { ...tunnel, generation: heartbeat.tunnelGeneration || tunnel.generation }, enrolledAt: new Date().toISOString() };
   writeJsonAtomic(path.join(config.configDir, 'cloud.json'), metadata, 0o600);
   setConnectionMode(config, 'managed-cloud');
   fs.rmSync(pendingPath, { force: true });
-  return { ok: true, site: metadata, tunnel, dataRoot: config.dataRoot, managedUrl: `https://${metadata.managedHost}` };
+  return { ok: true, site: metadata, tunnel: metadata.tunnel, dataRoot: config.dataRoot, managedUrl: `https://${metadata.managedHost}` };
 }
 
 function readDevicePendingEnrollment(pendingPath, baseUrl) {
   if (!fs.existsSync(pendingPath)) return null;
   const pending = JSON.parse(fs.readFileSync(pendingPath, 'utf8'));
-  if (pending.schemaVersion !== 2 || pending.flow !== 'device-authorization' || pending.baseUrl !== baseUrl) {
+  if (pending.schemaVersion !== 3 || pending.flow !== 'device-authorization' || pending.baseUrl !== baseUrl) {
     if (pending.schemaVersion === 1) throw new Error('本机存在已废弃的邀请接入状态；请回滚 previous 完成恢复，或清理该未完成状态后重新运行 cloud connect');
     throw new Error('本机存在另一个未完成的 Cloud 接入，请使用原 Cloud 地址恢复');
   }
@@ -138,6 +136,7 @@ function normalizeEnrolledSite(site) {
 
 function validateEnrollmentResponse(enrolled, site) {
   if (!enrolled?.nodeToken || enrolled.site?.status !== 'active' || !enrolled.tunnel || !site.managedHost || !site.slug) throw new Error('Cloud 设备接入未激活');
+  validateReverseTunnelContract(enrolled.tunnel);
 }
 
 function publicDeviceAuthorization(value) {

@@ -175,11 +175,20 @@ function hasCompletedCloudEnrollment(configDir) {
   if (!fs.existsSync(cloudPath)) return false;
   try {
     const cloud = readJson(cloudPath);
-    return cloud?.schemaVersion === 1
-      && Boolean(String(cloud.cloudUrl || "").trim())
+    const common = Boolean(String(cloud.cloudUrl || "").trim())
       && Boolean(String(cloud.managedHost || "").trim())
       && Boolean(String(cloud.siteId || "").trim())
-      && Boolean(String(cloud.enrolledAt || "").trim())
+      && Boolean(String(cloud.enrolledAt || "").trim());
+    if (!common) return false;
+    if (cloud.schemaVersion === 2) {
+      const endpoint = new URL(String(cloud.tunnel?.endpoint || ""));
+      const secureEndpoint = endpoint.protocol === "wss:" || (endpoint.protocol === "ws:" && ["127.0.0.1", "localhost", "::1"].includes(endpoint.hostname));
+      return cloud.tunnel?.protocol === "pa-reverse-ws-v1"
+        && secureEndpoint
+        && Number.isInteger(cloud.tunnel?.generation)
+        && cloud.tunnel.generation > 0;
+    }
+    return cloud.schemaVersion === 1
       && Boolean(String(cloud.tunnel?.address || "").trim())
       && Boolean(String(cloud.tunnel?.endpoint || "").trim());
   } catch {

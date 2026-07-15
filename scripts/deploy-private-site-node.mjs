@@ -126,7 +126,7 @@ function waitForNode(cliPath) {
   while (Date.now() < deadline) {
     try {
       const status = runJson(process.execPath, [cliPath, "status", "--json"], { env: environment, timeout: 20_000 });
-      const required = ["open-agent-bridge", "open-agent-bridge-worker", "personal-agent-control-api", "personal-agent-app", "private-site-gateway"];
+      const required = ["open-agent-bridge", "open-agent-bridge-worker", "personal-agent-control-api", "personal-agent-app", "private-site-gateway", "personal-agent-tunnel"];
       if (status.supervisor?.alive && required.every((name) => status.supervisor.components?.[name])) return status;
     } catch (error) {
       lastError = error;

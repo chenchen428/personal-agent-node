@@ -24,7 +24,7 @@ test('setup status separates console, Agent, remote, mail, and optional WeChat r
     fs.writeFileSync(path.join(dataRoot, 'runtime', 'supervisor.json'), `${JSON.stringify({
       pid: 123,
       status: 'running',
-      components: Object.fromEntries(['personal-agent-control', 'open-agent-bridge', 'open-agent-bridge-worker', 'personal-agent-control-api', 'personal-agent-app', 'private-site-gateway'].map((name, index) => [name, { pid: index + 10 }])),
+      components: Object.fromEntries(['personal-agent-control', 'open-agent-bridge', 'open-agent-bridge-worker', 'personal-agent-control-api', 'personal-agent-app', 'private-site-gateway', 'personal-agent-tunnel'].map((name, index) => [name, { pid: index + 10 }])),
     })}\n`);
     fs.mkdirSync(path.join(dataRoot, 'runtime', 'setup'), { recursive: true });
     fs.writeFileSync(path.join(dataRoot, 'runtime', 'setup', 'managed-cloud-action.json'), `${JSON.stringify({ schemaVersion: 1, state: 'running', phase: 'resources', pid: 123, secret: 'must-not-leak' })}\n`);
@@ -79,6 +79,38 @@ test('remote readiness proves DNS, TLS, and authenticated app separately', async
     fetchImpl: async () => { throw new Error('certificate failure'); },
   });
   assert.deepEqual(tlsFailure, { dns: true, tls: false, remoteApp: false });
+});
+
+test('managed remote readiness requires a fresh reverse application tunnel instead of a network interface', async () => {
+  const dataRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'personal-agent-setup-reverse-tunnel-'));
+  try {
+    const initialized = initializeSite({ dataRoot, domain: 'personal-agent.local' });
+    const now = new Date('2026-07-15T12:00:00.000Z');
+    fs.writeFileSync(path.join(dataRoot, 'config', 'cloud.json'), `${JSON.stringify({
+      schemaVersion: 2,
+      cloudUrl: 'https://chenjianhui.site',
+      managedHost: 'owner.chenjianhui.site',
+      siteId: 'site-1',
+      enrolledAt: now.toISOString(),
+      tunnel: { protocol: 'pa-reverse-ws-v1', endpoint: 'wss://relay.chenjianhui.site/v1/connect', heartbeatSeconds: 20, maxFrameBytes: 131072, generation: 1 },
+    })}\n`);
+    fs.writeFileSync(initialized.config.configPath, `${JSON.stringify({ ...initialized.config.site, connectionMode: 'managed-cloud' })}\n`);
+    fs.mkdirSync(path.join(dataRoot, 'runtime'), { recursive: true });
+    fs.writeFileSync(path.join(dataRoot, 'runtime', 'reverse-tunnel.json'), `${JSON.stringify({ schemaVersion: 1, protocol: 'pa-reverse-ws-v1', state: 'ready', generation: 1, lastPongAt: now.toISOString() })}\n`);
+    const status = await setupStatus({
+      dataRoot,
+      installRoot: path.join(dataRoot, 'install'),
+      now: () => now,
+      portProbe: async () => false,
+      codexProbe: async () => ({ installed: false, version: '', versionSupported: false, authenticated: false, handshake: false }),
+      remoteProbe: async () => ({ dns: true, tls: true, remoteApp: true }),
+    });
+    assert.equal(status.checks.find((check) => check.id === 'connectivity.enrollment').state, 'ready');
+    assert.equal(status.checks.find((check) => check.id === 'connectivity.heartbeat').state, 'ready');
+    assert.equal(status.checks.find((check) => check.id === 'connectivity.tunnel').state, 'ready');
+    assert.match(status.checks.find((check) => check.id === 'connectivity.tunnel').summary, /应用层反向隧道/);
+    assert.equal(status.readiness.remote, 'ready');
+  } finally { fs.rmSync(dataRoot, { recursive: true, force: true }); }
 });
 
 test('setup status blocks downstream Agent checks when Codex is missing', async () => {

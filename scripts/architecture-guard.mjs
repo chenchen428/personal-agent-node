@@ -77,6 +77,7 @@ checks.push({ name: 'personal-agent skill', ok: exists('skills/personal-agent/SK
 checks.push({ name: 'legacy bridge skill removed', ok: !exists('skills/open-agent-bridge/SKILL.md') });
 const cloudEnrollmentSource = fs.readFileSync(path.join(root, 'core/runtime/src/cloud-enrollment.ts'), 'utf8');
 checks.push({ name: 'legacy invitation onboarding removed', ok: !exists('core/runtime/src/onboarding-server.mjs') && !cloudEnrollmentSource.includes('enrollWithCloud(') && !cloudEnrollmentSource.includes('/activate') });
+checks.push({ name: 'managed Cloud enrollment uses application tunnel without WireGuard', ok: cloudEnrollmentSource.includes('validateReverseTunnelContract') && !/WireGuard|wg-quick|publicKey/.test(cloudEnrollmentSource) });
 report(checks);
 
 function containsExtension(directories, extension) {

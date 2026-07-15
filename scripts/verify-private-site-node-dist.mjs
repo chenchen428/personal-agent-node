@@ -45,7 +45,7 @@ function verifyLayout() {
   assert(!fs.existsSync(at("projects")), "Historical projects directory must not be distributed");
   for (const relative of [
     "core/app/server.js", "core/app/.next/static", "core/runtime/bin/personal-agent.mjs", "core/runtime/bin/private-site.mjs",
-    "core/runtime/app/control-service.mjs", "core/runtime/app/gateway.mjs", "core/agent/app/server.mjs", "core/agent/app/worker.mjs",
+    "core/runtime/app/control-service.mjs", "core/runtime/app/gateway.mjs", "core/runtime/app/reverse-tunnel.mjs", "core/agent/app/server.mjs", "core/agent/app/worker.mjs",
     "core/control/server.mjs", "core/plugins/schema/personal-agent.plugin.schema.json",
     "workspace/AGENTS.md", "workspace/skills", "workspace/workflows", "workspace/registry/skills.json", "workspace/registry/plugins.json",
     "registry/delivery.json", "docs/adr/0003-core-workspace-next-architecture.md", "SBOM.cdx.json", "SHA256SUMS",

@@ -2,15 +2,15 @@
 
 ## Install an immutable release
 
-Set `TAG=v0.2.0-beta.5` and open the matching [GitHub Release](https://github.com/chenchen428/personal-agent-node/releases/tag/v0.2.0-beta.5). A customer machine does not need Node.js, npm, Git, a source checkout, or a development Agent.
+Set `TAG=v0.2.0-beta.6` and open the matching [GitHub Release](https://github.com/chenchen428/personal-agent-node/releases/tag/v0.2.0-beta.6). A customer machine does not need Node.js, npm, Git, a source checkout, or a development Agent.
 
 | Computer | Asset |
 | --- | --- |
-| Windows x86-64 | `personal-agent-node-v0.2.0-beta.5-windows-x64-installer.exe` |
-| macOS Apple Silicon | `personal-agent-node-v0.2.0-beta.5-macos-arm64.pkg` |
-| macOS Intel | `personal-agent-node-v0.2.0-beta.5-macos-x64.pkg` |
-| Linux x86-64 | `personal-agent-node-v0.2.0-beta.5-linux-x64.tar.zst` |
-| Linux ARM64 | `personal-agent-node-v0.2.0-beta.5-linux-arm64.tar.zst` |
+| Windows x86-64 | `personal-agent-node-v0.2.0-beta.6-windows-x64-installer.exe` |
+| macOS Apple Silicon | `personal-agent-node-v0.2.0-beta.6-macos-arm64.pkg` |
+| macOS Intel | `personal-agent-node-v0.2.0-beta.6-macos-x64.pkg` |
+| Linux x86-64 | `personal-agent-node-v0.2.0-beta.6-linux-x64.tar.zst` |
+| Linux ARM64 | `personal-agent-node-v0.2.0-beta.6-linux-arm64.tar.zst` |
 
 On Windows, run the installer. On macOS, open the package. On Linux, unpack the matching archive with the desktop archive manager or `tar --zstd`, then run `./personal-agent-setup` from the extracted directory.
 
@@ -42,7 +42,7 @@ personal-agent doctor --json
 
 ## Managed connectivity is optional
 
-The Setup Center starts both purpose-bound browser approvals required by Personal Agent Cloud: Node enrollment and redacted resource access. Long-lived Node and tunnel credentials remain under the mode-600 local secrets directory. Only redacted domain, mailbox, and readiness metadata is written to normal configuration.
+The Setup Center starts both purpose-bound browser approvals required by Personal Agent Cloud: Node enrollment and redacted resource access. The long-lived Node credential remains under the mode-600 local secrets directory. Managed remote access uses an outbound application WebSocket and does not install WireGuard or change system proxy, DNS, or routes. Only redacted domain, mailbox, endpoint, and readiness metadata is written to normal configuration.
 
 Advanced operators may still use `personal-agent cloud connect --json`, `personal-agent cloud login --json`, and `personal-agent cloud resources --json`. The managed origin can be overridden with `PERSONAL_AGENT_CLOUD_URL=https://cloud.example`; custom origins must use HTTPS.
 

@@ -336,7 +336,7 @@ function requireConfig() {
 function sanitizedCloud(config) {
   const value = readJsonIfExists(path.join(config.configDir, 'cloud.json'));
   if (!value) return { enrolled: false };
-  return { enrolled: true, managedHost: value.managedHost, plan: value.plan, status: value.status, tunnel: value.tunnel ? { address: value.tunnel.address, endpoint: value.tunnel.endpoint, generation: value.tunnel.generation } : null };
+  return { enrolled: true, managedHost: value.managedHost, plan: value.plan, status: value.status, tunnel: value.tunnel ? { protocol: value.tunnel.protocol, endpoint: value.tunnel.endpoint, generation: value.tunnel.generation } : null };
 }
 
 function registry(name) {
