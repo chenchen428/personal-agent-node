@@ -13,7 +13,7 @@ const mutationActions = Object.freeze({
   },
   'connectivity.managed-authorize': {
     risk: 'R2',
-    summary: 'Start the optional managed Cloud browser authorization flow',
+    summary: 'Verify chenjianhui.site and bind public domain and Agent mail resources',
     target: 'managed-cloud',
   },
   'mail.enable': {
@@ -68,8 +68,28 @@ function launchManagedCloudSetup({ dataRoot }) {
   if (current?.state === 'running' && processAlive(current.pid)) {
     return { started: false, state: 'running', phase: current.phase || 'enrollment' };
   }
-  writeActionStatus(statusFile, { state: 'starting', phase: 'enrollment' });
   const cli = path.join(workspaceRoot, 'core', 'runtime', 'bin', 'personal-agent.mjs');
+  const startingPhase = managedCloudAuthorizationPhase({ dataRoot });
+  const startResourceAuthorization = () => {
+    const resource = spawn(process.execPath, [cli, 'cloud', 'login', '--data-root', dataRoot, '--json'], {
+      detached: false,
+      stdio: 'ignore',
+      windowsHide: true,
+      env: { ...process.env, PRIVATE_SITE_DATA_ROOT: dataRoot },
+    });
+    writeActionStatus(statusFile, { state: 'running', phase: 'resources', pid: resource.pid || 0 });
+    resource.once('error', (error) => writeActionStatus(statusFile, { state: 'failed', phase: 'resources', code: safeCode(error) }));
+    resource.once('exit', (resourceCode) => writeActionStatus(statusFile, resourceCode === 0
+      ? { state: 'succeeded', phase: 'complete' }
+      : { state: 'failed', phase: 'resources', code: `CLI_EXIT_${Number(resourceCode ?? -1)}` }));
+    return resource;
+  };
+  if (startingPhase === 'resources') {
+    writeActionStatus(statusFile, { state: 'starting', phase: 'resources' });
+    startResourceAuthorization();
+    return { started: true, state: 'running', phase: 'resources' };
+  }
+  writeActionStatus(statusFile, { state: 'starting', phase: 'enrollment' });
   const first = spawn(process.execPath, [cli, 'cloud', 'connect', '--data-root', dataRoot, '--json'], {
     detached: false,
     stdio: 'ignore',
@@ -83,19 +103,14 @@ function launchManagedCloudSetup({ dataRoot }) {
       writeActionStatus(statusFile, { state: 'failed', phase: 'enrollment', code: `CLI_EXIT_${Number(code ?? -1)}` });
       return;
     }
-    const second = spawn(process.execPath, [cli, 'cloud', 'login', '--data-root', dataRoot, '--json'], {
-      detached: false,
-      stdio: 'ignore',
-      windowsHide: true,
-      env: { ...process.env, PRIVATE_SITE_DATA_ROOT: dataRoot },
-    });
-    writeActionStatus(statusFile, { state: 'running', phase: 'resources', pid: second.pid || 0 });
-    second.once('error', (error) => writeActionStatus(statusFile, { state: 'failed', phase: 'resources', code: safeCode(error) }));
-    second.once('exit', (resourceCode) => writeActionStatus(statusFile, resourceCode === 0
-      ? { state: 'succeeded', phase: 'complete' }
-      : { state: 'failed', phase: 'resources', code: `CLI_EXIT_${Number(resourceCode ?? -1)}` }));
+    startResourceAuthorization();
   });
   return { started: true, state: 'running', phase: 'enrollment' };
+}
+
+export function managedCloudAuthorizationPhase({ dataRoot }) {
+  const config = resolveNodeConfig({ ...process.env, PRIVATE_SITE_DATA_ROOT: dataRoot });
+  return fs.existsSync(path.join(config.configDir, 'cloud.json')) ? 'resources' : 'enrollment';
 }
 
 function writeActionStatus(filePath, value) {

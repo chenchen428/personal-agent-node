@@ -26,6 +26,8 @@ test('setup status separates console, Agent, remote, mail, and optional WeChat r
       status: 'running',
       components: Object.fromEntries(['personal-agent-control', 'open-agent-bridge', 'open-agent-bridge-worker', 'personal-agent-control-api', 'personal-agent-app', 'private-site-gateway'].map((name, index) => [name, { pid: index + 10 }])),
     })}\n`);
+    fs.mkdirSync(path.join(dataRoot, 'runtime', 'setup'), { recursive: true });
+    fs.writeFileSync(path.join(dataRoot, 'runtime', 'setup', 'managed-cloud-action.json'), `${JSON.stringify({ schemaVersion: 1, state: 'running', phase: 'resources', pid: 123, secret: 'must-not-leak' })}\n`);
     writeWebConversationAcceptance({ dataRoot, now: () => new Date('2026-07-15T00:00:00.000Z') });
 
     const status = await setupStatus({
@@ -44,10 +46,15 @@ test('setup status separates console, Agent, remote, mail, and optional WeChat r
     assert.equal(status.readiness.mail, 'not-selected');
     assert.equal(status.checks.find((check) => check.id === 'channels.wechat').state, 'not-selected');
     assert.equal(status.checks.find((check) => check.id === 'mail.identity').state, 'not-selected');
+    assert.match(status.checks.find((check) => check.id === 'agent.codex.executable').why, /Codex/);
+    assert.match(status.checks.find((check) => check.id === 'agent.codex.executable').guidance, /官方 Codex CLI 指南/);
+    assert.ok(status.checks.every((check) => check.why && check.guidance));
+    assert.deepEqual(status.actions.managedCloud, { state: 'running', phase: 'resources' });
     assert.doesNotMatch(JSON.stringify(status), /test-only-password|secrets\/applications/);
     const diagnostics = setupDiagnostics(status);
     assert.match(diagnostics.diagnosticDigest, /^[a-f0-9]{64}$/);
     assert.doesNotMatch(JSON.stringify(diagnostics), /test-only-password|secrets\/applications/);
+    assert.doesNotMatch(JSON.stringify(diagnostics), /must-not-leak|"pid"/);
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
   }

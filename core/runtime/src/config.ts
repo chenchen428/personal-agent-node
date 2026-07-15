@@ -353,6 +353,14 @@ export function resolveCodexCli(env = process.env, options = {}) {
   const platformPath = platform === "win32" ? path.win32 : path;
   const nodeExecutable = options.nodeExecutable || process.execPath;
   const exists = options.exists || fs.existsSync;
+  const realpath = options.realpath || fs.realpathSync;
+  const commandFor = (target) => {
+    let resolved = target;
+    try { resolved = realpath(target); } catch {}
+    return path.extname(resolved).toLowerCase() === ".js"
+      ? { command: nodeExecutable, prefixArgs: [target] }
+      : { command: target, prefixArgs: [] };
+  };
   const runWhere = options.runWhere || (() => spawnSync("where.exe", ["codex.exe"], { encoding: "utf8", windowsHide: true }));
   const listDesktopExecutables = options.listDesktopExecutables || (() => {
     const localBin = platformPath.join(env.LOCALAPPDATA || "", "OpenAI", "Codex", "bin");
@@ -371,11 +379,20 @@ export function resolveCodexCli(env = process.env, options = {}) {
   if (configured) {
     const target = path.resolve(configured);
     if (!exists(target)) throw new Error(`Configured Codex executable does not exist: ${target}`);
-    return path.extname(target).toLowerCase() === ".js"
-      ? { command: nodeExecutable, prefixArgs: [target] }
-      : { command: target, prefixArgs: [] };
+    return commandFor(target);
   }
-  if (platform !== "win32") return { command: "codex", prefixArgs: [] };
+  if (platform !== "win32") {
+    const home = env.HOME || os.homedir();
+    const candidates = [
+      platformPath.join(home, ".npm-global", "bin", "codex"),
+      platformPath.join(home, ".local", "bin", "codex"),
+      "/opt/homebrew/bin/codex",
+      "/usr/local/bin/codex",
+      "/usr/bin/codex",
+    ];
+    const discovered = candidates.find((candidate) => exists(candidate));
+    return discovered ? commandFor(discovered) : { command: "codex", prefixArgs: [] };
+  }
 
   // The desktop Codex executable tracks the app-server protocol shipped with the
   // current app. A stale global npm installation must not shadow it on Windows.

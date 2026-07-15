@@ -4,11 +4,16 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { RefreshCw } from "lucide-react";
+import { ExternalLink, Mail, MessageCircle, RefreshCw, Wrench } from "lucide-react";
 
 type SetupState = "ready" | "checking" | "action-required" | "blocked" | "not-selected";
-type SetupCheck = { id: string; group: string; state: SetupState; summary: string; actionIds?: string[] };
-type SetupSnapshot = { readiness: Record<string, SetupState>; checks: SetupCheck[] };
+type SetupCheck = { id: string; group: string; state: SetupState; summary: string; why: string; guidance: string; actionIds?: string[] };
+type ManagedCloudAction = { state: "idle" | "starting" | "running" | "succeeded" | "failed"; phase: "idle" | "enrollment" | "resources" | "complete"; code?: string };
+type SetupSnapshot = { readiness: Record<string, SetupState>; checks: SetupCheck[]; actions?: { managedCloud?: ManagedCloudAction } };
+
+const CODEX_GUIDE = "https://developers.openai.com/codex/cli/";
+const RELEASES = "https://github.com/chenchen428/personal-agent-node/releases";
+const canonicalAction = (id: string) => ["connectivity.choose-mode", "connectivity.repair"].includes(id) ? "connectivity.managed-authorize" : id;
 
 const groups = [
   { key: "installation", sources: ["installation"], readiness: "console", index: "01", title: "本机安装" },
@@ -51,6 +56,11 @@ export function SetupDashboard() {
     }
   }, []);
   useEffect(() => { void refresh(); }, [refresh]);
+  useEffect(() => {
+    if (!["starting", "running"].includes(snapshot?.actions?.managedCloud?.state || "idle")) return;
+    const timer = window.setTimeout(() => void refresh(), 2000);
+    return () => window.clearTimeout(timer);
+  }, [refresh, snapshot?.actions?.managedCloud?.state, snapshot?.actions?.managedCloud?.phase]);
 
   const runAction = async (requestedAction: string, input: Record<string, unknown> = {}) => {
     setActionId(requestedAction);
@@ -69,7 +79,7 @@ export function SetupDashboard() {
       const plan = await post("plan", {});
       await post("approve", { operationId: plan.id, digest: plan.digest, approved: true });
       await post("execute", { operationId: plan.id, digest: plan.digest, input });
-      setActionMessage((current) => ({ ...current, [requestedAction]: "已完成，正在重新检测。" }));
+      setActionMessage((current) => ({ ...current, [requestedAction]: requestedAction === "connectivity.managed-authorize" ? "已打开 chenjianhui.site，请在浏览器页面确认。" : "已完成，正在重新检测。" }));
       if (requestedAction === "installation.local-auth") { setPassword(""); setConfirmation(""); }
       await refresh();
     } catch (actionError) {
@@ -79,28 +89,78 @@ export function SetupDashboard() {
     }
   };
 
+  const renderAction = (requestedAction: string, check: SetupCheck) => {
+    if (requestedAction === "installation.local-auth") return <form className="setup-action" onSubmit={(event) => { event.preventDefault(); void runAction(requestedAction, { password, confirmation }); }}>
+      <strong>设置本机登录密码</strong><small>{check.guidance}</small>
+      <Input type="password" autoComplete="new-password" minLength={12} maxLength={256} placeholder="至少 12 个字符" value={password} onChange={(event) => setPassword(event.target.value)} />
+      <Input type="password" autoComplete="new-password" minLength={12} maxLength={256} placeholder="再次输入密码" value={confirmation} onChange={(event) => setConfirmation(event.target.value)} />
+      <Button type="submit" disabled={password.length < 12 || password !== confirmation || actionId === requestedAction}>{actionId === requestedAction ? "设置中" : "确认设置"}</Button>
+      {actionMessage[requestedAction] ? <span>{actionMessage[requestedAction]}</span> : null}
+    </form>;
+
+    if (["installation.repair", "installation.service-repair"].includes(requestedAction)) return <div className="setup-inline-action">
+      <strong><Wrench className="size-4" />用安装包自助修复</strong><span>{check.guidance}</span>
+      <a className={buttonVariants({ variant: "outline" })} href={RELEASES} target="_blank" rel="noreferrer">打开安装包页面<ExternalLink className="size-3.5" /></a>
+    </div>;
+
+    if (["agent.codex.install-guide", "agent.codex.update-guide", "agent.codex.login-guide"].includes(requestedAction)) return <div className="setup-inline-action">
+      <strong>按官方步骤处理 Codex</strong><span>{check.guidance}</span>
+      <a className={buttonVariants({ variant: "outline" })} href={CODEX_GUIDE} target="_blank" rel="noreferrer">打开 Codex 官方指南<ExternalLink className="size-3.5" /></a>
+    </div>;
+
+    if (requestedAction === "agent.open-chat") return <div className="setup-inline-action">
+      <strong><MessageCircle className="size-4" />完成一次真实对话</strong><span>{check.guidance}</span>
+      <Link className={buttonVariants()} href="/app/chat">开始真实对话</Link>
+    </div>;
+
+    if (["agent.codex.retry", "connectivity.retry"].includes(requestedAction)) return <div className="setup-inline-action">
+      <strong>修复后重新验证</strong><span>{check.guidance}</span>
+      <Button variant="outline" type="button" onClick={() => void refresh()} disabled={loading}><RefreshCw className="size-3.5" />重新检测</Button>
+    </div>;
+
+    if (["connectivity.choose-mode", "connectivity.managed-authorize", "connectivity.repair"].includes(requestedAction)) {
+      const cloudAction = snapshot?.actions?.managedCloud;
+      const cloudPending = ["starting", "running"].includes(cloudAction?.state || "idle");
+      const cloudMessage = cloudAction?.state === "failed" ? `页面验证未完成（${cloudAction.code || "请重试"}）。`
+        : cloudAction?.phase === "resources" ? "本机接入已确认，正在通过页面验证公网域名和 Agent 邮箱。"
+          : cloudPending ? "已打开 chenjianhui.site，请在已登录的页面确认这台电脑。"
+            : cloudAction?.state === "succeeded" ? "chenjianhui.site 页面验证已完成，正在刷新资源状态。" : "";
+      return <div className="setup-inline-action">
+      <strong>验证 chenjianhui.site</strong><span>{check.guidance}</span>
+      <Button type="button" disabled={actionId === "connectivity.managed-authorize" || cloudPending} onClick={() => void runAction("connectivity.managed-authorize")}>{cloudPending ? "等待页面确认" : "验证公网与邮箱"}</Button>
+      {cloudMessage || actionMessage["connectivity.managed-authorize"] ? <small>{cloudMessage || actionMessage["connectivity.managed-authorize"]}</small> : null}
+    </div>;
+    }
+
+    if (requestedAction === "mail.enable") return <div className="setup-inline-action">
+      <strong><Mail className="size-4" />按需启用邮件</strong><span>{check.guidance}</span>
+      <Button variant="outline" type="button" disabled={actionId === requestedAction} onClick={() => void runAction(requestedAction)}>{actionId === requestedAction ? "启用中" : "启用邮件检测"}</Button>
+      {actionMessage[requestedAction] ? <small>{actionMessage[requestedAction]}</small> : null}
+    </div>;
+
+    if (["mail.test-delivery", "mail.test-recovery"].includes(requestedAction)) return <div className="setup-inline-action">
+      <strong><Mail className="size-4" />前往邮件页完成验证</strong><span>{check.guidance}</span>
+      <Link className={buttonVariants({ variant: "outline" })} href="/app/mail">打开邮件页</Link>
+    </div>;
+    return null;
+  };
+
   return (
     <section className="setup-grid" aria-label="Setup readiness" aria-live="polite">
       {groups.map((group) => {
         const state = loading ? "checking" : snapshot?.readiness[group.readiness] || "action-required";
         const checks = snapshot?.checks.filter((check) => group.sources.includes(check.group)) || [];
-        const localAuthRequired = checks.some((check) => check.actionIds?.includes("installation.local-auth") && check.state !== "ready");
-        const conversationRequired = checks.some((check) => check.actionIds?.includes("agent.open-chat") && check.state !== "ready");
-        const mailNotSelected = checks.some((check) => check.actionIds?.includes("mail.enable") && check.state === "not-selected");
+        const actionChecks = checks.filter((check) => check.state === "action-required" || (check.state === "not-selected" && check.actionIds?.some((id) => ["mail.enable", "connectivity.choose-mode", "connectivity.managed-authorize"].includes(id))));
+        const actions = Array.from(new Set(actionChecks.flatMap((check) => check.actionIds || []).map(canonicalAction)));
         return (
           <article className={`setup-group setup-${state}`} key={group.key}>
             <header><span>{group.index}</span><div><h2>{group.title}</h2><small className={`status-label status-${state}`}>{labels[state]}</small></div><i className={`setup-light state-${state}`} /></header>
-            <ul>{checks.length ? checks.map((check) => <li className={`check-${check.state}`} key={check.id}><span>{check.summary}</span><em>{labels[check.state]}</em></li>) : <li className={`check-${state}`}><span>{error || guidance[state]}</span><em>{labels[state]}</em></li>}</ul>
+            <ul>{checks.length ? checks.map((check) => <li className={`check-${check.state}`} key={check.id}><div className="check-copy"><span>{check.summary}</span>{["action-required", "blocked"].includes(check.state) ? <><small>{check.guidance}</small><small className="check-why">为什么：{check.why}</small></> : null}</div><em>{labels[check.state]}</em></li>) : <li className={`check-${state}`}><div className="check-copy"><span>{error || guidance[state]}</span></div><em>{labels[state]}</em></li>}</ul>
             <p className={`setup-guidance guidance-${state}`}>{guidance[state]}</p>
-            {localAuthRequired ? <form className="setup-action" onSubmit={(event) => { event.preventDefault(); void runAction("installation.local-auth", { password, confirmation }); }}>
-              <strong>设置本机登录密码</strong><small>仅保留不可逆校验器，密码不会写入日志或操作记录。</small>
-              <Input type="password" autoComplete="new-password" minLength={12} maxLength={256} placeholder="至少 12 个字符" value={password} onChange={(event) => setPassword(event.target.value)} />
-              <Input type="password" autoComplete="new-password" minLength={12} maxLength={256} placeholder="再次输入密码" value={confirmation} onChange={(event) => setConfirmation(event.target.value)} />
-              <Button type="submit" disabled={password.length < 12 || password !== confirmation || actionId === "installation.local-auth"}>{actionId === "installation.local-auth" ? "设置中" : "确认设置"}</Button>
-              {actionMessage["installation.local-auth"] ? <span>{actionMessage["installation.local-auth"]}</span> : null}
-            </form> : null}
-            {conversationRequired ? <div className="setup-inline-action"><span>Codex 已就绪，发送一条消息即可完成最后验证。</span><Link className={buttonVariants()} href="/app/chat">开始真实对话</Link></div> : null}
-            {mailNotSelected ? <div className="setup-inline-action"><span>可选：启用后再检查本地收件、投递与恢复。</span><Button variant="outline" type="button" disabled={actionId === "mail.enable"} onClick={() => void runAction("mail.enable")}>{actionId === "mail.enable" ? "启用中" : "启用邮件检测"}</Button>{actionMessage["mail.enable"] ? <small>{actionMessage["mail.enable"]}</small> : null}</div> : null}
+            <div className="setup-actions">{actions.map((requestedAction) => {
+              const check = actionChecks.find((candidate) => candidate.actionIds?.some((candidateAction) => canonicalAction(candidateAction) === requestedAction));
+              return check ? <div key={requestedAction}>{renderAction(requestedAction, check)}</div> : null;
+            })}</div>
             <Button variant="outline" type="button" onClick={() => void refresh()} disabled={loading}><RefreshCw className="size-3.5" />重新检测</Button>
           </article>
         );

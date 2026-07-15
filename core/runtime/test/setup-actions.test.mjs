@@ -7,7 +7,7 @@ import test from 'node:test';
 import { verifyPasswordVerifier } from '../../agent/src/auth/personal-auth.js';
 import { initializeSite, readEnvFile } from '../src/config.ts';
 import { createOperationStore } from '../src/operations.ts';
-import { executeSetupAction, planSetupAction } from '../src/setup-actions.ts';
+import { executeSetupAction, managedCloudAuthorizationPhase, planSetupAction } from '../src/setup-actions.ts';
 
 test('local auth setup uses an approved R2 plan and removes the migration plaintext', async () => {
   const dataRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'personal-agent-setup-action-'));
@@ -54,5 +54,15 @@ test('mail setup explicitly selects optional readiness without storing secrets',
     assert.deepEqual(result, { selected: true, dimension: 'mail', next: '/app/mail' });
     const selections = JSON.parse(fs.readFileSync(path.join(dataRoot, 'config', 'setup-selections.json'), 'utf8'));
     assert.deepEqual(selections, { schemaVersion: 1, mail: true });
+  } finally { fs.rmSync(dataRoot, { recursive: true, force: true }); }
+});
+
+test('managed verification skips repeated Node enrollment after Cloud is already connected', () => {
+  const dataRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'personal-agent-setup-cloud-phase-'));
+  try {
+    const { config } = initializeSite({ dataRoot, domain: 'personal-agent.local' });
+    assert.equal(managedCloudAuthorizationPhase({ dataRoot }), 'enrollment');
+    fs.writeFileSync(path.join(config.configDir, 'cloud.json'), `${JSON.stringify({ schemaVersion: 1, managedHost: 'node.chenjianhui.site' })}\n`);
+    assert.equal(managedCloudAuthorizationPhase({ dataRoot }), 'resources');
   } finally { fs.rmSync(dataRoot, { recursive: true, force: true }); }
 });

@@ -34,18 +34,18 @@ Connectivity and model providers are independent. Disconnecting Cloud must not d
 
 ## Install a release
 
-Beta users download one complete package for their operating system. No preinstalled Node.js, npm, development Agent, or source checkout is required. The current release is `v0.2.0-beta.4`:
+Beta users download one complete package for their operating system. No preinstalled Node.js, npm, development Agent, or source checkout is required. The current release is `v0.2.0-beta.5`:
 
-- Windows x86-64: `personal-agent-node-v0.2.0-beta.4-windows-x64-installer.exe`
-- macOS Apple Silicon: `personal-agent-node-v0.2.0-beta.4-macos-arm64.pkg`
-- macOS Intel: `personal-agent-node-v0.2.0-beta.4-macos-x64.pkg`
-- Linux x86-64 / ARM64: the matching `personal-agent-node-v0.2.0-beta.4-linux-*.tar.zst`
+- Windows x86-64: `personal-agent-node-v0.2.0-beta.5-windows-x64-installer.exe`
+- macOS Apple Silicon: `personal-agent-node-v0.2.0-beta.5-macos-arm64.pkg`
+- macOS Intel: `personal-agent-node-v0.2.0-beta.5-macos-x64.pkg`
+- Linux x86-64 / ARM64: the matching `personal-agent-node-v0.2.0-beta.5-linux-*.tar.zst`
 
 The installer verifies the complete immutable release and bundled Node.js `22.23.1`, retains rollback-safe `current` / `previous` pointers, registers the per-user background service, and opens a one-time authenticated local Setup Center. The user establishes a durable local password there and sees separate checks for installation, Codex, optional public connectivity, Agent mail identity, actual mail delivery, and optional channels.
 
 Installation has one home: `~/.personal-agent/core` is the replaceable product runtime, while `~/.personal-agent/workspace` holds the user-owned Harness, plugins, files, and data. Uninstall removes Core and preserves Workspace by default.
 
-Local-only mode works by default. A public domain, mail, and WeChat never block the local Console. When a dedicated domain is wanted, choose “Connect Personal Agent Cloud” in Setup Center and approve the purpose-bound short-lived browser flows. See the [getting-started guide](docs/getting-started.md) for signatures, rollback, and source development.
+Local-only mode works by default. A public domain, mail, and WeChat never block the local Console. To verify a public domain and Agent mail identity, choose “Verify public access and mail” in Setup Center, then confirm in an already authenticated `chenjianhui.site` page. One local entrypoint completes Node enrollment and purpose-separated resource authorization, then refreshes the checks automatically. Every failed check includes its reason, concrete next steps, and an available action. See the [getting-started guide](docs/getting-started.md) for signatures, rollback, and source development.
 
 Beta/RC releases may defer paid Windows/macOS native signing, so the operating system can require explicit user approval. Every release still publishes `RELEASE-SECURITY.json`, SHA-256 checksums, Sigstore bundles, provenance, and an SBOM. Stable releases continue to require Authenticode and Apple Developer ID/notarization.
 

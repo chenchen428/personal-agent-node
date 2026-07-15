@@ -156,6 +156,17 @@ test("routing is path-only without a host compatibility mode", () => {
   assert.throws(() => normalizeRoutingMode("auto"), /routing mode/i);
 });
 
+test("finds a user-installed Codex when a background service has a minimal PATH", () => {
+  const target = "/Users/example/.npm-global/bin/codex";
+  const cli = resolveCodexCli({ HOME: "/Users/example", PATH: "/usr/bin:/bin:/usr/sbin:/sbin" }, {
+    platform: "darwin",
+    nodeExecutable: "/Applications/Personal Agent/runtime/node",
+    exists: (candidate) => candidate === target,
+    realpath: (candidate) => candidate === target ? "/Users/example/.npm-global/lib/node_modules/@openai/codex/bin/codex.js" : candidate,
+  });
+  assert.deepEqual(cli, { command: "/Applications/Personal Agent/runtime/node", prefixArgs: [target] });
+});
+
 test("prefers the Windows desktop Codex executable over a stale npm installation", () => {
   const desktop = "C:\\Program Files\\WindowsApps\\OpenAI.Codex\\codex.exe";
   const npmModule = "C:\\Users\\example\\AppData\\Roaming\\npm\\node_modules\\@openai\\codex\\bin\\codex.js";

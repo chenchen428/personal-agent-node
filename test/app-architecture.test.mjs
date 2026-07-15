@@ -46,6 +46,14 @@ test("the application reuses shadcn primitives for setup, channels, and responsi
   assert.match(setup, /post\("plan"/);
   assert.match(setup, /post\("approve"/);
   assert.match(setup, /post\("execute"/);
+  assert.match(setup, /check\.guidance/);
+  assert.match(setup, /check\.why/);
+  assert.match(setup, /developers\.openai\.com\/codex\/cli/);
+  assert.match(setup, /打开安装包页面/);
+  assert.match(setup, /打开邮件页/);
+  assert.match(setup, /验证 chenjianhui\.site/);
+  assert.match(setup, /managedCloud/);
+  assert.match(setup, /window\.setTimeout/);
   assert.match(channels, /components\/ui\/(?:badge|card)/);
   assert.match(pages, /components\/ui\/tabs/);
   assert.match(pages, /value="mobile"/);

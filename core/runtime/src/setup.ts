@@ -47,6 +47,7 @@ export async function setupStatus({
   const connectivityAcceptance = readJson(path.join(resolvedDataRoot, 'runtime', 'setup', 'connectivity.json'));
   const conversationAcceptance = readJson(path.join(resolvedDataRoot, 'runtime', 'setup', 'web-conversation.json'));
   const mailAcceptance = readJson(path.join(resolvedDataRoot, 'runtime', 'setup', 'mail.json'));
+  const managedCloudAction = readJson(path.join(resolvedDataRoot, 'runtime', 'setup', 'managed-cloud-action.json'));
   const selections = readJson(path.join(resolvedDataRoot, 'config', 'setup-selections.json')) || {};
   const mailSelected = selections.mail === true;
   const wechatAccount = readJson(path.join(resolvedDataRoot, 'channels', 'wechat', 'account.json'));
@@ -109,6 +110,7 @@ export async function setupStatus({
     },
     groups: setupRegistry.groups,
     checks,
+    actions: { managedCloud: publicManagedCloudAction(managedCloudAction) },
   };
 }
 
@@ -118,8 +120,18 @@ export function setupDiagnostics(snapshot) {
     generatedAt: snapshot.generatedAt,
     readiness: snapshot.readiness,
     checks: (snapshot.checks || []).map(({ id, group, requirement, dimension, state, summary, evidence, checkedAt }) => ({ id, group, requirement, dimension, state, summary, evidence, checkedAt })),
+    actions: { managedCloud: publicManagedCloudAction(snapshot.actions?.managedCloud) },
   };
   return { ...value, diagnosticDigest: crypto.createHash('sha256').update(JSON.stringify(value)).digest('hex') };
+}
+
+function publicManagedCloudAction(value) {
+  const allowedStates = new Set(['idle', 'starting', 'running', 'succeeded', 'failed']);
+  const allowedPhases = new Set(['idle', 'enrollment', 'resources', 'complete']);
+  const state = allowedStates.has(value?.state) ? value.state : 'idle';
+  const phase = allowedPhases.has(value?.phase) ? value.phase : state === 'succeeded' ? 'complete' : 'idle';
+  const code = /^[A-Z0-9_]{1,64}$/.test(String(value?.code || '')) ? String(value.code) : '';
+  return { state, phase, ...(code ? { code } : {}) };
 }
 
 export async function inspectRemoteConnectivity({ host, token, lookup = dns.lookup, fetchImpl = fetch } = {}) {

@@ -42,12 +42,14 @@
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["id", "group", "requirement", "dimension", "actionIds"],
+        "required": ["id", "group", "requirement", "dimension", "why", "guidance", "actionIds"],
         "properties": {
           "id": { "type": "string", "pattern": "^[a-z0-9]+(?:[.-][a-z0-9]+)*$" },
           "group": { "type": "string" },
           "requirement": { "enum": ["required-for-console", "required-for-agent", "conditional", "optional"] },
           "dimension": { "type": ["string", "null"], "enum": ["console", "agent", "remote", "mail", null] },
+          "why": { "type": "string", "minLength": 1, "maxLength": 240 },
+          "guidance": { "type": "string", "minLength": 1, "maxLength": 320 },
           "actionIds": {
             "type": "array",
             "items": { "type": "string", "pattern": "^[a-z0-9]+(?:[.-][a-z0-9]+)*$" }
