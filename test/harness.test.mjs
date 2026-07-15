@@ -138,6 +138,9 @@ test('GitHub release chain is version-gated and publishes verifiable artifacts',
   ]) assert.match(workflow, new RegExp(requirement.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
   const runtimeFetcher = fs.readFileSync(path.join(root, 'scripts/fetch-node-runtime.mjs'), 'utf8');
   assert.match(runtimeFetcher, /extractZipMember\(archive, descriptor\.member\)/);
+  const platformBuilder = fs.readFileSync(path.join(root, 'scripts/build-platform-installer.mjs'), 'utf8');
+  assert.match(platformBuilder, /platform === 'win32' \? \['--force-local'\] : \[\]/);
+  assert.match(workflow, /matrix\.platform == 'darwin' && !contains\(github\.ref_name, '-'\).*personal-agent-notary\.p8/);
   const metadataRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'personal-agent-release-security-'));
   try {
     const metadataFile = path.join(metadataRoot, 'RELEASE-SECURITY.json');

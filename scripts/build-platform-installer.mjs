@@ -31,7 +31,8 @@ try {
   fs.copyFileSync(nodeRuntime, path.join(payloadRoot, 'node', platform === 'win32' ? 'node.exe' : 'node'));
   fs.copyFileSync(launcherBinary, path.join(payloadRoot, 'release', platform === 'win32' ? 'personal-agent.exe' : 'personal-agent'));
   const payload = path.join(temporary, 'payload.tar.gz');
-  run('tar', ['-czf', payload, '-C', payloadRoot, 'release', 'node']);
+  const tarArgs = platform === 'win32' ? ['--force-local'] : [];
+  run('tar', [...tarArgs, '-czf', payload, '-C', payloadRoot, 'release', 'node']);
   appendPayload(setupBinary, payload);
   run(setupBinary, ['inspect']);
 

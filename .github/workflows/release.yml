@@ -126,13 +126,13 @@ jobs:
         shell: bash
         env:
           REQUIRE_NATIVE_SIGNING: ${{ !contains(github.ref_name, '-') }}
-          PERSONAL_AGENT_WINDOWS_SIGNING_CERTIFICATE: ${{ matrix.platform == 'win32' && format('{0}/personal-agent-signing.pfx', runner.temp) || '' }}
-          PERSONAL_AGENT_WINDOWS_SIGNING_PASSWORD: ${{ secrets.WINDOWS_SIGNING_PFX_PASSWORD }}
-          PERSONAL_AGENT_APPLE_APPLICATION_IDENTITY: ${{ secrets.APPLE_APPLICATION_IDENTITY }}
-          PERSONAL_AGENT_APPLE_INSTALLER_IDENTITY: ${{ secrets.APPLE_INSTALLER_IDENTITY }}
-          PERSONAL_AGENT_APPLE_NOTARY_KEY: ${{ matrix.platform == 'darwin' && format('{0}/personal-agent-notary.p8', runner.temp) || '' }}
-          PERSONAL_AGENT_APPLE_NOTARY_KEY_ID: ${{ secrets.APPLE_NOTARY_KEY_ID }}
-          PERSONAL_AGENT_APPLE_NOTARY_ISSUER: ${{ secrets.APPLE_NOTARY_ISSUER }}
+          PERSONAL_AGENT_WINDOWS_SIGNING_CERTIFICATE: ${{ matrix.platform == 'win32' && !contains(github.ref_name, '-') && format('{0}/personal-agent-signing.pfx', runner.temp) || '' }}
+          PERSONAL_AGENT_WINDOWS_SIGNING_PASSWORD: ${{ !contains(github.ref_name, '-') && secrets.WINDOWS_SIGNING_PFX_PASSWORD || '' }}
+          PERSONAL_AGENT_APPLE_APPLICATION_IDENTITY: ${{ !contains(github.ref_name, '-') && secrets.APPLE_APPLICATION_IDENTITY || '' }}
+          PERSONAL_AGENT_APPLE_INSTALLER_IDENTITY: ${{ !contains(github.ref_name, '-') && secrets.APPLE_INSTALLER_IDENTITY || '' }}
+          PERSONAL_AGENT_APPLE_NOTARY_KEY: ${{ matrix.platform == 'darwin' && !contains(github.ref_name, '-') && format('{0}/personal-agent-notary.p8', runner.temp) || '' }}
+          PERSONAL_AGENT_APPLE_NOTARY_KEY_ID: ${{ !contains(github.ref_name, '-') && secrets.APPLE_NOTARY_KEY_ID || '' }}
+          PERSONAL_AGENT_APPLE_NOTARY_ISSUER: ${{ !contains(github.ref_name, '-') && secrets.APPLE_NOTARY_ISSUER || '' }}
         run: |
           signing_args=()
           if [[ "$REQUIRE_NATIVE_SIGNING" == "true" ]]; then signing_args+=(--require-signing); fi
