@@ -150,7 +150,15 @@ func TestUninstallRemovesProgramAndPreservesData(t *testing.T) {
 	if err := os.WriteFile(userFile, []byte("preserve me"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	state := []byte(`{"schemaVersion":2,"activeReleaseId":"release-one","dataRoot":"` + dataRoot + `","service":"skipped"}`)
+	state, err := json.Marshal(map[string]any{
+		"schemaVersion":   2,
+		"activeReleaseId": "release-one",
+		"dataRoot":        dataRoot,
+		"service":         "skipped",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
 	if err := os.MkdirAll(filepath.Join(installRoot, "releases", "release-one"), 0o700); err != nil {
 		t.Fatal(err)
 	}
