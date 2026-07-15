@@ -105,7 +105,7 @@ function launchManagedCloudSetup({ dataRoot }) {
 
 function spawnManagedCli(cli, args, dataRoot) {
   const diagnostics = { value: '' };
-  const child = spawn(process.execPath, [cli, ...args], {
+  const child = spawn(process.execPath, [...managedCliRuntimeArgs(), cli, ...args], {
     detached: false,
     stdio: ['ignore', 'ignore', 'pipe'],
     windowsHide: true,
@@ -114,6 +114,21 @@ function spawnManagedCli(cli, args, dataRoot) {
   child.stderr?.setEncoding('utf8');
   child.stderr?.on('data', (chunk) => { diagnostics.value = `${diagnostics.value}${chunk}`.slice(-16_384); });
   return { child, diagnostics };
+}
+
+export function managedCliRuntimeArgs(execArgv = process.execArgv) {
+  const inherited = [];
+  const optionsWithValue = new Set(['--import', '--require', '--loader', '--experimental-loader']);
+  for (let index = 0; index < execArgv.length; index += 1) {
+    const option = execArgv[index];
+    if (optionsWithValue.has(option)) {
+      inherited.push(option);
+      if (index + 1 < execArgv.length) inherited.push(execArgv[++index]);
+      continue;
+    }
+    if (/^--(?:import|require|loader|experimental-loader)=/.test(option) || option === '--experimental-strip-types') inherited.push(option);
+  }
+  return inherited;
 }
 
 export function safeCliFailureCode(output, exitCode) {

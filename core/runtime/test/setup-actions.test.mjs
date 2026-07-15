@@ -7,7 +7,7 @@ import test from 'node:test';
 import { verifyPasswordVerifier } from '../../agent/src/auth/personal-auth.js';
 import { initializeSite, readEnvFile } from '../src/config.ts';
 import { createOperationStore } from '../src/operations.ts';
-import { executeSetupAction, managedCloudAuthorizationPhase, planSetupAction, safeCliFailureCode } from '../src/setup-actions.ts';
+import { executeSetupAction, managedCliRuntimeArgs, managedCloudAuthorizationPhase, planSetupAction, safeCliFailureCode } from '../src/setup-actions.ts';
 
 test('local auth setup uses an approved R2 plan and removes the migration plaintext', async () => {
   const dataRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'personal-agent-setup-action-'));
@@ -84,4 +84,15 @@ test('managed verification exposes only a safe CLI failure code', () => {
   ].join('\n');
   assert.equal(safeCliFailureCode(output, 7), 'CLOUD_REQUEST_FAILED');
   assert.equal(safeCliFailureCode('not-json', 7), 'CLI_EXIT_7');
+});
+
+test('managed verification preserves source module loaders without copying debugger flags', () => {
+  assert.deepEqual(
+    managedCliRuntimeArgs(['--inspect=127.0.0.1:9229', '--import', 'tsx', '--no-warnings']),
+    ['--import', 'tsx'],
+  );
+  assert.deepEqual(
+    managedCliRuntimeArgs(['--experimental-loader=custom-loader', '--experimental-strip-types']),
+    ['--experimental-loader=custom-loader', '--experimental-strip-types'],
+  );
 });
