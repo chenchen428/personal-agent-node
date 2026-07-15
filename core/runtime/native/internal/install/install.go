@@ -487,7 +487,6 @@ func activateService(ctx context.Context, opts Options, releaseRoot, node, priva
 		if err := copyFile(service.FilePath, service.InstallPath, 0o600); err != nil {
 			return "", err
 		}
-		_, _ = runner.Run(ctx, "launchctl", []string{"bootout", fmt.Sprintf("gui/%d/%s", os.Getuid(), service.ServiceID)}, env)
 		if _, err := runner.Run(ctx, "launchctl", []string{"bootstrap", fmt.Sprintf("gui/%d", os.Getuid()), service.InstallPath}, env); err != nil {
 			return "", err
 		}

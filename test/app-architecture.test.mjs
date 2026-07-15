@@ -39,6 +39,13 @@ test("the application reuses shadcn primitives for setup, channels, and responsi
   const css = read("core/app/src/app/globals.css");
   assert.equal(config.rsc, true);
   assert.match(setup, /components\/ui\/button/);
+  assert.match(setup, /installation\.local-auth/);
+  assert.match(setup, /mail-identity/);
+  assert.match(setup, /local-mail/);
+  assert.match(setup, /agent\.open-chat/);
+  assert.match(setup, /post\("plan"/);
+  assert.match(setup, /post\("approve"/);
+  assert.match(setup, /post\("execute"/);
   assert.match(channels, /components\/ui\/(?:badge|card)/);
   assert.match(pages, /components\/ui\/tabs/);
   assert.match(pages, /value="mobile"/);
