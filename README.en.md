@@ -34,7 +34,7 @@ Connectivity and model providers are independent. Disconnecting Cloud must not d
 
 ## Install a release
 
-End users download one complete package for their operating system. No preinstalled Node.js, npm, development Agent, or source checkout is required. The current release is `v0.1.0-beta.20`:
+Beta users download one complete package for their operating system. No preinstalled Node.js, npm, development Agent, or source checkout is required. The current release is `v0.1.0-beta.20`:
 
 - Windows x86-64: `personal-agent-node-v0.1.0-beta.20-windows-x64-installer.exe`
 - macOS Apple Silicon: `personal-agent-node-v0.1.0-beta.20-macos-arm64.pkg`
@@ -44,6 +44,8 @@ End users download one complete package for their operating system. No preinstal
 The installer verifies the complete immutable release and bundled Node.js `22.23.1`, retains rollback-safe `current` / `previous` pointers, registers the per-user background service, and opens a one-time authenticated local Setup Center. The user establishes a durable local password there and sees separate checks for installation, Codex, optional public connectivity, Agent mail identity, actual mail delivery, and optional channels.
 
 Local-only mode works by default. A public domain, mail, and WeChat never block the local Console. When a dedicated domain is wanted, choose “Connect Personal Agent Cloud” in Setup Center and approve the purpose-bound short-lived browser flows. See the [getting-started guide](docs/getting-started.md) for signatures, rollback, and source development.
+
+Beta/RC releases may defer paid Windows/macOS native signing, so the operating system can require explicit user approval. Every release still publishes `RELEASE-SECURITY.json`, SHA-256 checksums, Sigstore bundles, provenance, and an SBOM. Stable releases continue to require Authenticode and Apple Developer ID/notarization.
 
 Advanced users may run `personal-agent setup status --json` or `personal-agent doctor --json` for sanitized, read-only diagnostics. Normal installation and repair do not depend on giving a prompt to an Agent.
 

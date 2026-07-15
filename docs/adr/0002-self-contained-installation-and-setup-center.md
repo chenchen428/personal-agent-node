@@ -93,14 +93,14 @@ GitHub Release asset:
 
 | Platform | Primary asset | Initial architectures |
 | --- | --- | --- |
-| Windows | signed installer `.exe` | x86-64 |
-| macOS | signed and notarized `.pkg` | Apple Silicon, x86-64 |
-| Linux | signed `.tar.zst`, followed by `.deb` | x86-64, ARM64 |
+| Windows | installer `.exe` | x86-64 |
+| macOS | installer `.pkg` | Apple Silicon, x86-64 |
+| Linux | `.tar.zst`, followed by `.deb` | x86-64, ARM64 |
 
 The package contains the Go setup executable, Go launcher, exact supported Node.js
-runtime, immutable application payload, public manifest, checksums, signatures,
-licenses, and SBOM. A small online bootstrapper may be offered later, but it is
-not the only supported recovery artifact.
+runtime, immutable application payload, public manifest, checksums, signatures or
+explicit prerelease signing status, licenses, and SBOM. A small online bootstrapper
+may be offered later, but it is not the only supported recovery artifact.
 
 The installer must not use the system `node`, `npm`, `tar`, `curl`, PowerShell,
 or shell as a required execution dependency. Platform packaging and code signing
@@ -445,7 +445,8 @@ The release workflow will:
 5. assemble platform packages on native CI hosts;
 6. run fresh-install, restart, upgrade, failed-candidate rollback, explicit
    rollback, and uninstall-preserves-data acceptance in clean virtual machines;
-7. sign/notarize the final platform package;
+7. sign/notarize stable platform packages, or record native signing as explicitly
+   deferred for a semantic-version prerelease;
 8. publish the package, checksums, detached provenance, and SBOM as one immutable
    GitHub Release;
 9. install that public asset on a fresh customer-like machine for release and
@@ -453,6 +454,20 @@ The release workflow will:
 
 Checksums published beside an artifact are an integrity check, not a substitute
 for platform signing or release provenance.
+
+### Prerelease signing policy
+
+Native commercial signing is optional only for semantic-version prereleases such
+as `beta` and `rc`. An unsigned prerelease must publish `RELEASE-SECURITY.json`
+with `nativePlatformSigning.status=deferred-prerelease`, state that Windows or
+macOS may require explicit user approval, and publish SHA-256 checksums, keyless
+Sigstore bundles, GitHub build provenance, and an SBOM for every release. It must
+remain marked as a GitHub prerelease and cannot be used as final acceptance
+evidence for native platform trust.
+
+A stable tag has no such exception. Its workflow requires Authenticode for
+Windows and Developer ID signing plus notarization for macOS, and fails closed
+before publication when those credentials are unavailable.
 
 ## Migration plan
 
@@ -513,8 +528,9 @@ A Node release using this design passes only when sanitized evidence proves:
 
 1. A user installs a public platform asset on each supported OS without a source
    checkout, development Agent, preinstalled Node.js, or manual CLI command.
-2. The package signature, manifest, checksums, provenance, and SBOM identify the
-   exact immutable release.
+2. The manifest, checksums, Sigstore bundle, provenance, SBOM, and explicit native
+   signing status identify the exact immutable release; stable releases additionally
+   prove Authenticode and Developer ID/notarization.
 3. Installation initializes secrets, registers and starts the service, opens a
    one-time loopback Setup Center session, and prints no secret.
 4. Restart preserves authenticated Console access and mutable state.

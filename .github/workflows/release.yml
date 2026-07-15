@@ -88,7 +88,7 @@ jobs:
           name: immutable-node-payload
           path: dist/release-payload
       - name: Verify signing inputs (Windows)
-        if: matrix.platform == 'win32'
+        if: matrix.platform == 'win32' && !contains(github.ref_name, '-')
         shell: pwsh
         env:
           CERTIFICATE: ${{ secrets.WINDOWS_SIGNING_PFX_BASE64 }}
@@ -97,7 +97,7 @@ jobs:
           if ([string]::IsNullOrWhiteSpace($env:CERTIFICATE) -or [string]::IsNullOrWhiteSpace($env:PASSWORD)) { throw 'Windows signing secrets are required' }
           [IO.File]::WriteAllBytes("$env:RUNNER_TEMP\personal-agent-signing.pfx", [Convert]::FromBase64String($env:CERTIFICATE))
       - name: Import signing identities (macOS)
-        if: matrix.platform == 'darwin'
+        if: matrix.platform == 'darwin' && !contains(github.ref_name, '-')
         shell: bash
         env:
           P12_BASE64: ${{ secrets.APPLE_SIGNING_P12_BASE64 }}
@@ -124,6 +124,7 @@ jobs:
       - name: Build, smoke-test, sign, and package platform installer
         shell: bash
         env:
+          REQUIRE_NATIVE_SIGNING: ${{ !contains(github.ref_name, '-') }}
           PERSONAL_AGENT_WINDOWS_SIGNING_CERTIFICATE: ${{ matrix.platform == 'win32' && format('{0}/personal-agent-signing.pfx', runner.temp) || '' }}
           PERSONAL_AGENT_WINDOWS_SIGNING_PASSWORD: ${{ secrets.WINDOWS_SIGNING_PFX_PASSWORD }}
           PERSONAL_AGENT_APPLE_APPLICATION_IDENTITY: ${{ secrets.APPLE_APPLICATION_IDENTITY }}
@@ -131,7 +132,10 @@ jobs:
           PERSONAL_AGENT_APPLE_NOTARY_KEY: ${{ matrix.platform == 'darwin' && format('{0}/personal-agent-notary.p8', runner.temp) || '' }}
           PERSONAL_AGENT_APPLE_NOTARY_KEY_ID: ${{ secrets.APPLE_NOTARY_KEY_ID }}
           PERSONAL_AGENT_APPLE_NOTARY_ISSUER: ${{ secrets.APPLE_NOTARY_ISSUER }}
-        run: node scripts/build-platform-installer.mjs --tag "$GITHUB_REF_NAME" --release-root dist/release-payload --node-runtime "${RUNNER_TEMP}/node-runtime${{ matrix.platform == 'win32' && '.exe' || '' }}" --output dist/platform --platform "${{ matrix.platform }}" --arch "${{ matrix.arch }}" --require-signing
+        run: |
+          signing_args=()
+          if [[ "$REQUIRE_NATIVE_SIGNING" == "true" ]]; then signing_args+=(--require-signing); fi
+          node scripts/build-platform-installer.mjs --tag "$GITHUB_REF_NAME" --release-root dist/release-payload --node-runtime "${RUNNER_TEMP}/node-runtime${{ matrix.platform == 'win32' && '.exe' || '' }}" --output dist/platform --platform "${{ matrix.platform }}" --arch "${{ matrix.arch }}" "${signing_args[@]}"
       - uses: actions/upload-artifact@v4
         with:
           name: platform-${{ matrix.asset }}
@@ -148,6 +152,9 @@ jobs:
       attestations: write
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
       - uses: actions/download-artifact@v4
         with:
           pattern: platform-*
@@ -162,6 +169,7 @@ jobs:
         run: |
           cp dist/source-release/*release-manifest.json dist/release/
           cp dist/source-release/*SBOM.cdx.json dist/release/
+          node scripts/write-release-security-metadata.mjs --tag "$GITHUB_REF_NAME" --output dist/release/RELEASE-SECURITY.json
           cd dist/release
           find . -maxdepth 1 -type f ! -name SHA256SUMS -printf '%f\n' | sort | xargs sha256sum > SHA256SUMS
       - uses: sigstore/cosign-installer@v3

@@ -19,7 +19,7 @@
     "release:build": "node scripts/release-package.mjs",
     "release:rollback": "node scripts/rollback-private-site-node-release.mjs",
     "native:test": "cd projects/core/node/native && go test ./...",
-    "check": "node --check scripts/build-platform-installer.mjs && node --check scripts/fetch-node-runtime.mjs && node --check projects/core/admin-panel/server.mjs && node --check projects/core/admin-panel/setup-page.mjs && npm run check -w personal-agent-node && npm run check -w open-agent-bridge",
+    "check": "node --check scripts/build-platform-installer.mjs && node --check scripts/fetch-node-runtime.mjs && node --check scripts/write-release-security-metadata.mjs && node --check projects/core/admin-panel/server.mjs && node --check projects/core/admin-panel/setup-page.mjs && npm run check -w personal-agent-node && npm run check -w open-agent-bridge",
     "test": "npm run native:test && npm run harness:test && npm run test -w personal-agent-node && npm run test -w private-site-edge && npm run test -w open-agent-bridge",
     "test:node": "npm run test -w personal-agent-node",
     "test:bridge": "npm run test -w open-agent-bridge",

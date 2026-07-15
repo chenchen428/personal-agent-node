@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import test from 'node:test';
@@ -125,7 +126,27 @@ test('GitHub release chain is version-gated and publishes verifiable artifacts',
     'WINDOWS_SIGNING_PFX_BASE64',
     'APPLE_INSTALLER_IDENTITY',
     'APPLE_NOTARY_KEY_BASE64',
+    "!contains(github.ref_name, '-')",
+    'REQUIRE_NATIVE_SIGNING',
+    'RELEASE-SECURITY.json',
+    'write-release-security-metadata.mjs',
     'cosign sign-blob',
     'actions/attest-build-provenance@v2',
   ]) assert.match(workflow, new RegExp(requirement.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
+  const metadataRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'personal-agent-release-security-'));
+  try {
+    const metadataFile = path.join(metadataRoot, 'RELEASE-SECURITY.json');
+    const metadata = run(process.execPath, ['scripts/write-release-security-metadata.mjs', '--tag', `v${pkg.version}`, '--output', metadataFile]);
+    assert.equal(metadata.status, 0, `${metadata.stdout}\n${metadata.stderr}`);
+    const security = JSON.parse(fs.readFileSync(metadataFile, 'utf8'));
+    assert.equal(security.prerelease, true);
+    assert.deepEqual(security.nativePlatformSigning, {
+      required: false,
+      status: 'deferred-prerelease',
+      warning: 'Windows and macOS preview packages are not Authenticode or Developer ID signed. The operating system may require explicit user approval.',
+    });
+    assert.deepEqual(security.verification, { sha256: true, sigstore: true, githubBuildProvenance: true, sbom: true });
+  } finally {
+    fs.rmSync(metadataRoot, { recursive: true, force: true });
+  }
 });

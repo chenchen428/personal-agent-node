@@ -12,11 +12,11 @@ Set `TAG=v0.1.0-beta.20` and open the matching [GitHub Release](https://github.c
 | Linux x86-64 | `personal-agent-node-v0.1.0-beta.20-linux-x64.tar.zst` |
 | Linux ARM64 | `personal-agent-node-v0.1.0-beta.20-linux-arm64.tar.zst` |
 
-On Windows, run the signed installer. On macOS, open the signed and notarized package. On Linux, unpack the matching archive with the desktop archive manager or `tar --zstd`, then run `./personal-agent-setup` from the extracted directory.
+On Windows, run the installer. On macOS, open the package. On Linux, unpack the matching archive with the desktop archive manager or `tar --zstd`, then run `./personal-agent-setup` from the extracted directory.
 
 Each package contains the Go setup executable, stable launcher, exact Node.js `22.23.1` runtime, and immutable application payload. Setup verifies embedded checksums, stages the release, initializes the data root, switches `current` while retaining `previous`, registers the per-user service, waits for the local gateway, and opens a single-use loopback Setup Center session. The default roots are `~/.private-site-node` for immutable binaries and `~/.personal-agent` for mutable data.
 
-Release assets include `SHA256SUMS`, Sigstore bundles, provenance, SBOM, and native platform signatures where available. A release fails closed when the required Windows or Apple signing credentials are absent.
+Release assets include `RELEASE-SECURITY.json`, `SHA256SUMS`, Sigstore bundles, provenance, and an SBOM. Beta/RC packages may defer paid Windows and Apple native signing and can therefore trigger an operating-system approval warning; the security metadata records that fact explicitly. Stable releases require Authenticode plus Apple Developer ID/notarization and fail closed when either is absent.
 
 ## Finish setup in the browser
 
