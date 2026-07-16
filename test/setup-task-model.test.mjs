@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { buildSetupTaskModel, canonicalSetupAction, validateLocalPasswordInput } from "../core/app/src/lib/setup-tasks.ts";
+import { buildSetupTaskModel, canonicalSetupAction, validateRemotePasswordInput } from "../core/app/src/lib/setup-tasks.ts";
 
 const check = (id, requirement, state, group = "installation", actionIds = [`${id}.action`]) => ({
   id, requirement, state, group, actionIds, summary: id, why: `why ${id}`, guidance: `guide ${id}`,
@@ -51,6 +51,17 @@ test("setup task model keeps a selected but broken remote connection actionable"
   assert.equal(model.requiredTasks[0].check.id, "connectivity.public-and-mail");
 });
 
+test("setup task model asks for the remote access password before opening a tunnel", () => {
+  const model = buildSetupTaskModel([
+    check("installation.console-auth", "conditional", "action-required", "connectivity", ["installation.local-auth"]),
+    check("connectivity.enrollment", "conditional", "not-selected", "connectivity", ["connectivity.managed-authorize"]),
+    check("mail.identity", "conditional", "not-selected", "mail-identity", ["connectivity.managed-authorize"]),
+  ]);
+  assert.equal(model.requiredTasks.length, 1);
+  assert.equal(model.requiredTasks[0].check.id, "installation.console-auth");
+  assert.equal(model.requiredTasks[0].actionId, "installation.local-auth");
+});
+
 test("setup task model completes the unified task only after enrollment and mail identity are ready", () => {
   const model = buildSetupTaskModel([
     check("connectivity.enrollment", "conditional", "ready", "connectivity", ["connectivity.managed-authorize"]),
@@ -60,10 +71,10 @@ test("setup task model completes the unified task only after enrollment and mail
   assert.equal(model.onlineReady, true);
 });
 
-test("local password validation explains every blocked submission", () => {
-  assert.match(validateLocalPasswordInput("", ""), /请输入/);
-  assert.match(validateLocalPasswordInput("short", "short"), /还差 7 个/);
-  assert.match(validateLocalPasswordInput("customer-owned-password", ""), /再次输入/);
-  assert.match(validateLocalPasswordInput("customer-owned-password", "different-password"), /不一致/);
-  assert.equal(validateLocalPasswordInput("customer-owned-password", "customer-owned-password"), "");
+test("remote access password validation explains every blocked submission", () => {
+  assert.match(validateRemotePasswordInput("", ""), /远程访问/);
+  assert.match(validateRemotePasswordInput("short", "short"), /还差 7 个/);
+  assert.match(validateRemotePasswordInput("customer-owned-password", ""), /再次输入/);
+  assert.match(validateRemotePasswordInput("customer-owned-password", "different-password"), /不一致/);
+  assert.equal(validateRemotePasswordInput("customer-owned-password", "customer-owned-password"), "");
 });

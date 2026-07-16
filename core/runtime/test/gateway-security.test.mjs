@@ -6,22 +6,37 @@ import path from "node:path";
 import test from "node:test";
 import { initializeSite, resolveNodeConfig } from "../src/config.ts";
 import { authorizeRoute, createPrivateSiteGateway } from "../src/gateway.ts";
+import { REVERSE_TUNNEL_REQUEST_HEADER, REVERSE_TUNNEL_REQUEST_VALUE } from "../src/request-origin.ts";
 
-test("route access model keeps local administration on authenticated loopback", async () => {
-  const auth = http.createServer((_request, response) => { response.writeHead(204); response.end(); });
+test("route access model trusts direct loopback while keeping reverse-tunnel access password protected", async () => {
+  const auth = http.createServer((request, response) => {
+    response.writeHead(request.headers.cookie === "session=valid" ? 204 : 401);
+    response.end();
+  });
   await new Promise((resolve) => auth.listen(0, "127.0.0.1", resolve));
   const config = { domain: "example.site", ports: { bridge: auth.address().port }, gateway: { trustEdgeHeaders: false } };
-  const request = (remoteAddress) => ({
-    headers: { host: "example.site", cookie: "session=redacted" },
+  const request = (remoteAddress, { cookie = "", tunnel = false } = {}) => ({
+    headers: {
+      host: "example.site",
+      ...(cookie ? { cookie } : {}),
+      ...(tunnel ? { [REVERSE_TUNNEL_REQUEST_HEADER]: REVERSE_TUNNEL_REQUEST_VALUE } : {}),
+    },
     socket: { remoteAddress },
   });
   try {
     assert.equal(await authorizeRoute(request("203.0.113.8"), { access: "public" }, config), true);
-    assert.equal(await authorizeRoute(request("203.0.113.8"), { access: "authenticated" }, config), true);
+    assert.equal(await authorizeRoute(request("203.0.113.8"), { access: "authenticated" }, config), false);
+    assert.equal(await authorizeRoute(request("203.0.113.8", { cookie: "session=valid" }), { access: "authenticated" }, config), true);
+    assert.equal(await authorizeRoute(request("127.0.0.1"), { access: "authenticated" }, config), true);
+    assert.equal(await authorizeRoute(request("::ffff:127.0.0.1"), { access: "authenticated" }, config), true);
+    assert.equal(await authorizeRoute(request("127.0.0.1", { tunnel: true }), { access: "authenticated" }, config), false);
+    assert.equal(await authorizeRoute(request("127.0.0.1", { tunnel: true, cookie: "session=valid" }), { access: "authenticated" }, config), true);
     assert.equal(await authorizeRoute(request("203.0.113.8"), { access: "local-bootstrap" }, config), false);
     assert.equal(await authorizeRoute(request("127.0.0.1"), { access: "local-bootstrap" }, config), true);
+    assert.equal(await authorizeRoute(request("127.0.0.1", { tunnel: true }), { access: "local-bootstrap" }, config), false);
     assert.equal(await authorizeRoute(request("203.0.113.8"), { access: "local-admin" }, config), false);
     assert.equal(await authorizeRoute(request("127.0.0.1"), { access: "local-admin" }, config), true);
+    assert.equal(await authorizeRoute(request("127.0.0.1", { tunnel: true, cookie: "session=valid" }), { access: "local-admin" }, config), false);
     assert.equal(await authorizeRoute(request("127.0.0.1"), { access: "internal" }, config), false);
     assert.equal(await authorizeRoute(request("127.0.0.1"), { access: "unknown" }, config), false);
   } finally {
@@ -56,7 +71,7 @@ test("path gateway rejects unknown hosts, prefix confusion, and encoded traversa
   }
 });
 
-test("canonical Console and domain API routes authenticate and rewrite to internal handlers", async () => {
+test("canonical Console and domain API routes trust direct loopback, authenticate tunnels, and rewrite to internal handlers", async () => {
   const dataRoot = fs.mkdtempSync(path.join(os.tmpdir(), "personal-agent-routes-"));
   const received = [];
   const bridge = http.createServer((request, response) => {
@@ -65,12 +80,12 @@ test("canonical Console and domain API routes authenticate and rewrite to intern
       response.end();
       return;
     }
-    received.push({ service: "bridge", url: request.url, authenticated: request.headers["x-personal-agent-authenticated"] });
+    received.push({ service: "bridge", url: request.url, authenticated: request.headers["x-personal-agent-authenticated"], origin: request.headers[REVERSE_TUNNEL_REQUEST_HEADER] });
     response.writeHead(200, { "content-type": "application/json" });
     response.end('{"ok":true}');
   });
   const consoleServer = http.createServer((request, response) => {
-    received.push({ service: "console", url: request.url, authenticated: request.headers["x-personal-agent-authenticated"] });
+    received.push({ service: "console", url: request.url, authenticated: request.headers["x-personal-agent-authenticated"], origin: request.headers[REVERSE_TUNNEL_REQUEST_HEADER] });
     response.writeHead(200, { "content-type": "text/html" });
     response.end("<!doctype html><title>Console</title>");
   });
@@ -84,8 +99,9 @@ test("canonical Console and domain API routes authenticate and rewrite to intern
     try {
       const port = server.address().port;
       assert.equal((await request({ port, host: "example.site", path: "/_next/static/app.css" })).status, 200);
-      assert.equal((await request({ port, host: "example.site", path: "/app" })).status, 302);
-      assert.equal((await request({ port, host: "example.site", path: "/app", headers: { cookie: "session=ok" } })).status, 200);
+      assert.equal((await request({ port, host: "example.site", path: "/app" })).status, 200);
+      assert.equal((await request({ port, host: "example.site", path: "/app", headers: { [REVERSE_TUNNEL_REQUEST_HEADER]: REVERSE_TUNNEL_REQUEST_VALUE } })).status, 302);
+      assert.equal((await request({ port, host: "example.site", path: "/app", headers: { cookie: "session=ok", [REVERSE_TUNNEL_REQUEST_HEADER]: REVERSE_TUNNEL_REQUEST_VALUE } })).status, 200);
       assert.equal((await request({ port, host: "example.site", path: "/app/setup", headers: { cookie: "session=ok" } })).status, 200);
       assert.equal((await request({ port, host: "example.site", path: "/app/chat", headers: { cookie: "session=ok" } })).status, 200);
       assert.equal((await request({ port, host: "example.site", path: "/app/mail", headers: { cookie: "session=ok" } })).status, 200);
@@ -96,6 +112,7 @@ test("canonical Console and domain API routes authenticate and rewrite to intern
       assert.deepEqual(received.map(({ service, url }) => ({ service, url })), [
         { service: "console", url: "/_next/static/app.css" },
         { service: "console", url: "/app" },
+        { service: "console", url: "/app" },
         { service: "console", url: "/app/setup" },
         { service: "console", url: "/app/chat" },
         { service: "console", url: "/app/mail" },
@@ -105,6 +122,7 @@ test("canonical Console and domain API routes authenticate and rewrite to intern
       ]);
       assert.equal(received[0].authenticated, undefined);
       assert.ok(received.slice(1).every((entry) => entry.authenticated === "1"));
+      assert.ok(received.every((entry) => entry.origin === undefined));
     } finally {
       await close(server);
     }

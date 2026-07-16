@@ -20,7 +20,6 @@ test('setup status separates console, Agent, remote, mail, and optional WeChat r
     fs.writeFileSync(path.join(installRoot, 'installation.json'), `${JSON.stringify({ activeReleaseId: 'release-one' })}\n`);
     const envPath = path.join(dataRoot, 'secrets', 'applications', 'site.env');
     fs.appendFileSync(envPath, 'PERSONAL_AGENT_AUTH_PASSWORD=test-only-password\n');
-    fs.writeFileSync(path.join(dataRoot, 'config', 'local-auth.json'), `${JSON.stringify({ schemaVersion: 1, algorithm: 'scrypt', verifier: 'test-verifier' })}\n`);
     fs.mkdirSync(path.join(dataRoot, 'runtime'), { recursive: true });
     fs.writeFileSync(path.join(dataRoot, 'runtime', 'supervisor.json'), `${JSON.stringify({
       pid: 123,
@@ -47,6 +46,7 @@ test('setup status separates console, Agent, remote, mail, and optional WeChat r
     assert.equal(status.readiness.mail, 'not-selected');
     assert.equal(status.checks.find((check) => check.id === 'channels.wechat').state, 'not-selected');
     assert.equal(status.checks.find((check) => check.id === 'mail.identity').state, 'not-selected');
+    assert.equal(status.checks.find((check) => check.id === 'installation.console-auth').state, 'not-selected');
     assert.match(status.checks.find((check) => check.id === 'agent.codex.executable').why, /Codex/);
     assert.match(status.checks.find((check) => check.id === 'agent.codex.executable').guidance, /官方 Codex CLI 指南/);
     assert.ok(status.checks.every((check) => check.why && check.guidance));
@@ -130,6 +130,7 @@ test('managed remote readiness requires a fresh reverse application tunnel inste
       },
       syncedAt: now.toISOString(),
     })}\n`);
+    fs.writeFileSync(path.join(dataRoot, 'config', 'local-auth.json'), `${JSON.stringify({ schemaVersion: 1, algorithm: 'scrypt', verifier: 'test-verifier' })}\n`);
     fs.writeFileSync(initialized.config.configPath, `${JSON.stringify({ ...initialized.config.site, connectionMode: 'managed-cloud' })}\n`);
     fs.mkdirSync(path.join(dataRoot, 'runtime'), { recursive: true });
     fs.mkdirSync(path.join(dataRoot, 'runtime', 'setup'), { recursive: true });
@@ -146,6 +147,7 @@ test('managed remote readiness requires a fresh reverse application tunnel inste
     assert.equal(status.checks.find((check) => check.id === 'connectivity.enrollment').state, 'ready');
     assert.equal(status.checks.find((check) => check.id === 'connectivity.heartbeat').state, 'ready');
     assert.equal(status.checks.find((check) => check.id === 'connectivity.tunnel').state, 'ready');
+    assert.equal(status.checks.find((check) => check.id === 'installation.console-auth').state, 'ready');
     assert.match(status.checks.find((check) => check.id === 'connectivity.tunnel').summary, /应用层反向隧道/);
     assert.equal(status.readiness.remote, 'ready');
     assert.deepEqual(status.actions.managedCloud, { state: 'succeeded', phase: 'complete' });

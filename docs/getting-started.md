@@ -22,9 +22,9 @@ Release assets include `RELEASE-SECURITY.json`, `SHA256SUMS`, Sigstore bundles, 
 
 The Personal Agent desktop window opens `/app/setup` automatically. If the shell cannot start, the browser recovery path opens the same route. Work through the cards in order:
 
-1. Set your own local access password. Only a salted scrypt verifier is retained; the install-time migration password is removed.
-2. Install or sign in to Codex when requested, retry the app-server handshake, and complete one real authenticated `/app/chat` reply.
-3. Keep `local-only` when no public access is needed, or select Personal Agent Cloud and approve the browser authorization flow.
+1. Use the desktop application's direct-loopback Console without a password.
+2. Install or sign in to Codex when requested, retry the app-server handshake, and complete one real local `/app/chat` reply.
+3. Keep `local-only` when no public access is needed, or select Personal Agent Cloud, set a remote access password, and approve the browser authorization flow. Only a salted scrypt verifier is retained.
 4. Treat the public domain and Agent mail address as identity checks. Mail becomes operational only after a real local message and recovery check pass.
 5. Bind WeChat only when wanted. It is optional and never blocks local Web use.
 
@@ -81,7 +81,7 @@ npm run check
 
 The bridge command creates ignored development-only links for `.agents`, `.codex`, `.claude`, `.cursor`, and `CLAUDE.md`. The installed product creates only the canonical workspace and `.codex/skills` bridge.
 
-Final Node acceptance uses the public GitHub Release installation's authenticated local `/app/chat`. Sanitized evidence records `releaseAssetRuntime=true`, `route=/app/chat`, `authenticated=true`, `uniquePrompt=true`, `realAgentRuntime=true`, `sameSessionAgentReply=true`, and `wechatRequired=false`; it stores no prompt, reply, or session identifier.
+Final Node acceptance uses the public GitHub Release installation's passwordless direct-loopback `/app/chat`. Sanitized evidence records `releaseAssetRuntime=true`, `route=/app/chat`, `authenticated=true` (trusted local gateway authorization, not a password prompt), `uniquePrompt=true`, `realAgentRuntime=true`, `sameSessionAgentReply=true`, and `wechatRequired=false`; it stores no prompt, reply, or session identifier.
 
 ## Discover CLI capabilities
 

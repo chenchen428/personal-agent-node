@@ -6,7 +6,7 @@ Date: 2026-07-15
 
 ## Context
 
-Personal Agent Node exposes its authenticated, responsive Console at
+Personal Agent Node exposes its responsive Console at
 `http://127.0.0.1:8843/app`. A visible command-line or ordinary browser launch makes the installed
 product feel like a development tool rather than a desktop application. Treating that Node runtime
 as one installed service and the WebView as a second client also creates a product boundary that
@@ -28,6 +28,8 @@ The application:
   readiness wait, and navigation policy;
 - loads the existing loopback Console and accepts an installer-provided, loopback-only bootstrap
   URL without logging or persisting that URL;
+- trusts direct loopback desktop requests without a password while keeping public, Edge, and
+  reverse-tunnel requests behind the remote access password;
 - uses WebView2 on Windows, WKWebView on macOS, and WebKitGTK on Linux;
 - exposes no Tauri command, plugin permission, or native API to the loopback page;
 - opens non-loopback HTTP(S) navigation in the system browser and denies other external schemes;

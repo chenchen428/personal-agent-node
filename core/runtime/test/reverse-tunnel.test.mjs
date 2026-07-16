@@ -14,6 +14,7 @@ import {
   sanitizeRequestHeaders,
   validateReverseTunnelContract,
 } from "../src/reverse-tunnel.ts";
+import { REVERSE_TUNNEL_REQUEST_HEADER, REVERSE_TUNNEL_REQUEST_VALUE } from "../src/request-origin.ts";
 
 test("reverse tunnel contract accepts WSS and loopback WS without credentials or network routes", () => {
   const contract = validateReverseTunnelContract({
@@ -33,7 +34,7 @@ test("reverse tunnel contract accepts WSS and loopback WS without credentials or
 test("reverse tunnel protocol rejects unsafe paths, headers, oversized frames, and invalid sequences", () => {
   assert.equal(normalizeTunnelPath("/app/chat?view=compact"), "/app/chat?view=compact");
   for (const value of ["https://evil.example/", "//evil.example/", "/bad\\path", "/bad\npath"]) assert.throws(() => normalizeTunnelPath(value), /path is invalid/);
-  assert.deepEqual(sanitizeRequestHeaders({ authorization: "secret", connection: "upgrade", host: "evil.example", cookie: "session=ok", "x-forwarded-host": "node.example" }), { cookie: "session=ok", "x-forwarded-host": "node.example" });
+  assert.deepEqual(sanitizeRequestHeaders({ authorization: "secret", connection: "upgrade", host: "evil.example", cookie: "session=ok", "x-forwarded-host": "node.example", [REVERSE_TUNNEL_REQUEST_HEADER]: "spoofed" }), { cookie: "session=ok", "x-forwarded-host": "node.example" });
   const distribution = testDistribution();
   assert.equal(isTunnelRouteAllowed(distribution, "/echo", "http"), true);
   assert.equal(isTunnelRouteAllowed(distribution, "/api/chat/ws", "websocket"), true);
@@ -81,7 +82,7 @@ test("connector forwards HTTP streams only to the fixed loopback gateway and nev
 
   await waitFor(() => messages.some((message) => message.type === "hello"));
   peer.send(JSON.stringify({ v: 1, type: "ready", connectionId: "connection-0001", generation: 1, heartbeatSeconds: 20, maxFrameBytes: 131072 }));
-  peer.send(JSON.stringify({ v: 1, type: "request.start", id: "stream-http-0001", kind: "http", method: "POST", path: "/echo?safe=1", headers: { authorization: "must-not-reach-local", host: "evil.example", connection: "keep-alive", "content-type": "text/plain", "x-forwarded-host": "owner.chenjianhui.site" } }));
+  peer.send(JSON.stringify({ v: 1, type: "request.start", id: "stream-http-0001", kind: "http", method: "POST", path: "/echo?safe=1", headers: { authorization: "must-not-reach-local", host: "evil.example", connection: "keep-alive", "content-type": "text/plain", "x-forwarded-host": "owner.chenjianhui.site", [REVERSE_TUNNEL_REQUEST_HEADER]: "spoofed" } }));
   peer.send(JSON.stringify({ v: 1, type: "request.data", id: "stream-http-0001", seq: 0, data: Buffer.from("hello").toString("base64") }));
   peer.send(JSON.stringify({ v: 1, type: "request.end", id: "stream-http-0001" }));
 
@@ -92,6 +93,7 @@ test("connector forwards HTTP streams only to the fixed loopback gateway and nev
   assert.equal(requests[0].headers.host, "owner.chenjianhui.site");
   assert.equal(requests[0].headers.authorization, undefined);
   assert.equal(requests[0].headers["x-forwarded-host"], "owner.chenjianhui.site");
+  assert.equal(requests[0].headers[REVERSE_TUNNEL_REQUEST_HEADER], REVERSE_TUNNEL_REQUEST_VALUE);
   assert.equal(requests[0].body, "hello");
   const start = messages.find((message) => message.type === "response.start" && message.id === "stream-http-0001");
   assert.equal(start.status, 201);
@@ -112,7 +114,11 @@ test("connector preserves WebSocket message boundaries through the loopback gate
   const localHttp = http.createServer();
   const localWs = new WebSocketServer({ noServer: true });
   localHttp.on("upgrade", (request, socket, head) => localWs.handleUpgrade(request, socket, head, (client) => localWs.emit("connection", client, request)));
-  localWs.on("connection", (socket) => socket.on("message", (data, isBinary) => socket.send(data, { binary: isBinary })));
+  const localRequests = [];
+  localWs.on("connection", (socket, request) => {
+    localRequests.push(request);
+    socket.on("message", (data, isBinary) => socket.send(data, { binary: isBinary }));
+  });
   await listen(localHttp);
   const brokerHttp = http.createServer();
   const broker = new WebSocketServer({ server: brokerHttp, path: "/v1/connect" });
@@ -137,6 +143,7 @@ test("connector preserves WebSocket message boundaries through the loopback gate
   peer.send(JSON.stringify({ v: 1, type: "ready", connectionId: "connection-0002", generation: 1 }));
   peer.send(JSON.stringify({ v: 1, type: "request.start", id: "stream-websocket-0001", kind: "websocket", method: "GET", path: "/api/chat/ws", headers: {} }));
   await waitFor(() => messages.some((message) => message.type === "response.start" && message.status === 101));
+  assert.equal(localRequests[0].headers[REVERSE_TUNNEL_REQUEST_HEADER], REVERSE_TUNNEL_REQUEST_VALUE);
   peer.send(JSON.stringify({ v: 1, type: "request.data", id: "stream-websocket-0001", seq: 0, data: Buffer.from("hello websocket").toString("base64"), opcode: "text" }));
   await waitFor(() => messages.some((message) => message.type === "response.data" && message.id === "stream-websocket-0001"));
   const echoed = messages.find((message) => message.type === "response.data" && message.id === "stream-websocket-0001");

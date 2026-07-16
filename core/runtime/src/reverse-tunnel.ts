@@ -3,6 +3,7 @@ import http from "node:http";
 import path from "node:path";
 import { WebSocket } from "ws";
 import { writeJsonAtomic } from "./config.ts";
+import { REVERSE_TUNNEL_REQUEST_HEADER, REVERSE_TUNNEL_REQUEST_VALUE } from "./request-origin.ts";
 
 export const REVERSE_TUNNEL_PROTOCOL = "pa-reverse-ws-v1";
 export const DEFAULT_MAX_FRAME_BYTES = 128 * 1024;
@@ -136,6 +137,7 @@ export class ReverseTunnelConnector {
     }
     const headers = sanitizeRequestHeaders(message.headers);
     headers.host = this.config.domain || "127.0.0.1";
+    headers[REVERSE_TUNNEL_REQUEST_HEADER] = REVERSE_TUNNEL_REQUEST_VALUE;
     const stream = { id: message.id, kind: message.kind, nextRequestSeq: 0, nextResponseSeq: 0, requestBytes: 0, responseBytes: 0, ended: false, endRequested: false, draining: false, pendingHttp: [], pendingBytes: 0, request: null, localSocket: null };
     this.streams.set(message.id, stream);
     if (message.kind === "websocket") return this.startWebSocketStream(stream, message, headers);
@@ -384,7 +386,7 @@ export function sanitizeRequestHeaders(headers) {
   const normalized = normalizeHeaderObject(headers);
   const output = {};
   for (const [name, value] of Object.entries(normalized)) {
-    if (!HOP_BY_HOP_HEADERS.has(name) && name !== "authorization" && name !== "host") output[name] = value;
+    if (!HOP_BY_HOP_HEADERS.has(name) && name !== "authorization" && name !== "host" && name !== REVERSE_TUNNEL_REQUEST_HEADER) output[name] = value;
   }
   return output;
 }

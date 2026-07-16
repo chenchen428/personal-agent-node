@@ -7,6 +7,7 @@ import httpProxy from "http-proxy";
 import mime from "mime-types";
 import { resolveNodeConfig, workspaceRoot } from "./config.ts";
 import { listExtensions } from "./extensions.ts";
+import { REVERSE_TUNNEL_REQUEST_HEADER, REVERSE_TUNNEL_REQUEST_VALUE } from "./request-origin.ts";
 
 const isEntrypoint = ["gateway.mjs", "gateway.ts"].includes(path.basename(process.argv[1] || ""));
 
@@ -156,11 +157,17 @@ export async function authorizeRoute(request, route, config) {
   const access = route.access || "public";
   if (access === "public") return true;
   if (access === "internal") return false;
-  if (access === "local-bootstrap") return isLoopbackAddress(request.socket.remoteAddress);
-  if (!await authorizeRequest(request, config)) return false;
+  const directLoopback = isDirectLoopbackRequest(request);
+  if (access === "local-bootstrap") return directLoopback;
+  if (!directLoopback && !await authorizeRequest(request, config)) return false;
   if (access === "authenticated") return true;
-  if (access === "local-admin") return isLoopbackAddress(request.socket.remoteAddress);
+  if (access === "local-admin") return directLoopback;
   return false;
+}
+
+function isDirectLoopbackRequest(request) {
+  return isLoopbackAddress(request.socket.remoteAddress)
+    && request.headers[REVERSE_TUNNEL_REQUEST_HEADER] !== REVERSE_TUNNEL_REQUEST_VALUE;
 }
 
 function isLoopbackAddress(value) {
@@ -184,7 +191,7 @@ function rewriteProxyUrl(request, route, url) {
 
 function prepareProxyHeaders(request, config, authenticated) {
   const protocol = forwardedProtocol(request, config);
-  for (const header of ["x-personal-agent-authenticated", "x-real-ip", "x-forwarded-for", "x-forwarded-proto", "x-forwarded-host"]) delete request.headers[header];
+  for (const header of [REVERSE_TUNNEL_REQUEST_HEADER, "x-personal-agent-authenticated", "x-real-ip", "x-forwarded-for", "x-forwarded-proto", "x-forwarded-host"]) delete request.headers[header];
   const remote = normalizeRemoteAddress(request.socket.remoteAddress);
   request.headers["x-real-ip"] = remote;
   request.headers["x-forwarded-for"] = remote;

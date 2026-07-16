@@ -38,8 +38,8 @@ export function canonicalSetupAction(id: string) {
   return ["connectivity.choose-mode", "connectivity.repair"].includes(id) ? "connectivity.managed-authorize" : id;
 }
 
-export function validateLocalPasswordInput(password: string, confirmation: string) {
-  if (!password) return "请输入本机登录密码。";
+export function validateRemotePasswordInput(password: string, confirmation: string) {
+  if (!password) return "请输入远程访问密码。";
   if (password.length < 12) return `密码至少需要 12 个字符，还差 ${12 - password.length} 个。`;
   if (!confirmation) return "请再次输入密码进行确认。";
   if (password !== confirmation) return "两次输入的密码不一致。";
@@ -82,6 +82,8 @@ export function buildSetupTaskModel(checks: SetupCheck[]) {
 }
 
 function buildOnlineIdentityTask(checks: SetupCheck[]): SetupTask | null {
+  const remoteAuth = checks.find((check) => check.id === "installation.console-auth");
+  if (remoteAuth?.state === "action-required") return toTask(remoteAuth, [], remoteAuth.summary);
   const enrollment = checks.find((check) => check.id === "connectivity.enrollment");
   const mailIdentity = checks.find((check) => check.id === "mail.identity");
   if (!enrollment || !mailIdentity || (enrollment.state === "ready" && mailIdentity.state === "ready")) return null;

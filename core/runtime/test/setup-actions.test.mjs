@@ -9,7 +9,7 @@ import { initializeSite, readEnvFile } from '../src/config.ts';
 import { createOperationStore } from '../src/operations.ts';
 import { executeSetupAction, managedCliRuntimeArgs, managedCloudAuthorizationPhase, planSetupAction, safeCliFailureCode } from '../src/setup-actions.ts';
 
-test('local auth setup uses an approved R2 plan and removes the migration plaintext', async () => {
+test('remote access auth setup uses an approved R2 plan and removes the migration plaintext', async () => {
   const dataRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'personal-agent-setup-action-'));
   const password = 'customer-owned-local-password';
   try {
@@ -35,7 +35,7 @@ test('local auth setup uses an approved R2 plan and removes the migration plaint
   } finally { fs.rmSync(dataRoot, { recursive: true, force: true }); }
 });
 
-test('local auth setup rejects mismatched confirmation without changing credentials', async () => {
+test('remote access auth setup rejects mismatched confirmation without changing credentials', async () => {
   const dataRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'personal-agent-setup-action-mismatch-'));
   try {
     const { config } = initializeSite({ dataRoot, domain: 'personal-agent.local' });

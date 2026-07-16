@@ -28,14 +28,14 @@ The current public installation path asks the user to install Node.js 22, choose
 a GitHub Release asset, run a JavaScript installer, update `PATH`, invoke several
 CLI commands, and use a long natural-language prompt when a local development
 Agent performs those steps. The installer prepares an immutable release, but
-initialization, local authentication, system-service activation, browser opening,
+initialization, remote access authentication, system-service activation, browser opening,
 Codex readiness, managed connectivity, and actual mail readiness are not presented
 as one user-owned flow.
 
 The local Console currently displays some managed-domain and mail prerequisites,
 but it does not provide a complete setup state machine or guided remediation.
 `personal-agent doctor` is read-only, as required, but its current checks do not
-prove that the supervisor, authenticated Console, Codex app-server, real Web
+prove that the supervisor, trusted direct-loopback Console, Codex app-server, real Web
 conversation, public route, or mail delivery path works.
 
 The Phase 0 baseline also says that a fresh installation immediately prompts for
@@ -53,7 +53,7 @@ The selected design must:
 3. Support Windows, macOS, and Linux with one small native codebase.
 4. Preserve immutable releases, exact-version verification, `current`/`previous`
    rollback, and customer data outside release directories.
-5. Keep local-only installation and authenticated `/app` functional without
+5. Keep local-only installation and passwordless direct-loopback `/app` functional without
    Personal Agent Cloud.
 6. Treat Codex, public connectivity, Agent mail identity, actual mail delivery,
    and WeChat as separate facts.
@@ -157,13 +157,13 @@ preflight
 stage
   -> extract bundled runtime and Node payload into an inactive release directory
 initialize
-  -> create the local Site, data directories, secret material, and local auth state
+  -> create the local Site, data directories, secret material, and remote auth state
 activate
   -> atomically switch current while retaining previous
 service
   -> register and start the per-user platform service
 accept
-  -> wait for supervisor, gateway, Console, and authenticated setup endpoint
+  -> wait for supervisor, gateway, Console, and trusted direct-loopback setup endpoint
 handoff
   -> open a single-use loopback setup session in the default browser
 commit
@@ -257,9 +257,9 @@ The Setup Center groups checks in this order:
 
 | Group | Checks | Completion meaning |
 | --- | --- | --- |
-| Installation | release, data root, service, supervisor, gateway, Console | authenticated local Console works after restart |
-| Agent | Codex executable, supported version, authentication, app-server handshake, real Web conversation | a real Agent reply is observed in the same authenticated `/app/chat` session |
-| Connectivity | selected mode, browser authorization, enrollment, tunnel, DNS, TLS, remote route | selected remote mode is externally usable |
+| Installation | release, data root, service, supervisor, gateway, Console | passwordless direct-loopback Console works after restart |
+| Agent | Codex executable, supported version, authentication, app-server handshake, real Web conversation | a real Agent reply is observed in the same local `/app/chat` session |
+| Connectivity | selected mode, remote access password, browser authorization, enrollment, tunnel, DNS, TLS, remote route | selected remote mode is externally usable and password protected |
 | Agent mail identity | public domain and matching Agent address | identity is bound; no delivery claim is made |
 | Local mail | source connector/MTA, ingest shim, real `.eml`, `/app/mail`, backup/restore | actual local mail workflow is operational |
 | Optional channels | WeChat and later channels | selected channel is healthy without gating Web use |
@@ -282,7 +282,7 @@ personal-agent doctor --json
 ```
 
 `doctor` and `setup status` remain R0 and never mutate state. `setup open` only
-opens the authenticated loopback Setup Center and never prints its setup nonce.
+opens the trusted direct-loopback Setup Center and never prints its setup nonce.
 
 Setup actions reuse the operation protocol:
 
@@ -312,7 +312,7 @@ Codex is evaluated in four independent checks:
 1. a trusted executable is discoverable;
 2. its version is within the supported range;
 3. `codex app-server` starts and completes the expected protocol handshake;
-4. authenticated `/app/chat` sends a unique acceptance prompt to the real runtime
+4. passwordless direct-loopback `/app/chat` sends a unique acceptance prompt to the real runtime
    and observes the Agent reply in the same session.
 
 The installer does not initially bundle Codex. Its independent release, license,
@@ -537,7 +537,7 @@ A Node release using this design passes only when sanitized evidence proves:
    prove Authenticode and Developer ID/notarization.
 3. Installation initializes secrets, registers and starts the service, opens a
    one-time loopback Setup Center session, and prints no secret.
-4. Restart preserves authenticated Console access and mutable state.
+4. Restart preserves passwordless direct-loopback Console access and mutable state.
 5. Setup Center accurately distinguishes `console`, `agent`, `remote`, and `mail`
    readiness and provides actionable remediation.
 6. Codex installation/authentication/handshake failures do not break Console, and

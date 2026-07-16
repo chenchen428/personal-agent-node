@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { buildSetupTaskModel, validateLocalPasswordInput, type SetupCheck, type SetupState, type SetupTask } from "@/lib/setup-tasks";
+import { buildSetupTaskModel, validateRemotePasswordInput, type SetupCheck, type SetupState, type SetupTask } from "@/lib/setup-tasks";
 import { Check, CheckCircle2, ChevronDown, Circle, ExternalLink, Mail, MessageCircle, RefreshCw, ShieldCheck, Wrench } from "lucide-react";
 
 type ManagedCloudAction = { state: "idle" | "starting" | "running" | "succeeded" | "failed"; phase: "idle" | "enrollment" | "resources" | "complete"; code?: string };
@@ -84,7 +84,7 @@ export function SetupDashboard() {
 
   const renderAction = (requestedAction: string) => {
     if (requestedAction === "installation.local-auth") {
-      const passwordIssue = validateLocalPasswordInput(password, confirmation);
+      const passwordIssue = validateRemotePasswordInput(password, confirmation);
       return (
       <form className="grid gap-3" noValidate onSubmit={(event) => {
         event.preventDefault();
@@ -95,12 +95,12 @@ export function SetupDashboard() {
         void runAction(requestedAction, { password, confirmation });
       }}>
         <div className="grid gap-2 sm:grid-cols-2">
-          <Input aria-label="本机登录密码" type="password" autoComplete="new-password" required minLength={12} maxLength={256} placeholder="至少 12 个字符" value={password} onChange={(event) => setPassword(event.target.value)} />
-          <Input aria-label="确认本机登录密码" type="password" autoComplete="new-password" required minLength={12} maxLength={256} placeholder="再次输入密码" value={confirmation} onChange={(event) => setConfirmation(event.target.value)} />
+          <Input aria-label="远程访问密码" type="password" autoComplete="new-password" required minLength={12} maxLength={256} placeholder="至少 12 个字符" value={password} onChange={(event) => setPassword(event.target.value)} />
+          <Input aria-label="确认远程访问密码" type="password" autoComplete="new-password" required minLength={12} maxLength={256} placeholder="再次输入密码" value={confirmation} onChange={(event) => setConfirmation(event.target.value)} />
         </div>
         <div className="flex flex-wrap items-center gap-3">
           <Button type="submit" disabled={actionId === requestedAction}>{actionId === requestedAction ? "设置中" : "确认设置"}</Button>
-          <small className="text-xs text-[var(--muted)]" role="status">{actionMessage[requestedAction] || (password || confirmation ? passwordIssue || "两次输入一致，可以确认设置。" : "密码仅保存在本机，并以不可逆校验器存储。")}</small>
+          <small className="text-xs text-[var(--muted)]" role="status">{actionMessage[requestedAction] || (password || confirmation ? passwordIssue || "两次输入一致，可以确认设置。" : "此密码只用于公网和隧道访问，并以不可逆校验器保存在本机。")}</small>
         </div>
       </form>
       );
