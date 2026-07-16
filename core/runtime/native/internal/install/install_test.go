@@ -83,6 +83,52 @@ func TestFreshInstallStopsUnmanagedSupervisorBeforeServicePreparation(t *testing
 	}
 }
 
+func TestDesktopManagedUpgradeRemovesLegacyServiceWithoutRegisteringAnother(t *testing.T) {
+	root := t.TempDir()
+	installRoot := filepath.Join(root, "install")
+	dataRoot := filepath.Join(root, "data")
+	nodeRuntime := filepath.Join(root, "node.exe")
+	if err := os.WriteFile(nodeRuntime, []byte("bundled-node"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	runner := &lifecycleRunner{}
+	base := Options{ReleaseRoot: fixtureRelease(t, "release-one"), NodeRuntime: nodeRuntime, InstallRoot: installRoot, DataRoot: dataRoot, SkipStartWait: true, NoOpen: true, Platform: "windows"}
+	if _, err := Install(context.Background(), base, runner); err != nil {
+		t.Fatal(err)
+	}
+	start := len(runner.calls)
+	candidate := base
+	candidate.ReleaseRoot = fixtureRelease(t, "release-two")
+	candidate.DesktopManaged = true
+	result, err := Install(context.Background(), candidate, runner)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.Service != "desktop-managed" {
+		t.Fatalf("service=%q, want desktop-managed", result.Service)
+	}
+	calls := runner.calls[start:]
+	foundStop, foundDelete := false, false
+	for _, call := range calls {
+		if strings.Contains(call, "private-site.mjs stop") {
+			foundStop = true
+		}
+		if strings.Contains(call, "schtasks.exe /Delete") {
+			foundDelete = true
+		}
+		if strings.Contains(call, "service-prepare") || strings.Contains(call, "schtasks.exe /Create") || strings.Contains(call, "schtasks.exe /Run") {
+			t.Fatalf("desktop-managed install registered a separate service: %v", calls)
+		}
+	}
+	if !foundStop || !foundDelete || runner.running {
+		t.Fatalf("legacy service was not fully removed: %v", calls)
+	}
+	state := readInstallationState(filepath.Join(installRoot, "installation.json"))
+	if state.Service != "desktop-managed" {
+		t.Fatalf("installation state service=%q", state.Service)
+	}
+}
+
 func (runner *failingRunner) Run(ctx context.Context, command string, args []string, env []string) ([]byte, error) {
 	call := command + " " + strings.Join(args, " ")
 	runner.calls = append(runner.calls, call)

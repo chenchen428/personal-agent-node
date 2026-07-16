@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+
+	"github.com/chenchen428/personal-agent-node/native/internal/runtimeconfig"
 )
 
 var buildVersion = "development"
@@ -20,6 +22,10 @@ func main() {
 	if installRoot == "" {
 		installRoot = filepath.Dir(filepath.Dir(executable))
 	}
+	roots, err := runtimeconfig.ResolveRoots(installRoot)
+	if err != nil {
+		fail(err)
+	}
 	current, err := resolveCurrent(filepath.Join(installRoot, "current"))
 	if err != nil {
 		fail(fmt.Errorf("active Personal Agent release is unavailable: %w", err))
@@ -29,7 +35,7 @@ func main() {
 		fail(fmt.Errorf("Personal Agent desktop runtime is unavailable"))
 	}
 	command := exec.Command(runtimePath, os.Args[1:]...)
-	command.Env = append(os.Environ(), "PERSONAL_AGENT_HOME="+filepath.Dir(installRoot), "PRIVATE_SITE_INSTALL_ROOT="+installRoot)
+	command.Env = append(os.Environ(), "PERSONAL_AGENT_HOME="+roots.HomeRoot, "PRIVATE_SITE_INSTALL_ROOT="+installRoot, "PRIVATE_SITE_DATA_ROOT="+roots.DataRoot, "PRIVATE_SITE_RELEASE_ROOT="+current)
 	if err := command.Start(); err != nil {
 		fail(err)
 	}

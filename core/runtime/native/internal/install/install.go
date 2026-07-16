@@ -46,6 +46,7 @@ type Options struct {
 	DataRoot         string
 	Domain           string
 	SkipService      bool
+	DesktopManaged   bool
 	SkipStartWait    bool
 	SkipDesktopEntry bool
 	DesktopEntryRoot string
@@ -251,7 +252,9 @@ func Install(ctx context.Context, opts Options, runner Runner) (result Result, r
 	}
 
 	service := "skipped"
-	if !resolved.SkipService {
+	if resolved.DesktopManaged {
+		service = "desktop-managed"
+	} else if !resolved.SkipService {
 		serviceNeedsRecovery = true
 		serviceCtx, cancel := context.WithTimeout(ctx, 2*time.Minute)
 		service, err = activateService(serviceCtx, resolved, target, node, privateSite, runner, env)
@@ -423,7 +426,7 @@ func Uninstall(ctx context.Context, installRoot, platform string, runner Runner)
 			return UninstallResult{}, fmt.Errorf("stop Personal Agent supervisor: %w", err)
 		}
 	}
-	if state.Service != "" && state.Service != "skipped" {
+	if serviceIsManaged(state.Service) {
 		if err := deactivateService(ctx, opts, runner, envFor(opts)); err != nil {
 			return UninstallResult{}, fmt.Errorf("deactivate platform service: %w", err)
 		}
@@ -492,7 +495,7 @@ func readInstallationState(file string) installationState {
 }
 
 func serviceIsManaged(service string) bool {
-	return service != "" && service != "skipped" && service != "not-registered" && service != "removed"
+	return service != "" && service != "skipped" && service != "desktop-managed" && service != "not-registered" && service != "removed"
 }
 
 func VerifyRelease(root string) (Manifest, error) {
@@ -761,7 +764,7 @@ func removePointer(pointer string) error {
 }
 
 func envFor(opts Options) []string {
-	homeRoot := filepath.Dir(opts.InstallRoot)
+	homeRoot := filepath.Dir(opts.DataRoot)
 	return append(os.Environ(), "PERSONAL_AGENT_HOME="+homeRoot, "PRIVATE_SITE_INSTALL_ROOT="+opts.InstallRoot, "PRIVATE_SITE_DATA_ROOT="+opts.DataRoot, "PRIVATE_SITE_CLI_BIN="+filepath.Join(opts.InstallRoot, "bin"))
 }
 
