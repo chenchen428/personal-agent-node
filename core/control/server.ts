@@ -15,6 +15,7 @@ import { setupDiagnostics, setupStatus } from '../runtime/src/setup.ts';
 import { executeSetupAction, planSetupAction } from '../runtime/src/setup-actions.ts';
 import { createOperationStore } from '../runtime/src/operations.ts';
 import { listExtensions } from '../runtime/src/extensions.ts';
+import { publicPersonalApp, scanPersonalApps } from '../runtime/src/apps.ts';
 
 const projectRoot = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(projectRoot, '..', '..');
@@ -96,6 +97,20 @@ async function handleRequest(request, response) {
     const config = { pluginsDir: path.join(siteDataRoot, 'plugins'), pluginDataDir: path.join(siteDataRoot, 'data', 'plugins'), coreVersion: process.env.PERSONAL_AGENT_VERSION || '0.2.0' };
     const plugins = listExtensions(config).map(({ id, version, name, description, state, permissions, contributes, compatibility }) => ({ id, version, name, description, state, permissions, contributes, compatibility }));
     await sendJson(response, { schemaVersion: 1, apiVersion: 'personal-agent/v1', plugins }, request.method === 'HEAD');
+    return;
+  }
+  if (url.pathname === '/api/apps') {
+    if (request.method !== 'GET' && request.method !== 'HEAD') {
+      send(response, 405, 'text/plain; charset=utf-8', 'Method Not Allowed');
+      return;
+    }
+    const config = resolveNodeConfig({ ...process.env, PRIVATE_SITE_DATA_ROOT: siteDataRoot });
+    const scan = scanPersonalApps(config);
+    await sendJson(response, {
+      schemaVersion: 1,
+      apps: scan.apps.map(publicPersonalApp),
+      invalid: scan.invalid,
+    }, request.method === 'HEAD');
     return;
   }
   if (url.pathname === '/api/wechat/status') {

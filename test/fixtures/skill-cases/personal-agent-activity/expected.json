@@ -1,0 +1,9 @@
+{
+  "schemaVersion": 1,
+  "capability": "activity",
+  "operator": "verified-main-agent",
+  "workerAllowed": false,
+  "titleCharacters": 30,
+  "attachments": 10,
+  "memoryDomainActive": false
+}

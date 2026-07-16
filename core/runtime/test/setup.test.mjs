@@ -7,7 +7,7 @@ import test from 'node:test';
 import { initializeSite } from '../src/config.ts';
 import { inspectRemoteConnectivity, setupDiagnostics, setupStatus, writeWebConversationAcceptance } from '../src/setup.ts';
 
-test('setup status separates console, Agent, remote, mail, and optional WeChat readiness', async () => {
+test('setup status keeps WeChat as required Agent readiness', async () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'personal-agent-setup-status-'));
   const dataRoot = path.join(root, 'data');
   const installRoot = path.join(root, 'install');
@@ -15,7 +15,8 @@ test('setup status separates console, Agent, remote, mail, and optional WeChat r
   try {
     initializeSite({ dataRoot, domain: 'personal-agent.local' });
     fs.mkdirSync(current, { recursive: true });
-    fs.symlinkSync(path.relative(installRoot, current), path.join(installRoot, 'current'));
+    if (process.platform === 'win32') fs.writeFileSync(path.join(installRoot, 'current'), `${current}\n`);
+    else fs.symlinkSync(path.relative(installRoot, current), path.join(installRoot, 'current'));
     fs.writeFileSync(path.join(installRoot, 'installation.json'), `${JSON.stringify({ activeReleaseId: 'release-one' })}\n`);
     const envPath = path.join(dataRoot, 'secrets', 'applications', 'site.env');
     fs.appendFileSync(envPath, 'PERSONAL_AGENT_AUTH_PASSWORD=test-only-password\n');
@@ -41,10 +42,10 @@ test('setup status separates console, Agent, remote, mail, and optional WeChat r
     });
     assert.equal(status.schemaVersion, 1);
     assert.equal(status.readiness.console, 'ready');
-    assert.equal(status.readiness.agent, 'ready');
+    assert.equal(status.readiness.agent, 'action-required');
     assert.equal(status.readiness.remote, 'not-selected');
     assert.equal(status.readiness.mail, 'not-selected');
-    assert.equal(status.checks.find((check) => check.id === 'channels.wechat').state, 'not-selected');
+    assert.equal(status.checks.find((check) => check.id === 'channels.wechat').state, 'action-required');
     assert.equal(status.checks.find((check) => check.id === 'mail.identity').state, 'not-selected');
     assert.match(status.checks.find((check) => check.id === 'agent.codex.executable').why, /Codex/);
     assert.match(status.checks.find((check) => check.id === 'agent.codex.executable').guidance, /官方 Codex CLI 指南/);
@@ -55,6 +56,32 @@ test('setup status separates console, Agent, remote, mail, and optional WeChat r
     assert.match(diagnostics.diagnosticDigest, /^[a-f0-9]{64}$/);
     assert.doesNotMatch(JSON.stringify(diagnostics), /test-only-password|secrets\/applications/);
     assert.doesNotMatch(JSON.stringify(diagnostics), /must-not-leak|"pid"/);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('setup status rejects a missing Windows-style release pointer target', async () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'personal-agent-setup-pointer-'));
+  const dataRoot = path.join(root, 'data');
+  const installRoot = path.join(root, 'install');
+  try {
+    initializeSite({ dataRoot, domain: 'personal-agent.local' });
+    fs.mkdirSync(installRoot, { recursive: true });
+    fs.writeFileSync(path.join(installRoot, 'current'), `${path.join(installRoot, 'releases', 'missing')}\n`);
+    fs.writeFileSync(path.join(installRoot, 'installation.json'), `${JSON.stringify({ activeReleaseId: 'missing' })}\n`);
+
+    const status = await setupStatus({
+      dataRoot,
+      installRoot,
+      env: {},
+      processAlive: () => false,
+      portProbe: async () => false,
+      codexProbe: async () => ({ installed: false, version: '', versionSupported: false, authenticated: false, handshake: false }),
+      remoteProbe: async () => ({ dns: false, tls: false, remoteApp: false }),
+    });
+
+    assert.equal(status.checks.find((entry) => entry.id === 'installation.release')?.evidence.installed, false);
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
   }

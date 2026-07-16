@@ -16,6 +16,7 @@
     "preserveOnUninstall": true,
     "harness": ["AGENTS.md", "registry", "skills", "workflows"],
     "directories": [
+      "apps",
       "plugins",
       "files",
       "publications",
@@ -27,5 +28,16 @@
       "runtime",
       "logs"
     ]
+  },
+  "desktopShell": {
+    "framework": "tauri-2",
+    "ownership": "product",
+    "serviceOwner": "desktop-client",
+    "origin": "http://127.0.0.1:8843",
+    "platforms": ["windows-x64", "macos-x64", "macos-arm64", "linux-x64", "linux-arm64"],
+    "systemWebview": true,
+    "bundledChromium": false,
+    "bundledNodeSidecar": false,
+    "browserFallback": true
   }
 }

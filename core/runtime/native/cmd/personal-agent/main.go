@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
@@ -17,15 +18,7 @@ func main() {
 	if installRoot == "" {
 		installRoot = filepath.Dir(filepath.Dir(executable))
 	}
-	dataRoot := os.Getenv("PRIVATE_SITE_DATA_ROOT")
-	if dataRoot == "" {
-		homeRoot := os.Getenv("PERSONAL_AGENT_HOME")
-		if homeRoot == "" {
-			home, _ := os.UserHomeDir()
-			homeRoot = filepath.Join(home, ".personal-agent")
-		}
-		dataRoot = filepath.Join(homeRoot, "workspace")
-	}
+	dataRoot := installedDataRoot(installRoot)
 	current, err := resolveCurrent(filepath.Join(installRoot, "current"))
 	if err != nil {
 		fail(fmt.Errorf("active Personal Agent release is unavailable: %w", err))
@@ -45,6 +38,25 @@ func main() {
 		}
 		fail(err)
 	}
+}
+
+func installedDataRoot(installRoot string) string {
+	fallback := filepath.Join(filepath.Dir(installRoot), "workspace")
+	data, err := os.ReadFile(filepath.Join(installRoot, "installation.json"))
+	if err != nil {
+		return fallback
+	}
+	state := struct {
+		DataRoot string `json:"dataRoot"`
+	}{}
+	if json.Unmarshal(data, &state) != nil || state.DataRoot == "" {
+		return fallback
+	}
+	resolved, err := filepath.Abs(state.DataRoot)
+	if err != nil {
+		return fallback
+	}
+	return resolved
 }
 
 func resolveCurrent(pointer string) (string, error) {

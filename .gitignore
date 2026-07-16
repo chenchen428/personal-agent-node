@@ -5,6 +5,8 @@
 .local/
 coverage/
 dist/
+!workspace/apps/personal-agent.daily-brief/dist/
+!workspace/apps/personal-agent.daily-brief/dist/**
 node_modules/
 .next/
 *.tsbuildinfo
@@ -18,3 +20,5 @@ CLAUDE.md
 *.sqlite*
 *.key
 *.pem
+__pycache__/
+*.py[cod]

@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "skill": "guizang-ppt-skill",
+  "title": "Swiss web deck structure validation",
+  "prompt": "Create a concise Swiss-style web presentation explaining a local-first Personal Agent.",
+  "commands": [
+    "node skills/guizang-ppt-skill/scripts/validate-swiss-deck.mjs test/fixtures/skill-cases/guizang-ppt-skill/index.html"
+  ],
+  "artifacts": [
+    {
+      "path": "index.html",
+      "label": "Minimal registered-layout validation fixture"
+    }
+  ],
+  "verifiedAt": "2026-07-16"
+}

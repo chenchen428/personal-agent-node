@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"time"
 
 	"github.com/chenchen428/personal-agent-node/native/internal/embedded"
@@ -48,7 +49,7 @@ func inspectEmbedded() {
 	if err != nil {
 		fail(err.Error())
 	}
-	manifest, err := installer.VerifyRelease(payload.ReleaseRoot)
+	manifest, err := verifyRelease(payload.ReleaseRoot)
 	if err != nil {
 		fail(err.Error())
 	}
@@ -83,6 +84,7 @@ func installCommand(args []string) {
 	noOpen := set.Bool("no-open", false, "do not open the Setup Center")
 	skipService := set.Bool("skip-service", false, "test-only: do not register the platform service")
 	skipWait := set.Bool("skip-start-wait", false, "test-only: do not wait for gateway readiness")
+	skipDesktopEntry := set.Bool("skip-desktop-entry", false, "test-only: do not install the platform desktop entry")
 	_ = set.Parse(args)
 	if *installRoot == "" {
 		*installRoot = filepath.Join(*homeRoot, "core")
@@ -107,7 +109,7 @@ func installCommand(args []string) {
 	} else if resolvedReleaseRoot == "" || resolvedNodeRuntime == "" {
 		fail("--release-root and --node-runtime must be provided together")
 	}
-	result, err := installer.Install(context.Background(), installer.Options{ReleaseRoot: resolvedReleaseRoot, NodeRuntime: resolvedNodeRuntime, InstallRoot: *installRoot, DataRoot: *dataRoot, Domain: *domain, NoOpen: *noOpen, SkipService: *skipService, SkipStartWait: *skipWait, Platform: runtime.GOOS}, nil)
+	result, err := installer.Install(context.Background(), installer.Options{ReleaseRoot: resolvedReleaseRoot, NodeRuntime: resolvedNodeRuntime, InstallRoot: *installRoot, DataRoot: *dataRoot, Domain: *domain, NoOpen: *noOpen, SkipService: *skipService, SkipStartWait: *skipWait, SkipDesktopEntry: *skipDesktopEntry, Platform: runtime.GOOS, AllowDirty: isLocalAcceptanceBuild()}, nil)
 	if err != nil {
 		fail(err.Error())
 	}
@@ -157,14 +159,21 @@ func verifyCommand(args []string) {
 	set := flag.NewFlagSet("verify", flag.ExitOnError)
 	releaseRoot := set.String("release-root", "", "release directory")
 	_ = set.Parse(args)
-	manifest, err := installer.VerifyRelease(*releaseRoot)
+	manifest, err := verifyRelease(*releaseRoot)
 	if err != nil {
 		fail(err.Error())
 	}
 	write(map[string]any{"ok": true, "releaseId": manifest.ReleaseID, "revision": manifest.Revision})
 }
 
-func write(value any) { data, _ := json.Marshal(value); fmt.Println(string(data)) }
+func write(value any)              { data, _ := json.Marshal(value); fmt.Println(string(data)) }
+func isLocalAcceptanceBuild() bool { return strings.Contains(buildVersion, "-local-acceptance.") }
+func verifyRelease(root string) (installer.Manifest, error) {
+	if isLocalAcceptanceBuild() {
+		return installer.VerifyLocalAcceptanceRelease(root)
+	}
+	return installer.VerifyRelease(root)
+}
 func fail(message string) {
 	data, _ := json.Marshal(map[string]any{"ok": false, "error": map[string]string{"code": "SETUP_FAILED", "message": message}})
 	fmt.Fprintln(os.Stderr, string(data))

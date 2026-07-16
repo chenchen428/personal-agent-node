@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "skill": "frontend-design",
+  "title": "Distinctive local workspace interface direction",
+  "prompt": "Design a responsive local-first workspace home that feels specific to private personal computing rather than a generic SaaS dashboard. Keep one responsibility per component, reuse shared behavior, keep component files within 300 lines, and give every menu destination its own page component.",
+  "commands": [],
+  "artifacts": [
+    {
+      "path": "design-plan.md",
+      "label": "Subject-grounded design direction"
+    }
+  ],
+  "verifiedAt": "2026-07-16"
+}

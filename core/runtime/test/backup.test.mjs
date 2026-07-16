@@ -15,6 +15,9 @@ test("creates and verifies an encrypted SQLite-aware backup", async () => {
   fs.writeFileSync(path.join(dataRoot, "config", "site.json"), "{}");
   fs.mkdirSync(path.join(dataRoot, "mail", "archive", "2026-07-14"), { recursive: true });
   fs.writeFileSync(path.join(dataRoot, "mail", "archive", "2026-07-14", "message.eml"), "Subject: retained\r\n\r\nmail body");
+  fs.mkdirSync(path.join(dataRoot, "apps", "example.dashboard", "dist"), { recursive: true });
+  fs.writeFileSync(path.join(dataRoot, "apps", "example.dashboard", "dist", "index.html"), "<!doctype html><title>retained App</title>");
+  fs.writeFileSync(path.join(dataRoot, "config", "apps.json"), `${JSON.stringify({ schemaVersion: 1, defaultAppId: "example.dashboard" })}\n`);
   const databasePath = path.join(databaseDir, "state.sqlite");
   const database = new DatabaseSync(databasePath);
   database.exec("CREATE TABLE item (id INTEGER PRIMARY KEY, value TEXT); INSERT INTO item(value) VALUES ('kept');");
@@ -34,6 +37,8 @@ test("creates and verifies an encrypted SQLite-aware backup", async () => {
     const restored = await verifyEncryptedBackup(config, { archivePath, keyFile, targetDir: target });
     assert.equal(restored.ok, true);
     assert.equal(fs.readFileSync(path.join(target, "mail", "archive", "2026-07-14", "message.eml"), "utf8"), "Subject: retained\r\n\r\nmail body");
+    assert.match(fs.readFileSync(path.join(target, "apps", "example.dashboard", "dist", "index.html"), "utf8"), /retained App/);
+    assert.equal(JSON.parse(fs.readFileSync(path.join(target, "config", "apps.json"), "utf8")).defaultAppId, "example.dashboard");
     const restoredDatabase = new DatabaseSync(path.join(target, "databases", "state.sqlite"), { readOnly: true });
     assert.equal(restoredDatabase.prepare("SELECT value FROM item").get().value, "kept");
     restoredDatabase.close();

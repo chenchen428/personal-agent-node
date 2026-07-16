@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "skill": "guizang-social-card-skill",
+  "title": "Local-first product launch social card plan",
+  "prompt": "Turn a Personal Agent launch note into a five-page 3:4 Xiaohongshu carousel with a paired WeChat cover.",
+  "commands": [],
+  "artifacts": [
+    {
+      "path": "page-plan.md",
+      "label": "Reproducible carousel and source plan"
+    }
+  ],
+  "verifiedAt": "2026-07-16",
+  "note": "Rendering remains an interactive visual task; the case fixes structure, ratios, evidence, and rights handling."
+}

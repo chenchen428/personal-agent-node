@@ -94,6 +94,31 @@ test("issues a one-year host-only cookie and rejects cross-tenant reuse", async 
   }
 });
 
+test("changing the local password invalidates existing remote sessions", async () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "personal-auth-session-generation-"));
+  const verifierFile = path.join(root, "config", "local-auth.json");
+  const firstPassword = "first-durable-password-2026";
+  const secondPassword = "second-durable-password-2026";
+  try {
+    writePasswordVerifier(verifierFile, firstPassword);
+    const fixture = await startFixture({ verifierFile });
+    try {
+      const firstLogin = await login(fixture.baseUrl, firstPassword);
+      const firstCookie = (firstLogin.headers.get("set-cookie") || "").split(";", 1)[0];
+      assert.equal((await fetch(`${fixture.baseUrl}/_auth/check`, {
+        headers: { cookie: firstCookie, "x-forwarded-host": "agent.personal-agent.local" },
+      })).status, 204);
+
+      writePasswordVerifier(verifierFile, secondPassword);
+      assert.equal((await fetch(`${fixture.baseUrl}/_auth/check`, {
+        headers: { cookie: firstCookie, "x-forwarded-host": "agent.personal-agent.local" },
+      })).status, 401);
+      assert.equal((await login(fixture.baseUrl, firstPassword)).status, 401);
+      assert.equal((await login(fixture.baseUrl, secondPassword)).status, 303);
+    } finally { await fixture.close(); }
+  } finally { fs.rmSync(root, { recursive: true, force: true }); }
+});
+
 test("consumes one short-lived loopback setup nonce without printing or persisting it", async () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "personal-auth-bootstrap-"));
   const bootstrap = path.join(root, "bootstrap.json");

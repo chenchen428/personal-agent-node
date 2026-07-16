@@ -26,15 +26,16 @@ test("renders a Linux systemd user Node service", () => {
 
 test("renders a Windows interactive-user scheduled task", () => {
   const output = renderWindowsScheduledTask(config, {
-    cliPath: "C:\\private-site\\private-site.mjs",
-    nodePath: "C:\\Program Files\\nodejs\\node.exe",
+    servicePath: "C:\\Program Files\\Personal Agent\\bin\\personal-agent-service.exe",
     userId: "EXAMPLE\\owner",
   });
   assert.match(output, /<LogonType>InteractiveToken<\/LogonType>/);
   assert.match(output, /<RunLevel>LeastPrivilege<\/RunLevel>/);
   assert.match(output, /<ExecutionTimeLimit>PT0S<\/ExecutionTimeLimit>/);
   assert.match(output, /<Hidden>true<\/Hidden>/);
-  assert.match(output, /start --data-root &quot;\/Users\/example\/\.personal-agent&quot;/);
+  assert.match(output, /personal-agent-service\.exe<\/Command>/);
+  assert.match(output, /--data-root &quot;\/Users\/example\/\.personal-agent&quot;/);
+  assert.doesNotMatch(output, /node\.exe|private-site\.mjs/);
   assert.match(output, /EXAMPLE\\owner/);
 });
 

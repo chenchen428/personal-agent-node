@@ -19,6 +19,19 @@ func (runner *fakeRunner) Run(_ context.Context, command string, args []string, 
 	return []byte(`{"platform":"darwin","serviceId":"site.personal-agent.private-site-node","filePath":"/tmp/source","installPath":"/tmp/target"}`), nil
 }
 
+type pointerObservingRunner struct {
+	fakeRunner
+	current                string
+	currentAtCompatibility string
+}
+
+func (runner *pointerObservingRunner) Run(ctx context.Context, command string, args []string, env []string) ([]byte, error) {
+	if strings.Contains(strings.Join(args, " "), "app-compatibility") {
+		runner.currentAtCompatibility = filepath.Base(pointerTarget(runner.current))
+	}
+	return runner.fakeRunner.Run(ctx, command, args, env)
+}
+
 type failingRunner struct {
 	fakeRunner
 	needle string
@@ -28,6 +41,28 @@ type lifecycleRunner struct {
 	calls      []string
 	running    bool
 	failNeedle string
+}
+
+type missingWindowsTaskRunner struct {
+	taskExists bool
+}
+
+func (runner *missingWindowsTaskRunner) Run(_ context.Context, command string, args []string, _ []string) ([]byte, error) {
+	if command != "schtasks.exe" || len(args) == 0 {
+		return []byte(`{}`), nil
+	}
+	switch args[0] {
+	case "/Delete":
+		if !runner.taskExists {
+			return nil, errors.New("scheduled task not found")
+		}
+		return nil, errors.New("scheduled task delete denied")
+	case "/Query":
+		if !runner.taskExists {
+			return nil, errors.New("scheduled task not found")
+		}
+	}
+	return []byte(`{}`), nil
 }
 
 func (runner *lifecycleRunner) Run(_ context.Context, command string, args []string, _ []string) ([]byte, error) {
@@ -53,6 +88,22 @@ func (runner *lifecycleRunner) Run(_ context.Context, command string, args []str
 	return []byte(`{}`), nil
 }
 
+func TestDeactivateWindowsServiceAcceptsAnAlreadyMissingTask(t *testing.T) {
+	runner := &missingWindowsTaskRunner{}
+	err := deactivateService(context.Background(), Options{Platform: "windows", DataRoot: t.TempDir()}, runner, nil)
+	if err != nil {
+		t.Fatalf("missing Windows task should be idempotent: %v", err)
+	}
+}
+
+func TestDeactivateWindowsServiceReportsARegisteredTaskThatCannotBeDeleted(t *testing.T) {
+	runner := &missingWindowsTaskRunner{taskExists: true}
+	err := deactivateService(context.Background(), Options{Platform: "windows", DataRoot: t.TempDir()}, runner, nil)
+	if err == nil || !strings.Contains(err.Error(), "delete denied") {
+		t.Fatalf("expected registered task deletion failure, got %v", err)
+	}
+}
+
 func (runner *failingRunner) Run(ctx context.Context, command string, args []string, env []string) ([]byte, error) {
 	call := command + " " + strings.Join(args, " ")
 	runner.calls = append(runner.calls, call)
@@ -72,6 +123,118 @@ func TestVerifyReleaseRejectsChangedFiles(t *testing.T) {
 	}
 	if _, err := VerifyRelease(release); err == nil || !strings.Contains(err.Error(), "checksum mismatch") {
 		t.Fatalf("expected checksum mismatch, got %v", err)
+	}
+}
+
+func TestDirtyReleaseIsAcceptedOnlyByExplicitLocalAcceptanceVerifier(t *testing.T) {
+	release := fixtureRelease(t, "release-local-acceptance")
+	manifestPath := filepath.Join(release, "release-manifest.json")
+	manifest := map[string]any{}
+	data, err := os.ReadFile(manifestPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := json.Unmarshal(data, &manifest); err != nil {
+		t.Fatal(err)
+	}
+	manifest["dirty"] = true
+	updated, _ := json.Marshal(manifest)
+	if err := os.WriteFile(manifestPath, updated, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	rewriteFixtureChecksums(t, release)
+	if _, err := VerifyRelease(release); err == nil {
+		t.Fatal("production verifier accepted a dirty release")
+	}
+	if _, err := VerifyLocalAcceptanceRelease(release); err != nil {
+		t.Fatalf("local acceptance verifier rejected its bounded fixture: %v", err)
+	}
+}
+
+func TestVerifyReleaseRequiresCompleteDesktopShellChecksums(t *testing.T) {
+	release := fixtureRelease(t, "release-desktop")
+	manifestPath := filepath.Join(release, "release-manifest.json")
+	manifest := map[string]any{}
+	data, err := os.ReadFile(manifestPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := json.Unmarshal(data, &manifest); err != nil {
+		t.Fatal(err)
+	}
+	manifest["desktopShell"] = map[string]any{
+		"framework":      "tauri",
+		"platform":       "win32-x64",
+		"entrypoint":     "desktop/personal-agent-ui.exe",
+		"stableLauncher": "personal-agent-ui.exe",
+	}
+	updated, _ := json.Marshal(manifest)
+	if err := os.WriteFile(manifestPath, updated, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	for relative, content := range map[string][]byte{
+		"desktop/personal-agent-ui.exe": []byte("tauri-runtime"),
+		"personal-agent-ui.exe":         []byte("stable-launcher"),
+	} {
+		target := filepath.Join(release, filepath.FromSlash(relative))
+		if err := os.MkdirAll(filepath.Dir(target), 0o700); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(target, content, 0o700); err != nil {
+			t.Fatal(err)
+		}
+	}
+	rewriteFixtureChecksums(t, release)
+	if _, err := VerifyRelease(release); err != nil {
+		t.Fatalf("desktop release should verify: %v", err)
+	}
+	checksumPath := filepath.Join(release, "SHA256SUMS")
+	checksums, err := os.ReadFile(checksumPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	lines := strings.Split(strings.TrimSpace(string(checksums)), "\n")
+	kept := lines[:0]
+	for _, line := range lines {
+		if !strings.HasSuffix(line, "  personal-agent-ui.exe") {
+			kept = append(kept, line)
+		}
+	}
+	if err := os.WriteFile(checksumPath, []byte(strings.Join(kept, "\n")+"\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := VerifyRelease(release); err == nil || !strings.Contains(err.Error(), "stable launcher") {
+		t.Fatalf("expected stable launcher checksum rejection, got %v", err)
+	}
+}
+
+func TestDesktopReleaseAssignsRuntimeLifecycleToClientWithoutRegisteringService(t *testing.T) {
+	root := t.TempDir()
+	t.Setenv("APPDATA", filepath.Join(root, "appdata"))
+	release := desktopFixtureRelease(t, "release-desktop-owned")
+	nodeRuntime := filepath.Join(root, "node.exe")
+	if err := os.WriteFile(nodeRuntime, []byte("bundled-node"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	runner := &fakeRunner{}
+	result, err := Install(context.Background(), Options{
+		ReleaseRoot: release,
+		NodeRuntime: nodeRuntime,
+		InstallRoot: filepath.Join(root, "install"),
+		DataRoot:    filepath.Join(root, "data"),
+		NoOpen:      true,
+		Platform:    "windows",
+	}, runner)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.Service != "desktop-owned" {
+		t.Fatalf("service lifecycle=%q, want desktop-owned", result.Service)
+	}
+	for _, call := range runner.calls {
+		if strings.Contains(call, "service-prepare") || strings.Contains(call, "schtasks.exe") {
+			t.Fatalf("desktop-owned install must not register a background service: %s", call)
+		}
 	}
 }
 
@@ -103,9 +266,10 @@ func TestInstallSwitchesCurrentAndRetainsPreviousWithoutHostNode(t *testing.T) {
 	if filepath.Base(previous) != "release-one" {
 		t.Fatalf("previous=%s", previous)
 	}
-	if len(runner.calls) != 4 {
-		t.Fatalf("expected init+prepare for each install, got %v", runner.calls)
+	if len(runner.calls) != 6 {
+		t.Fatalf("expected init+app-compatibility+prepare for each install, got %v", runner.calls)
 	}
+	assertCompatibilityBeforeActivation(t, runner.calls, "release-two")
 	if _, err := os.Stat(filepath.Join(pointerTarget(filepath.Join(installRoot, "current")), "runtime", "node")); err != nil {
 		t.Fatal(err)
 	}
@@ -116,6 +280,89 @@ func TestInstallSwitchesCurrentAndRetainsPreviousWithoutHostNode(t *testing.T) {
 	}
 	if rolledBack.ReleaseID != "release-one" {
 		t.Fatalf("rollback=%#v", rolledBack)
+	}
+}
+
+func TestInstallAddsMissingWorkspaceSeedWithoutOverwritingUserApps(t *testing.T) {
+	root := t.TempDir()
+	installRoot := filepath.Join(root, "install")
+	dataRoot := filepath.Join(root, "data")
+	nodeRuntime := filepath.Join(root, "node")
+	if err := os.WriteFile(nodeRuntime, []byte("bundled-node"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	release := fixtureRelease(t, "release-app-seed")
+	seedApp := filepath.Join(release, "workspace", "apps", "personal-agent.daily-brief")
+	if err := os.MkdirAll(filepath.Join(seedApp, "dist"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(seedApp, "personal-agent.app.json"), []byte(`{"id":"personal-agent.daily-brief"}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(seedApp, "dist", "index.html"), []byte("release app"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	rewriteFixtureChecksums(t, release)
+
+	userApp := filepath.Join(dataRoot, "apps", "personal-agent.daily-brief", "dist")
+	if err := os.MkdirAll(userApp, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(userApp, "index.html"), []byte("user customized app"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := Install(context.Background(), Options{
+		ReleaseRoot: release, NodeRuntime: nodeRuntime, InstallRoot: installRoot,
+		DataRoot: dataRoot, SkipService: true, NoOpen: true, Platform: "darwin",
+	}, &fakeRunner{}); err != nil {
+		t.Fatal(err)
+	}
+	content, err := os.ReadFile(filepath.Join(userApp, "index.html"))
+	if err != nil || string(content) != "user customized app" {
+		t.Fatalf("user App was overwritten: %q %v", content, err)
+	}
+	if _, err := os.Stat(filepath.Join(dataRoot, "apps", "personal-agent.daily-brief", "personal-agent.app.json")); err != nil {
+		t.Fatalf("missing App seed file was not installed: %v", err)
+	}
+}
+
+func assertCompatibilityBeforeActivation(t *testing.T, calls []string, release string) {
+	t.Helper()
+	compatibility := -1
+	prepare := -1
+	for index, call := range calls {
+		if strings.Contains(call, release) && strings.Contains(call, "app-compatibility") {
+			compatibility = index
+		}
+		if strings.Contains(call, release) && strings.Contains(call, " prepare ") {
+			prepare = index
+		}
+	}
+	if compatibility == -1 || prepare == -1 || compatibility >= prepare {
+		t.Fatalf("App compatibility must precede %s activation preparation: %v", release, calls)
+	}
+}
+
+func TestUpgradeChecksAppCompatibilityBeforeSwitchingCurrent(t *testing.T) {
+	root := t.TempDir()
+	installRoot := filepath.Join(root, "install")
+	dataRoot := filepath.Join(root, "data")
+	nodeRuntime := filepath.Join(root, "node")
+	if err := os.WriteFile(nodeRuntime, []byte("bundled-node"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	options := func(release string) Options {
+		return Options{ReleaseRoot: fixtureRelease(t, release), NodeRuntime: nodeRuntime, InstallRoot: installRoot, DataRoot: dataRoot, SkipService: true, NoOpen: true, Platform: "darwin"}
+	}
+	if _, err := Install(context.Background(), options("release-one"), &fakeRunner{}); err != nil {
+		t.Fatal(err)
+	}
+	runner := &pointerObservingRunner{current: filepath.Join(installRoot, "current")}
+	if _, err := Install(context.Background(), options("release-two"), runner); err != nil {
+		t.Fatal(err)
+	}
+	if runner.currentAtCompatibility != "release-one" {
+		t.Fatalf("compatibility ran after current switched: observed %q", runner.currentAtCompatibility)
 	}
 }
 
@@ -357,4 +604,72 @@ func fixtureRelease(t *testing.T, releaseID string) string {
 		t.Fatal(err)
 	}
 	return root
+}
+
+func desktopFixtureRelease(t *testing.T, releaseID string) string {
+	t.Helper()
+	root := fixtureRelease(t, releaseID)
+	manifestPath := filepath.Join(root, "release-manifest.json")
+	manifest := map[string]any{}
+	data, err := os.ReadFile(manifestPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := json.Unmarshal(data, &manifest); err != nil {
+		t.Fatal(err)
+	}
+	manifest["desktopShell"] = map[string]any{
+		"framework":      "tauri",
+		"platform":       "win32-x64",
+		"entrypoint":     "desktop/personal-agent-ui.exe",
+		"stableLauncher": "personal-agent-ui.exe",
+	}
+	updated, _ := json.Marshal(manifest)
+	if err := os.WriteFile(manifestPath, updated, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	for relative, content := range map[string][]byte{
+		"desktop/personal-agent-ui.exe": []byte("tauri-runtime"),
+		"personal-agent-ui.exe":         []byte("stable-launcher"),
+	} {
+		target := filepath.Join(root, filepath.FromSlash(relative))
+		if err := os.MkdirAll(filepath.Dir(target), 0o700); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(target, content, 0o700); err != nil {
+			t.Fatal(err)
+		}
+	}
+	rewriteFixtureChecksums(t, root)
+	return root
+}
+
+func rewriteFixtureChecksums(t *testing.T, root string) {
+	t.Helper()
+	lines := []string{}
+	err := filepath.Walk(root, func(target string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		if info.IsDir() || filepath.Base(target) == "SHA256SUMS" {
+			return nil
+		}
+		data, err := os.ReadFile(target)
+		if err != nil {
+			return err
+		}
+		digest := sha256.Sum256(data)
+		relative, err := filepath.Rel(root, target)
+		if err != nil {
+			return err
+		}
+		lines = append(lines, hex.EncodeToString(digest[:])+"  "+filepath.ToSlash(relative))
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, "SHA256SUMS"), []byte(strings.Join(lines, "\n")+"\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
 }

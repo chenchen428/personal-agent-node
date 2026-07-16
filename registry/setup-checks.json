@@ -9,14 +9,14 @@
     { "id": "connectivity", "label": "公网连接", "order": 30 },
     { "id": "mail-identity", "label": "Agent 邮箱身份", "order": 40 },
     { "id": "local-mail", "label": "本地邮件", "order": 50 },
-    { "id": "optional-channels", "label": "可选渠道", "order": 60 }
+    { "id": "channels", "label": "必选渠道", "order": 60 }
   ],
   "checks": [
     { "id": "installation.release", "group": "installation", "requirement": "required-for-console", "dimension": "console", "why": "完整发行版提供可校验、可升级和可回滚的 Core。", "guidance": "重新运行与你系统匹配的 Personal Agent 安装包并选择修复；已有 Workspace 不会被覆盖。", "actionIds": ["installation.repair"] },
     { "id": "installation.data-root", "group": "installation", "requirement": "required-for-console", "dimension": "console", "why": "Workspace 保存你的配置、文件和数据，必须先安全初始化。", "guidance": "重新运行安装包完成初始化；安装器只补齐目录，不会删除已有用户数据。", "actionIds": ["installation.repair"] },
-    { "id": "installation.service", "group": "installation", "requirement": "required-for-console", "dimension": "console", "why": "后台服务保证关闭浏览器或电脑重启后仍能打开控制台。", "guidance": "重新运行安装包执行服务修复，完成后回到这里点击“重新检测”。", "actionIds": ["installation.service-repair"] },
-    { "id": "installation.gateway", "group": "installation", "requirement": "required-for-console", "dimension": "console", "why": "本机网关统一保护控制台和 API，不需要公网域名。", "guidance": "先确认后台服务已修复；仍不通过时重新运行安装包，然后再次检测。", "actionIds": ["installation.service-repair"] },
-    { "id": "installation.console-auth", "group": "installation", "requirement": "required-for-console", "dimension": "console", "why": "本机密码用于阻止同一台电脑上的其他用户直接访问你的 Agent。", "guidance": "在下方输入两次至少 12 个字符的密码并确认；系统只保存不可逆校验器。", "actionIds": ["installation.local-auth"] },
+    { "id": "installation.service", "group": "installation", "requirement": "required-for-console", "dimension": "console", "why": "客户端打开时，本机服务负责 Agent、管理页面和移动端入口。", "guidance": "重新打开 Personal Agent；客户端会自动启动本机服务。", "actionIds": ["installation.service-repair"] },
+    { "id": "installation.gateway", "group": "installation", "requirement": "required-for-console", "dimension": "console", "why": "本机网关统一保护控制台和 API，不需要公网域名。", "guidance": "先重新打开客户端；仍不通过时重新运行安装包，然后再次检测。", "actionIds": ["installation.service-repair"] },
+    { "id": "installation.console-auth", "group": "installation", "requirement": "conditional", "dimension": "remote", "why": "桌面客户端是本机可信入口，无需登录；访问密码仅保护手机和经私有域名进入的外部访问。", "guidance": "需要手机或私有域名访问时，可在桌面端“系统设置”直接设置或重置至少 12 个字符的访问密码。", "actionIds": ["installation.local-auth"] },
     { "id": "agent.codex.executable", "group": "agent", "requirement": "required-for-agent", "dimension": "agent", "why": "Codex 是本机真实对话和工具执行的 Agent 运行时。", "guidance": "打开官方 Codex CLI 指南完成安装，首次运行 codex 并登录，然后返回重新检测。", "actionIds": ["agent.codex.install-guide"] },
     { "id": "agent.codex.version", "group": "agent", "requirement": "required-for-agent", "dimension": "agent", "why": "受支持的 Codex 版本才能稳定完成 app-server 协议握手。", "guidance": "按官方 Codex CLI 指南更新到当前版本，重新打开 Codex 后再检测。", "actionIds": ["agent.codex.update-guide"] },
     { "id": "agent.codex.authentication", "group": "agent", "requirement": "required-for-agent", "dimension": "agent", "why": "登录后的 Codex 才能产生真实 Agent 回复。", "guidance": "打开终端运行 codex，选择 ChatGPT 或页面提供的其他登录方式；成功后返回重新检测。", "actionIds": ["agent.codex.login-guide"] },
@@ -33,6 +33,6 @@
     { "id": "mail.local-ingest", "group": "local-mail", "requirement": "optional", "dimension": "mail", "why": "本地邮件入口把你的邮件来源交给 Workspace 保存和处理。", "guidance": "Personal Agent 不捆绑 SMTP 服务；启用检测后，在邮件页按引导连接你自己的邮件来源。", "actionIds": ["mail.enable"] },
     { "id": "mail.delivery", "group": "local-mail", "requirement": "optional", "dimension": "mail", "why": "真实投递验证比“配置已保存”更能证明邮件链路可用。", "guidance": "前往邮件页发送或接收一封测试邮件，确认归档后再回来检测。", "actionIds": ["mail.test-delivery"] },
     { "id": "mail.recovery", "group": "local-mail", "requirement": "optional", "dimension": "mail", "why": "恢复验证保证邮件归档在升级或迁移后仍可找回。", "guidance": "前往邮件页按恢复演练说明验证备份；不使用本地邮件时无需执行。", "actionIds": ["mail.test-recovery"] },
-    { "id": "channels.wechat", "group": "optional-channels", "requirement": "optional", "dimension": null, "why": "渠道是可迭代插件，不应阻塞 Web 对话。", "guidance": "前往渠道页按需绑定微信或其他渠道；小红书只是可选渠道之一。", "actionIds": ["channels.wechat.bind"] }
+    { "id": "channels.wechat", "group": "channels", "requirement": "required-for-agent", "dimension": "agent", "why": "微信是 Personal Agent 的必选移动入口，完成连接后才能从手机持续与本机 Agent 对话。", "guidance": "打开微信连接页，生成二维码后使用微信扫码并在手机确认；页面会自动检测连接结果。", "actionIds": ["channels.wechat.bind"] }
   ]
 }

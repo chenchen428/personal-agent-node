@@ -2,14 +2,14 @@
 
 English | [简体中文](README.md)
 
-Personal Agent Node is the open-source, local-first runtime for [Personal Agent](https://chenjianhui.site). Conversations, long-term memory, account credentials, files, and Agent state stay on your computer. Personal Agent Cloud, a self-hosted public endpoint, and model-token services are all optional.
+Personal Agent Node is the open-source, local-first runtime for [Personal Agent](https://chenjianhui.site). Conversations, Agent-owned Activity, account credentials, files, and Agent state stay on your computer. Personal Agent Cloud, a self-hosted public endpoint, and model-token services are all optional.
 
 ## Why a local Node
 
 - **Private by design**: application data and long-lived credentials remain in the local data root; Cloud handles enrollment identity, transport, and redacted usage only.
 - **Customizable**: compose your own workflows with Skills, Plugins, model providers, and channel adapters.
 - **Self-evolving**: improve skills, workflows, and automations within governed permissions and rollback-safe releases.
-- **Long-term memory**: persist conversations, files, plans, and personal knowledge beyond a temporary browser session.
+- **Agent-owned Activity**: the main Agent proactively maintains a readable local account of meaningful work, results, and deliverables.
 - **Connectivity freedom**: use local/LAN access, your own domain and tunnel, or the optional Personal Agent Cloud Edge.
 - **Model freedom**: use BYOK or an OpenAI-compatible token gateway independently of the selected connectivity mode.
 
@@ -34,14 +34,14 @@ Connectivity and model providers are independent. Disconnecting Cloud must not d
 
 ## Install a release
 
-Beta users download one complete package for their operating system. No preinstalled Node.js, npm, development Agent, or source checkout is required. The current release is `v0.2.0-beta.12`:
+Beta users download one complete package for their operating system. No preinstalled Node.js, npm, development Agent, or source checkout is required. The current release is `v0.2.0-beta.13`:
 
-- Windows x86-64: `personal-agent-node-v0.2.0-beta.12-windows-x64-installer.exe`
-- macOS Apple Silicon: `personal-agent-node-v0.2.0-beta.12-macos-arm64.pkg`
-- macOS Intel: `personal-agent-node-v0.2.0-beta.12-macos-x64.pkg`
-- Linux x86-64 / ARM64: the matching `personal-agent-node-v0.2.0-beta.12-linux-*.tar.zst`
+- Windows x86-64: `personal-agent-node-v0.2.0-beta.13-windows-x64-installer.exe`
+- macOS Apple Silicon: `personal-agent-node-v0.2.0-beta.13-macos-arm64.pkg`
+- macOS Intel: `personal-agent-node-v0.2.0-beta.13-macos-x64.pkg`
+- Linux x86-64 / ARM64: the matching `personal-agent-node-v0.2.0-beta.13-linux-*.tar.zst`
 
-The installer verifies the complete immutable release and bundled Node.js `22.23.1`, retains rollback-safe `current` / `previous` pointers, registers the per-user background service, and opens a one-time authenticated local Setup Center. The user establishes a durable local password there and sees separate checks for installation, Codex, optional public connectivity, Agent mail identity, actual mail delivery, and optional channels.
+The installer verifies the complete immutable release and bundled Node.js `22.23.1`, retains rollback-safe `current` / `previous` pointers, and opens the local Setup Center directly in the lightweight Tauri 2 desktop shell. Direct desktop access never requires login. The shell reuses the system WebView, starts the local runtime when opened, stops it when closed, and bundles neither Chromium nor a second Node.js runtime. The access password is used only by mobile and public-domain access; it can be reset from desktop System Settings and doing so signs out other devices. Browser and CLI recovery remain available while the client is running.
 
 Installation has one home: `~/.personal-agent/core` is the replaceable product runtime, while `~/.personal-agent/workspace` holds the user-owned Harness, plugins, files, and data. Uninstall removes Core and preserves Workspace by default.
 

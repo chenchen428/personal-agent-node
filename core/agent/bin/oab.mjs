@@ -15,7 +15,9 @@ const apiBase = (process.env.OPEN_AGENT_BRIDGE_API_BASE || `http://127.0.0.1:${p
 const token = process.env.OPEN_AGENT_BRIDGE_API_TOKEN || "";
 
 try {
-  if (command === "session" && (subcommand === "list" || subcommand === "search")) {
+  if (command === "memory") {
+    throw new Error("The legacy Memory domain has been removed; the verified main Agent must use personal-agent activity");
+  } else if (command === "session" && (subcommand === "list" || subcommand === "search")) {
     const query = args.query || args.q || (subcommand === "search" ? args._.slice(2).join(" ") : "");
     if (subcommand === "search" && !query) throw new Error("--query is required");
     print(await listSessions({ query }));
@@ -43,42 +45,6 @@ try {
     const sessionId = args.session || args.s;
     if (!sessionId) throw new Error("--session is required");
     print((await get(`/api/sessions/${encodeURIComponent(sessionId)}`)).session);
-  } else if (command === "memory" && subcommand === "sessions") {
-    print(await get(`/api/memory-sessions?limit=${encodeURIComponent(args.limit || "200")}`));
-  } else if (command === "memory" && subcommand === "list") {
-    const params = memoryQueryParams({ defaultLimit: 50 });
-    print(await get(`/api/memories?${params}`));
-  } else if (command === "memory" && subcommand === "recall") {
-    print(await post("/api/memories/recall", {
-      sessionId: currentSessionId(),
-      query: args.query || args.q || args._.slice(2).join(" "),
-      type: args.type,
-      limit: Number(args.limit || 8),
-    }));
-  } else if (command === "memory" && subcommand === "remember") {
-    const content = args.content || args.text || args._.slice(2).join(" ");
-    if (!content) throw new Error("--content is required");
-    print((await post("/api/memories", {
-      sessionId: currentSessionId(),
-      type: args.type || "context",
-      content,
-    })).memory);
-  } else if (command === "memory" && subcommand === "get") {
-    const memoryId = args.id || args.memory;
-    if (!memoryId) throw new Error("--id is required");
-    print((await get(`/api/memories/${encodeURIComponent(memoryId)}`)).memory);
-  } else if (command === "memory" && subcommand === "update") {
-    const memoryId = args.id || args.memory;
-    if (!memoryId) throw new Error("--id is required");
-    const patchBody = {};
-    if (args.type !== undefined) patchBody.type = args.type;
-    if (args.content !== undefined || args.text !== undefined) patchBody.content = args.content || args.text;
-    if (!Object.keys(patchBody).length) throw new Error("--type or --content is required");
-    print((await patch(`/api/memories/${encodeURIComponent(memoryId)}`, patchBody)).memory);
-  } else if (command === "memory" && (subcommand === "forget" || subcommand === "delete")) {
-    const memoryId = args.id || args.memory;
-    if (!memoryId) throw new Error("--id is required");
-    print(await del(`/api/memories/${encodeURIComponent(memoryId)}`));
   } else if (command === "data" && subcommand === "schema") {
     if (args.object || args.table) print((await get(`/api/agent-data/objects/${encodeURIComponent(args.object || args.table)}`)).object);
     else print((await get("/api/agent-data/schema")).objects);
@@ -517,22 +483,6 @@ function channelProvider() {
   return provider;
 }
 
-function currentSessionId() {
-  const sessionId = args.session || args.s || process.env.OPEN_AGENT_BRIDGE_SESSION_ID || "";
-  if (!sessionId) throw new Error("--session is required outside an active Agent Bridge session");
-  return sessionId;
-}
-
-function memoryQueryParams({ defaultLimit }) {
-  const params = new URLSearchParams({
-    sessionId: currentSessionId(),
-    limit: String(args.limit || defaultLimit),
-  });
-  if (args.query || args.q) params.set("query", args.query || args.q);
-  if (args.type) params.set("type", args.type);
-  return params;
-}
-
 function help() {
   console.log(`Usage:
   open-abg session start --task "..." [--parent <session>] [--workspace <path>] [--json]
@@ -541,13 +491,6 @@ function help() {
   open-abg session input --session <id> --text "..." [--notify-wechat]
   open-abg session resume --session <id> --task "..."
   open-abg session status --session <id> [--json]
-  open-abg memory sessions [--limit <n>] [--json]
-  open-abg memory list [--session <id>] [--query "..."] [--type <type>] [--json]
-  open-abg memory recall [--session <id>] [--query "..."] [--type <type>] [--limit <n>] [--json]
-  open-abg memory remember [--session <id>] --type <preference|fact|decision|context|todo|instruction> --content "..."
-  open-abg memory get --id <memory-id> [--json]
-  open-abg memory update --id <memory-id> [--type <type>] [--content "..."]
-  open-abg memory forget --id <memory-id>
   open-abg data status [--json]
   open-abg data schema [--object <table>] [--json]
   open-abg data sql --statement "<SQL>" [--session <id>] [--run <automation-run>] [--json]

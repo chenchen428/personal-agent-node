@@ -26,7 +26,7 @@ test("initializes one stable Site identity and fixed path routes", () => {
     assert.equal(first.config.site.siteId, second.config.site.siteId);
     const config = resolveNodeConfig({ PRIVATE_SITE_DATA_ROOT: dataRoot });
     const routes = buildRoutes(config);
-    for (const prefix of ["/", "/_next/static", "/app", "/app/chat", "/app/channels", "/app/files", "/app/mail", "/app/automations", "/app/data", "/app/schedules", "/app/pages", "/app/releases", "/app/skills", "/app/setup", "/app/update", "/api/app", "/api/chat", "/api/channels", "/api/managed-platforms", "/api/publications", "/api/system", "/api/extensions", "/pages", "/resources", "/blog", "/docs"]) {
+    for (const prefix of ["/", "/login", "/logout", "/_next/static", "/public", "/app", "/app/chat", "/app/channels", "/app/files", "/app/mail", "/app/automations", "/app/data", "/app/schedules", "/app/pages", "/app/releases", "/app/skills", "/app/settings", "/app/setup", "/app/update", "/api/app", "/api/chat", "/api/channels", "/api/managed-platforms", "/api/publications", "/api/system/setup/actions", "/api/system", "/api/extensions", "/pages", "/resources", "/blog", "/docs"]) {
       assert.ok(routes.has(prefix), prefix);
     }
     assert.deepEqual(
@@ -60,6 +60,10 @@ test("initializes one stable Site identity and fixed path routes", () => {
     assert.deepEqual(
       Object.fromEntries(Object.entries(routes.get("/app/update")).filter(([key]) => ["access", "targetKey", "upstreamPath"].includes(key))),
       { access: "local-admin", targetKey: "console", upstreamPath: "/app/update" },
+    );
+    assert.deepEqual(
+      Object.fromEntries(Object.entries(routes.get("/public")).filter(([key]) => ["access", "targetKey", "upstreamPath"].includes(key))),
+      { access: "public", targetKey: "agent", upstreamPath: "/pages" },
     );
     for (const legacy of ["/admin", "/agent", "/api/agent", "/api/files"]) assert.equal(routes.has(legacy), false, legacy);
     assert.equal(config.routingMode, "path");

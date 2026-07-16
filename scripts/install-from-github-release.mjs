@@ -54,7 +54,7 @@ async function main() {
     };
     run(process.execPath, [prepareEntrypoint, 'init', '--domain', args.domain || 'personal-agent.local'], { env: prepareEnvironment });
     run(process.execPath, [prepareEntrypoint, 'prepare'], { env: prepareEnvironment });
-    console.log(JSON.stringify({ ok: true, repository, tag, verifiedSha256: actual, prepared: true, homeRoot, installRoot, dataRoot, current, onboarding: { requiredAction: 'open-setup-center', message: 'Open the authenticated local Setup Center. WeChat and managed connectivity are optional.', setupPath: '/app/setup', wechatRequired: false, statusCommand: 'personal-agent setup status --json' }, connectCommand: 'personal-agent cloud connect --json', connectEntrypoint: `node ${path.join(current, 'core', 'runtime', 'bin', 'personal-agent.mjs')} cloud connect --json` }, null, 2));
+    console.log(JSON.stringify({ ok: true, repository, tag, verifiedSha256: actual, prepared: true, homeRoot, installRoot, dataRoot, current, onboarding: { requiredAction: 'open-setup-center', message: 'Open the local Setup Center directly and complete the required WeChat connection. Managed connectivity remains optional.', setupPath: '/app/setup', wechatRequired: true, statusCommand: 'personal-agent setup status --json' }, connectCommand: 'personal-agent cloud connect --json', connectEntrypoint: `node ${path.join(current, 'core', 'runtime', 'bin', 'personal-agent.mjs')} cloud connect --json` }, null, 2));
   } finally { fs.rmSync(temporary, { recursive: true, force: true }); }
 }
 

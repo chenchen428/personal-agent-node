@@ -14,6 +14,8 @@ import { commandKey, expandCommandName, HANDLED_COMMAND_KEYS } from '../src/comm
 import { localMailPlan, localMailStatus } from '../src/mail.ts';
 import { authorizeCloudResources, managedServiceReadiness, onboardingStatus, refreshCloudResources } from '../src/cloud-resources.ts';
 import { setupStatus } from '../src/setup.ts';
+import { clearDefaultPersonalApp, inspectPersonalApp, publicPersonalApp, readPersonalAppSettings, resolveDefaultPersonalApp, scanPersonalApps, setDefaultPersonalApp, verifyPersonalApp } from '../src/apps.ts';
+import { requestActivity } from '../src/activity.ts';
 
 const handledCommandKeys = new Set(HANDLED_COMMAND_KEYS);
 
@@ -63,8 +65,16 @@ async function executeHandled({ resource, action, id, args, requestedCommand }) 
   if (resource === 'backup' && action === 'status') return backupStatus();
   if (resource === 'mail' && action === 'status') return mailStatus();
   if (resource === 'mail' && action === 'plan') return mailPlan();
+  if (resource === 'app' && action === 'list') return appList();
+  if (resource === 'app' && action === 'inspect') return appInspect(id);
+  if (resource === 'app' && action === 'verify') return appVerify(id);
+  if (resource === 'app' && action === 'set-default') return appSetDefault(id);
+  if (resource === 'app' && action === 'clear-default') return appClearDefault();
   if (resource === 'extension' && action === 'list') return extensionList();
   if (resource === 'extension' && action === 'inspect') return extensionInspect(id);
+  if (resource === 'activity' && ['list', 'search', 'show', 'create', 'upsert', 'update', 'hide', 'restore'].includes(action)) {
+    return activityCommand(action, id, args);
+  }
   if (resource === 'operation' && action === 'list') return controlResult(await requestControl(requireConfig(), 'operation.list'));
   if (resource === 'operation' && action === 'show') return controlResult(await requestControl(requireConfig(), 'operation.inspect', { id }));
   if (resource === 'operation' && action === 'approve') {
@@ -217,6 +227,53 @@ function mailPlan() {
   return success('mail plan', { plan: localMailPlan(config) }, [], ['Review workflows/local-mail.md before configuring a local MTA pipe']);
 }
 
+function appList() {
+  const config = requireConfig();
+  const scan = scanPersonalApps(config);
+  const resolved = resolveDefaultPersonalApp(config);
+  return success('app list', {
+    apps: scan.apps.map(publicPersonalApp),
+    invalid: scan.invalid,
+    defaultAppId: resolved.configuredAppId,
+    effectiveDefaultAppId: resolved.app?.id || '',
+    fallback: resolved.fallback,
+  });
+}
+
+function appInspect(id) {
+  requireId(id, 'App id');
+  try { return success('app inspect', { app: publicPersonalApp(inspectPersonalApp(requireConfig(), id)) }); }
+  catch (error) { throw cliError('NOT_FOUND', error.message || `Unknown App: ${id}`, 3); }
+}
+
+function appVerify(id) {
+  requireId(id, 'App id');
+  try {
+    const app = verifyPersonalApp(requireConfig(), id);
+    if (!app.compatible) throw new Error(`App requires unsupported Node API ${app.requires.nodeApi}`);
+    return success('app verify', { verified: true, app: publicPersonalApp(app) });
+  } catch (error) {
+    throw cliError('ACCEPTANCE_FAILED', error.message || `App verification failed: ${id}`, 8);
+  }
+}
+
+function appSetDefault(id) {
+  requireId(id, 'App id');
+  try {
+    const resolved = setDefaultPersonalApp(requireConfig(), id);
+    return success('app set-default', { defaultAppId: resolved.app.id, route: `/apps/${resolved.app.id}/` });
+  } catch (error) {
+    throw cliError('ACCEPTANCE_FAILED', error.message || `Unable to select App: ${id}`, 8);
+  }
+}
+
+function appClearDefault() {
+  const config = requireConfig();
+  const previous = readPersonalAppSettings(config).defaultAppId || '';
+  clearDefaultPersonalApp(config);
+  return success('app clear-default', { previousDefaultAppId: previous, defaultAppId: '', route: '/app' });
+}
+
 function extensionList() {
   const config = requireConfig();
   return success('extension list', { extensions: listExtensions(config) });
@@ -227,6 +284,44 @@ function extensionInspect(id) {
   const extension = extensionList().result.extensions.find((entry) => entry.id === id);
   if (!extension) throw cliError('NOT_FOUND', `Unknown extension: ${id}`, 3);
   return success('extension inspect', { extension });
+}
+
+async function activityCommand(action, id, args) {
+  const config = requireConfig();
+  const activityId = ['show', 'update', 'hide', 'restore'].includes(action) ? requireActivityId(id) : '';
+  const input = {};
+  if (['list', 'search'].includes(action)) {
+    if (args.query) input.query = args.query;
+    if (args.type) input.type = args.type;
+    if (args.limit !== undefined) input.limit = numericOption(args.limit, '--limit');
+    if (args.cursor) input.cursor = args.cursor;
+    if (args.includeHidden) input.includeHidden = true;
+  } else if (action === 'show') {
+    if (args.includeHidden) input.includeHidden = true;
+  } else if (['create', 'upsert', 'update'].includes(action)) {
+    if (args.type) input.type = args.type;
+    if (args.title) input.title = args.title;
+    if (args.detail) input.detail = args.detail;
+    if (args.attachments.length) input.attachments = args.attachments;
+    if (args.targetType || args.targetId) input.target = { type: args.targetType || '', id: args.targetId || '' };
+    if (args.correlationKey) input.correlationKey = args.correlationKey;
+    if (args.idempotencyKey) input.idempotencyKey = args.idempotencyKey;
+    if (args.occurredAt) input.occurredAt = args.occurredAt;
+    if (action === 'update') input.expectedRevision = numericOption(args.expectedRevision, '--expected-revision');
+  } else if (action === 'hide') {
+    input.reason = args.reason || '';
+    input.expectedRevision = numericOption(args.expectedRevision, '--expected-revision');
+  } else if (action === 'restore') {
+    input.expectedRevision = numericOption(args.expectedRevision, '--expected-revision');
+  }
+  const requestId = args.requestId || `cli-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+  const result = await requestActivity(config, args.capability, {
+    action: action === 'list' ? 'search' : action === 'show' ? 'get' : action,
+    activityId,
+    input,
+    requestId,
+  });
+  return success(`activity ${action}`, { activity: result.data });
 }
 
 function helpResult(args) {
@@ -304,6 +399,26 @@ function commandHelp(command, descriptor) {
       },
     };
   }
+  if (command.startsWith('activity ')) {
+    return {
+      name: command,
+      usage: activityUsage(command),
+      risk: descriptor.risk,
+      capability: descriptor.capability,
+      implementationStatus: descriptor.implementationStatus,
+      description: descriptor.description,
+      options: [
+        ...commonOptions,
+        { name: '--capability', type: 'secret', required: true, secret: true, description: 'Use the ephemeral capability issued to the current verified main-Agent turn.' },
+      ],
+      authorization: {
+        method: 'ephemeral-main-agent-capability',
+        userActionRequired: false,
+        expiresAtTurnEnd: true,
+        workerDelegationAllowed: false,
+      },
+    };
+  }
   return {
     name: command,
     usage: `personal-agent ${command} --json`,
@@ -367,6 +482,26 @@ function requireId(value, label) {
   if (!value) throw cliError('INVALID_ARGUMENT', `Missing ${label}`, 2);
 }
 
+function requireActivityId(value) {
+  requireId(value, 'Activity id');
+  return value;
+}
+
+function numericOption(value, name) {
+  const number = Number(value);
+  if (!Number.isInteger(number) || number < 0) throw cliError('INVALID_ARGUMENT', `${name} requires a non-negative integer`, 2);
+  return number;
+}
+
+function activityUsage(command) {
+  if (command === 'activity search' || command === 'activity list') return `personal-agent ${command} --capability <ephemeral> [--query <text>] [--type <type>] [--limit <n>] [--cursor <cursor>] [--include-hidden] --json`;
+  if (command === 'activity show') return 'personal-agent activity show <id> --capability <ephemeral> [--include-hidden] --json';
+  if (command === 'activity create' || command === 'activity upsert') return `personal-agent ${command} --capability <ephemeral> --type <type> --title <text> --detail <text> --idempotency-key <key> [--attachment <object-id>] [--correlation-key <key>] --json`;
+  if (command === 'activity update') return 'personal-agent activity update <id> --capability <ephemeral> --expected-revision <n> [--title <text>] [--detail <text>] [--attachment <object-id>] --json';
+  if (command === 'activity hide') return 'personal-agent activity hide <id> --capability <ephemeral> --expected-revision <n> --reason <text> --json';
+  return 'personal-agent activity restore <id> --capability <ephemeral> --expected-revision <n> --json';
+}
+
 function readJsonIfExists(file) {
   if (!fs.existsSync(file)) return null;
   return JSON.parse(fs.readFileSync(file, 'utf8'));
@@ -378,7 +513,7 @@ function resolveInstallRoot() {
 }
 
 function parseArgs(argv) {
-  const result = { _: [], json: false, help: false, preview: false, all: false };
+  const result = { _: [], json: false, help: false, preview: false, all: false, attachments: [] };
   for (let index = 0; index < argv.length; index += 1) {
     const value = argv[index];
     if (value === '--json' || value === '--output=json') result.json = true;
@@ -389,6 +524,23 @@ function parseArgs(argv) {
     else if (value === '--digest') result.digest = argv[++index];
     else if (value === '--cloud-url') result.cloudUrl = argv[++index];
     else if (value === '--no-open') result.noOpen = true;
+    else if (value === '--capability') result.capability = argv[++index];
+    else if (value === '--request-id') result.requestId = argv[++index];
+    else if (value === '--query') result.query = argv[++index];
+    else if (value === '--type') result.type = argv[++index];
+    else if (value === '--title') result.title = argv[++index];
+    else if (value === '--detail') result.detail = argv[++index];
+    else if (value === '--attachment') result.attachments.push(argv[++index]);
+    else if (value === '--target-type') result.targetType = argv[++index];
+    else if (value === '--target-id') result.targetId = argv[++index];
+    else if (value === '--correlation-key') result.correlationKey = argv[++index];
+    else if (value === '--idempotency-key') result.idempotencyKey = argv[++index];
+    else if (value === '--occurred-at') result.occurredAt = argv[++index];
+    else if (value === '--expected-revision') result.expectedRevision = argv[++index];
+    else if (value === '--reason') result.reason = argv[++index];
+    else if (value === '--limit') result.limit = argv[++index];
+    else if (value === '--cursor') result.cursor = argv[++index];
+    else if (value === '--include-hidden') result.includeHidden = true;
     else if (value.startsWith('-')) throw cliError('INVALID_ARGUMENT', `Unknown option: ${value}`, 2);
     else result._.push(value);
   }

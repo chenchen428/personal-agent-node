@@ -10,7 +10,7 @@ Releases use immutable `v<package-version>` tags. The tag must exactly match eve
 6. Generate `RELEASE-SECURITY.json`, `SHA256SUMS`, keyless Sigstore bundles, and GitHub build provenance for every published byte.
 7. Publish the artifacts to the matching GitHub Release only after every platform job succeeds.
 
-The native setup executable owns install, upgrade, rollback, and uninstall. It atomically advances `current`, retains `previous`, activates the per-user service, and opens `/app/setup`. A failed candidate restores the previous pointer and service definition. Rollback never deletes mutable data; uninstall requires `--confirm-remove-binaries` and preserves the data root by default.
+The native setup executable owns install, upgrade, rollback, and uninstall. It atomically advances `current`, retains `previous`, installs the desktop entry, and opens `/app/setup`. The desktop client starts the local runtime and stops it on exit. A failed candidate restores the previous pointer. Rollback never deletes mutable data; uninstall requires `--confirm-remove-binaries` and preserves the data root by default.
 
 For `v0.1.0-beta.24`, the primary customer assets are:
 
@@ -34,8 +34,8 @@ Record only the canonical sanitized object, without prompt, reply, or session id
   "uniquePrompt": true,
   "realAgentRuntime": true,
   "sameSessionAgentReply": true,
-  "wechatRequired": false
+  "wechatRequired": true
 }
 ```
 
-Any missing required boolean, mock runtime, cross-session reply, undisclosed signing status, missing stable native signature, or unavailable rollback fails release acceptance. A disclosed unsigned prerelease can pass the Beta release gate but never the stable/final native-trust gate. Cloud, public mail, and WeChat remain optional and do not affect the local Web gate.
+Any missing required boolean, mock runtime, cross-session reply, undisclosed signing status, missing stable native signature, unavailable rollback, or unconnected required WeChat channel fails release acceptance. A disclosed unsigned prerelease can pass the Beta release gate but never the stable/final native-trust gate. Cloud and public mail remain optional; WeChat readiness is required in addition to the independent local Web gate.

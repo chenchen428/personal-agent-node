@@ -20,7 +20,7 @@ export function MailDashboard() {
   const [message, setMessage] = useState("");
   const input = useRef<HTMLInputElement>(null);
 
-  const refresh = useCallback(async (messageId = selectedId) => {
+  const refresh = useCallback(async (messageId = "") => {
     setLoading(true);
     try {
       const [statusResponse, viewResponse] = await Promise.all([
@@ -39,9 +39,13 @@ export function MailDashboard() {
     } finally {
       setLoading(false);
     }
-  }, [selectedId]);
+  }, []);
 
-  useEffect(() => { void refresh(); }, [refresh]);
+  useEffect(() => {
+    const requestedMessage = new URLSearchParams(window.location.search).get("message") || "";
+    setSelectedId(requestedMessage);
+    void refresh(requestedMessage);
+  }, [refresh]);
 
   const select = (id: string) => {
     setSelectedId(id);
@@ -76,7 +80,7 @@ export function MailDashboard() {
       <div><span className={`semantic-dot ${status?.ingress.ready ? "is-ready" : "is-warning"}`} /><span>本机入口</span><strong>{status?.ingress.ready ? "可接收" : "待接入"}</strong></div>
       <div><Archive className="size-4" /><span>本机归档</span><strong>{status?.archive.messages ?? 0} 封</strong></div>
       <div><ShieldCheck className="size-4" /><span>数据位置</span><strong>仅 Workspace</strong></div>
-      <Button variant="outline" size="icon" type="button" aria-label="刷新邮件" title="刷新" onClick={() => void refresh()} disabled={loading}><RefreshCw className={loading ? "size-4 animate-spin" : "size-4"} /></Button>
+      <Button variant="outline" size="icon" type="button" aria-label="刷新邮件" title="刷新" onClick={() => void refresh(selectedId)} disabled={loading}><RefreshCw className={loading ? "size-4 animate-spin" : "size-4"} /></Button>
     </div>
 
     <details className="mail-connection-guide" open={!view.events.length}>

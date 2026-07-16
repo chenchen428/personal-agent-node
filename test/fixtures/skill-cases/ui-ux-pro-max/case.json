@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "skill": "ui-ux-pro-max",
+  "title": "Local design intelligence query",
+  "prompt": "Generate a design-system recommendation for a local-first personal knowledge workspace.",
+  "commands": [
+    "python skills/ui-ux-pro-max/scripts/search.py \"local-first personal knowledge workspace\" --design-system --json"
+  ],
+  "artifacts": [
+    {
+      "path": "design-system.json",
+      "label": "Deterministic local search result"
+    }
+  ],
+  "verifiedAt": "2026-07-16"
+}

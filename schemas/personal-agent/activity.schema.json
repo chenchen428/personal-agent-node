@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Personal Agent Activity",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "id", "type", "title", "detail", "attachments", "state", "revision", "occurredAt", "createdAt", "updatedAt"],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "id": { "type": "string", "pattern": "^act_[a-f0-9]{24}$" },
+    "type": { "enum": ["work", "page", "mail", "data", "automation", "note"] },
+    "title": { "type": "string", "minLength": 1, "maxLength": 30 },
+    "detail": { "type": "string", "minLength": 1, "maxLength": 2000 },
+    "attachments": {
+      "type": "array",
+      "maxItems": 10,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["kind", "name", "contentType", "sizeBytes", "visibility"],
+        "properties": {
+          "kind": { "enum": ["image", "file"] },
+          "name": { "type": "string", "minLength": 1, "maxLength": 255 },
+          "contentType": { "type": "string", "minLength": 1, "maxLength": 255 },
+          "sizeBytes": { "type": "integer", "minimum": 0 },
+          "visibility": { "enum": ["private", "public"] }
+        }
+      }
+    },
+    "target": {
+      "oneOf": [
+        { "type": "null" },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["type", "id"],
+          "properties": {
+            "type": { "enum": ["work", "page", "mail", "data", "automation", "app"] },
+            "id": { "type": "string", "minLength": 1, "maxLength": 200 }
+          }
+        }
+      ]
+    },
+    "correlationKey": { "type": "string", "maxLength": 160 },
+    "state": { "enum": ["visible", "hidden"] },
+    "hiddenReason": { "type": "string", "maxLength": 300 },
+    "revision": { "type": "integer", "minimum": 1 },
+    "occurredAt": { "type": "string", "format": "date-time" },
+    "createdAt": { "type": "string", "format": "date-time" },
+    "updatedAt": { "type": "string", "format": "date-time" }
+  }
+}

@@ -15,7 +15,7 @@ test("channel page is status-only and explains the Agent collaboration workflow"
   assert.match(html, /确认开始/);
   assert.match(html, /自动监听服务器浏览器/);
   assert.match(html, /短信验证码只会由当前登录会话一次性代填/);
-  assert.match(html, /不进入普通 Agent 会话、记忆或日志/);
+  assert.match(html, /不进入普通 Agent 会话、动态或日志/);
   assert.doesNotMatch(html, /完成后回复/);
   assert.match(html, /\/api\/channels\/xiaohongshu\/status/);
   assert.doesNotMatch(html, /href="\/(?:admin|agent)|\/api\/agent/);
@@ -38,6 +38,7 @@ test("Node distribution verification targets the unified Next.js application con
   const verifier = fs.readFileSync(fileURLToPath(new URL("../../../scripts/verify-private-site-node-dist.mjs", import.meta.url)), "utf8");
   assert.match(verifier, /health\.architecture === "core-workspace"/);
   assert.match(verifier, /\/api\/system\/setup/);
-  assert.match(verifier, /page\.includes\("SETUP CENTER"\)/);
+  assert.match(verifier, /page\.includes\("初始化向导"\)/);
+  assert.match(verifier, /page\.includes\("把 PA 准备好"\)/);
   assert.doesNotMatch(verifier, /server\.includes\("data-status"\)/);
 });

@@ -27,7 +27,7 @@ const categoryLabels: Record<string, string> = {
   connectivity: "公网与邮箱",
   "mail-identity": "Agent 邮箱",
   "local-mail": "本地邮件",
-  "optional-channels": "扩展渠道",
+  channels: "微信渠道",
 };
 
 const optionalTitles: Record<string, string> = {
@@ -39,7 +39,7 @@ export function canonicalSetupAction(id: string) {
 }
 
 export function validateLocalPasswordInput(password: string, confirmation: string) {
-  if (!password) return "请输入本机登录密码。";
+  if (!password) return "请输入访问密码。";
   if (password.length < 12) return `密码至少需要 12 个字符，还差 ${12 - password.length} 个。`;
   if (!confirmation) return "请再次输入密码进行确认。";
   if (password !== confirmation) return "两次输入的密码不一致。";

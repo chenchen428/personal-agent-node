@@ -2,31 +2,31 @@
 
 ## Install an immutable release
 
-Set `TAG=v0.2.0-beta.12` and open the matching [GitHub Release](https://github.com/chenchen428/personal-agent-node/releases/tag/v0.2.0-beta.12). A customer machine does not need Node.js, npm, Git, a source checkout, or a development Agent.
+Set `TAG=v0.2.0-beta.13` and open the matching [GitHub Release](https://github.com/chenchen428/personal-agent-node/releases/tag/v0.2.0-beta.13). A customer machine does not need Node.js, npm, Git, a source checkout, or a development Agent.
 
 | Computer | Asset |
 | --- | --- |
-| Windows x86-64 | `personal-agent-node-v0.2.0-beta.12-windows-x64-installer.exe` |
-| macOS Apple Silicon | `personal-agent-node-v0.2.0-beta.12-macos-arm64.pkg` |
-| macOS Intel | `personal-agent-node-v0.2.0-beta.12-macos-x64.pkg` |
-| Linux x86-64 | `personal-agent-node-v0.2.0-beta.12-linux-x64.tar.zst` |
-| Linux ARM64 | `personal-agent-node-v0.2.0-beta.12-linux-arm64.tar.zst` |
+| Windows x86-64 | `personal-agent-node-v0.2.0-beta.13-windows-x64-installer.exe` |
+| macOS Apple Silicon | `personal-agent-node-v0.2.0-beta.13-macos-arm64.pkg` |
+| macOS Intel | `personal-agent-node-v0.2.0-beta.13-macos-x64.pkg` |
+| Linux x86-64 | `personal-agent-node-v0.2.0-beta.13-linux-x64.tar.zst` |
+| Linux ARM64 | `personal-agent-node-v0.2.0-beta.13-linux-arm64.tar.zst` |
 
 On Windows, run the installer. On macOS, open the package. On Linux, unpack the matching archive with the desktop archive manager or `tar --zstd`, then run `./personal-agent-setup` from the extracted directory.
 
-Each package contains the Go setup executable, stable launcher, exact Node.js `22.23.1` runtime, and immutable application payload. Setup verifies embedded checksums, stages the release, initializes the Workspace, switches `current` while retaining `previous`, registers the per-user service, waits for the local gateway, and opens a single-use loopback Setup Center session. The only default home is `~/.personal-agent`: product releases live under `core/`, while Harness, plugins, files, databases, mail and other user-owned state live under `workspace/`.
+Each package contains the Go setup executable, stable CLI and desktop launchers, the exact Node.js `22.23.1` runtime, the platform Tauri 2 shell, and the immutable application payload. Setup verifies embedded checksums, stages the release, initializes the Workspace, switches `current` while retaining `previous`, installs the desktop entry, and opens the local Setup Center directly in the shell. Direct loopback desktop access requires no login; tunneled mobile and public-domain access still requires the access password. The shell uses the system WebView, starts the bundled runtime without a terminal, and stops it when the client closes. The only default home is `~/.personal-agent`: product releases live under `core/`, while Harness, plugins, files, databases, mail and other user-owned state live under `workspace/`.
 
 Release assets include `RELEASE-SECURITY.json`, `SHA256SUMS`, Sigstore bundles, provenance, and an SBOM. Beta/RC packages may defer paid Windows and Apple native signing and can therefore trigger an operating-system approval warning; the security metadata records that fact explicitly. Stable releases require Authenticode plus Apple Developer ID/notarization and fail closed when either is absent.
 
 ## Finish setup in the browser
 
-The browser opens `/app/setup` automatically. Work through the cards in order:
+The Personal Agent desktop window opens `/app/setup` automatically. If the shell cannot start, the browser recovery command below opens the same route. Work through the cards in order:
 
 1. Set your own local access password. Only a salted scrypt verifier is retained; the install-time migration password is removed.
 2. Install or sign in to Codex when requested, retry the app-server handshake, and complete one real authenticated `/app/chat` reply.
 3. Keep `local-only` when no public access is needed, or select Personal Agent Cloud and approve the browser authorization flow.
 4. Treat the public domain and Agent mail address as identity checks. Mail becomes operational only after a real local message and recovery check pass.
-5. Bind WeChat only when wanted. It is optional and never blocks local Web use.
+5. Open Channels, generate the one-time WeChat QR code, scan it in WeChat, and keep the page open until the required connection reports ready.
 
 Setup repairs that mutate the machine use a digest-bound R2 plan, an explicit local confirmation, one execution, and a local audit record. Read-only retry and guidance actions do not mutate state.
 
@@ -48,17 +48,17 @@ Advanced operators may still use `personal-agent cloud connect --json`, `persona
 
 ## Upgrade and rollback
 
-Running a newer platform package uses the same verified transaction. A failed candidate restores the old `current` pointer and service definition. The native recovery command remains available even when Node cannot start:
+Running a newer platform package uses the same verified transaction. A failed candidate restores the old `current` pointer. The native recovery command remains available even when Node cannot start:
 
 ```bash
 personal-agent-setup rollback
 ```
 
-Rollback changes immutable binaries and service registration only. It does not delete the data root. Keep backups before schema-changing upgrades.
+Rollback changes immutable binaries only. It does not delete the data root. Keep backups before schema-changing upgrades.
 
 ## Uninstall
 
-Uninstall requires an explicit binary-removal confirmation. It unregisters the per-user service and removes the installed program, while preserving the data root by default:
+Uninstall requires an explicit binary-removal confirmation. It stops the client-owned runtime and removes the installed program, while preserving the data root by default:
 
 ```bash
 personal-agent-setup uninstall --confirm-remove-binaries
@@ -81,7 +81,7 @@ npm run check
 
 The bridge command creates ignored development-only links for `.agents`, `.codex`, `.claude`, `.cursor`, and `CLAUDE.md`. The installed product creates only the canonical workspace and `.codex/skills` bridge.
 
-Final Node acceptance uses the public GitHub Release installation's authenticated local `/app/chat`. Sanitized evidence records `releaseAssetRuntime=true`, `route=/app/chat`, `authenticated=true`, `uniquePrompt=true`, `realAgentRuntime=true`, `sameSessionAgentReply=true`, and `wechatRequired=false`; it stores no prompt, reply, or session identifier.
+Final Node acceptance uses the public GitHub Release installation's authenticated local `/app/chat`. Sanitized evidence records `releaseAssetRuntime=true`, `route=/app/chat`, `authenticated=true`, `uniquePrompt=true`, `realAgentRuntime=true`, `sameSessionAgentReply=true`, and `wechatRequired=true`, and separately proves `channels.wechat=ready`; it stores no prompt, reply, session identifier, QR content, or channel credential.
 
 ## Discover CLI capabilities
 

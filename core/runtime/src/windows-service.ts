@@ -1,7 +1,6 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { workspaceRoot } from "./config.ts";
 
 export const windowsServiceId = "PrivateSiteNode";
 
@@ -10,11 +9,11 @@ export function prepareWindowsService(config, options = {}) {
   const taskDir = path.join(config.dataRoot, "runtime", "windows-task");
   fs.mkdirSync(taskDir, { recursive: true, mode: 0o700 });
   const taskXmlPath = path.join(taskDir, `${windowsServiceId}.xml`);
-  const cliPath = options.cliPath || path.join(workspaceRoot, "core", "runtime", "bin", "private-site.mjs");
+  const installRoot = options.installRoot || process.env.PRIVATE_SITE_INSTALL_ROOT || path.join(config.homeRoot, "core");
+  const servicePath = options.servicePath || path.join(installRoot, "bin", "personal-agent-service.exe");
   const userId = options.userId || windowsUserId();
   fs.writeFileSync(taskXmlPath, renderWindowsScheduledTask(config, {
-    cliPath,
-    nodePath: options.nodePath || process.execPath,
+    servicePath,
     userId,
   }), "utf8");
   return {
@@ -28,7 +27,8 @@ export function prepareWindowsService(config, options = {}) {
   };
 }
 
-export function renderWindowsScheduledTask(config, { cliPath, nodePath = process.execPath, userId } = {}) {
+export function renderWindowsScheduledTask(config, { servicePath, userId } = {}) {
+  if (!servicePath) throw new Error("The Windows background service host path is required");
   return `<?xml version="1.0"?>
 <Task version="1.4" xmlns="http://schemas.microsoft.com/windows/2004/02/mit/task">
   <RegistrationInfo>
@@ -68,9 +68,9 @@ export function renderWindowsScheduledTask(config, { cliPath, nodePath = process
   </Settings>
   <Actions Context="Author">
     <Exec>
-      <Command>${xmlEscape(nodePath)}</Command>
-      <Arguments>&quot;${xmlEscape(cliPath)}&quot; start --data-root &quot;${xmlEscape(config.dataRoot)}&quot;</Arguments>
-      <WorkingDirectory>${xmlEscape(workspaceRoot)}</WorkingDirectory>
+      <Command>${xmlEscape(servicePath)}</Command>
+      <Arguments>--data-root &quot;${xmlEscape(config.dataRoot)}&quot;</Arguments>
+      <WorkingDirectory>${xmlEscape(path.dirname(servicePath))}</WorkingDirectory>
     </Exec>
   </Actions>
 </Task>

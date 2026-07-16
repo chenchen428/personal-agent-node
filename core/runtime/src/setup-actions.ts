@@ -9,7 +9,7 @@ import { removeSecretEnvKeys, resolveNodeConfig, writeJsonAtomic, workspaceRoot 
 const mutationActions = Object.freeze({
   'installation.local-auth': {
     risk: 'R2',
-    summary: 'Set a durable local access password',
+    summary: 'Set the durable password for remote and mobile access',
     target: 'local-auth',
   },
   'connectivity.managed-authorize': {
@@ -55,7 +55,7 @@ function enableMailChecks({ dataRoot }) {
 
 function establishLocalAuth({ input, dataRoot }) {
   const password = String(input?.password || '');
-  if (password !== String(input?.confirmation || '')) throw setupActionError('PASSWORD_CONFIRMATION_MISMATCH', '两次输入的本机密码不一致');
+  if (password !== String(input?.confirmation || '')) throw setupActionError('PASSWORD_CONFIRMATION_MISMATCH', '两次输入的访问密码不一致');
   const config = resolveNodeConfig({ ...process.env, PRIVATE_SITE_DATA_ROOT: dataRoot });
   const verifierFile = path.join(config.configDir, 'local-auth.json');
   writePasswordVerifier(verifierFile, password);

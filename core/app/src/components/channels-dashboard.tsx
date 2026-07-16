@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { WechatConnectPanel } from "@/components/wechat-connect-panel";
 import { RefreshCw } from "lucide-react";
 
 type Channel = {
@@ -64,13 +65,14 @@ export function ChannelsDashboard() {
         {channels.map((channel, index) => {
           const tone = toneFor(channel.state);
           return (
-            <Card className={`channel-card tone-${tone}`} key={channel.provider}>
+            <Card className={`channel-card tone-${tone}`} id={channel.provider} key={channel.provider}>
               <CardHeader><div className="channel-card-meta"><span className="channel-index">0{index + 1}</span><Badge variant={tone}><i className="semantic-dot" />{channel.statusLabel}</Badge></div></CardHeader>
               <CardContent>
                 <div className="channel-symbol" aria-hidden="true">{channel.label.slice(0, 1)}</div>
                 <CardTitle>{channel.label}</CardTitle>
                 <CardDescription>{channel.description || "该渠道已注册到本机 Agent。"}</CardDescription>
                 <div className="capability-list">{capabilitiesOf(channel).map((capability) => <Badge key={capability}>{capabilityLabels[capability] || capability.replaceAll("_", " ")}</Badge>)}</div>
+                {channel.provider === "wechat" ? <WechatConnectPanel connected={channel.state === "connected"} onConnected={refresh} /> : null}
               </CardContent>
               <CardFooter><code>{channel.provider}</code><span>{channel.readOnly ? "只读" : "双向"}</span></CardFooter>
             </Card>

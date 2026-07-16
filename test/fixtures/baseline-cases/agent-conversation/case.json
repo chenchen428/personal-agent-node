@@ -11,6 +11,11 @@
     "Conversation execution does not require Cloud",
     "Release and final acceptance install the GitHub Release asset and use authenticated /app/chat",
     "A unique prompt reaches the real Agent runtime and its Agent reply is observed in the same session",
-    "wechatRequired is false and WeChat remains optional"
+    "wechatRequired is true and the channels.wechat Setup check is ready",
+    "Only the canonical main Agent can operate Activity",
+    "Activity is never generated from system events",
+    "Titles are limited to 30 visible characters and attachments to ten",
+    "Search and update are owner-local and revision-safe",
+    "The legacy Memory product surface is unavailable"
   ]
 }

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Travel Guidebook"
+  short_description: "Create researched printable travel guidebook PDFs"
+  default_prompt: "Use $travel-guidebook to turn this itinerary into a printable guidebook."

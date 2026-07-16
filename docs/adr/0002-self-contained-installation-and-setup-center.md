@@ -1,6 +1,7 @@
 # ADR 0002: Self-contained installation and local Setup Center
 
 Managed Cloud tunnel implementation details in this ADR are superseded by [ADR 0004](0004-managed-cloud-reverse-tunnel.md).
+The original optional-WeChat decision was amended on 2026-07-15: WeChat is now a required guided Agent-readiness check, while the authenticated Web conversation remains an independent required fact.
 
 - Status: Accepted
 - Date: 2026-07-15
@@ -38,10 +39,9 @@ but it does not provide a complete setup state machine or guided remediation.
 prove that the supervisor, authenticated Console, Codex app-server, real Web
 conversation, public route, or mail delivery path works.
 
-The Phase 0 baseline also says that a fresh installation immediately prompts for
-WeChat binding, while final conversation acceptance explicitly records
-`wechatRequired=false`. This makes an optional channel look like a core product
-prerequisite.
+The initial Phase 0 baseline treated WeChat as optional. Product policy now requires
+the Setup Center to provide a direct QR connection flow and keep Agent readiness
+incomplete until that connection is established.
 
 ## Decision drivers
 
@@ -244,8 +244,9 @@ Allowed requirement values are:
 - `optional`
 
 The product exposes multiple readiness dimensions instead of one misleading
-`complete` boolean. A local-only user can have `console=ready` and `agent=ready`
-while `remote=not-selected`, `mail=not-selected`, and WeChat remains optional.
+`complete` boolean. A local-only user can have `console=ready` while
+`remote=not-selected` and `mail=not-selected`; `agent=ready` additionally requires
+the independently verified Web conversation and WeChat connection.
 
 All evidence fields are allowlisted and redacted by schema. Error stacks, command
 lines containing secrets, environment values, OAuth state, device codes, tokens,
@@ -262,7 +263,7 @@ The Setup Center groups checks in this order:
 | Connectivity | selected mode, browser authorization, enrollment, tunnel, DNS, TLS, remote route | selected remote mode is externally usable |
 | Agent mail identity | public domain and matching Agent address | identity is bound; no delivery claim is made |
 | Local mail | source connector/MTA, ingest shim, real `.eml`, `/app/mail`, backup/restore | actual local mail workflow is operational |
-| Optional channels | WeChat and later channels | selected channel is healthy without gating Web use |
+| Required channels | WeChat | the QR-bound WeChat identity is healthy; it does not replace Web conversation evidence |
 
 Every card shows a human summary, evidence safe to display, why it matters, the
 next action, and a retry button. Missing optional capabilities use neutral
@@ -282,7 +283,7 @@ personal-agent doctor --json
 ```
 
 `doctor` and `setup status` remain R0 and never mutate state. `setup open` only
-opens the authenticated loopback Setup Center and never prints its setup nonce.
+opens the loopback Setup Center directly without desktop authentication or a setup nonce.
 
 Setup actions reuse the operation protocol:
 
@@ -359,12 +360,12 @@ mail support from an HTTPS page. The setup action may guide a user to an existin
 mail connector or a reviewed local MTA plan; execution remains preview-only until
 locally approved.
 
-### 12. Move WeChat after core Web readiness
+### 12. Require a guided WeChat connection
 
-WeChat remains a visible recommended channel, but it is optional and appears
-after Installation and Agent readiness. Fresh-install acceptance opens Setup
-Center, not WeChat binding. Post-binding capability notification remains a
-WeChat-channel acceptance fact, not an installation prerequisite.
+WeChat appears as a required Agent-readiness task after the core runtime checks.
+The Setup Center links directly to a Channels page that generates a one-time QR,
+explains the mobile confirmation steps, and polls until the connection is ready.
+The Web conversation and WeChat connection remain separate acceptance facts.
 
 ### 13. Replace prompt-based support with sanitized diagnostics
 
@@ -397,7 +398,7 @@ provider client, Skills, mail, and automation. Rewriting these domains would add
 risk without improving installation. Bundling an exact Node runtime removes the
 user-facing Node.js prerequisite while preserving the product implementation.
 
-### Not selected now: Rust
+### Not selected then: Rust for the installer
 
 Rust is a strong candidate when a component needs long-lived privileged native
 code, low-level networking, a desktop shell, or strict control of memory and
@@ -409,6 +410,8 @@ therefore add build and contributor complexity without enough current benefit.
 Reconsider Rust if Personal Agent later owns a persistent native tunnel, OS
 credential broker, filesystem watcher with elevated privileges, or desktop tray.
 That decision would be scoped to the native subsystem, not a Node product rewrite.
+ADR 0005 subsequently selects Rust and Tauri only for the optional desktop window;
+the Go setup and launcher remain the installation and recovery root of trust.
 
 ### Not selected: Node.js Single Executable Applications
 
@@ -512,7 +515,7 @@ No public installation claim changes before these contract changes are accepted.
 
 - Move Managed Cloud browser authorization into Setup Center.
 - Add public-domain, tunnel, DNS, TLS, Agent mail identity, real local mail, and
-  optional WeChat cards.
+  a required guided WeChat QR connection card.
 - Add sanitized diagnostic export.
 - Remove the long copyable Agent installation prompt from the normal UI and docs.
 
@@ -547,7 +550,7 @@ A Node release using this design passes only when sanitized evidence proves:
    device code or token.
 9. Agent mail identity never sets `mailOperational`; a real local message and
    recovery evidence do.
-10. WeChat is optional and does not block Web conversation acceptance.
+10. WeChat connection is required for Agent readiness, and the independent Web conversation acceptance must also pass.
 11. A failed candidate automatically restores the previous release, and explicit
     rollback remains available even when the current Node process cannot start.
 12. Uninstall removes product binaries and services only after explicit local

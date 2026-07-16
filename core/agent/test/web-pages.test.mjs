@@ -2,7 +2,18 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import test from "node:test";
 import vm from "node:vm";
-import { renderAutomationPage, renderCronPage, renderDashboard, renderDataPage, renderMemoryPage, renderMessagesFragment, renderNewSession, renderPrivateFileBatch, renderReleaseNotesPage, renderSessionDetail, renderSkillCatalogPage } from "../src/web/pages.js";
+import { renderAutomationPage, renderCronPage, renderDashboard, renderDataPage, renderMessagesFragment, renderNewSession, renderPagesIndex, renderPrivateFileBatch, renderReleaseNotesPage, renderSessionDetail, renderSkillCatalogPage } from "../src/web/pages.js";
+
+test("public pages use the Personal Agent surface and canonical public URLs", () => {
+  const html = renderPagesIndex({
+    assets: [{ publicPath: "/uploads/demo/report.html", url: "https://pages.personal-agent.local/uploads/demo/report.html", updatedAt: "2026-07-15T08:00:00.000Z" }],
+  });
+
+  assert.match(html, /<title>公开页面 · Personal Agent<\/title>/);
+  assert.match(html, /href="\/public\/uploads\/demo\/report\.html"/);
+  assert.match(html, /只有 <code>\/public<\/code> 下的内容无需登录/);
+  assert.doesNotMatch(html, /pages\.personal-agent\.local|Open Agent Bridge Pages/);
+});
 
 test("token usage dialog carries an opaque themed surface", () => {
   const html = renderDashboard({
@@ -41,7 +52,7 @@ test("token usage dialog carries an opaque themed surface", () => {
   assert.doesNotMatch(html, /href="\/app\/releases"/);
   assert.match(html, /\.console-header\{position:relative;z-index:40;[^}]*overflow:visible/);
   assert.match(html, /\.console-menu-popover\{position:absolute;z-index:60;[^}]*background:#fffdf8/);
-  assert.match(html, /href="\/app\/chat\/memory"/);
+  assert.doesNotMatch(html, /href="\/app\/chat\/memory"/);
   assert.match(html, /href="\/app\/data"/);
   assert.match(html, /href="\/app\/automations"/);
   assert.match(html, /href="\/app\/skills"/);
@@ -195,45 +206,6 @@ test("dashboard HTML route performs no runtime data reads before responding", ()
   assert.ok(start >= 0 && end > start);
   assert.match(route, /renderDashboard\(\{[\s\S]*initialLoading: true/);
   assert.doesNotMatch(route, /await|wechat\.status|listUploadedAssets|store\.(?:listSessionsPage|countSessions|listWorkspaces|getTokenUsageSummary)/);
-});
-
-test("memory management defaults to a main session and exposes hit statistics", () => {
-  const html = renderMemoryPage({
-    selectedSessionId: "main-1",
-    sessions: [
-      { id: "main-1", role: "main", channel: "wechat", title: "赖馒头", url: "/agent-bridge/session/main-1/live", memoryCount: 1 },
-      { id: "worker-1", role: "worker", title: "部署任务", url: "/agent-bridge/session/worker-1/live", memoryCount: 0 },
-    ],
-    memories: [{
-      id: "mem-1",
-      sessionId: "main-1",
-      type: "preference",
-      content: "发布完成后检查所有域名",
-      hitCount: 7,
-      createdAt: "2026-07-10T10:00:00.000Z",
-      updatedAt: "2026-07-10T11:00:00.000Z",
-      lastHitAt: "2026-07-10T12:00:00.000Z",
-    }],
-    stats: { memoryCount: 1, totalHits: 7, lastActivityAt: "2026-07-10T12:00:00.000Z" },
-  });
-
-  assert.match(html, /记忆管理/);
-  assert.match(html, /data-memory-session-option data-value="main-1" aria-pressed="true"/);
-  assert.match(html, /主会话 · 赖馒头 · 1 条/);
-  assert.match(html, /class="memory-overlay memory-sheet" data-memory-session-sheet[^>]*hidden/);
-  assert.match(html, /class="memory-overlay memory-sheet" data-memory-type-sheet[^>]*hidden/);
-  assert.match(html, /class="memory-overlay task-dialog memory-dialog" data-memory-dialog[^>]*hidden/);
-  assert.match(html, /data-memory-detail-type/);
-  assert.doesNotMatch(html, /<select[^>]*data-memory-(?:session|type)/);
-  assert.doesNotMatch(html, /<dialog[^>]*data-memory/);
-  assert.match(html, /发布完成后检查所有域名/);
-  assert.match(html, /命中 7 次/);
-  assert.match(html, /data-memory-delete-dialog/);
-  assert.match(html, /location\.assign\('\/app\/chat\/memory' \+ \(value \? '\?session=' \+ encodeURIComponent\(value\)/);
-  assert.match(html, /dialog\.hidden = false/);
-  assert.match(html, /new CustomEvent\('memoryclose'/);
-  const inlineScript = html.match(/<script>([\s\S]*)<\/script>/)?.[1] || "";
-  assert.doesNotThrow(() => new vm.Script(inlineScript));
 });
 
 test("web agent actions stay hidden while their implementation remains available", () => {

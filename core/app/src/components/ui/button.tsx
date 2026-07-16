@@ -8,7 +8,7 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        default: "border-transparent bg-[var(--coral)] px-5 text-white active:bg-[var(--coral-active)]",
+        default: "pa-primary-control border-transparent bg-[var(--coral)] px-5 text-white active:bg-[var(--coral-active)]",
         outline: "border-[var(--hairline)] bg-[var(--canvas)] px-5 text-[var(--ink)]",
         ghost: "border-transparent bg-transparent px-3 text-[var(--ink)]",
       },

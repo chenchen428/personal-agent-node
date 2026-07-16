@@ -1,0 +1,11 @@
+{
+  "apiVersion": "personal-agent/app-v1",
+  "id": "personal-agent.daily-brief",
+  "name": "今日简报",
+  "entry": "dist/index.html",
+  "requires": {
+    "nodeApi": "1"
+  },
+  "version": "1.0.0",
+  "description": "汇总邮件、共享数据和最近发布，并保留自己的整理动态。"
+}

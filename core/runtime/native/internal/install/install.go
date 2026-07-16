@@ -23,23 +23,33 @@ import (
 )
 
 type Manifest struct {
-	SchemaVersion int    `json:"schemaVersion"`
-	ReleaseType   string `json:"releaseType"`
-	ReleaseID     string `json:"releaseId"`
-	Revision      string `json:"revision"`
-	Dirty         bool   `json:"dirty"`
+	SchemaVersion int                   `json:"schemaVersion"`
+	ReleaseType   string                `json:"releaseType"`
+	ReleaseID     string                `json:"releaseId"`
+	Revision      string                `json:"revision"`
+	Dirty         bool                  `json:"dirty"`
+	DesktopShell  *DesktopShellManifest `json:"desktopShell,omitempty"`
+}
+
+type DesktopShellManifest struct {
+	Framework      string `json:"framework"`
+	Platform       string `json:"platform"`
+	Entrypoint     string `json:"entrypoint"`
+	StableLauncher string `json:"stableLauncher"`
 }
 
 type Options struct {
-	ReleaseRoot   string
-	NodeRuntime   string
-	InstallRoot   string
-	DataRoot      string
-	Domain        string
-	SkipService   bool
-	SkipStartWait bool
-	NoOpen        bool
-	Platform      string
+	ReleaseRoot      string
+	NodeRuntime      string
+	InstallRoot      string
+	DataRoot         string
+	Domain           string
+	SkipService      bool
+	SkipStartWait    bool
+	SkipDesktopEntry bool
+	NoOpen           bool
+	Platform         string
+	AllowDirty       bool
 }
 
 type Result struct {
@@ -81,7 +91,7 @@ func Install(ctx context.Context, opts Options, runner Runner) (result Result, r
 	if err != nil {
 		return result, err
 	}
-	manifest, err := VerifyRelease(resolved.ReleaseRoot)
+	manifest, err := verifyRelease(resolved.ReleaseRoot, resolved.AllowDirty)
 	if err != nil {
 		return result, err
 	}
@@ -153,6 +163,25 @@ func Install(ctx context.Context, opts Options, runner Runner) (result Result, r
 			return result, fmt.Errorf("activate staged directory: %w", err)
 		}
 	}
+	if workspaceSeed := filepath.Join(target, "workspace"); pathExists(workspaceSeed) {
+		if err := mergeMissingTree(workspaceSeed, resolved.DataRoot); err != nil {
+			return result, fmt.Errorf("materialize Workspace seed: %w", err)
+		}
+	}
+	node := bundledNode(target, resolved.Platform)
+	privateSite := filepath.Join(target, "core", "runtime", "bin", "private-site.mjs")
+	env := envFor(resolved)
+	for _, args := range [][]string{
+		{privateSite, "init", "--domain", resolved.Domain, "--data-root", resolved.DataRoot},
+		{privateSite, "app-compatibility", "--data-root", resolved.DataRoot},
+	} {
+		commandCtx, cancel := context.WithTimeout(ctx, 10*time.Minute)
+		_, runErr := runner.Run(commandCtx, node, args, env)
+		cancel()
+		if runErr != nil {
+			return result, fmt.Errorf("Node preactivation failed: %w", runErr)
+		}
+	}
 	if !resolved.SkipService && hadManagedService {
 		serviceCtx, cancel := context.WithTimeout(ctx, 2*time.Minute)
 		err := deactivateService(serviceCtx, resolved, runner, envFor(resolved))
@@ -172,55 +201,75 @@ func Install(ctx context.Context, opts Options, runner Runner) (result Result, r
 	if err := replacePointer(current, target, resolved.Platform, runner); err != nil {
 		return result, fmt.Errorf("switch current: %w", err)
 	}
-	launcherName := "personal-agent"
-	if resolved.Platform == "windows" {
-		launcherName += ".exe"
+	desktopOwnsService := manifest.DesktopShell != nil && !resolved.SkipDesktopEntry && !resolved.SkipService
+	launcherNames := []string{"personal-agent"}
+	if manifest.DesktopShell != nil && !resolved.SkipDesktopEntry {
+		launcherNames = append(launcherNames, "personal-agent-ui")
 	}
-	launcherSource := filepath.Join(target, launcherName)
-	if _, statErr := os.Stat(launcherSource); statErr == nil {
-		if err := copyFile(launcherSource, filepath.Join(resolved.InstallRoot, "bin", launcherName), 0o700); err != nil {
-			return result, fmt.Errorf("install stable launcher: %w", err)
+	for _, base := range launcherNames {
+		launcherName := base
+		if resolved.Platform == "windows" {
+			launcherName += ".exe"
+		}
+		launcherSource := filepath.Join(target, launcherName)
+		if _, statErr := os.Stat(launcherSource); statErr == nil {
+			if err := copyFile(launcherSource, filepath.Join(resolved.InstallRoot, "bin", launcherName), 0o700); err != nil {
+				return result, fmt.Errorf("install stable launcher %s: %w", base, err)
+			}
+		}
+	}
+	if desktopOwnsService && resolved.Platform == "windows" {
+		if err := os.Remove(filepath.Join(resolved.InstallRoot, "bin", "personal-agent-service.exe")); err != nil && !errors.Is(err, os.ErrNotExist) {
+			return result, fmt.Errorf("remove legacy background service launcher: %w", err)
+		}
+	}
+	if manifest.DesktopShell != nil {
+		if err := installDesktopEntry(resolved, runner, envFor(resolved)); err != nil {
+			return result, fmt.Errorf("install desktop entry: %w", err)
 		}
 	}
 
-	node := bundledNode(target, resolved.Platform)
-	privateSite := filepath.Join(target, "core", "runtime", "bin", "private-site.mjs")
-	env := envFor(resolved)
-	for _, args := range [][]string{
-		{privateSite, "init", "--domain", resolved.Domain, "--data-root", resolved.DataRoot},
-		{privateSite, "prepare", "--data-root", resolved.DataRoot},
-	} {
-		commandCtx, cancel := context.WithTimeout(ctx, 10*time.Minute)
-		_, runErr := runner.Run(commandCtx, node, args, env)
-		cancel()
-		if runErr != nil {
-			return result, fmt.Errorf("Node initialization failed: %w", runErr)
-		}
+	commandCtx, cancel := context.WithTimeout(ctx, 10*time.Minute)
+	_, runErr := runner.Run(commandCtx, node, []string{privateSite, "prepare", "--data-root", resolved.DataRoot}, env)
+	cancel()
+	if runErr != nil {
+		return result, fmt.Errorf("Node initialization failed: %w", runErr)
 	}
 
 	service := "skipped"
 	if !resolved.SkipService {
-		serviceNeedsRecovery = true
-		serviceCtx, cancel := context.WithTimeout(ctx, 2*time.Minute)
-		service, err = activateService(serviceCtx, resolved, target, node, privateSite, runner, env)
-		cancel()
-		if err != nil {
-			return result, err
-		}
-		if !resolved.SkipStartWait {
-			if err := waitForPort(ctx, "127.0.0.1", 8843, 90*time.Second); err != nil {
+		if desktopOwnsService {
+			service = "desktop-owned"
+		} else {
+			serviceNeedsRecovery = true
+			serviceCtx, cancel := context.WithTimeout(ctx, 2*time.Minute)
+			service, err = activateService(serviceCtx, resolved, target, node, privateSite, runner, env)
+			cancel()
+			if err != nil {
 				return result, err
+			}
+			if !resolved.SkipStartWait {
+				if err := waitForPort(ctx, "127.0.0.1", 8843, 90*time.Second); err != nil {
+					return result, err
+				}
 			}
 		}
 	}
 
 	setupURL := "http://127.0.0.1:8843/app/setup"
 	if !resolved.NoOpen {
-		bootstrapURL, nonceErr := createBootstrapURL(resolved.DataRoot, setupURL)
-		if nonceErr != nil {
-			return result, nonceErr
+		if manifest.DesktopShell != nil {
+			if err := openDesktopShell(ctx, setupURL, resolved, runner, envFor(resolved)); err != nil {
+				return result, fmt.Errorf("open desktop shell: %w", err)
+			}
+		} else {
+			_ = openBrowser(ctx, setupURL, resolved.Platform, runner)
 		}
-		_ = openBrowser(ctx, bootstrapURL, resolved.Platform, runner)
+	}
+	if desktopOwnsService && !resolved.NoOpen && !resolved.SkipStartWait {
+		if err := waitForPort(ctx, "127.0.0.1", 8843, 90*time.Second); err != nil {
+			return result, err
+		}
 	}
 	state := map[string]any{
 		"schemaVersion":   2,
@@ -231,7 +280,7 @@ func Install(ctx context.Context, opts Options, runner Runner) (result Result, r
 		"activatedAt":     time.Now().UTC().Format(time.RFC3339),
 		"current":         current,
 		"previous":        pointerTarget(previous),
-		"setup":           map[string]any{"path": "/app/setup", "wechatRequired": false},
+		"setup":           map[string]any{"path": "/app/setup", "wechatRequired": true},
 	}
 	if err := writeJSON(filepath.Join(resolved.InstallRoot, "installation.json"), state, 0o600); err != nil {
 		return result, err
@@ -360,6 +409,9 @@ func Uninstall(ctx context.Context, installRoot, platform string, runner Runner)
 		}
 		service = "removed"
 	}
+	if err := removeDesktopEntry(root, platform); err != nil {
+		return UninstallResult{}, fmt.Errorf("remove desktop entry: %w", err)
+	}
 	if err := os.RemoveAll(root); err != nil {
 		return UninstallResult{}, fmt.Errorf("remove installed binaries: %w", err)
 	}
@@ -409,15 +461,23 @@ func readInstallationState(file string) installationState {
 }
 
 func serviceIsManaged(service string) bool {
-	return service != "" && service != "skipped" && service != "not-registered" && service != "removed"
+	return service != "" && service != "skipped" && service != "desktop-owned" && service != "not-registered" && service != "removed"
 }
 
 func VerifyRelease(root string) (Manifest, error) {
+	return verifyRelease(root, false)
+}
+
+func VerifyLocalAcceptanceRelease(root string) (Manifest, error) {
+	return verifyRelease(root, true)
+}
+
+func verifyRelease(root string, allowDirty bool) (Manifest, error) {
 	manifest, err := readManifest(filepath.Join(root, "release-manifest.json"))
 	if err != nil {
 		return Manifest{}, err
 	}
-	if manifest.SchemaVersion != 2 || manifest.ReleaseType != "personal-agent-node" || manifest.ReleaseID == "" || manifest.Dirty {
+	if manifest.SchemaVersion != 2 || manifest.ReleaseType != "personal-agent-node" || manifest.ReleaseID == "" || (manifest.Dirty && !allowDirty) {
 		return Manifest{}, errors.New("release manifest is not an immutable Personal Agent Node release")
 	}
 	checksums, err := readChecksums(filepath.Join(root, "SHA256SUMS"))
@@ -439,6 +499,25 @@ func VerifyRelease(root string) (Manifest, error) {
 	for _, required := range []string{"release-manifest.json", "core/runtime/bin/personal-agent.mjs", "core/runtime/bin/private-site.mjs", "SBOM.cdx.json"} {
 		if _, ok := checksums[required]; !ok {
 			return Manifest{}, fmt.Errorf("checksums omit required file: %s", required)
+		}
+	}
+	if manifest.DesktopShell != nil {
+		if manifest.DesktopShell.Framework != "tauri" || !safeRelative(manifest.DesktopShell.Entrypoint) || !safeRelative(manifest.DesktopShell.StableLauncher) {
+			return Manifest{}, errors.New("desktop shell manifest is invalid")
+		}
+		entrypointCovered := false
+		prefix := strings.TrimSuffix(filepath.ToSlash(manifest.DesktopShell.Entrypoint), "/") + "/"
+		for relative := range checksums {
+			if relative == manifest.DesktopShell.Entrypoint || strings.HasPrefix(relative, prefix) {
+				entrypointCovered = true
+				break
+			}
+		}
+		if !entrypointCovered {
+			return Manifest{}, errors.New("checksums omit desktop shell entrypoint")
+		}
+		if _, ok := checksums[manifest.DesktopShell.StableLauncher]; !ok {
+			return Manifest{}, errors.New("checksums omit desktop shell stable launcher")
 		}
 	}
 	return manifest, nil
@@ -549,8 +628,13 @@ func deactivateService(ctx context.Context, opts Options, runner Runner, env []s
 		return nil
 	case "windows":
 		_, _ = runner.Run(ctx, "schtasks.exe", []string{"/End", "/TN", "PrivateSiteNode"}, env)
-		_, err := runner.Run(ctx, "schtasks.exe", []string{"/Delete", "/TN", "PrivateSiteNode", "/F"}, env)
-		return err
+		waitForSupervisorShutdown(ctx, opts.DataRoot, 15*time.Second)
+		if _, err := runner.Run(ctx, "schtasks.exe", []string{"/Delete", "/TN", "PrivateSiteNode", "/F"}, env); err != nil {
+			if _, queryErr := runner.Run(ctx, "schtasks.exe", []string{"/Query", "/TN", "PrivateSiteNode"}, env); queryErr == nil {
+				return err
+			}
+		}
+		return nil
 	default:
 		return fmt.Errorf("unsupported service platform: %s", opts.Platform)
 	}
@@ -584,16 +668,24 @@ func replacePointer(linkPath, target, platform string, runner Runner) error {
 		return err
 	}
 	if platform == "windows" {
-		if info, err := os.Stat(target); err != nil || !info.IsDir() {
-			return fmt.Errorf("pointer target is not a directory: %s", target)
-		}
-		temporary := fmt.Sprintf("%s.%d.tmp", linkPath, os.Getpid())
-		if err := os.WriteFile(temporary, []byte(filepath.Clean(target)+"\n"), 0o600); err != nil {
-			return err
-		}
-		return os.Rename(temporary, linkPath)
+		return writePointerFile(linkPath, target)
 	}
-	return os.Symlink(filepath.Base(filepath.Dir(target))+string(filepath.Separator)+filepath.Base(target), linkPath)
+	err := os.Symlink(filepath.Base(filepath.Dir(target))+string(filepath.Separator)+filepath.Base(target), linkPath)
+	if err != nil && runtime.GOOS == "windows" {
+		return writePointerFile(linkPath, target)
+	}
+	return err
+}
+
+func writePointerFile(linkPath, target string) error {
+	if info, err := os.Stat(target); err != nil || !info.IsDir() {
+		return fmt.Errorf("pointer target is not a directory: %s", target)
+	}
+	temporary := fmt.Sprintf("%s.%d.tmp", linkPath, os.Getpid())
+	if err := os.WriteFile(temporary, []byte(filepath.Clean(target)+"\n"), 0o600); err != nil {
+		return err
+	}
+	return os.Rename(temporary, linkPath)
 }
 
 func pointerTarget(link string) string {
@@ -700,6 +792,102 @@ func openBrowser(ctx context.Context, url, platform string, runner Runner) error
 	}
 }
 
+func openDesktopShell(ctx context.Context, url string, opts Options, runner Runner, env []string) error {
+	if opts.Platform == "darwin" {
+		application := filepath.Join(userHome(), "Applications", "Personal Agent.app")
+		_, err := runner.Run(ctx, "open", []string{"-a", application, "--args", "--url", url}, env)
+		return err
+	}
+	launcher := filepath.Join(opts.InstallRoot, "bin", "personal-agent-ui")
+	if opts.Platform == "windows" {
+		launcher += ".exe"
+	}
+	_, err := runner.Run(ctx, launcher, []string{"--url", url}, env)
+	return err
+}
+
+func installDesktopEntry(opts Options, runner Runner, env []string) error {
+	launcher := filepath.Join(opts.InstallRoot, "bin", "personal-agent-ui")
+	switch opts.Platform {
+	case "windows":
+		launcher += ".exe"
+		configRoot, err := os.UserConfigDir()
+		if err != nil {
+			return err
+		}
+		shortcut := filepath.Join(configRoot, "Microsoft", "Windows", "Start Menu", "Programs", "Personal Agent.lnk")
+		if err := os.MkdirAll(filepath.Dir(shortcut), 0o700); err != nil {
+			return err
+		}
+		script := `$shortcut=(New-Object -ComObject WScript.Shell).CreateShortcut($env:PERSONAL_AGENT_SHORTCUT);$shortcut.TargetPath=$env:PERSONAL_AGENT_UI_LAUNCHER;$shortcut.WorkingDirectory=$env:PERSONAL_AGENT_UI_WORKDIR;$shortcut.IconLocation=$env:PERSONAL_AGENT_UI_LAUNCHER;$shortcut.Save()`
+		desktopEnv := append(env,
+			"PERSONAL_AGENT_SHORTCUT="+shortcut,
+			"PERSONAL_AGENT_UI_LAUNCHER="+launcher,
+			"PERSONAL_AGENT_UI_WORKDIR="+opts.InstallRoot,
+		)
+		_, err = runner.Run(context.Background(), "powershell.exe", []string{"-NoLogo", "-NoProfile", "-NonInteractive", "-Command", script}, desktopEnv)
+		return err
+	case "darwin":
+		applications := filepath.Join(userHome(), "Applications")
+		if err := os.MkdirAll(applications, 0o700); err != nil {
+			return err
+		}
+		entry := filepath.Join(applications, "Personal Agent.app")
+		if info, err := os.Lstat(entry); err == nil {
+			if info.Mode()&os.ModeSymlink == 0 {
+				return errors.New("refusing to replace an existing non-symlink Personal Agent.app")
+			}
+			if err := os.Remove(entry); err != nil {
+				return err
+			}
+		} else if !errors.Is(err, os.ErrNotExist) {
+			return err
+		}
+		return os.Symlink(filepath.Join(opts.InstallRoot, "current", "desktop", "Personal Agent.app"), entry)
+	case "linux":
+		applications := filepath.Join(userHome(), ".local", "share", "applications")
+		if err := os.MkdirAll(applications, 0o700); err != nil {
+			return err
+		}
+		entry := filepath.Join(applications, "personal-agent.desktop")
+		icon := filepath.Join(opts.InstallRoot, "current", "desktop", "icon.svg")
+		body := fmt.Sprintf("[Desktop Entry]\nType=Application\nName=Personal Agent\nComment=Local-first Personal Agent\nExec=%s\nIcon=%s\nTerminal=false\nCategories=Utility;\n", desktopExecValue(launcher), icon)
+		return os.WriteFile(entry, []byte(body), 0o600)
+	default:
+		return fmt.Errorf("unsupported desktop platform: %s", opts.Platform)
+	}
+}
+
+func removeDesktopEntry(installRoot, platform string) error {
+	var entry string
+	switch platform {
+	case "windows":
+		configRoot, err := os.UserConfigDir()
+		if err != nil {
+			return err
+		}
+		entry = filepath.Join(configRoot, "Microsoft", "Windows", "Start Menu", "Programs", "Personal Agent.lnk")
+	case "darwin":
+		entry = filepath.Join(userHome(), "Applications", "Personal Agent.app")
+		if info, err := os.Lstat(entry); err == nil && info.Mode()&os.ModeSymlink == 0 {
+			return errors.New("refusing to remove a non-symlink Personal Agent.app")
+		}
+	case "linux":
+		entry = filepath.Join(userHome(), ".local", "share", "applications", "personal-agent.desktop")
+	default:
+		return fmt.Errorf("unsupported desktop platform: %s", platform)
+	}
+	err := os.Remove(entry)
+	if errors.Is(err, os.ErrNotExist) {
+		return nil
+	}
+	return err
+}
+
+func desktopExecValue(value string) string {
+	return `"` + strings.NewReplacer("\\", "\\\\", "\"", "\\\"", "`", "\\`").Replace(value) + `"`
+}
+
 func copyTree(source, target string) error {
 	return filepath.WalkDir(source, func(current string, entry fs.DirEntry, walkErr error) error {
 		if walkErr != nil {
@@ -734,6 +922,66 @@ func copyTree(source, target string) error {
 			return fmt.Errorf("unsupported release member: %s", relative)
 		}
 	})
+}
+
+func mergeMissingTree(source, target string) error {
+	sourceInfo, err := os.Lstat(source)
+	if err != nil {
+		return err
+	}
+	if !sourceInfo.IsDir() || sourceInfo.Mode()&os.ModeSymlink != 0 {
+		return errors.New("Workspace seed must be a real directory")
+	}
+	if err := os.MkdirAll(target, 0o700); err != nil {
+		return err
+	}
+	return filepath.WalkDir(source, func(current string, entry fs.DirEntry, walkErr error) error {
+		if walkErr != nil {
+			return walkErr
+		}
+		relative, err := filepath.Rel(source, current)
+		if err != nil {
+			return err
+		}
+		if relative == "." {
+			return nil
+		}
+		destination := filepath.Join(target, relative)
+		info, err := entry.Info()
+		if err != nil {
+			return err
+		}
+		if info.Mode()&os.ModeSymlink != 0 {
+			return fmt.Errorf("Workspace seed contains a symbolic link: %s", relative)
+		}
+		if entry.IsDir() {
+			existing, statErr := os.Lstat(destination)
+			if errors.Is(statErr, os.ErrNotExist) {
+				return os.Mkdir(destination, info.Mode().Perm())
+			}
+			if statErr != nil {
+				return statErr
+			}
+			if !existing.IsDir() || existing.Mode()&os.ModeSymlink != 0 {
+				return fmt.Errorf("Workspace seed directory conflicts with user data: %s", relative)
+			}
+			return nil
+		}
+		if !info.Mode().IsRegular() {
+			return fmt.Errorf("Workspace seed contains an unsupported member: %s", relative)
+		}
+		if _, statErr := os.Lstat(destination); statErr == nil {
+			return nil
+		} else if !errors.Is(statErr, os.ErrNotExist) {
+			return statErr
+		}
+		return copyFile(current, destination, info.Mode().Perm())
+	})
+}
+
+func pathExists(target string) bool {
+	_, err := os.Stat(target)
+	return err == nil
 }
 
 func copyFile(source, target string, mode fs.FileMode) error {

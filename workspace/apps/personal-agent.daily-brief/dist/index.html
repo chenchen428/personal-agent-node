@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="zh-CN" data-app-surface="pending">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#faf9f5">
+  <title>今日简报 · Personal Agent</title>
+  <link rel="stylesheet" href="app.css">
+  <script type="module" src="app.js"></script>
+</head>
+<body>
+  <main class="brief-desktop" data-surface-view="desktop">
+    <section class="brief-state" data-ui-state="loading" aria-live="polite"><div class="brief-loading"><i></i><i></i><i></i></div><p>正在整理今天的内容…</p></section>
+    <section class="brief-state" data-ui-state="error" hidden><span class="brief-state-symbol">!</span><strong>暂时无法读取简报</strong><p data-error>本机服务仍在运行，可以稍后重试。</p><button type="button" data-retry>重新加载</button></section>
+    <section data-ui-state="ready" hidden>
+      <header class="brief-heading">
+        <div><span class="brief-eyebrow" data-date></span><h1>今天需要你留意的事</h1><p data-summary>邮件、发布页和共享数据已经汇总到一起。</p></div>
+        <button class="brief-refresh" type="button" data-refresh>刷新简报</button>
+      </header>
+      <div class="brief-metrics" aria-label="今日摘要">
+        <div><span>收到的邮件</span><strong data-count="mail">0</strong><small data-note="mail">最近收到</small></div>
+        <div><span>最近发布</span><strong data-count="pages">0</strong><small>最近更新</small></div>
+        <div><span>共享数据</span><strong data-count="data">0</strong><small data-note="data">数据对象</small></div>
+      </div>
+      <div class="brief-columns">
+        <section class="brief-panel"><header><h2>最近邮件</h2><span>按收到时间排序</span></header><div class="brief-list" data-list="mail"></div></section>
+        <section class="brief-panel"><header><h2>最近发布</h2><span>最新更新</span></header><div class="brief-list" data-list="pages"></div></section>
+      </div>
+      <div class="brief-columns">
+        <section class="brief-panel"><header><h2>共享数据</h2><span data-data-label>正在读取</span></header><div class="brief-data" data-data-summary></div></section>
+        <section class="brief-panel"><header><h2>整理记录</h2><span data-activity-count>0 次整理</span></header><ol class="brief-activity" data-activity-list></ol></section>
+      </div>
+    </section>
+  </main>
+
+  <main class="brief-mobile" data-surface-view="mobile">
+    <section class="brief-state brief-mobile-state" data-ui-state="loading" aria-live="polite"><div class="brief-loading"><i></i><i></i><i></i></div><p>正在整理今天的内容…</p></section>
+    <section class="brief-state brief-mobile-state" data-ui-state="error" hidden><span class="brief-state-symbol">!</span><strong>暂时无法读取简报</strong><p data-error>网络恢复后可以重新加载。</p><button type="button" data-retry>重新加载</button></section>
+    <section data-ui-state="ready" hidden>
+      <header class="brief-mobile-intro"><span class="brief-eyebrow" data-date></span><h1>今天需要你留意的事</h1><p data-summary>邮件、发布页和共享数据已经汇总到一起。</p></header>
+      <div class="brief-mobile-metrics" aria-label="今日摘要">
+        <div><strong data-count="mail">0</strong><span>收到的邮件</span></div>
+        <div><strong data-count="pages">0</strong><span>最近发布</span></div>
+        <div><strong data-count="data">0</strong><span>数据对象</span></div>
+      </div>
+      <section class="brief-mobile-section"><header><h2>最近邮件</h2><span data-note="mail">最近收到</span></header><div class="brief-mobile-list" data-list="mail"></div></section>
+      <section class="brief-mobile-section"><header><h2>共享数据</h2><span data-data-label>正在读取</span></header><div class="brief-mobile-data" data-data-summary></div></section>
+      <section class="brief-mobile-section"><header><h2>整理记录</h2><span data-activity-count>0 次整理</span></header><ol class="brief-activity brief-mobile-activity" data-activity-list></ol></section>
+      <section class="brief-mobile-section"><header><h2>最近发布</h2><span>最新更新</span></header><div class="brief-mobile-list" data-list="pages"></div></section>
+      <button class="brief-mobile-refresh" type="button" data-refresh>刷新简报</button>
+    </section>
+  </main>
+</body>
+</html>

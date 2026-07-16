@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "version": 1,
-  "updatedAt": "2026-07-13",
+  "version": 2,
+  "updatedAt": "2026-07-16",
   "categories": [
     {
       "id": "research-knowledge",
@@ -25,7 +25,19 @@
       "id": "publishing-automation",
       "label": "Publishing & Automation",
       "description": "Prepare external publications, send notifications, schedule work, and publish artifacts.",
+      "order": 60
+    },
+    {
+      "id": "travel-location",
+      "label": "Travel & Location",
+      "description": "Research feasible itineraries and create source-backed travel publications.",
       "order": 40
+    },
+    {
+      "id": "product-engineering",
+      "label": "Product Engineering",
+      "description": "Design and implement distinctive, accessible product interfaces.",
+      "order": 50
     }
   ],
   "skills": [
@@ -132,6 +144,7 @@
       "related": [
         "knowledge-capture",
         "visual-content",
+        "travel-guidebook",
         "personal-agent"
       ]
     },
@@ -165,7 +178,9 @@
       "caseRequired": true,
       "related": [
         "media-toolkit",
-        "content-workbench"
+        "content-workbench",
+        "guizang-social-card-skill",
+        "guizang-ppt-skill"
       ]
     },
     {
@@ -198,7 +213,178 @@
       ],
       "caseRequired": true,
       "related": [
-        "visual-content"
+        "visual-content",
+        "guizang-social-card-skill"
+      ]
+    },
+    {
+      "name": "guizang-social-card-skill",
+      "directory": "skills/guizang-social-card-skill",
+      "category": "visual-media",
+      "maturity": "beta",
+      "risks": [
+        "network-read",
+        "local-write",
+        "browser-session",
+        "external-generation"
+      ],
+      "security": {
+        "network": "write",
+        "dataClass": "mixed",
+        "outboundData": "content",
+        "externalWrite": false,
+        "requiresAuthorization": true,
+        "untrustedContent": true
+      },
+      "origin": {
+        "kind": "adapted",
+        "repository": "https://github.com/op7418/guizang-social-card-skill",
+        "revision": "cf4b810fac1c73fb65a2bb31d8c9278d82cbc4c5",
+        "license": "AGPL-3.0-only"
+      },
+      "cli": [],
+      "examples": [
+        "test/fixtures/skill-cases/guizang-social-card-skill/case.json"
+      ],
+      "caseRequired": true,
+      "related": [
+        "visual-content",
+        "media-toolkit",
+        "guizang-ppt-skill"
+      ]
+    },
+    {
+      "name": "guizang-ppt-skill",
+      "directory": "skills/guizang-ppt-skill",
+      "category": "visual-media",
+      "maturity": "beta",
+      "risks": [
+        "network-read",
+        "local-write",
+        "browser-session",
+        "external-generation"
+      ],
+      "security": {
+        "network": "write",
+        "dataClass": "mixed",
+        "outboundData": "content",
+        "externalWrite": false,
+        "requiresAuthorization": true,
+        "untrustedContent": true
+      },
+      "origin": {
+        "kind": "adapted",
+        "repository": "https://github.com/op7418/guizang-ppt-skill",
+        "revision": "82fe5ae129e8c2a12e1155fcabed6703342749d6",
+        "license": "AGPL-3.0-only"
+      },
+      "cli": [],
+      "examples": [
+        "test/fixtures/skill-cases/guizang-ppt-skill/case.json"
+      ],
+      "caseRequired": true,
+      "related": [
+        "visual-content",
+        "guizang-social-card-skill",
+        "frontend-design"
+      ]
+    },
+    {
+      "name": "travel-guidebook",
+      "directory": "skills/travel-guidebook",
+      "category": "travel-location",
+      "maturity": "beta",
+      "risks": [
+        "network-read",
+        "local-write",
+        "browser-session"
+      ],
+      "security": {
+        "network": "read",
+        "dataClass": "mixed",
+        "outboundData": "query",
+        "externalWrite": false,
+        "requiresAuthorization": true,
+        "untrustedContent": true
+      },
+      "origin": {
+        "kind": "adapted",
+        "repository": "https://github.com/geekjourneyx/travel-guidebook",
+        "revision": "e8ae3fe82eac448751b957cf84f42fb069de645c",
+        "license": "MIT"
+      },
+      "cli": [],
+      "examples": [
+        "test/fixtures/skill-cases/travel-guidebook/case.json"
+      ],
+      "caseRequired": true,
+      "related": [
+        "deep-research",
+        "content-workbench",
+        "guizang-social-card-skill"
+      ]
+    },
+    {
+      "name": "frontend-design",
+      "directory": "skills/frontend-design",
+      "category": "product-engineering",
+      "maturity": "stable",
+      "risks": [
+        "local-write"
+      ],
+      "security": {
+        "network": "none",
+        "dataClass": "mixed",
+        "outboundData": "none",
+        "externalWrite": false,
+        "requiresAuthorization": false,
+        "untrustedContent": true
+      },
+      "origin": {
+        "kind": "adapted",
+        "repository": "https://github.com/anthropics/skills",
+        "revision": "9d2f1ae187231d8199c64b5b762e1bdf2244733d",
+        "license": "Apache-2.0"
+      },
+      "cli": [],
+      "examples": [
+        "test/fixtures/skill-cases/frontend-design/case.json"
+      ],
+      "caseRequired": true,
+      "related": [
+        "ui-ux-pro-max",
+        "guizang-ppt-skill"
+      ]
+    },
+    {
+      "name": "ui-ux-pro-max",
+      "directory": "skills/ui-ux-pro-max",
+      "category": "product-engineering",
+      "maturity": "stable",
+      "risks": [
+        "local-write"
+      ],
+      "security": {
+        "network": "none",
+        "dataClass": "mixed",
+        "outboundData": "none",
+        "externalWrite": false,
+        "requiresAuthorization": false,
+        "untrustedContent": true
+      },
+      "origin": {
+        "kind": "adapted",
+        "repository": "https://github.com/nextlevelbuilder/ui-ux-pro-max-skill",
+        "revision": "f8ac5e1266dba8354ea96e19994d9f4345e7ec31",
+        "license": "MIT"
+      },
+      "cli": [],
+      "examples": [
+        "test/fixtures/skill-cases/ui-ux-pro-max/case.json"
+      ],
+      "caseRequired": true,
+      "related": [
+        "frontend-design"
       ]
     },
     {
@@ -232,13 +418,17 @@
         "test/fixtures/skill-cases/personal-agent-content/case.json",
         "test/fixtures/skill-cases/personal-agent-lifecycle/case.json",
         "test/fixtures/skill-cases/personal-agent-mail/case.json",
+        "test/fixtures/skill-cases/personal-agent-activity/case.json",
         "test/fixtures/skill-cases/personal-agent-acceptance/case.json"
       ],
       "caseRequired": true,
       "related": [
         "content-workbench",
         "visual-content",
-        "media-toolkit"
+        "media-toolkit",
+        "guizang-social-card-skill",
+        "guizang-ppt-skill",
+        "travel-guidebook"
       ]
     }
   ],
@@ -477,7 +667,8 @@
           "source": "baoyu-slide-deck",
           "decision": "merged",
           "targets": [
-            "visual-content"
+            "visual-content",
+            "guizang-ppt-skill"
           ]
         },
         {
@@ -504,7 +695,8 @@
           "source": "baoyu-xhs-images",
           "decision": "merged",
           "targets": [
-            "visual-content"
+            "visual-content",
+            "guizang-social-card-skill"
           ]
         },
         {
@@ -513,6 +705,116 @@
           "targets": [
             "knowledge-capture"
           ]
+        }
+      ]
+    },
+    {
+      "id": "guizang-social-card-skill",
+      "repository": "https://github.com/op7418/guizang-social-card-skill",
+      "revision": "cf4b810fac1c73fb65a2bb31d8c9278d82cbc4c5",
+      "license": "AGPL-3.0-only",
+      "retrievedAt": "2026-07-16",
+      "mappings": [
+        {
+          "source": "guizang-social-card-skill",
+          "decision": "retained",
+          "targets": [
+            "guizang-social-card-skill"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "guizang-ppt-skill",
+      "repository": "https://github.com/op7418/guizang-ppt-skill",
+      "revision": "82fe5ae129e8c2a12e1155fcabed6703342749d6",
+      "license": "AGPL-3.0-only",
+      "retrievedAt": "2026-07-16",
+      "mappings": [
+        {
+          "source": "guizang-ppt-skill",
+          "decision": "retained",
+          "targets": [
+            "guizang-ppt-skill"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "travel-guidebook",
+      "repository": "https://github.com/geekjourneyx/travel-guidebook",
+      "revision": "e8ae3fe82eac448751b957cf84f42fb069de645c",
+      "license": "MIT",
+      "retrievedAt": "2026-07-16",
+      "mappings": [
+        {
+          "source": "travel-guidebook",
+          "decision": "merged",
+          "targets": [
+            "travel-guidebook"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "anthropic-skills",
+      "repository": "https://github.com/anthropics/skills",
+      "revision": "9d2f1ae187231d8199c64b5b762e1bdf2244733d",
+      "license": "Apache-2.0",
+      "retrievedAt": "2026-07-16",
+      "mappings": [
+        {
+          "source": "skills/frontend-design",
+          "decision": "retained",
+          "targets": [
+            "frontend-design"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ui-ux-pro-max-skill",
+      "repository": "https://github.com/nextlevelbuilder/ui-ux-pro-max-skill",
+      "revision": "f8ac5e1266dba8354ea96e19994d9f4345e7ec31",
+      "license": "MIT",
+      "retrievedAt": "2026-07-16",
+      "mappings": [
+        {
+          "source": ".claude/skills/ui-ux-pro-max",
+          "decision": "retained",
+          "targets": [
+            "ui-ux-pro-max"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "travel-planner-skill",
+      "repository": "https://github.com/tianxingyang/skills-travel-planner",
+      "revision": "ff5b61c494675155a0adc8855c2cfe08ccb3fa73",
+      "license": "NOASSERTION",
+      "retrievedAt": "2026-07-16",
+      "mappings": [
+        {
+          "source": "skill.md",
+          "decision": "excluded",
+          "targets": [],
+          "reason": "The upstream repository declares no redistribution license; retain travel planning through the licensed, adapted travel-guidebook workflow."
+        }
+      ]
+    },
+    {
+      "id": "amap-skills",
+      "repository": "https://github.com/AMap-Web/amap-skills",
+      "revision": "0e544c2c46846d9e5b726efe9e78fe87252b7e29",
+      "license": "NOASSERTION",
+      "retrievedAt": "2026-07-16",
+      "mappings": [
+        {
+          "source": "amap-jsapi-skill",
+          "decision": "excluded",
+          "targets": [],
+          "reason": "The upstream repository declares no redistribution license; customers may add an authorized map integration separately."
         }
       ]
     }

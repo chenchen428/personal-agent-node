@@ -23,7 +23,7 @@ This workspace is a complete private Site running on the user's Node. The Node o
 - All application children run from verified packaged entrypoints with hidden windows and file-backed logs. Do not use a development server as the installed runtime or as acceptance evidence.
 - Users inspect and control the complete Node through `a.<apex>`; no foreground WireGuard, Next.js, Bridge, Worker, or gateway terminal is required.
 - Local build caches retain at most two completed artifacts per product. Runtime state belongs under `PRIVATE_SITE_DATA_ROOT` or workspace `.local`, never `dist` or a tracked `data` directory.
-- Accepted release records live under `PRIVATE_SITE_DATA_ROOT/release-notes` and are rendered by the authenticated Agent console. If the owner has an available WeChat channel and explicitly uses it for release notices, the bundled `open-abg` CLI may send a completion notice after the matching detail route passes. Missing or failed WeChat delivery never blocks public Node release/final acceptance, whose canonical Web evidence always records `wechatRequired=false`; never add an Edge-side notifier or DingTalk path.
+- Accepted release records live under `PRIVATE_SITE_DATA_ROOT/release-notes` and are rendered by the authenticated Agent console. Release/final acceptance requires the installed Setup Center `channels.wechat` check to be ready and canonical Web evidence records `wechatRequired=true`; WeChat still never substitutes for the same-session Web conversation. If the owner explicitly uses WeChat for release notices, the bundled `open-abg` CLI may send one after the matching detail route passes; never add an Edge-side notifier or DingTalk path.
 
 ## Harness Acceptance
 

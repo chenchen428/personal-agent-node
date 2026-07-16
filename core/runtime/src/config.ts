@@ -66,6 +66,9 @@ export function resolveNodeConfig(env = process.env, options = {}) {
     routingMode,
     allowedHosts: normalizeHostList(mergedEnv.PERSONAL_AGENT_ALLOWED_HOSTS, [domain, mergedEnv.PRIVATE_SITE_LOCAL_DOMAIN || `${domain}.local`, "localhost", "127.0.0.1"]),
     agentWorkspaceRoot,
+    appsDir: path.join(dataRoot, "apps"),
+    appsConfigPath: path.join(configDir, "apps.json"),
+    appsCompatibilityPath: path.join(configDir, "apps-compatibility.json"),
     pluginsDir: path.join(dataRoot, "plugins"),
     pluginDataDir: path.join(dataRoot, "data", "plugins"),
     extensionsDir: path.join(dataRoot, "plugins"),
@@ -213,6 +216,7 @@ export function ensureNodeDirectories(config) {
     path.join(config.dataRoot, "channels"),
     path.join(config.dataRoot, "channels", "wechat"),
     path.join(config.dataRoot, "channels", "xiaohongshu"),
+    config.appsDir,
     config.pluginsDir,
     config.pluginDataDir,
     config.mailDir,
@@ -359,14 +363,14 @@ export function writeWorkerConfig(config) {
 
 export function resolveCodexCli(env = process.env, options = {}) {
   const platform = options.platform || process.platform;
-  const platformPath = platform === "win32" ? path.win32 : path;
+  const platformPath = platform === "win32" ? path.win32 : path.posix;
   const nodeExecutable = options.nodeExecutable || process.execPath;
   const exists = options.exists || fs.existsSync;
   const realpath = options.realpath || fs.realpathSync;
   const commandFor = (target) => {
     let resolved = target;
     try { resolved = realpath(target); } catch {}
-    return path.extname(resolved).toLowerCase() === ".js"
+    return platformPath.extname(resolved).toLowerCase() === ".js"
       ? { command: nodeExecutable, prefixArgs: [target] }
       : { command: target, prefixArgs: [] };
   };

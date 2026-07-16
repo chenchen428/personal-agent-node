@@ -48,7 +48,7 @@ export function buildChannelRecoveryMessage(channels) {
     "如果手机收到短信验证码，请直接在微信回复验证码，Agent 会把它提交到当前登录窗口并继续监听。",
     "",
     `只读状态页：${CHANNEL_MANAGEMENT_URL}`,
-    "验证码仅在当前登录会话中一次性使用，不进入普通 Agent 会话、记忆或日志。",
+    "验证码仅在当前登录会话中一次性使用，不进入普通 Agent 会话、动态或日志。",
   );
   return lines.join("\n");
 }

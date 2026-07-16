@@ -9,8 +9,8 @@
   "delivery": {
     "homeEnvironment": "PERSONAL_AGENT_HOME",
     "defaultHome": "~/.personal-agent",
-    "core": ["app", "runtime", "agent", "channels", "plugins"],
-    "workspace": ["AGENTS.md", "registry", "skills", "workflows", "plugins", "files", "data", "databases", "mail", "backups", "config", "secrets", "runtime", "logs"]
+    "core": ["app", "apps", "runtime", "agent", "channels", "plugins"],
+    "workspace": ["AGENTS.md", "registry", "skills", "workflows", "apps", "plugins", "files", "data", "databases", "mail", "backups", "config", "secrets", "runtime", "logs"]
   },
   "services": [
     { "id": "personal-agent-control", "kind": "local-socket" },
@@ -27,5 +27,14 @@
     "dataRoot": "workspace/data/plugins",
     "mutableByLocalAgent": true,
     "edgeChangesRequired": false
+  },
+  "personalAppContract": {
+    "apiVersion": "personal-agent/app-v1",
+    "nodeApiMajors": ["1"],
+    "manifest": "personal-agent.app.json",
+    "schema": "core/apps/schema/personal-agent.app.schema.json",
+    "installRoot": "workspace/apps",
+    "hosting": "authenticated-static-pwa",
+    "cloudRequired": false
   }
 }

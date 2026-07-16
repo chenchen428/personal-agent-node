@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://personal-agent.local/schemas/personal-agent.app.schema.json",
+  "title": "Personal Agent App manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["apiVersion", "id", "name", "entry", "requires"],
+  "properties": {
+    "apiVersion": { "const": "personal-agent/app-v1" },
+    "id": { "type": "string", "pattern": "^[a-z][a-z0-9]*(?:[.-][a-z0-9]+)*$", "maxLength": 96 },
+    "name": { "type": "string", "minLength": 1, "maxLength": 80 },
+    "entry": { "type": "string", "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$))(?!.*\\\\).+\\.html$", "maxLength": 240 },
+    "requires": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["nodeApi"],
+      "properties": { "nodeApi": { "type": "string", "pattern": "^\\d+$" } }
+    },
+    "version": { "type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+(?:-[0-9A-Za-z.-]+)?$" },
+    "description": { "type": "string", "maxLength": 280 },
+    "icon": { "type": "string", "minLength": 1, "maxLength": 240 }
+  }
+}

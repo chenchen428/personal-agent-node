@@ -1,0 +1,15 @@
+export type ActivityAttachment = { objectId: string; kind: "image" | "file"; name: string; contentType: string; sizeBytes: number; downloadUrl: string; previewUrl: string };
+export type ActivityItem = { id: string; kind: string; title: string; summary: string; status: string; source: string; updatedAt: string; href: string; revision: number; attachments: ActivityAttachment[] };
+export type PageItem = { id: string; title: string; summary: string; visibility: "public" | "private"; headerTheme: "light" | "dark"; updatedAt: string; url: string; shareUrl: string; thumbnailUrl: string };
+export type PlanStep = { step: string; status: "completed" | "inProgress" | "pending" };
+export type Message = { id: string; role: "user" | "assistant" | "agent" | "tool" | "system" | "error"; content: string; createdAt?: string; metadata?: { eventType?: string; plan?: PlanStep[] } };
+export type SessionEvent = { id?: string; kind?: string; createdAt?: string; payload?: { metadata?: { eventType?: string; plan?: PlanStep[] } } };
+export type Session = { id: string; role: string; channel?: string; senderName?: string; title: string; taskDescription?: string; summary?: string; status: string; updatedAt?: string; createdAt?: string; messages?: Message[]; events?: SessionEvent[] };
+export type Overview = { machine: { id: string; state: string; uptimeSeconds: number; mobileAddress: string }; counts: { work: number; mail: number; pages: number }; recent: ActivityItem[] };
+export type PersonalApp = { id: string; name: string; description?: string; route: string; desktopRoute?: string; mobileRoute?: string; assetRoute?: string; compatible: boolean };
+export type Skill = { id: string; name: string; description?: string };
+export type Channel = { provider: string; label: string; state: string; statusLabel?: string; description?: string };
+export type FilterOption = { value: string; label: string; count: number };
+export type MobilePageResult = { items: PageItem[]; total: number; nextCursor: string; counts: { all: number; private: number; public: number } };
+export type MobileTaskResult = { items: Session[]; total: number; nextCursor: string; counts: { all: number; running: number; completed: number } };
+export type MobileSection = "activity" | "pages" | "workers" | "apps" | "about";

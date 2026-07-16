@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Personal Agent">
+  <rect width="512" height="512" rx="112" fill="#181715"/>
+  <path d="M120 352V160h104c57 0 96 32 96 82 0 51-39 84-96 84h-48v26h-56zm56-78h43c27 0 44-12 44-32 0-19-17-30-44-30h-43v62z" fill="#f6f0e6"/>
+  <circle cx="369" cy="347" r="48" fill="#cc785c"/>
+</svg>

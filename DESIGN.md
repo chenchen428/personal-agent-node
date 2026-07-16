@@ -298,6 +298,14 @@ components:
     padding: 64px
 ---
 
+## Frontend implementation architecture
+
+- Assign one primary responsibility to each frontend component.
+- Extract reusable UI and interaction patterns into shared components.
+- Keep every authored component source file at 300 lines or fewer.
+- Implement each menu destination as an independent page component; share shells and primitives without coupling unrelated pages.
+- Separate data access and state hooks from page composition when either concern is reusable or independently testable.
+
 ## Overview
 
 Claude.com is the warmest, most editorial interface in the AI-product category. The base atmosphere is a **tinted cream canvas** (`{colors.canvas}` — #faf9f5) — distinctly warm, deliberately not the cool gray-white that every other AI brand uses. Headlines run a **slab-serif display** ("Copernicus" / Tiempos Headline) at weight 400 with negative letter-spacing, paired with **StyreneB / Inter** body sans. The combination feels like a literary publication, not a SaaS marketing page.

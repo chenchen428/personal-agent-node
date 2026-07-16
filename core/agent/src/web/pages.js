@@ -24,7 +24,6 @@ export function renderDashboard({ sessions = [], totalSessions = sessions.length
               <div class="console-menu-wrap">
                 <button class="console-icon-button" type="button" data-console-menu-trigger title="更多" aria-label="更多" aria-haspopup="menu" aria-expanded="false">${icon("more-horizontal")}</button>
                 <div class="console-menu-popover" data-console-menu role="menu" hidden>
-                  <a href="/app/chat/memory" role="menuitem">${icon("brain")}<span>记忆管理</span></a>
                   <a href="/app/data" role="menuitem">${icon("database")}<span>数据</span></a>
                   <a href="/app/automations" role="menuitem">${icon("workflow")}<span>自动化</span></a>
                   <a href="/app/channels" role="menuitem">${icon("radio")}<span>渠道管理</span></a>
@@ -243,69 +242,6 @@ export function renderCronPage({ tasks = [], workspaces = [] }) {
         </div>
       </section>
       <script>${cronScript()}</script>
-    `,
-  });
-}
-
-export function renderMemoryPage({ sessions = [], selectedSessionId = null, memories = [], stats = {} }) {
-  const selectedSession = sessions.find((session) => session.id === selectedSessionId) || null;
-  const memoryStats = {
-    memoryCount: Number(stats.memoryCount || 0),
-    totalHits: Number(stats.totalHits || 0),
-    lastActivityAt: stats.lastActivityAt || null,
-  };
-  return layout({
-    title: "记忆管理 · Agent Bridge",
-    body: `
-      <section class="agent-bridge-app-viewport agent-bridge-theme console-page memory-page">
-        <div class="console-frame memory-frame">
-          <header class="console-header">
-            ${consoleBackButtons()}
-            <div class="console-title">
-              <span>记忆管理</span>
-              <small>
-                <i class="presence-dot ${selectedSession?.role === "main" ? "online" : ""}" aria-hidden="true"></i>
-                <span>${escapeHtml(selectedSession ? `${selectedSession.role === "main" ? "主会话" : "子会话"} · ${selectedSession.title}` : "暂无会话")}</span>
-              </small>
-            </div>
-            ${selectedSession ? `<a class="console-icon-button" href="${escapeAttr(selectedSession.url)}" title="打开会话" aria-label="打开会话">${icon("message-square")}</a>` : `<span class="console-header-spacer" aria-hidden="true"></span>`}
-          </header>
-
-          <main class="agent-bridge-app-content console-scroll memory-scroll">
-            <div class="memory-toolbar">
-              <button class="memory-selector memory-session-select" type="button" data-memory-session aria-label="选择记忆所属会话" ${sessions.length ? "" : "disabled"}>
-                ${icon("brain")}
-                <span>${escapeHtml(selectedSession ? memorySessionLabel(selectedSession) : "暂无会话")}</span>
-                ${icon("chevrons-up-down")}
-              </button>
-              <label class="memory-search">
-                ${icon("search")}
-                <input type="search" data-memory-search autocomplete="off" placeholder="搜索记忆" aria-label="搜索记忆">
-              </label>
-              <button class="memory-selector memory-type-filter" type="button" data-memory-type data-value="" aria-label="按类型筛选">
-                <span data-memory-type-label>全部类型</span>
-                ${icon("chevrons-up-down")}
-              </button>
-            </div>
-
-            <dl class="memory-stats">
-              <div><dt>记忆</dt><dd data-memory-stat="count">${escapeHtml(formatInteger(memoryStats.memoryCount))}</dd></div>
-              <div><dt>累计命中</dt><dd data-memory-stat="hits">${escapeHtml(formatInteger(memoryStats.totalHits))}</dd></div>
-              <div><dt>最近活动</dt><dd data-memory-stat="activity">${escapeHtml(memoryStats.lastActivityAt ? timeAgo(memoryStats.lastActivityAt) : "暂无")}</dd></div>
-            </dl>
-
-            <div class="memory-list-heading"><strong>记忆列表</strong><span data-memory-visible-count>${memories.length} 个</span></div>
-            <div class="memory-list" data-memory-list>
-              ${memories.length ? memories.map(renderMemoryRow).join("") : renderMemoryEmpty()}
-            </div>
-          </main>
-          ${renderMemoryDetailDialog()}
-          ${renderMemoryDeleteDialog()}
-          ${renderMemorySessionSheet(sessions, selectedSessionId)}
-          ${renderMemoryTypeSheet()}
-        </div>
-      </section>
-      <script>${memoryScript()}</script>
     `,
   });
 }
@@ -603,19 +539,44 @@ export function renderMessagesFragment({ session }) {
 }
 
 export function renderPagesIndex({ assets }) {
-  return layout({
-    title: "Open Agent Bridge Pages",
-    body: `
-      <main class="pages-index">
-        <a class="pages-home-link" href="/app">${icon("grid")}<span>返回工作台</span></a>
-        <p class="eyebrow">pages.personal-agent.local</p>
-        <h1>Online Pages</h1>
-        <div class="asset-list wide">
-          ${assets.length ? assets.map((asset) => `<a href="${escapeAttr(asset.url)}"><span>${escapeHtml(asset.publicPath)}</span><small>${escapeHtml(formatTime(asset.updatedAt))}</small></a>`).join("") : `<div class="empty">No uploaded assets yet.</div>`}
-        </div>
-      </main>
-    `,
-  });
+  const publicAssets = assets.map((asset) => ({
+    ...asset,
+    href: `/public${String(asset.publicPath || "").startsWith("/") ? asset.publicPath : `/${asset.publicPath || ""}`}`,
+  }));
+  return `<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="color-scheme" content="light">
+  <title>公开页面 · Personal Agent</title>
+  <style>
+    :root{--paper:#f3f5f1;--surface:#fffefa;--ink:#18201d;--muted:#69736e;--line:#dce2dd;--forest:#17634d;--coral:#c9583b;--shadow:0 22px 70px rgba(24,32,29,.09)}
+    *{box-sizing:border-box}html{min-height:100%;background:var(--paper)}body{min-height:100vh;margin:0;color:var(--ink);font-family:Inter,"PingFang SC","Microsoft YaHei",system-ui,sans-serif;background:radial-gradient(circle at 8% 4%,rgba(201,88,59,.12),transparent 28rem),radial-gradient(circle at 92% 0,rgba(23,99,77,.12),transparent 32rem),var(--paper)}
+    a{color:inherit}.shell{width:min(1120px,calc(100% - 40px));margin:0 auto;padding:28px 0 56px}.topbar{display:flex;align-items:center;justify-content:space-between;gap:20px}.brand{display:inline-flex;align-items:center;gap:12px;text-decoration:none;font-weight:760;letter-spacing:-.02em}.brand-mark{display:grid;width:34px;height:34px;place-items:center;border-radius:11px;color:#fff;background:var(--forest);box-shadow:0 8px 20px rgba(23,99,77,.2)}.brand-mark svg{width:19px;height:19px}.workspace-link{display:inline-flex;align-items:center;gap:8px;padding:10px 14px;border:1px solid var(--line);border-radius:999px;background:rgba(255,254,250,.8);font-size:14px;font-weight:650;text-decoration:none}.workspace-link:hover{border-color:#aab8b0;background:#fff}
+    .hero{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(240px,.75fr);gap:28px;align-items:end;padding:88px 0 42px}.eyebrow{display:flex;align-items:center;gap:9px;margin:0 0 18px;color:var(--forest);font-size:13px;font-weight:800;letter-spacing:.14em;text-transform:uppercase}.eyebrow::before{content:"";width:24px;height:2px;background:var(--coral)}h1{max-width:720px;margin:0;font-family:Georgia,"Noto Serif SC",serif;font-size:clamp(44px,7vw,82px);font-weight:500;line-height:.98;letter-spacing:-.055em}.lede{max-width:620px;margin:24px 0 0;color:var(--muted);font-size:18px;line-height:1.75}.privacy-note{padding:22px 24px;border:1px solid rgba(23,99,77,.18);border-radius:22px;background:rgba(255,254,250,.65);color:var(--muted);font-size:14px;line-height:1.7}.privacy-note strong{display:block;margin-bottom:6px;color:var(--ink);font-size:15px}
+    .collection{overflow:hidden;border:1px solid var(--line);border-radius:28px;background:var(--surface);box-shadow:var(--shadow)}.collection-head{display:flex;align-items:end;justify-content:space-between;gap:18px;padding:26px 28px;border-bottom:1px solid var(--line)}.collection-head h2{margin:0;font-size:20px;letter-spacing:-.025em}.count{color:var(--muted);font-size:13px}.asset-list{display:grid}.asset{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:20px;align-items:center;padding:21px 28px;border-bottom:1px solid var(--line);text-decoration:none;transition:background .18s ease}.asset:last-child{border-bottom:0}.asset:hover{background:#f7faf7}.asset-name{display:flex;align-items:center;gap:14px;min-width:0}.asset-icon{display:grid;flex:0 0 auto;width:42px;height:42px;place-items:center;border-radius:13px;color:var(--forest);background:#eaf2ed;font-weight:800}.asset-path{min-width:0}.asset-path strong{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:15px}.asset-path span{display:block;overflow:hidden;margin-top:5px;color:var(--muted);font:12px/1.4 ui-monospace,SFMono-Regular,Consolas,monospace;text-overflow:ellipsis;white-space:nowrap}.asset-time{color:var(--muted);font-size:13px;white-space:nowrap}.empty{padding:64px 28px;text-align:center;color:var(--muted)}.empty strong{display:block;margin-bottom:8px;color:var(--ink);font-size:17px}.footer{display:flex;justify-content:space-between;gap:20px;padding:26px 4px 0;color:var(--muted);font-size:12px}
+    @media(max-width:760px){.shell{width:min(100% - 24px,1120px);padding-top:18px}.topbar{align-items:flex-start}.workspace-link span{display:none}.hero{grid-template-columns:1fr;padding:64px 4px 32px}.privacy-note{padding:18px}.collection{border-radius:22px}.collection-head,.asset{padding-left:20px;padding-right:20px}.asset{grid-template-columns:minmax(0,1fr)}.asset-time{padding-left:56px}.footer{display:block;line-height:1.8}}
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <header class="topbar">
+      <a class="brand" href="/public" aria-label="Personal Agent 公开页面"><span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M12 2.7 14.5 9l6.3 2.5-6.3 2.5L12 20.3 9.5 14l-6.3-2.5L9.5 9 12 2.7Z" fill="currentColor"/></svg></span><span>Personal Agent</span></a>
+      <a class="workspace-link" href="/"><span>进入私人工作台</span><b aria-hidden="true">→</b></a>
+    </header>
+    <section class="hero">
+      <div><p class="eyebrow">Public pages</p><h1>公开页面</h1><p class="lede">这里展示所有者明确发布的内容。每个页面都拥有可直接分享的公开地址。</p></div>
+      <aside class="privacy-note"><strong>公开与私密相互隔离</strong>只有 <code>/public</code> 下的内容无需登录；工作台、设置和私人数据始终需要密码。</aside>
+    </section>
+    <section class="collection" aria-labelledby="collection-title">
+      <div class="collection-head"><h2 id="collection-title">已发布内容</h2><span class="count">${publicAssets.length} 个页面</span></div>
+      <div class="asset-list">${publicAssets.length ? publicAssets.map((asset) => `<a class="asset" href="${escapeAttr(asset.href)}"><span class="asset-name"><span class="asset-icon" aria-hidden="true">↗</span><span class="asset-path"><strong>${escapeHtml(String(asset.publicPath || "").split("/").filter(Boolean).pop() || "公开页面")}</strong><span>${escapeHtml(asset.href)}</span></span></span><time class="asset-time">${escapeHtml(formatTime(asset.updatedAt))}</time></a>`).join("") : `<div class="empty"><strong>暂时还没有公开页面</strong><span>从工作台发布后，内容会出现在这里。</span></div>`}</div>
+    </section>
+    <footer class="footer"><span>由 Personal Agent 安全发布</span><span>公开内容无需登录 · 其他区域需要密码</span></footer>
+  </div>
+</body>
+</html>`;
 }
 
 export function renderPrivateFilePreview({ fileName, rawUrl, mimeType, sizeBytes = 0, kind = "download", textContent = "" }) {
@@ -1065,133 +1026,6 @@ function renderTaskActionDialog() {
       </div>
     </div>
   </dialog>`;
-}
-
-function memorySessionLabel(session) {
-  const role = session.role === "main" ? "主会话" : "其他会话";
-  return `${role} · ${conciseTitle(session.title)} · ${Number(session.memoryCount || 0)} 条`;
-}
-
-function renderMemorySessionSheet(sessions, selectedSessionId) {
-  return `<div class="memory-overlay memory-sheet" data-memory-session-sheet role="dialog" aria-modal="true" aria-labelledby="memory-session-sheet-title" hidden>
-    <div class="memory-sheet-content">
-      <header class="memory-sheet-header">
-        <div><span>记忆管理</span><h2 id="memory-session-sheet-title">选择会话</h2></div>
-        <button type="button" data-memory-sheet-close aria-label="关闭">${icon("x")}</button>
-      </header>
-      <div class="memory-sheet-options">
-        ${sessions.length ? sessions.map((session) => `<button class="memory-sheet-option" type="button" data-memory-session-option data-value="${escapeAttr(session.id)}" aria-pressed="${session.id === selectedSessionId ? "true" : "false"}">
-          <span class="memory-sheet-option-mark ${session.role === "main" ? "main" : ""}">${session.role === "main" ? icon("message-square") : icon("terminal")}</span>
-          <span><strong>${escapeHtml(conciseTitle(session.title))}</strong><small>${escapeHtml(memorySessionLabel(session))}</small></span>
-          ${session.id === selectedSessionId ? icon("check") : icon("chevron-right")}
-        </button>`).join("") : `<p class="memory-sheet-empty">暂无会话</p>`}
-      </div>
-    </div>
-  </div>`;
-}
-
-function renderMemoryTypeSheet() {
-  const types = ["", "preference", "fact", "decision", "context", "todo", "instruction"];
-  return `<div class="memory-overlay memory-sheet" data-memory-type-sheet role="dialog" aria-modal="true" aria-labelledby="memory-type-sheet-title" hidden>
-    <div class="memory-sheet-content">
-      <header class="memory-sheet-header">
-        <div><span>记忆管理</span><h2 id="memory-type-sheet-title">选择类型</h2></div>
-        <button type="button" data-memory-sheet-close aria-label="关闭">${icon("x")}</button>
-      </header>
-      <div class="memory-sheet-options memory-type-options">
-        ${types.map((type) => `<button class="memory-sheet-option" type="button" data-memory-type-option data-value="${escapeAttr(type)}">
-          <span class="memory-type-badge type-${escapeAttr(type || "all")}">${escapeHtml(type ? memoryTypeLabel(type) : "全部")}</span>
-          <span><strong>${escapeHtml(type ? memoryTypeLabel(type) : "全部类型")}</strong><small>${escapeHtml(type ? "仅显示这一类记忆" : "显示所有记忆")}</small></span>
-          ${icon("chevron-right")}
-        </button>`).join("")}
-      </div>
-    </div>
-  </div>`;
-}
-
-function renderMemoryRow(memory) {
-  const activityAt = memory.lastHitAt || memory.updatedAt;
-  return `<button class="memory-row" type="button" data-memory-open
-      data-memory-id="${escapeAttr(memory.id)}"
-      data-memory-type="${escapeAttr(memory.type)}"
-      data-memory-content="${escapeAttr(memory.content)}"
-      data-memory-hits="${escapeAttr(String(memory.hitCount || 0))}"
-      data-memory-created-at="${escapeAttr(memory.createdAt || "")}"
-      data-memory-updated-at="${escapeAttr(memory.updatedAt || "")}"
-      data-memory-last-hit-at="${escapeAttr(memory.lastHitAt || "")}"
-      data-search-text="${escapeAttr(`${memoryTypeLabel(memory.type)} ${memory.content}`)}">
-    <span class="memory-type-badge type-${escapeAttr(memory.type)}">${escapeHtml(memoryTypeLabel(memory.type))}</span>
-    <span class="memory-row-copy">
-      <strong>${escapeHtml(memory.content)}</strong>
-      <small>${escapeHtml(`命中 ${formatInteger(memory.hitCount)} 次 · ${activityAt ? timeAgo(activityAt) : "暂无活动"}`)}</small>
-    </span>
-    <span class="workspace-chevron">${icon("chevron-right")}</span>
-  </button>`;
-}
-
-function renderMemoryEmpty() {
-  return `<div class="console-empty memory-empty">
-    ${icon("brain")}
-    <strong>暂无记忆</strong>
-    <span></span>
-  </div>`;
-}
-
-function renderMemoryDetailDialog() {
-  return `<div class="memory-overlay task-dialog memory-dialog" data-memory-dialog role="dialog" aria-modal="true" aria-labelledby="memory-dialog-title" hidden>
-    <div class="task-dialog-content">
-      <header class="task-dialog-header">
-        <div>
-          <span>会话记忆</span>
-          <h2 id="memory-dialog-title">记忆详情</h2>
-        </div>
-        <button class="task-dialog-close" type="button" data-memory-close title="关闭" aria-label="关闭">${icon("x")}</button>
-      </header>
-      <form class="memory-detail-form task-dialog-form" data-memory-form>
-        <label><span>类型</span><input name="type" type="hidden" value="context"><button class="memory-detail-type" type="button" data-memory-detail-type><span data-memory-detail-type-label>${escapeHtml(memoryTypeLabel("context"))}</span>${icon("chevrons-up-down")}</button></label>
-        <label><span>内容</span><textarea name="content" rows="8" maxlength="12000" required></textarea></label>
-        <div class="memory-detail-meta">
-          <span data-memory-detail-hits></span>
-          <span data-memory-detail-created></span>
-          <span data-memory-detail-updated></span>
-          <span data-memory-detail-last-hit></span>
-        </div>
-        <div class="cron-actions memory-detail-actions">
-          <button class="cron-secondary danger" type="button" data-memory-delete>${icon("trash-2")}<span>删除</span></button>
-          <button class="cron-primary" type="submit">${icon("save")}<span>保存</span></button>
-        </div>
-        <p class="compose-error" data-memory-error hidden></p>
-      </form>
-    </div>
-  </div>`;
-}
-
-function renderMemoryDeleteDialog() {
-  return `<div class="memory-overlay alert-dialog" data-memory-delete-dialog role="alertdialog" aria-modal="true" aria-labelledby="memory-delete-title" aria-describedby="memory-delete-description" hidden>
-    <div class="alert-dialog-content">
-      <div class="alert-dialog-icon" aria-hidden="true">${icon("trash-2")}</div>
-      <div class="alert-dialog-copy">
-        <h2 id="memory-delete-title">删除这条记忆？</h2>
-        <p id="memory-delete-description">这条会话记忆将被永久删除，此操作无法撤销。</p>
-      </div>
-      <p class="alert-dialog-error" data-memory-delete-error hidden></p>
-      <div class="alert-dialog-actions">
-        <button class="alert-dialog-cancel" type="button" data-memory-delete-cancel>取消</button>
-        <button class="alert-dialog-confirm" type="button" data-memory-delete-confirm data-variant="destructive">${icon("trash-2")}<span>删除记忆</span></button>
-      </div>
-    </div>
-  </div>`;
-}
-
-function memoryTypeLabel(type) {
-  return ({
-    preference: "偏好",
-    fact: "事实",
-    decision: "决策",
-    context: "上下文",
-    todo: "待办",
-    instruction: "长期指令",
-  })[type] || "上下文";
 }
 
 function renderSkillGroup(group) {
@@ -2029,227 +1863,6 @@ skillDetail?.addEventListener('click', (event) => {
 document.addEventListener('keydown', (event) => {
   if (event.key === 'Escape') closeSkillDetail();
 });`;
-}
-
-function memoryScript() {
-  return `
-const sessionTrigger = document.querySelector('[data-memory-session]');
-const memorySearch = document.querySelector('[data-memory-search]');
-const memoryType = document.querySelector('[data-memory-type]');
-const memoryList = document.querySelector('[data-memory-list]');
-const visibleCount = document.querySelector('[data-memory-visible-count]');
-const memoryDialog = document.querySelector('[data-memory-dialog]');
-const memoryForm = document.querySelector('[data-memory-form]');
-const memoryClose = document.querySelector('[data-memory-close]');
-const deleteButton = document.querySelector('[data-memory-delete]');
-const deleteDialog = document.querySelector('[data-memory-delete-dialog]');
-const deleteCancel = document.querySelector('[data-memory-delete-cancel]');
-const deleteConfirm = document.querySelector('[data-memory-delete-confirm]');
-const deleteError = document.querySelector('[data-memory-delete-error]');
-const sessionSheet = document.querySelector('[data-memory-session-sheet]');
-const typeSheet = document.querySelector('[data-memory-type-sheet]');
-const detailType = document.querySelector('[data-memory-detail-type]');
-let typeSheetTarget = 'filter';
-
-function openMemoryModal(dialog, trigger) {
-  if (!dialog || !dialog.hidden) return;
-  dialog.hidden = false;
-  dialog.dataset.open = 'true';
-  if (trigger) dialog._memoryTrigger = trigger;
-  document.documentElement.classList.add('memory-modal-open');
-  requestAnimationFrame(() => {
-    const target = dialog.querySelector('button:not([disabled]), textarea:not([disabled]), input:not([disabled])');
-    target?.focus({ preventScroll: true });
-  });
-}
-function closeMemoryModal(dialog, returnValue = '') {
-  if (!dialog || dialog.hidden) return;
-  dialog.hidden = true;
-  delete dialog.dataset.open;
-  dialog.dataset.returnValue = returnValue;
-  if (!document.querySelector('.memory-overlay:not([hidden])')) document.documentElement.classList.remove('memory-modal-open');
-  dialog.dispatchEvent(new CustomEvent('memoryclose', { detail: { returnValue } }));
-  if (returnValue === 'cancel' || returnValue === 'close') dialog._memoryTrigger?.focus({ preventScroll: true });
-}
-
-sessionTrigger?.addEventListener('click', () => openMemoryModal(sessionSheet, sessionTrigger));
-for (const option of document.querySelectorAll('[data-memory-session-option]')) {
-  option.addEventListener('click', () => {
-    const value = option.dataset.value || '';
-    closeMemoryModal(sessionSheet, 'selected');
-    location.assign('/app/chat/memory' + (value ? '?session=' + encodeURIComponent(value) : ''));
-  });
-}
-memoryType?.addEventListener('click', () => {
-  typeSheetTarget = 'filter';
-  openMemoryModal(typeSheet, memoryType);
-});
-detailType?.addEventListener('click', () => {
-  typeSheetTarget = 'detail';
-  closeMemoryModal(memoryDialog, 'choose-type');
-  openMemoryModal(typeSheet, detailType);
-});
-for (const sheet of document.querySelectorAll('.memory-sheet')) {
-  sheet.querySelector('[data-memory-sheet-close]')?.addEventListener('click', () => closeMemoryModal(sheet, 'cancel'));
-  sheet.addEventListener('click', (event) => {
-    if (event.target === sheet) closeMemoryModal(sheet, 'cancel');
-  });
-}
-for (const option of document.querySelectorAll('[data-memory-type-option]')) {
-  option.addEventListener('click', () => {
-    const value = option.dataset.value || '';
-    const label = option.querySelector('strong')?.textContent || '全部类型';
-    if (typeSheetTarget === 'detail') {
-      if (memoryForm?.elements.type) memoryForm.elements.type.value = value || 'context';
-      const detailLabel = document.querySelector('[data-memory-detail-type-label]');
-      if (detailLabel) detailLabel.textContent = value ? label : '上下文';
-      closeMemoryModal(typeSheet, 'selected');
-      requestAnimationFrame(() => openMemoryModal(memoryDialog));
-      return;
-    }
-    if (memoryType) memoryType.dataset.value = value;
-    const filterLabel = document.querySelector('[data-memory-type-label]');
-    if (filterLabel) filterLabel.textContent = label;
-    closeMemoryModal(typeSheet, 'selected');
-    filterMemories();
-  });
-}
-document.addEventListener('keydown', (event) => {
-  if (event.key !== 'Escape') return;
-  const open = Array.from(document.querySelectorAll('.memory-overlay:not([hidden])')).at(-1);
-  if (open) closeMemoryModal(open, 'cancel');
-});
-
-function filterMemories() {
-  const query = (memorySearch?.value || '').trim().toLocaleLowerCase('zh-CN');
-  const type = memoryType?.dataset.value || '';
-  let count = 0;
-  for (const row of memoryList?.querySelectorAll('[data-memory-open]') || []) {
-    const matches = (!query || (row.dataset.searchText || '').toLocaleLowerCase('zh-CN').includes(query))
-      && (!type || row.dataset.memoryType === type);
-    row.hidden = !matches;
-    if (matches) count += 1;
-  }
-  if (visibleCount) visibleCount.textContent = count + ' 个';
-  let empty = memoryList?.querySelector('[data-memory-filter-empty]');
-  if (!count && memoryList?.querySelector('[data-memory-open]')) {
-    if (!empty) {
-      empty = document.createElement('div');
-      empty.className = 'memory-filter-empty';
-      empty.dataset.memoryFilterEmpty = '';
-      empty.textContent = '没有匹配的记忆';
-      memoryList.append(empty);
-    }
-    empty.hidden = false;
-  } else if (empty) {
-    empty.hidden = true;
-  }
-}
-memorySearch?.addEventListener('input', filterMemories);
-
-for (const row of document.querySelectorAll('[data-memory-open]')) {
-  row.addEventListener('click', () => openMemory(row));
-}
-
-function openMemory(row) {
-  if (!memoryDialog || !memoryForm) return;
-  memoryForm.dataset.memoryId = row.dataset.memoryId || '';
-  memoryForm.elements.type.value = row.dataset.memoryType || 'context';
-  const detailTypeLabel = document.querySelector('[data-memory-detail-type-label]');
-  if (detailTypeLabel) detailTypeLabel.textContent = memoryTypeLabel(row.dataset.memoryType || 'context');
-  memoryForm.elements.content.value = row.dataset.memoryContent || '';
-  setMemoryMeta('[data-memory-detail-hits]', '命中 ' + (row.dataset.memoryHits || '0') + ' 次');
-  setMemoryMeta('[data-memory-detail-created]', '创建 ' + formatMemoryTime(row.dataset.memoryCreatedAt));
-  setMemoryMeta('[data-memory-detail-updated]', '更新 ' + formatMemoryTime(row.dataset.memoryUpdatedAt));
-  setMemoryMeta('[data-memory-detail-last-hit]', row.dataset.memoryLastHitAt ? '最近命中 ' + formatMemoryTime(row.dataset.memoryLastHitAt) : '尚未命中');
-  const error = memoryForm.querySelector('[data-memory-error]');
-  if (error) error.hidden = true;
-  openMemoryModal(memoryDialog, row);
-  requestAnimationFrame(() => memoryForm.elements.content?.focus());
-}
-
-function setMemoryMeta(selector, value) {
-  const element = memoryForm?.querySelector(selector);
-  if (element) element.textContent = value;
-}
-
-function formatMemoryTime(value) {
-  if (!value) return '暂无';
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return value;
-  return new Intl.DateTimeFormat('zh-CN', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }).format(date);
-}
-
-function memoryTypeLabel(type) {
-  return ({ preference: '偏好', fact: '事实', decision: '决策', context: '上下文', todo: '待办', instruction: '长期指令' })[type] || '上下文';
-}
-
-memoryClose?.addEventListener('click', () => closeMemoryModal(memoryDialog, 'close'));
-memoryDialog?.addEventListener('click', (event) => {
-  if (event.target === memoryDialog) closeMemoryModal(memoryDialog, 'close');
-});
-memoryForm?.addEventListener('submit', async (event) => {
-  event.preventDefault();
-  const id = memoryForm.dataset.memoryId;
-  const submit = memoryForm.querySelector('button[type="submit"]');
-  const error = memoryForm.querySelector('[data-memory-error]');
-  submit.disabled = true;
-  if (error) error.hidden = true;
-  try {
-    await memoryJson('/api/chat/memories/' + encodeURIComponent(id), {
-      method: 'PATCH',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({
-        type: memoryForm.elements.type.value,
-        content: memoryForm.elements.content.value.trim(),
-      }),
-    });
-    location.reload();
-  } catch (err) {
-    if (error) {
-      error.textContent = err.message || String(err);
-      error.hidden = false;
-    }
-    submit.disabled = false;
-  }
-});
-
-deleteButton?.addEventListener('click', () => {
-  if (!deleteDialog) return;
-  if (deleteError) deleteError.hidden = true;
-  closeMemoryModal(memoryDialog, 'delete');
-  openMemoryModal(deleteDialog);
-  requestAnimationFrame(() => deleteCancel?.focus());
-});
-deleteCancel?.addEventListener('click', () => closeMemoryModal(deleteDialog, 'cancel'));
-deleteDialog?.addEventListener('memoryclose', (event) => {
-  if (deleteConfirm) deleteConfirm.disabled = false;
-  if (event.detail?.returnValue === 'cancel') requestAnimationFrame(() => openMemoryModal(memoryDialog));
-});
-deleteConfirm?.addEventListener('click', async () => {
-  const id = memoryForm?.dataset.memoryId;
-  if (!id || !deleteConfirm) return;
-  deleteConfirm.disabled = true;
-  if (deleteError) deleteError.hidden = true;
-  try {
-    await memoryJson('/api/chat/memories/' + encodeURIComponent(id), { method: 'DELETE' });
-    location.reload();
-  } catch (err) {
-    if (deleteError) {
-      deleteError.textContent = err.message || String(err);
-      deleteError.hidden = false;
-    }
-    deleteConfirm.disabled = false;
-  }
-});
-
-async function memoryJson(url, options) {
-  const response = await fetch(url, options);
-  const text = await response.text();
-  const data = text ? JSON.parse(text) : {};
-  if (!response.ok || data.ok === false) throw new Error(data.error || text || response.statusText);
-  return data;
-}`;
 }
 
 function sessionScript() {

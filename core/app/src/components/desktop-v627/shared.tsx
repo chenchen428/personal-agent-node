@@ -1,0 +1,32 @@
+"use client";
+
+import { useCallback, useEffect, useState, type ReactNode } from "react";
+import type { ActivityItem, PageItem } from "./types";
+
+export function Heading({ eyebrow, title, copy, action }: { eyebrow: string; title: string; copy: string; action?: ReactNode }) {
+  return <header className="pa-heading"><div><span className="pa-eyebrow">{eyebrow}</span><h1>{title}</h1><p>{copy}</p></div>{action}</header>;
+}
+
+export function PageThumbnail({ page }: { page: PageItem }) { return <div className={`page-shot ${page.headerTheme === "dark" ? "page-shot-travel" : "page-shot-finance"}`} role="img" aria-label={`${page.title}的静态缩略图`}>{page.thumbnailUrl ? <img src={page.thumbnailUrl} alt="" /> : <><span>{page.visibility === "public" ? "PUBLIC PAGE" : "PRIVATE PAGE"}</span><strong>{page.title}</strong><p>{page.summary}</p></>}</div>; }
+export function Metric({ title, value, copy }: { title: string; value: string; copy: string }) { return <article className="pa-card"><h3>{title}</h3><strong className="metric">{value}</strong><p>{copy}</p></article>; }
+export function SectionHeading({ title, note }: { title: string; note: string }) { return <div className="pa-section-heading"><h2>{title}</h2><span>{note}</span></div>; }
+export function Filters({ labels, selected, onSelect }: { labels: string[]; selected?: string; onSelect?: (value: string) => void }) { const [local, setLocal] = useState(labels[0]); const active = selected || local; return <div className="pa-filters">{labels.map((label) => { const value = label.split(" ")[0]; return <button className={`pa-chip${active === value || active === label ? " active" : ""}`} type="button" onClick={() => { setLocal(value); onSelect?.(value); }} key={label}>{label}</button>; })}</div>; }
+export function Setting({ title, copy }: { title: string; copy: string }) { return <div className="setting"><div><strong>{title}</strong><small>{copy}</small></div><button className="toggle on" aria-label={title} aria-pressed="true" /></div>; }
+export function Empty({ text }: { text: string }) { return <div className="pa-empty"><div><strong>{text}</strong><p>新内容出现后会显示在这里。</p></div></div>; }
+export function Pager({ page, totalPages, totalRows, pageSize, onPage, compact = false }: { page: number; totalPages: number; totalRows: number; pageSize: number; onPage: (page: number) => void; compact?: boolean }) {
+  const first = totalRows ? (page - 1) * pageSize + 1 : 0;
+  const last = Math.min(page * pageSize, totalRows);
+  return <div className="pa-pager"><span>{first}–{last} / {totalRows}</span><div className="pa-pager-controls"><button type="button" disabled={page <= 1} aria-label="上一页" onClick={() => onPage(Math.max(1, page - 1))}>‹</button><strong>{page} / {totalPages}</strong><button type="button" disabled={page >= totalPages} aria-label="下一页" onClick={() => onPage(Math.min(totalPages, page + 1))}>›</button></div>{compact ? null : null}</div>;
+}
+export function columnName(index: number) { let value = index; let label = ""; while (value > 0) { value -= 1; label = String.fromCharCode(65 + (value % 26)) + label; value = Math.floor(value / 26); } return label || "A"; }
+export function useJson<T>(url: string) { const [value, setValue] = useState<T | null>(null); const [loading, setLoading] = useState(true); const [error, setError] = useState(""); const refresh = useCallback(() => { setLoading(true); void fetchJson<T>(url).then((data) => { setValue(data); setError(""); }).catch((cause) => setError(errorMessage(cause))).finally(() => setLoading(false)); }, [url]); useEffect(() => refresh(), [refresh]); return { value, loading, error, refresh }; }
+export async function fetchJson<T = unknown>(url: string, init?: RequestInit): Promise<T> { const response = await fetch(url, { cache: "no-store", ...init }); const text = await response.text(); let payload: any; try { payload = JSON.parse(text); } catch { throw new Error("本机服务返回了无法读取的内容"); } if (!response.ok || payload.ok === false) throw new Error(typeof payload.error === "string" ? payload.error : payload.error?.message || `请求失败（${response.status}）`); return (payload.data ?? payload.result ?? payload) as T; }
+export function errorMessage(cause: unknown) { return cause instanceof Error ? cause.message : "暂时无法读取本机内容"; }
+export function statusLabel(status = "") { return ({ start: "启动中", running: "进行中", idle: "等待继续", paused: "已暂停", done: "已完成", archived: "已归档", published: "已发布", received: "未处理", succeeded: "已完成", failed: "未完成", matched: "已匹配", skipped: "未触发" } as Record<string, string>)[status] || status || "已记录"; }
+export function formatCell(value: unknown) { if (value == null) return "—"; return typeof value === "object" ? JSON.stringify(value) : String(value); }
+export function formatTime(value?: string) { const date = new Date(value || ""); return Number.isFinite(date.getTime()) ? new Intl.DateTimeFormat("zh-CN", { hour: "2-digit", minute: "2-digit", hour12: false }).format(date) : "刚刚"; }
+export function formatDateTime(value?: string) { const date = new Date(value || ""); return Number.isFinite(date.getTime()) ? new Intl.DateTimeFormat("zh-CN", { year: "numeric", month: "long", day: "numeric", hour: "2-digit", minute: "2-digit", hour12: false }).format(date) : ""; }
+export function formatBytes(bytes: number) { return bytes < 1024 ? `${bytes} B` : bytes < 1024 * 1024 ? `${(bytes / 1024).toFixed(1)} KB` : `${(bytes / 1024 / 1024).toFixed(1)} MB`; }
+export function relativeTime(value?: string) { const date = new Date(value || ""); if (!Number.isFinite(date.getTime())) return "刚刚"; const elapsed = Date.now() - date.getTime(); if (elapsed < 60_000) return "刚刚"; if (elapsed < 3_600_000) return `${Math.max(1, Math.floor(elapsed / 60_000))} 分钟前`; if (elapsed < 86_400_000) return `${Math.floor(elapsed / 3_600_000)} 小时前`; return new Intl.DateTimeFormat("zh-CN", { month: "numeric", day: "numeric" }).format(date); }
+export function formatDuration(seconds: number) { const hours = Math.floor(seconds / 3600); return hours >= 24 ? `${Math.floor(hours / 24)} 天 ${hours % 24} 小时` : hours ? `${hours} 小时` : `${Math.max(1, Math.floor(seconds / 60))} 分钟`; }
+export function desktopActivityHref(item: ActivityItem) { if (item.kind === "conversation") return "/app/conversations"; if (item.kind === "work") return "/app/workers"; if (item.kind === "mail") return "/app/mail"; if (item.kind === "page") return "/app/pages"; if (item.kind === "automation") return "/app/automations"; return "/app/data"; }

@@ -30,6 +30,7 @@ export const config = {
   projectDir,
   workspaceRoot: resolvedWorkspaceRoot,
   siteDataRoot,
+  appsDir: path.join(siteDataRoot, "apps"),
   dataDir: resolvedDataDir,
   publicDir: path.resolve(process.env.OPEN_AGENT_BRIDGE_PUBLIC_DIR || path.join(projectDir, "public")),
   pagesDir: path.resolve(process.env.OPEN_AGENT_BRIDGE_PAGES_DIR || path.join(resolvedDataDir, "pages")),
@@ -99,7 +100,7 @@ export const config = {
 };
 
 export function ensureRuntimeDirs() {
-  for (const dir of [config.dataDir, config.publicDir, config.pagesDir, config.uploadsDir, config.materializedFilesDir, config.agentDataDir, config.automationDataDir, config.privatePublicationsDir, config.releaseNotesDir, config.mailIngressDir, config.inboundAttachmentsDir]) {
+  for (const dir of [config.dataDir, config.publicDir, config.pagesDir, config.uploadsDir, config.materializedFilesDir, config.agentDataDir, config.automationDataDir, config.privatePublicationsDir, config.releaseNotesDir, config.mailIngressDir, config.inboundAttachmentsDir, config.appsDir]) {
     fs.mkdirSync(dir, { recursive: true });
   }
 }

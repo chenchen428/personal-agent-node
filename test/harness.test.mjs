@@ -16,9 +16,38 @@ test('customer Harness contains architecture registries and Agent guidance', () 
   for (const file of ['AGENTS.md', 'docs/adr/0001-node-product-boundary-freeze.md', 'registry/projects.json', 'registry/skills.json', 'registry/behavior-baselines.json', 'registry/capabilities.json', 'registry/routes.json', 'registry/extensions.json', 'registry/commands.json', 'workflows/project-iteration.md', 'workflows/skill-iteration.md']) assert.equal(fs.existsSync(path.join(root, file)), true, file);
 });
 
+test('customer Harness classifies and ships portable creation skills', () => {
+  const catalog = JSON.parse(fs.readFileSync(path.join(root, 'registry/skills.json'), 'utf8'));
+  const categories = new Set(catalog.categories.map((entry) => entry.id));
+  const skills = new Map(catalog.skills.map((entry) => [entry.name, entry]));
+  for (const category of ['writing-content', 'visual-media', 'travel-location', 'product-engineering']) assert.equal(categories.has(category), true, category);
+  const expected = {
+    'guizang-social-card-skill': ['visual-media', 'AGPL-3.0-only'],
+    'guizang-ppt-skill': ['visual-media', 'AGPL-3.0-only'],
+    'travel-guidebook': ['travel-location', 'MIT'],
+    'frontend-design': ['product-engineering', 'Apache-2.0'],
+    'ui-ux-pro-max': ['product-engineering', 'MIT'],
+  };
+  for (const [name, [category, license]] of Object.entries(expected)) {
+    const skill = skills.get(name);
+    assert.equal(skill?.category, category, name);
+    assert.equal(skill?.origin?.license, license, name);
+    assert.match(skill?.origin?.revision || '', /^[0-9a-f]{40}$/, name);
+    assert.equal(skill?.caseRequired, true, name);
+    assert.equal(fs.existsSync(path.join(root, `skills/${name}/SKILL.md`)), true, name);
+    assert.equal(fs.existsSync(path.join(root, `skills/${name}/agents/openai.yaml`)), true, name);
+  }
+  for (const name of ['guizang-social-card-skill', 'guizang-ppt-skill']) {
+    assert.equal(fs.existsSync(path.join(root, `skills/${name}/LICENSE`)), true, `${name} license`);
+    assert.equal(fs.existsSync(path.join(root, `skills/${name}/NOTICE.md`)), true, `${name} notice`);
+  }
+  const build = fs.readFileSync(path.join(root, 'scripts/build-private-site-node-dist.mjs'), 'utf8');
+  assert.match(build, /\["skills", "workspace\/skills"\]/);
+});
+
 test('customer Harness carries the portable Node acceptance standard', () => {
   const standard = fs.readFileSync(path.join(root, 'skills/personal-agent/references/acceptance.md'), 'utf8');
-  for (const requirement of ['Node Core Gate', 'Optional Managed Cloud Integration', 'local-admin', 'ten minutes', 'previous-release rollback', 'public GitHub Release asset', '"route": "/app/chat"', '"uniquePrompt": true', '"realAgentRuntime": true', '"sameSessionAgentReply": true', '"wechatRequired": false', 'WeChat is optional and never blocks', 'Stable Go launchers', 'Setup Center']) assert.match(standard, new RegExp(requirement));
+  for (const requirement of ['Node Core Gate', 'Optional Managed Cloud Integration', 'local-admin', 'ten minutes', 'previous-release rollback', 'public GitHub Release asset', '"route": "/app/chat"', '"uniquePrompt": true', '"realAgentRuntime": true', '"sameSessionAgentReply": true', '"wechatRequired": true', 'channels.wechat', 'WeChat never substitutes', 'Stable Go launchers', 'Setup Center']) assert.match(standard, new RegExp(requirement));
   assert.equal(fs.existsSync(path.join(root, 'test/fixtures/skill-cases/personal-agent-acceptance/case.json')), true);
   const expected = JSON.parse(fs.readFileSync(path.join(root, 'test/fixtures/skill-cases/personal-agent-acceptance/expected.json'), 'utf8'));
   assert.deepEqual(Object.keys(expected.node.webConversation), [
@@ -31,15 +60,15 @@ test('customer Harness carries the portable Node acceptance standard', () => {
     'wechatRequired'
   ]);
   assert.equal(expected.node.webConversation.route, '/app/chat');
-  assert.equal(expected.node.webConversation.wechatRequired, false);
+  assert.equal(expected.node.webConversation.wechatRequired, true);
   const releaseWorkflow = fs.readFileSync(path.join(root, 'workflows/release.md'), 'utf8');
-  for (const requirement of ['Post-release Node gate', 'exact public asset', 'authenticated `/app/setup`', 'real Codex reply', 'same authenticated `/app/chat` session', '"wechatRequired": false']) assert.match(releaseWorkflow, new RegExp(requirement));
+  for (const requirement of ['Post-release Node gate', 'exact public asset', 'authenticated `/app/setup`', 'real Codex reply', 'same authenticated `/app/chat` session', '"wechatRequired": true']) assert.match(releaseWorkflow, new RegExp(requirement));
   const artifactVerifier = fs.readFileSync(path.join(root, 'scripts/verify-private-site-node-dist.mjs'), 'utf8');
   assert.match(artifactVerifier, /webConversation:\s*\{/);
   assert.match(artifactVerifier, /route: "\/app\/chat"/);
   assert.match(artifactVerifier, /realAgentRuntimeRequired: true/);
   assert.match(artifactVerifier, /sameSessionReplyRequired: true/);
-  assert.match(artifactVerifier, /wechatRequired: false/);
+  assert.match(artifactVerifier, /wechatRequired: true/);
 });
 
 test('seeded Node home links only to current path-based application routes', () => {
@@ -140,7 +169,7 @@ test('GitHub release chain is version-gated and publishes verifiable artifacts',
   const runtimeFetcher = fs.readFileSync(path.join(root, 'scripts/fetch-node-runtime.mjs'), 'utf8');
   assert.match(runtimeFetcher, /extractZipMember\(archive, descriptor\.member\)/);
   const platformBuilder = fs.readFileSync(path.join(root, 'scripts/build-platform-installer.mjs'), 'utf8');
-  assert.match(platformBuilder, /platform === 'win32' \? \['--force-local'\] : \[\]/);
+  assert.match(platformBuilder, /path\.basename\(payload\).*cwd: temporary/);
   assert.match(workflow, /matrix\.platform == 'darwin' && !contains\(github\.ref_name, '-'\).*personal-agent-notary\.p8/);
   const metadataRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'personal-agent-release-security-'));
   try {

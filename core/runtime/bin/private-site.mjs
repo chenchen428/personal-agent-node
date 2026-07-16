@@ -15,12 +15,14 @@ import { readBackupState, runScheduledBackup } from "../src/backup-scheduler.ts"
 import { bridgeCliStatus, prepareBridgeCliShims } from "../src/cli-shims.ts";
 import { ensureWorkspaceFiles } from "../src/workspace-files.ts";
 import { providerCatalog, providerStatus, setProvider } from "../src/providers.ts";
+import { writePersonalAppCompatibilityReport } from "../src/apps.ts";
 
 const args = parseArgs(process.argv.slice(2));
 const command = args._[0] || "status";
 if (args.dataRoot) process.env.PRIVATE_SITE_DATA_ROOT = path.resolve(args.dataRoot);
 
 if (command === "init") await initCommand();
+else if (command === "app-compatibility") await appCompatibilityCommand();
 else if (command === "prepare") await prepareCommand();
 else if (command === "start") await runSupervisor({ config: resolveNodeConfig() });
 else if (command === "daemon-start") await daemonStartCommand();
@@ -48,6 +50,13 @@ async function initCommand() {
   process.stdout.write(`${JSON.stringify({ ok: true, created, dataRoot: config.dataRoot, configPath: config.configPath, envPath: config.envPath, site: config.site }, null, 2)}\n`);
 }
 
+async function appCompatibilityCommand() {
+  const config = resolveNodeConfig(process.env, { migrateSite: true });
+  ensureNodeDirectories(config);
+  const personalApps = writePersonalAppCompatibilityReport(config);
+  process.stdout.write(`${JSON.stringify({ ok: true, dataRoot: config.dataRoot, personalApps }, null, 2)}\n`);
+}
+
 async function prepareCommand() {
   let config = resolveNodeConfig(process.env, { migrateSite: true });
   const bridgeRoot = path.join(workspaceRoot, "core", "agent");
@@ -65,6 +74,7 @@ async function prepareCommand() {
   config = resolveNodeConfig();
   const mailMigration = migrateLegacyMailData(config);
   ensureNodeDirectories(config);
+  const personalApps = writePersonalAppCompatibilityReport(config);
   const workspaceFiles = ensureWorkspaceFiles(config);
   seedAgentWorkspace(config);
   const xiaohongshuTarget = path.join(config.dataRoot, "runtime", "xiaohongshu", "xiaohongshu-mcp.exe");
@@ -77,7 +87,7 @@ async function prepareCommand() {
   const databasePath = path.join(config.dataRoot, "databases", "tools", "lmt-tools.sqlite");
   const migrationPath = path.join(toolsRoot, "prisma", "migrations", "0001_initial", "migration.sql");
   if (fs.existsSync(migrationPath)) run(process.execPath, [path.join(workspaceRoot, "scripts", "init-lmt-tools-database.mjs"), databasePath, migrationPath], workspaceRoot);
-  process.stdout.write(`${JSON.stringify({ ok: true, prepared: true, dataRoot: config.dataRoot, databasePath, bridgeCli, mailMigration, workspaceFiles }, null, 2)}\n`);
+  process.stdout.write(`${JSON.stringify({ ok: true, prepared: true, dataRoot: config.dataRoot, databasePath, bridgeCli, mailMigration, workspaceFiles, personalApps }, null, 2)}\n`);
 }
 
 function seedPublications(config) {
@@ -505,5 +515,5 @@ function parseArgs(argv) {
 }
 
 function printHelp() {
-  process.stdout.write(`Usage:\n  private-site <command> [--data-root <path>]\n  private-site init --domain <apex> [--data-root <path>]\n  private-site prepare\n  private-site start\n  private-site daemon-start\n  private-site stop\n  private-site status --json\n  private-site verify --json\n  private-site import-legacy-env --source-dir <path>\n  private-site import-legacy-data --source-dir <path> --phase <preflight|final>\n  private-site mode <preflight|active>\n  private-site identity-init [--address 10.77.0.2]\n  private-site identity-install --certificate <file> --ca <file> --edge-client-certificate <file>\n  private-site wireguard-init --edge-public-key <key> --endpoint <host:port>\n  private-site service-prepare\n  private-site extension list\n  private-site extension install --source <directory>\n  private-site extension remove --id <extension-id>\n  private-site provider list\n  private-site provider status\n  private-site provider set --kind <tunnel|token> --provider <name> [--endpoint <url>] [--credential-env <ENV_NAME>]\n  private-site backup [--output <archive>] [--key-file <key>] [--full-recovery] [--scheduled]\n  private-site restore-verify --archive <archive> --key-file <key> [--target <directory>]\n  private-site restore-apply --archive <archive> --key-file <key> --target <empty-data-root> [--replacement]\n`);
+  process.stdout.write(`Usage:\n  private-site <command> [--data-root <path>]\n  private-site init --domain <apex> [--data-root <path>]\n  private-site app-compatibility\n  private-site prepare\n  private-site start\n  private-site daemon-start\n  private-site stop\n  private-site status --json\n  private-site verify --json\n  private-site import-legacy-env --source-dir <path>\n  private-site import-legacy-data --source-dir <path> --phase <preflight|final>\n  private-site mode <preflight|active>\n  private-site identity-init [--address 10.77.0.2]\n  private-site identity-install --certificate <file> --ca <file> --edge-client-certificate <file>\n  private-site wireguard-init --edge-public-key <key> --endpoint <host:port>\n  private-site service-prepare\n  private-site extension list\n  private-site extension install --source <directory>\n  private-site extension remove --id <extension-id>\n  private-site provider list\n  private-site provider status\n  private-site provider set --kind <tunnel|token> --provider <name> [--endpoint <url>] [--credential-env <ENV_NAME>]\n  private-site backup [--output <archive>] [--key-file <key>] [--full-recovery] [--scheduled]\n  private-site restore-verify --archive <archive> --key-file <key> [--target <directory>]\n  private-site restore-apply --archive <archive> --key-file <key> --target <empty-data-root> [--replacement]\n`);
 }

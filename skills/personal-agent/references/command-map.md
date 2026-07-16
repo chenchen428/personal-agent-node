@@ -12,7 +12,9 @@ Each command leaf has exactly one implementation status:
 
 `--all` changes help visibility only. It cannot enable a command. Unknown command leaves also fail closed with `CAPABILITY_UNAVAILABLE`.
 
-The current implemented surface is `help`, `status`, `doctor`, `capabilities list|inspect`, `skill list|inspect|verify`, `connection status`, `cloud connect|login|resources|status`, `backup status`, and `mail status`. The current preview surface is `mail plan`, `extension list|inspect`, and `operation list|show|approve`. Read the Registry or `help --all --json` for the planned roadmap; do not treat roadmap entries as installed capabilities.
+The current implemented surface is `help`, `status`, `doctor`, `capabilities list|inspect`, `skill list|inspect|verify`, `activity list|search|show|create|upsert|update|hide|restore`, `connection status`, `cloud connect|login|resources|status`, `backup status`, `mail status`, and `app list|inspect|verify|set-default|clear-default`. The current preview surface is `mail plan`, `extension list|inspect`, and `operation list|show|approve`. Read the Registry or `help --all --json` for the planned roadmap; do not treat roadmap entries as installed capabilities.
+
+Activity commands require the ephemeral capability issued only to the current verified main-Agent turn. `activity list|search|show` are R0 and `create|upsert|update|hide|restore` are reversible R1 writes. The capability expires at turn end, cannot be delegated to workers, and must never appear in output or persisted content. See [activity.md](activity.md).
 
 `personal-agent mail status --json` is an R0, secret-redacted readiness check. It never creates the mail ingress token and bounds archive accounting; `doctor` skips archive accounting entirely. `personal-agent mail plan --preview --json` is non-mutating and describes the user-managed local MTA pipe. It never installs Postfix, opens port 25, embeds an SMTP server, or creates managed raw SMTP/IMAPS transport. Use `workflows/local-mail.md` for the reviewed boundary and non-secret example.
 

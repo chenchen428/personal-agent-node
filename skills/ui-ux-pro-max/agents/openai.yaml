@@ -1,0 +1,4 @@
+interface:
+  display_name: "UI UX Pro Max"
+  short_description: "Apply searchable UI/UX patterns to product design"
+  default_prompt: "Use $ui-ux-pro-max to select a fitting design system for this product."

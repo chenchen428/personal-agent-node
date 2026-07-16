@@ -6,22 +6,28 @@ import path from "node:path";
 import test from "node:test";
 import { initializeSite, resolveNodeConfig } from "../src/config.ts";
 import { authorizeRoute, createPrivateSiteGateway } from "../src/gateway.ts";
+import { setDefaultPersonalApp } from "../src/apps.ts";
 
-test("route access model keeps local administration on authenticated loopback", async () => {
+test("route access model gives direct loopback access without weakening tunneled hosts", async () => {
   const auth = http.createServer((_request, response) => { response.writeHead(204); response.end(); });
   await new Promise((resolve) => auth.listen(0, "127.0.0.1", resolve));
   const config = { domain: "example.site", ports: { bridge: auth.address().port }, gateway: { trustEdgeHeaders: false } };
-  const request = (remoteAddress) => ({
-    headers: { host: "example.site", cookie: "session=redacted" },
+  const request = (remoteAddress, host = "example.site", cookie = "session=redacted") => ({
+    headers: { host, cookie },
     socket: { remoteAddress },
   });
   try {
     assert.equal(await authorizeRoute(request("203.0.113.8"), { access: "public" }, config), true);
     assert.equal(await authorizeRoute(request("203.0.113.8"), { access: "authenticated" }, config), true);
     assert.equal(await authorizeRoute(request("203.0.113.8"), { access: "local-bootstrap" }, config), false);
-    assert.equal(await authorizeRoute(request("127.0.0.1"), { access: "local-bootstrap" }, config), true);
+    assert.equal(await authorizeRoute(request("127.0.0.1"), { access: "local-bootstrap" }, config), false);
+    assert.equal(await authorizeRoute(request("127.0.0.1", "127.0.0.1", ""), { access: "local-bootstrap" }, config), true);
     assert.equal(await authorizeRoute(request("203.0.113.8"), { access: "local-admin" }, config), false);
-    assert.equal(await authorizeRoute(request("127.0.0.1"), { access: "local-admin" }, config), true);
+    assert.equal(await authorizeRoute(request("127.0.0.1"), { access: "authenticated" }, config), true);
+    assert.equal(await authorizeRoute(request("127.0.0.1"), { access: "local-admin" }, config), false);
+    assert.equal(await authorizeRoute(request("127.0.0.1", "127.0.0.1", ""), { access: "authenticated" }, config), true);
+    assert.equal(await authorizeRoute(request("127.0.0.1", "127.0.0.1", ""), { access: "local-admin" }, config), true);
+    assert.equal(await authorizeRoute(request("127.0.0.1", "localhost", ""), { access: "authenticated" }, config), true);
     assert.equal(await authorizeRoute(request("127.0.0.1"), { access: "internal" }, config), false);
     assert.equal(await authorizeRoute(request("127.0.0.1"), { access: "unknown" }, config), false);
   } finally {
@@ -41,8 +47,7 @@ test("path gateway rejects unknown hosts, prefix confusion, and encoded traversa
   const port = server.address().port;
   try {
     const home = await request({ port, host: "example.site", path: "/" });
-    assert.equal(home.status, 200);
-    assert.match(home.body, /Personal Agent/);
+    assert.equal(home.status, 302);
 
     assert.equal((await request({ port, host: "unknown.site", path: "/" })).status, 404);
     for (const legacy of ["/admin", "/agent", "/agentx", "/api/agent", "/api/files"]) assert.equal((await request({ port, host: "example.site", path: legacy })).status, 404, legacy);
@@ -84,27 +89,50 @@ test("canonical Console and domain API routes authenticate and rewrite to intern
     try {
       const port = server.address().port;
       assert.equal((await request({ port, host: "example.site", path: "/_next/static/app.css" })).status, 200);
+      assert.equal((await request({ port, host: "example.site", path: "/login" })).status, 200);
+      assert.equal((await request({ port, host: "example.site", path: "/" })).status, 302);
+      const authenticatedHome = await request({ port, host: "example.site", path: "/", headers: { cookie: "session=ok" } });
+      assert.equal(authenticatedHome.status, 302);
+      assert.equal(authenticatedHome.headers.location, "/app");
+      assert.equal((await request({ port, host: "example.site", path: "/public/report" })).status, 200);
       assert.equal((await request({ port, host: "example.site", path: "/app" })).status, 302);
+      assert.equal((await request({ port, host: "127.0.0.1", path: "/app" })).status, 200);
+      assert.equal((await request({ port, host: "127.0.0.1", path: "/app/settings" })).status, 200);
       assert.equal((await request({ port, host: "example.site", path: "/app", headers: { cookie: "session=ok" } })).status, 200);
-      assert.equal((await request({ port, host: "example.site", path: "/app/setup", headers: { cookie: "session=ok" } })).status, 200);
+      assert.equal((await request({ port, host: "example.site", path: "/app/settings", headers: { cookie: "session=ok" } })).status, 302);
+      assert.equal((await request({ port, host: "example.site", path: "/app/setup", headers: { cookie: "session=ok" } })).status, 302);
+      assert.equal((await request({ port, host: "127.0.0.1", path: "/app/setup" })).status, 200);
       assert.equal((await request({ port, host: "example.site", path: "/app/chat", headers: { cookie: "session=ok" } })).status, 200);
       assert.equal((await request({ port, host: "example.site", path: "/app/mail", headers: { cookie: "session=ok" } })).status, 200);
       assert.equal((await request({ port, host: "example.site", path: "/mail", headers: { cookie: "session=ok" } })).status, 404);
       assert.equal((await request({ port, host: "example.site", path: "/api/chat/sessions", headers: { cookie: "session=ok" } })).status, 200);
+      assert.equal((await request({ port, host: "example.site", path: "/api/node/v1/capabilities", headers: { cookie: "session=ok" } })).status, 200);
+      assert.equal((await request({ port, host: "example.site", path: "/api/mobile/pages?limit=1", headers: { cookie: "session=ok" } })).status, 200);
       assert.equal((await request({ port, host: "example.site", path: "/api/system/projects", headers: { cookie: "session=ok" } })).status, 200);
       assert.equal((await request({ port, host: "example.site", path: "/api/system/setup", headers: { cookie: "session=ok" } })).status, 200);
+      assert.equal((await request({ port, host: "example.site", path: "/api/system/setup/actions/installation.local-auth/plan", headers: { cookie: "session=ok" } })).status, 302);
+      assert.equal((await request({ port, host: "127.0.0.1", path: "/api/system/setup/actions/installation.local-auth/plan" })).status, 200);
       assert.deepEqual(received.map(({ service, url }) => ({ service, url })), [
         { service: "console", url: "/_next/static/app.css" },
+        { service: "bridge", url: "/login" },
+        { service: "bridge", url: "/pages/report" },
+        { service: "console", url: "/app" },
+        { service: "console", url: "/app/settings" },
         { service: "console", url: "/app" },
         { service: "console", url: "/app/setup" },
         { service: "console", url: "/app/chat" },
         { service: "console", url: "/app/mail" },
         { service: "bridge", url: "/api/sessions" },
+        { service: "bridge", url: "/api/node/v1/capabilities" },
+        { service: "bridge", url: "/api/mobile/pages?limit=1" },
         { service: "console", url: "/api/projects" },
         { service: "console", url: "/api/setup" },
+        { service: "console", url: "/api/setup/actions/installation.local-auth/plan" },
       ]);
       assert.equal(received[0].authenticated, undefined);
-      assert.ok(received.slice(1).every((entry) => entry.authenticated === "1"));
+      assert.equal(received[1].authenticated, undefined);
+      assert.equal(received[2].authenticated, undefined);
+      assert.ok(received.filter((_, index) => ![0, 1, 2].includes(index)).every((entry) => entry.authenticated === "1"));
     } finally {
       await close(server);
     }
@@ -114,12 +142,55 @@ test("canonical Console and domain API routes authenticate and rewrite to intern
   }
 });
 
+test("authenticated Personal Apps use the default root while invalid Apps fall back safely", async () => {
+  const dataRoot = fs.mkdtempSync(path.join(os.tmpdir(), "personal-agent-app-gateway-"));
+  const bridge = http.createServer((request, response) => {
+    response.writeHead(request.url === "/_auth/check" && request.headers.cookie === "session=ok" ? 204 : 401);
+    response.end();
+  });
+  await listen(bridge);
+  try {
+    initializeSite({ domain: "example.site", dataRoot });
+    const base = resolveNodeConfig({ PRIVATE_SITE_DATA_ROOT: dataRoot, SITE_DOMAIN: "example.site" });
+    const config = { ...base, ports: { ...base.ports, bridge: bridge.address().port } };
+    const appRoot = path.join(config.appsDir, "example.dashboard");
+    fs.mkdirSync(path.join(appRoot, "dist"), { recursive: true });
+    fs.writeFileSync(path.join(appRoot, "personal-agent.app.json"), `${JSON.stringify({ apiVersion: "personal-agent/app-v1", id: "example.dashboard", name: "Dashboard", entry: "dist/index.html", requires: { nodeApi: "1" } })}\n`);
+    fs.writeFileSync(path.join(appRoot, "dist", "index.html"), "<!doctype html><title>Personal App</title>");
+    setDefaultPersonalApp(config, "example.dashboard");
+    const { server } = createPrivateSiteGateway({ config });
+    await listen(server);
+    try {
+      const port = server.address().port;
+      assert.equal((await request({ port, host: "example.site", path: "/apps/example.dashboard/" })).status, 302);
+      const home = await request({ port, host: "example.site", path: "/", headers: { cookie: "session=ok" } });
+      assert.equal(home.status, 302);
+      assert.equal(home.headers.location, "/apps/example.dashboard/");
+      const canonical = await request({ port, host: "example.site", path: "/apps/example.dashboard?view=summary", headers: { cookie: "session=ok" } });
+      assert.equal(canonical.status, 308);
+      assert.equal(canonical.headers.location, "/apps/example.dashboard/?view=summary");
+      const app = await request({ port, host: "example.site", path: "/apps/example.dashboard/settings", headers: { cookie: "session=ok" } });
+      assert.equal(app.status, 200);
+      assert.match(app.body, /Personal App/);
+      fs.rmSync(path.join(appRoot, "dist", "index.html"));
+      const fallback = await request({ port, host: "example.site", path: "/", headers: { cookie: "session=ok" } });
+      assert.equal(fallback.headers.location, "/app");
+      assert.equal((await request({ port, host: "example.site", path: "/apps/example.dashboard/", headers: { cookie: "session=ok" } })).status, 404);
+    } finally {
+      await close(server);
+    }
+  } finally {
+    await close(bridge);
+    fs.rmSync(dataRoot, { recursive: true, force: true });
+  }
+});
+
 function request({ port, host, path: requestPath, headers = {} }) {
   return new Promise((resolve, reject) => {
     const request = http.request({ hostname: "127.0.0.1", port, path: requestPath, headers: { host, ...headers } }, (response) => {
       const chunks = [];
       response.on("data", (chunk) => chunks.push(chunk));
-      response.on("end", () => resolve({ status: response.statusCode, body: Buffer.concat(chunks).toString("utf8") }));
+      response.on("end", () => resolve({ status: response.statusCode, headers: response.headers, body: Buffer.concat(chunks).toString("utf8") }));
     });
     request.on("error", reject);
     request.end();

@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="light dark" />
+    <title>Personal Agent</title>
+    <style>
+      :root { font-family: Inter, "PingFang SC", "Microsoft YaHei", sans-serif; color: #181715; background: #f6f0e6; }
+      * { box-sizing: border-box; }
+      body { margin: 0; min-height: 100vh; display: grid; place-items: center; }
+      main { width: min(480px, calc(100vw - 48px)); text-align: center; }
+      .mark { width: 68px; height: 68px; margin: 0 auto 28px; display: grid; place-items: center; border-radius: 18px; background: #181715; color: #f6f0e6; font: 600 26px/1 Georgia, serif; }
+      .dot { display: inline-block; width: 12px; height: 12px; margin-left: 3px; border-radius: 999px; background: #cc785c; }
+      h1 { margin: 0 0 12px; font: 500 32px/1.2 Georgia, "Songti SC", serif; }
+      p { margin: 0; color: #625f58; line-height: 1.7; }
+      #detail { margin-top: 10px; font-size: 13px; }
+      @media (prefers-color-scheme: dark) {
+        :root { color: #f6f0e6; background: #181715; }
+        .mark { background: #f6f0e6; color: #181715; }
+        p { color: #bdb7ad; }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <div class="mark">PA<span class="dot" aria-hidden="true"></span></div>
+      <h1>正在启动 Personal Agent</h1>
+      <p id="status" role="status">正在连接这台电脑上的 Personal Agent 服务…</p>
+      <p id="detail">窗口可以关闭，后台服务会继续运行。</p>
+    </main>
+  </body>
+</html>

@@ -29,7 +29,7 @@ export function renderChannelsPage() {
         <li><span class="step-no">03</span><div><strong>扫码、确认或回传验证码</strong><p>使用小红书 App 扫描微信中的二维码，并在 App 内点击确认登录。如果手机收到短信验证码，直接在微信回复验证码。</p></div></li>
         <li><span class="step-no">04</span><div><strong>等待 Agent 返回结果</strong><p>二维码发出后 Agent 会自动监听服务器浏览器，无需回复“已完成”；成功、失败或超时都会主动通知。</p></div></li>
       </ol>
-      <div class="policy">Agent 不会在你确认前静默生成二维码。短信验证码只会由当前登录会话一次性代填，不进入普通 Agent 会话、记忆或日志；没有活跃登录会话时，数字消息按普通消息处理。</div>
+      <div class="policy">Agent 不会在你确认前静默生成二维码。短信验证码只会由当前登录会话一次性代填，不进入普通 Agent 会话、动态或日志；没有活跃登录会话时，数字消息按普通消息处理。</div>
     </section>
   </main>
   <script>

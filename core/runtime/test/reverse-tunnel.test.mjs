@@ -36,8 +36,13 @@ test("reverse tunnel protocol rejects unsafe paths, headers, oversized frames, a
   assert.deepEqual(sanitizeRequestHeaders({ authorization: "secret", connection: "upgrade", host: "evil.example", cookie: "session=ok", "x-forwarded-host": "node.example" }), { cookie: "session=ok", "x-forwarded-host": "node.example" });
   const distribution = testDistribution();
   assert.equal(isTunnelRouteAllowed(distribution, "/echo", "http"), true);
+  assert.equal(isTunnelRouteAllowed(distribution, "/login", "http"), true);
+  assert.equal(isTunnelRouteAllowed(distribution, "/public/report", "http"), true);
   assert.equal(isTunnelRouteAllowed(distribution, "/api/chat/ws", "websocket"), true);
-  assert.equal(isTunnelRouteAllowed(distribution, "/api/system/setup", "http"), false);
+  assert.equal(isTunnelRouteAllowed(distribution, "/api/system/setup", "http"), true);
+  assert.equal(isTunnelRouteAllowed(distribution, "/api/system/setup/actions/installation.local-auth/plan", "http"), false);
+  assert.equal(isTunnelRouteAllowed(distribution, "/app/settings", "http"), false);
+  assert.equal(isTunnelRouteAllowed(distribution, "/app/setup/bootstrap", "http"), false);
   assert.equal(isTunnelRouteAllowed(distribution, "/echo", "websocket"), false);
   assert.throws(() => parseTunnelMessage(JSON.stringify({ v: 1, type: "request.data", id: "stream-0001", seq: 0, data: Buffer.alloc(17 * 1024).toString("base64") }), { maxFrameBytes: 16 * 1024 }), /too large/);
   assert.throws(() => parseTunnelMessage(JSON.stringify({ v: 1, type: "request.start", id: "stream-0001", kind: "http", method: "GET", path: "/", headers: { "bad\nname": "x" } })), /header name/);
@@ -101,7 +106,7 @@ test("connector forwards HTTP streams only to the fixed loopback gateway and nev
   const state = fs.readFileSync(path.join(root, "reverse-tunnel.json"), "utf8");
   assert.doesNotMatch(state, /node-secret-token/);
   assert.match(state, /"state": "ready"/);
-  peer.send(JSON.stringify({ v: 1, type: "request.start", id: "stream-denied-0001", kind: "http", method: "GET", path: "/api/system/setup", headers: {} }));
+  peer.send(JSON.stringify({ v: 1, type: "request.start", id: "stream-denied-0001", kind: "http", method: "GET", path: "/app/setup/bootstrap", headers: {} }));
   await waitFor(() => messages.some((message) => message.type === "response.error" && message.id === "stream-denied-0001"));
   assert.equal(messages.find((message) => message.id === "stream-denied-0001").code, "REMOTE_ROUTE_DENIED");
   assert.equal(requests.length, 1);
@@ -151,8 +156,13 @@ function tunnelAt(server) {
 function testConfig(runtimeDir, port) { return { runtimeDir, domain: "owner.chenjianhui.site", gateway: { port }, distribution: testDistribution() }; }
 function testDistribution() { return { routing: { paths: [
   { prefix: "/echo", access: "authenticated", kind: "proxy" },
+  { prefix: "/login", access: "public", kind: "proxy" },
+  { prefix: "/public", access: "public", kind: "proxy" },
   { prefix: "/api/chat/ws", access: "authenticated", kind: "proxy", websocket: true },
-  { prefix: "/api/system", access: "local-admin", kind: "proxy" },
+  { prefix: "/api/system/setup/actions", access: "local-admin", kind: "proxy" },
+  { prefix: "/api/system", access: "authenticated", kind: "proxy" },
+  { prefix: "/app/settings", access: "local-admin", kind: "proxy" },
+  { prefix: "/app/setup/bootstrap", access: "local-bootstrap", kind: "proxy" },
 ] } }; }
 const silentLogger = { log() {}, error() {} };
 function listen(server) { return new Promise((resolve) => server.listen(0, "127.0.0.1", resolve)); }

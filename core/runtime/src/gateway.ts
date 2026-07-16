@@ -7,6 +7,7 @@ import httpProxy from "http-proxy";
 import mime from "mime-types";
 import { resolveNodeConfig, workspaceRoot } from "./config.ts";
 import { listExtensions } from "./extensions.ts";
+import { resolveDefaultPersonalApp, resolvePersonalAppAsset } from "./apps.ts";
 
 const isEntrypoint = ["gateway.mjs", "gateway.ts"].includes(path.basename(process.argv[1] || ""));
 
@@ -53,14 +54,27 @@ export function createPrivateSiteGateway(options = {}) {
         sendText(response, 404, "Unknown Site route\n", request.method === "HEAD");
         return;
       }
-      if (route.kind === "static") {
-        await serveStatic(route, request, response, url);
-        return;
-      }
       const authorized = await authorizeRoute(request, route, config);
       if (!authorized) {
         response.writeHead(302, { Location: `/login?return_to=${encodeURIComponent(`${url.pathname}${url.search}`)}`, "Cache-Control": "no-store" });
         response.end();
+        return;
+      }
+      if (url.pathname === "/") {
+        const resolved = resolveDefaultPersonalApp(config);
+        response.writeHead(302, {
+          Location: resolved.app ? `/apps/${encodeURIComponent(resolved.app.id)}/` : "/app",
+          "Cache-Control": "no-store",
+        });
+        response.end();
+        return;
+      }
+      if (route.kind === "personal-app") {
+        await servePersonalApp(config, request, response, url);
+        return;
+      }
+      if (route.kind === "static") {
+        await serveStatic(route, request, response, url);
         return;
       }
       proxyHttp(proxy, route, request, response, config, route.access !== "public", url);
@@ -156,11 +170,20 @@ export async function authorizeRoute(request, route, config) {
   const access = route.access || "public";
   if (access === "public") return true;
   if (access === "internal") return false;
-  if (access === "local-bootstrap") return isLoopbackAddress(request.socket.remoteAddress);
+  if (isDirectLoopbackConsoleRequest(request)) {
+    return ["authenticated", "local-admin", "local-bootstrap"].includes(access);
+  }
+  if (access === "local-bootstrap") return false;
   if (!await authorizeRequest(request, config)) return false;
   if (access === "authenticated") return true;
-  if (access === "local-admin") return isLoopbackAddress(request.socket.remoteAddress);
+  if (access === "local-admin") return false;
   return false;
+}
+
+export function isDirectLoopbackConsoleRequest(request) {
+  const host = normalizeRequestHost(request.headers.host);
+  return isLoopbackAddress(request.socket.remoteAddress)
+    && ["127.0.0.1", "localhost", "::1"].includes(host);
 }
 
 function isLoopbackAddress(value) {
@@ -220,6 +243,29 @@ async function serveStatic(route, request, response, url) {
   });
   if (request.method === "HEAD") return response.end();
   fs.createReadStream(filePath).on("error", () => response.destroy()).pipe(response);
+}
+
+async function servePersonalApp(config, request, response, url) {
+  if (request.method !== "GET" && request.method !== "HEAD") return sendText(response, 405, "Method Not Allowed\n", request.method === "HEAD");
+  if (/^\/apps\/[^/]+$/.test(url.pathname)) {
+    response.writeHead(308, { Location: `${url.pathname}/${url.search}`, "Cache-Control": "no-store" });
+    return response.end();
+  }
+  const asset = resolvePersonalAppAsset(config, url.pathname);
+  if (!asset) return sendText(response, 404, "Not Found\n", request.method === "HEAD");
+  const stat = statFile(asset.filePath);
+  if (!stat?.isFile()) return sendText(response, 404, "Not Found\n", request.method === "HEAD");
+  const contentType = mime.contentType(path.extname(asset.filePath));
+  if (!contentType) return sendText(response, 404, "Not Found\n", request.method === "HEAD");
+  response.writeHead(200, {
+    "Content-Type": contentType,
+    "Content-Length": stat.size,
+    "Cache-Control": asset.cacheControl,
+    "X-Content-Type-Options": "nosniff",
+    "Referrer-Policy": "same-origin",
+  });
+  if (request.method === "HEAD") return response.end();
+  fs.createReadStream(asset.filePath).on("error", () => response.destroy()).pipe(response);
 }
 
 function normalizeRoute(entry, config) {

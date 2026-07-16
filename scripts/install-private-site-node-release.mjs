@@ -31,10 +31,20 @@ if (!fs.existsSync(target)) {
   fs.cpSync(source, temporary, { recursive: true, preserveTimestamps: true });
   fs.renameSync(temporary, target);
 }
+materializeWorkspaceSeed(path.join(target, "workspace"), dataRoot);
+const preactivationEnvironment = {
+  ...process.env,
+  PERSONAL_AGENT_HOME: homeRoot,
+  PRIVATE_SITE_INSTALL_ROOT: installRoot,
+  PRIVATE_SITE_DATA_ROOT: dataRoot,
+  PRIVATE_SITE_CLI_BIN: path.join(installRoot, "bin"),
+};
+const privateSite = path.join(target, "core", "runtime", "bin", "private-site.mjs");
+runCandidate(privateSite, ["init", "--domain", args.domain || existingWorkspaceDomain(dataRoot) || "personal-agent.local", "--data-root", dataRoot], preactivationEnvironment);
+runCandidate(privateSite, ["app-compatibility", "--data-root", dataRoot], preactivationEnvironment);
 const oldCurrent = pointerTarget(current);
 if (oldCurrent && path.resolve(oldCurrent) !== path.resolve(target)) replacePointer(previous, oldCurrent);
 replacePointer(current, target);
-materializeWorkspaceSeed(path.join(target, "workspace"), dataRoot);
 const personalAgentCommand = installPersonalAgentCommand({ installRoot, dataRoot, homeRoot });
 const installation = {
   schemaVersion: 2,
@@ -49,9 +59,9 @@ const installation = {
   personalAgentCommand: personalAgentCommand.commandPath,
   onboarding: {
     requiredAction: "open-setup-center",
-    message: "Open the authenticated local Setup Center. WeChat and managed connectivity are optional and do not block local Web use.",
+    message: "Open the local Setup Center directly and complete the required WeChat QR connection. Managed connectivity remains optional.",
     setupPath: "/app/setup",
-    wechatRequired: false,
+    wechatRequired: true,
     statusCommand: "personal-agent setup status --json",
   },
 };
@@ -77,6 +87,22 @@ function materializeWorkspaceSeed(source, target) {
   fs.mkdirSync(target, { recursive: true, mode: 0o700 });
   if (!fs.existsSync(source)) throw new Error("Release workspace seed is missing");
   mergeMissing(source, target);
+}
+
+function existingWorkspaceDomain(root) {
+  try {
+    const site = JSON.parse(fs.readFileSync(path.join(root, "config", "site.json"), "utf8"));
+    return String(site.asciiDomain || "").trim();
+  } catch {
+    return "";
+  }
+}
+
+function runCandidate(entrypoint, candidateArgs, env) {
+  const result = spawnSync(process.execPath, [entrypoint, ...candidateArgs], { env, encoding: "utf8", timeout: 10 * 60_000 });
+  if (result.status !== 0) {
+    throw new Error(`Candidate preactivation failed: ${String(result.stderr || result.stdout || "unknown error").trim()}`);
+  }
 }
 
 function mergeMissing(source, target) {

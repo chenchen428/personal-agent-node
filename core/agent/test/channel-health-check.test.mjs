@@ -46,7 +46,7 @@ test("daily channel health check requests confirmation without starting login", 
   assert.match(notification.message, /回复“确认开始”后，才会发送二维码图片/);
   assert.match(notification.message, /自动监听登录结果/);
   assert.match(notification.message, /直接在微信回复验证码/);
-  assert.match(notification.message, /不进入普通 Agent 会话、记忆或日志/);
+  assert.match(notification.message, /不进入普通 Agent 会话、动态或日志/);
   assert.doesNotMatch(notification.message, /完成后回复/);
   assert.ok(requests.every((request) => !String(request.url).includes("/login")));
 });

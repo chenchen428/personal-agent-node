@@ -1,0 +1,16 @@
+{
+  "query": "local-first personal knowledge workspace",
+  "verified": true,
+  "result": {
+    "category": "Knowledge Base/Documentation",
+    "pattern": "FAQ/Documentation Landing",
+    "style": "Exaggerated Minimalism",
+    "primary": "#18181B",
+    "accent": "#2563EB",
+    "background": "#FAFAFA",
+    "heading": "Cormorant Garamond",
+    "body": "Crimson Pro",
+    "mustHave": "version-switching"
+  },
+  "note": "Condensed from the deterministic JSON output to keep the fixture reviewable."
+}

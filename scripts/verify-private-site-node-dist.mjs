@@ -29,7 +29,7 @@ async function main() {
     releasePreparation,
     application,
     localMail: { dataOwner: "workspace", smtpServerBundled: false, independentlyGoverned: true },
-    webConversation: { route: "/app/chat", realAgentRuntimeRequired: true, sameSessionReplyRequired: true, wechatRequired: false },
+    webConversation: { route: "/app/chat", realAgentRuntimeRequired: true, sameSessionReplyRequired: true, wechatRequired: true },
   }, null, 2)}\n`);
 }
 
@@ -42,17 +42,18 @@ function verifyLayout() {
   assert(manifest.delivery?.core?.mutable === false && manifest.delivery?.workspace?.mutable === true, "Core/Workspace ownership is invalid");
   assert(manifest.delivery?.workspace?.preserveOnUninstall === true, "Workspace preservation is not declared");
   assert(manifest.pluginApi?.version === "personal-agent/v1", "Plugin API version is missing");
+  assert(manifest.appApi?.version === "personal-agent/app-v1" && manifest.appApi?.cloudRequired === false, "Personal App API contract is missing");
   assert(!fs.existsSync(at("projects")), "Historical projects directory must not be distributed");
   for (const relative of [
     "core/app/server.js", "core/app/.next/static", "core/runtime/bin/personal-agent.mjs", "core/runtime/bin/private-site.mjs",
     "core/runtime/app/control-service.mjs", "core/runtime/app/gateway.mjs", "core/runtime/app/reverse-tunnel.mjs", "core/agent/app/server.mjs", "core/agent/app/worker.mjs",
-    "core/control/server.mjs", "core/plugins/schema/personal-agent.plugin.schema.json",
+    "core/control/server.mjs", "core/apps/schema/personal-agent.app.schema.json", "core/plugins/schema/personal-agent.plugin.schema.json",
     "workspace/AGENTS.md", "workspace/skills", "workspace/workflows", "workspace/registry/skills.json", "workspace/registry/plugins.json",
     "registry/delivery.json", "docs/adr/0003-core-workspace-next-architecture.md", "SBOM.cdx.json", "SHA256SUMS",
   ]) assert(fs.existsSync(at(relative)), `Release file is missing: ${relative}`);
   const installer = fs.readFileSync(at("scripts/install-private-site-node-release.mjs"), "utf8");
   assert(!/from\s+["'][^"']+\.ts["']/.test(installer), "Release installer depends on unpackaged TypeScript source");
-  for (const relative of ["workspace/files", "workspace/databases", "workspace/plugins", "workspace/secrets", "workspace/logs"]) {
+  for (const relative of ["workspace/apps", "workspace/files", "workspace/databases", "workspace/plugins", "workspace/secrets", "workspace/logs"]) {
     assert(fs.statSync(at(relative)).isDirectory(), `Workspace directory is missing: ${relative}`);
   }
 }
@@ -86,6 +87,10 @@ function verifyPublicBoundary() {
   assert(packageMetadata.workspaces === undefined, "Release must be one package, not an npm workspace graph");
   const dependencyText = JSON.stringify(packageMetadata.dependencies || {});
   assert(!/smtp-server|imapflow|haraka/i.test(dependencyText), "Raw mail server dependency is bundled");
+  const sbom = readJson("SBOM.cdx.json");
+  const componentPurls = new Set((sbom.components || []).map((entry) => entry.purl));
+  assert(componentPurls.has("pkg:cargo/tauri@2.11.5"), "Desktop Tauri runtime is missing from the SBOM");
+  assert(componentPurls.has("pkg:cargo/tauri-plugin-single-instance@2.4.3"), "Desktop single-instance runtime is missing from the SBOM");
 }
 
 function verifyCompiledCli() {
@@ -110,7 +115,9 @@ function verifyPreparation() {
     assert(init.status === 0, `Release init failed: ${String(init.stderr || "").trim()}`);
     const prepare = spawnSync(process.execPath, [at(manifest.entrypoints.node), "prepare"], { env, encoding: "utf8", timeout: 60_000 });
     assert(prepare.status === 0, `Release prepare failed: ${String(prepare.stderr || "").trim()}`);
-    for (const relative of ["AGENTS.md", "skills", "workflows", "registry", "plugins", "files", "databases", "secrets"]) assert(fs.existsSync(path.join(workspaceRoot, relative)), `Prepared Workspace is missing: ${relative}`);
+    for (const relative of ["AGENTS.md", "skills", "workflows", "registry", "apps", "plugins", "files", "databases", "secrets"]) assert(fs.existsSync(path.join(workspaceRoot, relative)), `Prepared Workspace is missing: ${relative}`);
+    const appCompatibility = JSON.parse(fs.readFileSync(path.join(workspaceRoot, "config", "apps-compatibility.json"), "utf8"));
+    assert(appCompatibility.schemaVersion === 1 && appCompatibility.candidateNodeApis?.includes("1"), "Prepared Workspace is missing the Personal App compatibility report");
     assert(!fs.existsSync(path.join(workspaceRoot, "workspace")), "Workspace must not be nested inside itself");
     const repeated = spawnSync(process.execPath, [at(manifest.entrypoints.node), "prepare"], { env, encoding: "utf8", timeout: 60_000 });
     assert(repeated.status === 0, "Release preparation is not idempotent");
@@ -135,7 +142,7 @@ async function verifyApplication() {
     const setupBody = await setup.json();
     assert(setupBody.schemaVersion === 1 && Array.isArray(setupBody.checks), "Next BFF returned an invalid setup contract");
     const page = await (await fetch(`http://127.0.0.1:${appPort}/app/setup`)).text();
-    assert(page.includes("SETUP CENTER") && page.includes("把这台电脑准备好"), "Next Setup Center did not render");
+    assert(page.includes("初始化向导") && page.includes("把 PA 准备好"), "Next Setup Center did not render");
     return { framework: "nextjs", standalone: true, health: true, bff: true, setupCenter: true };
   } finally {
     control.kill("SIGTERM");

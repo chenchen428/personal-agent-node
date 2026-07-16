@@ -84,7 +84,7 @@ export async function setupStatus({
     makeCheck('installation.data-root', siteReady, siteReady ? '本机数据目录已初始化' : '本机数据目录尚未初始化', { initialized: siteReady, confined: path.isAbsolute(resolvedDataRoot) }, generatedAt),
     makeCheck('installation.service', serviceReady, serviceReady ? '后台服务正在运行' : '后台服务需要启动或修复', { running: serviceReady }, generatedAt),
     makeCheck('installation.gateway', gatewayReady, gatewayReady ? '本机网关可访问' : '本机网关暂不可访问', { reachable: gatewayReady, loopback: config?.gateway?.host === '127.0.0.1' }, generatedAt),
-    makeCheck('installation.console-auth', localAuthReady, localAuthDocument?.verifier ? '本机登录已使用不可逆密码校验器' : localAuthReady ? '请设置自己的本机登录密码' : '需要建立本机登录', { configured: localAuthReady, durableVerifier: Boolean(localAuthDocument?.verifier) }, generatedAt, localAuthDocument?.verifier ? undefined : 'action-required'),
+    makeCheck('installation.console-auth', localAuthReady, localAuthDocument?.verifier ? '外部访问密码已使用不可逆校验器' : localAuthReady ? '外部访问密码已配置' : '桌面本机直达；手机访问密码尚未设置', { configured: localAuthReady, durableVerifier: Boolean(localAuthDocument?.verifier), protectsLocalDesktop: false, protectsRemoteAccess: true }, generatedAt, localAuthReady ? undefined : 'not-selected'),
     makeCheck('agent.codex.executable', codex.installed, codex.installed ? '已找到 Codex' : '尚未找到 Codex', { installed: codex.installed }, generatedAt),
     makeCheck('agent.codex.version', codex.versionSupported, codex.versionSupported ? 'Codex 版本受支持' : 'Codex 版本需要确认', { supported: codex.versionSupported, version: codex.version || '' }, generatedAt, codex.installed ? undefined : 'blocked'),
     makeCheck('agent.codex.authentication', codex.authenticated, codex.authenticated ? 'Codex 已登录' : 'Codex 尚未登录', { authenticated: codex.authenticated }, generatedAt, codex.installed ? undefined : 'blocked'),
@@ -101,7 +101,7 @@ export async function setupStatus({
     makeCheck('mail.local-ingest', Boolean(mail?.ingress?.ready), mail?.ingress?.ready ? '本地邮件入口已就绪' : '本地邮件入口尚未配置', { ready: Boolean(mail?.ingress?.ready), smtpServerBundled: false }, generatedAt, mailSelected ? undefined : 'not-selected'),
     makeCheck('mail.delivery', mailAcceptance?.delivery === true, mailAcceptance?.delivery === true ? '真实邮件投递已验证' : '尚未验证真实邮件投递', { verified: mailAcceptance?.delivery === true }, generatedAt, mailSelected ? undefined : 'not-selected'),
     makeCheck('mail.recovery', mailAcceptance?.recovery === true, mailAcceptance?.recovery === true ? '邮件备份恢复已验证' : '尚未验证邮件备份恢复', { verified: mailAcceptance?.recovery === true }, generatedAt, mailSelected ? undefined : 'not-selected'),
-    makeCheck('channels.wechat', Boolean(wechatAccount?.accountId && wechatAccount?.userId), wechatAccount?.accountId && wechatAccount?.userId ? '微信渠道已绑定' : '微信渠道可选', { bound: Boolean(wechatAccount?.accountId && wechatAccount?.userId) }, generatedAt, wechatAccount?.accountId && wechatAccount?.userId ? undefined : 'not-selected'),
+    makeCheck('channels.wechat', Boolean(wechatAccount?.accountId && wechatAccount?.userId), wechatAccount?.accountId && wechatAccount?.userId ? '微信渠道已连接' : '需要连接微信', { bound: Boolean(wechatAccount?.accountId && wechatAccount?.userId) }, generatedAt),
   ];
 
   return {
@@ -179,7 +179,7 @@ export function writeWebConversationAcceptance({ dataRoot, now = () => new Date(
     authenticated: true,
     realAgentRuntime: true,
     sameSessionAgentReply: true,
-    wechatRequired: false,
+    wechatRequired: true,
     verifiedAt: now().toISOString(),
   });
   return target;
@@ -254,7 +254,15 @@ function requiredComponentsReady(supervisor) {
 }
 
 function pointerExists(target) {
-  try { return fs.statSync(target).isDirectory(); } catch { return false; }
+  try {
+    const stat = fs.statSync(target);
+    if (stat.isDirectory()) return true;
+    if (!stat.isFile() || stat.size < 1 || stat.size > 4096) return false;
+    const pointer = fs.readFileSync(target, 'utf8').trim();
+    return path.isAbsolute(pointer) && fs.statSync(pointer, { throwIfNoEntry: false })?.isDirectory() === true;
+  } catch {
+    return false;
+  }
 }
 
 function defaultProcessAlive(pid) {

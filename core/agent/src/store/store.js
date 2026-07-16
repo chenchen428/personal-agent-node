@@ -4,7 +4,6 @@ import path from "node:path";
 import { DatabaseSync } from "node:sqlite";
 
 const SESSION_STATUSES = new Set(["start", "running", "idle", "paused", "done", "archived"]);
-const MEMORY_TYPES = new Set(["preference", "fact", "decision", "context", "todo", "instruction"]);
 const MAX_PENDING_WECHAT_NOTIFICATIONS = 20;
 
 export class BridgeStore {
@@ -315,23 +314,6 @@ export class BridgeStore {
         PRIMARY KEY(object_name, field_name)
       );
 
-      CREATE TABLE IF NOT EXISTS memories (
-        id TEXT PRIMARY KEY,
-        session_id TEXT NOT NULL,
-        memory_type TEXT NOT NULL,
-        content TEXT NOT NULL,
-        hit_count INTEGER NOT NULL DEFAULT 0,
-        last_hit_at TEXT,
-        metadata_json TEXT NOT NULL,
-        created_at TEXT NOT NULL,
-        updated_at TEXT NOT NULL,
-        FOREIGN KEY(session_id) REFERENCES sessions(id) ON DELETE CASCADE
-      );
-      CREATE INDEX IF NOT EXISTS idx_memories_session_activity
-        ON memories(session_id, last_hit_at DESC, updated_at DESC, hit_count DESC);
-      CREATE INDEX IF NOT EXISTS idx_memories_session_type
-        ON memories(session_id, memory_type);
-
       CREATE TABLE IF NOT EXISTS private_file_batches (
         id TEXT PRIMARY KEY,
         session_id TEXT NOT NULL,
@@ -354,6 +336,7 @@ export class BridgeStore {
         FOREIGN KEY(batch_id) REFERENCES private_file_batches(id) ON DELETE CASCADE
       );
     `);
+    this.archiveLegacyMemoryTable();
     this.migrateJsonStateIfNeeded();
     this.backfillTokenUsageDailyIfNeeded();
     this.enforceSessionRoleInvariants();
@@ -531,6 +514,33 @@ export class BridgeStore {
           .run(key, existingRow.id, new Date().toISOString());
       }
     }
+    if (!existingRow) {
+      existingRow = this.db.prepare(`
+        SELECT * FROM sessions
+        WHERE role = 'main' AND channel = 'desktop'
+        ORDER BY updated_at DESC, id DESC
+        LIMIT 1
+      `).get();
+      if (existingRow) {
+        const current = rowToSession(existingRow);
+        this.upsertSession({
+          ...current,
+          channel: "wechat",
+          senderId: normalizedSenderId,
+          senderName: senderName || current.senderName,
+          title: current.title || "与 PA 的对话",
+          updatedAt: new Date().toISOString(),
+          metadata: {
+            ...current.metadata,
+            channelSessionKey: key,
+            desktopConversationBoundAt: new Date().toISOString(),
+          },
+        });
+        existingRow = this.getSessionRow(existingRow.id);
+        this.db.prepare("INSERT OR REPLACE INTO channel_sessions (key, session_id, updated_at) VALUES (?, ?, ?)")
+          .run(key, existingRow.id, new Date().toISOString());
+      }
+    }
     if (existingRow && existingRow.role === "main" && existingRow.channel === "wechat" && existingRow.sender_id === normalizedSenderId) {
       const session = rowToSession(existingRow);
       const nextWorkspaceRoot = String(workspaceRoot || "").trim();
@@ -568,6 +578,27 @@ export class BridgeStore {
     return this.getSessionRecord(session.id);
   }
 
+  getOrCreateDesktopMainSession({ workspaceRoot } = {}) {
+    const existingRow = this.db.prepare(`
+      SELECT * FROM sessions
+      WHERE role = 'main'
+      ORDER BY updated_at DESC, id DESC
+      LIMIT 1
+    `).get();
+    if (existingRow) return this.getSessionRecord(existingRow.id);
+    return this.createSessionRecord({
+      role: "main",
+      channel: "desktop",
+      senderId: "local-owner",
+      senderName: "本机用户",
+      workspaceRoot,
+      title: "与 PA 的对话",
+      taskDescription: "Personal Agent main conversation",
+      status: "idle",
+      metadata: { createdBy: "desktop" },
+    });
+  }
+
   updateSession(id, patch = {}) {
     const current = this.getSessionRow(id);
     if (!current) return null;
@@ -576,7 +607,8 @@ export class BridgeStore {
       ...currentSession,
       ...patch,
     };
-    session.role = currentSession.role === "main" && session.channel === "wechat" && session.senderId ? "main" : "worker";
+    const validMainIdentity = session.senderId && (session.channel === "wechat" || session.channel === "desktop");
+    session.role = currentSession.role === "main" && validMainIdentity ? "main" : "worker";
     if (patch.status) session.status = normalizeStatus(patch.status);
     session.updatedAt = patch.updatedAt || new Date().toISOString();
     this.upsertSession(session);
@@ -588,7 +620,12 @@ export class BridgeStore {
       UPDATE sessions
       SET role = 'worker'
       WHERE role = 'main'
-        AND (channel IS NULL OR channel != 'wechat' OR sender_id IS NULL OR TRIM(sender_id) = '')
+        AND (
+          channel IS NULL
+          OR channel NOT IN ('wechat', 'desktop')
+          OR sender_id IS NULL
+          OR TRIM(sender_id) = ''
+        )
     `).run();
     this.db.prepare("DELETE FROM channel_sessions WHERE key NOT LIKE 'wechat:%'").run();
 
@@ -625,6 +662,15 @@ export class BridgeStore {
         .run(`wechat:${main.sender_id}`, main.id, new Date().toISOString());
     }
 
+    const desktopMains = this.db.prepare(`
+      SELECT id FROM sessions
+      WHERE role = 'main' AND channel = 'desktop'
+      ORDER BY updated_at DESC, id DESC
+    `).all();
+    for (const duplicate of desktopMains.slice(1)) {
+      this.db.prepare("UPDATE sessions SET role = 'worker' WHERE id = ?").run(duplicate.id);
+    }
+
     this.db.prepare(`
       DELETE FROM channel_sessions
       WHERE session_id NOT IN (
@@ -635,6 +681,11 @@ export class BridgeStore {
       CREATE UNIQUE INDEX IF NOT EXISTS idx_sessions_wechat_main_sender
       ON sessions(sender_id)
       WHERE role = 'main' AND channel = 'wechat'
+    `);
+    this.db.exec(`
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_sessions_desktop_main
+      ON sessions(channel)
+      WHERE role = 'main' AND channel = 'desktop'
     `);
   }
 
@@ -775,155 +826,6 @@ export class BridgeStore {
       const day = new Date(start.getTime() + index * 86400000).toISOString().slice(0, 10);
       return { day, totalTokens: values.get(day)?.totalTokens || 0, requestCount: values.get(day)?.requestCount || 0 };
     });
-  }
-
-  getDefaultMemorySessionId() {
-    const main = this.db.prepare(`
-      SELECT id FROM sessions
-      WHERE role = 'main' AND channel = 'wechat' AND status != 'archived'
-      ORDER BY updated_at DESC, id DESC
-      LIMIT 1
-    `).get();
-    if (main?.id) return main.id;
-    return this.db.prepare(`
-      SELECT id FROM sessions
-      WHERE status != 'archived'
-      ORDER BY updated_at DESC, id DESC
-      LIMIT 1
-    `).get()?.id || null;
-  }
-
-  listMemorySessions({ limit = 200 } = {}) {
-    const pageSize = Math.min(Math.max(Number(limit) || 200, 1), 500);
-    return this.db.prepare(`
-      SELECT sessions.*,
-        COUNT(memories.id) AS memory_count,
-        COALESCE(SUM(memories.hit_count), 0) AS total_hits,
-        MAX(COALESCE(memories.last_hit_at, memories.updated_at)) AS last_memory_at
-      FROM sessions
-      LEFT JOIN memories ON memories.session_id = sessions.id
-      WHERE sessions.status != 'archived'
-      GROUP BY sessions.id
-      ORDER BY CASE WHEN sessions.role = 'main' AND sessions.channel = 'wechat' THEN 0 ELSE 1 END,
-        sessions.updated_at DESC,
-        sessions.id DESC
-      LIMIT ?
-    `).all(pageSize).map((row) => ({ ...rowToMemorySession(row), url: this.sessionUrl(row.id) }));
-  }
-
-  createMemory(input = {}) {
-    const sessionId = String(input.sessionId || "").trim();
-    if (!sessionId || !this.getSessionRow(sessionId)) throw new Error("valid sessionId is required");
-    const now = input.createdAt || new Date().toISOString();
-    const memory = {
-      id: input.id || `mem_${crypto.randomBytes(8).toString("hex")}`,
-      sessionId,
-      type: normalizeMemoryType(input.type),
-      content: normalizeMemoryContent(input.content),
-      hitCount: Math.max(Number(input.hitCount) || 0, 0),
-      lastHitAt: input.lastHitAt || null,
-      metadata: input.metadata && typeof input.metadata === "object" ? input.metadata : {},
-      createdAt: now,
-      updatedAt: input.updatedAt || now,
-    };
-    this.db.prepare(`
-      INSERT INTO memories (
-        id, session_id, memory_type, content, hit_count, last_hit_at,
-        metadata_json, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `).run(
-      memory.id,
-      memory.sessionId,
-      memory.type,
-      memory.content,
-      memory.hitCount,
-      memory.lastHitAt,
-      toJson(memory.metadata),
-      memory.createdAt,
-      memory.updatedAt,
-    );
-    return this.getMemory(memory.id);
-  }
-
-  getMemory(id) {
-    const row = this.db.prepare("SELECT * FROM memories WHERE id = ?").get(id);
-    return row ? rowToMemory(row) : null;
-  }
-
-  listMemories({ sessionId, query = "", type = "", limit = 100 } = {}) {
-    const normalizedSessionId = String(sessionId || "").trim();
-    if (!normalizedSessionId) return [];
-    const pageSize = Math.min(Math.max(Number(limit) || 100, 1), 200);
-    const where = ["session_id = ?"];
-    const params = [normalizedSessionId];
-    const normalizedQuery = String(query || "").trim().slice(0, 240);
-    if (normalizedQuery) {
-      where.push("content LIKE ? ESCAPE '\\'");
-      params.push(`%${escapeSqlLike(normalizedQuery)}%`);
-    }
-    const normalizedType = String(type || "").trim();
-    if (normalizedType) {
-      where.push("memory_type = ?");
-      params.push(normalizeMemoryType(normalizedType));
-    }
-    return this.db.prepare(`
-      SELECT * FROM memories
-      WHERE ${where.join(" AND ")}
-      ORDER BY COALESCE(last_hit_at, updated_at) DESC, hit_count DESC, id DESC
-      LIMIT ?
-    `).all(...params, pageSize).map(rowToMemory);
-  }
-
-  recallMemories(options = {}) {
-    const memories = this.listMemories(options);
-    if (!memories.length) return [];
-    const now = new Date().toISOString();
-    const update = this.db.prepare("UPDATE memories SET hit_count = hit_count + 1, last_hit_at = ? WHERE id = ?");
-    for (const memory of memories) update.run(now, memory.id);
-    return memories.map((memory) => ({ ...memory, hitCount: memory.hitCount + 1, lastHitAt: now }));
-  }
-
-  updateMemory(id, patch = {}) {
-    const current = this.getMemory(id);
-    if (!current) return null;
-    const next = {
-      ...current,
-      type: patch.type === undefined ? current.type : normalizeMemoryType(patch.type),
-      content: patch.content === undefined ? current.content : normalizeMemoryContent(patch.content),
-      metadata: patch.metadata && typeof patch.metadata === "object" ? patch.metadata : current.metadata,
-      updatedAt: patch.updatedAt || new Date().toISOString(),
-    };
-    this.db.prepare(`
-      UPDATE memories SET memory_type = ?, content = ?, metadata_json = ?, updated_at = ?
-      WHERE id = ?
-    `).run(next.type, next.content, toJson(next.metadata), next.updatedAt, id);
-    return this.getMemory(id);
-  }
-
-  deleteMemory(id) {
-    return this.db.prepare("DELETE FROM memories WHERE id = ?").run(id).changes > 0;
-  }
-
-  getMemoryStats(sessionId) {
-    const normalizedSessionId = String(sessionId || "").trim();
-    if (!normalizedSessionId) return emptyMemoryStats();
-    const aggregate = this.db.prepare(`
-      SELECT COUNT(*) AS memory_count,
-        COALESCE(SUM(hit_count), 0) AS total_hits,
-        MAX(COALESCE(last_hit_at, updated_at)) AS last_activity_at
-      FROM memories WHERE session_id = ?
-    `).get(normalizedSessionId) || {};
-    const types = Object.fromEntries(this.db.prepare(`
-      SELECT memory_type, COUNT(*) AS count
-      FROM memories WHERE session_id = ?
-      GROUP BY memory_type
-    `).all(normalizedSessionId).map((row) => [row.memory_type, Number(row.count || 0)]));
-    return {
-      memoryCount: Number(aggregate.memory_count || 0),
-      totalHits: Number(aggregate.total_hits || 0),
-      lastActivityAt: aggregate.last_activity_at || null,
-      types,
-    };
   }
 
   createPrivateFileBatch({ sessionId, attachments = [], createdAt } = {}) {
@@ -2071,6 +1973,14 @@ export class BridgeStore {
     this.dropLegacyIndexes();
   }
 
+  archiveLegacyMemoryTable() {
+    if (!this.tableExists("memories")) return null;
+    const baseName = "legacy_memories_readonly";
+    const target = this.tableExists(baseName) ? `${baseName}_${Date.now()}` : baseName;
+    this.db.exec(`ALTER TABLE memories RENAME TO ${quoteIdentifier(target)}`);
+    return target;
+  }
+
   migrateLegacyWorkspaces() {
     const tableName = `workspaces_legacy_${Date.now()}`;
     this.db.exec("BEGIN IMMEDIATE");
@@ -2252,19 +2162,6 @@ function normalizeSession(input) {
   };
 }
 
-function normalizeMemoryType(value) {
-  const type = String(value || "context").trim().toLowerCase();
-  if (!MEMORY_TYPES.has(type)) throw new Error(`unsupported memory type: ${type}`);
-  return type;
-}
-
-function normalizeMemoryContent(value) {
-  const content = String(value || "").trim();
-  if (!content) throw new Error("memory content is required");
-  if (content.length > 12000) throw new Error("memory content exceeds 12000 characters");
-  return content;
-}
-
 function normalizePrivateFileText(value, maxLength, fallback) {
   const text = String(value || "").replace(/[\u0000-\u001f\u007f]/g, " ").replace(/\s+/g, " ").trim();
   return (text || fallback).slice(0, maxLength);
@@ -2276,10 +2173,6 @@ function normalizePrivateRelativePath(value) {
     throw new Error("invalid private file batch path");
   }
   return relativePath;
-}
-
-function emptyMemoryStats() {
-  return { memoryCount: 0, totalHits: 0, lastActivityAt: null, types: {} };
 }
 
 function normalizeTokenRange(value) {
@@ -2744,36 +2637,6 @@ function rowToTokenUsageSession(row) {
     totalTokens: Number(row.total_tokens || 0),
     threadCount: Number(row.thread_count || 0),
     updatedAt: row.updated_at || null,
-  };
-}
-
-function rowToMemory(row) {
-  return {
-    id: row.id,
-    sessionId: row.session_id,
-    type: row.memory_type,
-    content: row.content,
-    hitCount: Number(row.hit_count || 0),
-    lastHitAt: row.last_hit_at || null,
-    metadata: fromJson(row.metadata_json, {}),
-    createdAt: row.created_at,
-    updatedAt: row.updated_at,
-  };
-}
-
-function rowToMemorySession(row) {
-  const session = rowToSession(row);
-  return {
-    id: session.id,
-    role: session.role,
-    parentSessionId: session.parentSessionId,
-    channel: session.channel,
-    status: session.status,
-    title: session.title,
-    updatedAt: session.updatedAt,
-    memoryCount: Number(row.memory_count || 0),
-    totalHits: Number(row.total_hits || 0),
-    lastMemoryAt: row.last_memory_at || null,
   };
 }
 

@@ -3,6 +3,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
+import { DatabaseSync } from "node:sqlite";
 import { mapMessage } from "../src/agent/app-server-mapper.ts";
 import { BridgeStore } from "../src/store/store.js";
 
@@ -62,16 +63,19 @@ test("persists and deduplicates deferred WeChat notifications", () => {
   }
 });
 
-test("reserves reusable main sessions for WeChat and forces every generic session to worker", () => {
+test("shares one reusable main session between desktop and WeChat while generic sessions stay workers", () => {
   const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), "oab-store-main-invariant-"));
   const store = new BridgeStore({ dataDir, consoleBaseUrl: "https://agent.example.test" });
   try {
+    const desktop = store.getOrCreateDesktopMainSession({ workspaceRoot: dataDir });
+    store.appendEvent(desktop.id, "session.assistant_message", { content: "desktop history" });
     const first = store.getOrCreateMainSessionForChannel({
       channel: "wechat",
       senderId: "alice@im.wechat",
       senderName: "alice",
       workspaceRoot: dataDir,
     });
+    assert.equal(first.id, desktop.id);
     store.appendEvent(first.id, "session.status", { content: "thread ready", cliSessionId: "thread-main-1" });
     store.db.prepare("DELETE FROM channel_sessions WHERE key = ?").run("wechat:alice@im.wechat");
     const resumed = store.getOrCreateMainSessionForChannel({
@@ -90,6 +94,9 @@ test("reserves reusable main sessions for WeChat and forces every generic sessio
     assert.equal(resumed.id, first.id);
     assert.equal(resumed.cliSessionId, "thread-main-1");
     assert.equal(resumed.role, "main");
+    assert.equal(store.getOrCreateDesktopMainSession({ workspaceRoot: dataDir }).id, first.id);
+    assert.equal(store.getSession(first.id).messages.some((message) => message.content === "desktop history"), true);
+    assert.equal(store.listSessionsPage({ limit: 20 }).sessions.filter((session) => session.role === "main").length, 1);
     assert.equal(generic.role, "worker");
     assert.throws(() => store.getOrCreateMainSessionForChannel({
       channel: "custom-channel",
@@ -247,13 +254,12 @@ test("replaces per-thread token snapshots and aggregates usage", () => {
   }
 });
 
-test("prunes month-old history while retaining main-session memories", () => {
+test("prunes month-old execution history while retaining the main session", () => {
   const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), "oab-store-retention-"));
   const store = new BridgeStore({ dataDir, consoleBaseUrl: "https://agent.example.test" });
   try {
     const main = store.getOrCreateMainSessionForChannel({ channel: "wechat", senderId: "retention-user", workspaceRoot: dataDir });
     const worker = store.createSession({ title: "old worker", workspaceRoot: dataDir, status: "done", createdAt: "2026-05-01T00:00:00.000Z", updatedAt: "2026-05-01T00:00:00.000Z" });
-    store.createMemory({ sessionId: main.id, type: "preference", content: "保留长期记忆", createdAt: "2026-05-01T00:00:00.000Z" });
     store.appendEvent(main.id, "session.started", { cliSessionId: "old-main-thread", createdAt: "2026-05-01T00:00:00.000Z" });
     store.appendEvent(main.id, "session.complete", { idle: true, createdAt: "2026-05-01T00:01:00.000Z" });
     store.appendEvent(worker.id, "session.assistant_message", { content: "old", createdAt: "2026-05-01T00:00:00.000Z" });
@@ -263,61 +269,41 @@ test("prunes month-old history while retaining main-session memories", () => {
     assert.equal(store.getSession(worker.id), null);
     assert.equal(store.getSessionRecord(main.id).cliSessionId, null);
     assert.equal(store.listEvents(main.id).length, 0);
-    assert.equal(store.listMemories({ sessionId: main.id }).length, 1);
   } finally {
     store.close();
   }
 });
 
-test("stores session-scoped memories and counts recalls separately from page reads", () => {
-  const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), "oab-store-memory-"));
-  const store = new BridgeStore({ dataDir, consoleBaseUrl: "https://agent.example.test" });
+test("archives the legacy Memory table without exposing an active Memory store", () => {
+  const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), "oab-store-legacy-memory-"));
+  const databasePath = path.join(dataDir, "state.sqlite");
+  const legacy = new DatabaseSync(databasePath);
+  legacy.exec(`
+    CREATE TABLE memories (
+      id TEXT PRIMARY KEY,
+      session_id TEXT NOT NULL,
+      memory_type TEXT NOT NULL,
+      content TEXT NOT NULL,
+      hit_count INTEGER NOT NULL DEFAULT 0,
+      last_hit_at TEXT,
+      metadata_json TEXT NOT NULL,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+    INSERT INTO memories VALUES (
+      'mem_legacy', 'sess_legacy', 'fact', 'legacy content', 0, NULL, '{}',
+      '2026-07-10T00:00:00.000Z', '2026-07-10T00:00:00.000Z'
+    );
+  `);
+  legacy.close();
+  const store = new BridgeStore({ dataDir, databasePath, consoleBaseUrl: "https://agent.example.test" });
   try {
-    const main = store.getOrCreateMainSessionForChannel({
-      channel: "wechat",
-      senderId: "memory-user",
-      senderName: "Memory user",
-      workspaceRoot: dataDir,
-    });
-    const worker = store.createSession({
-      parentSessionId: main.id,
-      title: "Memory worker",
-      workspaceRoot: dataDir,
-    });
-    const preference = store.createMemory({
-      sessionId: main.id,
-      type: "preference",
-      content: "用户偏好深色编辑器",
-      createdAt: "2026-07-10T09:00:00.000Z",
-    });
-    store.createMemory({
-      sessionId: main.id,
-      type: "decision",
-      content: "生产服务器只部署 dist",
-      createdAt: "2026-07-10T10:00:00.000Z",
-    });
-    store.createMemory({ sessionId: worker.id, type: "context", content: "worker only" });
-
-    assert.equal(store.getDefaultMemorySessionId(), main.id);
-    assert.equal(store.listMemories({ sessionId: main.id }).length, 2);
-    assert.equal(store.getMemory(preference.id).hitCount, 0);
-
-    const recalled = store.recallMemories({ sessionId: main.id, query: "深色", limit: 8 });
-    assert.equal(recalled.length, 1);
-    assert.equal(recalled[0].hitCount, 1);
-    assert.equal(store.getMemory(preference.id).hitCount, 1);
-
-    const updated = store.updateMemory(preference.id, { type: "instruction", content: "默认使用深色编辑器" });
-    assert.equal(updated.type, "instruction");
-    assert.equal(updated.content, "默认使用深色编辑器");
-    assert.equal(store.getMemoryStats(main.id).totalHits, 1);
-
-    const memorySessions = store.listMemorySessions();
-    assert.equal(memorySessions[0].id, main.id);
-    assert.equal(memorySessions.find((session) => session.id === worker.id).memoryCount, 1);
-    assert.equal(store.deleteMemory(preference.id), true);
-    assert.equal(store.getMemory(preference.id), null);
-    assert.throws(() => store.createMemory({ sessionId: main.id, type: "secret", content: "no" }), /unsupported memory type/);
+    const tables = store.db.prepare("SELECT name FROM sqlite_master WHERE type = 'table' ORDER BY name").all().map((row) => row.name);
+    assert.equal(tables.includes("memories"), false);
+    assert.equal(tables.includes("legacy_memories_readonly"), true);
+    assert.equal(store.db.prepare("SELECT content FROM legacy_memories_readonly WHERE id = 'mem_legacy'").get().content, "legacy content");
+    assert.equal(typeof store.createMemory, "undefined");
+    assert.equal(typeof store.listMemories, "undefined");
   } finally {
     store.close();
   }

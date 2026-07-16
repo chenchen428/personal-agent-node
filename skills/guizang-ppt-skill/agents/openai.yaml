@@ -1,0 +1,7 @@
+interface:
+  display_name: "Guizang Web PPT"
+  short_description: "Create editorial or Swiss single-file web decks"
+  default_prompt: "Use $guizang-ppt-skill to turn this outline into a polished horizontal web presentation."
+
+policy:
+  allow_implicit_invocation: true

@@ -71,6 +71,73 @@ test('personal-agent uses stable JSON errors and fails closed for unavailable co
   assert.equal(JSON.parse(allIsHelpOnly.stderr).error.code, 'INVALID_ARGUMENT');
 });
 
+test('Activity CLI uses an ephemeral main-Agent capability and never returns it', async () => {
+  const dataRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'personal-agent-activity-cli-'));
+  initializeSite({ domain: 'personal-agent.local', dataRoot });
+  const received = [];
+  const server = http.createServer(async (request, response) => {
+    const chunks = [];
+    for await (const chunk of request) chunks.push(chunk);
+    received.push({
+      url: request.url,
+      capability: request.headers['x-personal-agent-activity-capability'],
+      body: JSON.parse(Buffer.concat(chunks).toString('utf8')),
+    });
+    response.writeHead(200, { 'content-type': 'application/json' });
+    response.end(JSON.stringify({
+      ok: true,
+      result: {
+        action: 'upsert',
+        data: {
+          id: 'act_0123456789abcdef01234567',
+          type: 'work',
+          title: '完成本地构建',
+          detail: '安装包已经准备好，可以开始本地验收。',
+          attachments: [],
+          state: 'visible',
+          revision: 1,
+        },
+      },
+    }));
+  });
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+  const port = server.address().port;
+  const capability = 'ephemeral-main-agent-capability';
+
+  try {
+    const missing = await runAsync(['activity', 'search', '--query', '构建', '--json', '--data-root', dataRoot], '', {
+      OPEN_AGENT_BRIDGE_PORT: String(port),
+    });
+    assert.equal(missing.status, 5);
+    assert.equal(JSON.parse(missing.stderr).error.code, 'MAIN_AGENT_REQUIRED');
+
+    const result = await runAsync([
+      'activity', 'upsert',
+      '--capability', capability,
+      '--type', 'work',
+      '--title', '完成本地构建',
+      '--detail', '安装包已经准备好，可以开始本地验收。',
+      '--idempotency-key', 'local-build-v1',
+      '--correlation-key', 'local-build',
+      '--json',
+      '--data-root', dataRoot,
+    ], '', { OPEN_AGENT_BRIDGE_PORT: String(port) });
+    assert.equal(result.status, 0, result.stderr);
+    const body = JSON.parse(result.stdout);
+    assert.equal(body.command, 'activity upsert');
+    assert.equal(body.result.activity.title, '完成本地构建');
+    assert.doesNotMatch(result.stdout, new RegExp(capability));
+    assert.equal(received.length, 1);
+    assert.equal(received[0].url, '/api/internal/activity-agent');
+    assert.equal(received[0].capability, capability);
+    assert.equal(received[0].body.action, 'upsert');
+    assert.equal(received[0].body.input.correlationKey, 'local-build');
+  } finally {
+    await new Promise((resolve) => server.close(resolve));
+    fs.rmSync(dataRoot, { recursive: true, force: true });
+  }
+});
+
 test('setup status exposes separate readiness dimensions and remains read-only', () => {
   const dataRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'personal-agent-setup-cli-'));
   try {
@@ -83,7 +150,7 @@ test('setup status exposes separate readiness dimensions and remains read-only',
     assert.equal(body.command, 'setup status');
     assert.deepEqual(Object.keys(body.result.readiness), ['console', 'agent', 'remote', 'mail']);
     assert.equal(body.result.readiness.remote, 'not-selected');
-    assert.equal(body.result.checks.find((check) => check.id === 'channels.wechat').requirement, 'optional');
+    assert.equal(body.result.checks.find((check) => check.id === 'channels.wechat').requirement, 'required-for-agent');
     assert.deepEqual(snapshotDataRoot(dataRoot), before);
   } finally {
     fs.rmSync(dataRoot, { recursive: true, force: true });
@@ -267,6 +334,46 @@ test('mail status is R0 read-only while mail plan is preview-only', () => {
     assert.equal(planBody.result.plan.previewOnly, true);
     assert.ok(planBody.warnings.some((warning) => warning.code === 'PREVIEW_COMMAND'));
     assert.deepEqual(snapshotDataRoot(dataRoot), before, 'preview mail plan must remain read-only across the complete data root');
+  } finally {
+    fs.rmSync(dataRoot, { recursive: true, force: true });
+  }
+});
+
+test('Personal App CLI verifies trusted Workspace Apps and controls the default entry', () => {
+  const dataRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'personal-agent-cli-app-'));
+  try {
+    initializeSite({ domain: 'local.example', dataRoot });
+    const appRoot = path.join(dataRoot, 'apps', 'example.dashboard');
+    fs.mkdirSync(path.join(appRoot, 'dist'), { recursive: true });
+    fs.writeFileSync(path.join(appRoot, 'personal-agent.app.json'), `${JSON.stringify({
+      apiVersion: 'personal-agent/app-v1',
+      id: 'example.dashboard',
+      name: 'Dashboard',
+      entry: 'dist/index.html',
+      requires: { nodeApi: '1' },
+    })}\n`);
+    fs.writeFileSync(path.join(appRoot, 'dist', 'index.html'), '<!doctype html><title>Dashboard</title>');
+
+    const verified = JSON.parse(runOk(['app', 'verify', 'example.dashboard', '--json', '--data-root', dataRoot]).stdout);
+    assert.equal(verified.command, 'app verify');
+    assert.equal(verified.result.verified, true);
+    assert.equal(verified.result.app.route, '/app/apps/example.dashboard');
+    assert.equal(verified.result.app.assetRoute, '/apps/example.dashboard/');
+
+    const selected = JSON.parse(runOk(['app', 'set-default', 'example.dashboard', '--json', '--data-root', dataRoot]).stdout);
+    assert.equal(selected.result.defaultAppId, 'example.dashboard');
+    const listed = JSON.parse(runOk(['app', 'list', '--json', '--data-root', dataRoot]).stdout);
+    assert.equal(listed.result.effectiveDefaultAppId, 'example.dashboard');
+    assert.deepEqual(listed.result.apps.map((app) => app.id), ['example.dashboard']);
+
+    const cleared = JSON.parse(runOk(['app', 'clear-default', '--json', '--data-root', dataRoot]).stdout);
+    assert.equal(cleared.result.route, '/app');
+    assert.equal(JSON.parse(fs.readFileSync(path.join(dataRoot, 'config', 'apps.json'), 'utf8')).defaultAppId, '');
+
+    fs.rmSync(path.join(appRoot, 'dist', 'index.html'));
+    const invalid = run(['app', 'verify', 'example.dashboard', '--json', '--data-root', dataRoot]);
+    assert.equal(invalid.status, 8);
+    assert.equal(JSON.parse(invalid.stderr).error.code, 'ACCEPTANCE_FAILED');
   } finally {
     fs.rmSync(dataRoot, { recursive: true, force: true });
   }

@@ -158,7 +158,7 @@ export class PersonalAuth {
     const host = requestHost(request);
     const scope = this.scopeForHost(host);
     const parts = token.split(".");
-    if (parts.length !== 5 || parts[0] !== "v1") return false;
+    if (parts.length !== 5 || parts[0] !== "v2") return false;
     const [version, expiresText, nonce, encodedScope, signature] = parts;
     const expiresAt = Number(expiresText);
     const nowSeconds = Math.floor(this.now() / 1000);
@@ -180,7 +180,7 @@ export class PersonalAuth {
     const expiresAt = Math.floor(now / 1000) + this.ttlSeconds;
     const scope = this.scopeForHost(requestHost(request));
     const encodedScope = Buffer.from(scope).toString("base64url");
-    const payload = ["v1", expiresAt, crypto.randomBytes(18).toString("base64url"), encodedScope].join(".");
+    const payload = ["v2", expiresAt, crypto.randomBytes(18).toString("base64url"), encodedScope].join(".");
     const value = `${payload}.${this.sign(payload)}`;
     return serializeCookie(this.cookieName, value, {
       maxAge: this.ttlSeconds,
@@ -211,7 +211,14 @@ export class PersonalAuth {
   }
 
   sign(payload) {
-    return crypto.createHmac("sha256", this.cookieSecret).update(payload).digest("base64url");
+    const verifier = readVerifier(this.verifierFile);
+    const credentialGeneration = verifier?.verifier
+      || crypto.createHash("sha256").update(this.password).digest("base64url");
+    const signingKey = crypto.createHmac("sha256", this.cookieSecret)
+      .update("personal-agent-cookie-v2\0")
+      .update(credentialGeneration)
+      .digest();
+    return crypto.createHmac("sha256", signingKey).update(payload).digest("base64url");
   }
 }
 

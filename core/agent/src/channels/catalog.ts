@@ -28,7 +28,7 @@ export function buildChannelCatalog({ wechat, managedPlatform }: { wechat: WeCha
       label: "微信",
       state: wechat.connected ? "connected" : "needs_login",
       statusLabel: wechat.connected ? "已连接" : "尚未连接",
-      description: wechat.connected ? "消息轮询与双向收发已启用。" : "可选渠道，需要扫码后使用。",
+      description: wechat.connected ? "消息轮询与双向收发已启用。" : "必选移动渠道，请生成二维码并使用微信扫码连接。",
       capabilities: ["conversation", "image", "file"],
       healthCheck: false,
     },

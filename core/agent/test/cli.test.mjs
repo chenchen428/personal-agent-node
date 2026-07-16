@@ -9,6 +9,21 @@ import { fileURLToPath } from "node:url";
 const execFileAsync = promisify(execFile);
 const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
+test("legacy Memory CLI fails closed and points to main-Agent Activity", async () => {
+  await assert.rejects(
+    execFileAsync(process.execPath, [path.join(projectRoot, "bin", "oab.mjs"), "memory", "recall", "--json"], {
+      cwd: projectRoot,
+      env: { ...process.env },
+    }),
+    (error) => {
+      assert.equal(error.code, 1);
+      assert.match(error.stderr, /legacy Memory domain has been removed/);
+      assert.match(error.stderr, /personal-agent activity/);
+      return true;
+    },
+  );
+});
+
 test("CLI sends an explicit execute boolean for local storage verification", async (t) => {
   let received = null;
   const server = http.createServer(async (request, response) => {

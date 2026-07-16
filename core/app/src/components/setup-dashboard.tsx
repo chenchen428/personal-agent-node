@@ -9,8 +9,10 @@ import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { buildSetupTaskModel, validateLocalPasswordInput, type SetupCheck, type SetupState, type SetupTask } from "@/lib/setup-tasks";
-import { Check, CheckCircle2, ChevronDown, Circle, ExternalLink, Mail, MessageCircle, RefreshCw, ShieldCheck, Wrench } from "lucide-react";
+import { WechatConnectPanel } from "@/components/wechat-connect-panel";
+import { SetupStatusIcon, SetupTodoItem, cloudFailureMessage } from "@/components/setup-dashboard-support";
+import { buildSetupTaskModel, validateLocalPasswordInput, type SetupCheck, type SetupState } from "@/lib/setup-tasks";
+import { CheckCircle2, Circle, ExternalLink, Mail, MessageCircle, RefreshCw, ShieldCheck, Wrench } from "lucide-react";
 
 type ManagedCloudAction = { state: "idle" | "starting" | "running" | "succeeded" | "failed"; phase: "idle" | "enrollment" | "resources" | "complete"; code?: string };
 type SetupSnapshot = { generatedAt?: string; readiness: Record<string, SetupState>; checks: SetupCheck[]; actions?: { managedCloud?: ManagedCloudAction } };
@@ -22,10 +24,10 @@ const badgeTone: Record<SetupState, "ready" | "warning" | "error" | "neutral"> =
 const detailGroups = [
   { key: "core", label: "本机与 Codex", sources: ["installation", "agent"] },
   { key: "online", label: "公网与 Agent 邮箱", sources: ["connectivity", "mail-identity"] },
-  { key: "optional", label: "本地邮件与渠道", sources: ["local-mail", "optional-channels"] },
+  { key: "optional", label: "本地邮件与渠道", sources: ["local-mail", "channels"] },
 ];
 
-export function SetupDashboard() {
+export function SetupDashboard({ prototype = false }: { prototype?: boolean }) {
   const [snapshot, setSnapshot] = useState<SetupSnapshot | null>(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
@@ -95,8 +97,8 @@ export function SetupDashboard() {
         void runAction(requestedAction, { password, confirmation });
       }}>
         <div className="grid gap-2 sm:grid-cols-2">
-          <Input aria-label="本机登录密码" type="password" autoComplete="new-password" required minLength={12} maxLength={256} placeholder="至少 12 个字符" value={password} onChange={(event) => setPassword(event.target.value)} />
-          <Input aria-label="确认本机登录密码" type="password" autoComplete="new-password" required minLength={12} maxLength={256} placeholder="再次输入密码" value={confirmation} onChange={(event) => setConfirmation(event.target.value)} />
+          <Input aria-label="访问密码" type="password" autoComplete="new-password" required minLength={12} maxLength={256} placeholder="至少 12 个字符" value={password} onChange={(event) => setPassword(event.target.value)} />
+          <Input aria-label="确认访问密码" type="password" autoComplete="new-password" required minLength={12} maxLength={256} placeholder="再次输入密码" value={confirmation} onChange={(event) => setConfirmation(event.target.value)} />
         </div>
         <div className="flex flex-wrap items-center gap-3">
           <Button type="submit" disabled={actionId === requestedAction}>{actionId === requestedAction ? "设置中" : "确认设置"}</Button>
@@ -124,12 +126,9 @@ export function SetupDashboard() {
       </div>;
     }
 
-    if (requestedAction === "mail.enable") return <div className="flex flex-wrap items-center gap-2">
-      <Button variant="outline" size="sm" type="button" disabled={actionId === requestedAction} onClick={() => void runAction(requestedAction)}><Mail className="size-3.5" />{actionId === requestedAction ? "启用中" : "启用邮件检测"}</Button>
-      <Link className={buttonVariants({ variant: "ghost", size: "sm" })} href="/app/mail">查看接入指南</Link>
-      {actionMessage[requestedAction] ? <small className="text-xs text-[var(--muted)]" role="status">{actionMessage[requestedAction]}</small> : null}
-    </div>;
+    if (requestedAction === "mail.enable") return <small className="text-xs text-[var(--muted)]">公网域名验证通过后会自动分配 PA 邮箱。</small>;
     if (["mail.test-delivery", "mail.test-recovery"].includes(requestedAction)) return <Link className={buttonVariants({ variant: "outline", size: "sm" })} href="/app/mail"><Mail className="size-3.5" />打开邮件页</Link>;
+    if (requestedAction === "channels.wechat.bind") return <WechatConnectPanel autoStart connected={snapshot?.checks.some((check) => check.id === "channels.wechat" && check.state === "ready") === true} onConnected={refresh} />;
     return null;
   };
 
@@ -139,6 +138,57 @@ export function SetupDashboard() {
   const currentDone = !loading && !error && tasks.requiredTasks.length === 0 && tasks.blockedChecks.length === 0;
   const headline = loading ? "正在检查这台电脑" : error ? "暂时无法完成检查" : currentDone ? "当前设置已经完成" : `${tasks.requiredTasks.length} 项待完成`;
   const summary = loading ? "正在读取安装、Codex 和对话链路的本机事实。" : error || (currentDone ? "安装、Codex、公网域名与 Agent 邮箱已经完成检查。" : coreReady ? "本机已经可用；继续完成公网域名与 Agent 邮箱验证。" : "先完成本机、Codex、公网域名与 Agent 邮箱的当前事项。" );
+
+  if (prototype) {
+    const installationChecks = checks.filter((check) => check.group === "installation" && check.id !== "installation.console-auth");
+    const agentChecks = checks.filter((check) => check.group === "agent");
+    const wechatCheck = checks.find((check) => check.id === "channels.wechat");
+    const installationReady = installationChecks.length > 0 && installationChecks.every((check) => check.state === "ready");
+    const agentReady = agentChecks.length > 0 && agentChecks.every((check) => check.state === "ready");
+    const wechatReady = wechatCheck?.state === "ready";
+    const completed = [installationReady, agentReady, wechatReady].filter(Boolean).length;
+    const installationTask = tasks.requiredTasks.find((task) => task.check.group === "installation" && task.check.id !== "installation.console-auth");
+    const agentTask = tasks.requiredTasks.find((task) => task.check.group === "agent");
+    const managedReady = checks.find((check) => check.id === "connectivity.enrollment")?.state === "ready";
+    const mailReady = checks.find((check) => check.id === "mail.local-ingest")?.state === "ready";
+    return <>
+      <header className="pa-heading">
+        <div><span className="pa-eyebrow">初始化向导</span><h1>把 PA 准备好</h1><p>先完成本机安全、智能体可工作和微信连接。邮件与公网域名作为可选能力单独设置。</p></div>
+        <span className="pa-status setup-progress">{loading ? "正在检查" : error ? "检查失败" : `${completed} / 3 已完成`}</span>
+      </header>
+      {error ? <div className="pa-boundary-demo"><strong>暂时无法读取本机状态。</strong> {error}<button className="pa-button" type="button" onClick={() => void refresh()}>重新检测</button></div> : null}
+      <div className="setup-layout" aria-live="polite">
+        <section className="setup-list" aria-label="核心初始化步骤">
+          <article className={`setup-item${installationReady ? " done" : " active"}`}>
+            <span className="setup-number">{installationReady ? "✓" : "1"}</span>
+            <div><strong>保护这台电脑上的 PA</strong><p>{installationReady ? "可信发行版、本机数据目录和服务入口均已确认。" : installationTask?.check.guidance || "正在检查安装包、数据目录和本机服务。"}</p></div>
+            {installationReady ? <Link className="pa-button" href="/app/settings">查看</Link> : installationTask ? renderAction(installationTask.actionId) : <button className="pa-button" type="button" onClick={() => void refresh()}>重新检测</button>}
+          </article>
+          <article className={`setup-item${agentReady ? " done" : !installationReady ? "" : " active"}`}>
+            <span className="setup-number">{agentReady ? "✓" : "2"}</span>
+            <div><strong>让 PA 可以工作</strong><p>{agentReady ? "Codex CLI、工作区和真实对话检查均已通过。" : agentTask?.check.guidance || "正在检查 Codex、工作区和真实对话链路。"}</p></div>
+            {agentReady ? <Link className="pa-button" href="/app/conversations">查看状态</Link> : agentTask ? renderAction(agentTask.actionId) : <button className="pa-button" type="button" onClick={() => void refresh()}>重新检测</button>}
+          </article>
+          <article className={`setup-item${wechatReady ? " done" : installationReady && agentReady ? " active" : ""}`}>
+            <span className="setup-number">{wechatReady ? "✓" : "3"}</span>
+            <div><strong>连接微信</strong><p>{wechatReady ? "微信已经连接，可以直接向 PA 发送消息。" : "用微信扫描一次性二维码，确认后即可开始沟通。"}</p></div>
+            {wechatReady ? <Link className="pa-button" href="/app/channels">查看</Link> : <WechatConnectPanel connected={false} onConnected={refresh} compact />}
+          </article>
+        </section>
+        <aside className="setup-aside">
+          <article className="setup-option dark">
+            <span className="pa-eyebrow">可选 · 邮件</span><h2>验证后分配 PA 邮箱</h2><p>公网域名验证通过后，系统会分配专属 PA 邮箱。</p>
+            <code>{mailReady ? "PA 邮箱已分配" : managedReady ? "正在确认邮箱分配状态" : "先完成公网域名验证"}</code>
+            {mailReady ? <Link className="pa-button inverse" href="/app/mail">查看邮件</Link> : <span className="setup-option-note">验证完成后自动分配，无需单独接入</span>}
+          </article>
+          <article className="setup-option">
+            <span className="pa-eyebrow">可选 · 公网域名</span><h2>在手机查看结果</h2><p>完成公网域名验证后，可从手机安全访问这台电脑上的 PA。</p>
+            {managedReady ? <Link className="pa-button" href="/app/channels">查看公网域名</Link> : <button className="pa-button" type="button" disabled={actionId === "connectivity.managed-authorize"} onClick={() => void runAction("connectivity.managed-authorize")}>{actionId === "connectivity.managed-authorize" ? "正在打开" : "验证公网域名"}</button>}
+          </article>
+        </aside>
+      </div>
+    </>;
+  }
 
   return <section className="grid gap-6 pt-8" aria-label="Setup readiness" aria-live="polite">
     <Card className="overflow-hidden border-0 bg-[var(--surface-dark)] text-[#d2cec6] shadow-[0_20px_60px_rgba(20,20,19,.12)]">
@@ -173,7 +223,7 @@ export function SetupDashboard() {
         </CardHeader>
         <CardContent className="grid gap-3 p-3 sm:p-4">
           {tasks.requiredTasks.length ? <ol className="grid list-none gap-3 p-0">
-            {tasks.requiredTasks.map((task, index) => <TodoItem key={task.check.id} task={task} index={index + 1} action={renderAction(task.actionId)} />)}
+            {tasks.requiredTasks.map((task, index) => <SetupTodoItem key={task.check.id} task={task} index={index + 1} action={renderAction(task.actionId)} />)}
           </ol> : <div className="flex min-h-36 items-center gap-4 rounded-lg border border-dashed border-[var(--hairline)] bg-[var(--surface-soft)] p-5">
             {currentDone ? <CheckCircle2 className="size-7 shrink-0 text-[var(--success)]" /> : <Circle className="size-7 shrink-0 text-[var(--muted-soft)]" />}
             <div><strong className="block text-sm font-medium text-[var(--ink)]">{loading ? "正在生成任务清单" : currentDone ? "当前引导已经完成" : error || "正在等待检测结果"}</strong><span className="mt-1 block text-xs leading-relaxed text-[var(--muted)]">{currentDone ? "本机、Codex、公网域名与 Agent 邮箱均已完成检查。" : "检测完成后，这里只会留下需要你处理的事项。"}</span></div>
@@ -211,7 +261,7 @@ export function SetupDashboard() {
                 return <section key={group.key} className="grid gap-2.5">
                   {groupIndex ? <Separator className="mb-2" /> : null}
                   <h3 className="m-0 font-[var(--mono)] text-[10px] font-medium tracking-[.08em] text-[var(--muted)] uppercase">{group.label}</h3>
-                  <ul className="grid list-none gap-1 p-0">{groupChecks.map((check) => <li key={check.id} className="grid grid-cols-[16px_minmax(0,1fr)_auto] items-center gap-2 py-1.5 text-xs text-[var(--body)]"><StatusIcon state={check.state} /><span>{check.summary}</span><Badge variant={badgeTone[check.state]}>{labels[check.state]}</Badge></li>)}</ul>
+                  <ul className="grid list-none gap-1 p-0">{groupChecks.map((check) => <li key={check.id} className="grid grid-cols-[16px_minmax(0,1fr)_auto] items-center gap-2 py-1.5 text-xs text-[var(--body)]"><SetupStatusIcon state={check.state} /><span>{check.summary}</span><Badge variant={badgeTone[check.state]}>{labels[check.state]}</Badge></li>)}</ul>
                 </section>;
               })}
               {!checks.length ? <div className="flex items-center gap-2 text-sm text-[var(--muted)]"><ShieldCheck className="size-4" />等待检测结果</div> : null}
@@ -221,41 +271,4 @@ export function SetupDashboard() {
       </Card>
     </div>
   </section>;
-}
-
-function TodoItem({ task, index, action }: { task: SetupTask; index: number; action: React.ReactNode }) {
-  const [open, setOpen] = useState(index === 1);
-  return <li className={`setup-task-row ${open ? "is-open" : ""}`}>
-    <button type="button" className="setup-task-summary" aria-expanded={open} onClick={() => setOpen((current) => !current)}>
-      <span className="grid size-7 shrink-0 place-items-center rounded-full bg-[var(--canvas)] font-[var(--mono)] text-[10px] text-[var(--coral)] ring-1 ring-[var(--hairline)]">{String(index).padStart(2, "0")}</span>
-      <span className="setup-task-title"><small>{task.category}</small><strong>{task.title}</strong></span>
-      {task.waitingCount ? <span className="setup-task-waiting">后续 {task.waitingCount} 项</span> : null}
-      <Badge variant="warning">需处理</Badge>
-      <ChevronDown className="setup-task-chevron size-4" />
-    </button>
-    {open ? <div className="setup-task-content">
-      <p>{task.check.guidance}</p>
-      <details className="group text-xs text-[var(--muted)]"><summary className="flex w-max cursor-pointer list-none items-center gap-1">为什么需要这一步<ChevronDown className="size-3.5 transition-transform group-open:rotate-180" /></summary><p className="mt-2 mb-0 border-l-2 border-[var(--hairline)] pl-3 leading-relaxed">{task.check.why}</p></details>
-      <div>{action}</div>
-    </div> : null}
-  </li>;
-}
-
-function StatusIcon({ state }: { state: SetupState }) {
-  if (state === "ready") return <Check className="size-3.5 text-[var(--success)]" />;
-  if (state === "checking") return <RefreshCw className="size-3.5 animate-spin text-[var(--coral)]" />;
-  if (state === "blocked") return <Circle className="size-3.5 text-[var(--error)]" />;
-  return <Circle className="size-3.5 text-[var(--warning)]" />;
-}
-
-function cloudFailureMessage(code = "") {
-  const messages: Record<string, string> = {
-    CLOUD_AUTH_DENIED: "页面验证已取消，请重新验证并确认这台电脑。",
-    CLOUD_AUTH_EXPIRED: "页面验证已过期，请重新发起验证。",
-    CLOUD_AUTH_FAILED: "Cloud 登录状态未通过，请确认 personal-agent.cn 已登录后重试。",
-    CLOUD_NETWORK_UNREACHABLE: "无法连接 personal-agent.cn，请检查 DNS 或本机网络后重试。",
-    CLOUD_REQUEST_FAILED: "Cloud 授权接口暂时未完成请求，请确认 Cloud 已发布最新版本后重试。",
-    DEPENDENCY_UNAVAILABLE: "Cloud 授权服务暂时不可用，请稍后重新验证。",
-  };
-  return messages[code] || `页面验证未完成（${code || "请重试"}）。`;
 }

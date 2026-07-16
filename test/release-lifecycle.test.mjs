@@ -107,13 +107,13 @@ test('release installation does not materialize repository Agent compatibility l
   assert.doesNotMatch(installer, /materializeHarnessLinks|verifyHarnessLinks/);
 });
 
-test('fresh release installation points to the local Setup Center without requiring WeChat', () => {
+test('fresh release installation points to the local Setup Center with required WeChat guidance', () => {
   const installer = fs.readFileSync(path.join(root, 'scripts', 'install-private-site-node-release.mjs'), 'utf8');
   const githubInstaller = fs.readFileSync(path.join(root, 'scripts', 'install-from-github-release.mjs'), 'utf8');
   for (const source of [installer, githubInstaller]) {
     assert.match(source, /requiredAction:\s*["']open-setup-center["']/);
     assert.match(source, /\/app\/setup/);
-    assert.match(source, /wechatRequired:\s*false/);
+    assert.match(source, /wechatRequired:\s*true/);
     assert.match(source, /personal-agent setup status --json/);
     assert.doesNotMatch(source, /bind WeChat first/);
   }

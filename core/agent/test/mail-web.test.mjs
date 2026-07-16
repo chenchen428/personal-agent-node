@@ -6,6 +6,7 @@ import net from "node:net";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
+import { DatabaseSync } from "node:sqlite";
 import { fileURLToPath } from "node:url";
 
 import { ingestRawEmail } from "../src/automation/mail-ingest.js";
@@ -96,6 +97,21 @@ test("mail is registered as a protected fixed path", () => {
 test("mail web requires authentication and serves message, raw EML, and attachments", async (t) => {
   const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), "oab-mail-web-server-"));
   const mailDir = path.join(dataDir, "mail-ingress");
+  const appRoot = path.join(dataDir, "apps", "personal-agent.daily-brief");
+  fs.mkdirSync(path.join(appRoot, "dist"), { recursive: true });
+  fs.writeFileSync(path.join(appRoot, "personal-agent.app.json"), `${JSON.stringify({
+    apiVersion: "personal-agent/app-v1",
+    id: "personal-agent.daily-brief",
+    name: "Daily Brief",
+    entry: "dist/index.html",
+    requires: { nodeApi: "1" },
+  })}\n`);
+  fs.writeFileSync(path.join(appRoot, "dist", "index.html"), "<!doctype html><title>Daily Brief</title>");
+  const agentDataDir = path.join(dataDir, "data");
+  fs.mkdirSync(agentDataDir, { recursive: true });
+  const agentData = new DatabaseSync(path.join(agentDataDir, "agent-data.sqlite"));
+  agentData.exec("CREATE TABLE shared_expenses (category TEXT, amount INTEGER); INSERT INTO shared_expenses VALUES ('travel', 680)");
+  agentData.close();
   const port = await availablePort();
   let output = "";
   const child = spawn(process.execPath, [path.join(workspaceRoot, "node_modules", "tsx", "dist", "cli.mjs"), "src/server/server.ts"], {
@@ -193,6 +209,65 @@ test("mail web requires authentication and serves message, raw EML, and attachme
   assert.equal(apiPayload.selectedEvent.id, ingested.event.id);
   assert.equal(apiPayload.content.subject, "Authenticated statement");
   assert.doesNotMatch(JSON.stringify(apiPayload), new RegExp(escapeRegExp(ingested.archivePath)));
+
+  const unauthorizedNodeApi = await fetch(`http://127.0.0.1:${port}/api/node/v1/capabilities`);
+  assert.equal(unauthorizedNodeApi.status, 401);
+  assert.deepEqual((await unauthorizedNodeApi.json()).error.code, "AUTHENTICATION_REQUIRED");
+
+  const nodeCapabilities = await fetch(`http://127.0.0.1:${port}/api/node/v1/capabilities`, { headers });
+  const nodeCapabilitiesPayload = await nodeCapabilities.json();
+  assert.equal(nodeCapabilitiesPayload.schemaVersion, 1);
+  assert.equal(nodeCapabilitiesPayload.ok, true);
+  assert.deepEqual(nodeCapabilitiesPayload.result.supportedMajors, ["1"]);
+  assert.equal(nodeCapabilitiesPayload.result.capabilities.data.rawSql, false);
+  assert.equal(nodeCapabilitiesPayload.result.capabilities.apps.history.append, true);
+
+  const nodeMail = await fetch(`http://127.0.0.1:${port}/api/node/v1/mail/messages/${encodeURIComponent(ingested.event.id)}`, { headers });
+  const nodeMailPayload = await nodeMail.json();
+  assert.equal(nodeMailPayload.schemaVersion, 1);
+  assert.equal(nodeMailPayload.result.message.id, ingested.event.id);
+  assert.equal(nodeMailPayload.result.content.subject, "Authenticated statement");
+
+  const nodeData = await fetch(`http://127.0.0.1:${port}/api/node/v1/data/schema`, { headers });
+  const nodeDataPayload = await nodeData.json();
+  assert.equal(nodeDataPayload.schemaVersion, 1);
+  assert.equal(nodeDataPayload.result.objects[0].name, "shared_expenses");
+
+  const nodeDataQuery = await fetch(`http://127.0.0.1:${port}/api/node/v1/data/query`, {
+    method: "POST",
+    headers: { ...headers, "content-type": "application/json" },
+    body: JSON.stringify({ object: "shared_expenses", page: { number: 1, size: 3 } }),
+  });
+  const nodeDataQueryPayload = await nodeDataQuery.json();
+  assert.equal(nodeDataQueryPayload.result.rows[0].category, "travel");
+  assert.equal(nodeDataQueryPayload.result.rows[0].amount, 680);
+
+  const historyHeaders = { ...headers, "x-personal-agent-app-id": "personal-agent.daily-brief" };
+  const appendHistory = await fetch(`http://127.0.0.1:${port}/api/node/v1/apps/personal-agent.daily-brief/history`, {
+    method: "POST",
+    headers: { ...historyHeaders, "content-type": "application/json" },
+    body: JSON.stringify({ kind: "refresh", title: "Refresh brief", summary: "Shared data was read.", sources: ["data"] }),
+  });
+  assert.equal(appendHistory.status, 201);
+  assert.match((await appendHistory.json()).result.history.id, /^apphist_/);
+  const listHistory = await fetch(`http://127.0.0.1:${port}/api/node/v1/apps/personal-agent.daily-brief/history`, { headers: historyHeaders });
+  const listHistoryPayload = await listHistory.json();
+  assert.equal(listHistoryPayload.result.total, 1);
+  assert.equal(listHistoryPayload.result.items[0].sources[0], "data");
+  const mismatchedHistory = await fetch(`http://127.0.0.1:${port}/api/node/v1/apps/personal-agent.daily-brief/history`, {
+    headers: { ...headers, "x-personal-agent-app-id": "example.other" },
+  });
+  assert.equal(mismatchedHistory.status, 403);
+  assert.equal((await mismatchedHistory.json()).error.code, "APP_IDENTITY_REQUIRED");
+
+  const nodePages = await fetch(`http://127.0.0.1:${port}/api/node/v1/pages`, { headers });
+  const nodePagesPayload = await nodePages.json();
+  assert.equal(nodePagesPayload.schemaVersion, 1);
+  assert.ok(Array.isArray(nodePagesPayload.result.assets));
+
+  const missingNodeApi = await fetch(`http://127.0.0.1:${port}/api/node/v1/unknown`, { headers });
+  assert.equal(missingNodeApi.status, 404);
+  assert.equal((await missingNodeApi.json()).error.code, "NOT_FOUND");
 
   const importedRaw = Buffer.from([
     "From: Local Tester <tester@example.com>",

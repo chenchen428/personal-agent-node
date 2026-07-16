@@ -8,21 +8,21 @@
       "label": "Immutable release installation",
       "case": "test/fixtures/baseline-cases/release-installation/case.json",
       "command": ["node", "--import", "tsx", "--test", "test/release-lifecycle.test.mjs"],
-      "requirements": ["Installation switches an immutable current release", "One previous release remains available", "Fresh installation opens the authenticated local Setup Center without requiring WeChat or a development Agent"]
+      "requirements": ["Installation switches an immutable current release", "One previous release remains available", "Fresh installation opens the local Setup Center directly in the Tauri desktop shell without desktop login and presents WeChat as a required guided connection without requiring a development Agent", "The desktop shell uses the system WebView, exposes no native page API, starts the local runtime when opened, stops it when closed, and remains bound to current/previous rollback", "Tunneled access requires the local access password and password reset invalidates existing remote sessions", "Browser and CLI recovery remain available"]
     },
     {
       "id": "authenticated-login",
       "label": "Authenticated browser login",
       "case": "test/fixtures/baseline-cases/authenticated-login/case.json",
       "command": ["node", "--import", "tsx", "--test", "core/agent/test/personal-auth.test.mjs"],
-      "requirements": ["Login requires explicit local secrets", "Session cookies are host-only and tenant-bound", "Unsafe return locations are rejected"]
+      "requirements": ["Tunneled login requires explicit local secrets while direct loopback Console access needs no login", "Session cookies are host-only and tenant-bound", "Changing the local access password invalidates existing remote sessions", "Unsafe return locations are rejected"]
     },
     {
       "id": "agent-conversation",
       "label": "Local Agent conversation",
       "case": "test/fixtures/baseline-cases/agent-conversation/case.json",
-      "command": ["node", "--import", "tsx", "--test", "core/agent/test/broker.test.mjs", "core/agent/test/orchestrator.test.mjs"],
-      "requirements": ["A local session stores ordered commands and events", "Concurrent input is serialized", "Conversation execution does not require Cloud", "Release and final acceptance install the GitHub Release asset and use authenticated /app/chat", "A unique prompt reaches the real Agent runtime and its Agent reply is observed in the same session", "wechatRequired is false and WeChat remains optional"]
+      "command": ["node", "--import", "tsx", "--test", "core/agent/test/broker.test.mjs", "core/agent/test/orchestrator.test.mjs", "core/agent/test/activity-store.test.mjs", "core/agent/test/activity-control.test.mjs", "core/runtime/test/personal-agent-cli.test.mjs"],
+      "requirements": ["A local session stores ordered commands and events", "Concurrent input is serialized", "Conversation execution does not require Cloud", "Release and final acceptance install the GitHub Release asset and use authenticated /app/chat", "A unique prompt reaches the real Agent runtime and its Agent reply is observed in the same session", "wechatRequired is true and the channels.wechat Setup check is ready", "Only the canonical main Agent can operate Activity", "Activity is never generated from system events", "Titles are limited to 30 visible characters and attachments to ten", "Search and update are owner-local and revision-safe", "The legacy Memory product surface is unavailable"]
     },
     {
       "id": "wechat-conversation-channel",

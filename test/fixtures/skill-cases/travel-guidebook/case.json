@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "skill": "travel-guidebook",
+  "title": "Source-backed three-day city guide",
+  "prompt": "Create a printable three-day city guide with realistic travel buffers, bad-weather alternatives, and source notes.",
+  "commands": [],
+  "artifacts": [
+    {
+      "path": "itinerary-plan.md",
+      "label": "Feasibility and provenance fixture"
+    }
+  ],
+  "verifiedAt": "2026-07-16",
+  "note": "The fixture avoids unstable destination claims; a real run must browse and record current primary sources."
+}

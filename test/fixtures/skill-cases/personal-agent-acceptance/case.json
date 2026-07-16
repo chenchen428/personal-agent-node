@@ -15,7 +15,7 @@
     "验证完整 Harness、五个 Agent bridge 和 local-first 能力",
     "验证 /app 四级权限、未知路由拒绝、CLI JSON 契约和 R0-R3",
     "验证 Extension 隔离、数据根、安装、升级和 previous 回滚",
-    "release/final 必须从 GitHub Release 安装版的 authenticated /app/chat 发起 unique prompt，由 real Agent runtime 执行并在同一 session 观察 Agent reply；统一 webConversation 证据固定 wechatRequired=false",
+    "release/final 必须从 GitHub Release 安装版的 authenticated /app/chat 发起 unique prompt，由 real Agent runtime 执行并在同一 session 观察 Agent reply；统一 webConversation 证据固定 wechatRequired=true，并要求 channels.wechat 为 ready",
     "release/final 验证用户自管 MTA、无内置 SMTP、稳定 ingest shim、真实 EML、本地消息与附件、普通备份恢复、受保护 /app/mail、无托管 SMTP/IMAPS、只读 status 和 preview-only plan",
     "Managed Cloud 联调独立判定且证据不包含授权码或 token"
   ],

@@ -3,11 +3,12 @@
   "id": "authenticated-login",
   "workflow": "Authenticated browser login",
   "cloudIndependent": true,
-  "given": "A loopback authentication service configured with test-only local secrets",
-  "when": "A browser logs in and attempts valid, cross-tenant, expired, and unsafe redirects",
+  "given": "A loopback Console and tunneled authentication service configured with test-only local secrets",
+  "when": "Desktop and tunneled browsers access the Console, change the access password, and attempt valid, cross-tenant, expired, and unsafe redirects",
   "acceptance": [
-    "Login requires explicit local secrets",
+    "Tunneled login requires explicit local secrets while direct loopback Console access needs no login",
     "Session cookies are host-only and tenant-bound",
+    "Changing the local access password invalidates existing remote sessions",
     "Unsafe return locations are rejected"
   ]
 }
