@@ -34,12 +34,12 @@ Connectivity and model providers are independent. Disconnecting Cloud must not d
 
 ## Install a release
 
-Beta users download one complete package for their operating system. No preinstalled Node.js, npm, development Agent, or source checkout is required. The current release is `v0.2.0-beta.15`:
+Beta users download one complete package for their operating system. No preinstalled Node.js, npm, development Agent, or source checkout is required. The current release is `v0.2.0-beta.16`:
 
-- Windows x86-64: `personal-agent-node-v0.2.0-beta.15-windows-x64-installer.exe`
-- macOS Apple Silicon: `personal-agent-node-v0.2.0-beta.15-macos-arm64.pkg`
-- macOS Intel: `personal-agent-node-v0.2.0-beta.15-macos-x64.pkg`
-- Linux x86-64 / ARM64: the matching `personal-agent-node-v0.2.0-beta.15-linux-*.tar.zst`
+- Windows x86-64: `personal-agent-node-v0.2.0-beta.16-windows-x64-installer.exe`
+- macOS Apple Silicon: `personal-agent-node-v0.2.0-beta.16-macos-arm64.pkg`
+- macOS Intel: `personal-agent-node-v0.2.0-beta.16-macos-x64.pkg`
+- Linux x86-64 / ARM64: the matching `personal-agent-node-v0.2.0-beta.16-linux-*.tar.zst`
 
 The Windows wizard lets the user choose the program directory while keeping Workspace data separate. Personal Agent is delivered as one desktop application: it contains the verified application payload and Node.js `22.23.1`, starts the bundled backend internally without a terminal, and stops the backend process tree when the application exits. It does not register a second platform service. The Tauri 2 application reuses the system WebView and bundles neither Chromium nor another Node.js runtime; browser and CLI recovery remain available. A failed candidate restores the release pointer, stable launchers, installation state, and shortcuts.
 

@@ -106,6 +106,11 @@ impl EmbeddedNodeRuntime {
             .stdin(Stdio::null())
             .stdout(Stdio::null())
             .stderr(Stdio::null());
+        if action == "start" {
+            command
+                .arg("--parent-pid")
+                .arg(std::process::id().to_string());
+        }
         hide_console_window(&mut command);
         command
     }
@@ -154,6 +159,7 @@ pub fn run() {
         }),
     );
     let runtime_for_setup = Arc::clone(&embedded_runtime);
+    let runtime_for_close = Arc::clone(&embedded_runtime);
 
     let app = tauri::Builder::default()
         .plugin(tauri_plugin_single_instance::init(|app, args, _cwd| {
@@ -169,6 +175,12 @@ pub fn run() {
             let _ = window.unminimize();
             let _ = window.set_focus();
         }))
+        .on_window_event(move |window, event| {
+            if matches!(event, tauri::WindowEvent::CloseRequested { .. }) {
+                runtime_for_close.stop();
+                window.app_handle().exit(0);
+            }
+        })
         .setup(move |app| {
             let navigation = Arc::new(|url: &Url| match navigation_decision(url) {
                 NavigationDecision::AllowInShell => true,

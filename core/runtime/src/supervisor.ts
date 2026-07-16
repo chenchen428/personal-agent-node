@@ -6,7 +6,7 @@ import { buildServiceEnvironment, ensureNodeDirectories, requireRuntimeSecrets, 
 import { extensionComponentSpecs } from "./extensions.ts";
 import { startBackupScheduler } from "./backup-scheduler.ts";
 
-export async function runSupervisor({ config = resolveNodeConfig(), logger = console } = {}) {
+export async function runSupervisor({ config = resolveNodeConfig(), logger = console, parentPid = 0 } = {}) {
   ensureNodeDirectories(config);
   requireRuntimeSecrets(config);
   const environment = { ...process.env, ...buildServiceEnvironment(config) };
@@ -15,6 +15,9 @@ export async function runSupervisor({ config = resolveNodeConfig(), logger = con
   const children = new Map();
   let stopping = false;
   let backupScheduler = null;
+  let parentMonitor = null;
+  const ownerPid = Number(parentPid || 0);
+  if (parentPid && (!Number.isInteger(ownerPid) || ownerPid <= 0 || ownerPid === process.pid)) throw new Error("Invalid desktop parent PID");
 
   writeJsonAtomic(path.join(config.runtimeDir, "supervisor.json"), {
     pid: process.pid,
@@ -60,6 +63,7 @@ export async function runSupervisor({ config = resolveNodeConfig(), logger = con
     });
   } catch (error) {
     stopping = true;
+    if (parentMonitor) clearInterval(parentMonitor);
     await stopChildren(children);
     throw error;
   }
@@ -75,7 +79,22 @@ export async function runSupervisor({ config = resolveNodeConfig(), logger = con
   };
   process.on("SIGINT", stop);
   process.on("SIGTERM", stop);
+  if (ownerPid > 0) {
+    parentMonitor = setInterval(() => {
+      if (!processAlive(ownerPid)) void stop();
+    }, 250);
+    parentMonitor.unref?.();
+  }
   await new Promise(() => {});
+}
+
+function processAlive(pid) {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch (error) {
+    return error?.code === "EPERM";
+  }
 }
 
 export function componentSpecs(config, workerConfig) {
