@@ -19,7 +19,9 @@ test('desktop application owns the bundled Node backend and constrains its loopb
   assert.match(rust, /\.command\("start"\)/);
   assert.match(rust, /\.command\("stop"\)/);
   assert.match(rust, /CREATE_NO_WINDOW/);
+  assert.match(rust, /--parent-pid/);
   assert.match(rust, /RunEvent::Exit/);
+  assert.match(rust, /WindowEvent::CloseRequested[\s\S]*runtime_for_close\.stop\(\)[\s\S]*app_handle\(\)\.exit\(0\)/);
   assert.doesNotMatch(rust, /invoke_handler|#\[tauri::command\]/);
   assert.equal(config.app.withGlobalTauri, false);
   assert.deepEqual(config.app.windows, []);

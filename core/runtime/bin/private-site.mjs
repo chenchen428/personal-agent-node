@@ -22,7 +22,7 @@ if (args.dataRoot) process.env.PRIVATE_SITE_DATA_ROOT = path.resolve(args.dataRo
 
 if (command === "init") await initCommand();
 else if (command === "prepare") await prepareCommand();
-else if (command === "start") await runSupervisor({ config: resolveNodeConfig() });
+else if (command === "start") await runSupervisor({ config: resolveNodeConfig(), parentPid: args.parentPid });
 else if (command === "daemon-start") await daemonStartCommand();
 else if (command === "stop") await stopCommand();
 else if (command === "status") await statusCommand();
