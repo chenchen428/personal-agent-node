@@ -34,16 +34,16 @@ Connectivity and model providers are independent. Disconnecting Cloud must not d
 
 ## Install a release
 
-Beta users download one complete package for their operating system. No preinstalled Node.js, npm, development Agent, or source checkout is required. The current release is `v0.2.0-beta.14`:
+Beta users download one complete package for their operating system. No preinstalled Node.js, npm, development Agent, or source checkout is required. The current release is `v0.2.0-beta.15`:
 
-- Windows x86-64: `personal-agent-node-v0.2.0-beta.14-windows-x64-installer.exe`
-- macOS Apple Silicon: `personal-agent-node-v0.2.0-beta.14-macos-arm64.pkg`
-- macOS Intel: `personal-agent-node-v0.2.0-beta.14-macos-x64.pkg`
-- Linux x86-64 / ARM64: the matching `personal-agent-node-v0.2.0-beta.14-linux-*.tar.zst`
+- Windows x86-64: `personal-agent-node-v0.2.0-beta.15-windows-x64-installer.exe`
+- macOS Apple Silicon: `personal-agent-node-v0.2.0-beta.15-macos-arm64.pkg`
+- macOS Intel: `personal-agent-node-v0.2.0-beta.15-macos-x64.pkg`
+- Linux x86-64 / ARM64: the matching `personal-agent-node-v0.2.0-beta.15-linux-*.tar.zst`
 
-On Windows, a native installation wizard verifies the complete immutable release and bundled Node.js `22.23.1`, safely replaces the per-user background service, and creates both Start menu and desktop icons before launching the lightweight Tauri 2 shell. A failed candidate restores the previous service, release pointer, stable launchers, installation state, and shortcuts. The shell reuses the system WebView and bundles neither Chromium nor a second Node.js runtime; browser and CLI recovery remain available. The user establishes a durable local password in Setup Center and sees separate checks for installation, Codex, optional public connectivity, Agent mail identity, actual mail delivery, and optional channels.
+The Windows wizard lets the user choose the program directory while keeping Workspace data separate. Personal Agent is delivered as one desktop application: it contains the verified application payload and Node.js `22.23.1`, starts the bundled backend internally without a terminal, and stops the backend process tree when the application exits. It does not register a second platform service. The Tauri 2 application reuses the system WebView and bundles neither Chromium nor another Node.js runtime; browser and CLI recovery remain available. A failed candidate restores the release pointer, stable launchers, installation state, and shortcuts.
 
-Installation has one home: `~/.personal-agent/core` is the replaceable product runtime, while `~/.personal-agent/workspace` holds the user-owned Harness, plugins, files, and data. Uninstall removes Core and preserves Workspace by default.
+Program files and user data are separate storage boundaries, not separate products: the selected program directory contains the replaceable runtime, while `~/.personal-agent/workspace` holds the user-owned Harness, plugins, files, and data. Uninstall removes the program and preserves Workspace by default.
 
 Local-only mode works by default. A public domain, mail, and WeChat never block the local Console. To verify a public domain and Agent mail identity, choose “Verify public access and mail” in Setup Center, then confirm in an already authenticated `chenjianhui.site` page. One local entrypoint completes Node enrollment and purpose-separated resource authorization, then refreshes the checks automatically. Every failed check includes its reason, concrete next steps, and an available action. See the [getting-started guide](docs/getting-started.md) for signatures, rollback, and source development.
 

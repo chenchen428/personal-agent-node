@@ -2,15 +2,15 @@
 
 ## Install an immutable release
 
-Set `TAG=v0.2.0-beta.14` and open the matching [GitHub Release](https://github.com/chenchen428/personal-agent-node/releases/tag/v0.2.0-beta.14). A customer machine does not need Node.js, npm, Git, a source checkout, or a development Agent.
+Set `TAG=v0.2.0-beta.15` and open the matching [GitHub Release](https://github.com/chenchen428/personal-agent-node/releases/tag/v0.2.0-beta.15). A customer machine does not need Node.js, npm, Git, a source checkout, or a development Agent.
 
 | Computer | Asset |
 | --- | --- |
-| Windows x86-64 | `personal-agent-node-v0.2.0-beta.14-windows-x64-installer.exe` |
-| macOS Apple Silicon | `personal-agent-node-v0.2.0-beta.14-macos-arm64.pkg` |
-| macOS Intel | `personal-agent-node-v0.2.0-beta.14-macos-x64.pkg` |
-| Linux x86-64 | `personal-agent-node-v0.2.0-beta.14-linux-x64.tar.zst` |
-| Linux ARM64 | `personal-agent-node-v0.2.0-beta.14-linux-arm64.tar.zst` |
+| Windows x86-64 | `personal-agent-node-v0.2.0-beta.15-windows-x64-installer.exe` |
+| macOS Apple Silicon | `personal-agent-node-v0.2.0-beta.15-macos-arm64.pkg` |
+| macOS Intel | `personal-agent-node-v0.2.0-beta.15-macos-x64.pkg` |
+| Linux x86-64 | `personal-agent-node-v0.2.0-beta.15-linux-x64.tar.zst` |
+| Linux ARM64 | `personal-agent-node-v0.2.0-beta.15-linux-arm64.tar.zst` |
 
 On Windows, run the installer and follow the native wizard. You can choose the program installation directory; Personal Agent keeps the Workspace separately under `%USERPROFILE%\.personal-agent\workspace` by default so upgrades and uninstall do not remove user data. The wizard shows verification and installation progress, creates Start menu and desktop icons, and offers to launch the terminal-free Tauri application on the final page. This is the only user-facing application: it starts the bundled Node backend internally and displays its loopback UI in the same window. On macOS, open the package. On Linux, unpack the matching archive with the desktop archive manager or `tar --zstd`, then run `./personal-agent-setup` from the extracted directory.
 
