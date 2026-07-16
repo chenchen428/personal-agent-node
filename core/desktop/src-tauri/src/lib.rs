@@ -1,6 +1,9 @@
 use std::{
     net::{IpAddr, Ipv4Addr, SocketAddr, TcpStream},
+    path::PathBuf,
+    process::{Child, Command, Stdio},
     sync::Arc,
+    sync::Mutex,
     thread,
     time::{Duration, Instant},
 };
@@ -15,6 +18,127 @@ const APP_PORT: u16 = 8843;
 const DEFAULT_APP_URL: &str = "http://127.0.0.1:8843/app";
 const MAIN_WINDOW: &str = "main";
 
+#[derive(Debug)]
+struct EmbeddedNodeRuntime {
+    install_root: PathBuf,
+    release_root: PathBuf,
+    data_root: PathBuf,
+    home_root: PathBuf,
+    node: PathBuf,
+    entrypoint: PathBuf,
+    child: Mutex<Option<Child>>,
+}
+
+impl EmbeddedNodeRuntime {
+    fn from_environment() -> Result<Self, String> {
+        let install_root = required_absolute_directory("PRIVATE_SITE_INSTALL_ROOT")?;
+        let release_root = required_absolute_directory("PRIVATE_SITE_RELEASE_ROOT")?;
+        let data_root = required_absolute_path("PRIVATE_SITE_DATA_ROOT")?;
+        let home_root = required_absolute_path("PERSONAL_AGENT_HOME")?;
+        let node =
+            release_root
+                .join("runtime")
+                .join(if cfg!(windows) { "node.exe" } else { "node" });
+        let entrypoint = release_root
+            .join("core")
+            .join("runtime")
+            .join("bin")
+            .join("private-site.mjs");
+        if !node.is_file() {
+            return Err("内置 Node.js 运行时不存在，请重新安装 Personal Agent。".into());
+        }
+        if !entrypoint.is_file() {
+            return Err("内置后台入口不存在，请重新安装 Personal Agent。".into());
+        }
+        Ok(Self {
+            install_root,
+            release_root,
+            data_root,
+            home_root,
+            node,
+            entrypoint,
+            child: Mutex::new(None),
+        })
+    }
+
+    fn start(&self) -> Result<(), String> {
+        self.stop();
+        let child = self
+            .command("start")
+            .spawn()
+            .map_err(|error| format!("无法启动内置后台服务：{error}"))?;
+        *self.child.lock().map_err(|_| "后台进程状态不可用")? = Some(child);
+        Ok(())
+    }
+
+    fn stop(&self) {
+        let _ = self.command("stop").status();
+        let Ok(mut slot) = self.child.lock() else {
+            return;
+        };
+        if let Some(mut child) = slot.take() {
+            let deadline = Instant::now() + Duration::from_secs(5);
+            while child.try_wait().ok().flatten().is_none() && Instant::now() < deadline {
+                thread::sleep(Duration::from_millis(100));
+            }
+            if child.try_wait().ok().flatten().is_none() {
+                let _ = child.kill();
+            }
+            let _ = child.wait();
+        }
+        let deadline = Instant::now() + Duration::from_secs(10);
+        while gateway_ready() && Instant::now() < deadline {
+            thread::sleep(Duration::from_millis(100));
+        }
+    }
+
+    fn command(&self, action: &str) -> Command {
+        let mut command = Command::new(&self.node);
+        command
+            .arg(&self.entrypoint)
+            .arg(action)
+            .arg("--data-root")
+            .arg(&self.data_root)
+            .env("PERSONAL_AGENT_HOME", &self.home_root)
+            .env("PRIVATE_SITE_INSTALL_ROOT", &self.install_root)
+            .env("PRIVATE_SITE_RELEASE_ROOT", &self.release_root)
+            .env("PRIVATE_SITE_DATA_ROOT", &self.data_root)
+            .stdin(Stdio::null())
+            .stdout(Stdio::null())
+            .stderr(Stdio::null());
+        hide_console_window(&mut command);
+        command
+    }
+}
+
+fn required_absolute_directory(name: &str) -> Result<PathBuf, String> {
+    let path = required_absolute_path(name)?;
+    if !path.is_dir() {
+        return Err(format!("{name} 目录不存在，请重新安装 Personal Agent。"));
+    }
+    Ok(path)
+}
+
+fn required_absolute_path(name: &str) -> Result<PathBuf, String> {
+    let value = std::env::var_os(name)
+        .ok_or_else(|| format!("缺少 {name}，请从已安装的 Personal Agent 快捷方式启动。"))?;
+    let path = PathBuf::from(value);
+    if !path.is_absolute() {
+        return Err(format!("{name} 必须是绝对路径。"));
+    }
+    Ok(path)
+}
+
+#[cfg(windows)]
+fn hide_console_window(command: &mut Command) {
+    use std::os::windows::process::CommandExt;
+    const CREATE_NO_WINDOW: u32 = 0x0800_0000;
+    command.creation_flags(CREATE_NO_WINDOW);
+}
+
+#[cfg(not(windows))]
+fn hide_console_window(_command: &mut Command) {}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum NavigationDecision {
     AllowInShell,
@@ -24,8 +148,14 @@ enum NavigationDecision {
 
 pub fn run() {
     let initial_target = target_from_args(std::env::args()).unwrap_or_else(default_target);
+    let embedded_runtime = Arc::new(
+        EmbeddedNodeRuntime::from_environment().unwrap_or_else(|error| {
+            panic!("Personal Agent embedded runtime is unavailable: {error}")
+        }),
+    );
+    let runtime_for_setup = Arc::clone(&embedded_runtime);
 
-    tauri::Builder::default()
+    let app = tauri::Builder::default()
         .plugin(tauri_plugin_single_instance::init(|app, args, _cwd| {
             let Some(window) = app.get_webview_window(MAIN_WINDOW) else {
                 return;
@@ -63,11 +193,20 @@ pub fn run() {
                     })
                     .build()?;
 
+            if let Err(error) = runtime_for_setup.start() {
+                set_status(&window, "内置后台无法启动", &error);
+                return Ok(());
+            }
             wait_for_gateway(window, initial_target);
             Ok(())
         })
-        .run(tauri::generate_context!())
-        .expect("Personal Agent desktop shell failed");
+        .build(tauri::generate_context!())
+        .expect("Personal Agent desktop application failed to build");
+    app.run(move |_app_handle, event| {
+        if matches!(event, tauri::RunEvent::Exit) {
+            embedded_runtime.stop();
+        }
+    });
 }
 
 fn wait_for_gateway(window: tauri::WebviewWindow, target: Url) {

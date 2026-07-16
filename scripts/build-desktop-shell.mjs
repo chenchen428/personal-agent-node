@@ -92,7 +92,7 @@ function overlayRelease(releaseRoot, artifact) {
     entrypoint: platform === 'darwin' ? 'desktop/Personal Agent.app' : `desktop/${path.basename(artifact)}`,
     icon: platform === 'win32' ? 'desktop/icon.ico' : 'desktop/icon.svg',
     origin: 'http://127.0.0.1:8843',
-    serviceOwner: 'node-runtime',
+    serviceOwner: 'desktop-shell',
   };
   fs.writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
   writeChecksums(releaseRoot);

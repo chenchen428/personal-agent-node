@@ -41,9 +41,9 @@ Beta 用户只需要下载对应系统的完整安装包，不需要预装 Node.
 - macOS Intel：`personal-agent-node-v0.2.0-beta.14-macos-x64.pkg`
 - Linux x86-64 / ARM64：对应的 `personal-agent-node-v0.2.0-beta.14-linux-*.tar.zst`
 
-Windows 原生安装向导会验证完整发行版和内置 Node.js `22.23.1`，安全替换当前用户的后台服务，并创建开始菜单和桌面图标，然后在 Tauri 2 轻量桌面壳中打开一次性授权的本机 Setup Center。候选安装失败时会恢复旧服务、发行指针、稳定启动器、安装状态和快捷方式。桌面壳复用系统 WebView，不内置 Chromium 或第二份 Node.js；浏览器和 CLI 恢复入口继续保留。用户在这里完成自己的本机密码，并分别查看：
+Windows 原生安装向导支持用户选择程序安装目录；Workspace 默认仍独立保存在 `%USERPROFILE%\.personal-agent\workspace`，升级和卸载不会删除用户数据。交付物只有一个 Personal Agent 桌面应用：它包含经过验证的应用代码和 Node.js `22.23.1`，启动时在内部拉起本机后台，退出时停止后台进程树，不再注册一个需要用户单独理解或管理的平台服务。应用复用系统 WebView，不内置 Chromium 或第二份 Node.js，并在无命令行弹框的 Tauri 2 窗口中打开本机 Setup Center。候选安装失败时会恢复发行指针、稳定启动器、安装状态和快捷方式。浏览器和 CLI 仅作为恢复入口保留。用户在这里完成自己的本机密码，并分别查看：
 
-安装后只有一个目录：`~/.personal-agent/core` 是可升级和回滚的产品运行时，`~/.personal-agent/workspace` 是用户拥有的 Harness、插件、文件和数据；卸载默认只移除 Core。
+程序与用户数据是两个存储边界，但不是两个产品：用户选择的程序目录保存可升级和回滚的应用运行时，`~/.personal-agent/workspace` 保存用户拥有的 Harness、插件、文件和数据；卸载默认只移除程序。
 
 - 本机安装与登录是否可用；
 - Codex 是否安装、登录且能完成 app-server 握手；

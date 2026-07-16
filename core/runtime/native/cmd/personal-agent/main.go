@@ -6,6 +6,8 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+
+	"github.com/chenchen428/personal-agent-node/native/internal/runtimeconfig"
 )
 
 func main() {
@@ -17,14 +19,9 @@ func main() {
 	if installRoot == "" {
 		installRoot = filepath.Dir(filepath.Dir(executable))
 	}
-	dataRoot := os.Getenv("PRIVATE_SITE_DATA_ROOT")
-	if dataRoot == "" {
-		homeRoot := os.Getenv("PERSONAL_AGENT_HOME")
-		if homeRoot == "" {
-			home, _ := os.UserHomeDir()
-			homeRoot = filepath.Join(home, ".personal-agent")
-		}
-		dataRoot = filepath.Join(homeRoot, "workspace")
+	roots, err := runtimeconfig.ResolveRoots(installRoot)
+	if err != nil {
+		fail(err)
 	}
 	current, err := resolveCurrent(filepath.Join(installRoot, "current"))
 	if err != nil {
@@ -37,7 +34,7 @@ func main() {
 	node := filepath.Join(current, "runtime", nodeName)
 	entrypoint := filepath.Join(current, "core", "runtime", "bin", "personal-agent.mjs")
 	command := exec.Command(node, append([]string{entrypoint}, os.Args[1:]...)...)
-	command.Env = append(os.Environ(), "PERSONAL_AGENT_HOME="+filepath.Dir(installRoot), "PRIVATE_SITE_INSTALL_ROOT="+installRoot, "PRIVATE_SITE_DATA_ROOT="+dataRoot)
+	command.Env = append(os.Environ(), "PERSONAL_AGENT_HOME="+roots.HomeRoot, "PRIVATE_SITE_INSTALL_ROOT="+installRoot, "PRIVATE_SITE_DATA_ROOT="+roots.DataRoot)
 	command.Stdin, command.Stdout, command.Stderr = os.Stdin, os.Stdout, os.Stderr
 	if err := command.Run(); err != nil {
 		if exit, ok := err.(*exec.ExitError); ok {

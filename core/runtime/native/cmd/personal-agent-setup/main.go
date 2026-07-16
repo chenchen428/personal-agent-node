@@ -82,6 +82,7 @@ func installCommand(args []string) {
 	domain := set.String("domain", "", "initial local domain (preserves an existing Workspace domain when omitted)")
 	noOpen := set.Bool("no-open", false, "do not open the Setup Center")
 	skipService := set.Bool("skip-service", false, "test-only: do not register the platform service")
+	desktopManaged := set.Bool("desktop-managed", true, "let the desktop application own the bundled Node runtime lifecycle")
 	skipWait := set.Bool("skip-start-wait", false, "test-only: do not wait for gateway readiness")
 	skipDesktopEntry := set.Bool("skip-desktop-entry", false, "test-only: do not install the platform desktop entry")
 	desktopEntryRoot := set.String("desktop-entry-root", "", "test-only: redirect desktop entries into this directory")
@@ -109,7 +110,7 @@ func installCommand(args []string) {
 	} else if resolvedReleaseRoot == "" || resolvedNodeRuntime == "" {
 		fail("--release-root and --node-runtime must be provided together")
 	}
-	result, err := installer.Install(context.Background(), installer.Options{ReleaseRoot: resolvedReleaseRoot, NodeRuntime: resolvedNodeRuntime, InstallRoot: *installRoot, DataRoot: *dataRoot, Domain: *domain, NoOpen: *noOpen, SkipService: *skipService, SkipStartWait: *skipWait, SkipDesktopEntry: *skipDesktopEntry, DesktopEntryRoot: *desktopEntryRoot, Platform: runtime.GOOS}, nil)
+	result, err := installer.Install(context.Background(), installer.Options{ReleaseRoot: resolvedReleaseRoot, NodeRuntime: resolvedNodeRuntime, InstallRoot: *installRoot, DataRoot: *dataRoot, Domain: *domain, NoOpen: *noOpen, SkipService: *skipService, DesktopManaged: *desktopManaged, SkipStartWait: *skipWait, SkipDesktopEntry: *skipDesktopEntry, DesktopEntryRoot: *desktopEntryRoot, Platform: runtime.GOOS}, nil)
 	if err != nil {
 		fail(err.Error())
 	}

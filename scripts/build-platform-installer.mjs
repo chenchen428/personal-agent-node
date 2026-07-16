@@ -194,13 +194,15 @@ function windowsProductVersion(value) {
 function smokeTestWindowsInstaller(installer, temporary, tag) {
   const testHome = path.join(temporary, 'windows-installer-smoke');
   run(installer, ['/S'], { env: { ...process.env, PERSONAL_AGENT_INSTALL_TEST_HOME: testHome } });
-  const installRoot = path.join(testHome, 'core');
+  const programRoot = path.join(testHome, 'program');
+  const installRoot = path.join(programRoot, 'core');
   const installation = JSON.parse(fs.readFileSync(path.join(installRoot, 'installation.json'), 'utf8'));
   const releaseRoot = path.join(installRoot, 'releases', installation.activeReleaseId);
   const manifest = JSON.parse(fs.readFileSync(path.join(releaseRoot, 'release-manifest.json'), 'utf8'));
   for (const required of [
     path.join(installRoot, 'bin', 'personal-agent-ui.exe'),
     path.join(installRoot, 'bin', 'personal-agent.ico'),
+    path.join(programRoot, 'personal-agent-setup.exe'),
     path.join(testHome, 'desktop-entries', 'Programs', 'Personal Agent', 'Personal Agent.lnk'),
     path.join(testHome, 'desktop-entries', 'Desktop', 'Personal Agent.lnk'),
   ]) {
@@ -208,6 +210,9 @@ function smokeTestWindowsInstaller(installer, temporary, tag) {
   }
   if (manifest.releaseId !== tag.replace(/^v/, '') || manifest.desktopShell?.framework !== 'tauri') {
     throw new Error('Windows installer wizard smoke test installed the wrong release');
+  }
+  if (path.resolve(installation.dataRoot) !== path.resolve(testHome, 'workspace')) {
+    throw new Error('Windows installer wizard smoke test did not keep program files and Workspace data separate');
   }
 }
 
