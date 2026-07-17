@@ -24,6 +24,9 @@ test("Agent data supports dynamic DDL, writes, filters, aggregation, and destruc
         ('餐饮', 1200, '2026-07-01'), ('交通', 800, '2026-07-02'), ('餐饮', 3000, '2026-07-03');
     `, { actor: "main-agent" });
     assert.deepEqual(data.listObjects().map((object) => object.name), ["expenses"]);
+    assert.equal(data.countObjects(), 1);
+    assert.equal(data.listObjects({ includeRowCount: false })[0].rowCount, null);
+    assert.equal(data.listObjects()[0].rowCount, 3);
     assert.deepEqual(data.describeObject("expenses").columns.map((column) => column.name), ["id", "category", "amount", "occurred_on"]);
 
     const filtered = data.query({

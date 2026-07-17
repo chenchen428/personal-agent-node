@@ -25,7 +25,13 @@ export function createPrivateSiteGateway(options = {}) {
     if (options.logger) options.logger(`proxy error: ${error.message}`);
   });
   proxy.on("proxyRes", (proxyResponse, request) => {
-    if ((request as typeof request & { __personalAgentPublic?: boolean }).__personalAgentPublic === true) delete proxyResponse.headers["set-cookie"];
+    const gatewayRequest = request as typeof request & {
+      __personalAgentPublic?: boolean;
+      __personalAgentAllowResponseCookies?: boolean;
+    };
+    if (gatewayRequest.__personalAgentPublic === true && gatewayRequest.__personalAgentAllowResponseCookies !== true) {
+      delete proxyResponse.headers["set-cookie"];
+    }
   });
 
   const handler = async (request, response) => {
@@ -49,7 +55,7 @@ export function createPrivateSiteGateway(options = {}) {
         return;
       }
       if (url.pathname === "/login" || url.pathname === "/logout") {
-        proxyHttp(proxy, routeForBridge(config), request, response, config, false, url);
+        proxyHttp(proxy, routeForBridge(config), request, response, config, false, url, { allowResponseCookies: true });
         return;
       }
       const route = matchRoute(routes, host, url.pathname, config);
@@ -198,8 +204,9 @@ function isLoopbackAddress(value) {
   return address === "127.0.0.1" || address === "::1";
 }
 
-function proxyHttp(proxy, route, request, response, config, authenticated, url) {
+function proxyHttp(proxy, route, request, response, config, authenticated, url, { allowResponseCookies = false } = {}) {
   request.__personalAgentPublic = !authenticated;
+  request.__personalAgentAllowResponseCookies = allowResponseCookies;
   prepareProxyHeaders(request, config, authenticated);
   if (url) rewriteProxyUrl(request, route, url);
   proxy.web(request, response, { target: route.target });

@@ -10,4 +10,13 @@ The first channel runtime for `personal-agent.local`. It wraps a pinned `xiaohon
 - Supported actions: QR login, same-browser scan/confirmation state detection, SMS verification-code submission, status, logout, search, and note detail
 - Unsupported actions: publish, comment, reply, like, collect, follow, or account mutation
 
-The adapter is built locally from the minimal compile-time file set at upstream PR #509 revision `0cf885c2d02745678ec6cc91b401d898373064e9`. A checksum-pinned workspace patch makes login-status polling inspect the browser that owns the QR code and exposes bounded intermediate states. The pristine source digest, patch digest, patched source digest, Go 1.24.6 toolchains, Go module checksums, and output platform are pinned; source files remain in the ignored runtime cache and are not shipped. The upstream repository does not declare a license at this revision, so the adapter remains an external private runtime rather than assimilated workspace source. CloakBrowser is MIT licensed.
+The adapter is built from the minimal compile-time file set at upstream PR #509
+revision `0cf885c2d02745678ec6cc91b401d898373064e9`. A checksum-pinned workspace
+patch makes login-status polling inspect the browser that owns the QR code and
+exposes bounded intermediate states. The pristine source digest, patch digest,
+patched source digest, Go 1.24.6 toolchains, Go module checksums, and output
+platform are pinned; source files remain in the ignored runtime cache and are
+not shipped. Windows releases place the platform-built adapter in immutable
+Core and use an installed Chrome or Microsoft Edge browser. The upstream
+repository does not declare a license at this revision, so the adapter remains
+an external private runtime rather than assimilated workspace source.

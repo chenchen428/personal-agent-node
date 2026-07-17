@@ -52,7 +52,15 @@ export class AgentDataStore {
     };
   }
 
-  listObjects() {
+  countObjects() {
+    return Number(this.db.prepare(`
+      SELECT COUNT(*) AS count
+      FROM sqlite_schema
+      WHERE name NOT LIKE 'sqlite_%' AND type IN ('table', 'view')
+    `).get()?.count || 0);
+  }
+
+  listObjects({ includeRowCount = true } = {}) {
     const rows = this.db.prepare(`
       SELECT name, type, sql
       FROM sqlite_schema
@@ -60,12 +68,14 @@ export class AgentDataStore {
       ORDER BY type, name COLLATE NOCASE
     `).all();
     return rows.map((row) => {
-      const columns = this.describeObject(row.name).columns;
+      const columns = this.db.prepare(`PRAGMA table_xinfo(${quoteString(row.name)})`).all();
       let rowCount = null;
-      try {
-        rowCount = Number(this.db.prepare(`SELECT COUNT(*) AS count FROM ${quoteIdentifier(row.name)}`).get()?.count || 0);
-      } catch {
-        rowCount = null;
+      if (includeRowCount) {
+        try {
+          rowCount = Number(this.db.prepare(`SELECT COUNT(*) AS count FROM ${quoteIdentifier(row.name)}`).get()?.count || 0);
+        } catch {
+          rowCount = null;
+        }
       }
       return { name: row.name, type: row.type, sql: row.sql || "", columnCount: columns.length, rowCount };
     });

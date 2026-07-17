@@ -111,10 +111,12 @@ accidental cross-App writes and keeps storage paths separate; it is not a
 cryptographic sandbox between mutually hostile Apps. Use separate origins and a
 reviewed permission design if that stronger boundary is ever required.
 
-The distribution includes `personal-agent.daily-brief` as a working example. It
-combines the mail, Pages, shared data, App catalog, and App history APIs through
-one shared data layer with separate mobile-first and desktop compositions,
-without a Cloud dependency.
+Source checkouts include `examples/personal-apps/personal-agent.daily-brief` as a
+working development reference. It combines the mail, Pages, shared data, App
+catalog, and App history APIs through one shared data layer with separate
+mobile-first and desktop compositions, without a Cloud dependency. Release
+artifacts exclude repository examples, and installers never seed Personal Apps
+into a user's Workspace.
 
 ## Updates and recovery
 

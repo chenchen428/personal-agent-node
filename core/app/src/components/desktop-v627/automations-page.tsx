@@ -37,6 +37,7 @@ export function AutomationsPage() {
     listLabel={loading ? "正在读取" : `Agent 托管 · ${filtered.length} 项`}
     search={{ value: query, placeholder: "搜索自动化…", onChange: setQuery }}
     detail={selected ? <AutomationDetail rule={selected} /> : <div className="empty-state">还没有自动化定义</div>}
+    loading={loading && !value}
   />;
 }
 

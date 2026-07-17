@@ -1,7 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useState, type ReactNode } from "react";
+import { fetchJson } from "@/lib/client-json";
 import type { ActivityItem, PageItem } from "./types";
+
+export { fetchJson } from "@/lib/client-json";
 
 export function Heading({ eyebrow, title, copy, action }: { eyebrow: string; title: string; copy: string; action?: ReactNode }) {
   return <header className="pa-heading"><div><span className="pa-eyebrow">{eyebrow}</span><h1>{title}</h1><p>{copy}</p></div>{action}</header>;
@@ -20,7 +23,6 @@ export function Pager({ page, totalPages, totalRows, pageSize, onPage, compact =
 }
 export function columnName(index: number) { let value = index; let label = ""; while (value > 0) { value -= 1; label = String.fromCharCode(65 + (value % 26)) + label; value = Math.floor(value / 26); } return label || "A"; }
 export function useJson<T>(url: string) { const [value, setValue] = useState<T | null>(null); const [loading, setLoading] = useState(true); const [error, setError] = useState(""); const refresh = useCallback(() => { setLoading(true); void fetchJson<T>(url).then((data) => { setValue(data); setError(""); }).catch((cause) => setError(errorMessage(cause))).finally(() => setLoading(false)); }, [url]); useEffect(() => refresh(), [refresh]); return { value, loading, error, refresh }; }
-export async function fetchJson<T = unknown>(url: string, init?: RequestInit): Promise<T> { const response = await fetch(url, { cache: "no-store", ...init }); const text = await response.text(); let payload: any; try { payload = JSON.parse(text); } catch { throw new Error("本机服务返回了无法读取的内容"); } if (!response.ok || payload.ok === false) throw new Error(typeof payload.error === "string" ? payload.error : payload.error?.message || `请求失败（${response.status}）`); return (payload.data ?? payload.result ?? payload) as T; }
 export function errorMessage(cause: unknown) { return cause instanceof Error ? cause.message : "暂时无法读取本机内容"; }
 export function statusLabel(status = "") { return ({ start: "启动中", running: "进行中", idle: "等待继续", paused: "已暂停", done: "已完成", archived: "已归档", published: "已发布", received: "未处理", succeeded: "已完成", failed: "未完成", matched: "已匹配", skipped: "未触发" } as Record<string, string>)[status] || status || "已记录"; }
 export function formatCell(value: unknown) { if (value == null) return "—"; return typeof value === "object" ? JSON.stringify(value) : String(value); }

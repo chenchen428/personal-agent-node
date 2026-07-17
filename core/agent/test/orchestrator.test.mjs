@@ -781,6 +781,78 @@ test("rotates long-task progress notifications per WeChat recipient", async () =
   store.close();
 });
 
+test("reports quiet worker progress to the desktop main session", async () => {
+  const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), "oab-orchestrator-desktop-progress-"));
+  const store = new BridgeStore({ dataDir, consoleBaseUrl: "https://agent.example.test" });
+  const main = store.getOrCreateDesktopMainSession({ workspaceRoot: dataDir });
+  const resolvers = [];
+  const mainInputs = [];
+  let now = 0;
+  const orchestrator = new SessionOrchestrator({
+    store,
+    hub: { broadcast: () => {} },
+    channels: {},
+    progressIntervalMs: 300000,
+    progressTimerEnabled: false,
+    now: () => now,
+    runner: {
+      runAppServerCommand: async (config) => {
+        if (config.sessionId === main.id) {
+          mainInputs.push(config.stdin);
+          await config.onSessionEvent({
+            sessionId: main.id,
+            kind: "session.assistant_message",
+            payload: { content: "还在继续处理，完成后我会给出最终结果。", metadata: { streamState: "completed" } },
+          });
+          return { ok: true };
+        }
+        return await new Promise((resolve) => resolvers.push(resolve));
+      },
+      stopAppServerCommand: () => false,
+    },
+  });
+
+  const worker = await orchestrator.startWorkerSession({ parentSessionId: main.id, title: "Desktop task", task: "work" });
+  await waitFor(() => resolvers.length === 1);
+  now = 300001;
+  const tick = await orchestrator.notifyLongTaskProgress();
+  assert.deepEqual(tick.sessionIds, [worker.id]);
+  assert.match(mainInputs[0], /^\[worker-hook:progress\]/);
+  assert.equal(store.getSession(main.id).messages.some((message) => /继续处理/.test(message.content)), true);
+
+  resolvers[0]({ ok: true });
+  await waitFor(() => orchestrator.running.size === 0);
+  orchestrator.stop();
+  store.close();
+});
+
+test("moves a worker to an interrupted terminal state when execution fails", async () => {
+  const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), "oab-orchestrator-worker-failure-"));
+  const store = new BridgeStore({ dataDir, consoleBaseUrl: "https://agent.example.test" });
+  const main = store.getOrCreateDesktopMainSession({ workspaceRoot: dataDir });
+  const orchestrator = new SessionOrchestrator({
+    store,
+    hub: { broadcast: () => {} },
+    channels: {},
+    progressTimerEnabled: false,
+    runner: {
+      runAppServerCommand: async (config) => {
+        if (config.sessionId === main.id) return { ok: true };
+        throw new Error("runner failed");
+      },
+      stopAppServerCommand: () => false,
+    },
+  });
+
+  const worker = await orchestrator.startWorkerSession({ parentSessionId: main.id, title: "Failing task", task: "work" });
+  await waitFor(() => orchestrator.running.size === 0 && store.getSessionRecord(worker.id).status === "paused");
+  assert.equal(store.getSessionRecord(worker.id).status, "paused");
+  assert.equal(store.getSession(worker.id).events.some((event) => event.payload?.metadata?.eventType === "worker/turn/terminal-fallback"), true);
+
+  orchestrator.stop();
+  store.close();
+});
+
 test("worker completion hook returns the result to the main agent for a concise WeChat summary", async () => {
   const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), "oab-orchestrator-worker-hook-"));
   const store = new BridgeStore({ dataDir, consoleBaseUrl: "https://agent.example.test" });
@@ -837,6 +909,7 @@ test("worker completion hook returns the result to the main agent for a concise 
     recipientId: "hook-user",
     content: "做好了：[查看页面](https://pages.example.test/result)",
   });
+  assert.equal(store.getSessionRecord(worker.id).status, "idle");
   assert.equal(orchestrator.longTasks.has(worker.id), false);
   orchestrator.stop();
   store.close();

@@ -6,6 +6,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import { AppWindow, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { desktopNavigation, desktopNavigationGroups, desktopUtilityNavigation } from "@/components/navigation";
 import { UpdateNavItem } from "@/components/update-nav-item";
+import { fetchJson } from "@/lib/client-json";
 
 type PersonalApp = { id: string; name: string; route: string; desktopRoute?: string; compatible: boolean };
 
@@ -16,8 +17,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     let active = true;
-    fetch("/api/system/apps", { cache: "no-store" })
-      .then((response) => response.ok ? response.json() : Promise.reject(new Error("catalog unavailable")))
+    fetchJson<{ apps: PersonalApp[] }>("/api/system/apps")
       .then((value) => { if (active) setApps((value.apps || []).filter((app: PersonalApp) => app.compatible && app.route)); })
       .catch(() => { if (active) setApps([]); });
     return () => { active = false; };
@@ -38,8 +38,7 @@ function DesktopShell({ pathname, apps, children }: { pathname: string; apps: Pe
 
   useEffect(() => {
     let mounted = true;
-    fetch("/api/node/v1/client/overview", { cache: "no-store" })
-      .then((response) => response.ok ? response.json() : Promise.reject())
+    fetchJson<{ machine?: { name?: string; id?: string } }>("/api/node/v1/client/overview")
       .then((value) => { if (mounted) setMachineName(value.machine?.name || value.machine?.id || "本机在线"); })
       .catch(() => undefined);
     return () => { mounted = false; };
@@ -81,8 +80,7 @@ function useCloseProtection(mobile: boolean) {
     let active = true;
     let runningWork = false;
     const closeAwareWindow = window as typeof window & { __personalAgentCloseHandlerReady?: boolean };
-    const refresh = () => fetch("/api/chat/sessions?limit=50", { cache: "no-store" })
-      .then((response) => response.ok ? response.json() : Promise.reject())
+    const refresh = () => fetchJson<{ sessions?: Array<{ status?: string }> }>("/api/chat/sessions?limit=50")
       .then((value) => { if (active) runningWork = (value.sessions || []).some((session: { status?: string }) => ["start", "running"].includes(String(session.status || ""))); })
       .catch(() => { runningWork = false; });
     const confirmRunningWork = () => {

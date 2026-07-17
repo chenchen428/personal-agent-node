@@ -10,8 +10,6 @@ Mobile is the primary entry, but every user-facing App must provide both the
 mobile and desktop compositions defined by that guide. Shared data logic is
 encouraged; routing a mobile entry into desktop UI is not supported.
 
-`personal-agent.daily-brief` is the bundled reference App. It reads mail, Online
-Pages, and shared data through the same-origin Node Local API and keeps its own
-bounded activity ledger under its App directory. Users may inspect or modify it;
-installer upgrades add missing reference files but never overwrite existing App
-files.
+Release installers create this directory without installing any App. Personal
+Apps are user-created content, so repository examples are kept outside the
+Workspace seed and are never copied into a user's installation.

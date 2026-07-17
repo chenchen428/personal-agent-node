@@ -95,6 +95,10 @@ test("V6.22 read-only client API is local, searchable and self-contained", async
   const runtime = await get(port, token, "/api/node/v1/client/runtime");
   assert.equal(runtime.result.shellLifecycle, "client-owned");
   assert.equal(runtime.result.shellStopsService, true);
+
+  const dataSchema = await get(port, token, "/api/agent-data/schema?counts=0&preview=1");
+  assert.deepEqual(dataSchema.objects, []);
+  assert.equal(dataSchema.initialResult, null);
 });
 
 async function get(port, token, pathname) {

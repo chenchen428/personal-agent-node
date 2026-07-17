@@ -946,6 +946,9 @@ func mergeMissingTree(source, target string) error {
 		if relative == "." {
 			return nil
 		}
+		if relative == "apps" && entry.IsDir() {
+			return filepath.SkipDir
+		}
 		destination := filepath.Join(target, relative)
 		info, err := entry.Info()
 		if err != nil {

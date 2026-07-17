@@ -414,22 +414,22 @@ export class SessionOrchestrator {
   async notifyLongTaskProgress() {
     if (this.progressIntervalMs <= 0 || !this.longTasks.size) return { notified: 0, sessionIds: [] };
     const now = this.now();
-    const selectedByRecipient = new Map();
+    const selectedByTarget = new Map();
 
     for (const task of this.longTasks.values()) {
       if (!this.running.has(task.sessionId)) {
         continue;
       }
-      if (!task.recipientId) continue;
       const delay = progressFatigueDelay(this.progressIntervalMs, task.notificationCount);
       const quietSince = task.lastNotifiedAt || task.lastActivityAt || task.startedAt;
       if (now - quietSince < delay) continue;
-      const current = selectedByRecipient.get(task.recipientId);
-      if (!current || compareLongTasks(task, current) < 0) selectedByRecipient.set(task.recipientId, task);
+      const targetKey = task.recipientId ? `wechat:${task.recipientId}` : `session:${task.mainSessionId}`;
+      const current = selectedByTarget.get(targetKey);
+      if (!current || compareLongTasks(task, current) < 0) selectedByTarget.set(targetKey, task);
     }
 
     const notifications = [];
-    for (const task of selectedByRecipient.values()) {
+    for (const task of selectedByTarget.values()) {
       const session = this.store.getSessionRecord(task.sessionId);
       if (!session) {
         this.longTasks.delete(task.sessionId);
@@ -506,7 +506,15 @@ export class SessionOrchestrator {
     } catch (error) {
       this.running.delete(sessionId);
       this.runNextQueuedTurn(sessionId);
-      if (session.role === "worker") this.completeWorkerHook(sessionId, { success: false, error });
+      if (session.role === "worker") {
+        this.appendAndBroadcast(sessionId, "session.status", {
+          status: "paused",
+          content: "Task execution ended before the Agent turn could start.",
+          level: "error",
+          metadata: { eventType: "worker/turn/terminal-fallback" },
+        });
+        this.completeWorkerHook(sessionId, { success: false, error });
+      }
       throw error;
     }
 
@@ -641,7 +649,17 @@ export class SessionOrchestrator {
       }
       this.runNextQueuedTurn(sessionId);
       if (session.role === "worker" && !hasQueuedInput) {
-        const completed = this.store.getSessionRecord(sessionId);
+        let completed = this.store.getSessionRecord(sessionId);
+        if (["start", "running"].includes(completed?.status || "")) {
+          const status = turnError ? "paused" : "idle";
+          this.appendAndBroadcast(sessionId, "session.status", {
+            status,
+            content: turnError ? "Task execution ended with an error." : "Task execution finished.",
+            level: turnError ? "error" : "info",
+            metadata: { eventType: "worker/turn/terminal-fallback" },
+          });
+          completed = this.store.getSessionRecord(sessionId);
+        }
         this.completeWorkerHook(sessionId, {
           success: !turnError && completed?.status !== "paused",
           error: turnError,

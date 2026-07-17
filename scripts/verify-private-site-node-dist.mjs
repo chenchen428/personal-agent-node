@@ -56,6 +56,9 @@ function verifyLayout() {
   for (const relative of ["workspace/apps", "workspace/files", "workspace/databases", "workspace/plugins", "workspace/secrets", "workspace/logs"]) {
     assert(fs.statSync(at(relative)).isDirectory(), `Workspace directory is missing: ${relative}`);
   }
+  const appSeeds = fs.readdirSync(at("workspace/apps")).filter((name) => name !== ".gitkeep");
+  assert(appSeeds.length === 0, `Release must not preinstall Personal Apps: ${appSeeds.join(", ")}`);
+  assert(!fs.existsSync(at("examples")), "Development examples must not be distributed");
 }
 
 function verifyChecksums() {

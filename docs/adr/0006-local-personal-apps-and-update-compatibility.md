@@ -118,10 +118,10 @@ The following are release-blocking invariants:
       apps.json              default App and local App state
 ```
 
-`workspace/apps` is included in Workspace backup and restore. Core releases may
-contain product-owned reference Apps, but never customer Apps. Installation
-copies only missing seed files, so a user or Agent can modify a reference App
-without a later update overwriting that work.
+`workspace/apps` is included in Workspace backup and restore. Core releases do
+not contain reference or customer Apps, and installation never copies App seed
+files into this user-owned directory. Development references may live under the
+source repository's `examples/` tree, which is excluded from release artifacts.
 
 ### Minimal manifest
 

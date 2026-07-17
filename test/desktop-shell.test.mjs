@@ -29,10 +29,15 @@ test('desktop shell is a constrained view over the existing loopback console', (
 test('desktop shell stays inside the immutable platform release', () => {
   const build = read('scripts/build-desktop-shell.mjs');
   const installer = read('scripts/build-platform-installer.mjs');
+  const releaseWorkflow = read('.github/workflows/release.yml');
   assert.match(build, /manifest\.desktopShell/);
   assert.match(build, /writeChecksums\(releaseRoot\)/);
   assert.match(installer, /buildGo\('personal-agent'/);
   assert.doesNotMatch(installer, /buildGo\('personal-agent-service'/);
+  assert.match(installer, /Windows Xiaohongshu runtime is missing/);
+  assert.match(installer, /core\/channels\/xiaohongshu\/runtime\/xiaohongshu-mcp\.exe/);
+  assert.match(releaseWorkflow, /Build pinned Xiaohongshu runtime for Windows/);
+  assert.match(releaseWorkflow, /--local-xiaohongshu --output-root dist\/release-payload\/core\/channels\/xiaohongshu\/runtime/);
   const rust = read('core/desktop/src-tauri/src/lib.rs');
   assert.match(rust, /DAEMON_START: &str = "daemon-start"/);
   assert.match(rust, /DAEMON_STOP: &str = "stop"/);

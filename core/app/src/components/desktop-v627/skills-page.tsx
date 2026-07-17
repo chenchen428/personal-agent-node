@@ -6,6 +6,7 @@ import type { Skill, SkillCategory } from "./types";
 import { useJson } from "./shared";
 import { Badge, PageHeader, SearchField } from "../desktop-v72/primitives";
 import { SettingsLayout } from "../desktop-v72/settings-layout";
+import { LoadingState } from "../desktop-v72/loading-state";
 
 export function SkillsPage() {
   const { value, loading } = useJson<{ categories: SkillCategory[]; skills: Skill[] }>("/api/skills");
@@ -27,14 +28,14 @@ export function SkillsPage() {
       <button className={category === "all" ? "active" : ""} type="button" onClick={() => setCategory("all")}>全部 <span>{skills.length}</span></button>
       {categories.map((item) => <button className={category === item.id ? "active" : ""} type="button" onClick={() => setCategory(item.id)} key={item.id}>{item.label}<span>{skills.filter((skill) => skill.category === item.id).length}</span></button>)}
     </nav>
-    <div className="skill-library-layout">
+    {loading && !value ? <LoadingState label="正在读取技能目录" /> : <div className="skill-library-layout">
       <section className="skill-library-list" aria-label="技能目录">
         <header><strong>{category === "all" ? "全部技能" : categories.find((item) => item.id === category)?.label}</strong><span>{loading ? "读取中" : `${filtered.length} 项`}</span></header>
         {filtered.map((skill) => <button className={selected?.name === skill.name ? "selected" : ""} key={skill.name} onClick={() => setSelectedName(skill.name)} type="button"><span className="skill-library-icon"><Sparkles /></span><span><strong>{skill.name}</strong><small>{skill.description}</small></span><i aria-hidden="true">›</i></button>)}
         {!loading && !filtered.length ? <div className="skill-library-empty"><SearchX /><strong>没有匹配的技能</strong><span>调整搜索词或切换分类</span></div> : null}
       </section>
       {selected ? <SkillDetail skill={selected} category={categories.find((item) => item.id === selected.category)?.label || selected.category} /> : <aside className="skill-inspector empty">{loading ? "正在读取技能…" : "选择一项技能查看详情"}</aside>}
-    </div>
+    </div>}
   </div></SettingsLayout>;
 }
 
