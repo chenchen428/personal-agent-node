@@ -6,6 +6,7 @@ import type { SetupCheck } from "@/lib/setup-tasks";
 import type { Overview } from "./types";
 import { desktopActivityHref, formatDuration, formatTime, statusLabel, useJson } from "./shared";
 import { buildRequiredSetupSteps, RequiredSetupGuide } from "./required-setup-guide";
+import { LoadingState } from "../desktop-v72/loading-state";
 
 export function OverviewPage() {
   const { value, loading, error } = useJson<Overview>("/api/node/v1/client/overview");
@@ -14,6 +15,10 @@ export function OverviewPage() {
   const steps = buildRequiredSetupSteps(setup.value?.checks || []);
   const remaining = setup.loading ? null : steps.filter((step) => !step.ready).length;
   const ready = remaining === 0;
+  if (loading && setup.loading && !value && !setup.value) return <main className="v72-page" aria-busy="true">
+    <header className="v72-page-header"><div><h1>Personal Agent 正在准备</h1><p>正在连接本机服务并读取工作区状态。</p></div><span className="v72-badge warning"><i />正在连接</span></header>
+    <LoadingState label="正在读取桌面总览" />
+  </main>;
   return <main className="v72-page">
     <header className="v72-page-header"><div><h1>{ready ? "Personal Agent 已就绪" : "Personal Agent 正在准备"}</h1><p>{ready ? "查看最新动态、待处理内容和本机连接状态。" : "先完成必要设置，再把目标放心交给主 Agent。"}</p></div><span className={`v72-badge ${error || setup.error || !ready ? "warning" : "success"}`}><i />{loading || setup.loading ? "正在连接" : error || setup.error ? "部分不可用" : ready ? "全部正常" : `还差 ${remaining} 项`}</span></header>
     {!setup.loading && remaining ? <RequiredSetupGuide steps={steps} /> : null}

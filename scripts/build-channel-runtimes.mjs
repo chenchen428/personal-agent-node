@@ -374,9 +374,15 @@ function sha256(filePath) {
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === path.resolve(scriptPath)) {
-  const index = process.argv.indexOf("--release-root");
-  const releaseRoot = index >= 0 ? process.argv[index + 1] : "";
-  buildChannelRuntimes({ releaseRoot: path.resolve(releaseRoot || "") })
+  const localXiaohongshu = process.argv.includes("--local-xiaohongshu");
+  const flag = localXiaohongshu ? "--output-root" : "--release-root";
+  const index = process.argv.indexOf(flag);
+  const outputRoot = index >= 0 ? process.argv[index + 1] : "";
+  const operation = !outputRoot ? Promise.reject(new Error(`${flag} is required`))
+    : localXiaohongshu
+      ? buildLocalXiaohongshuAdapter({ outputRoot: path.resolve(outputRoot) })
+      : buildChannelRuntimes({ releaseRoot: path.resolve(outputRoot) });
+  operation
     .then((runtime) => process.stdout.write(`${JSON.stringify({ ok: true, runtime }, null, 2)}\n`))
     .catch((error) => {
       process.stderr.write(`${error instanceof Error ? error.stack || error.message : String(error)}\n`);

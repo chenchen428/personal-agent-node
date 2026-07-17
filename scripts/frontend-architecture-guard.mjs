@@ -47,7 +47,7 @@ const shell = read("core/app/src/components/app-shell.tsx");
 const appCatalog = read("core/runtime/src/apps.ts");
 const appGuide = read("docs/personal-app-development.md");
 const frontendSkill = read("skills/frontend-design/SKILL.md");
-const referenceApp = read("workspace/apps/personal-agent.daily-brief/dist/index.html");
+const referenceApp = read("examples/personal-apps/personal-agent.daily-brief/dist/index.html");
 const mobileShell = read("core/app/src/components/mobile-current/shell.tsx");
 const mobilePersonalApp = read("core/app/src/components/mobile-current/personal-app.tsx");
 checks.push({

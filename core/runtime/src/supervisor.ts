@@ -179,16 +179,15 @@ export function componentSpecs(config, workerConfig) {
     });
   }
   components.splice(components.length - 1, 0, ...extensionComponentSpecs(config));
-  if (config.env.PRIVATE_SITE_XIAOHONGSHU_ENABLED === "1") {
+  const xiaohongshuRuntime = resolveXiaohongshuRuntime();
+  if (fs.existsSync(xiaohongshuRuntime)) {
     const channelRoot = path.join(config.dataRoot, "channels", "xiaohongshu");
-    const executable = path.join(config.dataRoot, "runtime", "xiaohongshu", process.platform === "win32" ? "xiaohongshu-mcp.exe" : "xiaohongshu-mcp");
     const browser = resolveXiaohongshuBrowser(config);
-    if (!fs.existsSync(executable)) throw new Error(`Xiaohongshu runtime is missing: ${executable}`);
     if (!browser) throw new Error("Xiaohongshu requires a supported Chrome or Chromium browser");
     for (const directory of ["home", "cache", "config", "tmp"]) fs.mkdirSync(path.join(channelRoot, directory), { recursive: true });
     components.splice(4, 0, {
       name: "xiaohongshu-channel",
-      command: executable,
+      command: xiaohongshuRuntime,
       args: ["-headless=true", "-bin", browser, "-port", `127.0.0.1:${config.ports.xiaohongshu}`],
       cwd: channelRoot,
       port: config.ports.xiaohongshu,
@@ -205,20 +204,26 @@ export function componentSpecs(config, workerConfig) {
   return components;
 }
 
-export function resolveXiaohongshuBrowser(config) {
+export function resolveXiaohongshuRuntime({ releaseRoot = workspaceRoot, platform = process.platform } = {}) {
+  return path.join(releaseRoot, "core", "channels", "xiaohongshu", "runtime", platform === "win32" ? "xiaohongshu-mcp.exe" : "xiaohongshu-mcp");
+}
+
+export function resolveXiaohongshuBrowser(config, { platform = process.platform, existsSync = fs.existsSync } = {}) {
   const configured = String(config.env.PRIVATE_SITE_BROWSER_BIN || "").trim();
-  const bundled = path.join(config.dataRoot, "runtime", "xiaohongshu", "browser", process.platform === "win32" ? "chrome.exe" : "chrome");
-  const candidates = configured ? [configured] : process.platform === "darwin" ? [
+  const bundled = path.join(config.dataRoot, "runtime", "xiaohongshu", "browser", platform === "win32" ? "chrome.exe" : "chrome");
+  const candidates = configured ? [configured] : platform === "darwin" ? [
     "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
     "/Applications/Chromium.app/Contents/MacOS/Chromium",
     "/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge",
     bundled,
-  ] : process.platform === "win32" ? [
+  ] : platform === "win32" ? [
     "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
     "C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe",
+    "C:\\Program Files\\Microsoft\\Edge\\Application\\msedge.exe",
+    "C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe",
     bundled,
   ] : [bundled, "/usr/bin/google-chrome", "/usr/bin/chromium", "/usr/bin/chromium-browser"];
-  return candidates.find((candidate) => fs.existsSync(candidate)) || "";
+  return candidates.find((candidate) => existsSync(candidate)) || "";
 }
 
 function executable(node, compiled, source) {

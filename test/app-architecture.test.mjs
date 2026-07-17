@@ -19,6 +19,7 @@ test("Next.js owns the approved V6.35 mobile client and V7.3 desktop workspace",
   const automationsClient = read("core/app/src/components/desktop-v627/automations-page.tsx");
   const skillsClient = read("core/app/src/components/desktop-v627/skills-page.tsx");
   const updateClient = read("core/app/src/components/desktop-v627/update-page.tsx");
+  const dataClient = read("core/app/src/components/desktop-v627/data-page.tsx");
   const mobileClient = [
     "mobile-current.tsx",
     "mobile-current/activity.tsx",
@@ -61,6 +62,10 @@ test("Next.js owns the approved V6.35 mobile client and V7.3 desktop workspace",
   assert.match(shell, /系统设置/);
   assert.match(shell, /本机工作区/);
   assert.match(shell, /\/api\/system\/apps/);
+  assert.match(dataClient, /\/api\/app\/data\/schema\?counts=0&preview=1/);
+  assert.match(dataClient, /visibleRows/);
+  assert.doesNotMatch(dataClient, /search:\s*query/);
+  assert.match(read("core/app/src/components/desktop-v72/loading-state.tsx"), /role="status"/);
   assert.match(overview, /sec-ch-ua-mobile/);
   assert.match(overview, /redirect\("\/app\/mobile"\)/);
   assert.match(mobile, /MobileActivity/);
@@ -181,8 +186,8 @@ test("Next.js owns the approved V6.35 mobile client and V7.3 desktop workspace",
   const wechatPanel = read("core/app/src/components/wechat-connect-panel.tsx");
   const appCatalog = read("core/runtime/src/apps.ts");
   const appGuide = read("docs/personal-app-development.md");
-  const referenceApp = read("workspace/apps/personal-agent.daily-brief/dist/index.html");
-  const referenceController = read("workspace/apps/personal-agent.daily-brief/dist/app.js");
+  const referenceApp = read("examples/personal-apps/personal-agent.daily-brief/dist/index.html");
+  const referenceController = read("examples/personal-apps/personal-agent.daily-brief/dist/app.js");
   assert.match(appHost, /embedded=1&surface=desktop/);
   assert.match(appHost, /assetRoute/);
   assert.match(css, /v72-page-scroll:has\(> \.personal-app-host\)/);
@@ -240,6 +245,17 @@ test("all finalized client routes have independently buildable Next pages", () =
     "app/mobile/apps/[appId]/page.tsx",
   ];
   for (const page of pages) assert.equal(fs.existsSync(path.join(root, "core/app/src/app", page)), true, page);
+});
+
+test("desktop Pages previews render the published page instead of a fabricated cover", () => {
+  const pagesPage = read("core/app/src/components/desktop-v627/pages-page.tsx");
+  const pagePreview = read("core/app/src/components/desktop-v627/page-preview.tsx");
+  assert.match(pagesPage, /<PagePreview page=\{page\}/);
+  assert.match(pagePreview, /<iframe/);
+  assert.match(pagePreview, /src=\{page\.url \|\| page\.shareUrl\}/);
+  assert.match(pagePreview, /loading="lazy"/);
+  assert.match(pagePreview, /sandbox="allow-scripts"/);
+  assert.doesNotMatch(`${pagesPage}\n${pagePreview}`, /preview-bars|\[34,46,28,51,42,60,48\]/);
 });
 
 test("gateway routes the approved client to Next and its read-only data to the local Agent", () => {

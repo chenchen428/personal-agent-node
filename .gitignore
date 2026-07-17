@@ -5,8 +5,8 @@
 .local/
 coverage/
 dist/
-!workspace/apps/personal-agent.daily-brief/dist/
-!workspace/apps/personal-agent.daily-brief/dist/**
+!examples/personal-apps/personal-agent.daily-brief/dist/
+!examples/personal-apps/personal-agent.daily-brief/dist/**
 node_modules/
 .next/
 *.tsbuildinfo

@@ -147,6 +147,64 @@ test("canonical Console and domain API routes authenticate and rewrite to intern
   }
 });
 
+test("tunneled login preserves the session cookie through the gateway", async () => {
+  const dataRoot = fs.mkdtempSync(path.join(os.tmpdir(), "personal-agent-login-gateway-"));
+  const bridge = http.createServer((request, response) => {
+    if (request.url === "/_auth/check") {
+      response.writeHead(request.headers.cookie === "session=issued" ? 204 : 401);
+      response.end();
+      return;
+    }
+    if (request.url === "/login" && request.method === "POST") {
+      response.writeHead(303, {
+        location: "/",
+        "set-cookie": "session=issued; Path=/; HttpOnly; Secure; SameSite=Lax",
+      });
+      response.end();
+      return;
+    }
+    if (request.url === "/logout") {
+      response.writeHead(303, {
+        location: "/login",
+        "set-cookie": "session=; Path=/; Max-Age=0; HttpOnly; Secure; SameSite=Lax",
+      });
+      response.end();
+      return;
+    }
+    response.writeHead(404);
+    response.end();
+  });
+  await listen(bridge);
+  try {
+    initializeSite({ domain: "example.site", dataRoot });
+    const base = resolveNodeConfig({ PRIVATE_SITE_DATA_ROOT: dataRoot, SITE_DOMAIN: "example.site" });
+    const config = { ...base, ports: { ...base.ports, bridge: bridge.address().port } };
+    const { server } = createPrivateSiteGateway({ config });
+    await listen(server);
+    try {
+      const port = server.address().port;
+      const login = await request({ port, host: "example.site", path: "/login", method: "POST" });
+      assert.equal(login.status, 303);
+      assert.equal(login.headers.location, "/");
+      assert.match(login.headers["set-cookie"]?.[0] || "", /^session=issued;/);
+
+      const home = await request({ port, host: "example.site", path: "/", headers: { cookie: "session=issued" } });
+      assert.equal(home.status, 302);
+      assert.equal(home.headers.location, "/app");
+
+      const logout = await request({ port, host: "example.site", path: "/logout" });
+      assert.equal(logout.status, 303);
+      assert.equal(logout.headers.location, "/login");
+      assert.match(logout.headers["set-cookie"]?.[0] || "", /^session=;/);
+    } finally {
+      await close(server);
+    }
+  } finally {
+    await close(bridge);
+    fs.rmSync(dataRoot, { recursive: true, force: true });
+  }
+});
+
 test("authenticated Personal Apps use the default root while invalid Apps fall back safely", async () => {
   const dataRoot = fs.mkdtempSync(path.join(os.tmpdir(), "personal-agent-app-gateway-"));
   const bridge = http.createServer((request, response) => {
@@ -190,15 +248,15 @@ test("authenticated Personal Apps use the default root while invalid Apps fall b
   }
 });
 
-function request({ port, host, path: requestPath, headers = {} }) {
+function request({ port, host, path: requestPath, method = "GET", headers = {}, body = "" }) {
   return new Promise((resolve, reject) => {
-    const request = http.request({ hostname: "127.0.0.1", port, path: requestPath, headers: { host, ...headers } }, (response) => {
+    const request = http.request({ hostname: "127.0.0.1", port, path: requestPath, method, headers: { host, ...headers } }, (response) => {
       const chunks = [];
       response.on("data", (chunk) => chunks.push(chunk));
       response.on("end", () => resolve({ status: response.statusCode, headers: response.headers, body: Buffer.concat(chunks).toString("utf8") }));
     });
     request.on("error", reject);
-    request.end();
+    request.end(body);
   });
 }
 

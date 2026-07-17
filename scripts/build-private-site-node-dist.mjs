@@ -50,6 +50,9 @@ function copySupportFiles() {
 
 function assembleWorkspaceSeed() {
   copy("workspace");
+  // Personal Apps are user-owned content. Never turn repository examples or
+  // other source-checkout Apps into installation seeds.
+  fs.rmSync(path.join(outputRoot, "workspace", "apps"), { recursive: true, force: true });
   for (const [source, target] of [
     ["skills", "workspace/skills"],
     ["workflows", "workspace/workflows"],
@@ -130,7 +133,7 @@ function writeManifest() {
     pluginApi: { version: "personal-agent/v1", manifest: "core/plugins/schema/personal-agent.plugin.schema.json", installRoot: "workspace/plugins" },
     appApi: { version: "personal-agent/app-v1", nodeApiMajors: ["1"], manifest: "core/apps/schema/personal-agent.app.schema.json", installRoot: "workspace/apps", cloudRequired: false },
     harness: { owner: "workspace", supportedAgentRuntime: "codex", root: "workspace", catalog: "workspace/registry/skills.json", workflows: "workspace/workflows" },
-    excluded: ["projects", "credentials", "environment-files", "runtime-data", "customer-content"],
+    excluded: ["projects", "examples", "preinstalled-personal-apps", "credentials", "environment-files", "runtime-data", "customer-content"],
   };
   fs.writeFileSync(path.join(outputRoot, "release-manifest.json"), `${JSON.stringify(manifest, null, 2)}\n`);
 }

@@ -301,7 +301,7 @@ func TestInstallSwitchesCurrentAndRetainsPreviousWithoutHostNode(t *testing.T) {
 	}
 }
 
-func TestInstallAddsMissingWorkspaceSeedWithoutOverwritingUserApps(t *testing.T) {
+func TestInstallMaterializesWorkspaceSeedWithoutBundlingPersonalApps(t *testing.T) {
 	root := t.TempDir()
 	installRoot := filepath.Join(root, "install")
 	dataRoot := filepath.Join(root, "data")
@@ -310,6 +310,12 @@ func TestInstallAddsMissingWorkspaceSeedWithoutOverwritingUserApps(t *testing.T)
 		t.Fatal(err)
 	}
 	release := fixtureRelease(t, "release-app-seed")
+	if err := os.MkdirAll(filepath.Join(release, "workspace"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(release, "workspace", "AGENTS.md"), []byte("customer workspace"), 0o600); err != nil {
+		t.Fatal(err)
+	}
 	seedApp := filepath.Join(release, "workspace", "apps", "personal-agent.daily-brief")
 	if err := os.MkdirAll(filepath.Join(seedApp, "dist"), 0o700); err != nil {
 		t.Fatal(err)
@@ -339,8 +345,12 @@ func TestInstallAddsMissingWorkspaceSeedWithoutOverwritingUserApps(t *testing.T)
 	if err != nil || string(content) != "user customized app" {
 		t.Fatalf("user App was overwritten: %q %v", content, err)
 	}
-	if _, err := os.Stat(filepath.Join(dataRoot, "apps", "personal-agent.daily-brief", "personal-agent.app.json")); err != nil {
-		t.Fatalf("missing App seed file was not installed: %v", err)
+	if _, err := os.Stat(filepath.Join(dataRoot, "apps", "personal-agent.daily-brief", "personal-agent.app.json")); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("release App seed was installed: %v", err)
+	}
+	workspaceGuide, err := os.ReadFile(filepath.Join(dataRoot, "AGENTS.md"))
+	if err != nil || string(workspaceGuide) != "customer workspace" {
+		t.Fatalf("non-App Workspace seed was not installed: %q %v", workspaceGuide, err)
 	}
 }
 

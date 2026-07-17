@@ -371,7 +371,7 @@ async function handleRequest(request: http.IncomingMessage, response: http.Serve
   }
 
   if (url.pathname === "/api/node/v1/data/schema" && request.method === "GET") {
-    sendNodeApiResult(response, 200, { objects: agentData.listObjects(), metadata: store.listDataCatalogMetadata() });
+    sendNodeApiResult(response, 200, buildDataSchema(url));
     return;
   }
 
@@ -717,7 +717,7 @@ async function handleRequest(request: http.IncomingMessage, response: http.Serve
   }
 
   if (url.pathname === "/api/agent-data/schema" && request.method === "GET") {
-    sendJson(response, 200, { ok: true, objects: agentData.listObjects(), metadata: store.listDataCatalogMetadata() });
+    sendJson(response, 200, { ok: true, ...buildDataSchema(url) });
     return;
   }
 
@@ -1410,6 +1410,18 @@ type ClientActivityItem = {
   }>;
 };
 
+function buildDataSchema(url: URL) {
+  const objects = agentData.listObjects({ includeRowCount: url.searchParams.get("counts") !== "0" });
+  const initialResult = url.searchParams.get("preview") === "1" && objects[0]
+    ? agentData.query({ object: objects[0].name, page: { number: 1, size: 50 } })
+    : null;
+  return {
+    objects,
+    metadata: store.listDataCatalogMetadata(),
+    initialResult,
+  };
+}
+
 async function buildClientOverview() {
   const [pages, wechatStatus, managedStatus] = await Promise.all([
     buildClientPages(),
@@ -1419,7 +1431,7 @@ async function buildClientOverview() {
   const sessions = store.listSessionsPage({ includeArchived: true, limit: 50, hydrate: false }).sessions;
   const rules = store.listAutomationRules();
   const mailCount = store.countAutomationEvents({ sourceId: "src_mail_agent" });
-  const dataObjects = agentData.listObjects();
+  const dataObjectCount = agentData.countObjects();
   const recent = await buildClientActivity(new URL("http://local/api/node/v1/client/activity?limit=5"));
   const externalAccess = config.externalAccess();
   return {
@@ -1436,7 +1448,7 @@ async function buildClientOverview() {
       runningWork: sessions.filter((session) => session.role === "worker" && isClientSessionRunning(session.status)).length,
       mail: mailCount,
       pages: pages.length,
-      dataObjects: dataObjects.length,
+      dataObjects: dataObjectCount,
       automations: rules.length,
       activeAutomations: rules.filter((rule) => rule.enabled).length,
       connectedChannels: [wechatStatus, managedStatus, externalAccess].filter((status: any) => status?.connected === true || status?.state === "connected" || status?.ready === true).length,

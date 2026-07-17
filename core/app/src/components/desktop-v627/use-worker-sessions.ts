@@ -11,15 +11,27 @@ export function isWorkerRunning(status = "") {
 export function useWorkerSessions() {
   const [sessions, setSessions] = useState<Session[]>([]);
   const [selected, setSelected] = useState<Session | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [detailLoading, setDetailLoading] = useState(false);
+  const [error, setError] = useState("");
   const selectedId = useRef("");
 
-  const select = useCallback(async (sessionId: string) => {
+  const select = useCallback(async (sessionId: string, { background = false }: { background?: boolean } = {}) => {
     selectedId.current = sessionId;
-    const detail = (await fetchJson<{ session: Session }>(`/api/chat/sessions/${encodeURIComponent(sessionId)}`)).session;
-    if (selectedId.current === sessionId) setSelected(detail);
+    if (!background) setDetailLoading(true);
+    try {
+      const detail = (await fetchJson<{ session: Session }>(`/api/chat/sessions/${encodeURIComponent(sessionId)}`)).session;
+      if (selectedId.current === sessionId) setSelected(detail);
+      setError("");
+    } catch (cause) {
+      if (!background && selectedId.current === sessionId) setSelected(null);
+      setError(cause instanceof Error ? cause.message : "暂时无法读取任务");
+    } finally {
+      if (!background && selectedId.current === sessionId) setDetailLoading(false);
+    }
   }, []);
 
-  const load = useCallback(async () => {
+  const load = useCallback(async ({ background = false }: { background?: boolean } = {}) => {
     const list = await fetchJson<{ sessions: Session[] }>("/api/chat/sessions?limit=50");
     const workers = (list.sessions || []).filter((item) => item.role === "worker");
     setSessions(workers);
@@ -29,16 +41,16 @@ export function useWorkerSessions() {
       setSelected(null);
       return;
     }
-    await select(target.id);
+    await select(target.id, { background });
   }, [select]);
 
-  useEffect(() => { void load().catch(() => undefined); }, [load]);
+  useEffect(() => { void load().catch((cause) => setError(cause instanceof Error ? cause.message : "暂时无法读取任务")).finally(() => setLoading(false)); }, [load]);
   const hasRunningWorker = sessions.some((session) => isWorkerRunning(session.status));
   useEffect(() => {
     if (!hasRunningWorker) return;
-    const timer = window.setInterval(() => void load().catch(() => undefined), 2500);
+    const timer = window.setInterval(() => void load({ background: true }).catch(() => undefined), 2500);
     return () => window.clearInterval(timer);
   }, [hasRunningWorker, load]);
 
-  return { sessions, selected, select };
+  return { sessions, selected, select, loading, detailLoading, error };
 }
