@@ -1,6 +1,6 @@
 [package]
 name = "personal-agent-desktop"
-version = "0.2.0-beta.17"
+version = "0.2.0-beta.18"
 description = "Lightweight desktop shell for Personal Agent Node"
 authors = ["Personal Agent contributors"]
 license = "Apache-2.0"
@@ -24,3 +24,10 @@ opener = "=0.8.5"
 serde_json = "=1.0.150"
 tauri = { version = "=2.11.5", features = [] }
 tauri-plugin-single-instance = "=2.4.3"
+
+[profile.release]
+strip = true
+lto = "thin"
+opt-level = "z"
+codegen-units = 1
+panic = "abort"
