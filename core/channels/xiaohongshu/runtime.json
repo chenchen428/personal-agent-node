@@ -18,7 +18,7 @@
         },
         {
           "file": "core/channels/xiaohongshu/patches/windows-no-leakless.patch",
-          "sha256": "0cbafe9ba8852ebbf67eed0d64174d1e228276365c14570ae5d237a1b450aef3"
+          "sha256": "b3c2ebd9d5585bdb97cc4f3689f37d720c4087883ac43c16431b554d93aa7e04"
         }
       ],
       "patchAddedSourceFiles": [

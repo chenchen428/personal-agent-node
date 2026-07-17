@@ -37,3 +37,10 @@ test("channel source patches are pinned and constrained to the runtime patch dir
   }
   assert.throws(() => validateSourcePatches([{ file: "../service.patch", sha256: "a".repeat(64) }]), /Unsafe/);
 });
+
+test("channel source patches disable host Git line-ending conversion", () => {
+  const builder = fs.readFileSync(path.join(workspaceRoot, "scripts", "build-channel-runtimes.mjs"), "utf8");
+  assert.match(builder, /core\.autocrlf=false/);
+  assert.match(builder, /core\.safecrlf=false/);
+  assert.match(builder, /\$ProgressPreference='SilentlyContinue'/);
+});
