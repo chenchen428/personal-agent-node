@@ -92,11 +92,11 @@ test("private preview is authenticated, range-aware, and covered by the Nginx ga
   child.stdout.on("data", (chunk) => { output += chunk; });
   child.stderr.on("data", (chunk) => { output += chunk; });
   t.after(async () => {
-    if (child.exitCode === null) {
+    if (child.exitCode === null && child.signalCode === null) {
       child.kill("SIGTERM");
       await once(child, "exit");
     }
-    fs.rmSync(directory, { recursive: true, force: true });
+    await removeDirectoryWithRetry(directory);
   });
   await waitForServer(port, child, () => output);
 
@@ -179,6 +179,18 @@ async function availablePort() {
       server.close(() => resolve(address.port));
     });
   });
+}
+
+async function removeDirectoryWithRetry(directory) {
+  for (let attempt = 0; attempt < 8; attempt += 1) {
+    try {
+      fs.rmSync(directory, { recursive: true, force: true });
+      return;
+    } catch (error) {
+      if (!['EBUSY', 'EPERM', 'ENOTEMPTY'].includes(error?.code) || attempt === 7) throw error;
+      await new Promise((resolve) => setTimeout(resolve, 50 * (attempt + 1)));
+    }
+  }
 }
 
 async function waitForServer(port, child, getOutput) {
