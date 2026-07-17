@@ -197,12 +197,13 @@ export function validateSourcePatches(patches) {
 }
 
 export function applySourcePatches(sourceRoot, patches) {
+  const gitArgs = ["-c", "core.autocrlf=false", "-c", "core.safecrlf=false", "apply"];
   for (const patch of validateSourcePatches(patches)) {
     const patchPath = path.resolve(workspaceRoot, ...patch.file.split("/"));
     const digest = crypto.createHash("sha256").update(fs.readFileSync(patchPath)).digest("hex");
     if (digest !== patch.sha256) throw new Error(`Xiaohongshu source patch checksum mismatch: ${patch.file}`);
-    execFileSync("git", ["apply", "--check", "--unidiff-zero", patchPath], { cwd: sourceRoot, stdio: "inherit" });
-    execFileSync("git", ["apply", "--unidiff-zero", "--whitespace=nowarn", patchPath], { cwd: sourceRoot, stdio: "inherit" });
+    execFileSync("git", [...gitArgs, "--check", "--unidiff-zero", patchPath], { cwd: sourceRoot, stdio: "inherit" });
+    execFileSync("git", [...gitArgs, "--unidiff-zero", "--whitespace=nowarn", patchPath], { cwd: sourceRoot, stdio: "inherit" });
   }
 }
 
@@ -315,7 +316,7 @@ function extractRuntimeArchive(archive, format) {
       "-NoProfile",
       "-NonInteractive",
       "-Command",
-      "& { param($archive, $destination) Expand-Archive -LiteralPath $archive -DestinationPath $destination -Force }",
+      "& { param($archive, $destination) $ProgressPreference='SilentlyContinue'; Expand-Archive -LiteralPath $archive -DestinationPath $destination -Force }",
       archive,
       target,
     ], {
