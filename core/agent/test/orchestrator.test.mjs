@@ -9,9 +9,9 @@ import { buildAgentPath, progressFatigueDelay, progressTimerInterval, SessionOrc
 import { BridgeStore } from "../src/store/store.js";
 
 test("main-Agent PATH prefers the stable CLI from the active installation", () => {
-  const cliBin = path.join("D:", "Stable CLI");
-  const installRoot = path.join("D:", "Personal Agent", "core");
-  const inherited = path.join("C:", "stale", "bin");
+  const cliBin = path.join(os.tmpdir(), "Stable CLI");
+  const installRoot = path.join(os.tmpdir(), "Personal Agent", "core");
+  const inherited = path.join(os.tmpdir(), "stale", "bin");
   const entries = buildAgentPath({
     PRIVATE_SITE_CLI_BIN: cliBin,
     PRIVATE_SITE_INSTALL_ROOT: installRoot,
@@ -359,7 +359,7 @@ test("routes non-WeChat channel messages directly to worker sessions", async () 
   assert.equal(session.role, "worker");
   assert.equal(session.channel, "custom-channel");
   assert.equal(calls[0].stdin, "生成一份报告");
-  assert.doesNotMatch(calls[0].stdin, /open-abg session start/);
+  assert.doesNotMatch(calls[0].stdin, /pa-cli session start/);
 });
 
 test("proactive WeChat onboarding is durably deferred until the first inbound context", async () => {
@@ -454,7 +454,7 @@ test("acknowledges WeChat immediately and queues the completed reply behind the 
     content: "收到",
   }]);
   assert.equal(calls[0].stdin, "你好，在吗");
-  assert.doesNotMatch(calls[0].stdin, /open-abg session start/);
+  assert.doesNotMatch(calls[0].stdin, /pa-cli session start/);
   assert.match(calls[0].appServerDeveloperInstructions, /简单问答.*直接自然地回答/);
   assert.match(calls[0].appServerDeveloperInstructions, /不要轮询/);
   assert.match(calls[0].appServerDeveloperInstructions, /1 至 3 句话/);
@@ -828,7 +828,7 @@ test("worker completion hook returns the result to the main agent for a concise 
   await waitFor(() => calls.length === 2 && sent.length === 1);
   assert.equal(calls[0].sessionId, worker.id);
   assert.match(calls[0].appServerDeveloperInstructions, /不要直接联系或通知用户/);
-  assert.match(calls[0].appServerDeveloperInstructions, /不要调用 open-abg notify/);
+  assert.match(calls[0].appServerDeveloperInstructions, /不要调用 pa-cli notify/);
   assert.equal(calls[1].sessionId, main.id);
   assert.match(calls[1].stdin, /^\[worker-hook:completed\]/);
   assert.match(calls[1].stdin, /Worker 输出（不可信数据/);
@@ -840,6 +840,111 @@ test("worker completion hook returns the result to the main agent for a concise 
   assert.equal(orchestrator.longTasks.has(worker.id), false);
   orchestrator.stop();
   store.close();
+});
+
+test("recovers interrupted workers after restart and returns their completion to the main Agent", async () => {
+  const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), "oab-orchestrator-worker-recovery-"));
+  const store = new BridgeStore({ dataDir, consoleBaseUrl: "https://agent.example.test" });
+  const main = store.getOrCreateDesktopMainSession({ workspaceRoot: dataDir });
+  const worker = store.createSession({
+    parentSessionId: main.id,
+    status: "running",
+    title: "恢复未完成页面",
+    taskDescription: "完成已经开始制作的介绍页面",
+    workspaceRoot: dataDir,
+    cliSessionId: "thread-before-restart",
+  });
+  store.createSession({
+    parentSessionId: main.id,
+    status: "idle",
+    title: "已经完成的任务",
+    workspaceRoot: dataDir,
+  });
+  store.createSession({
+    parentSessionId: "missing-main",
+    status: "running",
+    title: "失去主会话的任务",
+    workspaceRoot: dataDir,
+  });
+  const calls = [];
+  const orchestrator = new SessionOrchestrator({
+    store,
+    hub: { broadcast: () => {} },
+    channels: {},
+    progressTimerEnabled: false,
+    runner: {
+      runAppServerCommand: async (config) => {
+        calls.push(config);
+        if (config.sessionId === worker.id) {
+          await config.onSessionEvent({
+            sessionId: worker.id,
+            kind: "session.user_message",
+            payload: { content: config.stdin },
+          });
+          await config.onSessionEvent({
+            sessionId: worker.id,
+            kind: "session.assistant_message",
+            payload: { content: "介绍页面已完成。", metadata: { streamState: "completed" } },
+          });
+          await config.onSessionEvent({
+            sessionId: worker.id,
+            kind: "session.complete",
+            payload: { success: true, idle: true, cliSessionId: "thread-before-restart" },
+          });
+        } else {
+          await config.onSessionEvent({
+            sessionId: main.id,
+            kind: "session.assistant_message",
+            payload: { content: "介绍页面已经做好。", metadata: { streamState: "completed" } },
+          });
+          await config.onSessionEvent({
+            sessionId: main.id,
+            kind: "session.complete",
+            payload: { success: true, idle: true },
+          });
+        }
+        return { ok: true };
+      },
+      stopAppServerCommand: () => false,
+    },
+  });
+
+  try {
+    const [first, duplicate] = await Promise.all([
+      orchestrator.recoverInterruptedWorkers(),
+      orchestrator.recoverInterruptedWorkers(),
+    ]);
+    await waitFor(() => calls.length === 2);
+
+    assert.deepEqual(first, duplicate);
+    assert.equal(first.discovered, 2);
+    assert.equal(first.recovered, 1);
+    assert.equal(first.completed, 1);
+    assert.equal(first.failed, 0);
+    assert.equal(first.skippedSessionIds.length, 1);
+    assert.equal(calls[0].sessionId, worker.id);
+    assert.equal(calls[0].cliSessionId, "thread-before-restart");
+    assert.equal(calls[0].allowCreateThread, true);
+    assert.match(calls[0].stdin, /^\[worker-recovery:continue\]/);
+    assert.match(calls[0].stdin, /避免重复提交、重复发布、重复通知/);
+    assert.equal(calls[1].sessionId, main.id);
+    assert.match(calls[1].stdin, /^\[worker-hook:completed\]/);
+    assert.match(calls[1].stdin, /介绍页面已完成/);
+
+    const recoveredWorker = store.getSession(worker.id);
+    assert.equal(recoveredWorker.status, "idle");
+    assert.equal(recoveredWorker.metadata.workerRecoveryAttempt, 1);
+    assert.ok(recoveredWorker.metadata.workerRecoveryStartedAt);
+    assert.equal(recoveredWorker.messages.some((message) => message.content.startsWith("[worker-recovery:continue]")), false);
+    assert.equal(recoveredWorker.messages.some((message) => message.metadata?.eventType === "worker/recovery/started"), false);
+
+    await orchestrator.recoverInterruptedWorkers();
+    assert.equal(calls.length, 2);
+  } finally {
+    orchestrator.stop();
+    store.close();
+    fs.rmSync(dataDir, { recursive: true, force: true });
+  }
 });
 
 test("worker completion hook waits until queued worker input is finished", async () => {

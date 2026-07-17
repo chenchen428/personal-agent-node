@@ -21,7 +21,7 @@ export function localMailStatus(config, options = {}) {
       tokenConfigured,
       shimReady: shim.ready,
       followsCurrent: shim.followsCurrent,
-      command: "open-abg-mail-ingest",
+      command: "pa-cli mail ingest",
     },
     archive,
     web: { path: "/app/mail", transport: "https" },
@@ -42,7 +42,7 @@ export function localMailPlan(config) {
     smtpServerBundled: false,
     suggestedRecipients: defaultMailRecipients(config.domain),
     delivery: {
-      command: "open-abg-mail-ingest",
+      command: "pa-cli mail ingest",
       input: "message/rfc822 on stdin",
       envelopeArguments: ["--recipient", "<envelope-recipient>", "--sender", "<envelope-sender>"],
       successExitCode: 0,

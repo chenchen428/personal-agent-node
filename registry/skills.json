@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "version": 2,
-  "updatedAt": "2026-07-16",
+  "version": 3,
+  "updatedAt": "2026-07-17",
   "categories": [
     {
       "id": "research-knowledge",
@@ -419,6 +419,7 @@
         "test/fixtures/skill-cases/personal-agent-lifecycle/case.json",
         "test/fixtures/skill-cases/personal-agent-mail/case.json",
         "test/fixtures/skill-cases/personal-agent-activity/case.json",
+        "test/fixtures/skill-cases/personal-agent-bug-report/case.json",
         "test/fixtures/skill-cases/personal-agent-acceptance/case.json"
       ],
       "caseRequired": true,

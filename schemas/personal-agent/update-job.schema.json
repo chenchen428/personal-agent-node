@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://personal-agent.local/schemas/update-job.schema.json",
+  "title": "Personal Agent update job",
+  "type": "object",
+  "additionalProperties": true,
+  "required": ["schemaVersion", "id", "kind", "status", "targetReleaseId", "operationId", "operationDigest", "createdAt", "updatedAt"],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "id": { "type": "string", "pattern": "^update_[A-Za-z0-9-]+$" },
+    "kind": { "enum": ["apply", "rollback"] },
+    "status": { "enum": ["planned", "approved", "downloading", "verified", "handoff", "activating", "restarting", "verifying", "succeeded", "failed", "rolled_back"] },
+    "channel": { "enum": ["stable", "beta"] },
+    "platform": { "type": "string", "pattern": "^(win32|darwin|linux)-(x64|arm64)$" },
+    "targetVersion": { "type": "string", "minLength": 1 },
+    "targetReleaseId": { "type": "string", "minLength": 1 },
+    "previousReleaseId": { "type": ["string", "null"] },
+    "operationId": { "type": "string", "pattern": "^op_[A-Za-z0-9-]+$" },
+    "operationDigest": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "createdAt": { "type": "string", "format": "date-time" },
+    "updatedAt": { "type": "string", "format": "date-time" },
+    "completedAt": { "type": "string", "format": "date-time" },
+    "failure": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["code", "message"],
+      "properties": {
+        "code": { "type": "string", "maxLength": 80 },
+        "message": { "type": "string", "maxLength": 300 }
+      }
+    },
+    "warning": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["code", "message"],
+      "properties": {
+        "code": { "type": "string", "maxLength": 80 },
+        "message": { "type": "string", "maxLength": 300 }
+      }
+    }
+  }
+}

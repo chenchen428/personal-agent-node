@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ConversationComposer, type PendingAttachment } from "./conversation-composer";
 import { ConversationMessageList } from "./conversation-message-list";
-import { ConversationPlan } from "./conversation-plan";
 import { errorMessage, fetchJson } from "./shared";
 import type { Message, Session } from "./types";
 
@@ -166,15 +165,8 @@ export function ConversationPage() {
 
   const processing = waiting || ["start", "running"].includes(session?.status || "");
 
-  return <section className="desktop-chat" aria-label="与 PA 的对话" data-session-role="main">
-    <header className="desktop-chat-header">
-      <div className="desktop-chat-identity"><span className="desktop-chat-avatar agent">PA</span><div>
-        <h1>与 PA 对话</h1>
-        <p><i />{error ? "连接异常" : "在线"}</p>
-      </div></div>
-      <span className="desktop-chat-channel">微信与桌面同步</span>
-    </header>
-    <div className="desktop-chat-thread" ref={threadRef} aria-live="polite">
+  return <main className="page flush conversation" aria-label="与 PA 的对话" data-session-role="main">
+    <div className="message-scroll" ref={threadRef} aria-live="polite"><div className="message-thread">
       <ConversationMessageList
         messages={session?.messages || []}
         loading={loading}
@@ -182,12 +174,10 @@ export function ConversationPage() {
         hasEarlier={Boolean(session?.pagination?.hasEarlier)}
         processing={processing}
         linkedTask={session?.linkedTask}
+        plan={session?.currentPlan}
         onLoadEarlier={() => void loadEarlier()}
       />
-    </div>
-    <div className="desktop-chat-dock">
-      <ConversationPlan plan={session?.currentPlan} />
-      <ConversationComposer sending={sending} waiting={processing} error={error} onSend={send} />
-    </div>
-  </section>;
+    </div></div>
+    <ConversationComposer sending={sending} waiting={processing} error={error} onSend={send} />
+  </main>;
 }

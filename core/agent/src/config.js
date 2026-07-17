@@ -51,6 +51,10 @@ export const config = {
   maxUploadBytes: Number.parseInt(process.env.OPEN_AGENT_BRIDGE_MAX_UPLOAD_BYTES || "10485760", 10),
   consoleBaseUrl: (process.env.OPEN_AGENT_BRIDGE_CONSOLE_BASE_URL || "https://personal-agent.local/agent").replace(/\/+$/, ""),
   pagesBaseUrl: (process.env.OPEN_AGENT_BRIDGE_PAGES_BASE_URL || "https://personal-agent.local/pages").replace(/\/+$/, ""),
+  externalAccess: () => resolveExternalAccess({
+    dataRoot: siteDataRoot,
+    consoleBaseUrl: process.env.OPEN_AGENT_BRIDGE_CONSOLE_BASE_URL || "https://personal-agent.local/app",
+  }),
   uploadToken: process.env.OPEN_AGENT_BRIDGE_UPLOAD_TOKEN || process.env.ONLINE_PAGES_UPLOAD_TOKEN || "",
   apiToken: process.env.OPEN_AGENT_BRIDGE_API_TOKEN || "",
   mailIngestToken: process.env.OPEN_AGENT_BRIDGE_MAIL_INGEST_TOKEN || "",
@@ -98,6 +102,32 @@ export const config = {
   sessionPageSize: Number.parseInt(process.env.OPEN_AGENT_BRIDGE_SESSION_PAGE_SIZE || "20", 10),
   instanceId: process.env.OPEN_AGENT_BRIDGE_INSTANCE_ID || `${os.hostname()}-${process.pid}`,
 };
+
+export function resolveExternalAccess({ dataRoot = siteDataRoot, consoleBaseUrl = "", now = new Date() } = {}) {
+  const site = readJson(path.join(dataRoot, "config", "site.json"));
+  const mode = String(site?.connectionMode || "local-only");
+  if (mode === "local-only") return { ready: false, reason: "local-only", origin: "" };
+  const cloud = readJson(path.join(dataRoot, "config", "cloud.json"));
+  const host = mode === "managed-cloud" ? String(cloud?.managedHost || "") : hostnameFromBase(consoleBaseUrl);
+  if (!host) return { ready: false, reason: "not-configured", origin: "" };
+  if (mode === "managed-cloud") {
+    const state = readJson(path.join(dataRoot, "runtime", "reverse-tunnel.json"));
+    const lastPongAt = Date.parse(String(state?.lastPongAt || ""));
+    const heartbeatMs = Number(cloud?.tunnel?.heartbeatSeconds || 20) * 3000;
+    if (state?.state !== "ready" || !Number.isFinite(lastPongAt) || now.getTime() - lastPongAt > heartbeatMs) {
+      return { ready: false, reason: "tunnel-offline", origin: "" };
+    }
+  }
+  return { ready: true, reason: "ready", origin: `https://${host}` };
+}
+
+function readJson(filePath) {
+  try { return JSON.parse(fs.readFileSync(filePath, "utf8")); } catch { return null; }
+}
+
+function hostnameFromBase(value) {
+  try { return new URL(String(value || "")).hostname; } catch { return ""; }
+}
 
 export function ensureRuntimeDirs() {
   for (const dir of [config.dataDir, config.publicDir, config.pagesDir, config.uploadsDir, config.materializedFilesDir, config.agentDataDir, config.automationDataDir, config.privatePublicationsDir, config.releaseNotesDir, config.mailIngressDir, config.inboundAttachmentsDir, config.appsDir]) {

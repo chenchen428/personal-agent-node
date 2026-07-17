@@ -16,6 +16,7 @@ import { executeSetupAction, planSetupAction } from '../runtime/src/setup-action
 import { createOperationStore } from '../runtime/src/operations.ts';
 import { listExtensions } from '../runtime/src/extensions.ts';
 import { publicPersonalApp, scanPersonalApps } from '../runtime/src/apps.ts';
+import { requestControl } from '../runtime/src/control-service.ts';
 
 const projectRoot = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(projectRoot, '..', '..');
@@ -40,6 +41,7 @@ const channelVersion = '0.3.0';
 const openAgentBridgeBaseUrl = String(process.env.OPEN_AGENT_BRIDGE_INTERNAL_URL || 'http://127.0.0.1:8788').replace(/\/+$/, '');
 const openAgentBridgeApiToken = String(process.env.OPEN_AGENT_BRIDGE_API_TOKEN || '');
 const setupOperations = createOperationStore({ dataRoot: siteDataRoot });
+const updateConfig = resolveNodeConfig({ ...process.env, PRIVATE_SITE_DATA_ROOT: siteDataRoot });
 
 const server = http.createServer((request, response) => {
   handleRequest(request, response).catch((error) => {
@@ -164,6 +166,31 @@ async function handleRequest(request, response) {
     await sendJson(response, { ok: true, plan: localMailPlan(config) }, request.method === 'HEAD');
     return;
   }
+  if (url.pathname === '/api/update') {
+    if (request.method === 'GET' || request.method === 'HEAD') {
+      const result = await requestControl(updateConfig, 'update.status', { background: true, jobId: url.searchParams.get('job') || undefined });
+      await sendJson(response, { ok: true, ...result.result }, request.method === 'HEAD');
+      return;
+    }
+    if (request.method !== 'POST') {
+      send(response, 405, 'text/plain; charset=utf-8', 'Method Not Allowed');
+      return;
+    }
+    const input = await readRequestJson(request);
+    try {
+      let result;
+      if (input.action === 'check') result = await requestControl(updateConfig, 'update.check', { channel: input.channel }, {}, { timeoutMs: 30_000 });
+      else if (input.action === 'plan') result = await requestControl(updateConfig, 'update.plan', { version: input.version }, {}, { timeoutMs: 30_000 });
+      else if (input.action === 'rollback-plan') result = await requestControl(updateConfig, 'update.rollback-plan');
+      else if (input.action === 'approve') result = await requestControl(updateConfig, 'update.console-approve', { jobId: input.jobId, operationId: input.operationId, digest: input.digest });
+      else if (input.action === 'apply') result = await requestControl(updateConfig, 'update.apply', { jobId: input.jobId, operationId: input.operationId, digest: input.digest }, {}, { timeoutMs: 130_000 });
+      else throw Object.assign(new Error('未知的软件更新动作'), { code: 'INVALID_ARGUMENT' });
+      await sendJson(response, { ok: true, ...result.result });
+    } catch (error) {
+      sendJsonStatus(response, updateActionStatus(error), { ok: false, error: { code: error?.code || 'UPDATE_FAILED', message: String(error?.message || '软件更新失败').slice(0, 300) } });
+    }
+    return;
+  }
   const setupActionRoute = /^\/api\/setup\/actions\/([a-z0-9.-]+)\/(plan|approve|execute)$/.exec(url.pathname);
   if (setupActionRoute) {
     if (request.method !== 'POST') {
@@ -266,6 +293,13 @@ function setupActionStatus(error) {
   if (['APPROVAL_REQUIRED', 'DIGEST_MISMATCH', 'ACTION_PLAN_MISMATCH', 'PASSWORD_CONFIRMATION_MISMATCH', 'INVALID_ARGUMENT'].includes(error?.code)) return 400;
   if (['INVALID_STATE', 'PLAN_EXPIRED'].includes(error?.code)) return 409;
   if (error?.code === 'NOT_FOUND') return 404;
+  return 500;
+}
+
+function updateActionStatus(error) {
+  if (['INVALID_ARGUMENT', 'APPROVAL_REQUIRED', 'DIGEST_MISMATCH'].includes(error?.code)) return 400;
+  if (['INVALID_STATE', 'PLAN_EXPIRED', 'ALREADY_CURRENT'].includes(error?.code)) return 409;
+  if (['NOT_FOUND', 'UPDATE_UNAVAILABLE', 'VERSION_UNAVAILABLE', 'ROLLBACK_UNAVAILABLE'].includes(error?.code)) return 404;
   return 500;
 }
 

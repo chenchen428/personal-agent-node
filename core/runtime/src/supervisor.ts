@@ -162,8 +162,10 @@ export function componentSpecs(config, workerConfig) {
   components.splice(components.length - 1, 0, ...extensionComponentSpecs(config));
   if (config.env.PRIVATE_SITE_XIAOHONGSHU_ENABLED === "1") {
     const channelRoot = path.join(config.dataRoot, "channels", "xiaohongshu");
-    const executable = path.join(config.dataRoot, "runtime", "xiaohongshu", "xiaohongshu-mcp.exe");
-    const browser = config.env.PRIVATE_SITE_BROWSER_BIN || "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe";
+    const executable = path.join(config.dataRoot, "runtime", "xiaohongshu", process.platform === "win32" ? "xiaohongshu-mcp.exe" : "xiaohongshu-mcp");
+    const browser = resolveXiaohongshuBrowser(config);
+    if (!fs.existsSync(executable)) throw new Error(`Xiaohongshu runtime is missing: ${executable}`);
+    if (!browser) throw new Error("Xiaohongshu requires a supported Chrome or Chromium browser");
     for (const directory of ["home", "cache", "config", "tmp"]) fs.mkdirSync(path.join(channelRoot, directory), { recursive: true });
     components.splice(4, 0, {
       name: "xiaohongshu-channel",
@@ -182,6 +184,22 @@ export function componentSpecs(config, workerConfig) {
     });
   }
   return components;
+}
+
+export function resolveXiaohongshuBrowser(config) {
+  const configured = String(config.env.PRIVATE_SITE_BROWSER_BIN || "").trim();
+  const bundled = path.join(config.dataRoot, "runtime", "xiaohongshu", "browser", process.platform === "win32" ? "chrome.exe" : "chrome");
+  const candidates = configured ? [configured] : process.platform === "darwin" ? [
+    "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+    "/Applications/Chromium.app/Contents/MacOS/Chromium",
+    "/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge",
+    bundled,
+  ] : process.platform === "win32" ? [
+    "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
+    "C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe",
+    bundled,
+  ] : [bundled, "/usr/bin/google-chrome", "/usr/bin/chromium", "/usr/bin/chromium-browser"];
+  return candidates.find((candidate) => fs.existsSync(candidate)) || "";
 }
 
 function executable(node, compiled, source) {

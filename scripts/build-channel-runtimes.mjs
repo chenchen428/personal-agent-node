@@ -113,7 +113,8 @@ async function buildXiaohongshuAdapter(adapter, target, cacheRoot, outputPlatfor
     fs.chmodSync(goBinary, 0o755);
     fs.mkdirSync(path.dirname(target), { recursive: true });
     const [targetOs, targetArch] = outputPlatform === "win32-x64" ? ["windows", "amd64"]
-      : outputPlatform === "linux-amd64" ? ["linux", "amd64"]
+      : outputPlatform === "darwin-arm64" ? ["darwin", "arm64"]
+        : outputPlatform === "linux-amd64" ? ["linux", "amd64"]
         : [];
     if (!targetOs) throw new Error(`Unsupported Xiaohongshu output platform: ${outputPlatform}`);
     execFileSync(goBinary, ["build", "-trimpath", "-ldflags=-s -w", "-o", target, "."], {
@@ -175,8 +176,8 @@ export async function buildLocalXiaohongshuAdapter({
   if (!outputRoot) throw new Error("outputRoot is required");
   const manifest = readJson(path.join(workspaceRoot, "core", "channels", "xiaohongshu", "runtime.json"));
   const platform = process.platform === "win32" && process.arch === "x64" ? "win32-x64" : `${process.platform}-${process.arch}`;
-  if (platform !== "win32-x64") throw new Error(`Local Xiaohongshu runtime is not supported on ${platform}`);
-  const target = path.join(outputRoot, "xiaohongshu-mcp.exe");
+  if (!["win32-x64", "darwin-arm64"].includes(platform)) throw new Error(`Local Xiaohongshu runtime is not supported on ${platform}`);
+  const target = path.join(outputRoot, process.platform === "win32" ? "xiaohongshu-mcp.exe" : "xiaohongshu-mcp");
   fs.mkdirSync(outputRoot, { recursive: true });
   await buildXiaohongshuAdapter(manifest.adapter, target, cacheRoot, platform);
   return { target, platform, release: manifest.adapter.release, revision: manifest.adapter.revision };

@@ -75,6 +75,18 @@ async function executeHandled({ resource, action, id, args, requestedCommand }) 
   if (resource === 'activity' && ['list', 'search', 'show', 'create', 'upsert', 'update', 'hide', 'restore'].includes(action)) {
     return activityCommand(action, id, args);
   }
+  if (resource === 'update' && action === 'status') return controlResult(await requestControl(requireConfig(), 'update.status', { jobId: args.job }));
+  if (resource === 'update' && action === 'check') return controlResult(await requestControl(requireConfig(), 'update.check', { channel: args.channel }));
+  if (resource === 'update' && action === 'plan') return controlResult(await requestControl(requireConfig(), 'update.plan', { version: args.version }));
+  if (resource === 'update' && action === 'apply') {
+    requireId(args.operation, '--operation'); requireId(args.digest, '--digest');
+    return controlResult(await requestControl(requireConfig(), 'update.apply', { jobId: args.job, operationId: args.operation, digest: args.digest }, {}, { timeoutMs: 130_000 }));
+  }
+  if (resource === 'update' && action === 'rollback') {
+    if (!args.operation) return controlResult(await requestControl(requireConfig(), 'update.rollback-plan'));
+    requireId(args.digest, '--digest');
+    return controlResult(await requestControl(requireConfig(), 'update.apply', { jobId: args.job, operationId: args.operation, digest: args.digest }, {}, { timeoutMs: 130_000 }));
+  }
   if (resource === 'operation' && action === 'list') return controlResult(await requestControl(requireConfig(), 'operation.list'));
   if (resource === 'operation' && action === 'show') return controlResult(await requestControl(requireConfig(), 'operation.inspect', { id }));
   if (resource === 'operation' && action === 'approve') {
@@ -114,7 +126,7 @@ async function doctorResult() {
     { id: 'data-root-confined', ok: !config || path.isAbsolute(config.dataRoot) },
     { id: 'mail-data-root', ok: !config || config.mailDir === path.join(config.dataRoot, 'mail') },
     { id: 'mail-ingress-token', ok: !config || mail.ingress.tokenConfigured },
-    { id: 'mail-ingest-entrypoint', ok: fs.existsSync(path.join(workspaceRoot, 'core', 'agent', 'bin', 'oab-mail-ingest.mjs')) },
+    { id: 'mail-ingest-entrypoint', ok: fs.existsSync(path.join(workspaceRoot, 'core', 'agent', 'bin', 'pa-cli.mjs')) },
     { id: 'mail-ingest-shim', ok: !config || !packaged || mail.ingress.shimReady },
   ];
   const setup = await setupStatus({ dataRoot: config?.dataRoot || process.env.PRIVATE_SITE_DATA_ROOT, installRoot: resolveInstallRoot() });
@@ -522,6 +534,10 @@ function parseArgs(argv) {
     else if (value === '--all') result.all = true;
     else if (value === '--data-root') result.dataRoot = argv[++index];
     else if (value === '--digest') result.digest = argv[++index];
+    else if (value === '--operation') result.operation = argv[++index];
+    else if (value === '--job') result.job = argv[++index];
+    else if (value === '--version') result.version = argv[++index];
+    else if (value === '--channel') result.channel = argv[++index];
     else if (value === '--cloud-url') result.cloudUrl = argv[++index];
     else if (value === '--no-open') result.noOpen = true;
     else if (value === '--capability') result.capability = argv[++index];

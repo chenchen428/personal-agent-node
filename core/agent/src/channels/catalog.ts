@@ -15,20 +15,11 @@ type ManagedPlatformStatus = {
 export function buildChannelCatalog({ wechat, managedPlatform }: { wechat: WeChatStatus; managedPlatform: ManagedPlatformStatus }) {
   return [
     {
-      provider: "web",
-      label: "Web 控制台",
-      state: "ready",
-      statusLabel: "本机可用",
-      description: "浏览器中的主渠道，支持对话、页面和本机管理。",
-      capabilities: ["conversation", "online_pages", "desktop", "mobile"],
-      healthCheck: false,
-    },
-    {
       provider: "wechat",
       label: "微信",
       state: wechat.connected ? "connected" : "needs_login",
       statusLabel: wechat.connected ? "已连接" : "尚未连接",
-      description: wechat.connected ? "消息轮询与双向收发已启用。" : "必选移动渠道，请生成二维码并使用微信扫码连接。",
+      description: wechat.connected ? "消息轮询与双向收发已启用。" : "必选移动渠道，在客户端生成二维码并使用微信扫码连接。",
       capabilities: ["conversation", "image", "file"],
       healthCheck: false,
     },
@@ -36,7 +27,7 @@ export function buildChannelCatalog({ wechat, managedPlatform }: { wechat: WeCha
       ...managedPlatform,
       provider: managedPlatform.provider || "managed-platform",
       label: managedPlatform.label || "托管平台",
-      description: managedPlatform.loggedIn ? "账号已就绪，可执行受控的只读任务。" : "可选平台，通过 Agent 协作完成扫码登录。",
+      description: managedPlatform.loggedIn ? "账号已就绪，可执行受控的只读任务。" : "可选平台，可在客户端直接扫码，也可交给主 Agent 托管连接。",
       healthCheck: true,
     },
   ];

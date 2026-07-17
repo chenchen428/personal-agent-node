@@ -70,7 +70,8 @@ test("canonical Console and domain API routes authenticate and rewrite to intern
       response.end();
       return;
     }
-    received.push({ service: "bridge", url: request.url, authenticated: request.headers["x-personal-agent-authenticated"] });
+    received.push({ service: "bridge", url: request.url, authenticated: request.headers["x-personal-agent-authenticated"], cookie: request.headers.cookie, authorization: request.headers.authorization });
+    response.setHeader("set-cookie", "private=must-not-leak");
     response.writeHead(200, { "content-type": "application/json" });
     response.end('{"ok":true}');
   });
@@ -94,7 +95,9 @@ test("canonical Console and domain API routes authenticate and rewrite to intern
       const authenticatedHome = await request({ port, host: "example.site", path: "/", headers: { cookie: "session=ok" } });
       assert.equal(authenticatedHome.status, 302);
       assert.equal(authenticatedHome.headers.location, "/app");
-      assert.equal((await request({ port, host: "example.site", path: "/public/report" })).status, 200);
+      const publicPage = await request({ port, host: "example.site", path: "/public/report", headers: { cookie: "private=must-not-forward", authorization: "Bearer must-not-forward" } });
+      assert.equal(publicPage.status, 200);
+      assert.equal(publicPage.headers["set-cookie"], undefined);
       assert.equal((await request({ port, host: "example.site", path: "/app" })).status, 302);
       assert.equal((await request({ port, host: "127.0.0.1", path: "/app" })).status, 200);
       assert.equal((await request({ port, host: "127.0.0.1", path: "/app/settings" })).status, 200);
@@ -132,6 +135,8 @@ test("canonical Console and domain API routes authenticate and rewrite to intern
       assert.equal(received[0].authenticated, undefined);
       assert.equal(received[1].authenticated, undefined);
       assert.equal(received[2].authenticated, undefined);
+      assert.equal(received[2].cookie, undefined);
+      assert.equal(received[2].authorization, undefined);
       assert.ok(received.filter((_, index) => ![0, 1, 2].includes(index)).every((entry) => entry.authenticated === "1"));
     } finally {
       await close(server);

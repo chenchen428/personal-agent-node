@@ -7,8 +7,8 @@
       "id": "release-installation",
       "label": "Immutable release installation",
       "case": "test/fixtures/baseline-cases/release-installation/case.json",
-      "command": ["node", "--import", "tsx", "--test", "test/release-lifecycle.test.mjs"],
-      "requirements": ["Installation switches an immutable current release", "One previous release remains available", "Fresh installation opens the local Setup Center directly in the Tauri desktop shell without desktop login and presents WeChat as a required guided connection without requiring a development Agent", "The desktop shell uses the system WebView, exposes no native page API, starts the local runtime when opened, stops it when closed, and remains bound to current/previous rollback", "Tunneled access requires the local access password and password reset invalidates existing remote sessions", "Browser and CLI recovery remain available"]
+      "command": ["node", "--import", "tsx", "--test", "test/release-lifecycle.test.mjs", "core/runtime/test/updates.test.mjs"],
+      "requirements": ["Installation switches an immutable current release", "One previous release remains available", "Fresh installation opens the local Setup Center directly in the Tauri desktop shell without desktop login and presents WeChat as a required guided connection without requiring a development Agent", "The desktop shell uses the system WebView, exposes no native page API, starts the local runtime when opened, stops it when closed, and remains bound to current/previous rollback", "The local Console and main Agent share one digest-bound update plan, verified platform artifact, native desktop handoff, and persisted restart result", "Applying executable updates requires fresh authenticated local approval and the Agent cannot approve its own operation", "Tunneled access requires the local access password and password reset invalidates existing remote sessions", "Browser and CLI recovery remain available"]
     },
     {
       "id": "authenticated-login",
@@ -21,8 +21,8 @@
       "id": "agent-conversation",
       "label": "Local Agent conversation",
       "case": "test/fixtures/baseline-cases/agent-conversation/case.json",
-      "command": ["node", "--import", "tsx", "--test", "core/agent/test/broker.test.mjs", "core/agent/test/orchestrator.test.mjs", "core/agent/test/activity-store.test.mjs", "core/agent/test/activity-control.test.mjs", "core/runtime/test/personal-agent-cli.test.mjs"],
-      "requirements": ["A local session stores ordered commands and events", "Concurrent input is serialized", "Conversation execution does not require Cloud", "Release and final acceptance install the GitHub Release asset and use authenticated /app/chat", "A unique prompt reaches the real Agent runtime and its Agent reply is observed in the same session", "wechatRequired is true and the channels.wechat Setup check is ready", "Only the canonical main Agent can operate Activity", "Activity is never generated from system events", "Titles are limited to 30 visible characters and attachments to ten", "Search and update are owner-local and revision-safe", "The legacy Memory product surface is unavailable"]
+      "command": ["node", "--import", "tsx", "--test", "core/agent/test/broker.test.mjs", "core/agent/test/orchestrator.test.mjs", "core/agent/test/activity-store.test.mjs", "core/agent/test/activity-control.test.mjs", "core/runtime/test/personal-agent-cli.test.mjs", "test/app-architecture.test.mjs"],
+      "requirements": ["A local session stores ordered commands and events", "Concurrent input is serialized", "In-progress Worker tasks resume after a service restart, surface live recovery status, and report completion through the main Agent", "Conversation execution does not require Cloud", "Release and final acceptance install the GitHub Release asset and use authenticated /app/chat", "A unique prompt reaches the real Agent runtime and its Agent reply is observed in the same session", "wechatRequired is true and the channels.wechat Setup check is ready", "Only the canonical main Agent can operate Activity", "Activity is never generated from system events", "Titles are limited to 30 visible characters and attachments to ten", "Search and update are owner-local and revision-safe", "The legacy Memory product surface is unavailable"]
     },
     {
       "id": "wechat-conversation-channel",
@@ -56,8 +56,8 @@
       "id": "previous-release-rollback",
       "label": "Previous release rollback",
       "case": "test/fixtures/baseline-cases/previous-release-rollback/case.json",
-      "command": ["node", "--import", "tsx", "--test", "test/release-lifecycle.test.mjs", "core/runtime/test/release-pruning.test.mjs"],
-      "requirements": ["Rollback atomically swaps current and previous", "Inactive release pruning preserves the rollback boundary"]
+      "command": ["node", "--import", "tsx", "--test", "test/release-lifecycle.test.mjs", "core/runtime/test/release-pruning.test.mjs", "core/runtime/test/updates.test.mjs"],
+      "requirements": ["Rollback atomically swaps current and previous", "Inactive release pruning preserves the rollback boundary", "Failed or explicitly requested client updates use the retained previous release without downloading another artifact and persist the post-restart result"]
     }
   ]
 }

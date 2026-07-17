@@ -29,7 +29,7 @@ Usage:
   skill-tree content html --input <file.md> --output <file.html>
   skill-tree media inspect --input <image>
   skill-tree media compress --input <image> --output <image.webp> [--quality 80]
-  open-abg pages upload --file <artifact> --folder <folder> --json
+  pa-cli pages upload --file <artifact> --folder <folder> --json
   skill-tree cases verify
 `;
 

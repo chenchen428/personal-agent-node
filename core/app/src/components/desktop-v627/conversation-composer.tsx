@@ -58,13 +58,13 @@ export function ConversationComposer({ sending, waiting, error, onSend }: Props)
     }
   };
 
-  return <form className="desktop-chat-composer" onSubmit={submit}>
-    <label htmlFor="desktop-chat-input">发消息给 PA</label>
+  return <form className="composer-wrap" onSubmit={submit}><div className="composer">
+    <label className="sr-only" htmlFor="desktop-chat-input">发消息给 PA</label>
     <textarea
       id="desktop-chat-input"
       rows={1}
       maxLength={4000}
-      placeholder="发消息给 PA"
+      placeholder="让 Personal Agent 做什么…"
       value={message}
       onChange={(event) => setMessage(event.target.value)}
       onInput={(event) => {
@@ -73,22 +73,22 @@ export function ConversationComposer({ sending, waiting, error, onSend }: Props)
       }}
       onKeyDown={handleKeyDown}
     />
-    {attachment ? <div className="desktop-chat-selected-file">
+    {attachment ? <div className="composer-selected-file">
       <span>{attachment.name}</span>
       <button type="button" onClick={() => setAttachment(null)} aria-label={`移除附件 ${attachment.name}`}>×</button>
     </div> : null}
-    <footer>
-      <button className="desktop-chat-tool" type="button" onClick={() => fileRef.current?.click()} aria-label="添加附件" title="添加附件">
+    <footer className="composer-actions"><div className="composer-tools">
+      <button className="icon-button" type="button" onClick={() => fileRef.current?.click()} aria-label="添加附件" title="添加附件">
         <AttachmentIcon />
       </button>
-      <span>{attachmentError || error || (waiting ? "PA 正在处理，回复会自动出现" : "Enter 发送 · Shift + Enter 换行")}</span>
-      <button className="desktop-chat-send" type="submit" disabled={sending || waiting || (!message.trim() && !attachment)} aria-label="发送消息">
+      <span className="composer-feedback">{attachmentError || error || (waiting ? "PA 正在处理，回复会自动出现" : "")}</span></div>
+      <button className="send-button" type="submit" disabled={sending || waiting || (!message.trim() && !attachment)} aria-label="发送消息">
         <SendIcon />
       </button>
     </footer>
     <input ref={fileRef} type="file" hidden onChange={selectFile} />
-    <span className="desktop-chat-send-status" role="status">{sending ? "正在发送" : waiting ? "PA 正在处理" : ""}</span>
-  </form>;
+    <span className="composer-send-status" role="status">{sending ? "正在发送" : waiting ? "PA 正在处理" : ""}</span>
+  </div></form>;
 }
 
 function readBase64(file: File) {

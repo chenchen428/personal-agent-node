@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { Activity, Database, FileText, ListTodo, Mail, Workflow } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { activityKind, fetchJson, formatDateTime, relativeTime, useRememberedQuery } from "./data";
 import { InlineError, LoadSentinel, MobileListShell, SearchEmpty, SearchStatus } from "./shell";
@@ -47,13 +48,18 @@ export function MobileActivity() {
 
 function ActivityEntry({ item }: { item: ActivityItem }) {
   const kind = activityKind(item.kind);
+  const KindIcon = activityIcon(item.kind);
   const href = item.href && (item.kind === "work" || item.kind === "page") ? `${item.href}${item.href.includes("?") ? "&" : "?"}from=activity` : item.href;
   return <article className={`activity-story activity-entry${href ? " is-clickable" : ""}`}>
     {href ? <Link className="activity-entry-hit" href={href} aria-label={`查看详情：${item.title}`} /> : null}
-    <header><span className={`story-kind ${item.kind}`}><i>{kind.icon}</i>{kind.label}</span><span className="activity-entry-meta"><time dateTime={item.updatedAt} title={formatDateTime(item.updatedAt)}>{relativeTime(item.updatedAt)}</time>{href ? <i aria-hidden="true">›</i> : null}</span></header>
+    <header><span className={`story-kind ${item.kind}`}><i className="mobile-story-icon"><KindIcon aria-hidden="true" /></i>{kind.label}</span><span className="activity-entry-meta"><time dateTime={item.updatedAt} title={formatDateTime(item.updatedAt)}>{relativeTime(item.updatedAt)}</time>{href ? <i aria-hidden="true">›</i> : null}</span></header>
     <h2>{item.title}</h2><p>{item.summary}</p>
     {item.attachments.length ? <ActivityAttachments attachments={item.attachments} /> : null}
   </article>;
+}
+
+function activityIcon(kind: string) {
+  return ({ work: ListTodo, page: FileText, mail: Mail, data: Database, automation: Workflow } as const)[kind as "work" | "page" | "mail" | "data" | "automation"] || Activity;
 }
 
 function ActivityAttachments({ attachments }: { attachments: ActivityAttachment[] }) {

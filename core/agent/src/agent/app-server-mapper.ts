@@ -88,6 +88,9 @@ export function mapMessage(msg, state = null) {
   // here too would double-emit when a slash command (e.g. /compact) runs a turn internally.
   if (method === 'turn/completed') return [];
   if (method === 'error') {
+    // Codex emits transient transport errors while it is retrying the same turn. They are
+    // diagnostic progress, not a failed assistant response, and must never enter user history.
+    if (msg.params?.willRetry === true) return [];
     const err = msg.params?.error;
     const text = (err && (err.message || err.reason)) || (typeof err === 'string' ? err : 'Agent error');
     return [{

@@ -1,12 +1,12 @@
 export type ActivityItem = { id: string; kind: string; title: string; summary: string; status: string; source: string; updatedAt: string; href: string };
-export type Overview = { machine: { state: string; uptimeSeconds: number; mobileAddress: string; mobileAccess: string }; counts: { work: number; mail: number; pages: number; connectedChannels: number }; recent: ActivityItem[] };
+export type Overview = { machine: { state: string; uptimeSeconds: number; mobileAddress: string; mobileAccess: string }; counts: { work: number; runningWork: number; mail: number; pages: number; connectedChannels: number }; recent: ActivityItem[] };
 export type ConversationAttachment = { name: string; mimeType: string; sizeBytes: number; previewUrl?: string };
 export type Message = { id: string; role: string; content: string; createdAt?: string; metadata?: { attachments?: ConversationAttachment[]; clientMessageId?: string; optimistic?: boolean } };
 export type PlanStep = { step: string; status: "completed" | "in_progress" | "pending" };
 export type CurrentPlan = { sessionId: string; title: string; href: string; completed: number; steps: PlanStep[]; updatedAt?: string };
 export type LinkedTask = { id: string; title: string; summary: string; status: string; href: string };
 export type ConversationPagination = { hasEarlier: boolean; earlierCursor: string };
-export type Session = { id: string; role: string; channel?: string; title: string; taskDescription?: string; summary?: string; status: string; updatedAt?: string; createdAt?: string; messages?: Message[]; currentPlan?: CurrentPlan | null; linkedTask?: LinkedTask | null; pagination?: ConversationPagination };
+export type Session = { id: string; role: string; channel?: string; title: string; taskDescription?: string; summary?: string; status: string; updatedAt?: string; createdAt?: string; metadata?: { workerRecoveryAttempt?: number; workerRecoveryStartedAt?: string }; messages?: Message[]; currentPlan?: CurrentPlan | null; linkedTask?: LinkedTask | null; pagination?: ConversationPagination };
 export type PageItem = { id: string; title: string; summary: string; visibility: "public" | "private"; headerTheme: "light" | "dark"; updatedAt: string; url: string; shareUrl: string; thumbnailUrl: string };
 export type RuntimeData = { version: string; state: string; uptimeSeconds: number; shellStopsService: boolean };
 export type AutomationData = { rules: { id: string; name: string; description: string; eventType: string; enabled: boolean; version: number; updatedAt: string; recentRuns: { id: string; status: string; matched: boolean; reason: string; createdAt: string }[] }[]; counts: { total: number; enabled: number; recentRuns: number } };

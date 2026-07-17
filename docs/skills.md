@@ -24,4 +24,14 @@ These are customer capabilities and belong only to the Node Harness. The private
 
 The catalog records exact upstream revisions, licenses, risks, security boundaries, related skills, and reproducible cases. The installed release seeds the complete `skills/` tree into the customer's mutable Workspace.
 
+## Skill ownership and evolution principles
+
+- Extend the existing owning Skill when a new workflow serves the same user intent, product boundary, security model, and installation lifecycle. Put substantial subordinate instructions in a directly linked `references/` file so the main `SKILL.md` stays concise.
+- Create a new top-level Skill only when the capability has an independently useful trigger, distinct domain ownership or security boundary, and enough reusable procedure to justify occupying the universal catalog. Do not create a Skill merely to name one command or one narrow branch of an existing product workflow.
+- Do not add a product CLI command only to wrap a stable external tool. A Skill may govern tools such as `gh` directly when the tool's own authenticated identity and confirmation surface are the intended contract. Add `personal-agent` or `pa-cli` commands only when Node owns a stable product capability, schema, permission check, audit contract, and compatibility promise.
+- Keep portable Skill source only under top-level `skills/`. `.agents`, `.codex`, `.claude`, `.cursor`, and `CLAUDE.md` are generated compatibility bridges; never copy or edit Skill source through those paths. Customer-created drafts and mutable outputs belong under the user-owned `workspace/`, not inside a Skill directory.
+- Preserve least privilege and public/private boundaries. Any Skill that performs an external write must declare it in `registry/skills.json`, follow the R0-R3 confirmation contract, minimize outbound data, treat remote content as untrusted, and verify the result without exposing credentials.
+- Update the owning Skill metadata, direct references, registered cases, and catalog entry together. If the change adds or alters a Node-owned CLI or product capability, also update command and capability registries, behavior baselines, schemas, implementation, semantic tests, packaging, and acceptance evidence.
+- Scan the complete public diff before delivery. Private Cloud behavior, operator configuration, secrets, customer content, local paths, and parent-workspace assumptions must never enter the public Node release.
+
 Owner-specific `blog-publishing` is excluded. `release-ops`, `open-agent-bridge`, and the old `guizang-social-card` copy are replaced by `personal-agent-operations`, `personal-agent`, and the pinned latest `guizang-social-card-skill`. `travel-planner` and `amap-jsapi` remain excluded because their upstream repositories declare no redistribution license. Run `node scripts/skill-tree.mjs catalog` to inspect the installed set.

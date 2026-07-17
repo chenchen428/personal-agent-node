@@ -1,9 +1,10 @@
 "use client";
 
 import Link from "next/link";
+import { AlertCircle, Bot, ChevronRight, Inbox } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { elapsedSeconds, fetchJson, firstCharacter, formatDateTime, formatDetailedElapsed, formatTaskDuration, isRunning, latestPlan, relativeTaskTime, relativeTime, richText, statusLabel, useClock, useRememberedQuery, useSourcePage } from "./data";
-import { BackIcon, InlineError, LoadSentinel, MobileListShell, PhoneStatus, SearchEmpty, SearchStatus } from "./shell";
+import { BackIcon, InlineError, LoadSentinel, MobileListShell, SearchStatus } from "./shell";
 import type { FilterOption, Message, MobileTaskResult, PlanStep, Session } from "./types";
 
 export function MobileWorkers({ sessionId = "", conversations = false }: { sessionId?: string; conversations?: boolean }) {
@@ -11,7 +12,7 @@ export function MobileWorkers({ sessionId = "", conversations = false }: { sessi
   const [query, setQuery] = useRememberedQuery("workers");
   const [filter, setFilter] = useState("all");
   const [sessions, setSessions] = useState<Session[]>([]);
-  const [taskCounts, setTaskCounts] = useState({ all: 0, running: 0, completed: 0 });
+  const [taskCounts, setTaskCounts] = useState({ all: 0, running: 0, completed: 0, interrupted: 0 });
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -46,6 +47,12 @@ export function MobileWorkers({ sessionId = "", conversations = false }: { sessi
     const timer = window.setInterval(() => void load(), 2500);
     return () => window.clearInterval(timer);
   }, [load, session]);
+  const hasRunningTask = !sessionId && !conversations && sessions.some((item) => isRunning(item.status));
+  useEffect(() => {
+    if (!hasRunningTask) return;
+    const timer = window.setInterval(() => void load(), 2500);
+    return () => window.clearInterval(timer);
+  }, [hasRunningTask, load]);
 
   if (sessionId) return <TaskDetail session={session} loading={loading} error={error} returnHref={from === "activity" ? "/app/mobile" : "/app/mobile/workers"} returnLabel={from === "activity" ? "最近动态" : "任务"} />;
   if (conversations) return <TaskDetail session={sessions[0] || null} loading={loading} error={error} returnHref="/app/mobile" returnLabel="最近动态" />;
@@ -54,13 +61,15 @@ export function MobileWorkers({ sessionId = "", conversations = false }: { sessi
     { value: "all", label: "全部", count: taskCounts.all },
     { value: "running", label: "进行中", count: taskCounts.running },
     { value: "completed", label: "已完成", count: taskCounts.completed },
+    { value: "interrupted", label: "已中断", count: taskCounts.interrupted },
   ];
-  return <MobileListShell section="workers" title="任务" note={filter === "all" ? `${taskCounts.running} 项任务进行中` : `${sessions.length} 项${filter === "running" ? "进行中" : "已完成"}`} query={query} setQuery={setQuery} searchLabel="搜索任务" searchPlaceholder="搜索任务" filter={{ label: "筛选任务状态", description: "选择要查看的任务状态", value: filter, setValue: setFilter, options }}>
-    <div className="mobile-list-start task-list-page">
+  const selectedFilter = options.find((option) => option.value === filter) || options[0];
+  return <MobileListShell section="workers" title="任务" note={filter === "all" ? `${taskCounts.running} 项任务进行中` : `${selectedFilter.count} 项${selectedFilter.label}`} query={query} setQuery={setQuery} searchLabel="搜索任务" searchPlaceholder="搜索任务…" filter={{ label: "筛选任务状态", description: "选择要查看的任务状态", value: filter, setValue: setFilter, options }}>
+    <div className="mobile-task-list">
       {error ? <InlineError message={error} /> : null}
       {query && sessions.length ? <SearchStatus query={query} count={sessions.length} /> : null}
-      {!loading && !sessions.length ? <SearchEmpty title={query ? "没有找到相关任务" : "还没有任务"} hint={query ? "试试任务名称或来源" : "PA 开始工作后会显示在这里"} /> : null}
-      <div className="task-stream">{sessions.map((item) => <TaskRow session={item} key={item.id} />)}</div>
+      {!loading && !sessions.length ? <TaskEmpty query={query} /> : null}
+      <div className="mobile-task-items">{sessions.map((item) => <TaskRow session={item} key={item.id} />)}</div>
       {loading ? <LoadSentinel loading canLoad={false} exhausted={false} onLoad={() => undefined} /> : null}
     </div>
   </MobileListShell>;
@@ -69,10 +78,16 @@ export function MobileWorkers({ sessionId = "", conversations = false }: { sessi
 function TaskRow({ session }: { session: Session }) {
   const running = isRunning(session.status);
   const seconds = elapsedSeconds(session, running);
-  return <Link className={`task-row${running ? " running" : ""}`} href={`/app/mobile/workers/${encodeURIComponent(session.id)}`}>
-    <div className="task-row-copy"><strong>{session.title || "未命名任务"}</strong><small><span className="task-row-origin"><b>{statusLabel(session.status)}</b><time dateTime={session.updatedAt} title={formatDateTime(session.updatedAt)}>{relativeTime(session.updatedAt)}</time><span>· {session.channel === "wechat" ? "微信" : "PA"}</span></span><em>{formatTaskDuration(seconds, running)}</em></small></div>
-    <i className="task-row-chevron">›</i>
+  const status = taskStatusLabel(session.status);
+  return <Link href={`/app/mobile/workers/${encodeURIComponent(session.id)}`}>
+    <span className="mobile-task-icon"><Bot aria-hidden="true" /></span>
+    <span className="mobile-task-copy"><span><strong>{session.title || "未命名任务"}</strong><i className={`mobile-task-badge status-${taskStatusTone(session.status)}`}>{status}</i></span><p>{session.summary || session.taskDescription || "PA 正在整理这项任务的最新进展"}</p><small>{taskContext(session)} · {formatTaskDuration(seconds, running)}</small></span>
+    <span className="mobile-task-trailing"><time dateTime={session.updatedAt} title={formatDateTime(session.updatedAt)}>{relativeTime(session.updatedAt)}</time><ChevronRight aria-hidden="true" /></span>
   </Link>;
+}
+
+function TaskEmpty({ query }: { query: string }) {
+  return <div className="mobile-task-empty"><Bot aria-hidden="true" /><strong>{query ? "没有找到任务" : "还没有任务"}</strong><span>{query ? "调整搜索词或状态后再试。" : "PA 开始工作后会显示在这里。"}</span></div>;
 }
 
 function TaskDetail({ session, loading, error, returnHref, returnLabel }: { session: Session | null; loading: boolean; error: string; returnHref: string; returnLabel: string }) {
@@ -104,30 +119,43 @@ function TaskDetail({ session, loading, error, returnHref, returnLabel }: { sess
   const plan = session ? latestPlan(session) : [];
   const messages = (session?.messages || []).filter((message) => ["user", "assistant", "agent", "error"].includes(message.role) && message.content?.trim());
   return <div className="mobile-current"><div className="mobile-stage"><div className="phone content-detail-phone task-conversation-phone">
-    <PhoneStatus />
     <main className="content-detail-screen">
-      <div className="task-conversation-bar"><Link href={returnHref} aria-label={`返回${returnLabel}`}><BackIcon /></Link><strong>{session?.title || "任务详情"}</strong><span>{session ? statusLabel(session.status) : ""}</span></div>
+      <div className="task-conversation-bar"><Link href={returnHref} aria-label={`返回${returnLabel}`}><BackIcon /></Link><strong>{session?.title || "任务详情"}</strong><span>{session ? taskStatusLabel(session.status) : ""}</span></div>
       <div className="content-detail-scroll" ref={scrollRef} onWheel={() => { lastUserScroll.current = Date.now(); }} onTouchMove={() => { lastUserScroll.current = Date.now(); }} onPointerDown={() => { lastUserScroll.current = Date.now(); }}>
-        {error ? <InlineError message={error} /> : null}
-        {session ? <section className="task-live-view">
-          <div className="task-dialogue" aria-live="polite">{messages.map((message) => <TaskMessage message={message} userName={session.senderName || "你"} key={message.id} />)}{plan.length ? <TaskPlan steps={plan} updatedAt={session.updatedAt} /> : null}</div>
+        {error ? <TaskUnavailable error /> : session && (messages.length || plan.length) ? <section className="mobile-task-conversation">
+          <div className="mobile-task-thread" aria-live="polite">{messages.map((message, index) => <div key={message.id}><TaskMessage message={message} userName={session.senderName || "你"} />{index === 1 && plan.length ? <TaskPlan steps={plan} /> : null}</div>)}{plan.length && messages.length < 2 ? <TaskPlan steps={plan} /> : null}
           {newUpdate ? <button className="task-new-update" type="button" onClick={() => scrollLatest()}>有新进展 <span aria-hidden="true">↓</span></button> : null}
-          {isRunning(session.status) ? <div className="task-live-waiting"><i aria-hidden="true" /><span>进行中 · 已运行 <b>{formatDetailedElapsed(Math.max(0, Math.floor((now - new Date(session.createdAt || session.updatedAt || now).getTime()) / 1000)))}</b></span></div> : null}
-        </section> : loading ? <LoadSentinel loading canLoad={false} exhausted={false} onLoad={() => undefined} /> : <SearchEmpty title="任务不存在" hint="这条任务可能已经归档" />}
+          <div className="mobile-task-runtime"><i aria-hidden="true" /><span>{taskRuntimeLabel(session, now)}</span></div></div>
+        </section> : loading ? <TaskLoading /> : <TaskUnavailable />}
       </div>
     </main>
   </div></div></div>;
 }
 
+function taskStatusLabel(status: string) { return status === "idle" ? "已完成" : statusLabel(status); }
+
+function taskStatusTone(status: string) { return isRunning(status) ? "running" : ["failed", "error", "interrupted"].includes(status) ? "interrupted" : "completed"; }
+function taskContext(session: Session) { return session.channel === "wechat" ? "来自微信主会话" : session.channel === "mail" ? "来自邮箱" : "来自 PA"; }
+function taskRuntimeLabel(session: Session, now: number) {
+  const running = isRunning(session.status);
+  const seconds = running ? Math.max(0, Math.floor((now - new Date(session.createdAt || session.updatedAt || now).getTime()) / 1000)) : elapsedSeconds(session, false);
+  if (running && session.metadata?.workerRecoveryAttempt) return `重启后已继续处理 · ${formatDetailedElapsed(seconds)}`;
+  return formatTaskDuration(seconds, running);
+}
+
 function TaskMessage({ message, userName }: { message: Message; userName: string }) {
   const user = message.role === "user";
-  const content = <div className="task-message-content"><div className="task-message-body">{richText(message.content)}</div><time className="task-message-time" dateTime={message.createdAt} title={formatDateTime(message.createdAt)}>{relativeTaskTime(message.createdAt)}</time></div>;
-  return <article className={`task-dialogue-message ${user ? "user" : "agent"}`}>
-    {user ? <>{content}<span className="task-avatar task-avatar-user" aria-label={userName}>{firstCharacter(userName)}</span></> : <><span className="task-avatar task-avatar-agent" aria-label="PA">PA</span>{content}</>}
+  const content = <div><div className="mobile-task-message-body">{richText(message.content)}</div><time dateTime={message.createdAt} title={formatDateTime(message.createdAt)}>{relativeTaskTime(message.createdAt)}</time></div>;
+  return <article className={`mobile-task-message ${user ? "user" : "agent"}`}>
+    {user ? <><span className="mobile-task-avatar user" aria-label={userName}>{firstCharacter(userName)}</span>{content}</> : <><span className="mobile-task-avatar agent" aria-label="PA">PA</span>{content}</>}
   </article>;
 }
 
-function TaskPlan({ steps, updatedAt }: { steps: PlanStep[]; updatedAt?: string }) {
+function TaskPlan({ steps }: { steps: PlanStep[] }) {
   const completed = steps.filter((step) => step.status === "completed").length;
-  return <section className="task-plan" aria-label="本轮计划"><header><strong>本轮计划</strong><span>{completed} / {steps.length}</span></header><ol>{steps.map((step, index) => <li data-plan-status={step.status} key={`${index}-${step.step}`}><i aria-hidden="true">{step.status === "completed" ? "✓" : ""}</i><span>{step.step}</span></li>)}</ol><time className="task-plan-time" dateTime={updatedAt} title={formatDateTime(updatedAt)}>{relativeTaskTime(updatedAt)}</time></section>;
+  return <section className="mobile-task-plan" aria-label="本轮计划"><header><strong>本轮计划</strong><span>{completed} / {steps.length}</span></header><ol>{steps.map((step, index) => <li data-status={step.status} key={`${index}-${step.step}`}><i aria-hidden="true">{step.status === "completed" ? "✓" : ""}</i><span>{step.step}</span></li>)}</ol></section>;
 }
+
+function TaskLoading() { return <div className="mobile-task-state loading" role="status" aria-label="正在加载任务详情"><div className="mobile-task-skeleton avatar" /><div className="mobile-task-skeleton copy"><i /><i /><i /></div><div className="mobile-task-skeleton plan"><i /><i /><i /></div><span>正在读取任务进展…</span></div>; }
+
+function TaskUnavailable({ error = false }: { error?: boolean }) { const Icon = error ? AlertCircle : Inbox; return <div className={`mobile-task-state ${error ? "error" : "empty"}`} role="status"><Icon aria-hidden="true" /><strong>{error ? "暂时无法读取任务" : "还没有可展示的进展"}</strong><p>{error ? "连接恢复后重新打开本页即可继续查看。" : "任务产生可见回复后，会按时间顺序显示在这里。"}</p></div>; }

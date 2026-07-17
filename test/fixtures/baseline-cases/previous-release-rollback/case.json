@@ -7,6 +7,7 @@
   "when": "Rollback and inactive-release pruning are executed",
   "acceptance": [
     "Rollback atomically swaps current and previous",
-    "Inactive release pruning preserves the rollback boundary"
+    "Inactive release pruning preserves the rollback boundary",
+    "Failed or explicitly requested client updates use the retained previous release without downloading another artifact and persist the post-restart result"
   ]
 }

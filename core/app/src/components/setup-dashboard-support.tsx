@@ -29,15 +29,3 @@ export function SetupStatusIcon({ state }: { state: SetupState }) {
   if (state === "blocked") return <Circle className="size-3.5 text-[var(--error)]" />;
   return <Circle className="size-3.5 text-[var(--warning)]" />;
 }
-
-export function cloudFailureMessage(code = "") {
-  const messages: Record<string, string> = {
-    CLOUD_AUTH_DENIED: "页面验证已取消，请重新验证并确认这台电脑。",
-    CLOUD_AUTH_EXPIRED: "页面验证已过期，请重新发起验证。",
-    CLOUD_AUTH_FAILED: "Cloud 登录状态未通过，请确认 personal-agent.cn 已登录后重试。",
-    CLOUD_NETWORK_UNREACHABLE: "无法连接 personal-agent.cn，请检查 DNS 或本机网络后重试。",
-    CLOUD_REQUEST_FAILED: "Cloud 授权接口暂时未完成请求，请确认 Cloud 已发布最新版本后重试。",
-    DEPENDENCY_UNAVAILABLE: "Cloud 授权服务暂时不可用，请稍后重新验证。",
-  };
-  return messages[code] || `页面验证未完成（${code || "请重试"}）。`;
-}

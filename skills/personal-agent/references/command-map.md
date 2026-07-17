@@ -12,7 +12,7 @@ Each command leaf has exactly one implementation status:
 
 `--all` changes help visibility only. It cannot enable a command. Unknown command leaves also fail closed with `CAPABILITY_UNAVAILABLE`.
 
-The current implemented surface is `help`, `status`, `doctor`, `capabilities list|inspect`, `skill list|inspect|verify`, `activity list|search|show|create|upsert|update|hide|restore`, `connection status`, `cloud connect|login|resources|status`, `backup status`, `mail status`, and `app list|inspect|verify|set-default|clear-default`. The current preview surface is `mail plan`, `extension list|inspect`, and `operation list|show|approve`. Read the Registry or `help --all --json` for the planned roadmap; do not treat roadmap entries as installed capabilities.
+The current implemented surface is `help`, `status`, `doctor`, `capabilities list|inspect`, `skill list|inspect|verify`, `activity list|search|show|create|upsert|update|hide|restore`, `connection status`, `cloud connect|login|resources|status`, `backup status`, `mail status`, `app list|inspect|verify|set-default|clear-default`, and `update check|status|plan|apply|rollback`. The current preview surface is `mail plan`, `extension list|inspect`, and `operation list|show|approve`. Read the Registry or `help --all --json` for the planned roadmap; do not treat roadmap entries as installed capabilities.
 
 Activity commands require the ephemeral capability issued only to the current verified main-Agent turn. `activity list|search|show` are R0 and `create|upsert|update|hide|restore` are reversible R1 writes. The capability expires at turn end, cannot be delegated to workers, and must never appear in output or persisted content. See [activity.md](activity.md).
 
@@ -24,4 +24,6 @@ Run `personal-agent cloud connect --help --json` for the machine-readable usage,
 
 `personal-agent cloud login --json [--cloud-url <https-url>] [--no-open]` performs the separate browser resource authorization. Its progress output contains only the user code and same-origin verification URLs; the private device code and returned 24-hour resource token never appear in output. The token is stored only under local mode-600 secrets. `personal-agent cloud resources --json` refreshes and reports only the public domain, Agent mail identity and managed-service readiness. The command accepts no GitHub user ID or password.
 
-Use `result.commands` from the appropriate help view for executable commands. `result.commandGroups.planned` is roadmap metadata only. Never fall back to an internal HTTP endpoint, database, `private-site`, or `open-abg` when the public CLI reports `CAPABILITY_UNAVAILABLE`.
+Use `result.commands` from the appropriate help view for executable commands. `result.commandGroups.planned` is roadmap metadata only. Never fall back to an internal HTTP endpoint, database, `private-site`, or a removed CLI alias when the public CLI reports `CAPABILITY_UNAVAILABLE`.
+
+Update discovery, status, and planning are R0. Applying or restoring executable code is R3 and requires the exact approved operation ID and digest. See [updates.md](updates.md); a non-interactive Agent may execute an already approved plan but may never create its own approval.

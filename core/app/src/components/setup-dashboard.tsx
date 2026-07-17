@@ -10,11 +10,10 @@ import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { WechatConnectPanel } from "@/components/wechat-connect-panel";
-import { SetupStatusIcon, SetupTodoItem, cloudFailureMessage } from "@/components/setup-dashboard-support";
-import { buildSetupTaskModel, validateLocalPasswordInput, type SetupCheck, type SetupState } from "@/lib/setup-tasks";
+import { SetupStatusIcon, SetupTodoItem } from "@/components/setup-dashboard-support";
+import { buildSetupTaskModel, managedCloudActionMessage, validateLocalPasswordInput, type ManagedCloudAction, type SetupCheck, type SetupState } from "@/lib/setup-tasks";
 import { CheckCircle2, Circle, ExternalLink, Mail, MessageCircle, RefreshCw, ShieldCheck, Wrench } from "lucide-react";
 
-type ManagedCloudAction = { state: "idle" | "starting" | "running" | "succeeded" | "failed"; phase: "idle" | "enrollment" | "resources" | "complete"; code?: string };
 type SetupSnapshot = { generatedAt?: string; readiness: Record<string, SetupState>; checks: SetupCheck[]; actions?: { managedCloud?: ManagedCloudAction } };
 
 const CODEX_GUIDE = "https://developers.openai.com/codex/cli/";
@@ -116,10 +115,7 @@ export function SetupDashboard({ prototype = false }: { prototype?: boolean }) {
     if (["connectivity.choose-mode", "connectivity.managed-authorize", "connectivity.repair"].includes(requestedAction)) {
       const cloudAction = snapshot?.actions?.managedCloud;
       const cloudPending = ["starting", "running"].includes(cloudAction?.state || "idle");
-      const cloudMessage = cloudAction?.state === "failed" ? cloudFailureMessage(cloudAction.code)
-        : cloudAction?.phase === "resources" ? "本机接入已确认，正在验证公网域名和 Agent 邮箱。"
-          : cloudPending ? "已打开 personal-agent.cn，请在已登录的页面确认这台电脑。"
-            : cloudAction?.state === "succeeded" ? "页面验证已完成，正在刷新资源状态。" : "";
+      const cloudMessage = managedCloudActionMessage(cloudAction);
       return <div className="grid justify-items-start gap-2">
         <Button size="sm" type="button" disabled={actionId === "connectivity.managed-authorize" || cloudPending} onClick={() => void runAction("connectivity.managed-authorize")}>{cloudPending ? "等待页面确认" : "验证公网与邮箱"}</Button>
         {cloudMessage || actionMessage["connectivity.managed-authorize"] ? <small className="text-xs leading-relaxed text-[var(--muted)]" role="status">{cloudMessage || actionMessage["connectivity.managed-authorize"]}</small> : null}
@@ -151,9 +147,12 @@ export function SetupDashboard({ prototype = false }: { prototype?: boolean }) {
     const agentTask = tasks.requiredTasks.find((task) => task.check.group === "agent");
     const managedReady = checks.find((check) => check.id === "connectivity.enrollment")?.state === "ready";
     const mailReady = checks.find((check) => check.id === "mail.local-ingest")?.state === "ready";
+    const cloudAction = snapshot?.actions?.managedCloud;
+    const cloudPending = ["starting", "running"].includes(cloudAction?.state || "idle");
+    const cloudMessage = managedCloudActionMessage(cloudAction) || actionMessage["connectivity.managed-authorize"];
     return <>
       <header className="pa-heading">
-        <div><span className="pa-eyebrow">初始化向导</span><h1>把 PA 准备好</h1><p>先完成本机安全、智能体可工作和微信连接。邮件与公网域名作为可选能力单独设置。</p></div>
+        <div><span className="pa-eyebrow">初始化向导</span><h1>把 PA 准备好</h1><p>先完成本机安全、智能体可工作和微信连接。公网域名与邮件作为可选能力单独设置。</p></div>
         <span className="pa-status setup-progress">{loading ? "正在检查" : error ? "检查失败" : `${completed} / 3 已完成`}</span>
       </header>
       {error ? <div className="pa-boundary-demo"><strong>暂时无法读取本机状态。</strong> {error}<button className="pa-button" type="button" onClick={() => void refresh()}>重新检测</button></div> : null}
@@ -176,14 +175,15 @@ export function SetupDashboard({ prototype = false }: { prototype?: boolean }) {
           </article>
         </section>
         <aside className="setup-aside">
+          <article className="setup-option">
+            <span className="pa-eyebrow">可选 · 公网域名</span><h2>在手机查看结果</h2><p>完成公网域名验证后，可从手机安全访问这台电脑上的 PA。</p>
+            {managedReady ? <Link className="pa-button" href="/app/channels">查看公网域名</Link> : <button className="pa-button" type="button" disabled={actionId === "connectivity.managed-authorize" || cloudPending} onClick={() => void runAction("connectivity.managed-authorize")}>{actionId === "connectivity.managed-authorize" ? "正在打开" : cloudPending ? "等待页面确认" : cloudAction?.state === "failed" ? "重新验证公网域名" : "验证公网域名"}</button>}
+            {cloudMessage ? <span className="setup-option-note" role="status">{cloudMessage}</span> : null}
+          </article>
           <article className="setup-option dark">
             <span className="pa-eyebrow">可选 · 邮件</span><h2>验证后分配 PA 邮箱</h2><p>公网域名验证通过后，系统会分配专属 PA 邮箱。</p>
             <code>{mailReady ? "PA 邮箱已分配" : managedReady ? "正在确认邮箱分配状态" : "先完成公网域名验证"}</code>
             {mailReady ? <Link className="pa-button inverse" href="/app/mail">查看邮件</Link> : <span className="setup-option-note">验证完成后自动分配，无需单独接入</span>}
-          </article>
-          <article className="setup-option">
-            <span className="pa-eyebrow">可选 · 公网域名</span><h2>在手机查看结果</h2><p>完成公网域名验证后，可从手机安全访问这台电脑上的 PA。</p>
-            {managedReady ? <Link className="pa-button" href="/app/channels">查看公网域名</Link> : <button className="pa-button" type="button" disabled={actionId === "connectivity.managed-authorize"} onClick={() => void runAction("connectivity.managed-authorize")}>{actionId === "connectivity.managed-authorize" ? "正在打开" : "验证公网域名"}</button>}
           </article>
         </aside>
       </div>

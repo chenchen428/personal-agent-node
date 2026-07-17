@@ -3,43 +3,31 @@ import os from "node:os";
 import path from "node:path";
 import { workspaceRoot } from "./config.ts";
 
-const bridgeCommandNames = ["open-abg", "oab", "open-agent-bridge"];
-const mailIngestCommandName = "open-abg-mail-ingest";
+const bridgeCommandNames = ["pa-cli"];
+const obsoleteBridgeCommandNames = ["open-abg", "oab", "open-agent-bridge"];
 
 export function prepareBridgeCliShims(config, options = {}) {
   const platform = options.platform || process.platform;
   const env = options.env || process.env;
   const installRoot = canonicalDirectory(options.installRoot || env.PRIVATE_SITE_INSTALL_ROOT || path.join(env.PERSONAL_AGENT_HOME || path.join(os.homedir(), ".personal-agent"), "core"));
-  const currentEntrypoint = path.join(installRoot, "current", "core", "agent", "bin", "oab.mjs");
-  const developmentEntrypoint = path.join(workspaceRoot, "core", "agent", "bin", "oab.mjs");
+  const currentEntrypoint = path.join(installRoot, "current", "core", "agent", "bin", "pa-cli.mjs");
+  const developmentEntrypoint = path.join(workspaceRoot, "core", "agent", "bin", "pa-cli.mjs");
   const entrypoint = fs.existsSync(currentEntrypoint) ? currentEntrypoint : developmentEntrypoint;
-  if (!fs.existsSync(entrypoint)) throw new Error("The bundled open-abg entrypoint is missing");
-  const currentMailEntrypoint = path.join(installRoot, "current", "core", "agent", "bin", "oab-mail-ingest.mjs");
-  const developmentMailEntrypoint = path.join(workspaceRoot, "core", "agent", "bin", "oab-mail-ingest.mjs");
-  const mailEntrypoint = fs.existsSync(currentMailEntrypoint) ? currentMailEntrypoint : developmentMailEntrypoint;
-  if (!fs.existsSync(mailEntrypoint)) throw new Error("The bundled open-abg-mail-ingest entrypoint is missing");
+  if (!fs.existsSync(entrypoint)) throw new Error("The bundled pa-cli entrypoint is missing");
   const binDir = path.resolve(options.binDir || defaultUserBin({ platform, env, homeDir: options.homeDir }));
   const nodeRuntime = resolveShimNodeRuntime({ platform, installRoot, configured: options.nodeRuntime });
   fs.mkdirSync(binDir, { recursive: true, mode: 0o700 });
+  for (const name of obsoleteBridgeCommandNames) {
+    fs.rmSync(path.join(binDir, platform === "win32" ? `${name}.cmd` : name), { force: true, recursive: false });
+  }
+  fs.rmSync(path.join(binDir, platform === "win32" ? "open-abg-mail-ingest.cmd" : "open-abg-mail-ingest"), { force: true, recursive: false });
   const commandPaths = [];
   for (const name of bridgeCommandNames) {
     const commandPath = path.join(binDir, platform === "win32" ? `${name}.cmd` : name);
-    replaceShim(commandPath, renderShim({ platform, nodeRuntime, entrypoint, envPath: config.envPath }), platform);
+    replaceShim(commandPath, renderShim({ platform, nodeRuntime, entrypoint, envPath: config.envPath, environment: shimEnvironment(config) }), platform);
     commandPaths.push(commandPath);
   }
-  const mailCommandPath = path.join(binDir, platform === "win32" ? `${mailIngestCommandName}.cmd` : mailIngestCommandName);
-  replaceShim(mailCommandPath, renderShim({
-    platform,
-    nodeRuntime,
-    entrypoint: mailEntrypoint,
-    envPath: config.envPath,
-    environment: {
-      PRIVATE_SITE_DATA_ROOT: config.dataRoot,
-      OPEN_AGENT_BRIDGE_MAIL_DATA_DIR: config.mailDir || path.join(config.dataRoot, "mail"),
-      OPEN_AGENT_BRIDGE_API_BASE: `http://127.0.0.1:${config.ports?.bridge || 8788}`,
-    },
-  }), platform);
-  return bridgeCliStatus(config, { platform, env, installRoot, binDir, commandPaths, entrypoint, mailCommandPath, mailEntrypoint });
+  return bridgeCliStatus(config, { platform, env, installRoot, binDir, commandPaths, entrypoint });
 }
 
 function replaceShim(commandPath, content, platform) {
@@ -60,40 +48,26 @@ export function bridgeCliStatus(config, options = {}) {
   const installRoot = canonicalDirectory(options.installRoot || env.PRIVATE_SITE_INSTALL_ROOT || path.join(env.PERSONAL_AGENT_HOME || path.join(os.homedir(), ".personal-agent"), "core"));
   const binDir = path.resolve(options.binDir || defaultUserBin({ platform, env, homeDir: options.homeDir }));
   const nodeRuntime = resolveShimNodeRuntime({ platform, installRoot, configured: options.nodeRuntime });
-  const entrypoint = options.entrypoint || path.join(installRoot, "current", "core", "agent", "bin", "oab.mjs");
+  const entrypoint = options.entrypoint || path.join(installRoot, "current", "core", "agent", "bin", "pa-cli.mjs");
   const commandPaths = options.commandPaths || bridgeCommandNames.map((name) => path.join(binDir, platform === "win32" ? `${name}.cmd` : name));
-  const mailEntrypoint = options.mailEntrypoint || path.join(installRoot, "current", "core", "agent", "bin", "oab-mail-ingest.mjs");
-  const mailCommandPath = options.mailCommandPath || path.join(binDir, platform === "win32" ? `${mailIngestCommandName}.cmd` : mailIngestCommandName);
   const expectedBridgeShims = commandPaths.map((commandPath) => ({
     commandPath,
-    content: renderShim({ platform, nodeRuntime, entrypoint, envPath: config.envPath }),
+    content: renderShim({ platform, nodeRuntime, entrypoint, envPath: config.envPath, environment: shimEnvironment(config) }),
   }));
-  const expectedMailShim = renderShim({
-    platform,
-    nodeRuntime,
-    entrypoint: mailEntrypoint,
-    envPath: config.envPath,
-    environment: {
-      PRIVATE_SITE_DATA_ROOT: config.dataRoot,
-      OPEN_AGENT_BRIDGE_MAIL_DATA_DIR: config.mailDir || path.join(config.dataRoot, "mail"),
-      OPEN_AGENT_BRIDGE_API_BASE: `http://127.0.0.1:${config.ports?.bridge || 8788}`,
-    },
-  });
   const bridgeShimsMatch = expectedBridgeShims.every(({ commandPath, content }) => shimMatches(commandPath, content));
-  const mailShimMatches = shimMatches(mailCommandPath, expectedMailShim);
-  const bridgeFollowsCurrent = samePath(entrypoint, path.join(installRoot, "current", "core", "agent", "bin", "oab.mjs"), platform) && bridgeShimsMatch;
-  const mailFollowsCurrent = samePath(mailEntrypoint, path.join(installRoot, "current", "core", "agent", "bin", "oab-mail-ingest.mjs"), platform) && mailShimMatches;
+  const bridgeFollowsCurrent = samePath(entrypoint, path.join(installRoot, "current", "core", "agent", "bin", "pa-cli.mjs"), platform) && bridgeShimsMatch;
   const pathReady = pathEntries(env.PATH || env.Path || "").some((entry) => samePath(entry, binDir, platform));
   return {
-    ready: fs.existsSync(entrypoint) && fs.existsSync(mailEntrypoint) && bridgeShimsMatch && mailShimMatches,
+    ready: fs.existsSync(entrypoint) && bridgeShimsMatch,
     followsCurrent: bridgeFollowsCurrent,
     pathReady,
     binDir,
     commandPath: commandPaths[0],
     mailIngest: {
-      ready: fs.existsSync(mailEntrypoint) && mailShimMatches,
-      followsCurrent: mailFollowsCurrent,
-      commandPath: mailCommandPath,
+      ready: fs.existsSync(entrypoint) && bridgeShimsMatch,
+      followsCurrent: bridgeFollowsCurrent,
+      commandPath: commandPaths[0],
+      command: "pa-cli mail ingest",
     },
   };
 }
@@ -118,6 +92,14 @@ export function renderShim({ platform = process.platform, nodeRuntime = process.
   }
   const assignments = Object.entries(values).map(([key, value]) => `${key}=${shellValue(value)}`).join(" ");
   return `#!/bin/sh\n${assignments} exec ${shellValue(nodeRuntime)} ${shellValue(entrypoint)} "$@"\n`;
+}
+
+function shimEnvironment(config) {
+  return {
+    PRIVATE_SITE_DATA_ROOT: config.dataRoot,
+    OPEN_AGENT_BRIDGE_MAIL_DATA_DIR: config.mailDir || path.join(config.dataRoot, "mail"),
+    OPEN_AGENT_BRIDGE_API_BASE: `http://127.0.0.1:${config.ports?.bridge || 8788}`,
+  };
 }
 
 function resolveShimNodeRuntime({ platform, installRoot, configured }) {

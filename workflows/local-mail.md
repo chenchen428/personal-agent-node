@@ -1,6 +1,6 @@
 # Local Mail Ingress
 
-Personal Agent does not bundle an SMTP or IMAP server. A user-managed local MTA receives and validates mail, then pipes one complete RFC 5322 message to the installed `open-abg-mail-ingest` command. The command follows the active immutable Node release, archives the EML under `PRIVATE_SITE_DATA_ROOT/mail`, and submits a token-authenticated event to the loopback Agent service.
+Personal Agent does not bundle an SMTP or IMAP server. A user-managed local MTA receives and validates mail, then pipes one complete RFC 5322 message to `pa-cli mail ingest`. The command follows the active immutable Node release, archives the EML under `PRIVATE_SITE_DATA_ROOT/mail`, and submits a token-authenticated event to the loopback Agent service.
 
 The mailbox service belongs to the user's own Node. The user may keep it LAN-only or expose SMTP/IMAP with a separately reviewed protocol-aware tunnel or relay. Managed Personal Agent Cloud and HTTP path routing do not receive mail bodies, attachments, mailbox credentials, queues or DKIM private keys.
 

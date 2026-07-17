@@ -34,6 +34,11 @@
     "activity update",
     "activity hide",
     "activity restore",
+    "update check",
+    "update status",
+    "update plan",
+    "update apply",
+    "update rollback",
     "operation list",
     "operation show",
     "operation approve"

@@ -7,7 +7,9 @@ export function buildDesktopConversationView(session, {
   resolveSession = () => null,
 } = {}) {
   const messages = (session?.messages || []).filter((message) =>
-    VISIBLE_ROLES.has(message.role) && String(message.content || "").trim());
+    VISIBLE_ROLES.has(message.role)
+    && !(message.role === "error" && message.metadata?.willRetry === true)
+    && String(message.content || "").trim());
   const safeLimit = Math.max(1, Math.min(100, Number(limit) || 40));
   let end = messages.length;
   if (before) {

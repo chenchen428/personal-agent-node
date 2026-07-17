@@ -38,7 +38,7 @@ test("Node distribution verification targets the unified Next.js application con
   const verifier = fs.readFileSync(fileURLToPath(new URL("../../../scripts/verify-private-site-node-dist.mjs", import.meta.url)), "utf8");
   assert.match(verifier, /health\.architecture === "core-workspace"/);
   assert.match(verifier, /\/api\/system\/setup/);
-  assert.match(verifier, /page\.includes\("初始化向导"\)/);
-  assert.match(verifier, /page\.includes\("把 PA 准备好"\)/);
+  assert.match(verifier, /page\.includes\("首次设置"\)/);
+  assert.match(verifier, /page\.includes\("完成 Personal Agent 初始化"\)/);
   assert.doesNotMatch(verifier, /server\.includes\("data-status"\)/);
 });

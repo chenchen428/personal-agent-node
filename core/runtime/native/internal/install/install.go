@@ -726,7 +726,7 @@ func removePointer(pointer string) error {
 
 func envFor(opts Options) []string {
 	homeRoot := filepath.Dir(opts.InstallRoot)
-	return append(os.Environ(), "PERSONAL_AGENT_HOME="+homeRoot, "PRIVATE_SITE_INSTALL_ROOT="+opts.InstallRoot, "PRIVATE_SITE_DATA_ROOT="+opts.DataRoot, "PRIVATE_SITE_CLI_BIN="+filepath.Join(opts.InstallRoot, "bin"))
+	return append(os.Environ(), "PERSONAL_AGENT_HOME="+homeRoot, "PRIVATE_SITE_INSTALL_ROOT="+opts.InstallRoot, "PRIVATE_SITE_DATA_ROOT="+opts.DataRoot)
 }
 
 func privateSiteEntrypoint(releaseRoot string) string {

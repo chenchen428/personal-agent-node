@@ -10,6 +10,8 @@
     "One previous release remains available",
     "Fresh installation opens the local Setup Center directly in the Tauri desktop shell without desktop login and presents WeChat as a required guided connection without requiring a development Agent",
     "The desktop shell uses the system WebView, exposes no native page API, starts the local runtime when opened, stops it when closed, and remains bound to current/previous rollback",
+    "The local Console and main Agent share one digest-bound update plan, verified platform artifact, native desktop handoff, and persisted restart result",
+    "Applying executable updates requires fresh authenticated local approval and the Agent cannot approve its own operation",
     "Tunneled access requires the local access password and password reset invalidates existing remote sessions",
     "Browser and CLI recovery remain available"
   ]

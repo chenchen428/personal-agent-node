@@ -1,10 +1,56 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { CalendarClock, Clock3, PackageCheck } from "lucide-react";
+import { Badge, DetailHeader, KeyValueGrid } from "../desktop-v72/primitives";
+import { CollectionDetail } from "../desktop-v72/collection-detail";
 import type { AutomationData } from "./types";
-import { Empty, Heading, relativeTime, statusLabel, useJson } from "./shared";
+import { relativeTime, statusLabel, useJson } from "./shared";
 
 export function AutomationsPage() {
-  const { value, loading } = useJson<AutomationData>("/api/node/v1/client/automations"); const [selectedId, setSelectedId] = useState(""); const selected = value?.rules.find((item) => item.id === selectedId) || value?.rules[0];
-  return <main><Heading eyebrow="自动化" title="自动化" copy={selected ? `下一次运行由 PA 按触发条件决定 · ${selected.name}` : "查看由 PA 管理的触发规则和最近执行结果。"} action={<div className="automation-engine-state"><span>引擎</span><strong>{loading ? "读取中" : "正常"}</strong><span>自动化</span><strong>{value?.counts.total || 0}</strong><span>最近运行</span><strong>{value?.counts.recentRuns || 0}</strong></div>} /><div className="automation-layout"><aside className="automation-list"><header><strong>自动化</strong><span>PA 管理</span></header>{value?.rules.map((item) => <button className={`automation-item${selected?.id === item.id ? " selected" : ""}`} onClick={() => setSelectedId(item.id)} key={item.id}><span className="automation-symbol">{item.name.slice(0, 1)}</span><span><strong>{item.name}</strong><small>{item.eventType}</small></span><i className={item.enabled ? "" : "paused"}>{item.enabled ? "启用" : "暂停"}</i></button>)}</aside><article className="automation-detail">{selected ? <><header><div><span className="pa-eyebrow">只读自动化</span><h2>{selected.name}</h2><p>{selected.description}</p></div><span className="pa-status">{selected.enabled ? "启用" : "暂停"}</span></header><section className="automation-definition"><div><span>触发方式</span><strong>{selected.eventType}</strong><small>由 PA 管理</small></div><div><span>规则版本</span><strong>v{selected.version}</strong><small>{relativeTime(selected.updatedAt)}更新</small></div></section><section className="automation-runs"><header><strong>最近运行</strong><span>只读记录</span></header>{selected.recentRuns.map((run) => <div className="automation-run" key={run.id}><time>{relativeTime(run.createdAt)}</time><span>{run.reason || statusLabel(run.status)}</span><b>{run.matched ? "已匹配" : "未触发"}</b></div>)}</section></> : <Empty text="还没有自动化规则" />}</article></div></main>;
+  const { value, loading } = useJson<AutomationData>("/api/node/v1/client/automations");
+  const [selectedId, setSelectedId] = useState("");
+  const [query, setQuery] = useState("");
+  const rules = value?.rules || [];
+  const filtered = useMemo(() => {
+    const normalized = query.trim().toLocaleLowerCase("zh-CN");
+    return rules.filter((item) => !normalized || `${item.name} ${item.description} ${item.eventType}`.toLocaleLowerCase("zh-CN").includes(normalized));
+  }, [query, rules]);
+  const selected = rules.find((item) => item.id === selectedId) || filtered[0] || rules[0];
+
+  useEffect(() => {
+    if (!selectedId && rules[0]) setSelectedId(rules[0].id);
+  }, [rules, selectedId]);
+
+  return <CollectionDetail
+    title="自动化"
+    items={filtered.map((item) => ({
+      id: item.id,
+      title: item.name,
+      summary: `${item.eventType} · ${item.description}`,
+      time: item.enabled ? "运行中" : "已暂停",
+      tone: item.enabled ? "success" : "warning",
+      leading: <span className="row-icon"><CalendarClock /></span>,
+    }))}
+    selectedId={selected?.id || ""}
+    onSelect={setSelectedId}
+    listLabel={loading ? "正在读取" : `Agent 托管 · ${filtered.length} 项`}
+    search={{ value: query, placeholder: "搜索自动化…", onChange: setQuery }}
+    detail={selected ? <AutomationDetail rule={selected} /> : <div className="empty-state">还没有自动化定义</div>}
+  />;
+}
+
+function AutomationDetail({ rule }: { rule: AutomationData["rules"][number] }) {
+  const run = rule.recentRuns[0];
+  return <div className="detail-wrap automation-detail-next">
+    <DetailHeader title={rule.name} meta={rule.description} trailing={<Badge tone={rule.enabled ? "success" : "warning"}>{rule.enabled ? "运行中" : "已暂停"}</Badge>} />
+    <section className="detail-section"><h2>执行规则</h2><KeyValueGrid items={[
+      { label: "触发方式", value: rule.eventType },
+      { label: "规则版本", value: `v${rule.version}` },
+      { label: "最近更新", value: relativeTime(rule.updatedAt) },
+      { label: "管理方式", value: "主 Agent 托管" },
+    ]} /></section>
+    <section className="detail-section"><h2>最近运行</h2>{run ? <div className="automation-run-next"><span className="row-icon"><PackageCheck /></span><div><strong>{statusLabel(run.status)}</strong><small>{relativeTime(run.createdAt)} · {run.matched ? "已触发" : "未满足条件"}</small><p>{run.reason || (run.matched ? "已完成本次处理并交付结果。" : "本次检查未满足触发条件。")}</p></div></div> : <p className="automation-empty-run">还没有运行记录</p>}</section>
+    <div className="notice"><Clock3 />自动化由主 Agent 创建和维护，桌面端只读展示。</div>
+  </div>;
 }

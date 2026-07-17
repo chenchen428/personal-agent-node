@@ -87,7 +87,7 @@ export function MailDashboard() {
       <summary><div><span className="toolbar-kicker">CONNECT A MAIL SOURCE</span><strong>接入自己的邮件来源</strong></div><Badge variant={status?.ingress.ready ? "ready" : "warning"}>{status?.ingress.ready ? "入口已准备" : "需要配置"}</Badge><ChevronDown className="size-4" /></summary>
       <div className="mail-guide-steps">
         <section><span>01</span><div><strong>先验证本机归档</strong><p>从 Apple Mail、Outlook 或其他邮箱导出一封 `.eml`，导入后确认正文和附件可读取。这一步不验证发件人身份。</p><input ref={input} type="file" accept=".eml,message/rfc822" onChange={importFile} /><Button variant="outline" type="button" onClick={() => input.current?.click()} disabled={importing}><FileUp className="size-4" />{importing ? "导入中" : "导入 EML"}</Button></div></section>
-        <section><span>02</span><div><strong>连接真实收件入口</strong><p>当前稳定方式是由你管理的 Postfix、邮件网关或转发器接收邮件，并把完整 RFC 5322 邮件交给本机命令。</p><code>{`open-abg-mail-ingest --recipient ${primaryRecipient} --sender <发件人>`}</code></div></section>
+        <section><span>02</span><div><strong>连接真实收件入口</strong><p>当前稳定方式是由你管理的 Postfix、邮件网关或转发器接收邮件，并把完整 RFC 5322 邮件交给本机命令。</p><code>{`pa-cli mail ingest --recipient ${primaryRecipient} --sender <发件人>`}</code></div></section>
         <section><span>03</span><div><strong>限制收件人与网络</strong><p>只允许明确的收件地址，先从回环或私有网络投递开始。SMTP/IMAP 不是 HTTPS，公网接入需要独立的邮件 Relay，Node 不会自动开放 25 端口。</p><span className="mail-recipient">建议地址 · {status?.suggestedRecipients?.join(" · ") || primaryRecipient}</span></div></section>
       </div>
     </details>

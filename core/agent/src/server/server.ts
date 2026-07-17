@@ -46,7 +46,7 @@ const logger = {
   log: (message: string) => console.log(message),
   error: (message: string) => console.error(message),
 };
-const store = new BridgeStore({ dataDir: config.dataDir, consoleBaseUrl: config.consoleBaseUrl });
+const store = new BridgeStore({ dataDir: config.dataDir, consoleBaseUrl: config.consoleBaseUrl, externalAccess: config.externalAccess });
 const managedFileCatalog = new ManagedFileCatalog({ dataDir: config.dataDir, databasePath: store.databasePath });
 const managedStorage = new LocalManagedProvider({ rootDir: path.join(config.dataDir, "managed-objects"), publicBaseUrl: config.pagesBaseUrl });
 const managedFiles = new ManagedFileService({
@@ -177,6 +177,12 @@ server.listen(config.port, config.host, () => {
   console.log(`console: ${config.consoleBaseUrl}`);
   console.log(`pages: ${config.pagesBaseUrl}`);
   console.log(`data: ${config.dataDir}`);
+  void orchestrator.recoverInterruptedWorkers().then((result) => {
+    if (!result.discovered) return;
+    console.log(`worker recovery: ${result.recovered}/${result.discovered} resumed, ${result.completed} completed, ${result.failed} failed`);
+  }).catch((error) => {
+    console.error(`worker recovery failed: ${error instanceof Error ? error.message : String(error)}`);
+  });
 });
 
 for (const signal of ["SIGINT", "SIGTERM"]) {
@@ -608,8 +614,17 @@ async function handleRequest(request: http.IncomingMessage, response: http.Serve
     sendChannelJson(response, 200, await xiaohongshuLogin.start({ recipientId: body.recipientId || body.recipient_id }));
     return;
   }
+  if (url.pathname === "/api/channels/xiaohongshu/login/start" && request.method === "POST") {
+    sendChannelJson(response, 200, await xiaohongshu.startLogin());
+    return;
+  }
   if (url.pathname === "/api/channels/xiaohongshu/login/status" && request.method === "GET") {
     sendChannelJson(response, 200, await xiaohongshu.pollLogin(url.searchParams.get("session")));
+    return;
+  }
+  if (url.pathname === "/api/channels/xiaohongshu/login/code" && request.method === "POST") {
+    const body = await readJsonBody(request);
+    sendChannelJson(response, 200, await xiaohongshu.submitVerificationCode(body.session, body.code));
     return;
   }
   if (url.pathname === "/api/channels/xiaohongshu/logout" && request.method === "POST") {
@@ -1406,23 +1421,25 @@ async function buildClientOverview() {
   const mailCount = store.countAutomationEvents({ sourceId: "src_mail_agent" });
   const dataObjects = agentData.listObjects();
   const recent = await buildClientActivity(new URL("http://local/api/node/v1/client/activity?limit=5"));
+  const externalAccess = config.externalAccess();
   return {
     machine: {
       id: config.instanceId,
       state: "running",
       uptimeSeconds: Math.floor(process.uptime()),
-      mobileAddress: config.consoleBaseUrl,
-      mobileAccess: "available",
+      mobileAddress: externalAccess.ready ? `${externalAccess.origin}/app` : "",
+      mobileAccess: externalAccess.ready ? "available" : "unavailable",
     },
     counts: {
       conversations: sessions.filter((session) => session.role !== "worker").length,
       work: sessions.filter((session) => session.role === "worker").length,
+      runningWork: sessions.filter((session) => session.role === "worker" && isClientSessionRunning(session.status)).length,
       mail: mailCount,
       pages: pages.length,
       dataObjects: dataObjects.length,
       automations: rules.length,
       activeAutomations: rules.filter((rule) => rule.enabled).length,
-      connectedChannels: [wechatStatus, managedStatus].filter((status: any) => status?.connected === true || status?.state === "connected").length,
+      connectedChannels: [wechatStatus, managedStatus, externalAccess].filter((status: any) => status?.connected === true || status?.state === "connected" || status?.ready === true).length,
     },
     recent: recent.items,
   };
@@ -1558,14 +1575,19 @@ function buildMobileTasks(url: URL) {
       .some((value) => String(value || "").normalize("NFKC").toLocaleLowerCase("zh-CN").includes(query)))
     .sort((left, right) => String(right.updatedAt || right.createdAt || "").localeCompare(String(left.updatedAt || left.createdAt || "")));
   const running = sessions.filter((session) => isClientSessionRunning(session.status));
-  const filtered = sessions.filter((session) => status === "all" || (status === "running") === isClientSessionRunning(session.status));
+  const interrupted = sessions.filter((session) => isClientSessionInterrupted(session.status));
+  const completed = sessions.filter((session) => !isClientSessionRunning(session.status) && !isClientSessionInterrupted(session.status));
+  const filtered = sessions.filter((session) => status === "all"
+    || (status === "running" && isClientSessionRunning(session.status))
+    || (status === "interrupted" && isClientSessionInterrupted(session.status))
+    || (status === "completed" && !isClientSessionRunning(session.status) && !isClientSessionInterrupted(session.status)));
   const items = filtered.slice(offset, offset + limit);
   return {
     items,
     total: filtered.length,
     query: rawQuery,
     status,
-    counts: { all: sessions.length, running: running.length, completed: sessions.length - running.length },
+    counts: { all: sessions.length, running: running.length, completed: completed.length, interrupted: interrupted.length },
     nextCursor: offset + items.length < filtered.length ? encodeClientCursor(offset + items.length) : "",
   };
 }
@@ -1631,7 +1653,11 @@ function clientSessionStatus(status: string) {
 }
 
 function isClientSessionRunning(status: string) {
-  return ["start", "running", "idle", "paused"].includes(String(status || ""));
+  return ["start", "running"].includes(String(status || ""));
+}
+
+function isClientSessionInterrupted(status: string) {
+  return ["paused", "failed", "error", "interrupted"].includes(String(status || ""));
 }
 
 function clientDataOperationTitle(kind: string) {

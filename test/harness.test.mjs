@@ -163,13 +163,22 @@ test('GitHub release chain is version-gated and publishes verifiable artifacts',
     'REQUIRE_NATIVE_SIGNING',
     'RELEASE-SECURITY.json',
     'write-release-security-metadata.mjs',
+    'assemble-public-release-assets.mjs',
+    'dist/public-release/*',
+    'name: release-evidence',
+    'retention-days: 90',
     'cosign sign-blob',
     'actions/attest-build-provenance@v2',
   ]) assert.match(workflow, new RegExp(requirement.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
+  assert.doesNotMatch(workflow, /files:\s*dist\/release\/\*/);
+  assert.doesNotMatch(workflow, /dist\/public-release\/.*\.sigstore\.json/);
   const runtimeFetcher = fs.readFileSync(path.join(root, 'scripts/fetch-node-runtime.mjs'), 'utf8');
   assert.match(runtimeFetcher, /extractZipMember\(archive, descriptor\.member\)/);
   const platformBuilder = fs.readFileSync(path.join(root, 'scripts/build-platform-installer.mjs'), 'utf8');
   assert.match(platformBuilder, /path\.basename\(payload\).*cwd: temporary/);
+  assert.match(platformBuilder, /packageUpdater/);
+  assert.match(platformBuilder, /-updater/);
+  assert.doesNotMatch(platformBuilder, /`\$\{asset\}\.sha256`|`\$\{updater\}\.sha256`/);
   assert.match(workflow, /matrix\.platform == 'darwin' && !contains\(github\.ref_name, '-'\).*personal-agent-notary\.p8/);
   const metadataRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'personal-agent-release-security-'));
   try {
@@ -186,6 +195,47 @@ test('GitHub release chain is version-gated and publishes verifiable artifacts',
     assert.deepEqual(security.verification, { sha256: true, sigstore: true, githubBuildProvenance: true, sbom: true });
   } finally {
     fs.rmSync(metadataRoot, { recursive: true, force: true });
+  }
+});
+
+test('public GitHub release keeps customer downloads concise and CI evidence separate', () => {
+  const pkg = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'));
+  const tag = `v${pkg.version}`;
+  const temporary = fs.mkdtempSync(path.join(os.tmpdir(), 'personal-agent-public-release-'));
+  const input = path.join(temporary, 'input');
+  const source = path.join(temporary, 'source');
+  const output = path.join(temporary, 'public');
+  const evidence = path.join(temporary, 'evidence');
+  fs.mkdirSync(input);
+  fs.mkdirSync(source);
+  const assets = [
+    `personal-agent-node-${tag}-windows-x64-installer.exe`,
+    `personal-agent-node-${tag}-windows-x64-updater.exe`,
+    `personal-agent-node-${tag}-macos-x64.pkg`,
+    `personal-agent-node-${tag}-macos-x64-updater`,
+    `personal-agent-node-${tag}-macos-arm64.pkg`,
+    `personal-agent-node-${tag}-macos-arm64-updater`,
+    `personal-agent-node-${tag}-linux-x64.tar.zst`,
+    `personal-agent-node-${tag}-linux-x64-updater`,
+    `personal-agent-node-${tag}-linux-arm64.tar.zst`,
+    `personal-agent-node-${tag}-linux-arm64-updater`,
+  ];
+  try {
+    for (const name of assets) fs.writeFileSync(path.join(input, name), name);
+    fs.writeFileSync(path.join(source, `personal-agent-node-${tag}-universal-release-manifest.json`), '{}\n');
+    fs.writeFileSync(path.join(source, `personal-agent-node-${tag}-universal-SBOM.cdx.json`), '{}\n');
+    const assembled = run(process.execPath, ['scripts/assemble-public-release-assets.mjs', '--tag', tag, '--input', input, '--output', output, '--evidence', evidence, '--source-metadata', source]);
+    assert.equal(assembled.status, 0, `${assembled.stdout}\n${assembled.stderr}`);
+    assert.deepEqual(fs.readdirSync(output).sort(), [...assets, 'SHA256SUMS'].sort());
+    assert.deepEqual(fs.readdirSync(evidence).sort(), [
+      'PUBLIC-ASSETS.json',
+      `personal-agent-node-${tag}-universal-SBOM.cdx.json`,
+      `personal-agent-node-${tag}-universal-release-manifest.json`,
+    ].sort());
+    assert.equal(fs.readFileSync(path.join(output, 'SHA256SUMS'), 'utf8').trim().split('\n').length, assets.length);
+    assert.equal(fs.readdirSync(output).some((name) => name.endsWith('.sha256') || name.endsWith('.sigstore.json') || name.includes('SBOM') || name.includes('manifest')), false);
+  } finally {
+    fs.rmSync(temporary, { recursive: true, force: true });
   }
 });
 

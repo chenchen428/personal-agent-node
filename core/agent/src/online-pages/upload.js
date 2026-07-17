@@ -100,12 +100,14 @@ export async function uploadStaticAsset(input) {
     });
   }
 
+  const url = toPublicUrl(externalPagesBaseUrl(), publicRelativePath);
   return {
     fileName: path.basename(targetPath),
     bytes: buffer.byteLength,
     mimeType: contentType,
     publicPath: `/${normalizedPublicPath}`,
-    url: toPublicUrl(config.pagesBaseUrl, publicRelativePath),
+    url,
+    linkNotice: url ? "" : publicLinkNotice(),
     objectId: managedObject?.id || "",
     tier: "hot",
     localPath: targetPath,
@@ -117,16 +119,20 @@ export async function uploadStaticAsset(input) {
 export async function listUploadedAssets(limit = 50) {
   if (managedStorage.catalog) {
     const objects = managedStorage.catalog.search({ source: "pages", limit });
-    if (objects.length) return objects.map((object) => ({
+    if (objects.length) return objects.map((object) => {
+      const url = toPublicUrl(externalPagesBaseUrl(), object.relativePath);
+      return ({
       objectId: object.id,
       fileName: object.originalName,
       bytes: object.sizeBytes,
       updatedAt: object.uploadedAt,
       publicPath: `/${object.relativePath}`,
-      url: toPublicUrl(config.pagesBaseUrl, object.relativePath),
+      url,
+      linkNotice: url ? "" : publicLinkNotice(),
       tier: object.localCopies.find((copy) => copy.tier !== "shadow")?.tier || "cold",
       localPath: object.localCopies.find((copy) => copy.tier !== "shadow")?.localPath || "",
-    }));
+      });
+    });
   }
   const files = [];
   await walkUploads(config.uploadsDir, files);
@@ -134,14 +140,28 @@ export async function listUploadedAssets(limit = 50) {
   return files.slice(0, limit).map((file) => {
     const uploadRelativePath = path.relative(config.uploadsDir, file.path);
     const publicRelativePath = path.join("uploads", uploadRelativePath);
+    const url = toPublicUrl(externalPagesBaseUrl(), publicRelativePath);
     return {
       fileName: path.basename(file.path),
       bytes: file.size,
       updatedAt: new Date(file.mtimeMs).toISOString(),
       publicPath: `/${publicRelativePath.split(path.sep).join("/")}`,
-      url: toPublicUrl(config.pagesBaseUrl, publicRelativePath),
+      url,
+      linkNotice: url ? "" : publicLinkNotice(),
     };
   });
+}
+
+function externalPagesBaseUrl() {
+  const access = config.externalAccess?.();
+  return access?.ready && access.origin ? `${access.origin}/public` : "";
+}
+
+function publicLinkNotice() {
+  const reason = config.externalAccess?.()?.reason;
+  return reason === "tunnel-offline"
+    ? "远程连接暂时离线，页面链接暂不支持查看。"
+    : "当前未配置远程访问，页面链接暂不支持查看。";
 }
 
 function sanitizeFolder(folder) {

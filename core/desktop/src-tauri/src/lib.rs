@@ -31,10 +31,16 @@ enum NavigationDecision {
 }
 
 pub fn run() {
-    let initial_target = target_from_args(std::env::args()).unwrap_or_else(default_target);
+    let arguments: Vec<String> = std::env::args().collect();
+    let initial_target = target_from_args(&arguments).unwrap_or_else(default_target);
+    let initial_handoff = update_handoff_from_args(&arguments);
 
     let app = tauri::Builder::default()
         .plugin(tauri_plugin_single_instance::init(|app, args, _cwd| {
+            if let Some((job_id, nonce)) = update_handoff_from_args(&args) {
+                let _ = accept_update_handoff(app, &job_id, &nonce);
+                return;
+            }
             let Some(window) = app.get_webview_window(MAIN_WINDOW) else {
                 return;
             };
@@ -56,6 +62,11 @@ pub fn run() {
                     "runtime lifecycle is already initialized",
                 )
             })?;
+
+            if let Some((job_id, nonce)) = initial_handoff.as_ref() {
+                accept_update_handoff(app.handle(), job_id, nonce)?;
+                return Ok(());
+            }
 
             let app_for_navigation = app.handle().clone();
             let navigation = Arc::new(move |url: &Url| {
@@ -118,6 +129,134 @@ fn stop_runtime_and_exit(app: &AppHandle) {
     app.exit(0);
 }
 
+fn update_handoff_from_args<I, S>(args: I) -> Option<(String, String)>
+where
+    I: IntoIterator<Item = S>,
+    S: AsRef<str>,
+{
+    let values: Vec<String> = args
+        .into_iter()
+        .map(|value| value.as_ref().to_owned())
+        .collect();
+    let job_id = values
+        .windows(2)
+        .find(|pair| pair[0] == "--apply-update")
+        .map(|pair| pair[1].clone())?;
+    let nonce = values
+        .windows(2)
+        .find(|pair| pair[0] == "--nonce")
+        .map(|pair| pair[1].clone())?;
+    if !job_id.starts_with("update_")
+        || !job_id[7..]
+            .chars()
+            .all(|value| value.is_ascii_alphanumeric() || value == '-')
+        || nonce.len() < 32
+        || !nonce
+            .chars()
+            .all(|value| value.is_ascii_alphanumeric() || value == '-' || value == '_')
+    {
+        return None;
+    }
+    Some((job_id, nonce))
+}
+
+fn accept_update_handoff(app: &AppHandle, job_id: &str, nonce: &str) -> io::Result<()> {
+    let runtime = RUNTIME.get().ok_or_else(|| {
+        io::Error::new(io::ErrorKind::NotFound, "runtime lifecycle is unavailable")
+    })?;
+    let job_dir = runtime
+        .data_root
+        .join("runtime")
+        .join("updates")
+        .join(job_id);
+    let job_file = job_dir.join("job.json");
+    let mut job: serde_json::Value = serde_json::from_slice(&fs::read(&job_file)?)
+        .map_err(|error| io::Error::new(io::ErrorKind::InvalidData, error))?;
+    if job.get("id").and_then(|value| value.as_str()) != Some(job_id)
+        || job.get("status").and_then(|value| value.as_str()) != Some("handoff")
+        || job.get("handoffNonce").and_then(|value| value.as_str()) != Some(nonce)
+    {
+        return Err(io::Error::new(
+            io::ErrorKind::PermissionDenied,
+            "update handoff is not approved",
+        ));
+    }
+    let kind = job
+        .get("kind")
+        .and_then(|value| value.as_str())
+        .unwrap_or("")
+        .to_owned();
+    let executable = if kind == "apply" {
+        let candidate = PathBuf::from(
+            job.get("artifactPath")
+                .and_then(|value| value.as_str())
+                .ok_or_else(|| {
+                    io::Error::new(io::ErrorKind::InvalidData, "update candidate is missing")
+                })?,
+        );
+        let canonical_candidate = fs::canonicalize(candidate)?;
+        let canonical_job_dir = fs::canonicalize(&job_dir)?;
+        if canonical_candidate.parent() != Some(canonical_job_dir.as_path())
+            || !canonical_candidate.is_file()
+        {
+            return Err(io::Error::new(
+                io::ErrorKind::PermissionDenied,
+                "update candidate is outside the approved job",
+            ));
+        }
+        canonical_candidate
+    } else if kind == "rollback" {
+        runtime.install_root.join("bin").join(if cfg!(windows) {
+            "personal-agent-setup.exe"
+        } else {
+            "personal-agent-setup"
+        })
+    } else {
+        return Err(io::Error::new(
+            io::ErrorKind::InvalidData,
+            "unknown update handoff kind",
+        ));
+    };
+    job["status"] = serde_json::Value::String("activating".into());
+    let temporary = job_file.with_extension(format!("{}.tmp", std::process::id()));
+    fs::write(
+        &temporary,
+        serde_json::to_vec_pretty(&job).map_err(io::Error::other)?,
+    )?;
+    fs::rename(temporary, &job_file)?;
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        fs::set_permissions(&job_file, fs::Permissions::from_mode(0o600))?;
+    }
+    runtime.stop()?;
+    let mut command = Command::new(executable);
+    command
+        .arg(if kind == "apply" {
+            "update"
+        } else {
+            "rollback-update"
+        })
+        .arg("--home")
+        .arg(
+            runtime
+                .install_root
+                .parent()
+                .unwrap_or(&runtime.install_root),
+        )
+        .arg("--job")
+        .arg(&job_file)
+        .arg("--nonce")
+        .arg(nonce)
+        .stdin(Stdio::null())
+        .stdout(Stdio::null())
+        .stderr(Stdio::null());
+    hide_command_window(&mut command);
+    command.spawn()?;
+    app.exit(0);
+    Ok(())
+}
+
 #[derive(Debug)]
 struct RuntimeLifecycle {
     install_root: PathBuf,
@@ -146,12 +285,12 @@ impl RuntimeLifecycle {
                 .map(PathBuf::from)
                 .or_else(|| install_root.parent().map(Path::to_path_buf))
         }
-            .ok_or_else(|| {
-                io::Error::new(
-                    io::ErrorKind::NotFound,
-                    "Personal Agent home is unavailable",
-                )
-            })?;
+        .ok_or_else(|| {
+            io::Error::new(
+                io::ErrorKind::NotFound,
+                "Personal Agent home is unavailable",
+            )
+        })?;
         let data_root = if installed_runtime {
             home_root.join("workspace")
         } else {
@@ -397,6 +536,34 @@ mod tests {
     }
 
     #[test]
+    fn update_handoff_requires_a_scoped_job_and_strong_nonce() {
+        let handoff = update_handoff_from_args([
+            "personal-agent-ui",
+            "--apply-update",
+            "update_1234-abcd",
+            "--nonce",
+            "abcdefghijklmnopqrstuvwxyz0123456789-_",
+        ]);
+        assert_eq!(handoff.unwrap().0, "update_1234-abcd");
+        assert!(update_handoff_from_args([
+            "personal-agent-ui",
+            "--apply-update",
+            "../job",
+            "--nonce",
+            "abcdefghijklmnopqrstuvwxyz0123456789-_",
+        ])
+        .is_none());
+        assert!(update_handoff_from_args([
+            "personal-agent-ui",
+            "--apply-update",
+            "update_1234",
+            "--nonce",
+            "short",
+        ])
+        .is_none());
+    }
+
+    #[test]
     fn navigation_keeps_local_pages_inside_and_external_web_pages_outside() {
         assert_eq!(
             navigation_decision(&"http://127.0.0.1:8843/app/chat".parse().unwrap()),
@@ -430,15 +597,23 @@ mod tests {
 
     #[test]
     fn installed_shell_infers_root_from_current_or_release_layout() {
-        let current = Path::new(r"C:\Personal Agent\core\current\desktop\personal-agent-ui.exe");
+        let (current, release, expected) = if cfg!(windows) {
+            (
+                Path::new(r"C:\Personal Agent\core\current\desktop\personal-agent-ui.exe"),
+                Path::new(r"C:\Personal Agent\core\releases\v6.27\desktop\personal-agent-ui.exe"),
+                PathBuf::from(r"C:\Personal Agent\core"),
+            )
+        } else {
+            (
+                Path::new("/opt/personal-agent/core/current/desktop/personal-agent-ui"),
+                Path::new("/opt/personal-agent/core/releases/v6.27/desktop/personal-agent-ui"),
+                PathBuf::from("/opt/personal-agent/core"),
+            )
+        };
         assert_eq!(
             infer_install_root_from_executable(current),
-            Some(PathBuf::from(r"C:\Personal Agent\core"))
+            Some(expected.clone())
         );
-        let release = Path::new(r"C:\Personal Agent\core\releases\v6.27\desktop\personal-agent-ui.exe");
-        assert_eq!(
-            infer_install_root_from_executable(release),
-            Some(PathBuf::from(r"C:\Personal Agent\core"))
-        );
+        assert_eq!(infer_install_root_from_executable(release), Some(expected));
     }
 }

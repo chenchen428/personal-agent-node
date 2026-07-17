@@ -11,6 +11,7 @@ process.env.OPEN_AGENT_BRIDGE_PAGES_BASE_URL = "https://pages.example.test";
 
 const { config, ensureRuntimeDirs } = await import("../src/config.js");
 config.publicDir = path.join(dataDir, "public");
+config.externalAccess = () => ({ ready: true, reason: "ready", origin: "https://pages.example.test" });
 ensureRuntimeDirs();
 
 const { configureOnlinePagesStorage, uploadStaticAsset, listUploadedAssets } = await import("../src/online-pages/upload.js");
@@ -23,13 +24,25 @@ test("uploads static assets under public uploads", async () => {
     folder: "demo",
   });
   assert.equal(asset.publicPath, "/uploads/demo/hello.html");
-  assert.equal(asset.url, "https://pages.example.test/uploads/demo/hello.html");
+  assert.equal(asset.url, "https://pages.example.test/public/uploads/demo/hello.html");
   assert.equal(fs.existsSync(path.join(config.uploadsDir, "demo", "hello.html")), true);
   assert.equal(config.uploadsDir.startsWith(config.dataDir), true);
 
   const assets = await listUploadedAssets();
   assert.equal(assets.length, 1);
   assert.equal(assets[0].fileName, "hello.html");
+});
+
+test("keeps the public path but omits the page link when remote access is unavailable", async () => {
+  const previous = config.externalAccess;
+  config.externalAccess = () => ({ ready: false, reason: "local-only", origin: "" });
+  try {
+    const asset = await uploadStaticAsset({ fileName: "local.html", content: "local", folder: "demo" });
+    assert.equal(asset.publicPath, "/uploads/demo/local.html");
+    assert.equal(asset.url, "");
+  } finally {
+    config.externalAccess = previous;
+  }
 });
 
 test("records a durable public object and hot local copy", async (t) => {

@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { MessageCircle } from "lucide-react";
 import { useWechatLogin } from "@/components/wechat-login";
 import { downloadWechatQrPng } from "@/components/wechat-qr";
 import { useRemote } from "./data";
@@ -20,13 +21,10 @@ export function MobileWechatStatus() {
   if (channels.loading) return <WechatStatusState label="正在检查微信状态" />;
   if (channels.error) return <WechatStatusState label="暂时无法读取微信状态" action="重新检查" onAction={channels.refresh} />;
 
-  return <section className={`about-section about-wechat${connected ? " is-connected" : " is-offline"}`}>
-    <header><h2>微信</h2><span className="about-wechat-status"><i />{connected ? "已连接" : "已掉线"}</span></header>
-    <div className="about-wechat-summary">
-      <span className="about-wechat-mark">微</span>
-      <div><strong>{connected ? "微信连接正常" : "微信连接已断开"}</strong><p>{connected ? "消息可以正常接收和发送。" : "手机网页仍可使用。重新连接后，可以继续在微信中与 PA 沟通。"}</p></div>
-      {!connected ? <button type="button" onClick={() => { setOpen(true); setSaved(""); void login.startLogin(); }}>重新连接</button> : null}
-    </div>
+  return <section className={`mobile-about-section about-wechat${connected ? " is-connected" : " is-offline"}`}>
+    <header><div><MessageCircle aria-hidden="true" /><h2>微信</h2></div><span className="mobile-about-live">{connected ? "已连接" : "已掉线"}</span></header>
+    <p>{connected ? "消息连接正常，最近检查：刚刚。" : "微信连接已断开，重新连接后可以继续与 PA 沟通。"}</p>
+    {!connected ? <button className="about-wechat-retry" type="button" onClick={() => { setOpen(true); setSaved(""); void login.startLogin(); }}>重新连接</button> : null}
     {!connected && open ? <WechatRecovery login={login} saved={saved} setSaved={setSaved} /> : null}
   </section>;
 }
@@ -57,5 +55,5 @@ function WechatRecovery({ login, saved, setSaved }: {
 }
 
 function WechatStatusState({ label, action, onAction }: { label: string; action?: string; onAction?: () => void }) {
-  return <section className="about-section about-wechat"><header><h2>微信</h2><span>{label}</span></header>{action ? <button className="about-wechat-retry" type="button" onClick={onAction}>{action}</button> : null}</section>;
+  return <section className="mobile-about-section about-wechat"><header><div><MessageCircle aria-hidden="true" /><h2>微信</h2></div><span>{label}</span></header>{action ? <button className="about-wechat-retry" type="button" onClick={onAction}>{action}</button> : null}</section>;
 }

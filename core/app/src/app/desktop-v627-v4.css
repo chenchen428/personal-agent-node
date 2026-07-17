@@ -42,6 +42,9 @@
 
 .desktop-shell .pa-nav {
   min-height: 0;
+  flex: 1 1 auto;
+  align-content: start;
+  grid-auto-rows: min-content;
   gap: 4px;
   overflow-y: auto;
   scrollbar-width: none;
@@ -86,6 +89,8 @@
 }
 
 .desktop-shell .pa-sidebar-note {
+  flex: 0 0 auto;
+  margin-top: 12px;
   border-top-color: #302e2a;
   padding: 18px 10px 0;
   color: #77736c;
@@ -93,6 +98,8 @@
 }
 
 .desktop-shell .pa-sidebar-utility {
+  flex: 0 0 auto;
+  margin-top: 12px;
   border-top: 1px solid #302e2a;
   padding: 12px 0 0;
 }
@@ -117,6 +124,24 @@
 
 .desktop-shell .pa-sidebar-utility a[aria-current="page"] .pa-nav-icon {
   color: var(--pa-coral);
+}
+
+.desktop-shell .pa-update-nav-label {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.desktop-shell .pa-update-nav-label em {
+  padding: 3px 6px;
+  border-radius: 999px;
+  background: #dce8d8;
+  color: #426140;
+  font-size: 9px;
+  font-style: normal;
+  line-height: 1;
 }
 
 .desktop-shell .pa-sidebar-note strong {
@@ -268,6 +293,32 @@
   overscroll-behavior: contain;
   scrollbar-color: #aaa399 #f3f0ea;
   scrollbar-width: thin;
+}
+
+.desktop-shell .data-sheet-page {
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.desktop-shell .data-sheet-page > .pa-heading {
+  flex: 0 0 auto;
+}
+
+.desktop-shell .data-sheet-page > .sheet {
+  min-height: 0;
+  flex: 1 1 auto;
+}
+
+@media (max-width: 680px) {
+  .desktop-shell .data-sheet-page {
+    height: auto;
+  }
+
+  .desktop-shell .data-sheet-page > .sheet {
+    min-height: 650px;
+  }
 }
 
 .desktop-shell .sheet-scroll::-webkit-scrollbar {
@@ -696,6 +747,39 @@
   .desktop-shell .automation-layout { grid-template-columns: 1fr; }
   .desktop-shell .automation-list { border-right: 0; border-bottom: 1px solid var(--pa-line); }
   .desktop-shell .automation-detail { padding: 18px; }
+}
+
+.desktop-shell .update-page { width: min(100%, 1060px); margin: 0 auto; }
+.desktop-shell .client-release-card { display: grid; grid-template-columns: 64px minmax(0, 1fr) auto; gap: 22px; align-items: start; padding: 28px; border: 1px solid var(--pa-line); border-radius: 18px; background: var(--pa-paper); box-shadow: 0 12px 30px rgba(32, 36, 31, .05); }
+.desktop-shell .client-release-card.has-update { border-color: #cbd8c7; }
+.desktop-shell .client-release-mark { display: grid; place-items: center; width: 56px; height: 56px; border-radius: 15px; background: var(--pa-ink); color: var(--pa-canvas); font: 600 20px var(--pa-serif); }
+.desktop-shell :is(.client-release-copy, .update-info-grid, .update-history, .update-confirm) h2 { margin: 9px 0 5px; font: 500 22px/1.2 var(--pa-serif); }
+.desktop-shell :is(.client-release-copy, .update-info-grid, .update-confirm) p { margin: 0; color: var(--pa-muted); line-height: 1.65; }
+.desktop-shell .client-release-copy ul { display: grid; gap: 7px; margin: 17px 0 0; padding-left: 18px; color: #565c53; font-size: 12px; }
+.desktop-shell .client-release-note { margin-top: 17px !important; }
+.desktop-shell .client-release-action { display: flex; flex-direction: column; gap: 8px; align-items: center; padding-top: 12px; }
+.desktop-shell .client-release-action small { color: var(--pa-muted); font-size: 10px; }
+.desktop-shell .update-info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 16px; }
+.desktop-shell .update-info-grid > article,
+.desktop-shell .update-history { padding: 24px; border: 1px solid var(--pa-line); border-radius: 15px; background: rgba(255, 255, 255, .72); }
+.desktop-shell .update-info-grid dl { margin: 20px 0 0; }
+.desktop-shell .update-info-grid dl div { display: flex; justify-content: space-between; padding: 9px 0; border-top: 1px solid var(--pa-line); font-size: 12px; }
+.desktop-shell .update-info-grid dt { color: var(--pa-muted); }
+.desktop-shell .update-info-grid dd { margin: 0; font-weight: 650; }
+.desktop-shell .update-info-grid aside { display: flex; gap: 10px; align-items: center; margin-top: 18px; padding: 12px; border-radius: 10px; background: #ecede7; color: #586056; font-size: 11px; }
+.desktop-shell .update-info-grid aside b { font-size: 18px; }
+.desktop-shell .update-confirm { display: flex; align-items: end; justify-content: space-between; gap: 24px; margin-top: 16px; padding: 24px; border: 1px solid #c8d6c4; border-radius: 15px; background: #edf2e9; }
+.desktop-shell .update-confirm > div:last-child { display: flex; flex: 0 0 auto; gap: 8px; }
+.desktop-shell .update-history { display: grid; grid-template-columns: 1fr auto auto; gap: 18px; align-items: center; margin-top: 16px; }
+.desktop-shell .update-history h2 { margin-bottom: 0; font-size: 18px; }
+.desktop-shell .update-history > span { color: var(--pa-muted); font-size: 11px; }
+.desktop-shell .update-history > button { border: 0; background: transparent; color: #556b51; font: 600 11px inherit; cursor: pointer; }
+.desktop-shell .update-message { margin: 12px 2px 0; color: var(--pa-muted); font-size: 11px; }
+
+@media (max-width: 980px) {
+  .desktop-shell .client-release-card { grid-template-columns: 54px minmax(0, 1fr); }
+  .desktop-shell .client-release-action { grid-column: 2; align-items: flex-start; }
+  .desktop-shell .update-info-grid { grid-template-columns: 1fr; }
 }
 
 @media (max-width: 560px) {

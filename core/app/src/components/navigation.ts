@@ -1,34 +1,43 @@
 import type { ComponentType } from "react";
 import {
-  Activity, AppWindow, Boxes, BriefcaseBusiness, CircleGauge, Clock3,
-  FileText, Info, LayoutGrid, Mail, MessageCircle, Radio, Sparkles, Workflow, Wrench,
+  Activity, AppWindow, Bot, Boxes, Cable, CalendarClock, Database, FileText,
+  Gauge, Info, LayoutDashboard, Mail, MessageCircle, Settings,
 } from "lucide-react";
 
 export type NavigationItem = {
   label: string;
   href: string;
-  symbol: string;
   icon: ComponentType<{ className?: string }>;
 };
 
-export const desktopNavigation: NavigationItem[] = [
-  { label: "总览", href: "/app", symbol: "◈", icon: CircleGauge },
-  { label: "对话", href: "/app/conversations", symbol: "✦", icon: MessageCircle },
-  { label: "任务", href: "/app/workers", symbol: "↻", icon: BriefcaseBusiness },
-  { label: "收到的邮件", href: "/app/mail", symbol: "@", icon: Mail },
-  { label: "发布页", href: "/app/pages", symbol: "▧", icon: LayoutGrid },
-  { label: "数据", href: "/app/data", symbol: "▦", icon: Boxes },
-  { label: "自动化", href: "/app/automations", symbol: "⌁", icon: Workflow },
-  { label: "渠道连接", href: "/app/channels", symbol: "↗", icon: Radio },
-  { label: "技能", href: "/app/skills", symbol: "⌘", icon: Sparkles },
-  { label: "初始化", href: "/app/setup", symbol: "✓", icon: Wrench },
-  { label: "运行设置", href: "/app/runtime", symbol: "◌", icon: Clock3 },
+export type NavigationGroup = { label: string; items: NavigationItem[] };
+
+export const desktopNavigationGroups: NavigationGroup[] = [
+  { label: "核心功能", items: [
+    { label: "总览", href: "/app", icon: LayoutDashboard },
+    { label: "对话", href: "/app/conversations", icon: MessageCircle },
+    { label: "渠道", href: "/app/channels", icon: Cable },
+  ] },
+  { label: "Agent 组件", items: [
+    { label: "任务", href: "/app/workers", icon: Bot },
+    { label: "邮件", href: "/app/mail", icon: Mail },
+    { label: "数据", href: "/app/data", icon: Database },
+    { label: "发布页", href: "/app/pages", icon: FileText },
+    { label: "自动化", href: "/app/automations", icon: CalendarClock },
+  ] },
 ];
 
+export const desktopUtilityNavigation: NavigationItem[] = [
+  { label: "运行设置", href: "/app/runtime", icon: Gauge },
+  { label: "系统设置", href: "/app/settings", icon: Settings },
+];
+
+export const desktopNavigation = desktopNavigationGroups.flatMap((group) => group.items);
+
 export const mobileNavigation: NavigationItem[] = [
-  { label: "最近动态", href: "/app/mobile", symbol: "动", icon: Activity },
-  { label: "发布页", href: "/app/mobile/pages", symbol: "页", icon: FileText },
-  { label: "任务", href: "/app/mobile/workers", symbol: "任", icon: BriefcaseBusiness },
-  { label: "应用", href: "/app/mobile/apps", symbol: "应", icon: AppWindow },
-  { label: "关于", href: "/app/mobile/about", symbol: "关", icon: Info },
+  { label: "最近动态", href: "/app/mobile", icon: Activity },
+  { label: "发布页", href: "/app/mobile/pages", icon: FileText },
+  { label: "任务", href: "/app/mobile/workers", icon: Bot },
+  { label: "应用", href: "/app/mobile/apps", icon: AppWindow },
+  { label: "关于", href: "/app/mobile/about", icon: Info },
 ];

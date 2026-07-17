@@ -5,7 +5,7 @@ import test from "node:test";
 
 const root = path.resolve(import.meta.dirname, "..");
 
-test("Next.js owns the approved V6.32 client and V6.33 desktop conversation", () => {
+test("Next.js owns the approved V6.35 mobile client and V7.3 desktop workspace", () => {
   const shell = read("core/app/src/components/app-shell.tsx");
   const navigation = read("core/app/src/components/navigation.ts");
   const desktopNavigationSource = `${navigation}\n${shell}`;
@@ -13,6 +13,12 @@ test("Next.js owns the approved V6.32 client and V6.33 desktop conversation", ()
     .filter((file) => /\.(?:ts|tsx)$/.test(file))
     .map((file) => read(`core/app/src/components/desktop-v627/${file}`))
     .join("\n");
+  const workersClient = read("core/app/src/components/desktop-v627/workers-page.tsx");
+  const overviewClient = read("core/app/src/components/desktop-v627/overview-page.tsx");
+  const channelsClient = read("core/app/src/components/desktop-v627/channels-page.tsx");
+  const automationsClient = read("core/app/src/components/desktop-v627/automations-page.tsx");
+  const skillsClient = read("core/app/src/components/desktop-v627/skills-page.tsx");
+  const updateClient = read("core/app/src/components/desktop-v627/update-page.tsx");
   const mobileClient = [
     "mobile-current.tsx",
     "mobile-current/activity.tsx",
@@ -36,39 +42,55 @@ test("Next.js owns the approved V6.32 client and V6.33 desktop conversation", ()
   ].map((file) => read(`core/app/src/components/desktop-v627/${file}`)).join("\n");
   const overview = read("core/app/src/app/app/page.tsx");
   const mobile = read("core/app/src/app/app/mobile/page.tsx");
-  const css = read("core/app/src/app/desktop-v627-v4.css");
+  const legacyCss = read("core/app/src/app/desktop-v627-v4.css");
+  const css = read("core/app/src/app/desktop-v72.css");
   const conversationCss = read("core/app/src/app/desktop-v633-conversation.css");
   const mobileCss = read("core/app/src/app/mobile-current.css");
 
-  for (const route of ["/app/conversations", "/app/workers", "/app/mail", "/app/pages", "/app/data", "/app/automations", "/app/channels", "/app/skills", "/app/setup", "/app/runtime", "/app/apps", "/app/settings"]) {
+  for (const route of ["/app/conversations", "/app/workers", "/app/mail", "/app/pages", "/app/data", "/app/automations", "/app/channels", "/app/runtime", "/app/apps", "/app/settings", "/app/update"]) {
     assert.match(desktopNavigationSource, new RegExp(route.replaceAll("/", "\\/")));
   }
   for (const route of ["/app/mobile", "/app/mobile/pages", "/app/mobile/workers", "/app/mobile/apps", "/app/mobile/about"]) {
     assert.match(navigation, new RegExp(route.replaceAll("/", "\\/")));
   }
-  assert.match(shell, /关闭客户端将停止本机服务与手机入口/);
+  assert.match(shell, /关闭客户端会停止当前工作、邮件接收和手机入口/);
   assert.match(shell, /personal-agent-close-requested/);
   assert.match(shell, /__personal-agent\/close/);
   assert.match(shell, /仍有工作正在进行/);
   assert.match(shell, /\["start", "running"\]/);
-  assert.match(shell, /移动端仅提供安全的只读访问/);
   assert.match(shell, /系统设置/);
-  assert.match(shell, /无需登录/);
+  assert.match(shell, /本机工作区/);
   assert.match(shell, /\/api\/system\/apps/);
   assert.match(overview, /sec-ch-ua-mobile/);
   assert.match(overview, /redirect\("\/app\/mobile"\)/);
   assert.match(mobile, /MobileActivity/);
-  assert.match(shell, /pa-app desktop-shell/);
-  assert.match(shell, /pa-sidebar/);
-  assert.match(css, /\.desktop-shell \.pa-sidebar/);
-  assert.match(css, /\.desktop-shell :is\(\.pa-callout, \.setup-option\.dark, \.desktop-app-card\.dark\)\s*\{[\s\S]*color:\s*var\(--pa-canvas\)/);
-  assert.match(css, /:is\(h1, h2, h3, strong, b\)\s*\{[\s\S]*color:\s*inherit/);
+  assert.match(shell, /desktop-v72/);
+  assert.match(shell, /v72-sidebar/);
+  assert.match(shell, /desktopNavigationGroups/);
+  assert.ok(navigation.indexOf('label: "Agent 组件"') < navigation.indexOf('href: "\/app\/workers"'));
+  assert.match(navigation, /label: "核心功能"/);
+  assert.doesNotMatch(navigation, /用户参与|Agent 工作/);
+  assert.match(shell, /PanelLeftClose/);
+  assert.doesNotMatch(shell, /window-dots|phone-status|9:41/);
+  assert.match(css, /\.v72-sidebar\s*\{[\s\S]*width:\s*236px/);
+  assert.match(css, /\.v72-page-scroll\s*\{[\s\S]*overflow:\s*auto/);
+  assert.match(legacyCss, /\.desktop-shell :is\(\.pa-callout, \.setup-option\.dark, \.desktop-app-card\.dark\)\s*\{[\s\S]*color:\s*var\(--pa-canvas\)/);
   assert.match(mobileCss, /\.mobile-current/);
   assert.match(mobileCss, /@media \(max-width: 460px\)/);
   assert.match(mobileCss, /\.filter-sheet/);
   assert.match(mobileCss, /\.mobile-current :where\(button, input, select\) \{ font: inherit; \}/);
   assert.doesNotMatch(mobileCss, /\.mobile-current button, \.mobile-current input, \.mobile-current select \{ font: inherit; \}/);
+  assert.doesNotMatch(mobileClient, /PhoneStatus|phone-status|9:41/);
+  assert.doesNotMatch(mobileCss, /\.phone-status/);
   assert.match(mobileCss, /\.task-plan/);
+  assert.match(mobileClient, /工作区/);
+  assert.match(mobileClient, /我的应用/);
+  assert.match(mobileClient, /系统/);
+  assert.match(mobileClient, /mobile-task-list/);
+  assert.match(mobileClient, /mobile-task-conversation/);
+  assert.match(mobileClient, /mobile-about-machine/);
+  assert.match(mobileCss, /\.mobile-drawer \{[^}]*top: 0;/);
+  assert.match(mobileCss, /\.mobile-about-machine h1 \{[^}]*overflow-wrap: anywhere;/);
 
   for (const endpoint of ["overview", "pages", "automations", "runtime"]) {
     assert.match(desktopComponents, new RegExp(`/api/node/v1/client/${endpoint}`));
@@ -78,15 +100,41 @@ test("Next.js owns the approved V6.32 client and V6.33 desktop conversation", ()
   assert.match(desktopComponents, /\/api\/app\/data\/query/);
   assert.match(desktopComponents, /operator:\s*"contains"/);
   assert.match(desktopComponents, /direction:\s*"asc"/);
-  assert.match(desktopComponents, /sheet-column-menu/);
-  assert.match(desktopComponents, /sheet-formula/);
-  assert.match(desktopComponents, /function Pager/);
-  assert.match(desktopComponents, /selected=\{status\}/);
-  assert.match(desktopComponents, /selected=\{filter\}/);
+  assert.match(desktopComponents, /data-control-panel/);
+  assert.match(desktopComponents, /DataVisibilityPanel/);
+  assert.match(desktopComponents, /data-pager/);
+  assert.match(desktopComponents, /hasRunningWorker/);
+  assert.match(desktopComponents, /window\.setInterval\([\s\S]*2500\)/);
+  assert.match(desktopComponents, /status === "idle" \? "已完成"/);
+  assert.match(desktopComponents, /v72-split-view/);
+  assert.doesNotMatch(workersClient, /v72-task-composer|继续这个任务|\/input/);
+  assert.match(overviewClient, /Personal Agent 已就绪/);
+  assert.match(overviewClient, /Personal Agent 正在准备/);
+  assert.match(overviewClient, /RequiredSetupGuide/);
+  assert.match(desktopComponents, /开始使用前/);
+  assert.match(overviewClient, /counts\.runningWork/);
+  assert.match(overviewClient, /最近动态/);
+  assert.match(overviewClient, /externalAddress/);
+  assert.match(overviewClient, /target="_blank"/);
+  assert.doesNotMatch(overviewClient, /下午好|最近工作/);
+  assert.match(channelsClient, /channelTone/);
+  assert.match(channelsClient, /tone: channelTone/);
+  assert.match(channelsClient, /公网域名访问/);
+  assert.match(channelsClient, /XiaohongshuConnectPanel/);
+  assert.match(read("core/app/src/components/xiaohongshu-connect-panel.tsx"), /\/api\/channels\/xiaohongshu\/login\/start/);
+  assert.doesNotMatch(channelsClient, /Web 控制台|手机访问/);
+  assert.match(conversationClient, /MarkdownContent/);
+  assert.match(workersClient, /MarkdownContent/);
+  assert.match(css, /\.desktop-v72 \.v72-markdown/);
+  assert.match(automationsClient, /CollectionDetail/);
+  assert.match(automationsClient, /search=\{\{ value: query/);
+  assert.match(skillsClient, /skill-filter-bar/);
+  assert.match(skillsClient, /skill-library-layout/);
+  assert.doesNotMatch(updateClient, /rollback-plan|RotateCcw|恢复 \{/);
   assert.match(desktopComponents, /PageDetail/);
   assert.match(desktopComponents, /runtime-page-full/);
   assert.match(desktopComponents, /ConversationPage/);
-  assert.match(desktopComponents, /desktop-chat-composer/);
+  assert.match(desktopComponents, /composer-wrap/);
   assert.match(conversationClient, /\/api\/chat\/desktop\/conversation/);
   assert.match(conversationClient, /\/api\/chat\/desktop\/conversation\/messages/);
   assert.match(conversationClient, /clientMessageId/);
@@ -95,26 +143,37 @@ test("Next.js owns the approved V6.32 client and V6.33 desktop conversation", ()
   assert.match(conversationClient, /window\.setInterval\([\s\S]*1200\)/);
   assert.match(conversationClient, /正在处理，回复会自动显示/);
   assert.match(conversationClient, /before=\$\{encodeURIComponent\(cursor\)\}/);
-  assert.match(conversationClient, /desktop-chat-checkpoint/);
-  assert.match(conversationClient, /desktop-chat-dock/);
+  assert.match(conversationClient, /plan-block/);
+  assert.match(conversationClient, /composer-wrap/);
   assert.match(conversationClient, /添加附件/);
-  assert.match(conversationCss, /max-width:\s*760px/);
-  assert.match(conversationCss, /\.desktop-chat-composer/);
-  assert.match(conversationCss, /\.desktop-chat-processing/);
+  assert.match(css, /\.desktop-v72 \.message-thread/);
+  assert.match(css, /\.desktop-v72 \.composer/);
+  assert.match(css, /\.desktop-v72 \.message-processing/);
   assert.doesNotMatch(conversationClient, /model|reasoning|sandbox|approval/i);
   assert.doesNotMatch(conversationClient, /\/api\/chat\/sessions/);
   assert.doesNotMatch(conversationClient, /createdBy|task:\s*content/);
-  assert.match(desktopComponents, /无需输入旧密码/);
-  assert.match(desktopComponents, /其他设备需要重新登录/);
+  assert.match(desktopComponents, /本机可信/);
+  assert.match(desktopComponents, /其他设备会话已失效/);
   assert.match(desktopComponents, /installation\.local-auth/);
+  assert.match(desktopComponents, /\/api\/system\/update/);
+  assert.match(desktopComponents, /安装后自动重启/);
+  assert.match(desktopComponents, /Agent.*不能替你批准/);
   assert.match(setupDashboard, /可选 · 公网域名/);
   assert.match(setupDashboard, /验证后分配 PA 邮箱/);
   assert.match(setupDashboard, /无需单独接入/);
+  assert.ok(setupDashboard.indexOf("可选 · 公网域名") < setupDashboard.indexOf("可选 · 邮件"));
+  assert.match(setupDashboard, /重新验证公网域名/);
+  assert.match(setupDashboard, /cloudPending/);
+  assert.match(setupDashboard, /role="status"/);
   assert.doesNotMatch(setupDashboard, /启用邮件检测|了解接入|可选 · 手机/);
   assert.doesNotMatch(desktopComponents, /createdBy:\s*["']web["']/);
-  assert.match(css, /\.pa-app\.desktop-shell\s*\{[\s\S]*height:\s*100vh/);
-  assert.match(css, /\.desktop-shell \.pa-sidebar\s*\{[\s\S]*overflow-y:\s*auto/);
-  assert.match(css, /\.desktop-shell \.pa-page\s*\{[\s\S]*overflow-y:\s*auto/);
+  assert.match(css, /\.desktop-v72\s*\{[\s\S]*height:\s*100dvh/);
+  assert.match(css, /\.v72-sidebar-scroll\s*\{[\s\S]*overflow-y:\s*auto/);
+  assert.match(css, /\.v72-page-scroll\s*\{[\s\S]*min-height:\s*0;[\s\S]*flex:\s*1;[\s\S]*overflow:\s*auto/);
+  assert.match(css, /\.desktop-v72 \.data-shell\s*\{[\s\S]*height:\s*100%;[\s\S]*min-height:\s*0/);
+  assert.match(css, /\.desktop-v72 \.table-scroll\s*\{[\s\S]*min-height:\s*0;[\s\S]*overflow:\s*auto/);
+  assert.match(desktopComponents, /className="page flush data-shell"/);
+  assert.match(desktopComponents, /可横向和纵向滚动的数据表/);
   assert.match(shell, /from "@\/components\/navigation"/);
   assert.match(shell, /appActive\(app\)/);
   const appHost = read("core/app/src/components/personal-app-host.tsx");
@@ -126,6 +185,8 @@ test("Next.js owns the approved V6.32 client and V6.33 desktop conversation", ()
   const referenceController = read("workspace/apps/personal-agent.daily-brief/dist/app.js");
   assert.match(appHost, /embedded=1&surface=desktop/);
   assert.match(appHost, /assetRoute/);
+  assert.match(css, /v72-page-scroll:has\(> \.personal-app-host\)/);
+  assert.match(css, /\.personal-app-host iframe \{ width: 100%; height: 100%/);
   assert.match(appCatalog, /desktopRoute/);
   assert.match(appCatalog, /mobileRoute/);
   assert.match(appGuide, /Mobile is the primary Personal App entry/);
@@ -152,6 +213,10 @@ test("Next.js owns the approved V6.32 client and V6.33 desktop conversation", ()
   assert.match(mobileClient, /event\.key === "Escape"/);
   assert.match(mobileClient, /sessionStorage/);
   assert.match(mobileClient, /有新进展/);
+  assert.match(mobileClient, /hasRunningTask/);
+  assert.match(mobileClient, /重启后已继续处理/);
+  assert.match(mobileClient, /session && \(messages\.length \|\| plan\.length\)/);
+  assert.match(mobileClient, /\/api\/chat\/sessions\/\$\{encodeURIComponent\(sessionId\)\}/);
   assert.doesNotMatch(mobileClient.match(/const navItems:[\s\S]*?\];/)?.[0] || "", /conversations/);
   for (const responsibility of ["activity", "pages", "workers", "apps", "personal-app", "about", "wechat-status", "mail", "shell", "data", "types"]) {
     const file = path.join(root, "core/app/src/components/mobile-current", `${responsibility}.${responsibility === "types" ? "ts" : "tsx"}`);
@@ -167,7 +232,7 @@ test("all finalized client routes have independently buildable Next pages", () =
   const pages = [
     "app/page.tsx", "app/conversations/page.tsx", "app/workers/page.tsx", "app/mail/page.tsx",
     "app/pages/page.tsx", "app/pages/[pageId]/page.tsx", "app/data/page.tsx", "app/automations/page.tsx", "app/apps/page.tsx", "app/apps/[appId]/page.tsx",
-    "app/channels/page.tsx", "app/skills/page.tsx", "app/setup/page.tsx", "app/runtime/page.tsx", "app/settings/page.tsx",
+    "app/channels/page.tsx", "app/skills/page.tsx", "app/setup/page.tsx", "app/runtime/page.tsx", "app/settings/page.tsx", "app/update/page.tsx",
     "app/mobile/page.tsx", "app/mobile/pages/page.tsx", "app/mobile/pages/[pageId]/page.tsx",
     "app/mobile/workers/page.tsx", "app/mobile/workers/[sessionId]/page.tsx",
     "app/mobile/conversations/page.tsx", "app/mobile/conversations/[sessionId]/page.tsx",
@@ -179,6 +244,7 @@ test("all finalized client routes have independently buildable Next pages", () =
 
 test("gateway routes the approved client to Next and its read-only data to the local Agent", () => {
   const distribution = JSON.parse(read("registry/site-distribution.json"));
+  const nextBff = read("core/app/src/app/api/[...path]/route.ts");
   const routes = distribution.routing.paths;
   assert.equal(routes.find((route) => route.key === "app").targetKey, "console");
   assert.equal(routes.find((route) => route.key === "app-pages").targetKey, "console");
@@ -192,7 +258,15 @@ test("gateway routes the approved client to Next and its read-only data to the l
   assert.equal(routes.find((route) => route.key === "home").access, "authenticated");
   assert.equal(routes.find((route) => route.key === "app-settings").access, "local-admin");
   assert.equal(routes.find((route) => route.key === "api-system-setup-actions").access, "local-admin");
+  assert.deepEqual(routes.find((route) => route.key === "api-system-update"), { key: "api-system-update", prefix: "/api/system/update", access: "local-admin", kind: "proxy", targetKey: "console", upstreamPath: "/api/update" });
   assert.deepEqual(routes.find((route) => route.key === "public-pages"), { key: "public-pages", prefix: "/public", access: "public", kind: "proxy", targetKey: "agent", upstreamPath: "/pages" });
+  assert.match(nextBff, /path\[0\] === "system"/);
+  assert.match(nextBff, /PERSONAL_AGENT_CONTROL_URL/);
+  assert.match(nextBff, /OPEN_AGENT_BRIDGE_INTERNAL_URL/);
+  assert.match(nextBff, /data: "agent-data"/);
+  assert.match(nextBff, /mail: "mail"/);
+  assert.match(nextBff, /path\[0\] === "chat"/);
+  assert.match(nextBff, /path\[0\] === "publications"/);
 });
 
 test("existing writable desktop workflows and Personal Apps remain available", () => {

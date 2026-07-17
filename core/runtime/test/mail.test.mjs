@@ -13,8 +13,8 @@ test("mail status is redacted, local-only, and bounds archive accounting", () =>
   const installRoot = path.join(root, "install");
   const binDir = path.join(root, "bin");
   const mailDir = path.join(dataRoot, "mail");
-  const entrypoint = path.join(installRoot, "current", "core", "agent", "bin", "oab-mail-ingest.mjs");
-  const shim = path.join(binDir, "open-abg-mail-ingest");
+  const entrypoint = path.join(installRoot, "current", "core", "agent", "bin", "pa-cli.mjs");
+  const shim = path.join(binDir, "pa-cli");
   try {
     fs.mkdirSync(path.dirname(entrypoint), { recursive: true });
     fs.mkdirSync(path.join(mailDir, "archive", "2026-07-14"), { recursive: true });
@@ -32,7 +32,7 @@ test("mail status is redacted, local-only, and bounds archive accounting", () =>
       ports: { bridge: 8788 },
       env: { OPEN_AGENT_BRIDGE_MAIL_INGEST_TOKEN: "configured-but-never-returned" },
     };
-    const canonicalEntrypoint = path.join(fs.realpathSync(installRoot), "current", "core", "agent", "bin", "oab-mail-ingest.mjs");
+    const canonicalEntrypoint = path.join(fs.realpathSync(installRoot), "current", "core", "agent", "bin", "pa-cli.mjs");
     fs.writeFileSync(shim, renderShim({
       platform: "linux",
       entrypoint: canonicalEntrypoint,
@@ -76,7 +76,7 @@ test("mail plan is non-mutating and excludes bundled or managed mail protocols",
   assert.equal(plan.mutates, false);
   assert.equal(plan.previewOnly, true);
   assert.equal(plan.smtpServerBundled, false);
-  assert.equal(plan.delivery.command, "open-abg-mail-ingest");
+  assert.equal(plan.delivery.command, "pa-cli mail ingest");
   assert.deepEqual(plan.suggestedRecipients, ["agent@example.site", "bills@example.site"]);
   assert.equal("acceptedRecipients" in plan, false);
   assert.match(plan.boundaries.join("\n"), /SMTP and IMAP require protocol-aware transport/);

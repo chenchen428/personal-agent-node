@@ -3,6 +3,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import qrcodeTerminal from "qrcode-terminal";
+import { ingestRawEmail, MAX_MAIL_BYTES } from "../src/automation/mail-ingest.js";
 
 const personalAgentHome = path.resolve(process.env.PERSONAL_AGENT_HOME || path.join(os.homedir(), ".personal-agent"));
 const siteDataRoot = path.resolve(process.env.PRIVATE_SITE_DATA_ROOT || path.join(personalAgentHome, "workspace"));
@@ -15,8 +16,25 @@ const apiBase = (process.env.OPEN_AGENT_BRIDGE_API_BASE || `http://127.0.0.1:${p
 const token = process.env.OPEN_AGENT_BRIDGE_API_TOKEN || "";
 
 try {
-  if (command === "memory") {
-    throw new Error("The legacy Memory domain has been removed; the verified main Agent must use personal-agent activity");
+  if (command === "mail" && subcommand === "ingest") {
+    const chunks = [];
+    let totalBytes = 0;
+    for await (const chunk of process.stdin) {
+      const buffer = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
+      totalBytes += buffer.length;
+      if (totalBytes > MAX_MAIL_BYTES) throw new Error(`email exceeds ${MAX_MAIL_BYTES} bytes`);
+      chunks.push(buffer);
+    }
+    const result = await ingestRawEmail(Buffer.concat(chunks), {
+      dataDir: process.env.OPEN_AGENT_BRIDGE_MAIL_DATA_DIR || path.join(siteDataRoot, "mail"),
+      apiBase,
+      apiToken: process.env.OPEN_AGENT_BRIDGE_MAIL_INGEST_TOKEN || "",
+      envelopeRecipient: args.recipient || "",
+      envelopeSender: args.sender || "",
+    });
+    print({ ok: true, eventId: result.event?.id, sha256: result.sha256 });
+  } else if (command === "memory") {
+    throw new Error("The legacy Memory domain has been removed; the verified main Agent must use pa-cli activity");
   } else if (command === "session" && (subcommand === "list" || subcommand === "search")) {
     const query = args.query || args.q || (subcommand === "search" ? args._.slice(2).join(" ") : "");
     if (subcommand === "search" && !query) throw new Error("--query is required");
@@ -29,7 +47,7 @@ try {
       title: args.title,
       parentSessionId: args.parent,
       workspaceRoot: args.workspace,
-      createdBy: "oab-cli",
+      createdBy: "pa-cli",
     });
     print(result.session);
   } else if (command === "session" && (subcommand === "input" || subcommand === "resume")) {
@@ -485,64 +503,65 @@ function channelProvider() {
 
 function help() {
   console.log(`Usage:
-  open-abg session start --task "..." [--parent <session>] [--workspace <path>] [--json]
-  open-abg session list [--query "..."] [--limit <n>] [--cursor <cursor>] [--all] [--json]
-  open-abg session search --query "..." [--all] [--json]
-  open-abg session input --session <id> --text "..." [--notify-wechat]
-  open-abg session resume --session <id> --task "..."
-  open-abg session status --session <id> [--json]
-  open-abg data status [--json]
-  open-abg data schema [--object <table>] [--json]
-  open-abg data sql --statement "<SQL>" [--session <id>] [--run <automation-run>] [--json]
-  open-abg data sql --file <sql-file> [--json]
-  open-abg data query --object <table> [--search <text>] [--field <column> --operator <op> --value <value>] [--group <column> --aggregate <fn> --metric <column>]
-  open-abg data snapshots [--json]
-  open-abg data snapshot [--reason <text>] [--json]
-  open-abg data restore --id <snapshot-id> [--json]
-  open-abg data metadata --object <table> [--field <column>] [--name <label>] [--description <text>] [--sensitivity <level>]
-  open-abg automation sources [--json]
-  open-abg automation source --file <source.json>
-  open-abg automation rules [--json]
-  open-abg automation mail-policies [--limit <n>] [--offset <n>] [--json]
-  open-abg automation mail-policy --sender <email> --policy <neutral|trusted|blocked> --reason <text> [--limit <n>] [--expires <iso>]
-  open-abg automation rule --id <rule-id> [--json]
-  open-abg automation rule --file <rule.json>
-  open-abg automation events [--limit <n>] [--json]
-  open-abg automation event --id <event-id> [--json]
-  open-abg automation event --file <event.json>
-  open-abg automation event-replay --id <event-id> [--rule <rule-id>]
-  open-abg automation runs [--limit <n>] [--json]
-  open-abg automation templates [--json]
-  open-abg automation template --file <template.json>
-  open-abg automation template --source-file <parse.mjs> --name <name> [--id <id>] [--purpose <text>] [--fingerprint <value>]
-  open-abg automation template-run --id <template-id> --input-file <input.json> [--version <n>]
-  open-abg automation template-resolve --fingerprint <value>
-  open-abg automation template-activate --id <template-id> [--version <n>] [--reason <text>]
-  open-abg automation template-rollback --id <template-id> --version <n> [--reason <text>]
-  open-abg automation template-disable --id <template-id> [--reason <text>]
-  open-abg cron list [--json]
-  open-abg cron create --name <name> --cron "0 9 * * *" --prompt "..." [--timezone <iana-zone>] [--workspace <name>] [--recipient <wechat-id>] [--json]
-  open-abg cron update --id <task-id> [--name <name>] [--cron "..."] [--timezone <iana-zone>] [--prompt "..."] [--enabled|--disabled]
-  open-abg cron delete --id <task-id>
-  open-abg cron run --id <task-id> [--json]
-  open-abg channel status xiaohongshu [--json]
-  open-abg channel login xiaohongshu [--execute] [--recipient <wechat-id>] [--json]
-  open-abg channel login-status xiaohongshu --session <login-session> [--json]
-  open-abg wechat status [--json]
-  open-abg wechat login [--json]
-  open-abg wechat send-file --file <path> [--title <name>] [--recipient <wechat-id>]
-  open-abg wechat send-image --file <path> [--caption "..."] [--recipient <wechat-id>]
-  open-abg notify --message "..." [--recipient <wechat-id>]
-  open-abg file link --file <private-file-path> [--expires <seconds>] [--json]
-  open-abg file search [--query <text>] [--source <source>] [--visibility public|private] [--tier hot|cold|all]
-  open-abg file stat --id <object-id> [--json]
-  open-abg file materialize --id <object-id> [--ttl 7d] [--task <task-id>] [--json]
-  open-abg file pin --id <object-id> [--days 30] [--reason <text>] [--json]
-  open-abg file unpin --id <object-id> [--json]
-  open-abg file gc [--dry-run] [--execute] [--json]
-  open-abg file verify-storage [--execute] [--json]
-  open-abg file reconcile --root <allowlisted-dir> --source <source> --visibility public|private [--prefix <path>] [--exclude-manifest <json>] [--execute] [--json]
-  open-abg pages upload --file <path> [--folder <name>] [--private] [--json]`);
+  pa-cli session start --task "..." [--parent <session>] [--workspace <path>] [--json]
+  pa-cli session list [--query "..."] [--limit <n>] [--cursor <cursor>] [--all] [--json]
+  pa-cli session search --query "..." [--all] [--json]
+  pa-cli session input --session <id> --text "..." [--notify-wechat]
+  pa-cli session resume --session <id> --task "..."
+  pa-cli session status --session <id> [--json]
+  pa-cli data status [--json]
+  pa-cli data schema [--object <table>] [--json]
+  pa-cli data sql --statement "<SQL>" [--session <id>] [--run <automation-run>] [--json]
+  pa-cli data sql --file <sql-file> [--json]
+  pa-cli data query --object <table> [--search <text>] [--field <column> --operator <op> --value <value>] [--group <column> --aggregate <fn> --metric <column>]
+  pa-cli data snapshots [--json]
+  pa-cli data snapshot [--reason <text>] [--json]
+  pa-cli data restore --id <snapshot-id> [--json]
+  pa-cli data metadata --object <table> [--field <column>] [--name <label>] [--description <text>] [--sensitivity <level>]
+  pa-cli automation sources [--json]
+  pa-cli automation source --file <source.json>
+  pa-cli automation rules [--json]
+  pa-cli automation mail-policies [--limit <n>] [--offset <n>] [--json]
+  pa-cli automation mail-policy --sender <email> --policy <neutral|trusted|blocked> --reason <text> [--limit <n>] [--expires <iso>]
+  pa-cli automation rule --id <rule-id> [--json]
+  pa-cli automation rule --file <rule.json>
+  pa-cli automation events [--limit <n>] [--json]
+  pa-cli automation event --id <event-id> [--json]
+  pa-cli automation event --file <event.json>
+  pa-cli automation event-replay --id <event-id> [--rule <rule-id>]
+  pa-cli automation runs [--limit <n>] [--json]
+  pa-cli automation templates [--json]
+  pa-cli automation template --file <template.json>
+  pa-cli automation template --source-file <parse.mjs> --name <name> [--id <id>] [--purpose <text>] [--fingerprint <value>]
+  pa-cli automation template-run --id <template-id> --input-file <input.json> [--version <n>]
+  pa-cli automation template-resolve --fingerprint <value>
+  pa-cli automation template-activate --id <template-id> [--version <n>] [--reason <text>]
+  pa-cli automation template-rollback --id <template-id> --version <n> [--reason <text>]
+  pa-cli automation template-disable --id <template-id> [--reason <text>]
+  pa-cli cron list [--json]
+  pa-cli cron create --name <name> --cron "0 9 * * *" --prompt "..." [--timezone <iana-zone>] [--workspace <name>] [--recipient <wechat-id>] [--json]
+  pa-cli cron update --id <task-id> [--name <name>] [--cron "..."] [--timezone <iana-zone>] [--prompt "..."] [--enabled|--disabled]
+  pa-cli cron delete --id <task-id>
+  pa-cli cron run --id <task-id> [--json]
+  pa-cli channel status xiaohongshu [--json]
+  pa-cli channel login xiaohongshu [--execute] [--recipient <wechat-id>] [--json]
+  pa-cli channel login-status xiaohongshu --session <login-session> [--json]
+  pa-cli wechat status [--json]
+  pa-cli wechat login [--json]
+  pa-cli wechat send-file --file <path> [--title <name>] [--recipient <wechat-id>]
+  pa-cli wechat send-image --file <path> [--caption "..."] [--recipient <wechat-id>]
+  pa-cli notify --message "..." [--recipient <wechat-id>]
+  pa-cli mail ingest --recipient <address> --sender <address> < message.eml
+  pa-cli file link --file <private-file-path> [--expires <seconds>] [--json]
+  pa-cli file search [--query <text>] [--source <source>] [--visibility public|private] [--tier hot|cold|all]
+  pa-cli file stat --id <object-id> [--json]
+  pa-cli file materialize --id <object-id> [--ttl 7d] [--task <task-id>] [--json]
+  pa-cli file pin --id <object-id> [--days 30] [--reason <text>] [--json]
+  pa-cli file unpin --id <object-id> [--json]
+  pa-cli file gc [--dry-run] [--execute] [--json]
+  pa-cli file verify-storage [--execute] [--json]
+  pa-cli file reconcile --root <allowlisted-dir> --source <source> --visibility public|private [--prefix <path>] [--exclude-manifest <json>] [--execute] [--json]
+  pa-cli pages upload --file <path> [--folder <name>] [--private] [--json]`);
 }
 
 function durationDays(value, fallback) {

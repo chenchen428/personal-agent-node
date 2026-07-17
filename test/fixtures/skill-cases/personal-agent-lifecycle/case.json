@@ -7,7 +7,7 @@
     "personal-agent connection status --json",
     "personal-agent backup verify --json",
     "personal-agent update plan --json",
-    "personal-agent update rollback --plan --json",
+    "personal-agent update rollback --json",
     "personal-agent audit list --json"
   ],
   "artifacts": [{ "path": "expected.json", "label": "Connectivity and recovery expectation" }]

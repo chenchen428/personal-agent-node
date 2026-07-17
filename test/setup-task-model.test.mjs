@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { buildSetupTaskModel, canonicalSetupAction, validateLocalPasswordInput } from "../core/app/src/lib/setup-tasks.ts";
+import { buildSetupTaskModel, canonicalSetupAction, managedCloudActionMessage, validateLocalPasswordInput } from "../core/app/src/lib/setup-tasks.ts";
 
 const check = (id, requirement, state, group = "installation", actionIds = [`${id}.action`]) => ({
   id, requirement, state, group, actionIds, summary: id, why: `why ${id}`, guidance: `guide ${id}`,
@@ -68,4 +68,11 @@ test("local password validation explains every blocked submission", () => {
   assert.match(validateLocalPasswordInput("customer-owned-password", ""), /再次输入/);
   assert.match(validateLocalPasswordInput("customer-owned-password", "different-password"), /不一致/);
   assert.equal(validateLocalPasswordInput("customer-owned-password", "customer-owned-password"), "");
+});
+
+test("managed Cloud action always explains waiting and failed states", () => {
+  assert.match(managedCloudActionMessage({ state: "running", phase: "enrollment" }), /浏览器中确认/);
+  assert.match(managedCloudActionMessage({ state: "running", phase: "resources" }), /正在分配公网域名/);
+  assert.match(managedCloudActionMessage({ state: "failed", phase: "enrollment", code: "DEPENDENCY_UNAVAILABLE" }), /本机使用不受影响/);
+  assert.match(managedCloudActionMessage({ state: "failed", phase: "enrollment", code: "UNKNOWN" }), /重新验证/);
 });

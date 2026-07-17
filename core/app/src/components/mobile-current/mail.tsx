@@ -18,7 +18,7 @@ type MailPayload = {
 export function MobileMailDetail({ messageId }: { messageId: string }) {
   const { value, loading, error } = useRemote<MailPayload>(`/api/app/mail/messages?message=${encodeURIComponent(messageId)}`);
   const message = value?.selectedEvent;
-  return <DetailShell returnHref="/app/mobile" returnLabel="最近动态" trailing={message?.matched ? "已处理" : "未处理"}>
+  return <DetailShell returnHref="/app/mobile" returnLabel="最近动态" trailing={message ? message.matched ? "已处理" : "未处理" : undefined}>
     {error ? <InlineError message={error} /> : null}
     {message ? <article className="mail-detail">
       <div className="detail-heading"><span className="eyebrow">收到的邮件 · {message.matched ? "已处理" : "未处理"}</span><h1>{message.title || "（无主题）"}</h1><p>{message.sender.displayName || message.sender.address} &lt;{message.sender.address}&gt;<br />{formatDateTime(message.receivedAt)}</p></div>

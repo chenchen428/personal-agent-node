@@ -142,7 +142,7 @@ async function verifyApplication() {
     const setupBody = await setup.json();
     assert(setupBody.schemaVersion === 1 && Array.isArray(setupBody.checks), "Next BFF returned an invalid setup contract");
     const page = await (await fetch(`http://127.0.0.1:${appPort}/app/setup`)).text();
-    assert(page.includes("初始化向导") && page.includes("把 PA 准备好"), "Next Setup Center did not render");
+    assert(page.includes("首次设置") && page.includes("完成 Personal Agent 初始化"), "Next Setup Center did not render");
     return { framework: "nextjs", standalone: true, health: true, bff: true, setupCenter: true };
   } finally {
     control.kill("SIGTERM");

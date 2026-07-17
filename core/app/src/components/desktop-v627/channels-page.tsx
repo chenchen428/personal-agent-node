@@ -1,11 +1,47 @@
 "use client";
 
 import Link from "next/link";
-import { WechatConnectPanel } from "@/components/wechat-connect-panel";
+import { Globe2, Mail, MessageCircle, Sparkles } from "lucide-react";
+import { useState } from "react";
 import type { Channel, Overview } from "./types";
-import { Heading, SectionHeading, useJson } from "./shared";
+import { useJson } from "./shared";
+import { Badge, Button, DetailHeader, KeyValueGrid } from "../desktop-v72/primitives";
+import { CollectionDetail } from "../desktop-v72/collection-detail";
+import { WechatConnectPanel } from "@/components/wechat-connect-panel";
+import { XiaohongshuConnectPanel } from "@/components/xiaohongshu-connect-panel";
+
+const iconFor = (provider: string) => provider === "wechat" ? <MessageCircle /> : provider === "xiaohongshu" ? <Sparkles /> : provider.includes("mail") ? <Mail /> : <Globe2 />;
 
 export function ChannelsPage() {
-  const { value, loading, refresh } = useJson<{ channels: Channel[] }>("/api/channels"); const overview = useJson<Overview>("/api/node/v1/client/overview"); const channels = value?.channels || []; const wechat = channels.find((item) => item.provider === "wechat"); const mail = channels.find((item) => item.provider.includes("mail"));
-  return <main><Heading eyebrow="渠道连接" title="渠道连接" copy="连接微信、PA 邮箱以及手机网页与发布页入口。" /><div className="pa-grid"><article className="pa-card"><h2>微信</h2><p>{wechat?.description || "绑定后，可以通过微信与 PA 直接沟通。"}</p><strong className="metric" style={{ fontSize: 18 }}>{loading ? "正在检测" : wechat?.statusLabel || "等待绑定"}</strong><WechatConnectPanel connected={wechat?.state === "connected"} onConnected={async () => { refresh(); }} /></article><article className="pa-card"><h2>PA 邮箱</h2><p>{mail?.description || "邮件正文与附件进入本机工作区。"}</p><strong className="metric" style={{ fontSize: 14, overflowWrap: "anywhere" }}>{mail?.statusLabel || "在初始化中查看地址"}</strong></article><article className="pa-card"><h2>手机网页与发布页</h2><p>托管域名授权在默认浏览器完成，自定义域名使用 TXT 验证。</p><strong className="metric" style={{ fontSize: 14, overflowWrap: "anywhere" }}>{overview.value?.machine.mobileAddress || "等待连接"}</strong><Link className="pa-button" style={{ marginTop: 12 }} href="/app/setup">在默认浏览器管理</Link></article></div><SectionHeading title="自定义域名" note="默认浏览器完成" /><div className="pa-card"><p>1. 输入域名　2. 添加 <code>_personal-agent</code> TXT 记录　3. 云服务查询并验证　4. 返回桌面端重新检测。</p></div></main>;
+  const { value, loading, refresh } = useJson<{ channels: Channel[] }>("/api/channels");
+  const overview = useJson<Overview>("/api/node/v1/client/overview");
+  const channels = (value?.channels || []).filter((item) => !["web", "mobile", "public-domain"].includes(item.provider));
+  const publicReady = ["available", "ready", "connected"].includes(overview.value?.machine.mobileAccess || "") && Boolean(overview.value?.machine.mobileAddress);
+  channels.push({ provider: "public-domain", label: "公网域名访问", state: publicReady ? "connected" : "pending", statusLabel: publicReady ? "已连接" : "尚未启用", description: overview.value?.machine.mobileAddress || "登录 Cloud 后获得专属公网域名，手机可安全访问这台电脑。" });
+  const [selectedId, setSelectedId] = useState("");
+  const selected = channels.find((item) => item.provider === selectedId) || channels[0];
+  const values = channelValues(selected, overview.value);
+  return <CollectionDetail title="渠道" items={channels.map((item) => ({ id: item.provider, title: item.label, summary: item.description || item.statusLabel, time: item.statusLabel, tone: channelTone(item.state), leading: <span className="row-icon">{iconFor(item.provider)}</span> }))} selectedId={selected?.provider || ""} onSelect={setSelectedId} listLabel={loading ? "正在检测" : `已配置 · ${channels.length}`} toolbarContent={<div className="notice">颜色表示当前状态：绿色可用，橙色等待，红色异常。</div>} detail={selected ? <div className="detail-wrap"><DetailHeader title={selected.label} meta={selected.description || selected.statusLabel} trailing={<Badge tone={channelTone(selected.state)}>{selected.statusLabel}</Badge>} /><section className="detail-section"><h2>当前连接</h2><KeyValueGrid items={values} /></section><section className="detail-section"><h2>可用操作</h2><ChannelActions channel={selected} address={overview.value?.machine.mobileAddress} refresh={refresh} /></section></div> : <div className="empty-state"><div><h2>暂时没有渠道</h2></div></div>} />;
+}
+
+function channelTone(state = ""): "success" | "warning" | "danger" | "info" {
+  if (["connected", "ready", "available", "healthy"].includes(state)) return "success";
+  if (["error", "failed", "offline", "disconnected"].includes(state)) return "danger";
+  if (["pending", "waiting", "authorizing", "needs_login", "missing", "not_configured"].includes(state)) return "warning";
+  return "info";
+}
+
+function channelValues(selected: Channel | undefined, overview: Overview | null) {
+  if (selected?.provider === "wechat") return [{ label: "连接状态", value: selected.statusLabel }, { label: "用途", value: "唯一主会话" }, { label: "内容保存", value: "本机工作区" }, { label: "授权位置", value: "微信手机端" }];
+  if (selected?.provider === "xiaohongshu") return [{ label: "连接状态", value: selected.statusLabel }, { label: "运行环境", value: "本机可用" }, { label: "接入方式", value: "扫码登录" }, { label: "操作方式", value: "由主 Agent 托管" }];
+  if (selected?.provider.includes("mail")) return [{ label: "处理状态", value: selected.statusLabel }, { label: "附件", value: "仅保存在本机" }, { label: "接收方式", value: "PA 邮箱" }, { label: "内容保存", value: "本机工作区" }];
+  const address = overview?.machine.mobileAddress;
+  return [{ label: "公网地址", value: address ? <a className="v72-inline-link" href={address} target="_blank" rel="noreferrer">{address}</a> : "尚未启用" }, { label: "连接", value: "Personal Agent Cloud" }, { label: "内容", value: "仍保存在本机" }, { label: "状态", value: selected?.statusLabel || "等待连接" }];
+}
+
+function ChannelActions({ channel, address, refresh }: { channel: Channel; address?: string; refresh: () => void }) {
+  if (channel.provider === "wechat") return <WechatConnectPanel connected={channel.state === "connected"} onConnected={async () => refresh()} compact />;
+  if (channel.provider === "xiaohongshu") return <XiaohongshuConnectPanel connected={["connected", "logged_in", "ready"].includes(channel.state)} onConnected={async () => refresh()} />;
+  if (channel.provider === "public-domain") return <div className="page-actions"><Button onClick={refresh}>重新检测</Button>{address ? <a className="button primary" href={address} target="_blank" rel="noreferrer">打开公网域名</a> : <Link className="button primary" href="/app/setup">启用公网域名</Link>}</div>;
+  return <div className="page-actions"><Button onClick={refresh}>重新检测</Button><Link className="button primary" href="/app/setup">管理连接</Link></div>;
 }

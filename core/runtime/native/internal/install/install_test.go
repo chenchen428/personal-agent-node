@@ -14,6 +14,24 @@ import (
 
 type fakeRunner struct{ calls []string }
 
+func TestEnvForPreservesUserCLIBin(t *testing.T) {
+	t.Setenv("PRIVATE_SITE_CLI_BIN", filepath.Join(t.TempDir(), "user-bin"))
+	opts := Options{
+		InstallRoot: filepath.Join(t.TempDir(), "core"),
+		DataRoot:    filepath.Join(t.TempDir(), "workspace"),
+	}
+	want := os.Getenv("PRIVATE_SITE_CLI_BIN")
+	got := ""
+	for _, entry := range envFor(opts) {
+		if strings.HasPrefix(entry, "PRIVATE_SITE_CLI_BIN=") {
+			got = strings.TrimPrefix(entry, "PRIVATE_SITE_CLI_BIN=")
+		}
+	}
+	if got != want {
+		t.Fatalf("PRIVATE_SITE_CLI_BIN = %q, want user-selected %q", got, want)
+	}
+}
+
 func (runner *fakeRunner) Run(_ context.Context, command string, args []string, _ []string) ([]byte, error) {
 	runner.calls = append(runner.calls, command+" "+strings.Join(args, " "))
 	return []byte(`{"platform":"darwin","serviceId":"site.personal-agent.private-site-node","filePath":"/tmp/source","installPath":"/tmp/target"}`), nil

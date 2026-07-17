@@ -24,6 +24,9 @@ export function createPrivateSiteGateway(options = {}) {
     responseOrSocket?.destroy?.();
     if (options.logger) options.logger(`proxy error: ${error.message}`);
   });
+  proxy.on("proxyRes", (proxyResponse, request) => {
+    if ((request as typeof request & { __personalAgentPublic?: boolean }).__personalAgentPublic === true) delete proxyResponse.headers["set-cookie"];
+  });
 
   const handler = async (request, response) => {
     try {
@@ -52,6 +55,10 @@ export function createPrivateSiteGateway(options = {}) {
       const route = matchRoute(routes, host, url.pathname, config);
       if (!route) {
         sendText(response, 404, "Unknown Site route\n", request.method === "HEAD");
+        return;
+      }
+      if (route.access === "public" && request.method !== "GET" && request.method !== "HEAD") {
+        sendText(response, 405, "Method Not Allowed\n", request.method === "HEAD");
         return;
       }
       const authorized = await authorizeRoute(request, route, config);
@@ -192,6 +199,7 @@ function isLoopbackAddress(value) {
 }
 
 function proxyHttp(proxy, route, request, response, config, authenticated, url) {
+  request.__personalAgentPublic = !authenticated;
   prepareProxyHeaders(request, config, authenticated);
   if (url) rewriteProxyUrl(request, route, url);
   proxy.web(request, response, { target: route.target });
@@ -214,6 +222,10 @@ function prepareProxyHeaders(request, config, authenticated) {
   request.headers["x-forwarded-proto"] = protocol;
   request.headers["x-forwarded-host"] = request.headers.host || config.domain;
   if (authenticated) request.headers["x-personal-agent-authenticated"] = "1";
+  else {
+    delete request.headers.cookie;
+    delete request.headers.authorization;
+  }
 }
 
 async function serveStatic(route, request, response, url) {

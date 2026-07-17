@@ -11,7 +11,8 @@ test("desktop conversation returns only main user-facing history with stable ear
   messages.splice(20, 0,
     { id: "reasoning", role: "agent", content: "private reasoning" },
     { id: "tool", role: "tool", content: "private tool call" },
-    { id: "system", role: "system", content: "turn completed" });
+    { id: "system", role: "system", content: "turn completed" },
+    { id: "retrying", role: "error", content: "Reconnecting... 2/5", metadata: { willRetry: true } });
   const session = { id: "main", role: "main", messages, events: [], childSessions: [] };
 
   const latest = buildDesktopConversationView(session, { limit: 40 });
@@ -21,6 +22,7 @@ test("desktop conversation returns only main user-facing history with stable ear
   assert.equal(latest.pagination.hasEarlier, true);
   assert.equal(latest.pagination.earlierCursor, "message-6");
   assert.equal(latest.messages.some((message) => ["agent", "tool", "system"].includes(message.role)), false);
+  assert.equal(latest.messages.some((message) => message.id === "retrying"), false);
   assert.equal("events" in JSON.parse(JSON.stringify(latest)), false);
 
   const earlier = buildDesktopConversationView(session, { before: latest.pagination.earlierCursor, limit: 40 });

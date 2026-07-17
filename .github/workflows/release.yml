@@ -179,28 +179,35 @@ jobs:
         with:
           name: source-release-metadata
           path: dist/source-release
-      - name: Assemble immutable release checksums
+      - name: Assemble customer-facing assets and private release evidence
         shell: bash
         run: |
-          cp dist/source-release/*release-manifest.json dist/release/
-          cp dist/source-release/*SBOM.cdx.json dist/release/
-          node scripts/write-release-security-metadata.mjs --tag "$GITHUB_REF_NAME" --output dist/release/RELEASE-SECURITY.json
-          cd dist/release
-          find . -maxdepth 1 -type f ! -name SHA256SUMS -printf '%f\n' | sort | xargs sha256sum > SHA256SUMS
+          node scripts/assemble-public-release-assets.mjs \
+            --tag "$GITHUB_REF_NAME" \
+            --input dist/release \
+            --output dist/public-release \
+            --evidence dist/release-evidence \
+            --source-metadata dist/source-release
+          node scripts/write-release-security-metadata.mjs --tag "$GITHUB_REF_NAME" --output dist/release-evidence/RELEASE-SECURITY.json
       - uses: sigstore/cosign-installer@v3
-      - name: Keyless-sign every published byte
+      - name: Keyless-sign customer assets into CI evidence
         shell: bash
         run: |
-          for asset in dist/release/*; do
-            case "$asset" in *.sigstore.json) continue;; esac
-            cosign sign-blob --yes --bundle "${asset}.sigstore.json" "$asset"
+          for asset in dist/public-release/*; do
+            cosign sign-blob --yes --bundle "dist/release-evidence/$(basename "$asset").sigstore.json" "$asset"
           done
       - uses: actions/attest-build-provenance@v2
         with:
-          subject-path: dist/release/*
+          subject-path: dist/public-release/*
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-evidence
+          path: dist/release-evidence
+          if-no-files-found: error
+          retention-days: 90
       - uses: softprops/action-gh-release@v2
         with:
-          files: dist/release/*
+          files: dist/public-release/*
           generate_release_notes: true
           prerelease: ${{ contains(github.ref_name, '-') }}
           fail_on_unmatched_files: true

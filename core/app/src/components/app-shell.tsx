@@ -3,14 +3,14 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
-import { AppWindow, Menu, X } from "lucide-react";
-import { desktopNavigation, mobileNavigation } from "@/components/navigation";
+import { AppWindow, PanelLeftClose, PanelLeftOpen } from "lucide-react";
+import { desktopNavigation, desktopNavigationGroups, desktopUtilityNavigation } from "@/components/navigation";
+import { UpdateNavItem } from "@/components/update-nav-item";
 
-type PersonalApp = { id: string; name: string; route: string; desktopRoute?: string; mobileRoute?: string; assetRoute?: string; compatible: boolean };
+type PersonalApp = { id: string; name: string; route: string; desktopRoute?: string; compatible: boolean };
 
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
-  const [drawerOpen, setDrawerOpen] = useState(false);
   const [apps, setApps] = useState<PersonalApp[]>([]);
   const mobile = pathname.startsWith("/app/mobile");
 
@@ -23,100 +23,75 @@ export function AppShell({ children }: { children: ReactNode }) {
     return () => { active = false; };
   }, []);
 
-  useEffect(() => { setDrawerOpen(false); }, [pathname]);
+  useCloseProtection(mobile);
+  if (mobile) return children;
+  return <DesktopShell pathname={pathname} apps={apps}>{children}</DesktopShell>;
+}
 
+function DesktopShell({ pathname, apps, children }: { pathname: string; apps: PersonalApp[]; children: ReactNode }) {
+  const [collapsed, setCollapsed] = useState(false);
+  const [machineName, setMachineName] = useState("本机在线");
+  const active = (href: string) => href === "/app" ? pathname === href : pathname === href || pathname.startsWith(`${href}/`);
+  const appActive = (app: PersonalApp) => active(app.desktopRoute || app.route);
+  const currentApp = apps.find(appActive);
+  const current = active("/app/update") ? "软件更新" : active("/app/skills") ? "技能" : active("/app/settings") ? "系统设置" : currentApp?.name || desktopNavigation.find((item) => active(item.href))?.label || (active("/app/apps") ? "应用" : "Personal Agent");
+
+  useEffect(() => {
+    let mounted = true;
+    fetch("/api/node/v1/client/overview", { cache: "no-store" })
+      .then((response) => response.ok ? response.json() : Promise.reject())
+      .then((value) => { if (mounted) setMachineName(value.machine?.name || value.machine?.id || "本机在线"); })
+      .catch(() => undefined);
+    return () => { mounted = false; };
+  }, []);
+
+  return <div className={`desktop-v72 app-frame app-frame-embedded${collapsed ? " is-sidebar-collapsed" : ""}`}>
+    <aside className={`v72-sidebar sidebar${collapsed ? " collapsed" : ""}`} aria-label="桌面端导航">
+      <header className="v72-sidebar-head sidebar-head">
+        <Link className="v72-brand sidebar-brand" href="/app"><span className="v72-mark brand-mark">PA</span><span className="v72-brand-copy"><strong>Personal Agent</strong><small>本机工作区</small></span></Link>
+        <button className="icon-button sidebar-collapse" type="button" aria-label={collapsed ? "展开侧边栏" : "收起侧边栏"} title={collapsed ? "展开侧边栏" : "收起侧边栏"} onClick={() => setCollapsed((value) => !value)}>{collapsed ? <PanelLeftOpen /> : <PanelLeftClose />}</button>
+      </header>
+      <div className="v72-sidebar-scroll sidebar-scroll">
+        {desktopNavigationGroups.map((group) => <section className="v72-nav-group nav-group" key={group.label}>
+          <span className="v72-nav-label nav-label">{group.label}</span>
+          <nav>{group.items.map(({ label, href, icon: Icon }) => <Link className={`v72-nav-link nav-link${active(href) ? " active" : ""}`} aria-current={active(href) ? "page" : undefined} href={href} title={collapsed ? label : undefined} key={href}><Icon /><span>{label}</span></Link>)}</nav>
+        </section>)}
+        <section className="v72-nav-group nav-group">
+          <span className="v72-nav-label nav-label">我的应用</span>
+          <nav><Link className={`v72-nav-link nav-link${pathname === "/app/apps" ? " active" : ""}`} aria-current={pathname === "/app/apps" ? "page" : undefined} href="/app/apps"><AppWindow /><span>应用</span></Link>
+            {apps.slice(0, 3).map((app) => <Link className={`v72-nav-link nav-link${appActive(app) ? " active" : ""}`} aria-current={appActive(app) ? "page" : undefined} href={app.desktopRoute || app.route} title={collapsed ? app.name : undefined} key={app.id}><span className="v72-app-glyph">{app.name.slice(0, 1)}</span><span>{app.name}</span></Link>)}
+          </nav>
+        </section>
+      </div>
+      <div className="v72-sidebar-bottom sidebar-bottom">
+        <nav><UpdateNavItem active={active("/app/update")} />{desktopUtilityNavigation.map(({ label, href, icon: Icon }) => { const itemActive = href === "/app/settings" ? active(href) || active("/app/skills") : active(href); return <Link className={`v72-nav-link nav-link${itemActive ? " active" : ""}`} aria-current={itemActive ? "page" : undefined} href={href} title={collapsed ? label : undefined} key={href}><Icon /><span>{label}</span></Link>; })}</nav>
+        <div className="v72-runtime-chip runtime-chip" title="PA 运行正常"><i className="status-dot success" /><span><strong>PA 运行正常</strong><small>本机服务与手机入口已启动</small></span></div>
+      </div>
+    </aside>
+    <main className="v72-main-shell main-shell shell-card">
+      <header className="v72-topbar topbar"><span className="topbar-start" /><strong className="topbar-title">{current}</strong><div className="v72-machine machine-state topbar-end"><i className="status-dot success" /><span>{machineName}</span></div></header>
+      <div className="v72-page-scroll page-scroll">{children}</div>
+    </main>
+  </div>;
+}
+
+function useCloseProtection(mobile: boolean) {
   useEffect(() => {
     if (mobile) return;
     let active = true;
     let runningWork = false;
     const closeAwareWindow = window as typeof window & { __personalAgentCloseHandlerReady?: boolean };
-    const refresh = () => {
-      fetch("/api/chat/sessions?limit=50", { cache: "no-store" })
-        .then((response) => response.ok ? response.json() : Promise.reject(new Error("sessions unavailable")))
-        .then((value) => {
-          if (active) runningWork = (value.sessions || []).some((session: { status?: string }) => ["start", "running"].includes(String(session.status || "")));
-        })
-        .catch(() => { runningWork = false; });
-    };
+    const refresh = () => fetch("/api/chat/sessions?limit=50", { cache: "no-store" })
+      .then((response) => response.ok ? response.json() : Promise.reject())
+      .then((value) => { if (active) runningWork = (value.sessions || []).some((session: { status?: string }) => ["start", "running"].includes(String(session.status || ""))); })
+      .catch(() => { runningWork = false; });
     const confirmRunningWork = () => {
-      if (!runningWork || window.confirm("仍有工作正在进行。关闭客户端会停止当前工作、邮件接收和手机入口，确定要关闭吗？")) {
-        window.location.href = "/__personal-agent/close";
-      }
+      if (!runningWork || window.confirm("仍有工作正在进行。关闭客户端会停止当前工作、邮件接收和手机入口，确定要关闭吗？")) window.location.href = "/__personal-agent/close";
     };
     closeAwareWindow.__personalAgentCloseHandlerReady = true;
     refresh();
     const timer = window.setInterval(refresh, 10_000);
     window.addEventListener("personal-agent-close-requested", confirmRunningWork);
-    return () => {
-      active = false;
-      window.clearInterval(timer);
-      delete closeAwareWindow.__personalAgentCloseHandlerReady;
-      window.removeEventListener("personal-agent-close-requested", confirmRunningWork);
-    };
+    return () => { active = false; window.clearInterval(timer); delete closeAwareWindow.__personalAgentCloseHandlerReady; window.removeEventListener("personal-agent-close-requested", confirmRunningWork); };
   }, [mobile]);
-
-  if (mobile) return children;
-  return <DesktopShell pathname={pathname} drawerOpen={drawerOpen} setDrawerOpen={setDrawerOpen} apps={apps}>{children}</DesktopShell>;
 }
-
-function DesktopShell({ pathname, drawerOpen, setDrawerOpen, apps, children }: ShellProps) {
-  const active = (href: string) => href === "/app" ? pathname === href : pathname === href || pathname.startsWith(`${href}/`);
-  const appActive = (app: PersonalApp) => active(app.desktopRoute || app.route);
-  const currentApp = apps.find(appActive);
-  const current = active("/app/settings") ? "系统设置" : currentApp?.name || desktopNavigation.find((item) => active(item.href))?.label || (active("/app/apps") ? "应用" : "PA 桌面端");
-  return <div className={`pa-app desktop-shell${drawerOpen ? " is-drawer-open" : ""}`}>
-    <aside className="pa-sidebar" aria-label="桌面端导航">
-      <Link className="pa-brand" href="/app"><span className="pa-mark">PA</span><div><strong>PA 桌面端</strong><small>本机控制台</small></div></Link>
-      <nav className="pa-nav">
-        <span className="pa-nav-label">工作区</span>
-        {desktopNavigation.map(({ label, href, symbol }) => <Link aria-current={active(href) ? "page" : undefined} href={href} key={href}><span className="pa-nav-icon">{symbol}</span><span>{label}</span></Link>)}
-        <span className="pa-nav-label">我的应用</span>
-        <Link aria-current={pathname === "/app/apps" ? "page" : undefined} href="/app/apps"><span className="pa-nav-icon">◫</span><span>全部应用</span></Link>
-        {apps.slice(0, 3).map((app) => <Link aria-current={appActive(app) ? "page" : undefined} href={app.desktopRoute || app.route} key={app.id}><span className="pa-nav-icon">{app.name.slice(0, 1)}</span><span>{app.name}</span></Link>)}
-      </nav>
-      <div className="pa-sidebar-utility">
-        <Link aria-current={active("/app/settings") ? "page" : undefined} href="/app/settings"><span className="pa-nav-icon">⚙</span><span>系统设置</span></Link>
-      </div>
-      <div className="pa-sidebar-note"><div className="desktop-status"><i /><strong>PA 运行正常</strong></div><p>关闭客户端将停止本机服务与手机入口；有进行中的工作时会先确认。</p></div>
-    </aside>
-    <div className="pa-main">
-      <header className="pa-topbar">
-        <button className="v622-menu" type="button" aria-label="打开菜单" aria-expanded={drawerOpen} onClick={() => setDrawerOpen(true)}><Menu /></button>
-        <span className="pa-breadcrumb">PA 桌面端 / {current}</span>
-        <div className="pa-user"><b>本机</b><span>无需登录</span></div>
-      </header>
-      <div className="pa-page">{children}</div>
-    </div>
-    <button className="v622-backdrop" type="button" aria-label="关闭菜单" onClick={() => setDrawerOpen(false)} />
-    <button className="v622-close" type="button" aria-label="关闭菜单" onClick={() => setDrawerOpen(false)}><X /></button>
-  </div>;
-}
-
-function MobileShell({ pathname, drawerOpen, setDrawerOpen, apps, children }: ShellProps) {
-  const active = (href: string) => href === "/app/mobile" ? pathname === href : pathname === href || pathname.startsWith(`${href}/`);
-  const current = mobileNavigation.find((item) => active(item.href))?.label || "Personal Agent";
-  return <div className={`v622-mobile${drawerOpen ? " is-menu-open" : ""}`}>
-    <header className="v622-mobile-bar"><button type="button" aria-label="打开菜单" aria-expanded={drawerOpen} onClick={() => setDrawerOpen(true)}><Menu /></button><strong>{current}</strong><span aria-hidden="true">PA</span></header>
-    <div className="v622-mobile-body">{children}</div>
-    <button className="v622-mobile-backdrop" type="button" aria-label="关闭菜单" onClick={() => setDrawerOpen(false)} />
-    <aside className="v622-mobile-drawer" aria-label="移动端导航">
-      <header><strong>Personal Agent</strong><button type="button" aria-label="关闭菜单" onClick={() => setDrawerOpen(false)}><X /></button></header>
-      <div className="v622-mobile-user"><span>PA</span><div><strong>本机 Personal Agent</strong><small>安全连接到你的电脑</small></div></div>
-      <nav>
-        <span>内容</span>
-        {mobileNavigation.map(({ label, href, icon: Icon }) => <Link aria-current={active(href) ? "page" : undefined} href={href} key={href}><Icon /><strong>{label}</strong><small>›</small></Link>)}
-        <span>我的应用</span>
-        {apps.slice(0, 3).map((app) => <a href={app.mobileRoute || app.route} key={app.id}><AppWindow /><strong>{app.name}</strong><small>›</small></a>)}
-      </nav>
-      <footer><strong>● 本机在线</strong><span>移动端仅提供安全的只读访问</span></footer>
-    </aside>
-  </div>;
-}
-
-type ShellProps = {
-  pathname: string;
-  drawerOpen: boolean;
-  setDrawerOpen: (open: boolean) => void;
-  apps: PersonalApp[];
-  children: ReactNode;
-};

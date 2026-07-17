@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "repository": "chenchen428/personal-agent-node",
+  "visibility": "public",
+  "identity": "active-gh-user",
+  "draftRoot": "<customer-workspace>/bug-reports",
+  "risk": "R2",
+  "requiresFinalConfirmation": true,
+  "forbidden": [
+    "github-token",
+    "customer-content",
+    "full-logs",
+    "absolute-paths",
+    "private-domain",
+    "machine-name",
+    "ip-address"
+  ],
+  "verification": "gh-issue-view"
+}

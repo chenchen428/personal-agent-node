@@ -5,7 +5,7 @@ This workspace is a complete private Site running on the user's Node. The Node o
 ## Runtime Boundaries
 
 - Keep all business data under `PRIVATE_SITE_DATA_ROOT` (default `~/.personal-agent.local`).
-- Use the bundled `open-abg` CLI for sessions, WeChat, Agent data, automations, managed files, private publications, and public Pages.
+- Use the bundled `pa-cli` for sessions, WeChat, Agent data, automations, managed files, private publications, and public Pages.
 - Treat `AGENTS.md`, `.codex/`, `skills/`, and `workflows/` as the Codex Harness. `.agents/`, `.claude/`, and `.cursor/` are compatibility paths only and do not imply supported Agent runtimes.
 - Run Codex app-server on this Node through the bundled Worker. Do not move Agent execution or skill discovery to the Edge.
 - Codex is the only supported Agent runtime in the current version. Do not claim Claude, Cursor, or another Agent is operational without a separate implementation and acceptance pass.
@@ -23,7 +23,7 @@ This workspace is a complete private Site running on the user's Node. The Node o
 - All application children run from verified packaged entrypoints with hidden windows and file-backed logs. Do not use a development server as the installed runtime or as acceptance evidence.
 - Users inspect and control the complete Node through `a.<apex>`; no foreground WireGuard, Next.js, Bridge, Worker, or gateway terminal is required.
 - Local build caches retain at most two completed artifacts per product. Runtime state belongs under `PRIVATE_SITE_DATA_ROOT` or workspace `.local`, never `dist` or a tracked `data` directory.
-- Accepted release records live under `PRIVATE_SITE_DATA_ROOT/release-notes` and are rendered by the authenticated Agent console. Release/final acceptance requires the installed Setup Center `channels.wechat` check to be ready and canonical Web evidence records `wechatRequired=true`; WeChat still never substitutes for the same-session Web conversation. If the owner explicitly uses WeChat for release notices, the bundled `open-abg` CLI may send one after the matching detail route passes; never add an Edge-side notifier or DingTalk path.
+- Accepted release records live under `PRIVATE_SITE_DATA_ROOT/release-notes` and are rendered by the authenticated Agent console. Release/final acceptance requires the installed Setup Center `channels.wechat` check to be ready and canonical Web evidence records `wechatRequired=true`; WeChat still never substitutes for the same-session Web conversation. If the owner explicitly uses WeChat for release notices, `pa-cli` may send one after the matching detail route passes; never add an Edge-side notifier or DingTalk path.
 
 ## Harness Acceptance
 

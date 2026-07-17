@@ -40,6 +40,7 @@ export async function nextAvailablePath(targetPath, overwrite) {
 }
 
 export function toPublicUrl(publicBaseUrl, publicRelativePath) {
+  if (!publicBaseUrl) return "";
   const normalized = publicRelativePath.split(path.sep).map(encodeURIComponent).join("/");
   return `${publicBaseUrl}/${normalized.replace(/^\/+/, "")}`;
 }

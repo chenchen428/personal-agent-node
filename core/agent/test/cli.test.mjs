@@ -11,14 +11,14 @@ const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "
 
 test("legacy Memory CLI fails closed and points to main-Agent Activity", async () => {
   await assert.rejects(
-    execFileAsync(process.execPath, [path.join(projectRoot, "bin", "oab.mjs"), "memory", "recall", "--json"], {
+    execFileAsync(process.execPath, [path.join(projectRoot, "bin", "pa-cli.mjs"), "memory", "recall", "--json"], {
       cwd: projectRoot,
       env: { ...process.env },
     }),
     (error) => {
       assert.equal(error.code, 1);
       assert.match(error.stderr, /legacy Memory domain has been removed/);
-      assert.match(error.stderr, /personal-agent activity/);
+      assert.match(error.stderr, /pa-cli activity/);
       return true;
     },
   );
@@ -38,7 +38,7 @@ test("CLI sends an explicit execute boolean for local storage verification", asy
   const address = server.address();
 
   const { stdout } = await execFileAsync(process.execPath, [
-    path.join(projectRoot, "bin", "oab.mjs"),
+    path.join(projectRoot, "bin", "pa-cli.mjs"),
     "file",
     "verify-storage",
     "--execute",
@@ -68,7 +68,7 @@ test("channel login is a no-side-effect plan until the user confirms execution",
   const address = server.address();
 
   const { stdout } = await execFileAsync(process.execPath, [
-    path.join(projectRoot, "bin", "oab.mjs"),
+    path.join(projectRoot, "bin", "pa-cli.mjs"),
     "channel",
     "login",
     "xiaohongshu",
@@ -110,7 +110,7 @@ test("confirmed channel login delegates QR delivery and monitoring to the bridge
   const address = server.address();
 
   const { stdout } = await execFileAsync(process.execPath, [
-    path.join(projectRoot, "bin", "oab.mjs"),
+    path.join(projectRoot, "bin", "pa-cli.mjs"),
     "channel",
     "login",
     "xiaohongshu",

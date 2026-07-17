@@ -370,14 +370,10 @@ export function normalizeTunnelPath(value) {
   return `${url.pathname}${url.search}`;
 }
 
-export function isTunnelRouteAllowed(distribution, requestPath, kind = "http") {
-  let pathname;
-  try { pathname = new URL(normalizeTunnelPath(requestPath), "http://127.0.0.1").pathname; }
+export function isTunnelRouteAllowed(_distribution, requestPath, kind = "http") {
+  if (!["http", "websocket"].includes(kind)) return false;
+  try { normalizeTunnelPath(requestPath); return true; }
   catch { return false; }
-  const routes = [...(distribution?.routing?.paths || [])].sort((left, right) => String(right.prefix || "").length - String(left.prefix || "").length);
-  const route = routes.find((entry) => entry.exact ? pathname === entry.prefix : pathname === entry.prefix || pathname.startsWith(`${String(entry.prefix || "").replace(/\/$/, "")}/`));
-  if (!route || !["public", "authenticated"].includes(route.access)) return false;
-  return kind !== "websocket" || route.websocket === true;
 }
 
 export function sanitizeRequestHeaders(headers) {

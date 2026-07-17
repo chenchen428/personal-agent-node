@@ -445,7 +445,8 @@ function normalizeHostList(value, defaults) {
 }
 
 function serviceBaseUrl(config, service) {
-  return `https://${config.domain}/${service}`;
+  const route = service === "agent" ? "app" : service === "pages" ? "public" : service;
+  return `https://${config.domain}/${route}`;
 }
 
 export function readEnvFile(filePath) {

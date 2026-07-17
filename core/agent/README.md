@@ -7,14 +7,14 @@ Open Agent Bridge is the Core channel-first Codex service for a private Site Nod
 Production runs only from the bundled entrypoints inside `~/.personal-agent/core/current`. The supervisor starts the Agent service and Worker as background children of the user-owned platform service. ECS never runs this project.
 
 ```bash
-open-abg wechat status --json
-open-abg session list --json
-open-abg schedule list --json
-open-abg file verify-storage --json
-open-abg pages list --json
+pa-cli wechat status --json
+pa-cli session list --json
+pa-cli schedule list --json
+pa-cli file verify-storage --json
+pa-cli pages list --json
 ```
 
-The installed `open-abg` shim follows the active Node release and loads only the Site-local environment path. Codex app-server runs as the signed-in Site owner on the same Node.
+The installed `pa-cli` shim follows the active Node release and loads only the Site-local environment path. Codex app-server runs as the signed-in Site owner on the same Node. The former `open-abg`, `oab`, and `open-agent-bridge` command aliases are intentionally absent.
 
 ## Storage
 

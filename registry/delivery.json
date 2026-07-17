@@ -38,6 +38,16 @@
     "systemWebview": true,
     "bundledChromium": false,
     "bundledNodeSidecar": false,
-    "browserFallback": true
+    "browserFallback": true,
+    "updates": {
+      "unit": "platform-release",
+      "coordinator": "personal-agent-control",
+      "executor": "core/bin/personal-agent-setup",
+      "handoffOwner": "desktop-client",
+      "jobSchema": "schemas/personal-agent/update-job.schema.json",
+      "automaticRestart": true,
+      "automaticRollback": true,
+      "localApprovalRisk": "R3"
+    }
   }
 }

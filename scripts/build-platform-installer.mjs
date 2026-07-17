@@ -41,10 +41,10 @@ try {
   appendPayload(setupBinary, payload);
   run(setupBinary, ['inspect']);
 
+  const updater = packageUpdater({ platform, architecture, tag, setupBinary, output });
   const asset = packageAsset({ platform, architecture, tag, setupBinary, output, temporary });
   const digest = sha256(asset);
-  fs.writeFileSync(`${asset}.sha256`, `${digest}  ${path.basename(asset)}\n`);
-  process.stdout.write(`${JSON.stringify({ ok: true, tag, platform, architecture, target, asset, sha256: digest }, null, 2)}\n`);
+  process.stdout.write(`${JSON.stringify({ ok: true, tag, platform, architecture, target, asset, updater, sha256: digest, updaterSha256: sha256(updater) }, null, 2)}\n`);
 } finally {
   fs.rmSync(temporary, { recursive: true, force: true });
 }
@@ -168,6 +168,32 @@ function packageAsset({ platform, architecture, tag, setupBinary, output, tempor
     return target;
   }
   throw new Error(`Unsupported platform: ${platform}`);
+}
+
+function packageUpdater({ platform, architecture, tag, setupBinary, output }) {
+  const label = architecture === 'x64' ? 'x64' : 'arm64';
+  const platformLabel = { win32: 'windows', darwin: 'macos', linux: 'linux' }[platform];
+  const target = path.join(output, `personal-agent-node-${tag}-${platformLabel}-${label}-updater${platform === 'win32' ? '.exe' : ''}`);
+  fs.copyFileSync(setupBinary, target);
+  if (platform !== 'win32') fs.chmodSync(target, 0o755);
+  if (platform === 'win32') {
+    const certificate = String(process.env.PERSONAL_AGENT_WINDOWS_SIGNING_CERTIFICATE || '').trim();
+    const password = String(process.env.PERSONAL_AGENT_WINDOWS_SIGNING_PASSWORD || '');
+    if (args.requireSigning && (!certificate || !password)) throw new Error('Windows release signing certificate and password are required');
+    if (certificate) {
+      run(resolveSignTool(), ['sign', '/fd', 'SHA256', '/td', 'SHA256', '/tr', 'http://timestamp.digicert.com', '/f', certificate, '/p', password, target]);
+      run(resolveSignTool(), ['verify', '/pa', '/v', target]);
+    }
+  }
+  if (platform === 'darwin') {
+    const identity = String(process.env.PERSONAL_AGENT_APPLE_APPLICATION_IDENTITY || '').trim();
+    if (args.requireSigning && !identity) throw new Error('macOS application signing identity is required');
+    if (identity) {
+      run('codesign', ['--force', '--options', 'runtime', '--timestamp', '--sign', identity, target]);
+      run('codesign', ['--verify', '--strict', '--verbose=2', target]);
+    }
+  }
+  return target;
 }
 
 function resolveSignTool() {

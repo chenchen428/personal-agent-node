@@ -30,7 +30,39 @@ test("creates parent and worker sessions with events", () => {
   assert.equal(hydratedMain.childSessions.length, 1);
   assert.equal(hydratedMain.childSessions[0].id, worker.id);
   assert.equal(hydratedWorker.messages[0].role, "assistant");
-  assert.equal(hydratedWorker.url, `https://agent.example.test/agent/session/${worker.id}/live`);
+  assert.equal(hydratedWorker.url, `https://agent.example.test/app/chat/session/${worker.id}/live`);
+  assert.equal(hydratedWorker.path, `/app/chat/session/${worker.id}/live`);
+});
+
+test("lists only in-progress workers with a persisted parent for restart recovery", () => {
+  const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), "oab-store-recoverable-workers-"));
+  const store = new BridgeStore({ dataDir, consoleBaseUrl: "https://agent.example.test" });
+  try {
+    const main = store.getOrCreateDesktopMainSession({ workspaceRoot: dataDir });
+    const starting = store.createSession({ parentSessionId: main.id, status: "start", title: "Starting", workspaceRoot: dataDir });
+    const running = store.createSession({ parentSessionId: main.id, status: "running", title: "Running", workspaceRoot: dataDir });
+    store.createSession({ parentSessionId: main.id, status: "idle", title: "Finished", workspaceRoot: dataDir });
+    store.createSession({ status: "running", title: "No parent", workspaceRoot: dataDir });
+    store.updateSession(main.id, { status: "running" });
+
+    assert.deepEqual(
+      store.listRecoverableWorkerSessions().map((session) => session.id).sort(),
+      [starting.id, running.id].sort(),
+    );
+  } finally {
+    store.close();
+    fs.rmSync(dataDir, { recursive: true, force: true });
+  }
+});
+
+test("does not expose a user link while remote access is unavailable", () => {
+  const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), "pa-store-local-only-"));
+  const store = new BridgeStore({ dataDir, consoleBaseUrl: "https://agent.example.test", externalAccess: () => ({ ready: false, reason: "local-only" }) });
+  const session = store.createSession({ role: "worker", taskDescription: "local task", workspaceRoot: dataDir });
+  const hydrated = store.getSession(session.id);
+  assert.equal(hydrated.url, "");
+  assert.equal(hydrated.path, `/app/chat/session/${session.id}/live`);
+  assert.match(hydrated.linkNotice, /暂不支持.*查看/);
 });
 
 test("persists and deduplicates deferred WeChat notifications", () => {
@@ -194,6 +226,34 @@ test("coalesces streaming assistant deltas by persisted message id", () => {
   assert.equal(messages.length, 1);
   assert.equal(messages[0].id, "agent-message-1");
   assert.equal(messages[0].content, "OAB_LOCAL_SMOKE");
+});
+
+test("keeps retrying transport errors out of user history and preserves final failures", () => {
+  assert.deepEqual(mapMessage({
+    method: "error",
+    params: { error: { message: "Reconnecting... 2/5" }, willRetry: true, threadId: "thread-1", turnId: "turn-1" },
+  }), []);
+
+  const finalFrame = mapMessage({
+    method: "error",
+    params: { error: { message: "Connection failed" }, willRetry: false, threadId: "thread-1", turnId: "turn-1" },
+  })[0];
+  assert.equal(finalFrame.kind, "session.error");
+  assert.equal(finalFrame.payload.metadata.willRetry, false);
+
+  const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), "pa-store-retry-error-"));
+  const store = new BridgeStore({ dataDir, consoleBaseUrl: "https://agent.example.test" });
+  try {
+    const session = store.createSession({ role: "worker", workspaceRoot: dataDir });
+    store.appendEvent(session.id, "session.error", {
+      content: "Reconnecting... 2/5",
+      metadata: { willRetry: true },
+    });
+    store.appendEvent(session.id, finalFrame.kind, finalFrame.payload);
+    assert.deepEqual(store.getSession(session.id).messages.map((message) => message.content), ["Connection failed"]);
+  } finally {
+    store.close();
+  }
 });
 
 test("replaces per-thread token snapshots and aggregates usage", () => {

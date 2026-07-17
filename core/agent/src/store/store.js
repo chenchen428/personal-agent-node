@@ -7,9 +7,10 @@ const SESSION_STATUSES = new Set(["start", "running", "idle", "paused", "done", 
 const MAX_PENDING_WECHAT_NOTIFICATIONS = 20;
 
 export class BridgeStore {
-  constructor({ dataDir, consoleBaseUrl, databasePath } = {}) {
+  constructor({ dataDir, consoleBaseUrl, databasePath, externalAccess } = {}) {
     this.dataDir = dataDir || process.cwd();
     this.consoleBaseUrl = consoleBaseUrl;
+    this.externalAccess = externalAccess || (() => ({ ready: true, reason: "ready", origin: new URL(this.consoleBaseUrl).origin }));
     this.stateFile = path.join(this.dataDir, "state.json");
     this.databasePath = databasePath || path.join(this.dataDir, "state.sqlite");
     fs.mkdirSync(this.dataDir, { recursive: true });
@@ -43,6 +44,7 @@ export class BridgeStore {
       );
       CREATE INDEX IF NOT EXISTS idx_sessions_updated_at ON sessions(updated_at);
       CREATE INDEX IF NOT EXISTS idx_sessions_parent ON sessions(parent_session_id);
+      CREATE INDEX IF NOT EXISTS idx_sessions_role_status ON sessions(role, status, updated_at);
 
       CREATE TABLE IF NOT EXISTS events (
         id TEXT PRIMARY KEY,
@@ -400,6 +402,16 @@ export class BridgeStore {
     return rows.map((row) => this.hydrateSession(row.id)).filter(Boolean);
   }
 
+  listRecoverableWorkerSessions() {
+    return this.db.prepare(`
+      SELECT * FROM sessions
+      WHERE role = 'worker'
+        AND parent_session_id IS NOT NULL
+        AND status IN ('start', 'running')
+      ORDER BY created_at ASC, id ASC
+    `).all().map((row) => this.getSessionRecord(row.id)).filter(Boolean);
+  }
+
   listSessionsPage({ includeArchived = false, limit = 20, cursor = "", query = "", hydrate = true } = {}) {
     const pageSize = Math.min(Math.max(Number(limit) || 20, 1), 50);
     const search = String(query || "").trim().slice(0, 200);
@@ -451,14 +463,16 @@ export class BridgeStore {
 
   getSessionRecord(id) {
     const row = this.getSessionRow(id);
-    return row ? { ...rowToSession(row), url: this.sessionUrl(row.id) } : null;
+    return row ? { ...rowToSession(row), path: this.sessionPath(row.id), url: this.sessionUrl(row.id), linkNotice: this.sessionLinkNotice(row.id) } : null;
   }
 
   summarizeSessionRow(row) {
     const session = rowToSession(row);
     return {
       ...session,
+      path: this.sessionPath(session.id),
       url: this.sessionUrl(session.id),
+      linkNotice: this.sessionLinkNotice(session.id),
       eventCount: Number(this.db.prepare("SELECT COUNT(*) AS count FROM events WHERE session_id = ?").get(session.id)?.count || 0),
       childSessionCount: Number(this.db.prepare("SELECT COUNT(*) AS count FROM sessions WHERE parent_session_id = ?").get(session.id)?.count || 0),
     };
@@ -1327,7 +1341,9 @@ export class BridgeStore {
     const events = this.listEvents(id);
     return {
       ...session,
+      path: this.sessionPath(id),
       url: this.sessionUrl(id),
+      linkNotice: this.sessionLinkNotice(id),
       messages: coalesceMessages(events.map(eventToMessage).filter(Boolean)),
       events,
       childSessions: this.db.prepare(`
@@ -1341,14 +1357,29 @@ export class BridgeStore {
           title: childSession.title,
           taskDescription: childSession.taskDescription,
           updatedAt: childSession.updatedAt,
+          path: this.sessionPath(childSession.id),
           url: this.sessionUrl(childSession.id),
+          linkNotice: this.sessionLinkNotice(childSession.id),
         };
       }),
     };
   }
 
   sessionUrl(id) {
-    return `${new URL(this.consoleBaseUrl).origin}/agent/session/${encodeURIComponent(id)}/live`;
+    const access = this.externalAccess();
+    return access?.ready && access.origin ? `${access.origin}${this.sessionPath(id)}` : "";
+  }
+
+  sessionPath(id) {
+    return `/app/chat/session/${encodeURIComponent(id)}/live`;
+  }
+
+  sessionLinkNotice(id) {
+    if (this.sessionUrl(id)) return "";
+    const reason = this.externalAccess()?.reason;
+    return reason === "tunnel-offline"
+      ? "远程连接暂时离线，当前暂不支持查看任务进度。"
+      : "当前未配置远程访问，暂不支持从当前设备查看任务进度。";
   }
 
   getSessionRow(id) {
@@ -2571,7 +2602,10 @@ function eventToMessage(event) {
   if (event.kind === "session.assistant_message") return { ...base, role: "assistant" };
   if (event.kind === "session.reasoning") return { ...base, role: "agent" };
   if (event.kind === "session.tool_use" || event.kind === "session.tool_result") return { ...base, role: "tool" };
-  if (event.kind === "session.error") return { ...base, role: "error", content: content || "Session error" };
+  if (event.kind === "session.error") {
+    if (metadata.willRetry === true) return null;
+    return { ...base, role: "error", content: content || "Session error" };
+  }
   if (event.kind === "authorization.request" || event.kind === "authorization.decision") return { ...base, role: "system" };
   if (content) return { ...base, role: "system" };
   return null;

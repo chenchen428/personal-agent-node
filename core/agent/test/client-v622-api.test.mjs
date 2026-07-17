@@ -59,7 +59,10 @@ test("V6.22 read-only client API is local, searchable and self-contained", async
 
   const overview = await get(port, token, "/api/node/v1/client/overview");
   assert.equal(overview.result.machine.state, "running");
+  assert.equal(overview.result.machine.mobileAccess, "unavailable");
+  assert.equal(overview.result.machine.mobileAddress, "");
   assert.equal(typeof overview.result.counts.pages, "number");
+  assert.equal(typeof overview.result.counts.runningWork, "number");
   assert.equal(Array.isArray(overview.result.recent), true);
 
   const activity = await get(port, token, "/api/node/v1/client/activity?q=does-not-exist&limit=3");
@@ -79,7 +82,7 @@ test("V6.22 read-only client API is local, searchable and self-contained", async
 
   const mobileTasks = await get(port, token, "/api/mobile/tasks?query=does-not-exist&status=running");
   assert.deepEqual(mobileTasks.result.items, []);
-  assert.deepEqual(mobileTasks.result.counts, { all: 0, running: 0, completed: 0 });
+  assert.deepEqual(mobileTasks.result.counts, { all: 0, running: 0, completed: 0, interrupted: 0 });
 
   const mobilePages = await get(port, token, "/api/mobile/pages?query=does-not-exist&visibility=private");
   assert.deepEqual(mobilePages.result.items, []);

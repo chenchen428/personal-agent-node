@@ -20,6 +20,12 @@ export type SetupTask = {
   waitingCount: number;
 };
 
+export type ManagedCloudAction = {
+  state: "idle" | "starting" | "running" | "succeeded" | "failed";
+  phase: "idle" | "enrollment" | "resources" | "complete";
+  code?: string;
+};
+
 const requiredRequirements = new Set<SetupRequirement>(["required-for-console", "required-for-agent"]);
 const categoryLabels: Record<string, string> = {
   installation: "本机安全",
@@ -43,6 +49,14 @@ export function validateLocalPasswordInput(password: string, confirmation: strin
   if (password.length < 12) return `密码至少需要 12 个字符，还差 ${12 - password.length} 个。`;
   if (!confirmation) return "请再次输入密码进行确认。";
   if (password !== confirmation) return "两次输入的密码不一致。";
+  return "";
+}
+
+export function managedCloudActionMessage(action?: ManagedCloudAction) {
+  if (action?.state === "failed") return cloudFailureMessage(action.code);
+  if (action?.phase === "resources") return "公网接入已确认，正在分配公网域名和 PA 邮箱。";
+  if (["starting", "running"].includes(action?.state || "idle")) return "验证页面已打开，请在浏览器中确认这台电脑。";
+  if (action?.state === "succeeded") return "页面验证已完成，正在刷新公网域名。";
   return "";
 }
 
@@ -106,4 +120,16 @@ function toTask(check: SetupCheck, blockedChecks: SetupCheck[], title = check.su
     category: categoryLabels[check.group] || check.group,
     waitingCount: blockedChecks.filter((blocked) => blocked.group === check.group).length,
   };
+}
+
+function cloudFailureMessage(code = "") {
+  const messages: Record<string, string> = {
+    CLOUD_AUTH_DENIED: "页面验证已取消，请重新验证并确认这台电脑。",
+    CLOUD_AUTH_EXPIRED: "页面验证已过期，请重新发起验证。",
+    CLOUD_AUTH_FAILED: "Cloud 登录状态未通过，请确认 personal-agent.cn 已登录后重试。",
+    CLOUD_NETWORK_UNREACHABLE: "无法连接 personal-agent.cn，请检查 DNS 或本机网络后重试。",
+    CLOUD_REQUEST_FAILED: "Cloud 授权接口暂时未完成请求，请确认 Cloud 已发布最新版本后重试。",
+    DEPENDENCY_UNAVAILABLE: "Cloud 授权服务暂时不可用，本机使用不受影响；请稍后重新验证。",
+  };
+  return messages[code] || "页面验证未完成，本机使用不受影响；请重新验证。";
 }

@@ -8,6 +8,7 @@
   "acceptance": [
     "A local session stores ordered commands and events",
     "Concurrent input is serialized",
+    "In-progress Worker tasks resume after a service restart, surface live recovery status, and report completion through the main Agent",
     "Conversation execution does not require Cloud",
     "Release and final acceptance install the GitHub Release asset and use authenticated /app/chat",
     "A unique prompt reaches the real Agent runtime and its Agent reply is observed in the same session",

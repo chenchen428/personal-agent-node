@@ -18,4 +18,4 @@ Types are `work`, `page`, `mail`, `data`, `automation`, and `note`. Titles are r
 
 Create or update Activity proactively when work starts, reaches a useful milestone, produces a deliverable, changes expected outcome, recovers from failure, or completes. Keep one evolving story when frequent updates concern the same work. Do not publish heartbeats, every tool call, token usage, raw database rows, prompts, internal paths, secrets, or implementation chatter.
 
-Activity replaces the legacy product Memory domain. Search Activity to understand recent main-Agent work. Do not call `open-abg memory`, read the legacy table, or recreate a preference/vector-memory side channel.
+Activity replaces the legacy product Memory domain. Search Activity to understand recent main-Agent work. Do not recreate a memory CLI, read the legacy table, or add a preference/vector-memory side channel.

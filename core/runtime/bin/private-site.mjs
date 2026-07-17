@@ -77,8 +77,9 @@ async function prepareCommand() {
   const personalApps = writePersonalAppCompatibilityReport(config);
   const workspaceFiles = ensureWorkspaceFiles(config);
   seedAgentWorkspace(config);
-  const xiaohongshuTarget = path.join(config.dataRoot, "runtime", "xiaohongshu", "xiaohongshu-mcp.exe");
-  if (process.platform === "win32" && config.env.PRIVATE_SITE_BUILD_XIAOHONGSHU === "1" && !fs.existsSync(xiaohongshuTarget)) {
+  const xiaohongshuTarget = path.join(config.dataRoot, "runtime", "xiaohongshu", process.platform === "win32" ? "xiaohongshu-mcp.exe" : "xiaohongshu-mcp");
+  const supportsLocalXiaohongshu = (process.platform === "win32" && process.arch === "x64") || (process.platform === "darwin" && process.arch === "arm64");
+  if (supportsLocalXiaohongshu && config.env.PRIVATE_SITE_BUILD_XIAOHONGSHU === "1" && !fs.existsSync(xiaohongshuTarget)) {
     const { buildLocalXiaohongshuAdapter } = await import("../../../scripts/build-channel-runtimes.mjs");
     await buildLocalXiaohongshuAdapter({ outputRoot: path.dirname(xiaohongshuTarget) });
   }

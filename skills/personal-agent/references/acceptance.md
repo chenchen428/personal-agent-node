@@ -27,7 +27,7 @@ An artifact surface smoke, deterministic runner or source test cannot set `realA
 - Verify R2/R3 plans expire in ten minutes, bind a digest and require explicit local human approval. Reject Agent self-approval, remote approval and changed or expired plans.
 - Verify Worker and Extension failures are isolated and all mutable data stays under the configured data root.
 - Verify fresh installation, client-owned start/stop, upgrade, failed-candidate automatic pointer restoration and native previous-release rollback. Stable Go launchers must follow the active immutable release and remain usable when Node cannot start. Legacy mail migration must be idempotent, fail closed on conflicts and retain its source for rollback.
-- For release and final acceptance, verify a user-managed local MTA, absence of a bundled SMTP server, an installed current-following `open-abg-mail-ingest` shim, real EML plus attachment ingestion into local-only storage, authenticated `/app/mail`, ordinary encrypted backup/restore of `mail/`, absence of managed raw SMTP and IMAPS tunnels, read-only `mail status`, and preview-only `mail plan`. Evidence must omit real recipients, message bodies, attachments and secrets.
+- For release and final acceptance, verify a user-managed local MTA, absence of a bundled SMTP server, an installed current-following `pa-cli mail ingest` command, real EML plus attachment ingestion into local-only storage, authenticated `/app/mail`, ordinary encrypted backup/restore of `mail/`, absence of managed raw SMTP and IMAPS tunnels, read-only `mail status`, and preview-only `mail plan`. Evidence must omit real recipients, message bodies, attachments and secrets.
 
 ## Optional Managed Cloud Integration
 

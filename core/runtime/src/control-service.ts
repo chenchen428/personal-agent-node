@@ -5,6 +5,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { resolveNodeConfig } from "./config.ts";
 import { createOperationStore, operationError } from "./operations.ts";
+import { createUpdateManager } from "./updates.ts";
 
 const isEntrypoint = ["control-service.mjs", "control-service.ts"].includes(path.basename(process.argv[1] || ""));
 
@@ -16,6 +17,7 @@ export function controlEndpoint(config, platform = process.platform) {
 export function createControlService({ config = resolveNodeConfig(), now, logger = console } = {}) {
   const endpoint = controlEndpoint(config);
   const operations = createOperationStore({ dataRoot: config.dataRoot, now });
+  const updates = createUpdateManager({ config, operations, now });
   const approvalChallenges = new Map();
   const server = net.createServer((socket) => {
     socket.setEncoding("utf8");
@@ -33,7 +35,7 @@ export function createControlService({ config = resolveNodeConfig(), now, logger
       input = "";
       let request;
       try { request = JSON.parse(line); } catch { socket.end(`${JSON.stringify(errorEnvelope(operationError("INVALID_REQUEST", "Control request must be valid JSON", 2)))}\n`); return; }
-      handleControlRequest(request, { operations, approvalChallenges }).then((response) => socket.end(`${JSON.stringify(response)}\n`)).catch((error) => socket.end(`${JSON.stringify(errorEnvelope(error))}\n`));
+      handleControlRequest(request, { operations, approvalChallenges, updates }).then((response) => socket.end(`${JSON.stringify(response)}\n`)).catch((error) => socket.end(`${JSON.stringify(errorEnvelope(error))}\n`));
     });
   });
   server.on("error", (error) => logger.error?.(`[personal-agent-control] ${error.message}`));
@@ -41,6 +43,7 @@ export function createControlService({ config = resolveNodeConfig(), now, logger
     server,
     endpoint,
     operations,
+    updates,
     async listen() {
       if (process.platform !== "win32") fs.rmSync(endpoint, { force: true });
       fs.mkdirSync(config.runtimeDir, { recursive: true, mode: 0o700 });
@@ -55,7 +58,7 @@ export function createControlService({ config = resolveNodeConfig(), now, logger
   };
 }
 
-export async function handleControlRequest(request, { operations, approvalChallenges = new Map() }) {
+export async function handleControlRequest(request, { operations, approvalChallenges = new Map(), updates }) {
   if (request?.schemaVersion !== 1 || typeof request.command !== "string") throw operationError("INVALID_REQUEST", "Invalid control request", 2);
   const args = request.args || {};
   if (request.command === "health") return success("health", { service: "personal-agent-control" });
@@ -75,6 +78,13 @@ export async function handleControlRequest(request, { operations, approvalChalle
     const actor = { kind: "human", authenticated: true, loopback: true, channel: "local-tty" };
     return success(request.command, { operation: operations.approve(args.id, { digest: args.digest, actor }) });
   }
+  if (request.command.startsWith("update.") && !updates) throw operationError("CAPABILITY_UNAVAILABLE", "Update coordinator is unavailable", 7);
+  if (request.command === "update.status") return success(request.command, updates.status({ background: args.background === true, jobId: args.jobId }));
+  if (request.command === "update.check") return success(request.command, await updates.check({ channel: args.channel }));
+  if (request.command === "update.plan") return success(request.command, await updates.plan({ version: args.version }));
+  if (request.command === "update.rollback-plan") return success(request.command, updates.planRollback());
+  if (request.command === "update.console-approve") return success(request.command, updates.approve({ jobId: args.jobId, operationId: args.operationId, digest: args.digest }));
+  if (request.command === "update.apply") return success(request.command, await updates.apply({ jobId: args.jobId, operationId: args.operationId, digest: args.digest }));
   throw operationError("CAPABILITY_UNAVAILABLE", `Control command is unavailable: ${request.command}`, 7);
 }
 

@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { copyText, coverKind, formatDateTime, relativeTime, useDebounced, useRememberedQuery, useRemote, useSourcePage } from "./data";
-import { BackIcon, InlineError, LoadSentinel, MobileListShell, PhoneStatus, SearchEmpty, SearchStatus } from "./shell";
+import { BackIcon, InlineError, LoadSentinel, MobileListShell, SearchEmpty, SearchStatus } from "./shell";
 import type { FilterOption, MobilePageResult, PageItem } from "./types";
 
 export function MobilePages({ pageId = "" }: { pageId?: string }) {
@@ -69,9 +69,8 @@ function PageReader({ page, loading, error, returnHref, returnLabel }: { page?: 
     window.setTimeout(() => setToast(""), 1800);
   };
   return <div className="mobile-current"><div className="mobile-stage"><div className={`phone page-reader-phone theme-${page?.headerTheme || "light"}`}>
-    <PhoneStatus />
     <main className="page-reader-screen">
-      <div className="page-reader-bar"><Link href={returnHref} aria-label={`返回${returnLabel}`}><BackIcon /></Link><strong>{page?.title || "发布页"}</strong><div className="page-reader-actions">{page?.visibility === "public" ? <button type="button" onClick={() => void share()}>分享</button> : <span>私有</span>}</div></div>
+      <div className="page-reader-bar"><Link href={returnHref} aria-label={`返回${returnLabel}`}><BackIcon /></Link><strong>{page?.title || "发布页"}</strong><div className="page-reader-actions">{page ? page.visibility === "public" ? <button type="button" onClick={() => void share()}>分享</button> : <span>私有</span> : null}</div></div>
       {error ? <InlineError message={error} /> : null}
       {page?.url ? <iframe src={page.url} title={page.title} /> : loading ? <LoadSentinel loading canLoad={false} exhausted={false} onLoad={() => undefined} /> : <SearchEmpty title="无法打开页面" hint="当前页面没有可访问地址" />}
     </main>

@@ -31,6 +31,7 @@ const menuPages = {
   "app/runtime/page.tsx": "runtime-page",
   "app/apps/page.tsx": "apps-page",
   "app/settings/page.tsx": "settings-page",
+  "app/update/page.tsx": "update-page",
 };
 
 for (const [route, moduleName] of Object.entries(menuPages)) {

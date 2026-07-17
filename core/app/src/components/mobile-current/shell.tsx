@@ -2,15 +2,10 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { Activity, Blocks, Info, ListTodo, Menu, Newspaper, PanelsTopLeft, X } from "lucide-react";
 import { useEffect, useRef, useState, type MutableRefObject, type ReactNode } from "react";
 import { safeHost, useRememberedScroll, useRemote } from "./data";
 import type { FilterOption, MobileSection, Overview, PersonalApp } from "./types";
-
-const navItems: { id: MobileSection; label: string; symbol: string; href: string }[] = [
-  { id: "activity", label: "最近动态", symbol: "●", href: "/app/mobile" },
-  { id: "pages", label: "发布页", symbol: "▧", href: "/app/mobile/pages" },
-  { id: "workers", label: "任务", symbol: "↻", href: "/app/mobile/workers" },
-];
 
 type ShellFilter = {
   label: string;
@@ -47,7 +42,6 @@ export function MobileListShell({ section, activeAppId, title, note, children, q
   useEffect(() => { if (!composingSearch.current) setSearchDraft(query || ""); }, [query]);
 
   return <div className="mobile-current"><div className="mobile-stage"><div className={`phone${drawerOpen ? " menu-open" : ""}`} id="mobile-phone">
-    <PhoneStatus />
     <MobileHeader
       title={title}
       note={note}
@@ -96,7 +90,7 @@ function MobileHeader({ title, note, drawerOpen, openDrawer, searchOpen, openSea
 }) {
   const selected = filter?.options.find((item) => item.value === filter.value);
   return <header className={`mobile-header${filter ? " has-header-filter" : ""}`} data-primary-header hidden={searchOpen}>
-    <button type="button" id="menu-open" aria-label="打开侧边菜单" aria-expanded={drawerOpen} onClick={openDrawer}>☰</button>
+    <button className="mobile-menu-enhanced" type="button" id="menu-open" aria-label="打开侧边菜单" aria-expanded={drawerOpen} onClick={openDrawer}><Menu aria-hidden="true" /></button>
     <div className="mobile-title"><strong>{title}</strong><span>{note}</span></div>
     <div className="mobile-header-actions">
       {openSearch ? <button type="button" aria-label={searchLabel} aria-expanded={searchOpen} onClick={openSearch}><SearchIcon /></button> : null}
@@ -136,16 +130,20 @@ function MobileDrawer({ section, activeAppId, close, overview, apps }: { section
   return <>
     <button className="mobile-drawer-backdrop" type="button" aria-label="关闭侧边菜单" onClick={close} />
     <aside className="mobile-drawer" aria-label="移动端侧边菜单">
-      <div className="drawer-head"><strong>PA · 个人智能体</strong><button type="button" aria-label="关闭侧边菜单" onClick={close}>×</button></div>
+      <div className="drawer-head"><strong>PA · 个人智能体</strong><button type="button" aria-label="关闭侧边菜单" onClick={close}><X aria-hidden="true" /></button></div>
       <div className="drawer-user"><span className="drawer-avatar">PA</span><div><strong>你的 PA</strong><span>{address}</span></div></div>
       <nav className="drawer-nav">
-        <span className="drawer-nav-label">主要功能</span>
-        {navItems.map((item) => <Link href={item.href} aria-current={section === item.id ? "page" : undefined} key={item.id}><b>{item.symbol}</b><span>{item.label}</span><small>{counts[item.id]}</small></Link>)}
+        <span className="drawer-nav-label">工作区</span>
+        <Link href="/app/mobile" aria-current={section === "activity" ? "page" : undefined}><Activity className="mobile-nav-icon" aria-hidden="true" /><span>最近动态</span><small /></Link>
+        <Link href="/app/mobile/workers" aria-current={section === "workers" ? "page" : undefined}><ListTodo className="mobile-nav-icon" aria-hidden="true" /><span>任务</span><small>{counts.workers}</small></Link>
+        <Link href="/app/mobile/pages" aria-current={section === "pages" ? "page" : undefined}><PanelsTopLeft className="mobile-nav-icon" aria-hidden="true" /><span>发布页</span><small>{counts.pages}</small></Link>
         <span className="drawer-nav-label">我的应用</span>
-        <Link href="/app/mobile/apps" aria-current={section === "apps" && !activeAppId ? "page" : undefined}><b>◫</b><span>全部应用</span><small>{apps.length}</small></Link>
-        {apps.slice(0, 1).map((app) => <Link href={app.mobileRoute || app.route} aria-current={activeAppId === app.id ? "page" : undefined} key={app.id}><b>{app.name.slice(0, 1)}</b><span>{app.name}</span><small /></Link>)}
+        <Link href="/app/mobile/apps" aria-current={section === "apps" && !activeAppId ? "page" : undefined}><Blocks className="mobile-nav-icon" aria-hidden="true" /><span>全部应用</span><small>{apps.length || ""}</small></Link>
+        {apps.slice(0, 1).map((app) => <Link href={app.mobileRoute || app.route} aria-current={activeAppId === app.id ? "page" : undefined} key={app.id}><Newspaper className="mobile-nav-icon" aria-hidden="true" /><span>{app.name}</span><small /></Link>)}
+        <span className="drawer-nav-label">系统</span>
+        <Link href="/app/mobile/about" aria-current={section === "about" ? "page" : undefined}><Info className="mobile-nav-icon" aria-hidden="true" /><span>关于</span><small /></Link>
       </nav>
-      <div className="drawer-foot"><div><strong>PA 正常运行</strong><span>{overview?.counts.work || 0} 项任务 · 最近发布 {overview?.counts.pages || 0} 个页面</span></div><Link className="drawer-about-link" href="/app/mobile/about" aria-current={section === "about" ? "page" : undefined}>关于</Link></div>
+      <div className="drawer-foot mobile-drawer-runtime"><i className="mobile-runtime-dot" /><div><strong>PA 正常运行</strong><span>{overview?.counts.work || 0} 项任务 · 最近发布 {overview?.counts.pages || 0} 个页面</span></div></div>
     </aside>
   </>;
 }
@@ -170,10 +168,9 @@ function FilterSheet({ open, close, label, description, value, setValue, options
 }
 
 export function DetailShell({ returnHref, returnLabel, trailing, children }: { returnHref: string; returnLabel: string; trailing?: string; children: ReactNode }) {
-  return <div className="mobile-current"><div className="mobile-stage"><div className="phone content-detail-phone"><PhoneStatus /><main className="content-detail-screen"><div className="content-detail-bar"><Link href={returnHref}>‹ {returnLabel}</Link><span>{trailing}</span></div><div className="content-detail-scroll">{children}</div></main></div></div></div>;
+  return <div className="mobile-current"><div className="mobile-stage"><div className="phone content-detail-phone"><main className="content-detail-screen"><div className="content-detail-bar"><Link href={returnHref}>‹ {returnLabel}</Link><span>{trailing}</span></div><div className="content-detail-scroll">{children}</div></main></div></div></div>;
 }
 
-export function PhoneStatus() { return <div className="phone-status" aria-hidden="true"><span>9:41</span><span>●●● ︿ ▰</span></div>; }
 export function SearchIcon() { return <svg className="mobile-ui-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5" /><path d="m16 16 4 4" /></svg>; }
 export function BackIcon() { return <svg className="mobile-ui-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m15 18-6-6 6-6" /></svg>; }
 export function SearchStatus({ query, count }: { query: string; count: number }) { return <div className="list-search-status" aria-live="polite"><strong>{count} 条结果</strong><span>“{query}”</span></div>; }

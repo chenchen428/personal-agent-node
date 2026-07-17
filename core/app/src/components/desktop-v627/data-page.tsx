@@ -1,41 +1,55 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { Filter, Search, SlidersHorizontal, X } from "lucide-react";
+import { Button, SearchField } from "../desktop-v72/primitives";
+import { DataColumnPanel, DataVisibilityPanel } from "./data-column-panel";
+import { DataTable } from "./data-table";
 import type { DataMetadata, DataObject, DataResult } from "./types";
-import { Heading, Pager, columnName, fetchJson, formatCell } from "./shared";
+import { fetchJson } from "./shared";
 
 export function DataPage() {
-  const [objects, setObjects] = useState<DataObject[]>([]); const [metadata, setMetadata] = useState<DataMetadata[]>([]); const [objectName, setObjectName] = useState(""); const [result, setResult] = useState<DataResult | null>(null);
-  const [sort, setSort] = useState<{ column: string; direction: "asc" | "desc" } | null>(null);
+  const [objects, setObjects] = useState<DataObject[]>([]);
+  const [metadata, setMetadata] = useState<DataMetadata[]>([]);
+  const [objectName, setObjectName] = useState("");
+  const [result, setResult] = useState<DataResult | null>(null);
+  const [query, setQuery] = useState("");
+  const [searching, setSearching] = useState(false);
+  const [sort, setSort] = useState<{ column: string; direction: "asc" | "desc" }>();
   const [filters, setFilters] = useState<Record<string, string>>({});
-  const [menuColumn, setMenuColumn] = useState("");
-  const [filterDraft, setFilterDraft] = useState("");
+  const [activeColumn, setActiveColumn] = useState("");
+  const [columnsOpen, setColumnsOpen] = useState(false);
+  const [visible, setVisible] = useState<string[]>([]);
   const [pageNumber, setPageNumber] = useState(1);
-  const [selectedCell, setSelectedCell] = useState<{ address: string; field: string; value: string }>({ address: "A1", field: "记录编号", value: "选择单元格后在这里查看完整内容" });
+  const [loading, setLoading] = useState(true);
+
   useEffect(() => { void fetchJson<{ objects: DataObject[]; metadata: DataMetadata[] }>("/api/app/data/schema").then((data) => { setObjects(data.objects || []); setMetadata(data.metadata || []); setObjectName(data.objects?.[0]?.name || ""); }); }, []);
   useEffect(() => {
-    if (!objectName) return;
-    void fetchJson<DataResult>("/api/app/data/query", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({
-        object: objectName,
-        filters: Object.entries(filters).filter(([, value]) => value).map(([field, value]) => ({ field, operator: "contains", value })),
-        sort: sort ? [{ field: sort.column, direction: sort.direction }] : [],
-        page: { number: pageNumber, size: 50 },
-      }),
-    }).then(setResult);
-  }, [filters, objectName, pageNumber, sort]);
+    if (!objectName) { setLoading(false); setResult(null); return; }
+    setLoading(true);
+    void fetchJson<DataResult>("/api/app/data/query", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ object: objectName, search: query, filters: Object.entries(filters).filter(([, value]) => value).map(([field, value]) => ({ field, operator: "contains", value })), sort: sort ? [{ field: sort.column, direction: sort.direction }] : [], page: { number: pageNumber, size: 50 } }) }).then((data) => { setResult(data); setVisible((current) => current.length ? current.filter((column) => data.columns.includes(column)) : data.columns); }).finally(() => setLoading(false));
+  }, [filters, objectName, pageNumber, query, sort]);
+
   const display = (field: string) => metadata.find((item) => item.objectName === objectName && item.fieldName === field)?.displayName || field;
-  const objectMeta = metadata.find((item) => item.objectName === objectName && !item.fieldName);
-  const rows = result?.rows || [];
-  const openColumnMenu = (column: string) => { setMenuColumn(column); setFilterDraft(filters[column] || ""); };
-  const changeObject = (name: string) => { setObjectName(name); setFilters({}); setSort(null); setPageNumber(1); setMenuColumn(""); };
-  const selectCell = (rowIndex: number, columnIndex: number, column: string, value: unknown) => setSelectedCell({ address: `${columnName(columnIndex + 1)}${(pageNumber - 1) * 50 + rowIndex + 1}`, field: display(column), value: formatCell(value) });
-  const totalRows = result?.page.totalRows || 0;
-  const firstRow = totalRows ? (pageNumber - 1) * 50 + 1 : 0;
-  const lastRow = Math.min(pageNumber * 50, totalRows);
-  return <main><Heading eyebrow="数据" title="PA 使用的数据" copy="PA 用这些工作表整理收到的资料、任务结果和发布记录。" action={<div className="sheet-stats"><div><span>管理</span><strong>PA 托管</strong></div><div><span>工作表</span><strong>{objects.length}</strong></div><div><span>权限</span><strong>只读</strong></div></div>} />
-    <div className="sheet"><header className="sheet-ribbon"><div className="sheet-name"><strong>{objectMeta?.displayName || objectName || "数据"}</strong><span>{objectMeta?.description || "本机工作区数据"}</span></div><span className="sheet-count">{result ? `${rows.length} / ${totalRows} 行` : "正在读取"}</span></header><div className="sheet-formula"><b>{selectedCell.address}</b><i>fx</i><span><code>{selectedCell.field}</code>　{selectedCell.value}</span></div><div className="sheet-scroll" role="region" aria-label="可横向滚动的数据表" tabIndex={0}><table className="sheet-table"><thead><tr><th className="rownum">#</th>{(result?.columns || []).map((column) => <th key={column}><button className={`sheet-column-button${filters[column] ? " is-filtered" : ""}`} type="button" aria-expanded={menuColumn === column} onClick={() => openColumnMenu(column)}><span>{display(column)}</span><i>{sort?.column === column ? sort.direction === "asc" ? "↑" : "↓" : "⌄"}</i></button></th>)}</tr></thead><tbody>{rows.map((row, index) => <tr key={index}><td className="rownum">{firstRow + index}</td>{(result?.columns || []).map((column, columnIndex) => <td className={selectedCell.address === `${columnName(columnIndex + 1)}${firstRow + index}` ? "selected" : ""} title={formatCell(row[column])} onClick={() => selectCell(index, columnIndex, column, row[column])} key={column}>{formatCell(row[column])}</td>)}</tr>)}{result && !rows.length ? <tr><td className="sheet-empty" colSpan={(result.columns?.length || 0) + 1}>当前筛选没有结果</td></tr> : null}</tbody></table></div><div className="sheet-column-menu" hidden={!menuColumn}><header><strong>{menuColumn ? display(menuColumn) : "列"}</strong><button type="button" aria-label="关闭列菜单" onClick={() => setMenuColumn("")}>×</button></header><button type="button" onClick={() => { setSort({ column: menuColumn, direction: "asc" }); setPageNumber(1); setMenuColumn(""); }}>↑ 升序排列</button><button type="button" onClick={() => { setSort({ column: menuColumn, direction: "desc" }); setPageNumber(1); setMenuColumn(""); }}>↓ 降序排列</button><label><span>筛选这一列</span><input type="search" placeholder="输入要查找的内容" value={filterDraft} onChange={(event) => setFilterDraft(event.target.value)} onKeyDown={(event) => { if (event.key === "Escape") setMenuColumn(""); if (event.key === "Enter") { setFilters((current) => ({ ...current, [menuColumn]: filterDraft.trim() })); setPageNumber(1); setMenuColumn(""); } }} /></label><footer><button type="button" onClick={() => { setFilters((current) => { const next = { ...current }; delete next[menuColumn]; return next; }); setFilterDraft(""); setPageNumber(1); setMenuColumn(""); }}>清除筛选</button><button type="button" className="primary" onClick={() => { setFilters((current) => ({ ...current, [menuColumn]: filterDraft.trim() })); setPageNumber(1); setMenuColumn(""); }}>应用</button></footer></div><footer className="sheet-bottom"><div className="sheet-tabs" role="tablist" aria-label="切换工作表">{objects.slice(0, 4).map((item) => <button className={item.name === objectName ? "active" : ""} type="button" role="tab" aria-selected={item.name === objectName} onClick={() => changeObject(item.name)} key={item.name}>{metadata.find((entry) => entry.objectName === item.name && !entry.fieldName)?.displayName || item.name}</button>)}{objects.length > 4 ? <span className="sheet-more-count">另有 {objects.length - 4} 个工作表</span> : null}</div><Pager page={pageNumber} totalPages={result?.page.totalPages || 1} totalRows={totalRows} pageSize={50} onPage={setPageNumber} compact /></footer></div>
+  const sheet = metadata.find((item) => item.objectName === objectName && !item.fieldName);
+  const visibleColumns = useMemo(() => (result?.columns || []).filter((column) => visible.includes(column)), [result?.columns, visible]);
+  const hasActiveFilter = Boolean(query.trim() || Object.values(filters).some(Boolean));
+  const emptyState = !objectName
+    ? { title: "还没有数据表", description: "主 Agent 创建结构化数据后，工作表和记录会出现在这里。" }
+    : hasActiveFilter
+      ? { title: "没有匹配的数据", description: "清除查找或调整筛选条件后再试。" }
+      : { title: "这个工作表还是空的", description: "主 Agent 写入数据后，记录会按列显示在这里。" };
+  const changeSheet = (name: string) => { setObjectName(name); setQuery(""); setSearching(false); setFilters({}); setSort(undefined); setActiveColumn(""); setColumnsOpen(false); setVisible([]); setPageNumber(1); };
+  const applyColumn = (column: string, filter: string, direction?: "asc" | "desc") => { setFilters((current) => ({ ...current, [column]: filter })); setSort(direction ? { column, direction } : undefined); setActiveColumn(""); setPageNumber(1); };
+  const clearColumn = (column: string) => { setFilters((current) => { const next = { ...current }; delete next[column]; return next; }); if (sort?.column === column) setSort(undefined); setActiveColumn(""); setPageNumber(1); };
+
+  return <main className="page flush data-shell">
+    <div className="data-toolbar"><div className="data-title"><strong>{sheet?.displayName || objectName || "数据"}</strong><span>{sheet?.description || (loading ? "正在读取本机工作区" : `当前工作表 · ${result?.page.totalRows || 0} 条`)}</span></div><div className="page-actions">
+      {searching ? <div className="data-search"><SearchField autoFocus value={query} onChange={(event) => { setQuery(event.target.value); setPageNumber(1); }} placeholder="查找当前工作表…" /><button className="icon-button" type="button" onClick={() => { setQuery(""); setSearching(false); }} aria-label="关闭查找"><X /></button></div> : <Button onClick={() => setSearching(true)}><Search />查找</Button>}
+      <Button aria-pressed={Boolean(activeColumn)} onClick={() => { setColumnsOpen(false); setActiveColumn(activeColumn || visibleColumns[0] || result?.columns[0] || ""); }}><Filter />筛选{Object.values(filters).filter(Boolean).length ? ` ${Object.values(filters).filter(Boolean).length}` : ""}</Button>
+      <Button aria-pressed={columnsOpen} onClick={() => { setActiveColumn(""); setColumnsOpen((open) => !open); }}><SlidersHorizontal />列 {visibleColumns.length}/{result?.columns.length || 0}</Button>
+    </div>{activeColumn ? <DataColumnPanel column={activeColumn} columns={result?.columns || []} label={display(activeColumn)} filter={filters[activeColumn] || ""} sort={sort} onApply={applyColumn} onClear={clearColumn} onClose={() => setActiveColumn("")} onColumnChange={setActiveColumn} /> : null}{columnsOpen ? <DataVisibilityPanel columns={result?.columns || []} visible={visible} display={display} onChange={setVisible} onClose={() => setColumnsOpen(false)} /> : null}</div>
+    <DataTable columns={visibleColumns} rows={result?.rows || []} display={display} sort={sort} filtered={filters} start={(pageNumber - 1) * 50} loading={loading} emptyState={emptyState} onColumnAction={(column) => { setColumnsOpen(false); setActiveColumn(column); }} />
+    <footer className="sheet-tabs"><div role="tablist" aria-label="切换工作表">{objects.map((item) => <button className={item.name === objectName ? "active" : ""} type="button" role="tab" aria-selected={item.name === objectName} onClick={() => changeSheet(item.name)} key={item.name}>{metadata.find((entry) => entry.objectName === item.name && !entry.fieldName)?.displayName || item.name}</button>)}</div><div className="data-pager"><span>{result ? `${Math.min((pageNumber - 1) * 50 + 1, result.page.totalRows)}–${Math.min(pageNumber * 50, result.page.totalRows)} / ${result.page.totalRows}` : "0–0 / 0"}</span><button type="button" aria-label="上一页" disabled={pageNumber <= 1} onClick={() => setPageNumber((page) => Math.max(1, page - 1))}>‹</button><b>{pageNumber} / {result?.page.totalPages || 1}</b><button type="button" aria-label="下一页" disabled={pageNumber >= (result?.page.totalPages || 1)} onClick={() => setPageNumber((page) => page + 1)}>›</button></div></footer>
   </main>;
 }
