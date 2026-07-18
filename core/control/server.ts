@@ -9,7 +9,7 @@ import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 import { capacityState, readServerCapacity } from './capacity.ts';
 import { onboardingStatus } from '../runtime/src/cloud-resources.ts';
-import { resolveNodeConfig } from '../runtime/src/config.ts';
+import { initializeSite, resolveNodeConfig } from '../runtime/src/config.ts';
 import { localMailPlan, localMailStatus } from '../runtime/src/mail.ts';
 import { setupDiagnostics, setupStatus } from '../runtime/src/setup.ts';
 import { executeSetupAction, planSetupAction } from '../runtime/src/setup-actions.ts';
@@ -17,6 +17,8 @@ import { createOperationStore } from '../runtime/src/operations.ts';
 import { listExtensions } from '../runtime/src/extensions.ts';
 import { publicPersonalApp, scanPersonalApps } from '../runtime/src/apps.ts';
 import { requestControl } from '../runtime/src/control-service.ts';
+import { getDataExport, startDataExport } from './data-export.js';
+import { createSpace, deleteSpace, getSpace, listSpaces, setSpaceDesiredState } from '../runtime/src/space-registry.ts';
 
 const projectRoot = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(projectRoot, '..', '..');
@@ -115,6 +117,52 @@ async function handleRequest(request, response) {
     }, request.method === 'HEAD');
     return;
   }
+  if (url.pathname === '/api/spaces') {
+    if (request.method === 'GET' || request.method === 'HEAD') {
+      await sendJson(response, {
+        ok: true,
+        currentSpaceId: updateConfig.space?.id || null,
+        spaces: listSpaces(updateConfig.installationDataRoot).map(publicSpace),
+      }, request.method === 'HEAD');
+      return;
+    }
+    if (request.method !== 'POST') {
+      send(response, 405, 'text/plain; charset=utf-8', 'Method Not Allowed');
+      return;
+    }
+    const input = await readRequestJson(request);
+    try {
+      if (input.action === 'create') {
+        const space = createSpace({ dataRoot: updateConfig.installationDataRoot, slug: input.slug, displayName: input.displayName });
+        try {
+          initializeSite({ dataRoot: updateConfig.installationDataRoot, spaceId: space.id, domain: 'personal-agent.local' });
+        } catch (error) {
+          deleteSpace(updateConfig.installationDataRoot, space.id);
+          throw error;
+        }
+        await sendJson(response, { ok: true, space: publicSpace(space) });
+        return;
+      }
+      if (input.action === 'start' || input.action === 'stop') {
+        const space = setSpaceDesiredState(updateConfig.installationDataRoot, String(input.spaceId || ''), input.action === 'start' ? 'running' : 'stopped');
+        await sendJson(response, { ok: true, space: publicSpace(space) });
+        return;
+      }
+      if (input.action === 'delete') {
+        const existing = getSpace(updateConfig.installationDataRoot, String(input.spaceId || ''));
+        if (!existing) throw Object.assign(new Error('隔离空间不存在'), { code: 'SPACE_NOT_FOUND' });
+        if (existing.desiredState !== 'stopped' || existing.state !== 'stopped') throw Object.assign(new Error('请先停止隔离空间并等待 Runtime 完全退出'), { code: 'SPACE_RUNNING' });
+        if (String(input.confirm || '') !== existing.slug) throw Object.assign(new Error('删除确认与隔离空间标识不一致'), { code: 'CONFIRMATION_REQUIRED' });
+        await sendJson(response, { ok: true, space: publicSpace(deleteSpace(updateConfig.installationDataRoot, existing.id)) });
+        return;
+      }
+      throw Object.assign(new Error('未知的隔离空间操作'), { code: 'INVALID_ARGUMENT' });
+    } catch (error) {
+      const status = error?.code === 'SPACE_NOT_FOUND' ? 404 : error?.code === 'SPACE_RUNNING' ? 409 : 400;
+      sendJsonStatus(response, status, { ok: false, error: { code: error?.code || 'SPACE_ACTION_FAILED', message: String(error?.message || '隔离空间操作失败').slice(0, 300) } });
+      return;
+    }
+  }
   if (url.pathname === '/api/wechat/status') {
     if (request.method !== 'GET' && request.method !== 'HEAD') {
       send(response, 405, 'text/plain; charset=utf-8', 'Method Not Allowed');
@@ -138,6 +186,36 @@ async function handleRequest(request, response) {
     }
     await sendJson(response, await setupStatus({ dataRoot: siteDataRoot, installRoot }), request.method === 'HEAD');
     return;
+  }
+  if (url.pathname === '/api/authorization') {
+    if (request.method !== 'GET' && request.method !== 'POST') {
+      send(response, 405, 'text/plain; charset=utf-8', 'Method Not Allowed');
+      return;
+    }
+    const input = request.method === 'POST' ? await readRequestJson(request) : undefined;
+    const result = await requestOpenAgentBridge('/api/node/v1/client/authorization', {
+      method: request.method,
+      headers: input ? { 'content-type': 'application/json' } : undefined,
+      body: input ? JSON.stringify(input) : undefined,
+    });
+    await sendJson(response, result || { ok: false, error: { message: '主 Agent 尚未就绪' } }, request.method === 'HEAD');
+    return;
+  }
+  if (url.pathname === '/api/data-export') {
+    if (request.method === 'POST') {
+      await readRequestJson(request);
+      await sendJson(response, { ok: true, export: startDataExport(siteDataRoot) });
+      return;
+    }
+    if (request.method === 'GET' || request.method === 'HEAD') {
+      const job = getDataExport(String(url.searchParams.get('id') || ''));
+      if (!job) {
+        sendJsonStatus(response, 404, { ok: false, error: { code: 'NOT_FOUND', message: '导出任务不存在' } });
+        return;
+      }
+      await sendJson(response, { ok: true, export: job }, request.method === 'HEAD');
+      return;
+    }
   }
   if (url.pathname === '/api/setup/diagnostics') {
     if (request.method !== 'GET' && request.method !== 'HEAD') {
@@ -265,6 +343,22 @@ function isAuthorized(request) {
   const address = request.socket.remoteAddress || '';
   const loopback = address === '127.0.0.1' || address === '::1' || address === '::ffff:127.0.0.1';
   return loopback && String(request.headers['x-personal-agent-authenticated'] || '') === '1';
+}
+
+function publicSpace(space) {
+  return {
+    id: space.id,
+    slug: space.slug,
+    displayName: space.displayName,
+    kind: space.kind,
+    state: space.state,
+    desiredState: space.desiredState,
+    localUrl: `http://127.0.0.1:${space.ports.gateway}`,
+    managedHost: space.managedHost || null,
+    agentMail: space.agentMail || null,
+    workspaceRoot: path.join(space.root, 'agent-workspace'),
+    createdAt: space.createdAt,
+  };
 }
 
 function send(response, statusCode, contentType, body, headOnly = false) {

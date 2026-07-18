@@ -28,15 +28,10 @@ export function buildInboundAttachmentDisplayName({ kind, fileName, createdAt, u
   return uniqueDisplayName(proposed, usedNames);
 }
 
-export function buildPrivateAttachmentPreviewUrl({ rootDir, filePath, consoleBaseUrl }) {
+export function buildPrivateAttachmentPreviewUrl({ rootDir, filePath }) {
   const relativePath = relativeAttachmentPath(rootDir, filePath);
   if (!relativePath) return "";
-  return `${serviceOrigin(consoleBaseUrl)}/files/view/${encodeRelativePath(relativePath)}`;
-}
-
-function serviceOrigin(value) {
-  try { return new URL(String(value || "")).origin; }
-  catch { return String(value || "").replace(/\/+$/, ""); }
+  return `/files/view/${encodeRelativePath(relativePath)}`;
 }
 
 export function relativeAttachmentPath(rootDir, filePath) {

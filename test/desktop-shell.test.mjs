@@ -42,6 +42,13 @@ test('desktop shell stays inside the immutable platform release', () => {
   assert.match(rust, /DAEMON_START: &str = "daemon-start"/);
   assert.match(rust, /DAEMON_STOP: &str = "stop"/);
   assert.match(rust, /RunEvent::Exit/);
+  assert.match(rust, /--expected-pid/);
+  assert.match(rust, /supervisor_pid: AtomicU32/);
+  assert.match(rust, /stopping: AtomicBool/);
+  assert.match(rust, /start_runtime_watchdog\(\)/);
+  assert.match(rust, /WATCHDOG_FAILURE_THRESHOLD/);
+  assert.match(rust, /if gateway_ready\(\)/);
+  assert.match(rust, /let _ = runtime\.start\(\)/);
   assert.match(rust, /WindowEvent::CloseRequested/);
   assert.match(rust, /__personal-agent\/close/);
   assert.match(rust, /creation_flags\(0x08000000\)/);

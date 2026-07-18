@@ -6,6 +6,7 @@ import { renderWindowsScheduledTask } from "../src/windows-service.ts";
 
 const config = {
   domain: "example.site",
+  installationDataRoot: "/Users/example/.personal-agent",
   dataRoot: "/Users/example/.personal-agent",
   logsDir: "/Users/example/.personal-agent/logs",
 };

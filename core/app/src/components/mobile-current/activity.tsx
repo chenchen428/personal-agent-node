@@ -1,11 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { Activity, Database, FileText, ListTodo, Mail, Workflow } from "lucide-react";
+import { Activity, ChevronDown, Database, FileText, ListTodo, Mail, Workflow } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { activityKind, fetchJson, formatDateTime, relativeTime, useRememberedQuery } from "./data";
 import { InlineError, LoadSentinel, MobileListShell, SearchEmpty, SearchStatus } from "./shell";
-import type { ActivityAttachment, ActivityItem } from "./types";
+import type { ActivityAttachment, ActivityItem, MobileTaskResult, Session } from "./types";
 
 export function MobileActivity() {
   const [query, setQuery] = useRememberedQuery("activity");
@@ -14,6 +14,8 @@ export function MobileActivity() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [loadedMore, setLoadedMore] = useState(false);
+  const [runningTasks, setRunningTasks] = useState<Session[]>([]);
+  const [tasksExpanded, setTasksExpanded] = useState(false);
 
   const load = useCallback(async (append = false) => {
     setLoading(true);
@@ -34,16 +36,53 @@ export function MobileActivity() {
     const timer = window.setTimeout(() => void load(false), query ? 260 : 0);
     return () => window.clearTimeout(timer);
   }, [query]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    const loadRunningTasks = async () => {
+      try {
+        const result = await fetchJson<MobileTaskResult>("/api/mobile/tasks?limit=20&status=running");
+        setRunningTasks(result.items || []);
+      } catch {
+        setRunningTasks([]);
+      }
+    };
+    void loadRunningTasks();
+    const timer = window.setInterval(() => void loadRunningTasks(), 5000);
+    return () => window.clearInterval(timer);
+  }, []);
+  useEffect(() => {
+    if (runningTasks.length <= 1) setTasksExpanded(false);
+  }, [runningTasks.length]);
 
-  return <MobileListShell section="activity" title="最近动态" note={items.length ? `${items.length} 条动态` : "最近动态"} query={query} setQuery={setQuery} searchLabel="搜索最近动态" searchPlaceholder="搜索动态内容">
+  return <MobileListShell section="activity" title="最近动态" note={runningTasks.length ? `${runningTasks.length} 项工作进行中` : items.length ? `${items.length} 条动态` : "最近动态"} query={query} setQuery={setQuery} searchLabel="搜索最近动态" searchPlaceholder="搜索动态内容">
     <div className="activity-stream">
       {error ? <InlineError message={error} /> : null}
-      {query && items.length ? <SearchStatus query={query} count={items.length} /> : null}
+      {!query && runningTasks.length ? <RunningTaskPresence tasks={runningTasks} expanded={tasksExpanded} setExpanded={setTasksExpanded} /> : null}
+      {query ? <SearchStatus count={items.length} summary={`“${query}”`} onClear={() => setQuery("")} /> : null}
       {!loading && !items.length ? <SearchEmpty title={query ? "没有找到相关动态" : "还没有最近动态"} hint={query ? "试试任务名称、邮件主题或页面标题" : "PA 的新工作会显示在这里"} /> : null}
       {items.map((item) => <ActivityEntry item={item} key={item.id} />)}
       <LoadSentinel loading={loading} canLoad={Boolean(cursor)} exhausted={loadedMore && !cursor} onLoad={() => void load(true)} />
     </div>
   </MobileListShell>;
+}
+
+function RunningTaskPresence({ tasks, expanded, setExpanded }: { tasks: Session[]; expanded: boolean; setExpanded: (value: boolean) => void }) {
+  const [current, ...parallelTasks] = tasks;
+  if (!current) return null;
+  return <section className="activity-presence" aria-label="正在工作的任务">
+    <header><span><i aria-hidden="true" />正在工作</span><small>{tasks.length > 1 ? `${tasks.length} 项并行` : "1 项进行中"}</small></header>
+    <Link className="activity-presence-primary" href={`/app/mobile/workers/${encodeURIComponent(current.id)}?from=activity`}>
+      <div><strong>{current.title || "未命名任务"}</strong><time dateTime={current.updatedAt} title={formatDateTime(current.updatedAt)}>{relativeTime(current.updatedAt)}</time></div>
+      <p>{current.summary || current.taskDescription || "PA 正在处理这项任务"}</p>
+    </Link>
+    {parallelTasks.length ? <>
+      <button className="activity-presence-toggle" type="button" aria-expanded={expanded} aria-controls="parallel-running-tasks" onClick={() => setExpanded(!expanded)}>
+        <span>{expanded ? "收起并行工作" : `另有 ${parallelTasks.length} 项并行工作`}</span><ChevronDown aria-hidden="true" />
+      </button>
+      <div className="activity-presence-more" id="parallel-running-tasks" hidden={!expanded}>
+        {parallelTasks.map((task) => <Link href={`/app/mobile/workers/${encodeURIComponent(task.id)}?from=activity`} key={task.id}><span><i aria-hidden="true" /><strong>{task.title || "未命名任务"}</strong></span><time dateTime={task.updatedAt} title={formatDateTime(task.updatedAt)}>{relativeTime(task.updatedAt)}</time></Link>)}
+      </div>
+    </> : null}
+  </section>;
 }
 
 function ActivityEntry({ item }: { item: ActivityItem }) {
@@ -54,6 +93,10 @@ function ActivityEntry({ item }: { item: ActivityItem }) {
     {href ? <Link className="activity-entry-hit" href={href} aria-label={`查看详情：${item.title}`} /> : null}
     <header><span className={`story-kind ${item.kind}`}><i className="mobile-story-icon"><KindIcon aria-hidden="true" /></i>{kind.label}</span><span className="activity-entry-meta"><time dateTime={item.updatedAt} title={formatDateTime(item.updatedAt)}>{relativeTime(item.updatedAt)}</time>{href ? <i aria-hidden="true">›</i> : null}</span></header>
     <h2>{item.title}</h2><p>{item.summary}</p>
+    {item.preview ? <div className="activity-target-preview">
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src={item.preview.url} alt={item.preview.alt} loading="lazy" />
+    </div> : null}
     {item.attachments.length ? <ActivityAttachments attachments={item.attachments} /> : null}
   </article>;
 }

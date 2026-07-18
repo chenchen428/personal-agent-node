@@ -4,6 +4,7 @@ import { spawn } from 'node:child_process';
 import { initializeSite, mergeSecretEnv, resolveNodeConfig, setConnectionMode, writeJsonAtomic } from './config.ts';
 import { setProvider } from './providers.ts';
 import { validateReverseTunnelContract } from './reverse-tunnel.ts';
+import { initializeInstallation, setSpaceManagedIdentity } from './space-registry.ts';
 
 export const DEFAULT_CLOUD_URL = 'https://personal-agent.cn';
 const DEFAULT_POLL_INTERVAL_SECONDS = 5;
@@ -28,7 +29,18 @@ export async function enrollWithCloudDeviceAuthorization({
   if (pending) return finalizeEnrollment({ pending, pendingPath, dataRoot: preliminary.dataRoot, fetchImpl });
   if (fs.existsSync(path.join(preliminary.configDir, 'cloud.json'))) throw new Error('当前 Node 已接入 Cloud；请先检查 cloud status 或执行受控断开');
 
-  const authorization = await startCloudDeviceAuthorization({ baseUrl, fetchImpl, clientName, clientVersion });
+  if (!preliminary.space?.id) throw new Error('Cloud 接入必须绑定到一个隔离空间');
+  const installationId = initializeInstallation({ dataRoot: preliminary.installationDataRoot }).installation.installationId;
+  const authorization = await startCloudDeviceAuthorization({
+    baseUrl,
+    fetchImpl,
+    clientName,
+    clientVersion,
+    installationId,
+    spaceId: preliminary.space.id,
+    spaceKind: preliminary.space.kind === 'personal' ? 'personal' : 'custom',
+    spaceSlug: preliminary.space.slug,
+  });
   const publicAuthorization = publicDeviceAuthorization(authorization);
   await onAuthorization(publicAuthorization);
   let browserOpened = false;
@@ -48,9 +60,9 @@ export function resolveCloudUrl({ cloudUrl, env = process.env } = {}) {
   return cloudUrl || env.PERSONAL_AGENT_CLOUD_URL || DEFAULT_CLOUD_URL;
 }
 
-export async function startCloudDeviceAuthorization({ baseUrl, cloudUrl, fetchImpl = fetch, clientName = 'personal-agent-cli', clientVersion = '0.1.0-beta' } = {}) {
+export async function startCloudDeviceAuthorization({ baseUrl, cloudUrl, fetchImpl = fetch, clientName = 'personal-agent-cli', clientVersion = '0.1.0-beta', installationId, spaceId, spaceKind = 'personal', spaceSlug = 'personal' } = {}) {
   const normalizedBaseUrl = normalizeCloudUrl(baseUrl || cloudUrl || DEFAULT_CLOUD_URL);
-  const response = await requestJson(fetchImpl, `${normalizedBaseUrl}/api/node/auth/start`, { clientName, clientVersion });
+  const response = await requestJson(fetchImpl, `${normalizedBaseUrl}/api/node/auth/start`, { clientName, clientVersion, installationId, spaceId, spaceKind, spaceSlug });
   const authorization = {
     deviceCode: boundedString(response.deviceCode, 'Cloud 未返回有效 device code', 16, 512),
     userCode: boundedString(response.userCode, 'Cloud 未返回有效 user code', 4, 32),
@@ -109,6 +121,7 @@ async function finalizeEnrollment({ pending, pendingPath, dataRoot, fetchImpl })
   const heartbeat = await requestJson(fetchImpl, `${pending.baseUrl}/api/node/heartbeat`, undefined, { authorization: `Bearer ${enrolled.nodeToken}` });
   const metadata = { schemaVersion: 2, cloudUrl: pending.baseUrl, slug: selectedSlug, managedHost: activationSite.managedHost, siteId: enrolled.site.id, plan: activationSite.plan || 'free', status: heartbeat.status || enrolled.site.status, tunnel: { ...tunnel, generation: heartbeat.tunnelGeneration || tunnel.generation }, enrolledAt: new Date().toISOString() };
   writeJsonAtomic(path.join(config.configDir, 'cloud.json'), metadata, 0o600);
+  if (config.space?.id) setSpaceManagedIdentity({ dataRoot: config.installationDataRoot, selector: config.space.id, managedHost: metadata.managedHost });
   setConnectionMode(config, 'managed-cloud');
   fs.rmSync(pendingPath, { force: true });
   return { ok: true, site: metadata, tunnel: metadata.tunnel, dataRoot: config.dataRoot, managedUrl: `https://${metadata.managedHost}` };

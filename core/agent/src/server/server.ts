@@ -12,9 +12,12 @@ import { CloudBindingCoordinator } from "../channels/cloud-binding-coordinator.j
 import { buildChannelCatalog } from "../channels/catalog.ts";
 import { ChannelInputError, XiaohongshuChannel } from "../channels/xiaohongshu/channel.js";
 import { XiaohongshuLoginCoordinator } from "../channels/xiaohongshu/login-coordinator.js";
+import { OpenCliXiaohongshuProvider } from "../channels/xiaohongshu/opencli-provider.js";
+import { OpenCliTwitterProvider } from "../channels/twitter/opencli-provider.js";
 import { createOnlinePagesMcpServer } from "../online-pages/mcp.js";
-import { configureOnlinePagesStorage, listUploadedAssets, uploadStaticAsset } from "../online-pages/upload.js";
+import { configureOnlinePagesStorage, listUploadedAssets, publishHtmlPage, uploadStaticAsset } from "../online-pages/upload.js";
 import { PrivatePublicationStore } from "../online-pages/private-publications.js";
+import { buildManagedPageAccess } from "./managed-links.js";
 import { assertInside } from "../online-pages/path-utils.js";
 import { ManagedFileCatalog } from "../managed-files/catalog.js";
 import { LocalManagedProvider } from "../managed-files/local-provider.js";
@@ -24,6 +27,13 @@ import { AutomationEngine } from "../automation/engine.js";
 import { ingestRawEmail, MAX_MAIL_BYTES } from "../automation/mail-ingest.js";
 import { parseMailForDisplay, readMailAttachment } from "../automation/mail-reader.js";
 import { TemplateRuntime } from "../automation/template-runtime.js";
+import { buildConnectionCatalog, inspectConnection, readConnectionRegistry } from "../connections/catalog.js";
+import { MailConnectionScanner } from "../connections/mail/scanner.js";
+import { PublicTestMailSender } from "../connections/mail/public-test-sender.js";
+import { DomainBindingVerification } from "../connections/domain-binding-verification.js";
+import { NotionCliConnection } from "../connections/notion-cli.js";
+import { OpenCliRunner } from "../connections/opencli/runner.js";
+import { WeChatQianxunConnector } from "../connections/wechat-qianxun/connector.ts";
 import { BridgeStore } from "../store/store.js";
 import { AgentBridgeBroker } from "../broker/agent-bridge-broker.js";
 import { readWorkspaceSkillCatalog } from "../skills/catalog.js";
@@ -33,12 +43,15 @@ import { buildDesktopConversationView } from "./desktop-conversation.js";
 import { SessionOrchestrator } from "./orchestrator.js";
 import { renderAutomationPage, renderAutomationRunsFragment, renderConsoleSessionsFragment, renderCronPage, renderDashboard, renderDataPage, renderDataRowsFragment, renderMessagesFragment, renderNewSession, renderPagesIndex, renderPrivateFileBatch, renderPrivateFilePreview, renderReleaseNotesPage, renderSessionDetail, renderSkillCatalogPage } from "../web/pages.js";
 import { renderMailPage } from "../web/mail-page.js";
-import { renderChannelsPage } from "../web/channels-page.js";
 import { buildPrivateAttachmentPreviewUrl, decodePrivateAttachmentPath, privateFilePreviewKind, relativeAttachmentPath, sanitizeInboundAttachmentFileName, storedAttachmentDisplayName } from "../private-files/attachments.js";
 import { configurePrivateManagedFiles, headPrivateAttachment, privateStorageConfigured, readPrivateAttachment, signPrivateAttachmentUrl, verifyPrivateStorageAccess } from "../private-files/local-store.js";
 import { ReleaseNotesStore } from "../release-notes/store.js";
 import { AppHistoryStore } from "../apps/history-store.js";
 import { ActivityStore } from "../activity/store.js";
+import { buildActivityTargetPreview } from "../activity/presentation.js";
+import { authorizationSettings, readAuthorizationMode, writeAuthorizationMode } from "../agent/authorization-mode.ts";
+import { shutdownAppServerClient } from "../agent/app-server-client.ts";
+import { managedServiceReadiness } from "../../../runtime/src/cloud-resources.ts";
 
 ensureRuntimeDirs();
 
@@ -100,17 +113,42 @@ const automation = new AutomationEngine({
   queueLimit: config.automationQueueLimit,
   mailProtection: config.mailProtection,
 });
+const connectionRegistry = readConnectionRegistry();
+const notion = new NotionCliConnection();
+const publicTestMailSender = new PublicTestMailSender();
+let domainBindingVerification: DomainBindingVerification;
+const mailScanner = new MailConnectionScanner({
+  dataDir: config.mailIngressDir,
+  logger,
+  processMessage: async (message) => automation.ingest(message, { dispatch: !domainBindingVerification?.acceptsMail(message) }),
+});
 const templateRuntime = new TemplateRuntime({ dataDir: config.automationDataDir });
 const privatePublications = new PrivatePublicationStore({ rootDir: config.privatePublicationsDir, baseUrl: config.consoleBaseUrl });
+domainBindingVerification = new DomainBindingVerification({
+  dataRoot: config.siteDataRoot,
+  services: () => managedServiceReadiness({ dataRoot: config.siteDataRoot }),
+  externalAccess: config.externalAccess,
+  publishPage: (input: any) => publishHtmlPage(input),
+  sendVerificationMail: (input: any) => publicTestMailSender.send(input),
+  scanMail: () => mailScanner.scan(),
+  listMailEvents: () => store.listAutomationEvents({ sourceId: "connection_local_mail", limit: 500 }),
+  logger,
+});
 const releaseNotes = new ReleaseNotesStore({ rootDir: config.releaseNotesDir });
 const appHistory = new AppHistoryStore({ appsDir: config.appsDir });
 automation.ensureDefaults();
 automation.start();
+mailScanner.start();
+domainBindingVerification.resume();
 const wechat = new WeChatConnector(logger);
+const wechatQianxun = new WeChatQianxunConnector({ dataRoot: config.siteDataRoot });
 const xiaohongshu = new XiaohongshuChannel({
   baseUrl: config.xiaohongshuBaseUrl,
   logger,
 });
+const openCliRunner = new OpenCliRunner({ command: config.openCliCommand });
+const xiaohongshuBrowser = new OpenCliXiaohongshuProvider({ runner: openCliRunner });
+const twitter = new OpenCliTwitterProvider({ runner: openCliRunner });
 const xiaohongshuLogin = new XiaohongshuLoginCoordinator({ channel: xiaohongshu, wechat, logger });
 const cloudBinding = new CloudBindingCoordinator({ wechat, dataRoot: config.siteDataRoot });
 const personalAuth = new PersonalAuth({ ...config.personalAuth, apiToken: config.apiToken });
@@ -119,9 +157,10 @@ const channelLoginCoordinator = {
     return await cloudBinding.consumeWechatMessage(message) || await xiaohongshuLogin.consumeWechatMessage(message);
   },
 };
-const orchestrator = new SessionOrchestrator({ store, hub, channels: { wechat }, managedFiles, activityStore, channelLoginCoordinator });
+const orchestrator = new SessionOrchestrator({ store, hub, channels: { wechat, "wechat-personal": wechatQianxun }, managedFiles, activityStore, channelLoginCoordinator });
 const scheduledTasks = new ScheduledTaskRunner({ store, broker: agentBridgeBroker, channels: { wechat }, logger });
 wechat.attach(orchestrator);
+wechatQianxun.attach((message) => orchestrator.handleChannelMessage("wechat-personal", message));
 if (config.channelPollEnabled) wechat.start();
 if (config.schedulerEnabled) scheduledTasks.start();
 
@@ -190,6 +229,7 @@ for (const signal of ["SIGINT", "SIGTERM"]) {
     clearInterval(historyCleanupTimer);
     scheduledTasks.stop();
     automation.stop();
+    mailScanner.stop();
     xiaohongshuLogin.stop();
     orchestrator.stop();
     wechat.stop();
@@ -234,6 +274,16 @@ async function handleRequest(request: http.IncomingMessage, response: http.Serve
     return;
   }
 
+  if (["/api/internal/channels/wechat-personal/callback", "/api/internal/channels/wechat/qianxun/callback"].includes(url.pathname) && request.method === "POST") {
+    if (!isTrustedLocalRequest(request)) {
+      sendJson(response, 403, { ok: false, error: "Qianxun callbacks require loopback" });
+      return;
+    }
+    const result = await wechatQianxun.acceptCallback(await readJsonBody(request, 1024 * 1024));
+    sendText(response, 200, result.accepted ? "successful" : `ignored:${result.reason}`);
+    return;
+  }
+
   if (url.pathname.startsWith("/api/agent-bridge/") && !isTrustedLocalRequest(request) && !isAuthorized(request)) {
     sendUnauthorized(request, response, url);
     return;
@@ -254,11 +304,13 @@ async function handleRequest(request: http.IncomingMessage, response: http.Serve
     return;
   }
 
-  const authorizedMailIngress = request.method === "POST"
-    && url.pathname === "/api/agent-automations/events"
-    && isMailIngestAuthorized(request);
-  if (!isAuthorized(request) && !authorizedMailIngress) {
+  if (!isAuthorized(request)) {
     sendUnauthorized(request, response, url);
+    return;
+  }
+
+  if (url.pathname.startsWith("/api/agent-automations") || url.pathname === "/api/node/v1/client/automations") {
+    sendJson(response, 410, { ok: false, error: "用户自动化功能已下线；邮件扫描现为连接的系统内置能力。" });
     return;
   }
 
@@ -347,6 +399,28 @@ async function handleRequest(request: http.IncomingMessage, response: http.Serve
     sendNodeApiResult(response, 200, buildClientRuntime());
     return;
   }
+  if (url.pathname === "/api/node/v1/client/authorization") {
+    if (!isTrustedLocalRequest(request)) {
+      sendJson(response, 403, { ok: false, error: "Authorization settings require local access" });
+      return;
+    }
+    if (request.method === "GET") {
+      sendJson(response, 200, { ok: true, ...authorizationSettings(readAuthorizationMode(config.agentAuthorizationFile)) });
+      return;
+    }
+    if (request.method === "POST") {
+      const input = await readJsonBody(request);
+      const mode = input?.mode === "confirm" ? "confirm" : input?.mode === "bypass" ? "bypass" : null;
+      if (!mode) {
+        sendJson(response, 400, { ok: false, error: "invalid authorization mode" });
+        return;
+      }
+      const settings = writeAuthorizationMode(config.agentAuthorizationFile, mode);
+      shutdownAppServerClient();
+      sendJson(response, 200, { ok: true, ...settings });
+      return;
+    }
+  }
 
   if (url.pathname === "/api/node/v1/mail/messages" && request.method === "GET") {
     sendNodeApiResult(response, 200, await buildMailViewData(url));
@@ -395,7 +469,7 @@ async function handleRequest(request: http.IncomingMessage, response: http.Serve
     return;
   }
 
-  const nodeAppHistoryMatch = /^\/api\/node\/v1\/apps\/([^/]+)\/history$/.exec(url.pathname);
+  const nodeAppHistoryMatch = /^\/api\/node\/v1\/apps\/([^/]+)\/(?:history|activity)$/.exec(url.pathname);
   if (nodeAppHistoryMatch && (request.method === "GET" || request.method === "POST")) {
     const appId = decodeURIComponent(nodeAppHistoryMatch[1]);
     if (String(request.headers["x-personal-agent-app-id"] || "") !== appId) {
@@ -596,7 +670,182 @@ async function handleRequest(request: http.IncomingMessage, response: http.Serve
   }
 
   if (url.pathname === "/agent-channels" && (request.method === "GET" || request.method === "HEAD")) {
-    sendPrivateAppHtml(response, 200, renderChannelsPage(), request.method === "HEAD");
+    sendRedirect(response, "/app/connections?connection=xiaohongshu", request.method === "HEAD");
+    return;
+  }
+
+  if (url.pathname === "/api/connections" && request.method === "GET") {
+    const wechatStatus = wechat.catalogStatus();
+    const personalWechatStatus = await wechatQianxun.status({ probe: false });
+    const platform = platformConnectionStatuses();
+    const [xiaohongshuStatus, twitterStatus] = await Promise.all([
+      xiaohongshuBrowser.status(),
+      twitter.status(),
+    ]);
+    const connections = buildConnectionCatalog({
+      registry: connectionRegistry,
+      statuses: {
+        "wechat-personal": personalWechatCatalogStatus(personalWechatStatus, wechatQianxun.accessPolicy()),
+        wechat: { state: wechatStatus.connected ? "connected" : "needs_setup", statusLabel: wechatStatus.connected ? "已连接" : "待连接" },
+        xiaohongshu: xiaohongshuStatus,
+        twitter: twitterStatus,
+        notion: notion.catalogStatus(),
+        mail: { ...mailScanner.status(), ...platform.mail },
+        sites: platform.sites,
+      },
+    });
+    sendChannelJson(response, 200, { ok: true, schemaVersion: 1, connections });
+    return;
+  }
+  const connectionStatusMatch = /^\/api\/connections\/([^/]+)\/status$/.exec(url.pathname);
+  if (connectionStatusMatch && request.method === "GET") {
+    const id = decodeURIComponent(connectionStatusMatch[1]);
+    const connection = inspectConnection(id, { registry: connectionRegistry });
+    if (!connection) {
+      sendChannelJson(response, 404, { ok: false, error: "connection not found" });
+      return;
+    }
+    let dynamicStatus: Record<string, unknown> = {};
+    if (id === "notion") dynamicStatus = await notion.status();
+    else if (id === "xiaohongshu") dynamicStatus = await xiaohongshuBrowser.status();
+    else if (id === "twitter") dynamicStatus = await twitter.status();
+    else if (id === "wechat") {
+      const status = await wechat.status();
+      dynamicStatus = { state: status.connected ? "connected" : "needs_setup", statusLabel: status.connected ? "已连接" : "待连接" };
+    } else if (id === "wechat-personal") {
+      dynamicStatus = personalWechatCatalogStatus(await wechatQianxun.status({ probe: true }), wechatQianxun.accessPolicy());
+    } else if (id === "mail") dynamicStatus = { ...mailScanner.status(), ...platformConnectionStatuses().mail };
+    else if (id === "sites") dynamicStatus = platformConnectionStatuses().sites;
+    const merged = inspectConnection(id, { registry: connectionRegistry, statuses: { [id]: dynamicStatus } });
+    sendChannelJson(response, 200, { ok: true, connection: merged });
+    return;
+  }
+  const domainBindingMatch = /^\/api\/connections\/(mail|sites)\/domain-binding$/.exec(url.pathname);
+  if (domainBindingMatch && request.method === "GET") {
+    sendChannelJson(response, 200, { ok: true, verification: domainBindingVerification.status(domainBindingMatch[1]) });
+    return;
+  }
+  if (domainBindingMatch && request.method === "POST") {
+    const body = await readJsonBody(request);
+    sendChannelJson(response, 202, { ok: true, verification: domainBindingVerification.start(domainBindingMatch[1], { deadlineAt: body.deadlineAt }) });
+    return;
+  }
+  if (url.pathname === "/api/connections/domain-binding" && request.method === "DELETE") {
+    domainBindingVerification.reset();
+    sendChannelJson(response, 200, { ok: true });
+    return;
+  }
+  if (url.pathname === "/api/connections/notion/login/start" && request.method === "POST") {
+    sendChannelJson(response, 200, { ok: true, ...(await notion.startLogin()) });
+    return;
+  }
+  if (url.pathname === "/api/connections/xiaohongshu/open" && request.method === "POST") {
+    sendChannelJson(response, 200, await xiaohongshuBrowser.open());
+    return;
+  }
+  if (url.pathname === "/api/connections/xiaohongshu/search" && request.method === "POST") {
+    const body = await readJsonBody(request);
+    sendChannelJson(response, 200, await xiaohongshuBrowser.search(body.keyword || body.query));
+    return;
+  }
+  if (url.pathname === "/api/connections/xiaohongshu/read" && request.method === "POST") {
+    const body = await readJsonBody(request);
+    sendChannelJson(response, 200, await xiaohongshuBrowser.detail({ feedId: body.feedId, xsecToken: body.xsecToken, url: body.url }));
+    return;
+  }
+  if (url.pathname === "/api/connections/twitter/open" && request.method === "POST") {
+    sendChannelJson(response, 200, await twitter.open());
+    return;
+  }
+  if (url.pathname === "/api/connections/twitter/search" && request.method === "POST") {
+    const body = await readJsonBody(request);
+    sendChannelJson(response, 200, await twitter.search(body.query || body.keyword));
+    return;
+  }
+  if (url.pathname === "/api/connections/twitter/read" && request.method === "POST") {
+    const body = await readJsonBody(request);
+    sendChannelJson(response, 200, await twitter.detail({ tweetId: body.tweetId, url: body.url }));
+    return;
+  }
+  if (url.pathname === "/api/connections/notion/login/poll" && request.method === "POST") {
+    sendChannelJson(response, 200, { ok: true, ...(await notion.pollLogin()) });
+    return;
+  }
+  if (url.pathname === "/api/connections/mail/scan" && request.method === "POST") {
+    sendChannelJson(response, 200, { ok: true, result: await mailScanner.scan() });
+    return;
+  }
+
+  if (url.pathname === "/api/connections/wechat-personal/detect" && request.method === "POST") {
+    sendChannelJson(response, 200, { ok: true, connection: await wechatQianxun.detect(await readJsonBody(request, 64 * 1024)) });
+    return;
+  }
+  if (url.pathname === "/api/connections/wechat-personal/setup" && request.method === "GET") {
+    sendChannelJson(response, 200, {
+      ok: true,
+      setup: {
+        qianxunRepositoryUrl: "https://github.com/daenmax/pc-wechat-hook-http-api/",
+        qianxunBaseUrl: "http://127.0.0.1:8055",
+        callbackUrl: `http://127.0.0.1:${config.port}/api/internal/channels/wechat-personal/callback`,
+      },
+    });
+    return;
+  }
+  if (url.pathname === "/api/connections/wechat-personal/directory" && request.method === "GET") {
+    sendChannelJson(response, 200, { ok: true, directory: await wechatQianxun.directory() });
+    return;
+  }
+  if (url.pathname === "/api/connections/wechat-personal/policy" && request.method === "GET") {
+    sendChannelJson(response, 200, { ok: true, policy: wechatQianxun.accessPolicy() });
+    return;
+  }
+  if (url.pathname === "/api/connections/wechat-personal/policy" && request.method === "PUT") {
+    sendChannelJson(response, 200, { ok: true, policy: await wechatQianxun.updateAccessPolicy(await readJsonBody(request, 1024 * 1024)) });
+    return;
+  }
+  if (url.pathname === "/api/connections/wechat/qianxun/status" && request.method === "GET") {
+    sendChannelJson(response, 200, {
+      ok: true,
+      connection: await wechatQianxun.status({ probe: url.searchParams.get("probe") !== "0" }),
+    });
+    return;
+  }
+  if (url.pathname === "/api/connections/wechat/qianxun/plan-configure" && request.method === "POST") {
+    sendChannelJson(response, 202, {
+      ok: true,
+      ...wechatQianxun.planConfigure(await readJsonBody(request, 64 * 1024)),
+    });
+    return;
+  }
+  if (url.pathname === "/api/connections/wechat/qianxun/plan-action" && request.method === "POST") {
+    const body = await readJsonBody(request, 64 * 1024);
+    sendChannelJson(response, 202, {
+      ok: true,
+      ...wechatQianxun.planAction(String(body.action || ""), body.input && typeof body.input === "object" ? body.input : body),
+    });
+    return;
+  }
+  if (url.pathname === "/api/connections/wechat/qianxun/execute" && request.method === "POST") {
+    const body = await readJsonBody(request, 64 * 1024);
+    sendChannelJson(response, 200, {
+      ok: true,
+      operation: await wechatQianxun.execute(String(body.operationId || body.operation || ""), String(body.digest || "")),
+    });
+    return;
+  }
+  if (url.pathname === "/api/connections/wechat/qianxun/read" && request.method === "POST") {
+    const body = await readJsonBody(request, 64 * 1024);
+    sendChannelJson(response, 200, {
+      ok: true,
+      ...(await wechatQianxun.read(String(body.operation || ""), body.input && typeof body.input === "object" ? body.input : body)),
+    });
+    return;
+  }
+  if (url.pathname === "/api/connections/wechat/qianxun/events" && request.method === "GET") {
+    sendChannelJson(response, 200, {
+      ok: true,
+      events: wechatQianxun.listEvents(Number(url.searchParams.get("limit") || 50)),
+    });
     return;
   }
 
@@ -638,7 +887,7 @@ async function handleRequest(request: http.IncomingMessage, response: http.Serve
   }
   if (url.pathname === "/api/channels/xiaohongshu/detail" && request.method === "POST") {
     const body = await readJsonBody(request);
-    sendChannelJson(response, 200, await xiaohongshu.detail({ feedId: body.feedId, xsecToken: body.xsecToken }));
+    sendChannelJson(response, 200, await xiaohongshu.detail({ feedId: body.feedId, xsecToken: body.xsecToken, url: body.url }));
     return;
   }
 
@@ -713,6 +962,37 @@ async function handleRequest(request: http.IncomingMessage, response: http.Serve
           execute: true,
         });
     sendJson(response, 200, { ok: true, publication, managed });
+    return;
+  }
+
+  if (url.pathname === "/api/publications/publish" && request.method === "POST") {
+    if (!isAgentWriteAuthorized(request)) return sendForbidden(response);
+    const body = await readJsonBody(request);
+    const publication = privatePublications.publish({
+      publicationId: body.publicationId || body.folder,
+      fileName: body.fileName,
+      content: body.content,
+      encoding: body.encoding,
+      mimeType: body.mimeType,
+      overwrite: Boolean(body.overwrite),
+      title: body.title,
+      summary: body.summary,
+      desktopThumbnail: body.desktopThumbnail,
+      mobileThumbnail: body.mobileThumbnail,
+    });
+    const managed = await managedFiles.reconcileLocalTree({
+      root: path.join(config.privatePublicationsDir, publication.publicationId),
+      visibility: "private",
+      source: "private-publication",
+      prefix: `publications/${publication.publicationId}`,
+      execute: true,
+    });
+    sendJson(response, 200, {
+      ok: true,
+      publication,
+      managed,
+      access: buildManagedPageAccess(publication.url, config.externalAccess()),
+    });
     return;
   }
 
@@ -1121,8 +1401,8 @@ async function handleRequest(request: http.IncomingMessage, response: http.Serve
   }
 
   if (url.pathname === "/api/desktop/conversation" && request.method === "GET") {
-    const session = store.getSession(store.getOrCreateDesktopMainSession({ workspaceRoot: config.workspaceRoot }).id);
-    const view = buildDesktopConversationView(session, {
+    const main = store.getOrCreateDesktopMainSession({ workspaceRoot: config.workspaceRoot });
+    const view = buildDesktopConversationView(desktopMainConversationSessions(main.id), {
       before: url.searchParams.get("before") || "",
       limit: Number(url.searchParams.get("limit") || 40),
       resolveSession: (sessionId: string) => store.getSession(sessionId),
@@ -1162,7 +1442,7 @@ async function handleRequest(request: http.IncomingMessage, response: http.Serve
       ok: true,
       duplicate,
       clientMessageId,
-      session: buildDesktopConversationView(store.getSession(main.id), {
+      session: buildDesktopConversationView(desktopMainConversationSessions(main.id), {
         resolveSession: (sessionId: string) => store.getSession(sessionId),
       }),
     });
@@ -1192,6 +1472,7 @@ async function handleRequest(request: http.IncomingMessage, response: http.Serve
     const session = await orchestrator.startWorkerSession({
       task: body.task || body.taskDescription || body.content,
       title: body.title,
+      description: body.description,
       parentSessionId: body.parentSessionId || body.parent,
       workspaceRoot: body.workspaceRoot || body.workspace,
       createdBy: body.createdBy || "api",
@@ -1208,6 +1489,17 @@ async function handleRequest(request: http.IncomingMessage, response: http.Serve
       const session = store.getSession(sessionId);
       if (!session) sendJson(response, 404, { ok: false, error: "session not found" });
       else sendJson(response, 200, { ok: true, session });
+      return;
+    }
+    if (!action && request.method === "PATCH") {
+      const body = await readJsonBody(request);
+      const session = orchestrator.updateWorkerSessionMetadata(sessionId, {
+        ...(body.title !== undefined ? { title: body.title } : {}),
+        ...(body.description !== undefined || body.taskDescription !== undefined
+          ? { description: body.description ?? body.taskDescription }
+          : {}),
+      });
+      sendJson(response, 200, { ok: true, session });
       return;
     }
     if (action === "events" && request.method === "GET") {
@@ -1276,6 +1568,17 @@ async function handleRequest(request: http.IncomingMessage, response: http.Serve
     return;
   }
 
+  if (url.pathname === "/api/pages/publish" && request.method === "POST") {
+    const body = await readJsonBody(request);
+    const asset = await publishHtmlPage(body);
+    sendJson(response, 200, {
+      ok: true,
+      asset,
+      access: buildManagedPageAccess(asset.url, config.externalAccess()),
+    });
+    return;
+  }
+
   if (url.pathname === "/api/pages" && request.method === "GET") {
     sendJson(response, 200, { ok: true, assets: await listUploadedAssets(200) });
     return;
@@ -1283,6 +1586,13 @@ async function handleRequest(request: http.IncomingMessage, response: http.Serve
 
   if (url.pathname.startsWith("/api/node/v1")) sendNodeApiError(response, 404, "NOT_FOUND", "Node Local API route was not found", request.method === "HEAD");
   else sendText(response, 404, "Not Found", request.method === "HEAD");
+}
+
+function desktopMainConversationSessions(primarySessionId: string) {
+  const sessions = store.listMainSessions();
+  const primary = sessions.find((session: any) => session.id === primarySessionId)
+    || store.getSession(primarySessionId);
+  return [primary, ...sessions.filter((session: any) => session.id !== primarySessionId)].filter(Boolean);
 }
 
 async function handleMcpRequest(request: http.IncomingMessage, response: http.ServerResponse) {
@@ -1346,7 +1656,7 @@ async function servePrivatePublication(
 }
 
 async function manageMailEvent(input: any) {
-  if (String(input?.sourceId || "") !== "src_mail_agent") return null;
+  if (String(input?.sourceId || "") !== "connection_local_mail") return null;
   const rawPath = String(input?.payload?.rawPath || "").trim();
   if (!rawPath) throw new Error("mail event is missing its raw archive path");
   const resolvedPath = path.resolve(rawPath);
@@ -1399,6 +1709,7 @@ type ClientActivityItem = {
   updatedAt: string;
   href: string;
   revision: number;
+  preview: { kind: "image"; url: string; alt: string } | null;
   attachments: Array<{
     objectId: string;
     kind: "image" | "file";
@@ -1423,14 +1734,12 @@ function buildDataSchema(url: URL) {
 }
 
 async function buildClientOverview() {
-  const [pages, wechatStatus, managedStatus] = await Promise.all([
-    buildClientPages(),
-    wechat.status().catch(() => ({ connected: false })),
-    xiaohongshu.status().catch(() => ({ connected: false })),
-  ]);
+  const pages = await buildClientPages();
+  const wechatStatus = wechat.catalogStatus();
+  const managedStatus = xiaohongshu.catalogStatus();
   const sessions = store.listSessionsPage({ includeArchived: true, limit: 50, hydrate: false }).sessions;
   const rules = store.listAutomationRules();
-  const mailCount = store.countAutomationEvents({ sourceId: "src_mail_agent" });
+  const mailCount = store.countAutomationEvents({ sourceId: "connection_local_mail" });
   const dataObjectCount = agentData.countObjects();
   const recent = await buildClientActivity(new URL("http://local/api/node/v1/client/activity?limit=5"));
   const externalAccess = config.externalAccess();
@@ -1439,6 +1748,7 @@ async function buildClientOverview() {
       id: config.instanceId,
       state: "running",
       uptimeSeconds: Math.floor(process.uptime()),
+      workspaceRoot: config.workspaceRoot,
       mobileAddress: externalAccess.ready ? `${externalAccess.origin}/app` : "",
       mobileAccess: externalAccess.ready ? "available" : "unavailable",
     },
@@ -1457,6 +1767,51 @@ async function buildClientOverview() {
   };
 }
 
+function personalWechatCatalogStatus(status: Record<string, unknown>, policy: { enabled: boolean; contacts: unknown[]; groups: unknown[] }) {
+  const protocolReady = status.state === "connected" || status.state === "configured";
+  const connected = protocolReady && policy.enabled;
+  return {
+    state: connected ? "connected" : protocolReady ? "needs_policy" : "needs_setup",
+    statusLabel: connected ? "已连接" : protocolReady ? "待配置策略" : "待检测",
+    runtime: [
+      { label: "协议服务", value: protocolReady ? "千寻已配置" : "等待本机检测" },
+      { label: "触发策略", value: policy.enabled ? `${policy.contacts.length} 位联系人 · ${policy.groups.length} 个群` : "默认拒绝" },
+    ],
+    details: { policyEnabled: policy.enabled },
+  };
+}
+
+function platformConnectionStatuses() {
+  const services = managedServiceReadiness({ dataRoot: config.siteDataRoot });
+  const external = config.externalAccess();
+  const siteBound = services.publicDomain.ready && domainBindingVerification.isVerified("sites");
+  const mailBound = services.agentMail.ready && domainBindingVerification.isVerified("mail");
+  const domain = services.publicDomain.value || "";
+  const mailAddress = services.agentMail.value || "";
+  return {
+    sites: {
+      state: "connected",
+      primaryAction: siteBound ? "移除域名绑定" : "使用平台域名",
+      statusLabel: siteBound ? "已验证平台域名" : "本地已连接",
+      runtime: [
+        { label: "公网域名", value: domain || "尚未分配" },
+        { label: "公网访问", value: siteBound && external.ready ? external.origin : services.publicDomain.ready ? "等待绑定验证" : "分配域名后可用" },
+      ],
+      details: { platformDomainBound: siteBound, platformDomain: domain, publicReady: siteBound && external.ready, publicOrigin: siteBound && external.ready ? external.origin : "", domainVerification: domainBindingVerification.status("sites") },
+    },
+    mail: {
+      state: "connected",
+      primaryAction: mailBound ? "移除域名绑定" : "使用平台域名",
+      statusLabel: mailBound ? "已验证平台邮箱" : "本地已连接",
+      runtime: [
+        { label: "平台邮箱地址", value: mailAddress || "尚未分配" },
+        { label: "公网收件", value: mailBound ? "测试邮件已在本机收到" : services.agentMail.ready ? "等待绑定验证" : "分配域名后可用" },
+      ],
+      details: { platformDomainBound: mailBound, platformDomain: domain, mailAddress, domainVerification: domainBindingVerification.status("mail") },
+    },
+  };
+}
+
 async function buildClientActivity(url: URL) {
   const rawQuery = String(url.searchParams.get("query") || url.searchParams.get("q") || "").trim().slice(0, 160);
   const limit = Math.min(Math.max(Number(url.searchParams.get("limit") || 20), 1), 50);
@@ -1465,6 +1820,9 @@ async function buildClientActivity(url: URL) {
     cursor: url.searchParams.get("cursor") || "",
     limit,
   });
+  const pages = result.items.some((activity) => activity.target?.type === "page")
+    ? await buildClientPages()
+    : [];
   const items: ClientActivityItem[] = result.items.map((activity) => ({
     id: activity.id,
     kind: activity.type,
@@ -1475,6 +1833,7 @@ async function buildClientActivity(url: URL) {
     updatedAt: activity.occurredAt,
     href: clientActivityTargetHref(activity.target),
     revision: activity.revision,
+    preview: buildActivityTargetPreview(activity.target, pages),
     attachments: activity.attachments.map((attachment, position) => ({
       objectId: attachment.objectId,
       kind: attachment.kind,
@@ -1512,32 +1871,50 @@ async function buildClientPages(url?: URL) {
     Promise.resolve(privatePublications.list()),
   ]);
   const privatePages = privateItems.map((publication: any) => ({
-    id: `private-${publication.id}`,
+    id: String(publication.page?.pageId || `private-${publication.id}`),
     publicationId: String(publication.id || ""),
-    title: clientPageTitle(publication.id, publication.files?.find((file: any) => file.name === "index.html")?.name),
-    summary: "保存在本机工作区的私有发布页",
+    title: String(publication.page?.title || clientPageTitle(publication.id, publication.files?.find((file: any) => file.name === "index.html")?.name)),
+    summary: String(publication.page?.summary || "保存在本机工作区的私有发布页"),
     visibility: "private" as const,
     headerTheme: "dark" as const,
     updatedAt: String(publication.updatedAt || publication.createdAt || ""),
-    url: String(publication.url || ""),
+    url: internalPublicationUrl(publication),
     shareUrl: "",
-    thumbnailState: "thumbnail_failed" as const,
-    thumbnailUrl: "",
+    thumbnailState: publication.page?.thumbnail?.fileName ? "ready" as const : "thumbnail_failed" as const,
+    thumbnailUrl: publication.page?.thumbnail?.fileName
+      ? `/publications/${encodeURIComponent(publication.id)}/${encodeURIComponent(publication.page.thumbnail.fileName)}`
+      : "",
+    thumbnailAlt: String(publication.page?.thumbnail?.alt || ""),
+    desktopThumbnailUrl: publication.page?.thumbnails?.desktop?.fileName
+      ? `/publications/${encodeURIComponent(publication.id)}/${encodeURIComponent(publication.page.thumbnails.desktop.fileName)}`
+      : publication.page?.thumbnail?.fileName
+        ? `/publications/${encodeURIComponent(publication.id)}/${encodeURIComponent(publication.page.thumbnail.fileName)}`
+        : "",
+    desktopThumbnailAlt: String(publication.page?.thumbnails?.desktop?.alt || publication.page?.thumbnail?.alt || ""),
+    mobileThumbnailUrl: publication.page?.thumbnails?.mobile?.fileName
+      ? `/publications/${encodeURIComponent(publication.id)}/${encodeURIComponent(publication.page.thumbnails.mobile.fileName)}`
+      : "",
+    mobileThumbnailAlt: String(publication.page?.thumbnails?.mobile?.alt || ""),
   }));
   const publicPages = publicAssets
     .filter((asset: any) => /\.html?$/i.test(String(asset.fileName || "")))
     .map((asset: any, index: number) => ({
-      id: `public-${asset.objectId || index}-${clientPageSlug(asset.publicPath || asset.fileName)}`,
+      id: String(asset.page?.pageId || `public-${asset.objectId || index}-${clientPageSlug(asset.publicPath || asset.fileName)}`),
       publicationId: "",
-      title: clientPageTitle(asset.fileName),
-      summary: "可通过公开地址访问的发布页",
+      title: String(asset.page?.title || clientPageTitle(asset.fileName)),
+      summary: String(asset.page?.summary || "可通过公开地址访问的发布页"),
       visibility: "public" as const,
       headerTheme: "light" as const,
       updatedAt: String(asset.updatedAt || ""),
-      url: String(asset.url || asset.publicPath || ""),
-      shareUrl: String(asset.url || asset.publicPath || ""),
-      thumbnailState: "thumbnail_failed" as const,
-      thumbnailUrl: "",
+      url: internalPublicPageUrl(asset),
+      shareUrl: String(asset.shareUrl || ""),
+      thumbnailState: asset.thumbnailUrl ? "ready" as const : "thumbnail_failed" as const,
+      thumbnailUrl: String(asset.thumbnailUrl || ""),
+      thumbnailAlt: String(asset.page?.thumbnail?.alt || ""),
+      desktopThumbnailUrl: String(asset.desktopThumbnailUrl || asset.thumbnailUrl || ""),
+      desktopThumbnailAlt: String(asset.page?.thumbnails?.desktop?.alt || asset.page?.thumbnail?.alt || ""),
+      mobileThumbnailUrl: String(asset.mobileThumbnailUrl || ""),
+      mobileThumbnailAlt: String(asset.page?.thumbnails?.mobile?.alt || ""),
     }));
   const pages = [...privatePages, ...publicPages].sort((left, right) => right.updatedAt.localeCompare(left.updatedAt));
   if (!url) return pages;
@@ -1548,6 +1925,30 @@ async function buildClientPages(url?: URL) {
     const matchesQuery = !query || [page.title, page.summary, page.visibility].some((value) => String(value).toLocaleLowerCase("zh-CN").includes(query));
     return matchesVisibility && matchesQuery;
   });
+}
+
+function internalPublicationUrl(publication: any) {
+  const id = String(publication?.id || "");
+  if (id) return `/publications/${encodeURIComponent(id)}/index.html`;
+  return relativeUrlPath(publication?.url);
+}
+
+function internalPublicPageUrl(asset: any) {
+  const publicPath = String(asset?.publicPath || "").replace(/^\/+/, "");
+  if (publicPath) return `/public/${publicPath}`;
+  return relativeUrlPath(asset?.url);
+}
+
+function relativeUrlPath(value: unknown) {
+  const raw = String(value || "").trim();
+  if (!raw) return "";
+  if (raw.startsWith("/")) return raw;
+  try {
+    const parsed = new URL(raw);
+    return `${parsed.pathname}${parsed.search}${parsed.hash}`;
+  } catch {
+    return `/${raw.replace(/^\/+/, "")}`;
+  }
 }
 
 async function buildMobilePages(url: URL) {
@@ -1650,13 +2051,13 @@ function buildClientRuntime() {
     state: "running",
     instanceId: config.instanceId,
     uptimeSeconds: Math.floor(process.uptime()),
+    workspaceRoot: config.workspaceRoot,
     workspaceReady: fs.existsSync(config.siteDataRoot),
     dataObjectCount: dataStatus.objects.length,
     snapshotCount: dataStatus.snapshotCount,
     schedulerEnabled: config.schedulerEnabled,
     channelPollingEnabled: config.channelPollEnabled,
     shellLifecycle: "client-owned",
-    shellStopsService: true,
   };
 }
 
@@ -1703,7 +2104,7 @@ async function buildMailViewData(url: URL) {
   const query = String(url.searchParams.get("q") || "").trim().slice(0, 160);
   const requestedFilter = String(url.searchParams.get("filter") || "all");
   const filter = ["all", "matched", "attachments"].includes(requestedFilter) ? requestedFilter : "all";
-  const allEvents = store.listAutomationEvents({ sourceId: "src_mail_agent", limit: 500 });
+  const allEvents = store.listAutomationEvents({ sourceId: "connection_local_mail", limit: 500 });
   const allRuns = store.listAutomationRuns({ limit: 500 });
   const runsByEvent = new Map<string, any[]>();
   for (const run of allRuns) {
@@ -1727,7 +2128,7 @@ async function buildMailViewData(url: URL) {
   });
   const selectedId = String(url.searchParams.get("message") || "");
   const selectedEvent = selectedId ? store.getAutomationEvent(selectedId) : null;
-  const safeSelectedEvent = selectedEvent?.sourceId === "src_mail_agent" ? selectedEvent : null;
+  const safeSelectedEvent = selectedEvent?.sourceId === "connection_local_mail" ? selectedEvent : null;
   const selectedRuns = safeSelectedEvent ? runsByEvent.get(safeSelectedEvent.id) || [] : [];
   let content = null;
   if (safeSelectedEvent) {
@@ -1801,7 +2202,7 @@ function publicMailContent(content: any) {
 
 async function serveMailRaw(request: http.IncomingMessage, response: http.ServerResponse, eventId: string) {
   const event = store.getAutomationEvent(eventId);
-  if (!event || event.sourceId !== "src_mail_agent") {
+  if (!event || event.sourceId !== "connection_local_mail") {
     sendText(response, 404, "Not Found", request.method === "HEAD");
     return;
   }
@@ -1812,7 +2213,7 @@ async function serveMailRaw(request: http.IncomingMessage, response: http.Server
 
 async function serveMailAttachment(request: http.IncomingMessage, response: http.ServerResponse, eventId: string, index: number) {
   const event = store.getAutomationEvent(eventId);
-  if (!event || event.sourceId !== "src_mail_agent") {
+  if (!event || event.sourceId !== "connection_local_mail") {
     sendText(response, 404, "Not Found", request.method === "HEAD");
     return;
   }

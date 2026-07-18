@@ -9,7 +9,7 @@
       "uniquePrompt": true,
       "realAgentRuntime": false,
       "sameSessionAgentReply": false,
-      "wechatRequired": true
+      "wechatRequired": false
     },
     "localMail": {
       "requiredAt": ["release", "final"],

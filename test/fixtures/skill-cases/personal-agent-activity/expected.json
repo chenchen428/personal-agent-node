@@ -5,5 +5,14 @@
   "workerAllowed": false,
   "titleCharacters": 30,
   "attachments": 10,
+  "goodActivity": {
+    "outcome": true,
+    "meaning": true,
+    "nextAction": true,
+    "stableDestinationWhenAvailable": true,
+    "targetDerivedRepresentativeMedia": true,
+    "managedAttachmentsOnly": true
+  },
+  "artifactInformationConsumedByMainAgent": true,
   "memoryDomainActive": false
 }

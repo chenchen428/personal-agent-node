@@ -35,6 +35,18 @@ test("xiaohongshu channel coalesces concurrent browser status checks", async () 
   assert.deepEqual(secondStatus, firstStatus);
 });
 
+test("xiaohongshu channel treats the upstream unauthenticated 500 as needs login", async () => {
+  const channel = new XiaohongshuChannel({
+    fetchImpl: async (url) => url.endsWith("/health")
+      ? jsonResponse({ success: true, data: { status: "healthy" } })
+      : jsonResponse({ success: false, error: "服务器内部错误" }, 500),
+  });
+  const status = await channel.status();
+  assert.equal(status.state, "needs_login");
+  assert.equal(status.loggedIn, false);
+  assert.equal(status.error, undefined);
+});
+
 test("xiaohongshu QR sessions use opaque nonces and confirm through status", async () => {
   let loggedIn = false;
   let loginState = "pending";
@@ -54,6 +66,7 @@ test("xiaohongshu QR sessions use opaque nonces and confirm through status", asy
   const login = await channel.startLogin();
   assert.match(login.session, /^[A-Za-z0-9_-]{40,}$/);
   assert.equal(login.qrImage, "data:image/png;base64,QUJD");
+  assert.equal(login.expiresAt, "2026-07-11T08:02:00.000Z");
   assert.equal((await channel.pollLogin(login.session)).status, "pending");
   loginState = "scanned";
   assert.equal((await channel.pollLogin(login.session)).status, "scanned");

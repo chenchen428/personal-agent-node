@@ -43,6 +43,7 @@ type OrchestratorLike = {
 
 const loginSessions = new Map<string, LoginSession>();
 const CONNECTOR_LONG_POLL_TIMEOUT_MS = Math.min(DEFAULT_LONG_POLL_TIMEOUT_MS, 15000);
+const LOGIN_SESSION_TIMEOUT_MS = 2 * 60 * 1000;
 const STARTUP_BACKLOG_GRACE_MS = 2 * 60 * 1000;
 const POLL_WATCHDOG_INTERVAL_MS = 30000;
 const POLL_RESTART_DELAY_MS = 1000;
@@ -123,6 +124,16 @@ export class WeChatConnector {
     };
   }
 
+  catalogStatus() {
+    const connected = fs.existsSync(CREDENTIALS_FILE);
+    return {
+      connected,
+      loginState: connected ? "connected" : "login-required",
+      polling: this.polling,
+      pollingEnabled: !this.stopped,
+    };
+  }
+
   async startLogin() {
     pruneLoginSessions();
     const baseUrl = DEFAULT_BASE_URL;
@@ -134,7 +145,7 @@ export class WeChatConnector {
       qrContent: qr.qrcode_img_content,
       baseUrl,
       createdAt: Date.now(),
-      expiresAt: Date.now() + 8 * 60 * 1000,
+      expiresAt: Date.now() + LOGIN_SESSION_TIMEOUT_MS,
     };
     loginSessions.set(id, session);
     return {
@@ -158,7 +169,7 @@ export class WeChatConnector {
     const status = await pollQRStatus(session.baseUrl, session.qrcode);
     if (status.status !== "confirmed") {
       return {
-        status: status.status || "wait",
+        status: status.status === "scaned" ? "scanned" : status.status || "wait",
         connected: false,
         expiresAt: new Date(session.expiresAt).toISOString(),
       };

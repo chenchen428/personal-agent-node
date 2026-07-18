@@ -135,6 +135,30 @@ test("Activity creation is idempotent and rejects changed replay content", () =>
   }
 });
 
+test("Page Activity requires the stable published Page target", () => {
+  const ctx = fixture();
+  try {
+    assert.throws(() => ctx.store.create(ctx.main, input({
+      type: "page",
+      target: null,
+      idempotencyKey: "page-without-target",
+    })), (error) => error.code === "PAGE_TARGET_REQUIRED");
+    assert.throws(() => ctx.store.create(ctx.main, input({
+      type: "page",
+      target: { type: "work", id: "worker-1" },
+      idempotencyKey: "page-with-wrong-target",
+    })), (error) => error.code === "PAGE_TARGET_REQUIRED");
+    const created = ctx.store.create(ctx.main, input({
+      type: "page",
+      target: { type: "page", id: "public-release-notes" },
+      idempotencyKey: "page-with-target",
+    }));
+    assert.deepEqual(created.target, { type: "page", id: "public-release-notes" });
+  } finally {
+    ctx.close();
+  }
+});
+
 test("Activity uses stable opaque cursors and never creates items from system facts", () => {
   const ctx = fixture();
   try {

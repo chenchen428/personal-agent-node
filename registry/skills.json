@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "version": 3,
-  "updatedAt": "2026-07-17",
+  "version": 4,
+  "updatedAt": "2026-07-18",
   "categories": [
     {
       "id": "research-knowledge",
@@ -109,7 +109,40 @@
       "caseRequired": true,
       "related": [
         "deep-research",
-        "content-workbench"
+        "content-workbench",
+        "social-browser-read"
+      ]
+    },
+    {
+      "name": "social-browser-read",
+      "directory": "skills/social-browser-read",
+      "category": "research-knowledge",
+      "maturity": "beta",
+      "risks": [
+        "network-read",
+        "browser-session"
+      ],
+      "security": {
+        "network": "read",
+        "dataClass": "mixed",
+        "outboundData": "query",
+        "externalWrite": false,
+        "requiresAuthorization": true,
+        "untrustedContent": true
+      },
+      "origin": {
+        "kind": "workspace",
+        "license": "Apache-2.0"
+      },
+      "cli": [],
+      "examples": [
+        "test/fixtures/skill-cases/social-browser-read/case.json"
+      ],
+      "caseRequired": true,
+      "related": [
+        "deep-research",
+        "knowledge-capture",
+        "personal-agent"
       ]
     },
     {
@@ -419,6 +452,8 @@
         "test/fixtures/skill-cases/personal-agent-lifecycle/case.json",
         "test/fixtures/skill-cases/personal-agent-mail/case.json",
         "test/fixtures/skill-cases/personal-agent-activity/case.json",
+        "test/fixtures/skill-cases/personal-agent-tasks/case.json",
+        "test/fixtures/skill-cases/personal-agent-pages/case.json",
         "test/fixtures/skill-cases/personal-agent-bug-report/case.json",
         "test/fixtures/skill-cases/personal-agent-acceptance/case.json"
       ],
@@ -429,7 +464,8 @@
         "media-toolkit",
         "guizang-social-card-skill",
         "guizang-ppt-skill",
-        "travel-guidebook"
+        "travel-guidebook",
+        "social-browser-read"
       ]
     }
   ],

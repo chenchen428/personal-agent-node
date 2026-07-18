@@ -101,7 +101,7 @@ async function buildXiaohongshuAdapter(adapter, target, cacheRoot, outputPlatfor
   let toolchainRoot = "";
   try {
     applySourcePatches(sourceRoot, build.patches);
-    const patchedDigest = sourceTreeDigest(sourceRoot, build.sourceFiles);
+    const patchedDigest = sourceTreeDigest(sourceRoot, [...build.sourceFiles, ...(build.patchAddedSourceFiles || [])]);
     if (!build.patchedSourceSha256 || patchedDigest !== build.patchedSourceSha256) {
       throw new Error(`Patched Xiaohongshu source checksum mismatch: ${patchedDigest}`);
     }
@@ -162,7 +162,7 @@ export function validateSourceFiles(files) {
     if (!/^(?:[A-Za-z0-9_.-]+\/)*[A-Za-z0-9_.-]+$/.test(relativePath) || relativePath.includes("..")) {
       throw new Error(`Unsafe Xiaohongshu source path: ${relativePath}`);
     }
-    if (!relativePath.endsWith(".go") && relativePath !== "go.mod" && relativePath !== "go.sum") {
+    if (!relativePath.endsWith(".go") && !["go.mod", "go.sum"].includes(path.posix.basename(relativePath))) {
       throw new Error(`Unsupported Xiaohongshu source file: ${relativePath}`);
     }
   }

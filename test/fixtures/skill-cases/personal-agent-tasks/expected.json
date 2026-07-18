@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 1,
+  "childTask": {
+    "titleRequired": true,
+    "titleMaximumCharacters": 20,
+    "descriptionRequired": true,
+    "descriptionMaximumCharacters": 100,
+    "executionPromptSeparate": true,
+    "executionPromptPreservesLatestParentRequest": true,
+    "splitShellArgumentsRecovered": true,
+    "taskFileSupported": true,
+    "metadataUpdateSupported": true,
+    "artifactInformation": {
+      "livesInFinalChatReply": true,
+      "completionEventRemainsDomainNeutral": true,
+      "stableWorkReferenceRequired": true,
+      "verifiedArtifactsOnly": true,
+      "managedObjectIdsOnly": true,
+      "consumedByMainAgent": true
+    },
+    "linkContract": {
+      "internalUrlRelative": true,
+      "managedMobileUrlWhenAvailable": true,
+      "emptyUrlAndNoticeWhenUnavailable": true,
+      "domainConcatenationForbidden": true
+    }
+  }
+}

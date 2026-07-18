@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "pageLinks": {
+    "internalUrlIsRelative": true,
+    "cliUrlUsesManagedDomain": true,
+    "missingDomainReturnsNotice": true,
+    "localPathsAreNeverDeliverableLinks": true,
+    "shareUrlIsSeparate": true,
+    "shareUrlRequiresExplicitShareIntent": true,
+    "tunnelOriginPersistedInternally": false,
+    "agentConversationUsesInternalUrl": true
+  }
+}

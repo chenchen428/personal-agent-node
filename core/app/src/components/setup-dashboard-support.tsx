@@ -6,7 +6,7 @@ import type { SetupState, SetupTask } from "@/lib/setup-tasks";
 import { Check, ChevronDown, Circle, RefreshCw } from "lucide-react";
 
 export function SetupTodoItem({ task, index, action }: { task: SetupTask; index: number; action: ReactNode }) {
-  const [open, setOpen] = useState(index === 1 || task.actionId === "channels.wechat.bind");
+  const [open, setOpen] = useState(index === 1 || task.actionId === "connections.wechat.bind");
   return <li className={`setup-task-row ${open ? "is-open" : ""}`}>
     <button type="button" className="setup-task-summary" aria-expanded={open} onClick={() => setOpen((current) => !current)}>
       <span className="grid size-7 shrink-0 place-items-center rounded-full bg-[var(--canvas)] font-[var(--mono)] text-[10px] text-[var(--coral)] ring-1 ring-[var(--hairline)]">{String(index).padStart(2, "0")}</span>

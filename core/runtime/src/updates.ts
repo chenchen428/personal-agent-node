@@ -3,6 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { spawn } from "node:child_process";
 import { operationError } from "./operations.ts";
+import { installationPaths } from "./space-registry.ts";
 
 const REPOSITORY = "chenchen428/personal-agent-node";
 const CHECK_TTL_MS = 6 * 60 * 60_000;
@@ -12,7 +13,7 @@ const ACTIVE_STATES = new Set(["planned", "approved", "downloading", "verified",
 export function createUpdateManager({ config, operations, now = () => Date.now(), randomUUID = () => crypto.randomUUID(), fetchImpl = fetch, spawnImpl = spawn } = {}) {
   if (!config?.dataRoot || !operations) throw operationError("INVALID_ARGUMENT", "Update manager requires config and operation storage", 2);
   const installRoot = path.join(config.homeRoot || path.dirname(config.dataRoot), "core");
-  const updatesRoot = path.join(config.runtimeDir, "updates");
+  const updatesRoot = path.join(installationPaths(config.installationDataRoot || config.dataRoot).installationRoot, "updates");
   const stateFile = path.join(updatesRoot, "state.json");
   let checking = null;
 

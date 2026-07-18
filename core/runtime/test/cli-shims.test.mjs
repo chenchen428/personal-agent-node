@@ -28,6 +28,29 @@ test("prepares Windows bridge CLI shims that follow current without embedding se
   fs.rmSync(root, { recursive: true, force: true });
 });
 
+test("recognizes a Windows current release stored as a text pointer", () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "pa-cli-pointer-"));
+  try {
+    const installRoot = path.join(root, "core");
+    const releaseRoot = path.join(installRoot, "releases", "test-release");
+    const binDir = path.join(root, "bin");
+    const entrypoint = path.join(releaseRoot, "core", "agent", "bin", "pa-cli.mjs");
+    fs.mkdirSync(path.dirname(entrypoint), { recursive: true });
+    fs.writeFileSync(entrypoint, "// fixture\n");
+    fs.mkdirSync(installRoot, { recursive: true });
+    fs.writeFileSync(path.join(installRoot, "current"), `${releaseRoot}\n`);
+    const config = { dataRoot: path.join(root, "workspace"), envPath: path.join(root, "site.env"), ports: { bridge: 8788 } };
+    const result = prepareBridgeCliShims(config, {
+      platform: "win32", installRoot, binDir, env: { PATH: binDir }, nodeRuntime: process.execPath,
+    });
+    assert.equal(result.ready, true);
+    assert.equal(result.followsCurrent, true);
+    assert.match(fs.readFileSync(path.join(binDir, "pa-cli.cmd"), "utf8"), /test-release/);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
 test("invokes Windows command shims through cmd call without nested quote parsing", () => {
   const invocation = bridgeCliInvocation("C:\\User Name\\pa-cli.cmd", ["wechat", "status", "--json"], { platform: "win32", env: { ComSpec: "C:\\Windows\\cmd.exe" } });
   assert.deepEqual(invocation, {

@@ -29,9 +29,11 @@ test("channel source manifest rejects traversal and non-Go inputs", () => {
 test("channel source patches are pinned and constrained to the runtime patch directory", () => {
   const manifest = JSON.parse(fs.readFileSync(path.join(workspaceRoot, "core", "channels", "xiaohongshu", "runtime.json"), "utf8"));
   const patches = validateSourcePatches(manifest.adapter.build.patches);
-  assert.equal(patches.length, 1);
-  const patchPath = path.join(workspaceRoot, ...patches[0].file.split("/"));
-  const digest = crypto.createHash("sha256").update(fs.readFileSync(patchPath)).digest("hex");
-  assert.equal(digest, patches[0].sha256);
+  assert.ok(patches.length > 0);
+  for (const patch of patches) {
+    const patchPath = path.join(workspaceRoot, ...patch.file.split("/"));
+    const digest = crypto.createHash("sha256").update(fs.readFileSync(patchPath)).digest("hex");
+    assert.equal(digest, patch.sha256);
+  }
   assert.throws(() => validateSourcePatches([{ file: "../service.patch", sha256: "a".repeat(64) }]), /Unsafe/);
 });

@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "package": "@jackwener/opencli",
+  "version": "1.8.6",
+  "license": "Apache-2.0",
+  "entrypoint": "core/agent/vendor/opencli-runtime/node_modules/@jackwener/opencli/dist/src/main.js",
+  "installScripts": false,
+  "browserBridge": {
+    "name": "OpenCLI Browser Bridge",
+    "bundled": false,
+    "extensionId": "ildkmabpimmkaediidaifkhjpohdnifk",
+    "installUrl": "https://chromewebstore.google.com/detail/opencli/ildkmabpimmkaediidaifkhjpohdnifk",
+    "userConfirmationRequired": true
+  }
+}

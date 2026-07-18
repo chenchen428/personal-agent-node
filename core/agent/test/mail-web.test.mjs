@@ -97,7 +97,7 @@ test("mail is registered as a protected fixed path", () => {
 test("mail web requires authentication and serves message, raw EML, and attachments", async (t) => {
   const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), "oab-mail-web-server-"));
   const mailDir = path.join(dataDir, "mail-ingress");
-  const appRoot = path.join(dataDir, "apps", "personal-agent.daily-brief");
+  const appRoot = path.join(dataDir, "apps", "installed", "personal-agent.daily-brief");
   fs.mkdirSync(path.join(appRoot, "dist"), { recursive: true });
   fs.writeFileSync(path.join(appRoot, "personal-agent.app.json"), `${JSON.stringify({
     apiVersion: "personal-agent/app-v1",
@@ -170,6 +170,13 @@ test("mail web requires authentication and serves message, raw EML, and attachme
     apiToken: "mail-web-ingest-token",
     envelopeRecipient: "bills@personal-agent.local",
   });
+  const headers = { authorization: "Bearer mail-web-api-token" };
+  const scan = await fetch(`http://127.0.0.1:${port}/api/connections/mail/scan`, { method: "POST", headers });
+  assert.equal(scan.status, 200);
+  const scannedMailbox = await fetch(`http://127.0.0.1:${port}/api/mail/messages`, { headers });
+  const scannedMailboxPayload = await scannedMailbox.json();
+  ingested.event = scannedMailboxPayload.events.find((event) => event.title === "Authenticated statement");
+  assert.ok(ingested.event?.id);
 
   const unauthorized = await fetch(`http://127.0.0.1:${port}/mail`, {
     headers: { accept: "text/html" },
@@ -192,7 +199,6 @@ test("mail web requires authentication and serves message, raw EML, and attachme
   assert.equal(cookiePage.status, 200);
   assert.match(await cookiePage.text(), /Authenticated statement/);
 
-  const headers = { authorization: "Bearer mail-web-api-token" };
   const page = await fetch(`http://127.0.0.1:${port}/mail?message=${encodeURIComponent(ingested.event.id)}`, { headers });
   const html = await page.text();
   assert.equal(page.status, 200);
@@ -254,6 +260,10 @@ test("mail web requires authentication and serves message, raw EML, and attachme
   const listHistoryPayload = await listHistory.json();
   assert.equal(listHistoryPayload.result.total, 1);
   assert.equal(listHistoryPayload.result.items[0].sources[0], "data");
+  const legacyActivity = await fetch(`http://127.0.0.1:${port}/api/node/v1/apps/personal-agent.daily-brief/activity?limit=8`, { headers: historyHeaders });
+  const legacyActivityPayload = await legacyActivity.json();
+  assert.equal(legacyActivity.status, 200);
+  assert.equal(legacyActivityPayload.result.total, 1);
   const mismatchedHistory = await fetch(`http://127.0.0.1:${port}/api/node/v1/apps/personal-agent.daily-brief/history`, {
     headers: { ...headers, "x-personal-agent-app-id": "example.other" },
   });
@@ -286,9 +296,16 @@ test("mail web requires authentication and serves message, raw EML, and attachme
   const importedPayload = await imported.json();
   assert.equal(imported.status, 201);
   assert.equal(importedPayload.ok, true);
-  assert.match(importedPayload.eventId, /^aevt_/);
+  assert.equal(importedPayload.eventId, "");
 
-  const importedView = await fetch(`http://127.0.0.1:${port}/api/mail/messages?message=${encodeURIComponent(importedPayload.eventId)}`, { headers });
+  const importedScan = await fetch(`http://127.0.0.1:${port}/api/connections/mail/scan`, { method: "POST", headers });
+  assert.equal(importedScan.status, 200);
+  const importedMessages = await fetch(`http://127.0.0.1:${port}/api/mail/messages`, { headers });
+  const importedMessagesPayload = await importedMessages.json();
+  const importedEvent = importedMessagesPayload.events.find((event) => event.title === "Imported from setup guide");
+  assert.match(importedEvent.id, /^aevt_/);
+
+  const importedView = await fetch(`http://127.0.0.1:${port}/api/mail/messages?message=${encodeURIComponent(importedEvent.id)}`, { headers });
   const importedViewPayload = await importedView.json();
   assert.equal(importedViewPayload.content.subject, "Imported from setup guide");
 

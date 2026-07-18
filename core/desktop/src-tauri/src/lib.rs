@@ -3,7 +3,10 @@ use std::{
     net::{IpAddr, Ipv4Addr, SocketAddr, TcpStream},
     path::{Path, PathBuf},
     process::{Command, Stdio},
-    sync::{Arc, OnceLock},
+    sync::{
+        atomic::{AtomicBool, AtomicU32, Ordering},
+        Arc, OnceLock,
+    },
     thread,
     time::{Duration, Instant},
 };
@@ -18,8 +21,11 @@ const APP_PORT: u16 = 8843;
 const DEFAULT_APP_URL: &str = "http://127.0.0.1:8843/app";
 const MAIN_WINDOW: &str = "main";
 const CLOSE_PATH: &str = "/__personal-agent/close";
+const REVEAL_EXPORT_PATH: &str = "/__personal-agent/reveal-export";
 const DAEMON_START: &str = "daemon-start";
 const DAEMON_STOP: &str = "stop";
+const WATCHDOG_INTERVAL: Duration = Duration::from_secs(2);
+const WATCHDOG_FAILURE_THRESHOLD: u8 = 3;
 
 static RUNTIME: OnceLock<RuntimeLifecycle> = OnceLock::new();
 
@@ -62,6 +68,7 @@ pub fn run() {
                     "runtime lifecycle is already initialized",
                 )
             })?;
+            start_runtime_watchdog();
 
             if let Some((job_id, nonce)) = initial_handoff.as_ref() {
                 accept_update_handoff(app.handle(), job_id, nonce)?;
@@ -74,6 +81,15 @@ pub fn run() {
                     stop_runtime_and_exit(&app_for_navigation);
                     return false;
                 }
+                if is_reveal_export_request(url) {
+                    if let Some(target) = RUNTIME
+                        .get()
+                        .and_then(|runtime| resolve_export_to_reveal(url, &runtime.data_root))
+                    {
+                        let _ = opener::reveal(target);
+                    }
+                    return false;
+                }
                 match navigation_decision(url) {
                     NavigationDecision::AllowInShell => true,
                     NavigationDecision::OpenInBrowser => {
@@ -84,7 +100,6 @@ pub fn run() {
                 }
             });
             let nav_for_page = Arc::clone(&navigation);
-            let nav_for_window = Arc::clone(&navigation);
             let window =
                 WebviewWindowBuilder::new(app, MAIN_WINDOW, WebviewUrl::App("index.html".into()))
                     .title("Personal Agent")
@@ -93,7 +108,9 @@ pub fn run() {
                     .center()
                     .on_navigation(move |url| nav_for_page(url))
                     .on_new_window(move |url, _features| {
-                        nav_for_window(&url);
+                        if new_window_decision(&url) == NavigationDecision::OpenInBrowser {
+                            let _ = opener::open_browser(url.as_str());
+                        }
                         NewWindowResponse::Deny
                     })
                     .build()?;
@@ -127,6 +144,31 @@ fn stop_runtime_and_exit(app: &AppHandle) {
         let _ = runtime.stop();
     }
     app.exit(0);
+}
+
+fn start_runtime_watchdog() {
+    thread::spawn(|| {
+        let mut consecutive_failures = 0_u8;
+        loop {
+            thread::sleep(WATCHDOG_INTERVAL);
+            let Some(runtime) = RUNTIME.get() else {
+                continue;
+            };
+            if runtime.stopping.load(Ordering::SeqCst) {
+                return;
+            }
+            if gateway_ready() {
+                consecutive_failures = 0;
+                continue;
+            }
+            consecutive_failures = consecutive_failures.saturating_add(1);
+            if consecutive_failures < WATCHDOG_FAILURE_THRESHOLD {
+                continue;
+            }
+            let _ = runtime.start();
+            consecutive_failures = 0;
+        }
+    });
 }
 
 fn update_handoff_from_args<I, S>(args: I) -> Option<(String, String)>
@@ -166,7 +208,7 @@ fn accept_update_handoff(app: &AppHandle, job_id: &str, nonce: &str) -> io::Resu
     })?;
     let job_dir = runtime
         .data_root
-        .join("runtime")
+        .join("installation")
         .join("updates")
         .join(job_id);
     let job_file = job_dir.join("job.json");
@@ -263,6 +305,8 @@ struct RuntimeLifecycle {
     data_root: PathBuf,
     node: PathBuf,
     cli: PathBuf,
+    supervisor_pid: AtomicU32,
+    stopping: AtomicBool,
 }
 
 impl RuntimeLifecycle {
@@ -292,7 +336,7 @@ impl RuntimeLifecycle {
             )
         })?;
         let data_root = if installed_runtime {
-            home_root.join("workspace")
+            installed_data_root(&install_root).unwrap_or_else(|| home_root.join("workspace"))
         } else {
             env::var_os("PRIVATE_SITE_DATA_ROOT")
                 .map(PathBuf::from)
@@ -313,18 +357,52 @@ impl RuntimeLifecycle {
             data_root,
             node,
             cli,
+            supervisor_pid: AtomicU32::new(0),
+            stopping: AtomicBool::new(false),
         })
     }
 
     fn start(&self) -> io::Result<()> {
-        self.run_action(DAEMON_START)
+        if self.stopping.load(Ordering::SeqCst) {
+            return Err(io::Error::new(
+                io::ErrorKind::Interrupted,
+                "runtime lifecycle is stopping",
+            ));
+        }
+        let result = self.run_action(DAEMON_START, &[])?;
+        let pid = result
+            .get("pid")
+            .and_then(|value| value.as_u64())
+            .and_then(|value| u32::try_from(value).ok())
+            .ok_or_else(|| {
+                io::Error::new(
+                    io::ErrorKind::InvalidData,
+                    "runtime start did not return a supervisor PID",
+                )
+            })?;
+        self.supervisor_pid.store(pid, Ordering::SeqCst);
+        if self.stopping.load(Ordering::SeqCst) {
+            let _ = self.run_action(DAEMON_STOP, &["--expected-pid", &pid.to_string()]);
+            self.supervisor_pid.store(0, Ordering::SeqCst);
+            return Err(io::Error::new(
+                io::ErrorKind::Interrupted,
+                "runtime lifecycle stopped during startup",
+            ));
+        }
+        Ok(())
     }
 
     fn stop(&self) -> io::Result<()> {
-        self.run_action(DAEMON_STOP)
+        self.stopping.store(true, Ordering::SeqCst);
+        let pid = self.supervisor_pid.swap(0, Ordering::SeqCst);
+        if pid == 0 {
+            return Ok(());
+        }
+        self.run_action(DAEMON_STOP, &["--expected-pid", &pid.to_string()])?;
+        Ok(())
     }
 
-    fn run_action(&self, action: &str) -> io::Result<()> {
+    fn run_action(&self, action: &str, extra_args: &[&str]) -> io::Result<serde_json::Value> {
         let mut command = Command::new(&self.node);
         command
             .arg(&self.cli)
@@ -338,17 +416,17 @@ impl RuntimeLifecycle {
             .env("PRIVATE_SITE_INSTALL_ROOT", &self.install_root)
             .env("PRIVATE_SITE_DATA_ROOT", &self.data_root)
             .stdin(Stdio::null())
-            .stdout(Stdio::null())
             .stderr(Stdio::null());
+        command.args(extra_args);
         hide_command_window(&mut command);
-        let status = command.status()?;
-        if status.success() {
-            Ok(())
-        } else {
-            Err(io::Error::other(format!(
+        let output = command.output()?;
+        if !output.status.success() {
+            return Err(io::Error::other(format!(
                 "Personal Agent runtime action {action} failed"
-            )))
+            )));
         }
+        serde_json::from_slice(&output.stdout)
+            .map_err(|error| io::Error::new(io::ErrorKind::InvalidData, error))
     }
 }
 
@@ -366,6 +444,13 @@ fn infer_install_root_from_executable(executable: &Path) -> Option<PathBuf> {
             None
         }
     })
+}
+
+fn installed_data_root(install_root: &Path) -> Option<PathBuf> {
+    let document: serde_json::Value =
+        serde_json::from_slice(&fs::read(install_root.join("installation.json")).ok()?).ok()?;
+    let value = PathBuf::from(document.get("dataRoot")?.as_str()?);
+    value.is_absolute().then_some(value)
 }
 
 fn resolve_current(pointer: &Path) -> io::Result<PathBuf> {
@@ -480,6 +565,18 @@ fn navigation_decision(url: &Url) -> NavigationDecision {
     }
 }
 
+fn new_window_decision(url: &Url) -> NavigationDecision {
+    if is_close_confirmation(url) || is_reveal_export_request(url) {
+        return NavigationDecision::Deny;
+    }
+    match navigation_decision(url) {
+        NavigationDecision::AllowInShell | NavigationDecision::OpenInBrowser => {
+            NavigationDecision::OpenInBrowser
+        }
+        NavigationDecision::Deny => NavigationDecision::Deny,
+    }
+}
+
 fn is_close_confirmation(url: &Url) -> bool {
     is_loopback_console(url)
         && url.path() == CLOSE_PATH
@@ -487,12 +584,65 @@ fn is_close_confirmation(url: &Url) -> bool {
         && url.fragment().is_none()
 }
 
+fn is_reveal_export_request(url: &Url) -> bool {
+    is_loopback_console(url) && url.path() == REVEAL_EXPORT_PATH && url.fragment().is_none()
+}
+
+fn resolve_export_to_reveal(url: &Url, data_root: &Path) -> Option<PathBuf> {
+    if !is_reveal_export_request(url) {
+        return None;
+    }
+    let id = url
+        .query_pairs()
+        .find(|(key, _)| key == "id")
+        .map(|(_, value)| value.into_owned())?;
+    if !id.starts_with("export-")
+        || !id
+            .chars()
+            .all(|value| value.is_ascii_alphanumeric() || value == '-')
+    {
+        return None;
+    }
+    let space_root = space_root_for_port(data_root, url.port_or_known_default()?)?;
+    let export_root = fs::canonicalize(space_root.join("exports")).ok()?;
+    let candidate = fs::canonicalize(export_root.join(format!("{id}.zip"))).ok()?;
+    (candidate.is_file() && candidate.parent() == Some(export_root.as_path())).then_some(candidate)
+}
+
+fn space_root_for_port(data_root: &Path, gateway_port: u16) -> Option<PathBuf> {
+    let spaces_root = fs::canonicalize(data_root.join("spaces")).ok()?;
+    for entry in fs::read_dir(&spaces_root).ok()?.flatten() {
+        let metadata = entry.metadata().ok()?;
+        if !metadata.is_dir() || entry.file_type().ok()?.is_symlink() {
+            continue;
+        }
+        let document: serde_json::Value =
+            serde_json::from_slice(&fs::read(entry.path().join("space.json")).ok()?).ok()?;
+        let port = document
+            .get("allocatedPorts")
+            .and_then(|ports| ports.get("gateway"))
+            .and_then(|value| value.as_u64());
+        if port == Some(u64::from(gateway_port)) {
+            let candidate = fs::canonicalize(entry.path()).ok()?;
+            if candidate.parent() == Some(spaces_root.as_path()) {
+                return Some(candidate);
+            }
+        }
+    }
+    None
+}
+
 fn is_loopback_console(url: &Url) -> bool {
+    let port = url.port_or_known_default();
     url.scheme() == "http"
         && url.host_str() == Some(APP_HOST)
-        && url.port_or_known_default() == Some(APP_PORT)
+        && port.is_some_and(is_space_gateway_port)
         && url.username().is_empty()
         && url.password().is_none()
+}
+
+fn is_space_gateway_port(port: u16) -> bool {
+    port >= APP_PORT && port <= APP_PORT + 500 * 20 && (port - APP_PORT) % 20 == 0
 }
 
 fn is_shell_asset(url: &Url) -> bool {
@@ -507,6 +657,7 @@ mod tests {
     fn accepts_only_the_exact_loopback_console_origin() {
         for value in [
             "http://127.0.0.1:8843/",
+            "http://127.0.0.1:8863/app",
             "http://127.0.0.1:8843/app",
             "http://127.0.0.1:8843/app/setup/bootstrap?token=redacted",
         ] {
@@ -577,6 +728,59 @@ mod tests {
             navigation_decision(&"file:///etc/passwd".parse().unwrap()),
             NavigationDecision::Deny
         );
+    }
+
+    #[test]
+    fn new_windows_open_safe_local_and_external_pages_in_the_system_browser() {
+        for value in [
+            "http://127.0.0.1:8843/public/uploads/demo/index.html",
+            "http://127.0.0.1:8843/publications/private/index.html",
+            "https://github.com/login/oauth/authorize",
+        ] {
+            assert_eq!(
+                new_window_decision(&value.parse().unwrap()),
+                NavigationDecision::OpenInBrowser,
+                "{value}"
+            );
+        }
+        for value in [
+            "file:///etc/passwd",
+            "http://127.0.0.1:8843/__personal-agent/close",
+            "http://127.0.0.1:8843/__personal-agent/reveal-export?id=export-123",
+        ] {
+            assert_eq!(
+                new_window_decision(&value.parse().unwrap()),
+                NavigationDecision::Deny,
+                "{value}"
+            );
+        }
+    }
+
+    #[test]
+    fn export_reveal_accepts_only_a_completed_export_inside_the_data_root() {
+        let root = env::temp_dir().join(format!("pa-reveal-export-{}", std::process::id()));
+        let space = root.join("spaces").join("sp_personal");
+        let exports = space.join("exports");
+        fs::create_dir_all(&exports).unwrap();
+        fs::write(
+            space.join("space.json"),
+            br#"{"schemaVersion":1,"spaceId":"sp_personal","allocatedPorts":{"gateway":8843}}"#,
+        )
+        .unwrap();
+        let target = exports.join("export-123-abcdef.zip");
+        fs::write(&target, b"zip").unwrap();
+        let url: Url = "http://127.0.0.1:8843/__personal-agent/reveal-export?id=export-123-abcdef"
+            .parse()
+            .unwrap();
+        assert_eq!(
+            resolve_export_to_reveal(&url, &root),
+            Some(fs::canonicalize(&target).unwrap())
+        );
+        let traversal: Url = "http://127.0.0.1:8843/__personal-agent/reveal-export?id=..%2Fsecret"
+            .parse()
+            .unwrap();
+        assert!(resolve_export_to_reveal(&traversal, &root).is_none());
+        fs::remove_dir_all(root).unwrap();
     }
 
     #[test]

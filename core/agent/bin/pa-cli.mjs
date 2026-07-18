@@ -4,6 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import qrcodeTerminal from "qrcode-terminal";
 import { ingestRawEmail, MAX_MAIL_BYTES } from "../src/automation/mail-ingest.js";
+import { normalizeTaskCreate, normalizeTaskPatch } from "../src/server/task-contract.js";
 
 const personalAgentHome = path.resolve(process.env.PERSONAL_AGENT_HOME || path.join(os.homedir(), ".personal-agent"));
 const siteDataRoot = path.resolve(process.env.PRIVATE_SITE_DATA_ROOT || path.join(personalAgentHome, "workspace"));
@@ -32,27 +33,52 @@ try {
       envelopeRecipient: args.recipient || "",
       envelopeSender: args.sender || "",
     });
-    print({ ok: true, eventId: result.event?.id, sha256: result.sha256 });
+    print({ ok: true, sha256: result.sha256, queuedForIntervalScan: result.queuedForIntervalScan === true });
   } else if (command === "memory") {
     throw new Error("The legacy Memory domain has been removed; the verified main Agent must use pa-cli activity");
+  } else if (command === "automation") {
+    throw new Error("The user automation product has been removed; local mail interval scanning is a built-in connection capability");
   } else if (command === "session" && (subcommand === "list" || subcommand === "search")) {
     const query = args.query || args.q || (subcommand === "search" ? args._.slice(2).join(" ") : "");
     if (subcommand === "search" && !query) throw new Error("--query is required");
     print(await listSessions({ query }));
   } else if (command === "session" && subcommand === "start") {
-    const task = args.task || args.t || args._.slice(2).join(" ");
+    const task = readTaskArgument({
+      inline: args.task || args.t,
+      positionals: args._.slice(2),
+      file: args["task-file"],
+    });
     if (!task) throw new Error("--task is required");
-    const result = await post("/api/sessions", {
-      task,
-      title: args.title,
+    const metadata = normalizeTaskCreate({
       parentSessionId: args.parent,
+      title: args.title,
+      description: args.description || args.desc,
+      task,
+    });
+    const result = await post("/api/sessions", {
+      task: metadata.task,
+      title: metadata.title || undefined,
+      description: metadata.description || undefined,
+      parentSessionId: metadata.parentSessionId || undefined,
       workspaceRoot: args.workspace,
       createdBy: "pa-cli",
     });
     print(result.session);
+  } else if (command === "session" && subcommand === "update") {
+    const sessionId = args.session || args.s;
+    if (!sessionId) throw new Error("--session is required");
+    const metadata = normalizeTaskPatch({
+      ...(args.title !== undefined ? { title: args.title } : {}),
+      ...(args.description !== undefined || args.desc !== undefined ? { description: args.description || args.desc } : {}),
+    });
+    print((await patch(`/api/sessions/${encodeURIComponent(sessionId)}`, metadata)).session);
   } else if (command === "session" && (subcommand === "input" || subcommand === "resume")) {
     const sessionId = args.session || args.s;
-    const content = args.text || args.content || args._.slice(2).join(" ");
+    const content = readTaskArgument({
+      inline: args.text || args.content || args.task || args.t,
+      positionals: args._.slice(2),
+      file: args["task-file"],
+    });
     if (!sessionId) throw new Error("--session is required");
     if (!content) throw new Error("--text is required");
     print(await post(`/api/sessions/${encodeURIComponent(sessionId)}/input`, {
@@ -109,95 +135,6 @@ try {
       description: args.description || "",
       sensitivity: args.sensitivity || "private",
     })).metadata);
-  } else if (command === "automation" && subcommand === "sources") {
-    print((await get("/api/agent-automations/sources")).sources);
-  } else if (command === "automation" && subcommand === "source") {
-    const source = args.file ? JSON.parse(fs.readFileSync(path.resolve(args.file), "utf8")) : {
-      id: args.id, name: args.name, kind: args.kind, accountRef: args.account,
-      capabilities: String(args.capabilities || "").split(",").map((value) => value.trim()).filter(Boolean),
-      sensitivity: args.sensitivity, enabled: !args.disabled,
-    };
-    print((await post("/api/agent-automations/sources", source)).source);
-  } else if (command === "automation" && subcommand === "rules") {
-    print((await get("/api/agent-automations/rules")).rules);
-  } else if (command === "automation" && subcommand === "mail-policies") {
-    print(await get(`/api/agent-automations/mail-protection?limit=${encodeURIComponent(args.limit || "100")}&offset=${encodeURIComponent(args.offset || "0")}`));
-  } else if (command === "automation" && subcommand === "mail-policy") {
-    const sender = args.sender || args.email;
-    if (!sender || !args.policy) throw new Error("--sender and --policy are required");
-    if (!["neutral", "trusted", "blocked"].includes(String(args.policy))) throw new Error("--policy must be neutral, trusted, or blocked");
-    print((await post("/api/agent-automations/mail-policies", {
-      sender,
-      policy: args.policy,
-      reason: args.reason || "Agent policy update",
-      dailyLimit: args.limit ? Number(args.limit) : undefined,
-      expiresAt: args.expires || undefined,
-    })).policy);
-  } else if (command === "automation" && subcommand === "rule") {
-    const ruleId = args.id || args.rule;
-    if (ruleId && !args.file && !args.name) print((await get(`/api/agent-automations/rules/${encodeURIComponent(ruleId)}`)).rule);
-    else {
-      const rule = args.file ? JSON.parse(fs.readFileSync(path.resolve(args.file), "utf8")) : {
-        id: ruleId, name: args.name, description: args.description, sourceId: args.source,
-        eventType: args.event || "message.received",
-        conditions: args.conditions ? JSON.parse(args.conditions) : {},
-        action: args.action ? JSON.parse(args.action) : {},
-        permissions: args.permissions ? JSON.parse(args.permissions) : {},
-        enabled: !args.disabled,
-      };
-      print(ruleId
-        ? (await patch(`/api/agent-automations/rules/${encodeURIComponent(ruleId)}`, rule)).rule
-        : (await post("/api/agent-automations/rules", rule)).rule);
-    }
-  } else if (command === "automation" && subcommand === "events") {
-    print((await get(`/api/agent-automations/events?limit=${encodeURIComponent(args.limit || "100")}`)).events);
-  } else if (command === "automation" && subcommand === "event") {
-    const eventId = args.id || args.event;
-    if (eventId && !args.file) print((await get(`/api/agent-automations/events/${encodeURIComponent(eventId)}`)).event);
-    else {
-      if (!args.file) throw new Error("--file is required to ingest an event");
-      print(await post("/api/agent-automations/events", JSON.parse(fs.readFileSync(path.resolve(args.file), "utf8"))));
-    }
-  } else if (command === "automation" && subcommand === "event-replay") {
-    const eventId = args.id || args.event;
-    if (!eventId) throw new Error("--id is required");
-    print(await post(`/api/agent-automations/events/${encodeURIComponent(eventId)}/replay`, { ruleId: args.rule || args.ruleId }));
-  } else if (command === "automation" && subcommand === "runs") {
-    print((await get(`/api/agent-automations/runs?limit=${encodeURIComponent(args.limit || "100")}`)).runs);
-  } else if (command === "automation" && subcommand === "templates") {
-    print((await get("/api/agent-automations/templates")).templates);
-  } else if (command === "automation" && subcommand === "template") {
-    if (args["source-file"]) {
-      print((await post("/api/agent-automations/templates/install", {
-        id: args.id,
-        name: args.name,
-        purpose: args.purpose,
-        sourceFingerprint: args.fingerprint,
-        source: fs.readFileSync(path.resolve(args["source-file"]), "utf8"),
-      })).template);
-    } else {
-      if (!args.file) throw new Error("--file or --source-file is required");
-      print((await post("/api/agent-automations/templates", JSON.parse(fs.readFileSync(path.resolve(args.file), "utf8")))).template);
-    }
-  } else if (command === "automation" && subcommand === "template-run") {
-    const templateId = args.id || args.template;
-    if (!templateId || !args["input-file"]) throw new Error("--id and --input-file are required");
-    print((await post(`/api/agent-automations/templates/${encodeURIComponent(templateId)}/run`, {
-      input: JSON.parse(fs.readFileSync(path.resolve(args["input-file"]), "utf8")),
-      version: args.version ? Number(args.version) : undefined,
-    })).result);
-  } else if (command === "automation" && subcommand === "template-resolve") {
-    if (!args.fingerprint) throw new Error("--fingerprint is required");
-    print((await get(`/api/agent-automations/templates/resolve?sourceFingerprint=${encodeURIComponent(args.fingerprint)}`)).template);
-  } else if (command === "automation" && ["template-activate", "template-rollback", "template-disable"].includes(subcommand)) {
-    const templateId = args.id || args.template;
-    if (!templateId) throw new Error("--id is required");
-    if (subcommand === "template-rollback" && !args.version) throw new Error("--version is required");
-    const action = subcommand.replace("template-", "");
-    print((await post(`/api/agent-automations/templates/${encodeURIComponent(templateId)}/${action}`, {
-      version: args.version ? Number(args.version) : undefined,
-      reason: args.reason,
-    })).template);
   } else if ((command === "cron" || command === "corn") && subcommand === "list") {
     print((await get("/api/agent-corn/tasks")).tasks);
   } else if ((command === "cron" || command === "corn") && subcommand === "create") {
@@ -237,6 +174,71 @@ try {
     const taskId = args.id || args.taskId || args.task;
     if (!taskId) throw new Error("--id is required");
     print(await post(`/api/agent-corn/tasks/${encodeURIComponent(taskId)}/run`, {}));
+  } else if (command === "connection" && subcommand === "list") {
+    print((await get("/api/connections")).connections);
+  } else if (command === "connection" && subcommand === "inspect") {
+    const connectionId = String(args._[2] || args.id || "").trim();
+    if (!connectionId) throw new Error("connection id is required");
+    const catalog = (await get("/api/connections")).connections || [];
+    const connection = catalog.find((item) => item.id === connectionId);
+    if (!connection) throw new Error(`Unknown connection: ${connectionId}`);
+    print(connection);
+  } else if (command === "connection" && ["wechat", "wechat-personal", "xiaohongshu", "twitter", "notion", "mail", "sites"].includes(subcommand)) {
+    const connectionId = subcommand;
+    const operation = String(args._[2] || "status").trim();
+    if (connectionId === "wechat" && operation === "qianxun") print(await qianxunConnectionCommand(args));
+    else if (connectionId === "wechat-personal") print(await personalWechatConnectionCommand(args));
+    else if (operation === "status") print((await get(`/api/connections/${encodeURIComponent(connectionId)}/status`)).connection);
+    else if (connectionId === "notion" && operation === "connect") print(await post("/api/connections/notion/login/start", {}));
+    else if (connectionId === "notion" && operation === "poll") print(await post("/api/connections/notion/login/poll", {}));
+    else if (connectionId === "mail" && operation === "scan") print(await post("/api/connections/mail/scan", {}));
+    else if (connectionId === "mail" && operation === "history") print(await get(`/api/mail/messages?limit=${encodeURIComponent(args.limit || "50")}`));
+    else if (connectionId === "wechat" && operation === "connect") print(await post("/api/channels/wechat/login/start", {}));
+    else if (connectionId === "wechat" && operation === "send-file") print(await post("/api/channels/wechat/send-file", {
+      filePath: resolveRegularFile(args.file || args.f), title: args.title, recipientId: args.recipient || args.recipientId,
+    }));
+    else if (connectionId === "wechat" && operation === "send-image") print(await post("/api/channels/wechat/send-image", {
+      filePath: resolveRegularFile(args.file || args.f), caption: args.caption, recipientId: args.recipient || args.recipientId,
+    }));
+    else if (connectionId === "xiaohongshu" && (operation === "open" || operation === "connect")) {
+      const result = await post("/api/connections/xiaohongshu/open", {});
+      print(operation === "connect" ? { ...result, deprecatedAlias: "connect", connectionCreated: false } : result);
+    }
+    else if (connectionId === "xiaohongshu" && operation === "search") {
+      const keyword = String(args.keyword || args.query || args.q || args._.slice(3).join(" ")).trim();
+      if (!keyword) throw new Error("--keyword is required");
+      print(await post("/api/connections/xiaohongshu/search", { keyword }));
+    } else if (connectionId === "xiaohongshu" && operation === "read") {
+      const url = String(args.url || "").trim();
+      const feedId = String(args["feed-id"] || args.feedId || args.id || "").trim();
+      const xsecToken = String(args["xsec-token"] || args.xsecToken || "").trim();
+      if (!url && (!feedId || !xsecToken)) throw new Error("--url or both --feed-id and --xsec-token are required");
+      print(await post("/api/connections/xiaohongshu/read", url ? { url } : { feedId, xsecToken }));
+    } else if (connectionId === "twitter" && (operation === "open" || operation === "connect")) {
+      const result = await post("/api/connections/twitter/open", {});
+      print(operation === "connect" ? { ...result, deprecatedAlias: "connect", connectionCreated: false } : result);
+    } else if (connectionId === "twitter" && operation === "search") {
+      const query = String(args.query || args.keyword || args.q || args._.slice(3).join(" ")).trim();
+      if (!query) throw new Error("--query is required");
+      print(await post("/api/connections/twitter/search", { query }));
+    } else if (connectionId === "twitter" && operation === "read") {
+      const url = String(args.url || "").trim();
+      const tweetId = String(args["tweet-id"] || args.tweetId || args.id || "").trim();
+      if (!url && !tweetId) throw new Error("--url or --tweet-id is required");
+      print(await post("/api/connections/twitter/read", url ? { url } : { tweetId }));
+    } else if (connectionId === "sites" && operation === "list") print((await get("/api/pages")).assets || []);
+    else if (connectionId === "sites" && operation === "tunnel-status") print((await get("/api/connections/sites/status")).connection);
+    else if (["mail", "sites"].includes(connectionId) && ["use-platform-domain", "remove-platform-domain"].includes(operation)) print({
+      ok: true,
+      connectionId,
+      confirmationRequired: true,
+      setupAction: operation === "use-platform-domain" ? "connectivity.managed-authorize" : "connectivity.managed-disconnect",
+      command: `pa-cli connection ${connectionId} ${operation}`,
+      next: operation === "use-platform-domain"
+        ? "Authenticate with personal-agent.cn after confirming the platform-domain and secure-tunnel change."
+        : "Remove the local binding after confirmation; Workspace data and Cloud enrollment are preserved.",
+    });
+    else throw new Error(`Unsupported connection operation: ${connectionId} ${operation}`);
   } else if (command === "channel" && subcommand === "status") {
     const provider = channelProvider();
     print(await get(`/api/channels/${encodeURIComponent(provider)}/status`));
@@ -375,10 +377,57 @@ try {
       excludeRelativePaths,
       execute: args.execute === true,
     }));
+  } else if (command === "pages" && subcommand === "publish") {
+    const file = args.file || args.f;
+    const desktopThumbnailFile = args["desktop-thumbnail"];
+    const mobileThumbnailFile = args["mobile-thumbnail"];
+    const folder = args.folder;
+    if (!file) throw new Error("--file is required");
+    if (!desktopThumbnailFile || !mobileThumbnailFile) {
+      throw new Error("HTML publishing requires --desktop-thumbnail <png> and --mobile-thumbnail <png>");
+    }
+    if (!folder) throw new Error("HTML publishing requires --folder <stable-name>");
+    const resolved = path.resolve(file);
+    const resolvedDesktopThumbnail = path.resolve(desktopThumbnailFile);
+    const resolvedMobileThumbnail = path.resolve(mobileThumbnailFile);
+    if (!/\.html?$/i.test(resolved)) throw new Error("pages publish requires an HTML file");
+    if (!/\.png$/i.test(resolvedDesktopThumbnail) || !/\.png$/i.test(resolvedMobileThumbnail)) {
+      throw new Error("pages publish requires PNG desktop and mobile thumbnails");
+    }
+    const content = fs.readFileSync(resolved);
+    const desktopThumbnail = fs.readFileSync(resolvedDesktopThumbnail);
+    const mobileThumbnail = fs.readFileSync(resolvedMobileThumbnail);
+    const result = await post(args.private ? "/api/publications/publish" : "/api/pages/publish", {
+      fileName: args.name || path.basename(resolved),
+      content: content.toString("base64"),
+      encoding: "base64",
+      folder,
+      publicationId: folder,
+      mimeType: args.mime || "text/html; charset=utf-8",
+      overwrite: Boolean(args.overwrite),
+      title: args.title || path.basename(resolved, path.extname(resolved)),
+      summary: args.summary || "",
+      desktopThumbnail: {
+        fileName: args["desktop-thumbnail-name"] || "page-thumbnail-desktop.png",
+        content: desktopThumbnail.toString("base64"),
+        encoding: "base64",
+        mimeType: "image/png",
+        alt: args["desktop-thumbnail-alt"] || "",
+      },
+      mobileThumbnail: {
+        fileName: args["mobile-thumbnail-name"] || "page-thumbnail-mobile.png",
+        content: mobileThumbnail.toString("base64"),
+        encoding: "base64",
+        mimeType: "image/png",
+        alt: args["mobile-thumbnail-alt"] || "",
+      },
+    });
+    print(pagePublishResult(args.private ? result.publication : result.asset, result.access));
   } else if (command === "pages" && subcommand === "upload") {
     const file = args.file || args.f;
     if (!file) throw new Error("--file is required");
     const resolved = path.resolve(file);
+    if (/\.html?$/i.test(resolved)) throw new Error("Use pages publish with desktop and mobile thumbnails when publishing HTML");
     const content = fs.readFileSync(resolved);
     const result = await post(args.private ? "/api/publications/upload" : "/api/pages/upload", {
       fileName: args.name || path.basename(resolved),
@@ -421,6 +470,15 @@ async function patch(pathname, body) {
   return readResponse(response);
 }
 
+async function put(pathname, body) {
+  const response = await fetch(`${apiBase}${pathname}`, {
+    method: "PUT",
+    headers: { ...headers(), "content-type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  return readResponse(response);
+}
+
 async function del(pathname) {
   const response = await fetch(`${apiBase}${pathname}`, {
     method: "DELETE",
@@ -443,7 +501,19 @@ function headers() {
 function print(value) {
   if (args.json) console.log(JSON.stringify(value, null, 2));
   else if (value?.url) console.log(value.url);
+  else if (value?.linkNotice) console.log(value.linkNotice);
   else console.log(JSON.stringify(value, null, 2));
+}
+
+function pagePublishResult(page, access = {}) {
+  const internalUrl = String(access.internalUrl || page?.url || "");
+  const url = String(access.url || "");
+  return {
+    ...page,
+    internalUrl,
+    url,
+    linkNotice: url ? "" : String(access.linkNotice || "暂未配置可访问的域名链接，无法直接访问页面"),
+  };
 }
 
 function delay(ms) {
@@ -482,17 +552,30 @@ function sessionSummary(session) {
     hasResumeThread: Boolean(session.cliSessionId),
     createdAt: session.createdAt,
     updatedAt: session.updatedAt,
+    internalUrl: session.internalUrl || session.path || "",
     url: session.url,
+    linkNotice: session.linkNotice || "",
     eventCount: Number(session.eventCount || 0),
     childSessionCount: Number(session.childSessionCount || 0),
   };
 }
 
-function resolveRegularFile(value) {
-  if (!value) throw new Error("--file is required");
+function resolveRegularFile(value, option = "--file") {
+  if (!value) throw new Error(`${option} is required`);
   const resolved = path.resolve(value);
-  if (!fs.statSync(resolved).isFile()) throw new Error("--file must point to a regular file");
+  if (!fs.statSync(resolved).isFile()) throw new Error(`${option} must point to a regular file`);
   return resolved;
+}
+
+function readTaskArgument({ inline, positionals = [], file } = {}) {
+  const inlineText = [inline, ...positionals]
+    .map((value) => String(value || "").trim())
+    .filter(Boolean)
+    .join(" ")
+    .trim();
+  if (!file) return inlineText;
+  if (inlineText) throw new Error("--task-file cannot be combined with inline task text");
+  return fs.readFileSync(resolveRegularFile(file, "--task-file"), "utf8").trim();
 }
 
 function channelProvider() {
@@ -501,13 +584,88 @@ function channelProvider() {
   return provider;
 }
 
+async function qianxunConnectionCommand(parsed, operationIndex = 3) {
+  const operation = String(parsed._[operationIndex] || "status").trim();
+  const prefix = "/api/connections/wechat/qianxun";
+  if (operation === "status") return (await get(`${prefix}/status?probe=${parsed.probe === "0" ? "0" : "1"}`)).connection;
+  if (operation === "plan-configure") {
+    const safeKeyFile = parsed["safe-key-file"] || parsed.safeKeyFile;
+    const safeKey = safeKeyFile ? fs.readFileSync(resolveRegularFile(safeKeyFile, "--safe-key-file"), "utf8").trim() : "";
+    if (!parsed.url) throw new Error("--url is required");
+    return await post(`${prefix}/plan-configure`, {
+      baseUrl: parsed.url,
+      endpointStyle: parsed["endpoint-style"] || parsed.endpointStyle || "auto",
+      bindWxid: parsed.wxid || parsed.bindWxid || "",
+      safeKey,
+    });
+  }
+  if (operation === "execute") {
+    if (!parsed.operation || !parsed.digest) throw new Error("--operation and --digest are required");
+    return await post(`${prefix}/execute`, { operationId: parsed.operation, digest: parsed.digest });
+  }
+  if (operation === "events") return await get(`${prefix}/events?limit=${encodeURIComponent(parsed.limit || "50")}`);
+  if (["profile", "lookup", "friends", "groups", "official-accounts", "members", "stranger"].includes(operation)) {
+    return await post(`${prefix}/read`, {
+      operation,
+      input: {
+        wxid: parsed.wxid,
+        groupWxid: parsed.group || parsed.groupWxid,
+        pq: parsed.pq,
+        refresh: parsed.refresh === true || parsed.refresh === "1" || parsed.refresh === "true",
+      },
+    });
+  }
+  if (operation.startsWith("plan-")) {
+    const action = operation.slice("plan-".length);
+    const input = {
+      wxid: parsed.to || parsed.wxid,
+      text: parsed.text,
+      filePath: ["send-image", "send-file"].includes(action) ? resolveRegularFile(parsed.file || parsed.f) : undefined,
+      remark: parsed.remark,
+      scene: parsed.scene,
+      v3: parsed.v3,
+      v4: parsed.v4,
+      content: parsed.content,
+      type: parsed.type,
+      groupWxid: parsed.group || parsed.groupWxid,
+      memberWxid: parsed.member || parsed.memberWxid,
+    };
+    return await post(`${prefix}/plan-action`, { action, input });
+  }
+  throw new Error(`Unsupported Qianxun connection operation: ${operation}`);
+}
+
+async function personalWechatConnectionCommand(parsed) {
+  const operation = String(parsed._[2] || "status").trim();
+  const prefix = "/api/connections/wechat-personal";
+  if (operation === "status") return (await get(`${prefix}/status`)).connection;
+  if (operation === "directory") return (await get(`${prefix}/directory`)).directory;
+  if (operation === "policy") return (await get(`${prefix}/policy`)).policy;
+  if (operation === "detect") {
+    const safeKeyFile = parsed["safe-key-file"] || parsed.safeKeyFile;
+    const safeKey = safeKeyFile ? fs.readFileSync(resolveRegularFile(safeKeyFile, "--safe-key-file"), "utf8").trim() : "";
+    return await post(`${prefix}/detect`, {
+      baseUrl: parsed.url || "http://127.0.0.1:8055",
+      endpointStyle: parsed["endpoint-style"] || parsed.endpointStyle || "auto",
+      bindWxid: parsed.wxid || parsed.bindWxid || "",
+      safeKey,
+    });
+  }
+  if (operation === "set-policy") {
+    const policyFile = resolveRegularFile(parsed.file || parsed.f, "--file");
+    return await put(`${prefix}/policy`, JSON.parse(fs.readFileSync(policyFile, "utf8")));
+  }
+  return await qianxunConnectionCommand(parsed, 2);
+}
+
 function help() {
   console.log(`Usage:
-  pa-cli session start --task "..." [--parent <session>] [--workspace <path>] [--json]
+  pa-cli session start (--task "..."|--task-file <utf8-file>) [--parent <session> --title "..." --description "..."] [--workspace <path>] [--json]
+  pa-cli session update --session <id> [--title "..."] [--description "..."] [--json]
   pa-cli session list [--query "..."] [--limit <n>] [--cursor <cursor>] [--all] [--json]
   pa-cli session search --query "..." [--all] [--json]
   pa-cli session input --session <id> --text "..." [--notify-wechat]
-  pa-cli session resume --session <id> --task "..."
+  pa-cli session resume --session <id> (--task "..."|--task-file <utf8-file>)
   pa-cli session status --session <id> [--json]
   pa-cli data status [--json]
   pa-cli data schema [--object <table>] [--json]
@@ -518,31 +676,48 @@ function help() {
   pa-cli data snapshot [--reason <text>] [--json]
   pa-cli data restore --id <snapshot-id> [--json]
   pa-cli data metadata --object <table> [--field <column>] [--name <label>] [--description <text>] [--sensitivity <level>]
-  pa-cli automation sources [--json]
-  pa-cli automation source --file <source.json>
-  pa-cli automation rules [--json]
-  pa-cli automation mail-policies [--limit <n>] [--offset <n>] [--json]
-  pa-cli automation mail-policy --sender <email> --policy <neutral|trusted|blocked> --reason <text> [--limit <n>] [--expires <iso>]
-  pa-cli automation rule --id <rule-id> [--json]
-  pa-cli automation rule --file <rule.json>
-  pa-cli automation events [--limit <n>] [--json]
-  pa-cli automation event --id <event-id> [--json]
-  pa-cli automation event --file <event.json>
-  pa-cli automation event-replay --id <event-id> [--rule <rule-id>]
-  pa-cli automation runs [--limit <n>] [--json]
-  pa-cli automation templates [--json]
-  pa-cli automation template --file <template.json>
-  pa-cli automation template --source-file <parse.mjs> --name <name> [--id <id>] [--purpose <text>] [--fingerprint <value>]
-  pa-cli automation template-run --id <template-id> --input-file <input.json> [--version <n>]
-  pa-cli automation template-resolve --fingerprint <value>
-  pa-cli automation template-activate --id <template-id> [--version <n>] [--reason <text>]
-  pa-cli automation template-rollback --id <template-id> --version <n> [--reason <text>]
-  pa-cli automation template-disable --id <template-id> [--reason <text>]
   pa-cli cron list [--json]
   pa-cli cron create --name <name> --cron "0 9 * * *" --prompt "..." [--timezone <iana-zone>] [--workspace <name>] [--recipient <wechat-id>] [--json]
   pa-cli cron update --id <task-id> [--name <name>] [--cron "..."] [--timezone <iana-zone>] [--prompt "..."] [--enabled|--disabled]
   pa-cli cron delete --id <task-id>
   pa-cli cron run --id <task-id> [--json]
+  pa-cli connection list [--json]
+  pa-cli connection inspect <wechat|wechat-personal|xiaohongshu|twitter|notion|mail|sites> [--json]
+  pa-cli connection <id> status [--json]
+  pa-cli connection wechat connect [--json]
+  pa-cli connection wechat send-file --file <path> [--title <name>] [--recipient <wechat-id>]
+  pa-cli connection wechat send-image --file <path> [--caption "..."] [--recipient <wechat-id>]
+  pa-cli connection wechat-personal status|detect|directory|policy [--json]
+  pa-cli connection wechat-personal set-policy --file <policy.json> [--json]
+  pa-cli connection wechat-personal events [--limit <n>] [--json]
+  pa-cli connection wechat qianxun status [--probe 0] [--json]
+  pa-cli connection wechat qianxun plan-configure --url http://127.0.0.1:<port> [--endpoint-style auto|client|httpapi] [--wxid <expected-wxid>] [--safe-key-file <path>]
+  pa-cli connection wechat qianxun profile|friends|groups|official-accounts [--refresh 1] [--json]
+  pa-cli connection wechat qianxun lookup --wxid <wxid> [--json]
+  pa-cli connection wechat qianxun members --group <group-wxid> [--json]
+  pa-cli connection wechat qianxun stranger (--pq <query>|--wxid <wxid>) [--json]
+  pa-cli connection wechat qianxun events [--limit <n>] [--json]
+  pa-cli connection wechat qianxun plan-send-text --to <wxid> --text "..." [--json]
+  pa-cli connection wechat qianxun plan-send-image|plan-send-file --to <wxid> --file <path> [--json]
+  pa-cli connection wechat qianxun plan-set-remark --wxid <wxid> --remark "..." [--json]
+  pa-cli connection wechat qianxun plan-accept-friend --scene <n> --v3 <value> --v4 <value> [--json]
+  pa-cli connection wechat qianxun plan-add-friend-v3 --v3 <value> --content "..." --scene <n> --type <n> [--json]
+  pa-cli connection wechat qianxun plan-add-friend-wxid --wxid <wxid> --content "..." --scene <n> [--json]
+  pa-cli connection wechat qianxun plan-invite-group --group <group-wxid> --member <member-wxid> [--type <n>] [--json]
+  pa-cli connection wechat qianxun plan-remove-contact --wxid <wxid> [--json]
+  pa-cli connection wechat qianxun execute --operation <op-id> --digest <digest> [--json]
+  pa-cli connection xiaohongshu open [--json]
+  pa-cli connection xiaohongshu search --keyword "..." [--json]
+  pa-cli connection xiaohongshu read --url <signed-url> [--json]
+  pa-cli connection xiaohongshu read --feed-id <id> --xsec-token <token> [--json]
+  pa-cli connection twitter open [--json]
+  pa-cli connection twitter search --query "..." [--json]
+  pa-cli connection twitter read --url <status-url> [--json]
+  pa-cli connection twitter read --tweet-id <id> [--json]
+  pa-cli connection notion connect|poll [--json]
+  pa-cli connection mail scan|history [--json]
+  pa-cli connection mail use-platform-domain|remove-platform-domain [--json]
+  pa-cli connection sites list|tunnel-status|use-platform-domain|remove-platform-domain [--json]
   pa-cli channel status xiaohongshu [--json]
   pa-cli channel login xiaohongshu [--execute] [--recipient <wechat-id>] [--json]
   pa-cli channel login-status xiaohongshu --session <login-session> [--json]
@@ -561,7 +736,8 @@ function help() {
   pa-cli file gc [--dry-run] [--execute] [--json]
   pa-cli file verify-storage [--execute] [--json]
   pa-cli file reconcile --root <allowlisted-dir> --source <source> --visibility public|private [--prefix <path>] [--exclude-manifest <json>] [--execute] [--json]
-  pa-cli pages upload --file <path> [--folder <name>] [--private] [--json]`);
+  pa-cli pages publish --file <index.html> --folder <stable-name> --desktop-thumbnail <desktop.png> --mobile-thumbnail <mobile.png> [--title <text>] [--summary <text>] [--desktop-thumbnail-alt <text>] [--mobile-thumbnail-alt <text>] [--private] [--overwrite] [--json]
+  pa-cli pages upload --file <asset.css|asset.js|image> [--folder <name>] [--private] [--json]`);
 }
 
 function durationDays(value, fallback) {

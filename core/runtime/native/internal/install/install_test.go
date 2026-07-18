@@ -231,6 +231,7 @@ func TestDesktopReleaseAssignsRuntimeLifecycleToClientWithoutRegisteringService(
 	t.Setenv("APPDATA", filepath.Join(root, "appdata"))
 	release := desktopFixtureRelease(t, "release-desktop-owned")
 	nodeRuntime := filepath.Join(root, "node.exe")
+	installRoot := filepath.Join(root, "install")
 	if err := os.WriteFile(nodeRuntime, []byte("bundled-node"), 0o700); err != nil {
 		t.Fatal(err)
 	}
@@ -238,7 +239,7 @@ func TestDesktopReleaseAssignsRuntimeLifecycleToClientWithoutRegisteringService(
 	result, err := Install(context.Background(), Options{
 		ReleaseRoot: release,
 		NodeRuntime: nodeRuntime,
-		InstallRoot: filepath.Join(root, "install"),
+		InstallRoot: installRoot,
 		DataRoot:    filepath.Join(root, "data"),
 		NoOpen:      true,
 		Platform:    "windows",
@@ -248,6 +249,18 @@ func TestDesktopReleaseAssignsRuntimeLifecycleToClientWithoutRegisteringService(
 	}
 	if result.Service != "desktop-owned" {
 		t.Fatalf("service lifecycle=%q, want desktop-owned", result.Service)
+	}
+	stateData, err := os.ReadFile(filepath.Join(installRoot, "installation.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	state := map[string]any{}
+	if err := json.Unmarshal(stateData, &state); err != nil {
+		t.Fatal(err)
+	}
+	setup, _ := state["setup"].(map[string]any)
+	if setup["wechatRequired"] != false {
+		t.Fatalf("wechatRequired=%v, want optional connection", setup["wechatRequired"])
 	}
 	for _, call := range runner.calls {
 		if strings.Contains(call, "service-prepare") || strings.Contains(call, "schtasks.exe") {
@@ -301,7 +314,7 @@ func TestInstallSwitchesCurrentAndRetainsPreviousWithoutHostNode(t *testing.T) {
 	}
 }
 
-func TestInstallMaterializesWorkspaceSeedWithoutBundlingPersonalApps(t *testing.T) {
+func TestInstallLeavesMutableWorkspaceProvisioningToPersonalSpacePrepare(t *testing.T) {
 	root := t.TempDir()
 	installRoot := filepath.Join(root, "install")
 	dataRoot := filepath.Join(root, "data")
@@ -335,10 +348,11 @@ func TestInstallMaterializesWorkspaceSeedWithoutBundlingPersonalApps(t *testing.
 	if err := os.WriteFile(filepath.Join(userApp, "index.html"), []byte("user customized app"), 0o600); err != nil {
 		t.Fatal(err)
 	}
+	runner := &fakeRunner{}
 	if _, err := Install(context.Background(), Options{
 		ReleaseRoot: release, NodeRuntime: nodeRuntime, InstallRoot: installRoot,
 		DataRoot: dataRoot, SkipService: true, NoOpen: true, Platform: "darwin",
-	}, &fakeRunner{}); err != nil {
+	}, runner); err != nil {
 		t.Fatal(err)
 	}
 	content, err := os.ReadFile(filepath.Join(userApp, "index.html"))
@@ -348,9 +362,11 @@ func TestInstallMaterializesWorkspaceSeedWithoutBundlingPersonalApps(t *testing.
 	if _, err := os.Stat(filepath.Join(dataRoot, "apps", "personal-agent.daily-brief", "personal-agent.app.json")); !errors.Is(err, os.ErrNotExist) {
 		t.Fatalf("release App seed was installed: %v", err)
 	}
-	workspaceGuide, err := os.ReadFile(filepath.Join(dataRoot, "AGENTS.md"))
-	if err != nil || string(workspaceGuide) != "customer workspace" {
-		t.Fatalf("non-App Workspace seed was not installed: %q %v", workspaceGuide, err)
+	if _, err := os.Stat(filepath.Join(dataRoot, "AGENTS.md")); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("installation root received mutable Workspace content: %v", err)
+	}
+	if !strings.Contains(strings.Join(runner.calls, "\n"), " prepare ") {
+		t.Fatal("personal Space prepare command was not invoked")
 	}
 }
 

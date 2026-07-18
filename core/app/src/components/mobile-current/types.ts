@@ -1,6 +1,7 @@
 export type ActivityAttachment = { objectId: string; kind: "image" | "file"; name: string; contentType: string; sizeBytes: number; downloadUrl: string; previewUrl: string };
-export type ActivityItem = { id: string; kind: string; title: string; summary: string; status: string; source: string; updatedAt: string; href: string; revision: number; attachments: ActivityAttachment[] };
-export type PageItem = { id: string; title: string; summary: string; visibility: "public" | "private"; headerTheme: "light" | "dark"; updatedAt: string; url: string; shareUrl: string; thumbnailUrl: string };
+export type ActivityPreview = { kind: "image"; url: string; alt: string };
+export type ActivityItem = { id: string; kind: string; title: string; summary: string; status: string; source: string; updatedAt: string; href: string; revision: number; preview: ActivityPreview | null; attachments: ActivityAttachment[] };
+export type PageItem = { id: string; title: string; summary: string; visibility: "public" | "private"; headerTheme: "light" | "dark"; updatedAt: string; url: string; shareUrl: string; thumbnailUrl: string; thumbnailAlt?: string; desktopThumbnailUrl?: string; desktopThumbnailAlt?: string; mobileThumbnailUrl?: string; mobileThumbnailAlt?: string };
 export type PlanStep = { step: string; status: "completed" | "inProgress" | "pending" };
 export type Message = { id: string; role: "user" | "assistant" | "agent" | "tool" | "system" | "error"; content: string; createdAt?: string; metadata?: { eventType?: string; plan?: PlanStep[] } };
 export type SessionEvent = { id?: string; kind?: string; createdAt?: string; payload?: { metadata?: { eventType?: string; plan?: PlanStep[] } } };

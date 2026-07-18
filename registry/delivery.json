@@ -49,5 +49,22 @@
       "automaticRollback": true,
       "localApprovalRisk": "R3"
     }
+  },
+  "browserExecutors": {
+    "opencli": {
+      "ownership": "product",
+      "package": "@jackwener/opencli",
+      "version": "1.8.6",
+      "bundled": true,
+      "globalInstallRequired": false,
+      "updateUnit": "platform-release",
+      "installScripts": false,
+      "browserBridge": {
+        "bundled": false,
+        "distribution": "chrome-web-store",
+        "extensionId": "ildkmabpimmkaediidaifkhjpohdnifk",
+        "userConfirmationRequired": true
+      }
+    }
   }
 }
