@@ -19,6 +19,7 @@ import { publicPersonalApp, scanPersonalApps } from '../runtime/src/apps.ts';
 import { requestControl } from '../runtime/src/control-service.ts';
 import { getDataExport, startDataExport } from './data-export.js';
 import { createSpace, deleteSpace, getSpace, listSpaces, setSpaceDesiredState } from '../runtime/src/space-registry.ts';
+import { bridgeInvalidResponseError, bridgeResponseError, bridgeTransportError, controlApiErrorResponse } from './api-errors.ts';
 
 const projectRoot = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(projectRoot, '..', '..');
@@ -53,6 +54,11 @@ const server = http.createServer((request, response) => {
     const message = error instanceof Error ? error.message : String(error);
     if (response.headersSent) {
       response.end(request.method === 'HEAD' ? undefined : `${message}\n`);
+      return;
+    }
+    if (String(request.url || '').startsWith('/api/')) {
+      const failure = controlApiErrorResponse(error);
+      sendJsonStatus(response, failure.statusCode, failure.payload, request.method === 'HEAD');
       return;
     }
     send(response, 500, 'text/plain; charset=utf-8', `${message}\n`, request.method === 'HEAD');
@@ -194,6 +200,20 @@ async function handleRequest(request, response) {
     }
     const input = request.method === 'POST' ? await readRequestJson(request) : undefined;
     const result = await requestOpenAgentBridge('/api/node/v1/client/authorization', {
+      method: request.method,
+      headers: input ? { 'content-type': 'application/json' } : undefined,
+      body: input ? JSON.stringify(input) : undefined,
+    });
+    await sendJson(response, result || { ok: false, error: { message: '主 Agent 尚未就绪' } }, request.method === 'HEAD');
+    return;
+  }
+  if (url.pathname === '/api/token-limit') {
+    if (request.method !== 'GET' && request.method !== 'POST') {
+      send(response, 405, 'text/plain; charset=utf-8', 'Method Not Allowed');
+      return;
+    }
+    const input = request.method === 'POST' ? await readRequestJson(request) : undefined;
+    const result = await requestOpenAgentBridge('/api/node/v1/client/token-limit', {
       method: request.method,
       headers: input ? { 'content-type': 'application/json' } : undefined,
       body: input ? JSON.stringify(input) : undefined,
@@ -374,13 +394,13 @@ function sendJson(response, value, headOnly = false) {
   send(response, 200, 'application/json; charset=utf-8', `${JSON.stringify(value, null, 2)}\n`, headOnly);
 }
 
-function sendJsonStatus(response, statusCode, value) {
+function sendJsonStatus(response, statusCode, value, headOnly = false) {
   response.writeHead(statusCode, {
     'Content-Type': 'application/json; charset=utf-8',
     'Cache-Control': 'no-store',
     'X-Content-Type-Options': 'nosniff',
   });
-  response.end(`${JSON.stringify(value, null, 2)}\n`);
+  response.end(headOnly ? undefined : `${JSON.stringify(value, null, 2)}\n`);
 }
 
 function setupActionStatus(error) {
@@ -809,8 +829,12 @@ async function requestOpenAgentBridge(pathname, options = {}) {
       signal: controller.signal,
     });
     const text = await response.text();
-    if (!response.ok) throw new Error(text || `Open Agent Bridge HTTP ${response.status}`);
-    return text ? JSON.parse(text) : {};
+    if (!response.ok) throw bridgeResponseError(response.status, text);
+    if (!text) return {};
+    try { return JSON.parse(text); }
+    catch { throw bridgeInvalidResponseError(); }
+  } catch (error) {
+    throw bridgeTransportError(error);
   } finally {
     clearTimeout(timer);
   }

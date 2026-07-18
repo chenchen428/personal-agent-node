@@ -35,7 +35,8 @@ function DesktopShell({ pathname, apps, children }: { pathname: string; apps: Pe
   const active = (href: string) => href === "/app" ? pathname === href : pathname === href || pathname.startsWith(`${href}/`);
   const appActive = (app: PersonalApp) => active(app.desktopRoute || app.route);
   const currentApp = apps.find(appActive);
-  const current = active("/app/workers/schedules") ? "任务 · 定时任务"
+  const current = active("/app/connections/wechat-personal") ? "连接 · 个人微信"
+    : active("/app/workers/schedules") ? "任务 · 定时任务"
     : active("/app/update") ? "软件更新"
       : active("/app/statistics/token-usage") ? "Token 统计"
         : active("/app/skills") ? "技能"

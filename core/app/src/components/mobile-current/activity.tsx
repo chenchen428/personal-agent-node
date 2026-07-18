@@ -5,6 +5,7 @@ import { Activity, ChevronDown, Database, FileText, ListTodo, Mail, Workflow } f
 import { useCallback, useEffect, useState } from "react";
 import { activityKind, fetchJson, formatDateTime, relativeTime, useRememberedQuery } from "./data";
 import { InlineError, LoadSentinel, MobileListShell, SearchEmpty, SearchStatus } from "./shell";
+import { MobileContentSkeleton } from "./skeletons";
 import type { ActivityAttachment, ActivityItem, MobileTaskResult, Session } from "./types";
 
 export function MobileActivity() {
@@ -53,14 +54,16 @@ export function MobileActivity() {
     if (runningTasks.length <= 1) setTasksExpanded(false);
   }, [runningTasks.length]);
 
+  const initialLoading = loading && !items.length;
+
   return <MobileListShell section="activity" title="最近动态" note={runningTasks.length ? `${runningTasks.length} 项工作进行中` : items.length ? `${items.length} 条动态` : "最近动态"} query={query} setQuery={setQuery} searchLabel="搜索最近动态" searchPlaceholder="搜索动态内容">
     <div className="activity-stream">
       {error ? <InlineError message={error} /> : null}
       {!query && runningTasks.length ? <RunningTaskPresence tasks={runningTasks} expanded={tasksExpanded} setExpanded={setTasksExpanded} /> : null}
       {query ? <SearchStatus count={items.length} summary={`“${query}”`} onClear={() => setQuery("")} /> : null}
       {!loading && !items.length ? <SearchEmpty title={query ? "没有找到相关动态" : "还没有最近动态"} hint={query ? "试试任务名称、邮件主题或页面标题" : "PA 的新工作会显示在这里"} /> : null}
-      {items.map((item) => <ActivityEntry item={item} key={item.id} />)}
-      <LoadSentinel loading={loading} canLoad={Boolean(cursor)} exhausted={loadedMore && !cursor} onLoad={() => void load(true)} />
+      {initialLoading ? <MobileContentSkeleton kind="activity" /> : items.map((item) => <ActivityEntry item={item} key={item.id} />)}
+      {!initialLoading ? <LoadSentinel loading={loading} canLoad={Boolean(cursor)} exhausted={loadedMore && !cursor} onLoad={() => void load(true)} /> : null}
     </div>
   </MobileListShell>;
 }

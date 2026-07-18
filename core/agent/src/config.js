@@ -32,6 +32,7 @@ export const config = {
   siteDataRoot,
   appsDir: path.join(siteDataRoot, "apps", "installed"),
   agentAuthorizationFile: path.join(siteDataRoot, "config", "agent-authorization.json"),
+  dailyTokenLimitFile: path.join(siteDataRoot, "config", "daily-token-limit.json"),
   dataDir: resolvedDataDir,
   publicDir: path.resolve(process.env.OPEN_AGENT_BRIDGE_PUBLIC_DIR || path.join(projectDir, "public")),
   pagesDir: path.resolve(process.env.OPEN_AGENT_BRIDGE_PAGES_DIR || path.join(resolvedDataDir, "pages")),

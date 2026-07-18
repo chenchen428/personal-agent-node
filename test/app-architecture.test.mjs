@@ -195,8 +195,8 @@ test("Next.js owns the approved V6.35 mobile client and V7.3 desktop workspace",
   assert.match(css, /\.connection-toolbar \.split-toolbar-title\s*\{[^}]*display:\s*flex;[^}]*justify-content:\s*space-between/);
   assert.match(connectionActionsClient, /OpenCliAction/);
   assert.match(connectionActionsClient, /\/api\/connections\/\$\{connection\.id\}\/open/);
-  assert.match(connectionActionsClient, /检测 OpenCLI/);
-  assert.match(connectionActionsClient, /校验平台 Provider/);
+  assert.match(connectionActionsClient, /检测浏览器操作/);
+  assert.match(connectionActionsClient, /校验平台只读能力/);
   assert.match(connectionActionsClient, /不是.*账号授权/);
   assert.doesNotMatch(connectionActionsClient, /npm install|查看官方安装说明/);
   assert.doesNotMatch(connectionActionsClient, /XiaohongshuConnectPanel|xiaohongshu\/login/);
@@ -328,7 +328,7 @@ test("all finalized client routes have independently buildable Next pages", () =
   const pages = [
     "app/page.tsx", "app/conversations/page.tsx", "app/workers/page.tsx", "app/workers/schedules/page.tsx", "app/schedules/page.tsx", "app/mail/page.tsx",
     "app/pages/page.tsx", "app/pages/[pageId]/page.tsx", "app/data/page.tsx", "app/apps/page.tsx", "app/apps/[appId]/page.tsx",
-    "app/connections/page.tsx", "app/channels/page.tsx", "app/skills/page.tsx", "app/statistics/token-usage/page.tsx", "app/setup/page.tsx", "app/runtime/page.tsx", "app/settings/page.tsx", "app/update/page.tsx",
+    "app/connections/page.tsx", "app/connections/wechat-personal/page.tsx", "app/channels/page.tsx", "app/skills/page.tsx", "app/statistics/token-usage/page.tsx", "app/setup/page.tsx", "app/runtime/page.tsx", "app/settings/page.tsx", "app/update/page.tsx",
     "app/mobile/page.tsx", "app/mobile/pages/page.tsx", "app/mobile/pages/[pageId]/page.tsx",
     "app/mobile/workers/page.tsx", "app/mobile/workers/[sessionId]/page.tsx",
     "app/mobile/conversations/page.tsx", "app/mobile/conversations/[sessionId]/page.tsx",

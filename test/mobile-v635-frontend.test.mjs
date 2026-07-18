@@ -7,7 +7,7 @@ const root = path.resolve(import.meta.dirname, "..");
 const read = (relative) => fs.readFileSync(path.join(root, relative), "utf8");
 
 test("Mobile V6.35 keeps every destination in a focused component", () => {
-  const components = ["activity", "pages", "page-masonry", "workers", "apps", "personal-app", "about", "mail", "shell", "wechat-status", "token-usage"];
+  const components = ["activity", "pages", "page-masonry", "workers", "apps", "personal-app", "about", "mail", "shell", "skeletons", "wechat-status", "token-usage"];
   for (const component of components) {
     const source = read(`core/app/src/components/mobile-current/${component}.tsx`);
     assert.ok(source.split(/\r?\n/).length <= 300, `${component} exceeds 300 lines`);
@@ -54,6 +54,10 @@ test("Mobile V6.35 implements the approved task and navigation interactions", ()
   assert.match(workers, /mobile-task-message/);
   assert.match(workers, /mobile-task-plan/);
   assert.match(workers, /mobile-task-runtime/);
+  assert.match(workers, /正在处理/);
+  assert.match(workers, /load\(true\)/);
+  assert.match(workers, /if \(!background\) setError/);
+  assert.match(workers, /if \(!background\) setLoading/);
   assert.match(activity, /mobile-story-icon/);
   assert.match(activity, /ListTodo/);
   assert.match(activity, /\/api\/mobile\/tasks\?limit=20&status=running/);
@@ -78,6 +82,30 @@ test("Mobile Activity renders target-derived representative media", () => {
   assert.match(activity, /activity-target-preview/);
   assert.match(activity, /item\.preview\.url/);
   assert.match(css, /\.activity-target-preview/);
+});
+
+test("Mobile task detail keeps long-form conversation typography readable", () => {
+  const css = read("core/app/src/app/mobile-current.css");
+  assert.match(css, /\.mobile-task-message-body \{[^}]*font: 400 14px\/1\.75 var\(--pa-sans\)/);
+  assert.match(css, /\.mobile-task-message-body \{[^}]*color: #4b4843/);
+  assert.match(css, /\.mobile-task-plan li \{[^}]*font-weight: 400/);
+});
+
+test("Mobile primary loading states use layout-matched skeletons", () => {
+  const skeletons = read("core/app/src/components/mobile-current/skeletons.tsx");
+  const css = read("core/app/src/app/mobile-current.css");
+  for (const component of ["activity", "workers", "pages", "apps", "mail", "personal-app"]) {
+    const source = read(`core/app/src/components/mobile-current/${component}.tsx`);
+    assert.match(source, /MobileContentSkeleton/, component);
+  }
+  for (const kind of ["activity", "tasks", "pages", "apps", "mail", "page", "app"]) {
+    assert.match(skeletons, new RegExp(`kind === "${kind}"`), kind);
+  }
+  assert.match(read("core/app/src/components/mobile-current/about.tsx"), /MobileAboutMachineSkeleton/);
+  assert.match(read("core/app/src/components/mobile-current/token-usage.tsx"), /MobileAboutSectionSkeleton/);
+  assert.match(read("core/app/src/components/mobile-current/wechat-status.tsx"), /MobileAboutSectionSkeleton/);
+  assert.match(css, /@keyframes mobile-content-shimmer/);
+  assert.match(css, /prefers-reduced-motion[\s\S]*\.mobile-skeleton-block::after/);
 });
 
 test("local Next preview mirrors the registered API upstream mappings", () => {

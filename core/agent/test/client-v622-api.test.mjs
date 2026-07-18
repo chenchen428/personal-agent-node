@@ -76,6 +76,22 @@ test("V6.22 read-only client API is local, searchable and self-contained", async
   assert.ok(Date.now() - connectionsStartedAt < 1_000, "connections must not wait for browser or network probes");
   assert.equal(Array.isArray(connections.connections), true);
 
+  const personalWechatSetup = await get(port, token, "/api/connections/wechat-personal/setup");
+  assert.equal(personalWechatSetup.setup.qianxunDocsUrl, "https://daenmax.github.io/qxpro-doc/doc/start/");
+  assert.equal(personalWechatSetup.setup.qianxunBaseUrl, "http://127.0.0.1:8055");
+  assert.equal(personalWechatSetup.setup.callbackUrl, `http://127.0.0.1:${port}/api/internal/channels/wechat-personal/callback`);
+  assert.equal(typeof (await get(port, token, "/api/connections/wechat-personal/status?probe=0")).connection, "object");
+  assert.deepEqual((await get(port, token, "/api/connections/wechat-personal/conversations?limit=50&before=100")).conversations, []);
+  assert.deepEqual((await get(port, token, "/api/connections/wechat-personal/history?conversation=pwc_0123456789abcdef0123456789abcdef&limit=100")).messages, []);
+  assert.equal(await status(port, token, "/api/connections/wechat-personal/history?conversation=raw-wxid"), 400);
+  const callback = await fetch(`http://127.0.0.1:${port}/api/internal/channels/wechat-personal/callback`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ type: "recvMsg", wxid: "wxid_owner", data: { msgType: 1, fromWxid: "wxid_friend", msg: "hello" } }),
+  });
+  assert.equal(callback.status, 200);
+  assert.equal((await callback.text()).trim(), "ignored:not_configured");
+
   const activity = await get(port, token, "/api/node/v1/client/activity?q=does-not-exist&limit=3");
   assert.deepEqual(activity.result.items, []);
   assert.equal(activity.result.query, "does-not-exist");

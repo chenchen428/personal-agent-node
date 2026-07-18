@@ -32,7 +32,7 @@ export class OpenCliXiaohongshuProvider {
   }
 
   catalogStatus() {
-    return this.lastStatus || this.statusPayload("needs_setup", "OpenCLI 待检测");
+    return this.lastStatus || this.statusPayload("needs_setup", "浏览器操作待检测");
   }
 
   async checkStatus() {
@@ -44,11 +44,11 @@ export class OpenCliXiaohongshuProvider {
     }
     try {
       const bridge = await this.runner.browserBridgeStatus();
-      if (bridge.needsSetup) return this.statusPayload("needs_setup", "OpenCLI 桥接未就绪", null, runtime, bridge);
-      return this.statusPayload("ready", "OpenCLI 可用", null, runtime, bridge);
+      if (bridge.needsSetup) return this.statusPayload("needs_setup", "浏览器连接待修复", null, runtime, bridge);
+      return this.statusPayload("ready", "已就绪", null, runtime, bridge);
     } catch (error) {
       if (["OPENCLI_BROWSER_UNAVAILABLE", "OPENCLI_CONFIG_INVALID"].includes(error?.code)) {
-        return this.statusPayload("needs_setup", "OpenCLI 桥接未就绪", error, runtime);
+        return this.statusPayload("needs_setup", "浏览器连接待修复", error, runtime);
       }
       return this.statusPayload("error", "浏览器不可用", error, runtime);
     }
@@ -108,9 +108,8 @@ export class OpenCliXiaohongshuProvider {
       statusLabel,
       error: error ? safeErrorCode(error) : undefined,
       runtime: runtime ? [
-        { label: "OpenCLI 运行时", value: runtime.source === "bundled" ? `内置 ${runtime.version}` : `兼容模式 ${runtime.version}` },
-        { label: "OpenCLI 浏览器桥接", value: bridge?.browserBridge === "connected" ? "已就绪" : "待修复" },
-      ] : [{ label: "OpenCLI 运行时", value: "不可用" }],
+        { label: "浏览器操作", value: bridge?.browserBridge === "connected" ? "已就绪" : "待修复" },
+      ] : [{ label: "浏览器操作", value: "不可用" }],
       browserOwnedSession: true,
       loginStateInspected: false,
       egress: "direct-required",

@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "version": 4,
-  "updatedAt": "2026-07-18",
+  "version": 5,
+  "updatedAt": "2026-07-19",
   "categories": [
     {
       "id": "research-knowledge",
@@ -32,6 +32,12 @@
       "label": "Travel & Location",
       "description": "Research feasible itineraries and create source-backed travel publications.",
       "order": 40
+    },
+    {
+      "id": "home-living",
+      "label": "Home & Living",
+      "description": "Plan traceable, safer home-renovation and interior decisions.",
+      "order": 45
     },
     {
       "id": "product-engineering",
@@ -355,6 +361,40 @@
         "deep-research",
         "content-workbench",
         "guizang-social-card-skill"
+      ]
+    },
+    {
+      "name": "home-renovation",
+      "directory": "skills/home-renovation",
+      "category": "home-living",
+      "maturity": "beta",
+      "risks": [
+        "network-read",
+        "local-write",
+        "browser-session"
+      ],
+      "security": {
+        "network": "read",
+        "dataClass": "mixed",
+        "outboundData": "query",
+        "externalWrite": false,
+        "requiresAuthorization": true,
+        "untrustedContent": true
+      },
+      "origin": {
+        "kind": "workspace",
+        "license": "Apache-2.0"
+      },
+      "cli": [],
+      "examples": [
+        "test/fixtures/skill-cases/home-renovation/case.json"
+      ],
+      "caseRequired": true,
+      "related": [
+        "deep-research",
+        "knowledge-capture",
+        "social-browser-read",
+        "visual-content"
       ]
     },
     {
@@ -822,6 +862,21 @@
           "targets": [
             "ui-ux-pro-max"
           ]
+        }
+      ]
+    },
+    {
+      "id": "pinterest-interior-design-skill",
+      "repository": "https://github.com/xiao15-xx/pinterest-interior-design-skill",
+      "revision": "f37af80c8a7d0a7b0072d7906a1cc4cda4350347",
+      "license": "NOASSERTION",
+      "retrievedAt": "2026-07-19",
+      "mappings": [
+        {
+          "source": "pinterest-interior-design-skill",
+          "decision": "excluded",
+          "targets": [],
+          "reason": "The upstream repository declares no redistribution license. Its code, text, fixed local paths, Chrome-specific dependency, and Pinterest automation are excluded; home-renovation is an independently authored, source-neutral workflow covering the broader renovation decision lifecycle."
         }
       ]
     },

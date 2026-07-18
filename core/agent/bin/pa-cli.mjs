@@ -625,6 +625,7 @@ async function qianxunConnectionCommand(parsed, operationIndex = 3) {
       scene: parsed.scene,
       v3: parsed.v3,
       v4: parsed.v4,
+      role: parsed.role,
       content: parsed.content,
       type: parsed.type,
       groupWxid: parsed.group || parsed.groupWxid,
@@ -640,6 +641,17 @@ async function personalWechatConnectionCommand(parsed) {
   const prefix = "/api/connections/wechat-personal";
   if (operation === "status") return (await get(`${prefix}/status`)).connection;
   if (operation === "directory") return (await get(`${prefix}/directory`)).directory;
+  if (operation === "conversations") {
+    const query = new URLSearchParams({ limit: String(parsed.limit || "50") });
+    if (parsed.before) query.set("before", String(parsed.before));
+    return (await get(`${prefix}/conversations?${query}`)).conversations;
+  }
+  if (operation === "history") {
+    if (!parsed.conversation) throw new Error("--conversation is required");
+    const query = new URLSearchParams({ conversation: parsed.conversation, limit: String(parsed.limit || "100") });
+    if (parsed.before) query.set("before", String(parsed.before));
+    return (await get(`${prefix}/history?${query}`)).messages;
+  }
   if (operation === "policy") return (await get(`${prefix}/policy`)).policy;
   if (operation === "detect") {
     const safeKeyFile = parsed["safe-key-file"] || parsed.safeKeyFile;
@@ -691,7 +703,7 @@ function help() {
   pa-cli connection wechat-personal set-policy --file <policy.json> [--json]
   pa-cli connection wechat-personal events [--limit <n>] [--json]
   pa-cli connection wechat qianxun status [--probe 0] [--json]
-  pa-cli connection wechat qianxun plan-configure --url http://127.0.0.1:<port> [--endpoint-style auto|client|httpapi] [--wxid <expected-wxid>] [--safe-key-file <path>]
+  pa-cli connection wechat qianxun plan-configure --url http://127.0.0.1:<port> [--endpoint-style auto|wechat|qianxun] [--wxid <expected-wxid>] [--safe-key-file <path>]
   pa-cli connection wechat qianxun profile|friends|groups|official-accounts [--refresh 1] [--json]
   pa-cli connection wechat qianxun lookup --wxid <wxid> [--json]
   pa-cli connection wechat qianxun members --group <group-wxid> [--json]
@@ -700,12 +712,14 @@ function help() {
   pa-cli connection wechat qianxun plan-send-text --to <wxid> --text "..." [--json]
   pa-cli connection wechat qianxun plan-send-image|plan-send-file --to <wxid> --file <path> [--json]
   pa-cli connection wechat qianxun plan-set-remark --wxid <wxid> --remark "..." [--json]
-  pa-cli connection wechat qianxun plan-accept-friend --scene <n> --v3 <value> --v4 <value> [--json]
-  pa-cli connection wechat qianxun plan-add-friend-v3 --v3 <value> --content "..." --scene <n> --type <n> [--json]
-  pa-cli connection wechat qianxun plan-add-friend-wxid --wxid <wxid> --content "..." --scene <n> [--json]
-  pa-cli connection wechat qianxun plan-invite-group --group <group-wxid> --member <member-wxid> [--type <n>] [--json]
+  pa-cli connection wechat qianxun plan-accept-friend --scene <n> --v3 <value> --v4 <value> [--role <n>] [--json]
+  pa-cli connection wechat qianxun plan-add-friend-v3 --v3 <value> --content "..." --scene <n> [--json]
+  pa-cli connection wechat qianxun plan-add-friend-group --group <group-wxid> --member <member-wxid> --content "..." [--json]
+  pa-cli connection wechat qianxun plan-invite-group --group <group-wxid> --member <member-wxid> [--json]
   pa-cli connection wechat qianxun plan-remove-contact --wxid <wxid> [--json]
   pa-cli connection wechat qianxun execute --operation <op-id> --digest <digest> [--json]
+  pa-cli connection wechat-personal conversations [--limit <n>] [--before <seq>] [--json]
+  pa-cli connection wechat-personal history --conversation <opaque-id> [--limit <n>] [--before <seq>] [--json]
   pa-cli connection xiaohongshu open [--json]
   pa-cli connection xiaohongshu search --keyword "..." [--json]
   pa-cli connection xiaohongshu read --url <signed-url> [--json]

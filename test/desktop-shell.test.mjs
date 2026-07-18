@@ -34,10 +34,10 @@ test('desktop shell stays inside the immutable platform release', () => {
   assert.match(build, /writeChecksums\(releaseRoot\)/);
   assert.match(installer, /buildGo\('personal-agent'/);
   assert.doesNotMatch(installer, /buildGo\('personal-agent-service'/);
-  assert.match(installer, /Windows Xiaohongshu runtime is missing/);
-  assert.match(installer, /core\/channels\/xiaohongshu\/runtime\/xiaohongshu-mcp\.exe/);
-  assert.match(releaseWorkflow, /Build pinned Xiaohongshu runtime for Windows/);
-  assert.match(releaseWorkflow, /--local-xiaohongshu --output-root dist\/release-payload\/core\/channels\/xiaohongshu\/runtime/);
+  assert.doesNotMatch(installer, /Windows Xiaohongshu runtime is missing/);
+  assert.doesNotMatch(installer, /core\/channels\/xiaohongshu\/runtime\/xiaohongshu-mcp\.exe/);
+  assert.doesNotMatch(releaseWorkflow, /Build pinned Xiaohongshu runtime for Windows/);
+  assert.doesNotMatch(releaseWorkflow, /--local-xiaohongshu --output-root dist\/release-payload\/core\/channels\/xiaohongshu\/runtime/);
   const rust = read('core/desktop/src-tauri/src/lib.rs');
   assert.match(rust, /DAEMON_START: &str = "daemon-start"/);
   assert.match(rust, /DAEMON_STOP: &str = "stop"/);

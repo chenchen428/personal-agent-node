@@ -35,12 +35,12 @@ export type Connection = {
     userConfirmationRequired: boolean;
     customExtensionRequired: boolean;
   };
-  details?: { platformDomainBound?: boolean; platformDomain?: string; mailAddress?: string; publicOrigin?: string; domainVerification?: DomainVerification; policyEnabled?: boolean };
+  details?: { platformDomainBound?: boolean; platformDomain?: string; mailAddress?: string; publicOrigin?: string; domainVerification?: DomainVerification; policyEnabled?: boolean; connectivityTestPassed?: boolean };
 };
 
 export type PersonalWechatDirectoryEntry = { id: string; name: string; maskedId: string };
 export type PersonalWechatSetup = {
-  qianxunRepositoryUrl: string;
+  qianxunDocsUrl: string;
   qianxunBaseUrl: string;
   callbackUrl: string;
 };
@@ -56,4 +56,18 @@ export type PersonalWechatPolicy = {
   contacts: Array<{ wxid: string; scope: "direct_and_group" | "direct_only" | "group_only" }>;
   groups: Array<{ wxid: string; trigger: "allowed_members_mention" | "any_member_mention" | "allowed_members_message" }>;
   updatedAt: string | null;
+};
+export type PersonalWechatConnectivityTest = {
+  schemaVersion: 1;
+  phase: "idle" | "waiting_message" | "message_received" | "reply_planned" | "complete" | "expired" | "failed";
+  code: string | null;
+  testText: string | null;
+  replyText: string | null;
+  startedAt: string | null;
+  expiresAt: string | null;
+  receivedAt: string | null;
+  replyPlannedAt: string | null;
+  completedAt: string | null;
+  error: string | null;
+  operation?: { id: string; digest: string; risk: "R2" } | null;
 };

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Home Renovation"
+  short_description: "Plan safer, traceable home renovation decisions"
+  default_prompt: "Use $home-renovation to turn my renovation goals, constraints, budget, and inspiration into a staged decision plan."

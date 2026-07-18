@@ -57,7 +57,7 @@ test("OpenCLI Xiaohongshu open uses a fixed homepage without inspecting login st
   const provider = new OpenCliXiaohongshuProvider({ runner });
   const status = await provider.status();
   assert.equal(status.state, "ready");
-  assert.equal(status.statusLabel, "OpenCLI 可用");
+  assert.equal(status.statusLabel, "已就绪");
   assert.equal(status.loginStateInspected, false);
   assert.equal("loggedIn" in status, false);
   const result = await provider.open();

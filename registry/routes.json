@@ -10,6 +10,7 @@
     { "pattern": "/_next/static/*", "access": "public", "capability": "console" },
     { "pattern": "/apps/*", "access": "authenticated", "capability": "apps" },
     { "pattern": "/app/connections", "access": "authenticated", "capability": "connections" },
+    { "pattern": "/app/connections/*", "access": "authenticated", "capability": "connections" },
     { "pattern": "/app/channels", "access": "authenticated", "capability": "connections" },
     { "pattern": "/app/workers/schedules", "access": "authenticated", "capability": "agent" },
     { "pattern": "/app/schedules", "access": "authenticated", "capability": "agent" },

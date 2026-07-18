@@ -5,6 +5,7 @@ import path from "node:path";
 import test from "node:test";
 import { config } from "../src/config.js";
 import { ActivityStore } from "../src/activity/store.js";
+import { dailyTokenLimitSettings } from "../src/agent/daily-token-limit.ts";
 import { buildAgentPath, isLocalConversationSession, progressFatigueDelay, progressTimerInterval, SessionOrchestrator } from "../src/server/orchestrator.js";
 
 test("desktop and authenticated Web sessions record real conversation readiness", () => {
@@ -42,10 +43,80 @@ test("backfills setup readiness from an existing real desktop reply", () => {
   }
 });
 
+test("daily Token limit keeps the desktop message and replies without starting the Agent", async () => {
+  const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), "oab-orchestrator-token-limit-desktop-"));
+  const store = new BridgeStore({ dataDir, consoleBaseUrl: "https://agent.example.test" });
+  const main = store.getOrCreateDesktopMainSession({ workspaceRoot: dataDir });
+  store.getTokenUsageSummary = () => ({ totalTokens: 1_200_000 });
+  let runnerCalls = 0;
+  const orchestrator = new SessionOrchestrator({
+    store,
+    hub: { broadcast: () => {} },
+    channels: {},
+    progressTimerEnabled: false,
+    dailyTokenLimit: () => dailyTokenLimitSettings(1),
+    runner: {
+      runAppServerCommand: async () => { runnerCalls += 1; },
+      stopAppServerCommand: () => false,
+    },
+  });
+  try {
+    await orchestrator.resumeSession(main.id, "blocked desktop message", {
+      displayContent: "blocked desktop message",
+      messageMetadata: { channel: "desktop", clientMessageId: "quota-message-1" },
+    });
+    const messages = store.getSession(main.id).messages;
+    assert.equal(runnerCalls, 0);
+    assert.equal(messages.some((message) => message.role === "user" && message.content === "blocked desktop message"), true);
+    const reply = messages.find((message) => message.role === "error" && message.metadata?.code === "DAILY_TOKEN_LIMIT_EXCEEDED");
+    assert.match(reply?.content || "", /系统设置/);
+    assert.equal(reply?.metadata?.dailyLimitMillions, 1);
+  } finally {
+    orchestrator.stop();
+    store.close();
+    fs.rmSync(dataDir, { recursive: true, force: true });
+  }
+});
+
+test("daily Token limit automatically replies on WeChat without starting the Agent", async () => {
+  const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), "oab-orchestrator-token-limit-wechat-"));
+  const store = new BridgeStore({ dataDir, consoleBaseUrl: "https://agent.example.test" });
+  store.getTokenUsageSummary = () => ({ totalTokens: 2_000_000 });
+  const sent = [];
+  let runnerCalls = 0;
+  const orchestrator = new SessionOrchestrator({
+    store,
+    hub: { broadcast: () => {} },
+    channels: { wechat: { sendText: async (recipientId, text) => sent.push({ recipientId, text }) } },
+    progressTimerEnabled: false,
+    dailyTokenLimit: () => dailyTokenLimitSettings(2),
+    runner: {
+      runAppServerCommand: async () => { runnerCalls += 1; },
+      stopAppServerCommand: () => false,
+    },
+  });
+  try {
+    await orchestrator.handleChannelMessage("wechat", {
+      senderId: "wx-quota-user",
+      senderName: "Quota User",
+      text: "blocked wechat message",
+      attachments: [],
+    });
+    await waitFor(() => sent.some((item) => item.text.includes("DAILY") || item.text.includes("Token")));
+    assert.equal(runnerCalls, 0);
+    assert.equal(sent.some((item) => item.text.includes("系统设置")), true);
+  } finally {
+    orchestrator.stop();
+    store.close();
+    fs.rmSync(dataDir, { recursive: true, force: true });
+  }
+});
+
 test("routes personal WeChat through the main Agent and replies with the personal connector", async () => {
   const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), "oab-orchestrator-personal-wechat-"));
   const store = new BridgeStore({ dataDir, consoleBaseUrl: "https://agent.example.test" });
   const sent = [];
+  const runnerInputs = [];
   const orchestrator = new SessionOrchestrator({
     store,
     hub: { broadcast: () => {} },
@@ -53,6 +124,7 @@ test("routes personal WeChat through the main Agent and replies with the persona
     progressTimerEnabled: false,
     runner: {
       runAppServerCommand: async (input) => {
+        runnerInputs.push(input.stdin);
         await input.onSessionEvent({ sessionId: input.sessionId, kind: "session.assistant_message", payload: { content: "personal reply", metadata: { streamState: "completed" } } });
         return { ok: true };
       },
@@ -65,6 +137,10 @@ test("routes personal WeChat through the main Agent and replies with the persona
       sender: "Family",
       sessionId: "qxc_1",
       text: "hello",
+      conversationHistory: [
+        { seq: 1, direction: "inbound", msgType: 1, text: "earlier question", occurredAt: "2026-07-18T10:00:00.000Z" },
+        { seq: 2, direction: "outbound", msgType: 1, text: "earlier answer", occurredAt: "2026-07-18T10:01:00.000Z" },
+      ],
       attachments: [],
       createdAt: new Date().toISOString(),
     });
@@ -73,6 +149,10 @@ test("routes personal WeChat through the main Agent and replies with the persona
     assert.equal(session.channel, "wechat-personal");
     assert.deepEqual(sent.map((item) => item.recipientId), ["family@chatroom", "family@chatroom"]);
     assert.equal(store.getSession(session.id).messages.some((message) => message.content === "hello"), true);
+    assert.match(runnerInputs[0], /personal-wechat-conversation-history/);
+    assert.match(runnerInputs[0], /earlier question/);
+    assert.match(runnerInputs[0], /earlier answer/);
+    assert.match(runnerInputs[0], /current-personal-wechat-message\]\nhello/);
   } finally {
     orchestrator.stop();
     store.close();

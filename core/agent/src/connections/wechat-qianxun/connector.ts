@@ -4,7 +4,9 @@ import path from "node:path";
 import { createOperationStore } from "../../../../runtime/src/operations.ts";
 import { QianxunProtocolClient, connectorError, validateQianxunBaseUrl } from "./client.ts";
 import { parseQianxunCallback, QianxunCallbackStore } from "./callback-store.ts";
-import { extractQianxunWxid, qianxunEnvelope, type QianxunEndpointStyle } from "./protocol.ts";
+import { PersonalWechatHistoryStore, type PersonalWechatHistoryMessage } from "./history-store.ts";
+import { PersonalWechatConnectivityTest } from "./connectivity-test.ts";
+import { extractQianxunWxid, isQianxunAuthorizationExpired, qianxunEnvelope, type QianxunEndpointStyle, type QianxunOperationType } from "./protocol.ts";
 import {
   evaluatePersonalWechatAccess,
   normalizePersonalWechatDirectory,
@@ -18,7 +20,7 @@ type StoredConfig = {
   schemaVersion: 1;
   baseUrl: string;
   endpointStyle: QianxunEndpointStyle;
-  learnedEndpointStyle?: "client" | "httpapi";
+  learnedEndpointStyle?: "wechat" | "qianxun";
   bindWxid: string;
   safeKey?: string;
   configuredAt: string;
@@ -30,7 +32,7 @@ type PlannedPayload = {
   input: Record<string, unknown>;
 };
 
-const WRITE_ACTIONS = new Set(["send-text", "send-image", "send-file", "set-remark", "accept-friend", "add-friend-v3", "add-friend-wxid", "invite-group", "remove-contact"]);
+const WRITE_ACTIONS = new Set(["send-text", "send-image", "send-file", "set-remark", "accept-friend", "add-friend-v3", "add-friend-group", "invite-group", "remove-contact"]);
 
 export class WeChatQianxunConnector {
   private readonly rootDir: string;
@@ -39,12 +41,15 @@ export class WeChatQianxunConnector {
   private readonly operationStore: ReturnType<typeof createOperationStore>;
   private readonly client: QianxunProtocolClient;
   private readonly events: QianxunCallbackStore;
+  private readonly history: PersonalWechatHistoryStore;
   private readonly policies: PersonalWechatPolicyStore;
+  private readonly connectivityTest: PersonalWechatConnectivityTest;
   private onInboundMessage: ((message: {
     senderId: string;
     sender: string;
     sessionId: string;
     text: string;
+    conversationHistory: PersonalWechatHistoryMessage[];
     attachments: never[];
     createdAt: string;
   }) => Promise<unknown>) | null;
@@ -53,7 +58,7 @@ export class WeChatQianxunConnector {
     dataRoot: string;
     fetchImpl?: typeof fetch;
     operationStore?: ReturnType<typeof createOperationStore>;
-    onInboundMessage?: ((message: { senderId: string; sender: string; sessionId: string; text: string; attachments: never[]; createdAt: string }) => Promise<unknown>) | null;
+    onInboundMessage?: ((message: { senderId: string; sender: string; sessionId: string; text: string; conversationHistory: PersonalWechatHistoryMessage[]; attachments: never[]; createdAt: string }) => Promise<unknown>) | null;
   }) {
     if (!path.isAbsolute(dataRoot || "")) throw new Error("Qianxun data root must be absolute");
     this.rootDir = path.join(dataRoot, "connections", "wechat", "qianxun");
@@ -61,7 +66,10 @@ export class WeChatQianxunConnector {
     this.pendingDir = path.join(this.rootDir, "pending");
     this.operationStore = operationStore || createOperationStore({ dataRoot });
     this.events = new QianxunCallbackStore(dataRoot);
+    this.history = new PersonalWechatHistoryStore(dataRoot);
+    this.importRetainedCallbackHistory();
     this.policies = new PersonalWechatPolicyStore(dataRoot);
+    this.connectivityTest = new PersonalWechatConnectivityTest(dataRoot);
     this.onInboundMessage = onInboundMessage;
     this.client = new QianxunProtocolClient({
       fetchImpl,
@@ -92,7 +100,8 @@ export class WeChatQianxunConnector {
     if (!config) return { configured: false, reachable: false, state: "needs_setup", callbackPath: "/api/internal/channels/wechat-personal/callback" };
     if (!probe) return { configured: true, reachable: null, state: "configured", config: this.publicConfig(), callbackPath: "/api/internal/channels/wechat-personal/callback" };
     try {
-      const result = await this.client.invoke(this.effectiveClientConfig(config), qianxunEnvelope("Q0000"));
+      const result = await this.client.invoke(this.effectiveClientConfig(config), qianxunEnvelope("checkWeChat"));
+      assertQianxunAuthorizationActive(result.response);
       const wxid = extractQianxunWxid(result.response);
       const accountMatches = Boolean(wxid && wxid === config.bindWxid);
       return {
@@ -106,24 +115,29 @@ export class WeChatQianxunConnector {
         ...(accountMatches ? {} : { error: wxid ? "Qianxun is connected to a different WeChat account" : "Qianxun did not report a logged-in wxid" }),
       };
     } catch (error) {
+      const errorCode = typeof error === "object" && error && "code" in error ? String(error.code || "") : "";
       return {
         configured: true,
         reachable: false,
         state: "unavailable",
         config: this.publicConfig(),
         callbackPath: "/api/internal/channels/wechat-personal/callback",
+        ...(errorCode ? { errorCode } : {}),
         error: error instanceof Error ? error.message : String(error),
       };
     }
   }
 
   async detect(input: Record<string, unknown> = {}) {
-    if (!this.readConfig()) {
+    const current = this.readConfig();
+    const requestedBaseUrl = validateQianxunBaseUrl(input.baseUrl || current?.baseUrl || "http://127.0.0.1:8055").origin;
+    const requestedEndpointStyle = normalizeEndpointStyle(input.endpointStyle || current?.endpointStyle || "auto");
+    if (!current || current.baseUrl !== requestedBaseUrl || current.endpointStyle !== requestedEndpointStyle) {
       const plan = this.planConfigure({
-        baseUrl: input.baseUrl || "http://127.0.0.1:8055",
-        endpointStyle: input.endpointStyle || "auto",
-        bindWxid: input.bindWxid || "",
-        safeKey: input.safeKey || "",
+        baseUrl: requestedBaseUrl,
+        endpointStyle: requestedEndpointStyle,
+        bindWxid: input.bindWxid || current?.bindWxid || "",
+        safeKey: input.safeKey || current?.safeKey || "",
       });
       this.operationStore.approve(plan.operation.id, {
         digest: plan.operation.digest,
@@ -131,7 +145,11 @@ export class WeChatQianxunConnector {
       });
       await this.execute(plan.operation.id, plan.operation.digest);
     }
-    return await this.status({ probe: true });
+    const status = await this.status({ probe: true });
+    if (status.state !== "connected") {
+      throw connectorError(String(status.errorCode || "QIANXUN_DETECTION_FAILED"), String(status.error || "千寻 Pro 检测未通过"), 409);
+    }
+    return status;
   }
 
   async directory(): Promise<PersonalWechatDirectory> {
@@ -142,7 +160,9 @@ export class WeChatQianxunConnector {
       this.read("friends"),
       this.read("groups"),
     ]);
-    return normalizePersonalWechatDirectory(profile.result, friends.result, groups.result, String(status.accountWxid || ""));
+    const directory = normalizePersonalWechatDirectory(profile.result, friends.result, groups.result, String(status.accountWxid || ""));
+    this.history.updateDirectory(directory);
+    return directory;
   }
 
   accessPolicy() {
@@ -151,6 +171,36 @@ export class WeChatQianxunConnector {
 
   async updateAccessPolicy(input: unknown) {
     return this.policies.write(input, await this.directory());
+  }
+
+  connectivityTestStatus() {
+    return this.connectivityTest.status();
+  }
+
+  async startConnectivityTest() {
+    const status = await this.status({ probe: true });
+    if (status.state !== "connected") throw connectorError("QIANXUN_NOT_CONNECTED", "千寻 Pro 检测通过后才能开始收发测试", 409);
+    if (!this.policies.read().enabled) throw connectorError("WECHAT_POLICY_REQUIRED", "保存访问策略后才能开始收发测试", 409);
+    return this.connectivityTest.start();
+  }
+
+  planConnectivityTestReply() {
+    const target = this.connectivityTest.replyTarget();
+    const planned = this.planAction("send-text", { wxid: target.recipientWxid, text: target.replyText });
+    const state = this.connectivityTest.bindReplyPlan(planned.operation.id, planned.operation.digest);
+    return { state, operation: { id: planned.operation.id, digest: planned.operation.digest, risk: planned.operation.risk, inputSummary: "向微信文件传输助手发送一条固定的本机连通测试回复" } };
+  }
+
+  async executeConnectivityTestReply(operationId: string, digest: string) {
+    this.connectivityTest.requireReplyPlan(operationId, digest);
+    this.operationStore.approve(operationId, { digest, actor: { kind: "human", authenticated: true, loopback: true, channel: "local-console" } });
+    try {
+      await this.execute(operationId, digest);
+      return this.connectivityTest.complete();
+    } catch (error) {
+      this.connectivityTest.fail(error);
+      throw error;
+    }
   }
 
   planConfigure(input: Record<string, unknown>) {
@@ -199,25 +249,37 @@ export class WeChatQianxunConnector {
   }
 
   async read(operation: string, input: Record<string, unknown> = {}) {
-    const map: Record<string, () => { code: "Q0003" | "Q0004" | "Q0005" | "Q0006" | "Q0007" | "Q0008" | "Q0020"; data: Record<string, unknown> }> = {
-      profile: () => ({ code: "Q0003", data: {} }),
-      lookup: () => ({ code: "Q0004", data: { wxid: boundedRequired(input.wxid, "wxid", 160) } }),
-      friends: () => ({ code: "Q0005", data: { type: input.refresh === true ? 2 : 1 } }),
-      groups: () => ({ code: "Q0006", data: { type: input.refresh === true ? 2 : 1 } }),
-      "official-accounts": () => ({ code: "Q0007", data: { type: input.refresh === true ? 2 : 1 } }),
-      members: () => ({ code: "Q0008", data: { wxid: boundedRequired(input.groupWxid || input.wxid, "groupWxid", 160) } }),
-      stranger: () => ({ code: "Q0020", data: { pq: boundedRequired(input.pq || input.wxid, "pq", 500) } }),
+    const map: Record<string, () => { type: QianxunOperationType; data: Record<string, unknown> }> = {
+      profile: () => ({ type: "getSelfInfo", data: { type: "1" } }),
+      lookup: () => ({ type: "queryObj", data: { wxid: boundedRequired(input.wxid, "wxid", 160), type: "1" } }),
+      friends: () => ({ type: "getFriendList", data: { type: input.refresh === true ? "2" : "1" } }),
+      groups: () => ({ type: "getGroupList", data: { type: input.refresh === true ? "2" : "1" } }),
+      "official-accounts": () => ({ type: "getPublicList", data: { type: input.refresh === true ? "2" : "1" } }),
+      members: () => ({ type: "getMemberList", data: { wxid: boundedRequired(input.groupWxid || input.wxid, "groupWxid", 160), type: input.refresh === true ? "2" : "1", getNick: "1" } }),
+      stranger: () => ({ type: "queryNewFriend", data: { obj: boundedRequired(input.pq || input.wxid, "pq", 500) } }),
     };
     const build = map[operation];
     if (!build) throw connectorError("INVALID_ARGUMENT", `Unsupported Qianxun read operation: ${operation}`, 400);
     const selected = build();
     const config = this.requireConfig();
-    const result = await this.client.invoke(this.effectiveClientConfig(config), qianxunEnvelope(selected.code, selected.data));
+    const result = await this.client.invoke(this.effectiveClientConfig(config), qianxunEnvelope(selected.type, selected.data));
     return { operation, endpointStyle: result.endpointStyle, result: result.result };
   }
 
   listEvents(limit = 50) {
     return this.events.list(limit);
+  }
+
+  listConversations(limit = 50, beforeSeq?: number) {
+    return this.history.listConversations(limit, beforeSeq);
+  }
+
+  conversationHistory(conversationId: unknown, options: { limit?: number; beforeSeq?: number } = {}) {
+    return this.history.listMessages(conversationId, options);
+  }
+
+  close() {
+    this.history.close();
   }
 
   async acceptCallback(body: unknown) {
@@ -229,6 +291,8 @@ export class WeChatQianxunConnector {
     const appended = this.events.appendUnique(callback);
     if (appended.duplicate) return { accepted: true, dispatched: false, reason: "duplicate", eventId: appended.record.id, type: callback.type };
     const message = normalizePersonalWechatMessage(appended.record, config.bindWxid);
+    const historyMessage = message ? this.history.append(message, appended.record) : null;
+    if (message) this.connectivityTest.capture(message);
     const decision = evaluatePersonalWechatAccess(this.policies.read(), message);
     if (!decision.allowed || !message) {
       return { accepted: true, dispatched: false, reason: decision.reason, eventId: appended.record.id, type: callback.type };
@@ -236,7 +300,7 @@ export class WeChatQianxunConnector {
     if (!this.onInboundMessage) {
       return { accepted: true, dispatched: false, reason: "dispatcher_unavailable", eventId: appended.record.id, type: callback.type };
     }
-    await this.onInboundMessage(toInboundMessage(message, appended.record));
+    await this.onInboundMessage(toInboundMessage(message, appended.record, historyMessage ? this.history.contextBefore(historyMessage, 100) : []));
     return { accepted: true, dispatched: true, reason: decision.reason, eventId: appended.record.id, type: callback.type };
   }
 
@@ -244,7 +308,7 @@ export class WeChatQianxunConnector {
     const wxid = boundedRequired(recipientId, "recipientId", 160);
     const msg = boundedRequired(text, "text", 16_000);
     const config = this.requireConfig();
-    const result = await this.client.invoke(this.effectiveClientConfig(config), qianxunEnvelope("Q0001", { wxid, msg }));
+    const result = await this.client.invoke(this.effectiveClientConfig(config), qianxunEnvelope("sendText", { wxid, msg }));
     return { sent: true, endpointStyle: result.endpointStyle, accountWxid: config.bindWxid };
   }
 
@@ -257,9 +321,10 @@ export class WeChatQianxunConnector {
       safeKey: boundedRequiredOrEmpty(input.safeKey, "safeKey", 4_096) || undefined,
       configuredAt: new Date().toISOString(),
     };
-    const probe = await this.client.invoke(candidate, qianxunEnvelope("Q0000"));
+    const probe = await this.client.invoke(candidate, qianxunEnvelope("checkWeChat"));
+    assertQianxunAuthorizationActive(probe.response);
     const detectedWxid = extractQianxunWxid(probe.response);
-    if (!detectedWxid) throw connectorError("QIANXUN_ACCOUNT_REQUIRED", "Qianxun Q0000 did not report a logged-in wxid", 409);
+    if (!detectedWxid) throw connectorError("QIANXUN_ACCOUNT_REQUIRED", "Qianxun Pro checkWeChat did not report a logged-in wxid", 409);
     if (candidate.bindWxid && candidate.bindWxid !== detectedWxid) throw connectorError("QIANXUN_ACCOUNT_MISMATCH", "Qianxun is logged in to a different wxid than the approved plan", 409);
     candidate.bindWxid = detectedWxid;
     candidate.learnedEndpointStyle = probe.endpointStyle;
@@ -269,21 +334,21 @@ export class WeChatQianxunConnector {
 
   private async executeWrite(action: string, input: Record<string, unknown>) {
     const config = this.requireConfig();
-    const mappings: Record<string, () => { code: "Q0001" | "Q0010" | "Q0011" | "Q0017" | "Q0018" | "Q0019" | "Q0021" | "Q0022" | "Q0023"; data: Record<string, unknown> }> = {
-      "send-text": () => ({ code: "Q0001", data: { wxid: input.wxid, msg: input.text } }),
-      "send-image": () => ({ code: "Q0010", data: { wxid: input.wxid, path: requireRegularFile(input.filePath) } }),
-      "send-file": () => ({ code: "Q0011", data: { wxid: input.wxid, path: requireRegularFile(input.filePath) } }),
-      "set-remark": () => ({ code: "Q0023", data: { wxid: input.wxid, remark: input.remark } }),
-      "accept-friend": () => ({ code: "Q0017", data: { scene: input.scene, v3: input.v3, v4: input.v4 } }),
-      "add-friend-v3": () => ({ code: "Q0018", data: { v3: input.v3, content: input.content, scene: input.scene, type: input.type } }),
-      "add-friend-wxid": () => ({ code: "Q0019", data: { wxid: input.wxid, content: input.content, scene: input.scene } }),
-      "invite-group": () => ({ code: "Q0021", data: { wxid: input.groupWxid, objWxid: input.memberWxid, type: input.type } }),
-      "remove-contact": () => ({ code: "Q0022", data: { wxid: input.wxid } }),
+    const mappings: Record<string, () => { type: QianxunOperationType; data: Record<string, unknown> }> = {
+      "send-text": () => ({ type: "sendText", data: { wxid: input.wxid, msg: input.text } }),
+      "send-image": () => ({ type: "sendImage", data: localFileData(input.wxid, input.filePath) }),
+      "send-file": () => ({ type: "sendFile", data: localFileData(input.wxid, input.filePath) }),
+      "set-remark": () => ({ type: "editObjRemark", data: { wxid: input.wxid, remark: input.remark } }),
+      "accept-friend": () => ({ type: "agreeFriendReq", data: { scene: input.scene, v3: input.v3, v4: input.v4, role: input.role } }),
+      "add-friend-v3": () => ({ type: "addFriendByV3", data: { v3: input.v3, content: input.content, scene: input.scene } }),
+      "add-friend-group": () => ({ type: "addFriendByGroupWxid", data: { wxid: input.memberWxid, gid: input.groupWxid, content: input.content, scene: "14" } }),
+      "invite-group": () => ({ type: "inviteMembers", data: { wxid: input.groupWxid, objWxid: input.memberWxid } }),
+      "remove-contact": () => ({ type: "delFriend", data: { wxid: input.wxid } }),
     };
     const build = mappings[action];
     if (!build) throw connectorError("INVALID_ARGUMENT", `Unsupported approved Qianxun action: ${action}`, 400);
     const selected = build();
-    const result = await this.client.invoke(this.effectiveClientConfig(config), qianxunEnvelope(selected.code, selected.data));
+    const result = await this.client.invoke(this.effectiveClientConfig(config), qianxunEnvelope(selected.type, selected.data));
     return { action, endpointStyle: result.endpointStyle, accountWxid: config.bindWxid, result: result.result ?? null };
   }
 
@@ -308,7 +373,15 @@ export class WeChatQianxunConnector {
     return config;
   }
 
-  private persistLearnedStyle(style: "client" | "httpapi") {
+  private importRetainedCallbackHistory() {
+    for (const event of this.events.listAll()) {
+      const accountWxid = typeof event.accountWxid === "string" ? event.accountWxid : "";
+      const message = accountWxid ? normalizePersonalWechatMessage(event, accountWxid) : null;
+      if (message) this.history.append(message, event);
+    }
+  }
+
+  private persistLearnedStyle(style: "wechat" | "qianxun") {
     const config = this.readConfig();
     if (!config || config.learnedEndpointStyle === style) return;
     this.writeConfig({ ...config, learnedEndpointStyle: style });
@@ -323,7 +396,12 @@ export class WeChatQianxunConnector {
   private readConfig(): StoredConfig | null {
     try {
       const value = JSON.parse(fs.readFileSync(this.configFile, "utf8"));
-      return value?.schemaVersion === 1 ? value : null;
+      if (value?.schemaVersion !== 1) return null;
+      return {
+        ...value,
+        endpointStyle: normalizeEndpointStyle(value.endpointStyle),
+        ...(value.learnedEndpointStyle ? { learnedEndpointStyle: normalizeLearnedEndpointStyle(value.learnedEndpointStyle) } : {}),
+      };
     } catch { return null; }
   }
 
@@ -346,7 +424,7 @@ export class WeChatQianxunConnector {
   }
 }
 
-function toInboundMessage(message: PersonalWechatMessage, event: Record<string, unknown>) {
+function toInboundMessage(message: PersonalWechatMessage, event: Record<string, unknown>, conversationHistory: PersonalWechatHistoryMessage[]) {
   const receivedAt = typeof event.receivedAt === "string" ? event.receivedAt : new Date().toISOString();
   const senderLabel = message.isGroup
     ? `微信群 ${maskForConversation(message.groupWxid)} · ${maskForConversation(message.senderWxid)}`
@@ -356,6 +434,7 @@ function toInboundMessage(message: PersonalWechatMessage, event: Record<string, 
     sender: senderLabel,
     sessionId: typeof event.eventKey === "string" ? event.eventKey : String(event.id || ""),
     text: message.text,
+    conversationHistory,
     attachments: [] as never[],
     createdAt: receivedAt,
   };
@@ -367,16 +446,16 @@ function maskForConversation(value: string) {
 }
 
 function normalizeWriteInput(action: string, input: Record<string, unknown>) {
-  if (["send-text", "send-image", "send-file", "set-remark", "add-friend-wxid", "remove-contact"].includes(action)) {
+  if (["send-text", "send-image", "send-file", "set-remark", "remove-contact"].includes(action)) {
     input.wxid = boundedRequired(input.wxid, "wxid", 160);
   }
   if (action === "send-text") return { wxid: input.wxid, text: boundedRequired(input.text, "text", 16_000) };
   if (["send-image", "send-file"].includes(action)) return { wxid: input.wxid, filePath: requireRegularFile(input.filePath) };
   if (action === "set-remark") return { wxid: input.wxid, remark: boundedRequired(input.remark, "remark", 500) };
-  if (action === "accept-friend") return { scene: boundedRequired(input.scene, "scene", 32), v3: boundedRequired(input.v3, "v3", 1_000), v4: boundedRequired(input.v4, "v4", 1_000) };
-  if (action === "add-friend-v3") return { v3: boundedRequired(input.v3, "v3", 1_000), content: boundedRequired(input.content, "content", 1_000), scene: boundedRequired(input.scene, "scene", 32), type: boundedInteger(input.type, "type") };
-  if (action === "add-friend-wxid") return { wxid: input.wxid, content: boundedRequired(input.content, "content", 1_000), scene: boundedRequired(input.scene, "scene", 32) };
-  if (action === "invite-group") return { groupWxid: boundedRequired(input.groupWxid, "groupWxid", 160), memberWxid: boundedRequired(input.memberWxid, "memberWxid", 160), type: boundedInteger(input.type ?? 1, "type") };
+  if (action === "accept-friend") return { scene: boundedRequired(input.scene, "scene", 32), v3: boundedRequired(input.v3, "v3", 1_000), v4: boundedRequired(input.v4, "v4", 1_000), role: String(boundedInteger(input.role ?? 0, "role")) };
+  if (action === "add-friend-v3") return { v3: boundedRequired(input.v3, "v3", 1_000), content: boundedRequired(input.content, "content", 1_000), scene: boundedRequired(input.scene, "scene", 32) };
+  if (action === "add-friend-group") return { groupWxid: boundedRequired(input.groupWxid, "groupWxid", 160), memberWxid: boundedRequired(input.memberWxid || input.wxid, "memberWxid", 160), content: boundedRequired(input.content, "content", 1_000) };
+  if (action === "invite-group") return { groupWxid: boundedRequired(input.groupWxid, "groupWxid", 160), memberWxid: boundedRequired(input.memberWxid, "memberWxid", 160) };
   if (action === "remove-contact") return { wxid: input.wxid };
   throw connectorError("INVALID_ARGUMENT", `Unsupported Qianxun action: ${action}`, 400);
 }
@@ -389,7 +468,7 @@ function summarizeWrite(action: string, input: Record<string, unknown>) {
   if (action === "remove-contact") return `Permanently remove contact ${input.wxid}`;
   if (action === "accept-friend") return `Accept friend request v3=${String(input.v3).slice(0, 80)} scene=${input.scene}`;
   if (action === "add-friend-v3") return `Add friend v3=${String(input.v3).slice(0, 80)} with message ${preview(input.content)}`;
-  if (action === "add-friend-wxid") return `Add friend ${input.wxid} with message ${preview(input.content)}`;
+  if (action === "add-friend-group") return `Add ${input.memberWxid} from ${input.groupWxid} with message ${preview(input.content)}`;
   return `${action} for ${String(input.wxid || input.v3 || "account").slice(0, 160)}`;
 }
 
@@ -404,8 +483,22 @@ function shortDigest(value: unknown) {
 
 function normalizeEndpointStyle(value: unknown): QianxunEndpointStyle {
   const style = String(value || "auto").trim().toLowerCase();
-  if (!new Set(["auto", "client", "httpapi"]).has(style)) throw connectorError("INVALID_ARGUMENT", "endpointStyle must be auto, client, or httpapi", 400);
+  if (style === "client") return "wechat";
+  if (style === "httpapi") return "qianxun";
+  if (!new Set(["auto", "wechat", "qianxun"]).has(style)) throw connectorError("INVALID_ARGUMENT", "endpointStyle must be auto, wechat, or qianxun", 400);
   return style as QianxunEndpointStyle;
+}
+
+function normalizeLearnedEndpointStyle(value: unknown): "wechat" | "qianxun" {
+  const style = normalizeEndpointStyle(value);
+  if (style === "auto") throw connectorError("INVALID_ARGUMENT", "learnedEndpointStyle cannot be auto", 400);
+  return style;
+}
+
+function assertQianxunAuthorizationActive(response: Parameters<typeof isQianxunAuthorizationExpired>[0]) {
+  if (isQianxunAuthorizationExpired(response)) {
+    throw connectorError("QIANXUN_AUTHORIZATION_EXPIRED", "千寻 Pro 授权已到期，请在千寻 Pro 中续费或重新申请试用", 409);
+  }
 }
 
 function boundedRequired(value: unknown, name: string, max: number) {
@@ -434,6 +527,11 @@ function requireRegularFile(value: unknown) {
   catch { throw connectorError("INVALID_ARGUMENT", "filePath must point to an existing regular file", 400); }
   if (!stat.isFile()) throw connectorError("INVALID_ARGUMENT", "filePath must point to a regular file", 400);
   return filePath;
+}
+
+function localFileData(wxid: unknown, value: unknown) {
+  const filePath = requireRegularFile(value);
+  return { wxid, path: filePath, fileName: path.basename(filePath) };
 }
 
 function payloadDigest(payload: PlannedPayload) {

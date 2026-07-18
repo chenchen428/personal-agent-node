@@ -86,11 +86,17 @@ export class QianxunCallbackStore {
 
   list(limit = 50) {
     const bounded = Math.min(Math.max(Number(limit) || 50, 1), 200);
+    return this.listAll().slice(-bounded).reverse();
+  }
+
+  listAll(): Record<string, unknown>[] {
     const files = [`${this.filePath}.1`, this.filePath].filter((file) => fs.existsSync(file));
-    const records = files.flatMap((file) => fs.readFileSync(file, "utf8").split(/\r?\n/).filter(Boolean).flatMap((line) => {
-      try { return [JSON.parse(line)]; } catch { return []; }
+    return files.flatMap((file) => fs.readFileSync(file, "utf8").split(/\r?\n/).filter(Boolean).flatMap((line) => {
+      try {
+        const record = JSON.parse(line);
+        return record && typeof record === "object" && !Array.isArray(record) ? [record as Record<string, unknown>] : [];
+      } catch { return []; }
     }));
-    return records.slice(-bounded).reverse();
   }
 
   private rotateIfNeeded(incomingBytes: number) {
@@ -105,13 +111,14 @@ export class QianxunCallbackStore {
 
 function normalizeEvent(callback: QianxunCallback) {
   const data = isPlainObject(callback.data) ? callback.data : {};
-  const message = callback.type === "D0003" ? {
+  const message = ["recvMsg", "D0003"].includes(callback.type) ? {
     timeStamp: boundedString(data.timeStamp, 32),
     fromType: finiteNumber(data.fromType),
     msgType: finiteNumber(data.msgType),
     msgSource: finiteNumber(data.msgSource),
     fromWxid: boundedString(data.fromWxid, 160),
     finalFromWxid: boundedString(data.finalFromWxid, 160),
+    toWxid: boundedString(data.toWxid, 160),
     atWxidList: Array.isArray(data.atWxidList) ? data.atWxidList.slice(0, 100).map((value) => boundedString(value, 160)).filter(Boolean) : [],
     signature: boundedString(data.signature, 300),
     msg: boundedString(data.msg, 16 * 1024),

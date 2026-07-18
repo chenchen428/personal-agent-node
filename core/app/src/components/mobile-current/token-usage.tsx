@@ -6,10 +6,12 @@ import { TokenUsageHeatmap } from "../token-usage/token-usage-heatmap";
 import { TokenUsageRangeSelector } from "../token-usage/token-usage-range-selector";
 import { TokenUsageStatus } from "../token-usage/token-usage-status";
 import { useTokenUsage } from "../token-usage/use-token-usage";
+import { MobileAboutSectionSkeleton } from "./skeletons";
 
 export function MobileTokenUsageSection() {
   const { range, setRange, usage, loading, error } = useTokenUsage();
   const state = loading ? "loading" : error ? "error" : !usage?.totalTokens ? "empty" : "ready";
+  if (loading) return <MobileAboutSectionSkeleton />;
   return <section className="mobile-about-section mobile-token-usage" aria-labelledby="mobile-token-title">
     <header><div><Activity aria-hidden="true" /><h2 id="mobile-token-title">Token 统计</h2></div><span>{usage ? `更新于${formatTokenUpdatedAt(usage.updatedAt)}` : "本机数据"}</span></header>
     {state !== "ready" ? <TokenUsageStatus state={state} detail={error} /> : usage ? <>

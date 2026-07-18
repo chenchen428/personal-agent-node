@@ -1,7 +1,7 @@
 "use client";
 
 import { Check, ChevronDown, ChevronUp, Circle, LoaderCircle, X } from "lucide-react";
-import type { ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
 
 export type ConnectionOperationStep = {
   id: string;
@@ -28,5 +28,5 @@ export function ConnectionOperationSop({ icon, title, summary, tone, statusLabel
 }
 
 export function ConnectionOperationSteps({ steps }: { steps: ConnectionOperationStep[] }) {
-  return <div className="domain-sop-steps" style={{ gridTemplateColumns: `repeat(${steps.length}, minmax(0, 1fr))` }}>{steps.map((step, index) => <div className={`domain-sop-step ${step.status}`} key={step.id}><span>{step.status === "passed" ? <Check /> : step.status === "failed" ? <X /> : step.status === "active" ? <LoaderCircle className="connection-spinner" /> : <Circle />}</span><strong>{step.label}</strong><small>{step.status === "passed" ? "已通过" : step.status === "active" ? "进行中" : step.status === "failed" ? "未通过" : "待检测"}</small>{index < steps.length - 1 ? <i /> : null}</div>)}</div>;
+  return <div className="domain-sop-steps" style={{ "--connection-step-count": steps.length } as CSSProperties}>{steps.map((step, index) => <div className={`domain-sop-step ${step.status}`} key={step.id}><span>{step.status === "passed" ? <Check /> : step.status === "failed" ? <X /> : step.status === "active" ? <LoaderCircle className="connection-spinner" /> : <Circle />}</span><strong>{step.label}</strong><small>{step.status === "passed" ? "已通过" : step.status === "active" ? "进行中" : step.status === "failed" ? "未通过" : "待检测"}</small>{index < steps.length - 1 ? <i /> : null}</div>)}</div>;
 }

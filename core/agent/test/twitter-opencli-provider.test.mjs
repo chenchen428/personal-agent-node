@@ -64,7 +64,7 @@ test("OpenCLI Twitter open uses the fixed home page without inspecting login sta
   const provider = new OpenCliTwitterProvider({ runner });
   const status = await provider.status();
   assert.equal(status.state, "ready");
-  assert.equal(status.statusLabel, "OpenCLI 可用");
+  assert.equal(status.statusLabel, "已就绪");
   assert.equal(status.loginStateInspected, false);
   assert.equal("loggedIn" in status, false);
   const result = await provider.open();

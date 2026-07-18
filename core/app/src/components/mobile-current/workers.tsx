@@ -5,6 +5,7 @@ import { AlertCircle, Bot, ChevronRight, Inbox } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { elapsedSeconds, fetchJson, firstCharacter, formatDateTime, formatDetailedElapsed, formatTaskDuration, isRunning, latestPlan, relativeTaskTime, relativeTime, richText, statusLabel, useClock, useRememberedQuery, useSourcePage } from "./data";
 import { BackIcon, InlineError, LoadSentinel, MobileListShell, SearchStatus } from "./shell";
+import { MobileContentSkeleton } from "./skeletons";
 import type { FilterOption, Message, MobileTaskResult, PlanStep, Session } from "./types";
 
 export function MobileWorkers({ sessionId = "", conversations = false }: { sessionId?: string; conversations?: boolean }) {
@@ -17,8 +18,8 @@ export function MobileWorkers({ sessionId = "", conversations = false }: { sessi
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  const load = useCallback(async () => {
-    setLoading(true);
+  const load = useCallback(async (background = false) => {
+    if (!background) setLoading(true);
     try {
       if (sessionId) {
         setSession((await fetchJson<{ session: Session }>(`/api/chat/sessions/${encodeURIComponent(sessionId)}`)).session);
@@ -32,9 +33,9 @@ export function MobileWorkers({ sessionId = "", conversations = false }: { sessi
       }
       setError("");
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "暂时无法读取本机内容");
+      if (!background) setError(cause instanceof Error ? cause.message : "暂时无法读取本机内容");
     } finally {
-      setLoading(false);
+      if (!background) setLoading(false);
     }
   }, [conversations, filter, query, sessionId]);
 
@@ -44,13 +45,13 @@ export function MobileWorkers({ sessionId = "", conversations = false }: { sessi
   }, [load, query]);
   useEffect(() => {
     if (!session || !isRunning(session.status)) return;
-    const timer = window.setInterval(() => void load(), 2500);
+    const timer = window.setInterval(() => void load(true), 2500);
     return () => window.clearInterval(timer);
   }, [load, session]);
   const hasRunningTask = !sessionId && !conversations && sessions.some((item) => isRunning(item.status));
   useEffect(() => {
     if (!hasRunningTask) return;
-    const timer = window.setInterval(() => void load(), 2500);
+    const timer = window.setInterval(() => void load(true), 2500);
     return () => window.clearInterval(timer);
   }, [hasRunningTask, load]);
 
@@ -66,13 +67,14 @@ export function MobileWorkers({ sessionId = "", conversations = false }: { sessi
   const selectedFilter = options.find((option) => option.value === filter) || options[0];
   const hasConditions = Boolean(query) || filter !== "all";
   const conditionSummary = [query ? `“${query}”` : "", filter !== "all" ? selectedFilter.label : ""].filter(Boolean).join(" · ");
+  const initialLoading = loading && !sessions.length;
   return <MobileListShell section="workers" title="任务" note={filter === "all" ? `${taskCounts.running} 项任务进行中` : `${selectedFilter.count} 项${selectedFilter.label}`} query={query} setQuery={setQuery} searchLabel="搜索任务" searchPlaceholder="搜索任务…" filter={{ label: "筛选任务状态", description: "选择要查看的任务状态", value: filter, setValue: setFilter, options }}>
     <div className="mobile-task-list">
       {error ? <InlineError message={error} /> : null}
       {hasConditions ? <SearchStatus count={sessions.length} summary={conditionSummary} onClear={() => { setQuery(""); setFilter("all"); }} /> : null}
       {!loading && !sessions.length ? <TaskEmpty hasConditions={hasConditions} /> : null}
-      <div className="mobile-task-items">{sessions.map((item) => <TaskRow session={item} key={item.id} />)}</div>
-      {loading ? <LoadSentinel loading canLoad={false} exhausted={false} onLoad={() => undefined} /> : null}
+      {initialLoading ? <MobileContentSkeleton kind="tasks" /> : <div className="mobile-task-items">{sessions.map((item) => <TaskRow session={item} key={item.id} />)}</div>}
+      {loading && !initialLoading ? <LoadSentinel loading canLoad={false} exhausted={false} onLoad={() => undefined} /> : null}
     </div>
   </MobileListShell>;
 }
@@ -120,6 +122,7 @@ function TaskDetail({ session, loading, error, returnHref, returnLabel }: { sess
 
   const plan = session ? latestPlan(session) : [];
   const messages = (session?.messages || []).filter((message) => ["user", "assistant", "agent", "error"].includes(message.role) && message.content?.trim());
+  const running = session ? isRunning(session.status) : false;
   return <div className="mobile-current"><div className="mobile-stage"><div className="phone content-detail-phone task-conversation-phone">
     <main className="content-detail-screen">
       <div className="task-conversation-bar"><Link href={returnHref} aria-label={`返回${returnLabel}`}><BackIcon /></Link><strong>{session?.title || "任务详情"}</strong><span>{session ? taskStatusLabel(session.status) : ""}</span></div>
@@ -127,7 +130,7 @@ function TaskDetail({ session, loading, error, returnHref, returnLabel }: { sess
         {error ? <TaskUnavailable error /> : session && (messages.length || plan.length) ? <section className="mobile-task-conversation">
           <div className="mobile-task-thread" aria-live="polite">{messages.map((message, index) => <div key={message.id}><TaskMessage message={message} userName={session.senderName || "你"} />{index === 1 && plan.length ? <TaskPlan steps={plan} /> : null}</div>)}{plan.length && messages.length < 2 ? <TaskPlan steps={plan} /> : null}
           {newUpdate ? <button className="task-new-update" type="button" onClick={() => scrollLatest()}>有新进展 <span aria-hidden="true">↓</span></button> : null}
-          <div className="mobile-task-runtime"><i aria-hidden="true" /><span>{taskRuntimeLabel(session, now)}</span></div></div>
+          <div className={`mobile-task-runtime${running ? " processing" : ""}`} role={running ? "status" : undefined}>{running ? <><i aria-hidden="true" /><strong>正在处理</strong><span>· {taskRuntimeLabel(session, now)}</span></> : <span>{taskRuntimeLabel(session, now)}</span>}</div></div>
         </section> : loading ? <TaskLoading /> : <TaskUnavailable />}
       </div>
     </main>

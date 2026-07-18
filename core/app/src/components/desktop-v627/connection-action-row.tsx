@@ -50,7 +50,7 @@ function OpenCliAction({ connection, refresh }: { connection: Connection; refres
     try {
       const result = await fetchJson<{ connection: Connection }>(`/api/connections/${connection.id}/status`);
       await refresh();
-      setMessage(result.connection.state === "ready" ? "OpenCLI 与平台只读能力已检测通过。" : result.connection.state === "needs_setup" ? "OpenCLI 已找到，但浏览器桥接尚未就绪。" : "未检测到可用的 OpenCLI 运行时。");
+      setMessage(result.connection.state === "ready" ? "浏览器只读能力已就绪。" : result.connection.state === "needs_setup" ? "浏览器操作环境尚未就绪，请按提示修复。" : "浏览器操作环境不可用。");
     } catch (error) { setMessage(errorMessage(error)); }
     finally { setBusy(false); }
   };
@@ -66,11 +66,11 @@ function OpenCliAction({ connection, refresh }: { connection: Connection; refres
   };
   const action = ready
     ? <Button className="connection-compact-action" variant="primary" disabled={busy} onClick={() => void open()}>{busy ? <LoaderCircle className="connection-spinner" /> : <ExternalLink />}{busy ? "正在打开…" : connection.primaryAction}</Button>
-    : <>{setupRequired && bridgeInstallUrl ? <Button className="connection-compact-action" variant="default" onClick={repair}><ExternalLink />修复浏览器桥接</Button> : null}<Button className="connection-compact-action" variant="primary" disabled={busy} onClick={() => void check()}>{busy ? <LoaderCircle className="connection-spinner" /> : null}{busy ? "正在检测…" : "检测 OpenCLI"}</Button></>;
+    : <>{setupRequired && bridgeInstallUrl ? <Button className="connection-compact-action" variant="default" onClick={repair}><ExternalLink />修复浏览器连接</Button> : null}<Button className="connection-compact-action" variant="primary" disabled={busy} onClick={() => void check()}>{busy ? <LoaderCircle className="connection-spinner" /> : null}{busy ? "正在检测…" : "检测浏览器操作"}</Button></>;
   return <div className="connection-operation-flow">
     <div className="connection-auth-action">{action}{!workflowStarted && message ? <div className="connection-auth-status" role="status"><span>{message}</span></div> : null}</div>
-    {workflowStarted ? <ConnectionOperationSop icon={<Globe2 />} title={`${connection.name} OpenCLI 检测`} summary={ready ? "OpenCLI、浏览器桥接与平台只读 Provider 均已就绪" : message || "正在检测本机内置 OpenCLI 与平台只读 Provider"} tone={ready ? "success" : busy ? "working" : "danger"} statusLabel={ready ? "能力可用" : busy ? "检测中" : setupRequired ? "环境待修复" : "检测失败"} steps={openCliSteps({ ready, setupRequired, busy })}>
-      {!ready ? <div className="domain-human-guide" role="status"><strong>{setupRequired ? "OpenCLI 浏览器桥接尚未就绪" : "内置 OpenCLI 运行时不可用"}</strong><p>{setupRequired ? `这是本机 OpenCLI 环境修复，不是${connection.name}账号授权。修复浏览器桥接后重新检测即可，Personal Agent 不会读取平台登录状态。` : "请完成 Personal Agent 更新或修复，再返回此页检测内置 OpenCLI。"}</p></div> : <div className="connection-success-evidence"><strong>OpenCLI 只读能力已经通过检测</strong><span>现在可以打开 {connection.name} 并使用 open、search 和 read；不会创建或保存平台账号授权。</span></div>}
+    {workflowStarted ? <ConnectionOperationSop icon={<Globe2 />} title={`${connection.name} 浏览器操作检测`} summary={ready ? "浏览器操作与平台只读能力均已就绪" : message || "正在检测浏览器操作与平台只读能力"} tone={ready ? "success" : busy ? "working" : "danger"} statusLabel={ready ? "已就绪" : busy ? "检测中" : setupRequired ? "环境待修复" : "检测失败"} steps={openCliSteps({ ready, setupRequired, busy })}>
+      {!ready ? <div className="domain-human-guide" role="status"><strong>{setupRequired ? "浏览器连接尚未就绪" : "浏览器操作环境不可用"}</strong><p>{setupRequired ? `这是本机浏览器操作环境修复，不是${connection.name}账号授权。修复后重新检测即可，Personal Agent 不会读取平台登录状态。` : "请完成 Personal Agent 更新或修复，再返回此页检测浏览器操作。"}</p></div> : <div className="connection-success-evidence"><strong>浏览器只读能力已经就绪</strong><span>现在可以在浏览器中打开、搜索和阅读 {connection.name}；不会创建或保存平台账号授权。</span></div>}
     </ConnectionOperationSop> : null}
   </div>;
 }
@@ -113,7 +113,7 @@ function NotionAction({ connection, refresh }: { connection: Connection; refresh
 }
 
 function openCliSteps({ ready, setupRequired, busy }: { ready: boolean; setupRequired: boolean; busy: boolean }): ConnectionOperationStep[] {
-  const labels = ["检测内置 OpenCLI", "检测浏览器桥接", "校验平台 Provider", "只读能力就绪"];
+  const labels = ["检测浏览器操作环境", "连接浏览器", "校验平台只读能力", "浏览器操作已就绪"];
   const statuses: ConnectionOperationStep["status"][] = ready ? ["passed", "passed", "passed", "passed"]
     : busy ? ["active", "pending", "pending", "pending"]
       : setupRequired ? ["passed", "failed", "pending", "pending"]

@@ -5,6 +5,7 @@ import { useState } from "react";
 import { copyText, coverKind, formatDateTime, relativeTime, useDebounced, useRememberedQuery, useRemote, useSourcePage } from "./data";
 import { OrderedPageGrid } from "./page-masonry";
 import { BackIcon, InlineError, LoadSentinel, MobileListShell, SearchEmpty, SearchStatus } from "./shell";
+import { MobileContentSkeleton } from "./skeletons";
 import type { FilterOption, MobilePageResult, PageItem } from "./types";
 
 export function MobilePages({ pageId = "" }: { pageId?: string }) {
@@ -35,14 +36,15 @@ export function MobilePages({ pageId = "" }: { pageId?: string }) {
   const selectedFilter = options.find((option) => option.value === filter) || options[0];
   const hasConditions = Boolean(query) || filter !== "all";
   const conditionSummary = [query ? `“${query}”` : "", filter !== "all" ? selectedFilter.label : ""].filter(Boolean).join(" · ");
+  const initialLoading = loading && !filtered.length;
 
   return <MobileListShell section="pages" title="发布页" note={note} query={query} setQuery={setQuery} searchLabel="搜索发布页" searchPlaceholder="搜索发布页" filter={{ label: "筛选发布范围", description: "选择要查看的页面范围", value: filter, setValue: setFilter, options }}>
     <div className="page-list-page">
       {error ? <InlineError message={error} /> : null}
       {hasConditions ? <SearchStatus count={filtered.length} summary={conditionSummary} onClear={() => { setQuery(""); setFilter("all"); }} /> : null}
       {!loading && !filtered.length ? <SearchEmpty title={hasConditions ? "没有找到相关页面" : "还没有发布页"} hint={hasConditions ? "调整搜索词或发布范围后再试" : "PA 发布页面后会显示在这里"} /> : null}
-      <OrderedPageGrid layoutKey={filtered.map((item) => item.id).join("|")}>{filtered.map((item, index) => <PageCard page={item} index={index} key={item.id} />)}</OrderedPageGrid>
-      {loading ? <LoadSentinel loading canLoad={false} exhausted={false} onLoad={() => undefined} /> : null}
+      {initialLoading ? <MobileContentSkeleton kind="pages" /> : <OrderedPageGrid layoutKey={filtered.map((item) => item.id).join("|")}>{filtered.map((item, index) => <PageCard page={item} index={index} key={item.id} />)}</OrderedPageGrid>}
+      {loading && !initialLoading ? <LoadSentinel loading canLoad={false} exhausted={false} onLoad={() => undefined} /> : null}
     </div>
   </MobileListShell>;
 }
@@ -77,7 +79,7 @@ function PageReader({ page, loading, error, returnHref, returnLabel }: { page?: 
     <main className="page-reader-screen">
       <div className="page-reader-bar"><Link href={returnHref} aria-label={`返回${returnLabel}`}><BackIcon /></Link><strong>{page?.title || "发布页"}</strong><div className="page-reader-actions">{page ? page.visibility === "public" && page.shareUrl ? <button type="button" onClick={() => void share()}>分享</button> : <span>{page.visibility === "private" ? "私有" : "仅本机"}</span> : null}</div></div>
       {error ? <InlineError message={error} /> : null}
-      {page?.url ? <iframe src={page.url} title={page.title} /> : loading ? <LoadSentinel loading canLoad={false} exhausted={false} onLoad={() => undefined} /> : <SearchEmpty title="无法打开页面" hint="当前页面没有可访问地址" />}
+      {page?.url ? <iframe src={page.url} title={page.title} /> : loading ? <MobileContentSkeleton kind="page" /> : <SearchEmpty title="无法打开页面" hint="当前页面没有可访问地址" />}
     </main>
     <div className={`page-share-toast${toast ? " is-visible" : ""}`} role="status" aria-live="polite" hidden={!toast}>{toast}</div>
   </div></div></div>;

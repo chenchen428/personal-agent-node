@@ -50,6 +50,7 @@ import { AppHistoryStore } from "../apps/history-store.js";
 import { ActivityStore } from "../activity/store.js";
 import { buildActivityTargetPreview } from "../activity/presentation.js";
 import { authorizationSettings, readAuthorizationMode, writeAuthorizationMode } from "../agent/authorization-mode.ts";
+import { readDailyTokenLimit, writeDailyTokenLimit } from "../agent/daily-token-limit.ts";
 import { shutdownAppServerClient } from "../agent/app-server-client.ts";
 import { managedServiceReadiness } from "../../../runtime/src/cloud-resources.ts";
 
@@ -234,6 +235,7 @@ for (const signal of ["SIGINT", "SIGTERM"]) {
     orchestrator.stop();
     wechat.stop();
     server.close(() => {
+      wechatQianxun.close();
       managedFileCatalog.close();
       agentData.close();
       activityStore.close();
@@ -418,6 +420,32 @@ async function handleRequest(request: http.IncomingMessage, response: http.Serve
       const settings = writeAuthorizationMode(config.agentAuthorizationFile, mode);
       shutdownAppServerClient();
       sendJson(response, 200, { ok: true, ...settings });
+      return;
+    }
+  }
+
+  if (url.pathname === "/api/node/v1/client/token-limit") {
+    if (!isTrustedLocalRequest(request)) {
+      sendJson(response, 403, { ok: false, error: "Token limit settings require local access" });
+      return;
+    }
+    const usedTokens = Number(store.getTokenUsageSummary({ range: "today" }).totalTokens || 0);
+    if (request.method === "GET") {
+      sendJson(response, 200, { ok: true, ...readDailyTokenLimit(config.dailyTokenLimitFile), usedTokens });
+      return;
+    }
+    if (request.method === "POST") {
+      const input = await readJsonBody(request);
+      if (!("dailyLimitMillions" in (input || {}))) {
+        sendJson(response, 400, { ok: false, error: { code: "INVALID_DAILY_TOKEN_LIMIT", message: "dailyLimitMillions is required" } });
+        return;
+      }
+      try {
+        const settings = writeDailyTokenLimit(config.dailyTokenLimitFile, input.dailyLimitMillions);
+        sendJson(response, 200, { ok: true, ...settings, usedTokens });
+      } catch (error) {
+        sendJson(response, Number(error?.statusCode || 400), { ok: false, error: { code: error?.code || "INVALID_DAILY_TOKEN_LIMIT", message: error?.message || "invalid daily token limit" } });
+      }
       return;
     }
   }
@@ -685,7 +713,7 @@ async function handleRequest(request: http.IncomingMessage, response: http.Serve
     const connections = buildConnectionCatalog({
       registry: connectionRegistry,
       statuses: {
-        "wechat-personal": personalWechatCatalogStatus(personalWechatStatus, wechatQianxun.accessPolicy()),
+        "wechat-personal": personalWechatCatalogStatus(personalWechatStatus, wechatQianxun.accessPolicy(), wechatQianxun.connectivityTestStatus()),
         wechat: { state: wechatStatus.connected ? "connected" : "needs_setup", statusLabel: wechatStatus.connected ? "已连接" : "待连接" },
         xiaohongshu: xiaohongshuStatus,
         twitter: twitterStatus,
@@ -713,7 +741,7 @@ async function handleRequest(request: http.IncomingMessage, response: http.Serve
       const status = await wechat.status();
       dynamicStatus = { state: status.connected ? "connected" : "needs_setup", statusLabel: status.connected ? "已连接" : "待连接" };
     } else if (id === "wechat-personal") {
-      dynamicStatus = personalWechatCatalogStatus(await wechatQianxun.status({ probe: true }), wechatQianxun.accessPolicy());
+      dynamicStatus = personalWechatCatalogStatus(await wechatQianxun.status({ probe: true }), wechatQianxun.accessPolicy(), wechatQianxun.connectivityTestStatus());
     } else if (id === "mail") dynamicStatus = { ...mailScanner.status(), ...platformConnectionStatuses().mail };
     else if (id === "sites") dynamicStatus = platformConnectionStatuses().sites;
     const merged = inspectConnection(id, { registry: connectionRegistry, statuses: { [id]: dynamicStatus } });
@@ -781,11 +809,12 @@ async function handleRequest(request: http.IncomingMessage, response: http.Serve
     return;
   }
   if (url.pathname === "/api/connections/wechat-personal/setup" && request.method === "GET") {
+    const savedQianxunConfig = wechatQianxun.publicConfig();
     sendChannelJson(response, 200, {
       ok: true,
       setup: {
-        qianxunRepositoryUrl: "https://github.com/daenmax/pc-wechat-hook-http-api/",
-        qianxunBaseUrl: "http://127.0.0.1:8055",
+        qianxunDocsUrl: "https://daenmax.github.io/qxpro-doc/doc/start/",
+        qianxunBaseUrl: savedQianxunConfig?.baseUrl || "http://127.0.0.1:8055",
         callbackUrl: `http://127.0.0.1:${config.port}/api/internal/channels/wechat-personal/callback`,
       },
     });
@@ -793,6 +822,53 @@ async function handleRequest(request: http.IncomingMessage, response: http.Serve
   }
   if (url.pathname === "/api/connections/wechat-personal/directory" && request.method === "GET") {
     sendChannelJson(response, 200, { ok: true, directory: await wechatQianxun.directory() });
+    return;
+  }
+  if (url.pathname === "/api/connections/wechat-personal/status" && request.method === "GET") {
+    sendChannelJson(response, 200, {
+      ok: true,
+      connection: await wechatQianxun.status({ probe: url.searchParams.get("probe") !== "0" }),
+    });
+    return;
+  }
+  if (url.pathname === "/api/connections/wechat-personal/connectivity-test" && request.method === "GET") {
+    sendChannelJson(response, 200, { ok: true, test: wechatQianxun.connectivityTestStatus() });
+    return;
+  }
+  if (url.pathname === "/api/connections/wechat-personal/connectivity-test/start" && request.method === "POST") {
+    if (!isTrustedLocalRequest(request)) { sendJson(response, 403, { ok: false, error: "个人微信收发测试只能从本机开始" }); return; }
+    sendChannelJson(response, 200, { ok: true, test: await wechatQianxun.startConnectivityTest() });
+    return;
+  }
+  if (url.pathname === "/api/connections/wechat-personal/connectivity-test/reply-plan" && request.method === "POST") {
+    if (!isTrustedLocalRequest(request)) { sendJson(response, 403, { ok: false, error: "个人微信测试回复只能从本机准备" }); return; }
+    sendChannelJson(response, 202, { ok: true, ...wechatQianxun.planConnectivityTestReply() });
+    return;
+  }
+  if (url.pathname === "/api/connections/wechat-personal/connectivity-test/reply" && request.method === "POST") {
+    if (!isTrustedLocalRequest(request)) { sendJson(response, 403, { ok: false, error: "个人微信测试回复只能从本机确认" }); return; }
+    const body = await readJsonBody(request, 64 * 1024);
+    sendChannelJson(response, 200, { ok: true, test: await wechatQianxun.executeConnectivityTestReply(String(body.operationId || ""), String(body.digest || "")) });
+    return;
+  }
+  if (url.pathname === "/api/connections/wechat-personal/conversations" && request.method === "GET") {
+    sendChannelJson(response, 200, {
+      ok: true,
+      conversations: wechatQianxun.listConversations(
+        Number(url.searchParams.get("limit") || 50),
+        url.searchParams.has("before") ? Number(url.searchParams.get("before")) : undefined,
+      ),
+    });
+    return;
+  }
+  if (url.pathname === "/api/connections/wechat-personal/history" && request.method === "GET") {
+    sendChannelJson(response, 200, {
+      ok: true,
+      messages: wechatQianxun.conversationHistory(url.searchParams.get("conversation"), {
+        limit: Number(url.searchParams.get("limit") || 100),
+        ...(url.searchParams.has("before") ? { beforeSeq: Number(url.searchParams.get("before")) } : {}),
+      }),
+    });
     return;
   }
   if (url.pathname === "/api/connections/wechat-personal/policy" && request.method === "GET") {
@@ -1767,17 +1843,19 @@ async function buildClientOverview() {
   };
 }
 
-function personalWechatCatalogStatus(status: Record<string, unknown>, policy: { enabled: boolean; contacts: unknown[]; groups: unknown[] }) {
+function personalWechatCatalogStatus(status: Record<string, unknown>, policy: { enabled: boolean; contacts: unknown[]; groups: unknown[] }, connectivityTest: { phase: string }) {
   const protocolReady = status.state === "connected" || status.state === "configured";
-  const connected = protocolReady && policy.enabled;
+  const testPassed = connectivityTest.phase === "complete";
+  const connected = protocolReady && policy.enabled && testPassed;
   return {
-    state: connected ? "connected" : protocolReady ? "needs_policy" : "needs_setup",
-    statusLabel: connected ? "已连接" : protocolReady ? "待配置策略" : "待检测",
+    state: connected ? "connected" : protocolReady && policy.enabled ? "needs_test" : protocolReady ? "needs_policy" : "needs_setup",
+    statusLabel: connected ? "已连接" : protocolReady && policy.enabled ? "待收发测试" : protocolReady ? "待配置策略" : "待检测",
     runtime: [
       { label: "协议服务", value: protocolReady ? "千寻已配置" : "等待本机检测" },
       { label: "触发策略", value: policy.enabled ? `${policy.contacts.length} 位联系人 · ${policy.groups.length} 个群` : "默认拒绝" },
+      { label: "收发测试", value: testPassed ? "已通过" : "待完成" },
     ],
-    details: { policyEnabled: policy.enabled },
+    details: { policyEnabled: policy.enabled, connectivityTestPassed: testPassed },
   };
 }
 

@@ -85,24 +85,27 @@ export function normalizePersonalWechatDirectory(profile: unknown, friends: unkn
 }
 
 export function normalizePersonalWechatMessage(event: Record<string, unknown>, accountWxid: string): PersonalWechatMessage | null {
-  if (event.type !== "D0003" || !isPlainObject(event.message)) return null;
+  if (!["recvMsg", "D0003"].includes(String(event.type || "")) || !isPlainObject(event.message)) return null;
   const message = event.message;
   const fromWxid = cleanId(message.fromWxid);
   const finalFromWxid = cleanId(message.finalFromWxid);
+  const toWxid = cleanId(message.toWxid);
   const isGroup = fromWxid.endsWith("@chatroom") || Number(message.fromType) === 2;
   const senderWxid = isGroup ? finalFromWxid : (finalFromWxid || fromWxid);
   const groupWxid = isGroup ? fromWxid : "";
   const atWxidList = Array.isArray(message.atWxidList) ? message.atWxidList.map(cleanId) : [];
   const msgType = Number.isFinite(Number(message.msgType)) ? Number(message.msgType) : null;
+  const isSelf = senderWxid === accountWxid || Number(message.msgSource) === 1;
+  const selfConversation = [toWxid, fromWxid, finalFromWxid].find((value) => value && value !== accountWxid) || senderWxid;
   return {
     accountWxid,
     senderWxid,
-    conversationWxid: groupWxid || senderWxid,
+    conversationWxid: groupWxid || (isSelf ? selfConversation : senderWxid),
     groupWxid,
     text: typeof message.msg === "string" ? message.msg.trim() : "",
     mentionedAccount: atWxidList.includes(accountWxid),
     isGroup,
-    isSelf: senderWxid === accountWxid,
+    isSelf,
     msgType,
   };
 }
@@ -182,15 +185,17 @@ function firstRecord(value: unknown) {
 }
 
 function directoryEntry(record: Record<string, unknown>, accountWxid: string, wxid: string, fallback: string): PersonalWechatDirectoryEntry {
-  const name = firstString(record.remark, record.remarkName, record.nickname, record.nickName, record.name, fallback);
+  const name = firstString(record.remark, record.remarkName, record.nick, record.nickname, record.nickName, record.name, fallback);
   return { id: subjectId(accountWxid, wxid), name, maskedId: maskWxid(wxid) };
 }
 
-function subjectId(accountWxid: string, wxid: string) {
+export function personalWechatSubjectId(accountWxid: string, wxid: string) {
   const normalized = cleanId(wxid);
   if (!normalized) return "";
   return `pwc_${crypto.createHash("sha256").update(`${cleanId(accountWxid)}\0${normalized}`).digest("hex").slice(0, 32)}`;
 }
+
+const subjectId = personalWechatSubjectId;
 
 function readWxid(record: Record<string, unknown>) {
   return firstString(record.wxid, record.userName, record.username, record.id);
