@@ -3,8 +3,9 @@ import net from 'node:net';
 import os from 'node:os';
 import path from 'node:path';
 import { domainToASCII } from 'node:url';
-import { writeJsonAtomic } from './config.ts';
+import { resolveNodeConfig, writeJsonAtomic } from './config.ts';
 import { DEFAULT_CLOUD_URL, openExternalUrl } from './cloud-enrollment.ts';
+import { initializeInstallation } from './space-registry.ts';
 
 const REQUEST_TIMEOUT_MILLISECONDS = 15_000;
 const DEFAULT_POLL_INTERVAL_SECONDS = 5;
@@ -21,7 +22,19 @@ export async function authorizeCloudResources({
   clientName = 'personal-agent-cli',
   clientVersion = 'unknown',
 } = {}) {
-  const pending = await startCloudResourceAuthorization({ cloudUrl, fetchImpl, clientName, clientVersion });
+  const config = resolveNodeConfig({ ...process.env, PRIVATE_SITE_DATA_ROOT: dataRoot || process.env.PRIVATE_SITE_DATA_ROOT });
+  if (!config.space?.id) throw new Error('Cloud resource authorization requires an isolated Space');
+  const installationId = initializeInstallation({ dataRoot: config.installationDataRoot }).installation.installationId;
+  const pending = await startCloudResourceAuthorization({
+    cloudUrl,
+    fetchImpl,
+    clientName,
+    clientVersion,
+    installationId,
+    spaceId: config.space.id,
+    spaceKind: config.space.kind === 'personal' ? 'personal' : 'custom',
+    spaceSlug: config.space.slug,
+  });
   await onAuthorization(publicBrowserAuthorization(pending.authorization));
   let browserOpened = false;
   try { browserOpened = await openBrowser(pending.authorization.verificationUrlComplete || pending.authorization.verificationUrl); } catch {}
@@ -29,11 +42,11 @@ export async function authorizeCloudResources({
   return { ...result, authorization: { ...publicBrowserAuthorization(pending.authorization), browserOpened } };
 }
 
-export async function startCloudResourceAuthorization({ cloudUrl, fetchImpl = fetch, clientName = 'personal-agent-cli', clientVersion = 'unknown' } = {}) {
+export async function startCloudResourceAuthorization({ cloudUrl, fetchImpl = fetch, clientName = 'personal-agent-cli', clientVersion = 'unknown', installationId, spaceId, spaceKind = 'personal', spaceSlug = 'personal' } = {}) {
   const baseUrl = normalizeCloudUrl(cloudUrl || process.env.PERSONAL_AGENT_CLOUD_URL || DEFAULT_CLOUD_URL);
   const response = await requestJson(fetchImpl, `${baseUrl}/api/cli/auth/start`, {
     method: 'POST',
-    body: { clientName: String(clientName).slice(0, 80), clientVersion: String(clientVersion).slice(0, 40) },
+    body: { clientName: String(clientName).slice(0, 80), clientVersion: String(clientVersion).slice(0, 40), installationId, spaceId, spaceKind, spaceSlug },
   });
   return {
     baseUrl,
@@ -141,7 +154,12 @@ export function onboardingStatus({ dataRoot, env = process.env } = {}) {
 
 function resolveDataRoot({ dataRoot, env = process.env } = {}) {
   const homeRoot = path.resolve(env.PERSONAL_AGENT_HOME || path.join(os.homedir(), '.personal-agent'));
-  return path.resolve(dataRoot || env.PRIVATE_SITE_DATA_ROOT || path.join(homeRoot, 'workspace'));
+  const requested = path.resolve(dataRoot || env.PRIVATE_SITE_DATA_ROOT || path.join(homeRoot, 'workspace'));
+  try {
+    const config = resolveNodeConfig({ ...env, PERSONAL_AGENT_DATA_ROOT: requested, PRIVATE_SITE_DATA_ROOT: requested });
+    if (config.space?.id) return config.dataRoot;
+  } catch {}
+  return requested;
 }
 
 function resourcePaths(dataRoot) {

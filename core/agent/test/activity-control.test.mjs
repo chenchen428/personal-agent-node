@@ -54,6 +54,7 @@ test("returns search results to the main Agent without producing user-visible co
       type: "page",
       title: "发布项目说明页",
       detail: "说明页已发布并可供查看。",
+      target: { type: "page", id: "public-project-notes" },
       idempotencyKey: "page:1",
     });
     const result = processActivityControl({

@@ -5,17 +5,25 @@
   "adapter": {
     "source": "https://github.com/xpzouying/xiaohongshu-mcp",
     "revision": "0cf885c2d02745678ec6cc91b401d898373064e9",
-    "release": "pr-509-0cf885c2-session-state-1",
+    "release": "pr-509-0cf885c2-session-state-2",
     "license": "NOASSERTION",
     "build": {
       "sourceBaseUrl": "https://raw.githubusercontent.com/xpzouying/xiaohongshu-mcp/0cf885c2d02745678ec6cc91b401d898373064e9",
       "sourceSha256": "a8305b4131016ec546fdffc312a5d9bd164391f887056c6f200b3847c34a807b",
-      "patchedSourceSha256": "3a4a3ba7f7bd5aa176f607f688dcb46c69ae27145dca25306568ed4fc2190085",
+      "patchedSourceSha256": "c56f47f83c0458b8f8abab6494a0ad645470abea1c0f8607f1ee1e11d629e842",
       "patches": [
         {
           "file": "core/channels/xiaohongshu/patches/login-session-state.patch",
           "sha256": "300af41489d04b20f3275b8006a69de27e9430f4d81473e125f0dff7e6c0d4ee"
+        },
+        {
+          "file": "core/channels/xiaohongshu/patches/windows-no-leakless.patch",
+          "sha256": "0cbafe9ba8852ebbf67eed0d64174d1e228276365c14570ae5d237a1b450aef3"
         }
+      ],
+      "patchAddedSourceFiles": [
+        "third_party/headless_browser/go.mod",
+        "third_party/headless_browser/headless_browser.go"
       ],
       "sourceFiles": [
         "app_server.go",

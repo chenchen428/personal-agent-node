@@ -31,7 +31,6 @@ if (!fs.existsSync(target)) {
   fs.cpSync(source, temporary, { recursive: true, preserveTimestamps: true });
   fs.renameSync(temporary, target);
 }
-materializeWorkspaceSeed(path.join(target, "workspace"), dataRoot);
 const preactivationEnvironment = {
   ...process.env,
   PERSONAL_AGENT_HOME: homeRoot,
@@ -40,7 +39,7 @@ const preactivationEnvironment = {
   PRIVATE_SITE_CLI_BIN: path.join(installRoot, "bin"),
 };
 const privateSite = path.join(target, "core", "runtime", "bin", "private-site.mjs");
-runCandidate(privateSite, ["init", "--domain", args.domain || existingWorkspaceDomain(dataRoot) || "personal-agent.local", "--data-root", dataRoot], preactivationEnvironment);
+runCandidate(privateSite, ["init", "--domain", args.domain || "personal-agent.local", "--data-root", dataRoot], preactivationEnvironment);
 runCandidate(privateSite, ["app-compatibility", "--data-root", dataRoot], preactivationEnvironment);
 const oldCurrent = pointerTarget(current);
 if (oldCurrent && path.resolve(oldCurrent) !== path.resolve(target)) replacePointer(previous, oldCurrent);
@@ -59,9 +58,9 @@ const installation = {
   personalAgentCommand: personalAgentCommand.commandPath,
   onboarding: {
     requiredAction: "open-setup-center",
-    message: "Open the local Setup Center directly and complete the required WeChat QR connection. Managed connectivity remains optional.",
+    message: "Open the local Setup Center to finish the local environment and main Agent. WeChat and managed connectivity are optional connections.",
     setupPath: "/app/setup",
-    wechatRequired: true,
+    wechatRequired: false,
     statusCommand: "personal-agent setup status --json",
   },
 };
@@ -83,38 +82,10 @@ if (deferredPrune.length) {
 
 process.stdout.write(`${JSON.stringify({ ok: true, releaseId: manifest.releaseId, homeRoot, installRoot, dataRoot, current, target, previous: pointerTarget(previous) || "", personalAgentCommand: personalAgentCommand.commandPath, onboarding: installation.onboarding, deferredPrune }, null, 2)}\n`);
 
-function materializeWorkspaceSeed(source, target) {
-  fs.mkdirSync(target, { recursive: true, mode: 0o700 });
-  if (!fs.existsSync(source)) throw new Error("Release workspace seed is missing");
-  mergeMissing(source, target);
-}
-
-function existingWorkspaceDomain(root) {
-  try {
-    const site = JSON.parse(fs.readFileSync(path.join(root, "config", "site.json"), "utf8"));
-    return String(site.asciiDomain || "").trim();
-  } catch {
-    return "";
-  }
-}
-
 function runCandidate(entrypoint, candidateArgs, env) {
   const result = spawnSync(process.execPath, [entrypoint, ...candidateArgs], { env, encoding: "utf8", timeout: 10 * 60_000 });
   if (result.status !== 0) {
     throw new Error(`Candidate preactivation failed: ${String(result.stderr || result.stdout || "unknown error").trim()}`);
-  }
-}
-
-function mergeMissing(source, target) {
-  for (const entry of fs.readdirSync(source, { withFileTypes: true })) {
-    const from = path.join(source, entry.name);
-    const to = path.join(target, entry.name);
-    if (entry.isDirectory()) {
-      fs.mkdirSync(to, { recursive: true, mode: 0o700 });
-      mergeMissing(from, to);
-    } else if (entry.isFile() && !fs.existsSync(to)) {
-      fs.copyFileSync(from, to, fs.constants.COPYFILE_EXCL);
-    }
   }
 }
 

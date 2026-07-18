@@ -2,6 +2,7 @@ import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import { DatabaseSync } from "node:sqlite";
+import { buildManagedTaskAccess } from "../managed-access.js";
 
 const SESSION_STATUSES = new Set(["start", "running", "idle", "paused", "done", "archived"]);
 const MAX_PENDING_WECHAT_NOTIFICATIONS = 20;
@@ -402,6 +403,37 @@ export class BridgeStore {
     return rows.map((row) => this.hydrateSession(row.id)).filter(Boolean);
   }
 
+  listMainSessions({ includeArchived = false } = {}) {
+    const rows = includeArchived
+      ? this.db.prepare("SELECT id FROM sessions WHERE role = 'main' ORDER BY updated_at DESC, id DESC").all()
+      : this.db.prepare("SELECT id FROM sessions WHERE role = 'main' AND status != 'archived' ORDER BY updated_at DESC, id DESC").all();
+    return rows.map((row) => this.hydrateSession(row.id)).filter(Boolean);
+  }
+
+  hasCompletedLocalConversation() {
+    const row = this.db.prepare(`
+      SELECT 1
+      FROM events AS event
+      INNER JOIN sessions AS session ON session.id = event.session_id
+      WHERE event.kind = 'session.assistant_message'
+        AND LENGTH(TRIM(COALESCE(json_extract(event.payload_json, '$.content'), ''))) > 0
+        AND (
+          json_extract(event.payload_json, '$.metadata.streamState') IS NULL
+          OR json_extract(event.payload_json, '$.metadata.streamState') = 'completed'
+        )
+        AND (
+          (session.role = 'main' AND session.channel = 'desktop')
+          OR (
+            session.role = 'worker'
+            AND (session.channel IS NULL OR session.channel = '')
+            AND json_extract(session.metadata_json, '$.createdBy') IN ('api', 'web')
+          )
+        )
+      LIMIT 1
+    `).get();
+    return Boolean(row);
+  }
+
   listRecoverableWorkerSessions() {
     return this.db.prepare(`
       SELECT * FROM sessions
@@ -463,16 +495,18 @@ export class BridgeStore {
 
   getSessionRecord(id) {
     const row = this.getSessionRow(id);
-    return row ? { ...rowToSession(row), path: this.sessionPath(row.id), url: this.sessionUrl(row.id), linkNotice: this.sessionLinkNotice(row.id) } : null;
+    if (!row) return null;
+    const session = rowToSession(row);
+    return { ...session, path: this.sessionPath(row.id), ...this.sessionAccess(row.id, session.role) };
   }
 
   summarizeSessionRow(row) {
     const session = rowToSession(row);
+    const access = this.sessionAccess(session.id, session.role);
     return {
       ...session,
       path: this.sessionPath(session.id),
-      url: this.sessionUrl(session.id),
-      linkNotice: this.sessionLinkNotice(session.id),
+      ...access,
       eventCount: Number(this.db.prepare("SELECT COUNT(*) AS count FROM events WHERE session_id = ?").get(session.id)?.count || 0),
       childSessionCount: Number(this.db.prepare("SELECT COUNT(*) AS count FROM sessions WHERE parent_session_id = ?").get(session.id)?.count || 0),
     };
@@ -511,18 +545,18 @@ export class BridgeStore {
   getOrCreateMainSessionForChannel({ channel, senderId, senderName, workspaceRoot }) {
     const normalizedChannel = String(channel || "").trim().toLowerCase();
     const normalizedSenderId = String(senderId || "").trim();
-    if (normalizedChannel !== "wechat") throw new Error("only WeChat can own a main session");
+    if (!isMainConversationChannel(normalizedChannel)) throw new Error("only WeChat channels can own a main session");
     if (!normalizedSenderId) throw new Error("WeChat senderId is required for a main session");
-    const key = `wechat:${normalizedSenderId}`;
+    const key = `${normalizedChannel}:${normalizedSenderId}`;
     const existing = this.db.prepare("SELECT session_id FROM channel_sessions WHERE key = ?").get(key);
     let existingRow = existing?.session_id ? this.getSessionRow(existing.session_id) : null;
     if (!existingRow) {
       existingRow = this.db.prepare(`
         SELECT * FROM sessions
-        WHERE role = 'main' AND channel = 'wechat' AND sender_id = ?
+        WHERE role = 'main' AND channel = ? AND sender_id = ?
         ORDER BY updated_at DESC, id DESC
         LIMIT 1
-      `).get(normalizedSenderId);
+      `).get(normalizedChannel, normalizedSenderId);
       if (existingRow) {
         this.db.prepare("INSERT OR REPLACE INTO channel_sessions (key, session_id, updated_at) VALUES (?, ?, ?)")
           .run(key, existingRow.id, new Date().toISOString());
@@ -539,7 +573,7 @@ export class BridgeStore {
         const current = rowToSession(existingRow);
         this.upsertSession({
           ...current,
-          channel: "wechat",
+          channel: normalizedChannel,
           senderId: normalizedSenderId,
           senderName: senderName || current.senderName,
           title: current.title || "与 PA 的对话",
@@ -555,7 +589,7 @@ export class BridgeStore {
           .run(key, existingRow.id, new Date().toISOString());
       }
     }
-    if (existingRow && existingRow.role === "main" && existingRow.channel === "wechat" && existingRow.sender_id === normalizedSenderId) {
+    if (existingRow && existingRow.role === "main" && existingRow.channel === normalizedChannel && existingRow.sender_id === normalizedSenderId) {
       const session = rowToSession(existingRow);
       const nextWorkspaceRoot = String(workspaceRoot || "").trim();
       const workspaceChanged = Boolean(nextWorkspaceRoot && nextWorkspaceRoot !== session.workspaceRoot);
@@ -578,12 +612,12 @@ export class BridgeStore {
 
     const session = this.createSessionRecord({
       role: "main",
-      channel: "wechat",
+      channel: normalizedChannel,
       senderId: normalizedSenderId,
       senderName,
       workspaceRoot,
       title: `${senderName || senderId} 主会话`,
-      taskDescription: "WeChat main dispatcher session",
+      taskDescription: `${normalizedChannel} main dispatcher session`,
       status: "idle",
       metadata: { channelSessionKey: key },
     });
@@ -621,7 +655,7 @@ export class BridgeStore {
       ...currentSession,
       ...patch,
     };
-    const validMainIdentity = session.senderId && (session.channel === "wechat" || session.channel === "desktop");
+    const validMainIdentity = session.senderId && (isMainConversationChannel(session.channel) || session.channel === "desktop");
     session.role = currentSession.role === "main" && validMainIdentity ? "main" : "worker";
     if (patch.status) session.status = normalizeStatus(patch.status);
     session.updatedAt = patch.updatedAt || new Date().toISOString();
@@ -636,44 +670,44 @@ export class BridgeStore {
       WHERE role = 'main'
         AND (
           channel IS NULL
-          OR channel NOT IN ('wechat', 'desktop')
+          OR channel NOT IN ('wechat', 'wechat-personal', 'desktop')
           OR sender_id IS NULL
           OR TRIM(sender_id) = ''
         )
     `).run();
-    this.db.prepare("DELETE FROM channel_sessions WHERE key NOT LIKE 'wechat:%'").run();
+    this.db.prepare("DELETE FROM channel_sessions WHERE key NOT LIKE 'wechat:%' AND key NOT LIKE 'wechat-personal:%'").run();
 
     const duplicates = this.db.prepare(`
-      SELECT sender_id
+      SELECT channel, sender_id
       FROM sessions
-      WHERE role = 'main' AND channel = 'wechat'
-      GROUP BY sender_id
+      WHERE role = 'main' AND channel IN ('wechat', 'wechat-personal')
+      GROUP BY channel, sender_id
       HAVING COUNT(*) > 1
     `).all();
     for (const duplicate of duplicates) {
-      const key = `wechat:${duplicate.sender_id}`;
+      const key = `${duplicate.channel}:${duplicate.sender_id}`;
       const mapped = this.db.prepare("SELECT session_id FROM channel_sessions WHERE key = ?").get(key)?.session_id;
       const candidates = this.db.prepare(`
         SELECT id FROM sessions
-        WHERE role = 'main' AND channel = 'wechat' AND sender_id = ?
+        WHERE role = 'main' AND channel = ? AND sender_id = ?
         ORDER BY updated_at DESC, id DESC
-      `).all(duplicate.sender_id);
+      `).all(duplicate.channel, duplicate.sender_id);
       const retained = candidates.some((candidate) => candidate.id === mapped) ? mapped : candidates[0]?.id;
       if (!retained) continue;
       this.db.prepare(`
         UPDATE sessions SET role = 'worker'
-        WHERE role = 'main' AND channel = 'wechat' AND sender_id = ? AND id != ?
-      `).run(duplicate.sender_id, retained);
+        WHERE role = 'main' AND channel = ? AND sender_id = ? AND id != ?
+      `).run(duplicate.channel, duplicate.sender_id, retained);
       this.db.prepare("INSERT OR REPLACE INTO channel_sessions (key, session_id, updated_at) VALUES (?, ?, ?)")
         .run(key, retained, new Date().toISOString());
     }
 
     for (const main of this.db.prepare(`
-      SELECT id, sender_id FROM sessions
-      WHERE role = 'main' AND channel = 'wechat'
+      SELECT id, channel, sender_id FROM sessions
+      WHERE role = 'main' AND channel IN ('wechat', 'wechat-personal')
     `).all()) {
       this.db.prepare("INSERT OR REPLACE INTO channel_sessions (key, session_id, updated_at) VALUES (?, ?, ?)")
-        .run(`wechat:${main.sender_id}`, main.id, new Date().toISOString());
+        .run(`${main.channel}:${main.sender_id}`, main.id, new Date().toISOString());
     }
 
     const desktopMains = this.db.prepare(`
@@ -688,13 +722,18 @@ export class BridgeStore {
     this.db.prepare(`
       DELETE FROM channel_sessions
       WHERE session_id NOT IN (
-        SELECT id FROM sessions WHERE role = 'main' AND channel = 'wechat'
+        SELECT id FROM sessions WHERE role = 'main' AND channel IN ('wechat', 'wechat-personal')
       )
     `).run();
     this.db.exec(`
       CREATE UNIQUE INDEX IF NOT EXISTS idx_sessions_wechat_main_sender
       ON sessions(sender_id)
       WHERE role = 'main' AND channel = 'wechat'
+    `);
+    this.db.exec(`
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_sessions_wechat_personal_main_sender
+      ON sessions(sender_id)
+      WHERE role = 'main' AND channel = 'wechat-personal'
     `);
     this.db.exec(`
       CREATE UNIQUE INDEX IF NOT EXISTS idx_sessions_desktop_main
@@ -1339,17 +1378,18 @@ export class BridgeStore {
     if (!row) return null;
     const session = rowToSession(row);
     const events = this.listEvents(id);
+    const access = this.sessionAccess(id, session.role);
     return {
       ...session,
       path: this.sessionPath(id),
-      url: this.sessionUrl(id),
-      linkNotice: this.sessionLinkNotice(id),
+      ...access,
       messages: coalesceMessages(events.map(eventToMessage).filter(Boolean)),
       events,
       childSessions: this.db.prepare(`
         SELECT * FROM sessions WHERE parent_session_id = ? ORDER BY updated_at DESC
       `).all(id).map((child) => {
         const childSession = rowToSession(child);
+        const childAccess = this.sessionAccess(childSession.id, childSession.role);
         return {
           id: childSession.id,
           role: childSession.role,
@@ -1358,28 +1398,26 @@ export class BridgeStore {
           taskDescription: childSession.taskDescription,
           updatedAt: childSession.updatedAt,
           path: this.sessionPath(childSession.id),
-          url: this.sessionUrl(childSession.id),
-          linkNotice: this.sessionLinkNotice(childSession.id),
+          ...childAccess,
         };
       }),
     };
   }
 
-  sessionUrl(id) {
-    const access = this.externalAccess();
-    return access?.ready && access.origin ? `${access.origin}${this.sessionPath(id)}` : "";
+  sessionAccess(id, role = "worker") {
+    return buildManagedTaskAccess(id, this.externalAccess, { role });
+  }
+
+  sessionUrl(id, role = "worker") {
+    return this.sessionAccess(id, role).url;
   }
 
   sessionPath(id) {
     return `/app/chat/session/${encodeURIComponent(id)}/live`;
   }
 
-  sessionLinkNotice(id) {
-    if (this.sessionUrl(id)) return "";
-    const reason = this.externalAccess()?.reason;
-    return reason === "tunnel-offline"
-      ? "远程连接暂时离线，当前暂不支持查看任务进度。"
-      : "当前未配置远程访问，暂不支持从当前设备查看任务进度。";
+  sessionLinkNotice(id, role = "worker") {
+    return this.sessionAccess(id, role).linkNotice;
   }
 
   getSessionRow(id) {
@@ -2719,6 +2757,10 @@ function fromJson(value, fallback) {
   } catch {
     return fallback;
   }
+}
+
+function isMainConversationChannel(channel) {
+  return channel === "wechat" || channel === "wechat-personal";
 }
 
 function quoteIdentifier(value) {

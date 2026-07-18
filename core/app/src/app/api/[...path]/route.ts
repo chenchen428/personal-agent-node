@@ -6,6 +6,7 @@ export const dynamic = "force-dynamic";
 const hopByHopHeaders = new Set([
   "connection", "keep-alive", "proxy-authenticate", "proxy-authorization",
   "te", "trailer", "transfer-encoding", "upgrade", "host", "content-length",
+  "expect",
 ]);
 
 async function proxy(request: NextRequest, context: { params: Promise<{ path: string[] }> }) {
@@ -26,7 +27,13 @@ async function proxy(request: NextRequest, context: { params: Promise<{ path: st
     for (const name of hopByHopHeaders) responseHeaders.delete(name);
     responseHeaders.set("cache-control", "private, no-store");
     return new Response(upstreamResponse.body, { status: upstreamResponse.status, headers: responseHeaders });
-  } catch {
+  } catch (cause) {
+    console.error("[personal-agent-bff] loopback upstream failed", {
+      target: upstream.target,
+      url: target.href,
+      error: cause instanceof Error ? cause.message : String(cause),
+      detail: cause instanceof Error && cause.cause instanceof Error ? cause.cause.message : "",
+    });
     return Response.json({ ok: false, error: {
       code: upstream.target === "control" ? "CONTROL_UNAVAILABLE" : "AGENT_UNAVAILABLE",
       message: upstream.target === "control" ? "本机控制服务尚未就绪" : "本机 Agent 服务尚未就绪",
@@ -36,10 +43,10 @@ async function proxy(request: NextRequest, context: { params: Promise<{ path: st
 
 function resolveUpstream(path: string[]): { target: "control" | "agent"; path: string[] } {
   if (path[0] === "system") return { target: "control", path: path.slice(1) };
-  const controlRoots = new Set(["apps", "extensions", "mail", "onboarding", "plugins", "projects", "server-status", "setup", "update", "wechat"]);
+  const controlRoots = new Set(["apps", "authorization", "data-export", "extensions", "mail", "onboarding", "plugins", "projects", "server-status", "setup", "spaces", "update", "wechat"]);
   if (controlRoots.has(path[0])) return { target: "control", path };
   if (path[0] === "app") {
-    const appRoutes: Record<string, string> = { data: "agent-data", automations: "agent-automations", schedules: "agent-corn", mail: "mail" };
+    const appRoutes: Record<string, string> = { data: "agent-data", schedules: "agent-corn", mail: "mail" };
     const mapped = appRoutes[path[1]];
     return mapped
       ? { target: "agent", path: [mapped, ...path.slice(2)] }

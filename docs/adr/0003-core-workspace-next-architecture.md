@@ -141,6 +141,11 @@ detected and migrated through an explicit, rollback-safe operation. Compatibilit
 environment names may be read during migration, but new state is resolved from
 the home contract.
 
+On Windows, a fresh double-click installation asks the user to select that home
+before the embedded payload is extracted. Installer staging, immutable `core`,
+and mutable `workspace` all stay on the selected volume. Explicit command-line
+installation is non-interactive, and macOS keeps its platform-default location.
+
 ### 4. Ship the Harness inside `workspace`
 
 The customer Harness is not a development-agent prompt. It is the operational

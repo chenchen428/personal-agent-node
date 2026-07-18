@@ -3,7 +3,7 @@ import { XiaohongshuVerificationClient } from "./verification-client.js";
 
 const DEFAULT_TIMEOUT_MS = 30_000;
 const MAX_RESPONSE_BYTES = 5 * 1024 * 1024;
-const SESSION_TTL_MS = 4 * 60 * 1000;
+const SESSION_TTL_MS = 2 * 60 * 1000;
 const READ_INTERVAL_MS = 2_500;
 
 export class XiaohongshuChannel {
@@ -16,17 +16,25 @@ export class XiaohongshuChannel {
     this.verificationClient = verificationClient || new XiaohongshuVerificationClient({ baseUrl: this.baseUrl });
     this.sessions = new Map();
     this.statusPromise = null;
+    this.lastStatus = null;
     this.lastReadAt = 0;
     this.readQueue = Promise.resolve();
   }
 
   async status() {
     if (!this.statusPromise) {
-      this.statusPromise = this.checkStatus().finally(() => {
+      this.statusPromise = this.checkStatus().then((status) => {
+        this.lastStatus = status;
+        return status;
+      }).finally(() => {
         this.statusPromise = null;
       });
     }
     return this.statusPromise;
+  }
+
+  catalogStatus() {
+    return this.lastStatus || this.statusPayload("needs_login", false, "需要扫码登录", "");
   }
 
   async checkStatus() {
@@ -43,6 +51,9 @@ export class XiaohongshuChannel {
       const loginState = normalizeLoginState(login?.login_state);
       return this.statusPayload(loggedIn ? "logged_in" : "needs_login", loggedIn, loggedIn ? "已登录" : "需要扫码登录", "", loginState);
     } catch (error) {
+      if (isUnauthenticatedStatusError(error)) {
+        return this.statusPayload("needs_login", false, "需要扫码登录", "");
+      }
       return this.statusPayload("error", false, "登录状态检测失败", safeError(error));
     }
   }
@@ -247,6 +258,11 @@ export class ChannelRuntimeError extends Error {
   }
 }
 
+function isUnauthenticatedStatusError(error) {
+  return error instanceof ChannelRuntimeError
+    && /HTTP 500|internal server error|服务器内部错误/i.test(String(error.message || ""));
+}
+
 function unwrapData(response) {
   return response && typeof response === "object" && "data" in response ? response.data : response;
 }
@@ -295,7 +311,7 @@ function parseDuration(value, fallback) {
   if (!match) return fallback;
   const amount = Number(match[1]);
   const milliseconds = match[2] === "ms" ? amount : match[2] === "s" ? amount * 1000 : amount * 60_000;
-  return Math.max(1_000, Math.min(milliseconds, 5 * 60_000));
+  return Math.max(1_000, Math.min(milliseconds, SESSION_TTL_MS));
 }
 
 function normalizeLoginState(value) {

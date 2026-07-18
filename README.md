@@ -43,7 +43,7 @@ Beta 用户只需要下载对应系统的完整安装包，不需要预装 Node.
 
 安装器会验证完整发行版和内置 Node.js `22.23.1`，保留可回滚的 `current` / `previous`，然后在 Tauri 2 轻量桌面壳中直接打开本机 Setup Center。桌面壳复用系统 WebView，本机访问永远无需登录；打开客户端时启动本机服务，关闭时停止服务和手机入口，不内置 Chromium 或第二份 Node.js。访问密码只用于手机和公网入口，可在桌面端“系统设置”中直接重置，重置后其他设备需要重新登录。客户端运行期间仍可使用浏览器和 CLI 恢复入口。用户在这里分别查看：
 
-安装后只有一个目录：`~/.personal-agent/core` 是可升级和回滚的产品运行时，`~/.personal-agent/workspace` 是用户拥有的 Harness、插件、文件和数据；卸载默认只移除 Core。
+安装后只有一个根目录：Windows 安装器会先让用户选择位置，程序解包、`core/` 与 `workspace/` 都保存在该目录下；macOS 等平台默认使用 `~/.personal-agent`。`core/` 是可升级和回滚的产品运行时，`workspace/` 是用户拥有的 Harness、插件、文件和数据；卸载默认只移除 Core。
 
 - 本机安装与桌面直达是否可用；
 - Codex 是否安装、登录且能完成 app-server 握手；
@@ -51,7 +51,7 @@ Beta 用户只需要下载对应系统的完整安装包，不需要预装 Node.
 - Agent 邮箱身份与真实邮件投递是否可用；
 - 必选微信渠道是否已通过本机二维码引导完成连接，以及其他可选渠道是否启用。
 
-纯本机模式默认可用。公网连接和邮箱不会阻塞本机 Console；微信连接是 Agent readiness 的必选步骤。需要公网域名和 Agent 邮箱时，在 Setup Center 点击“验证公网与邮箱”，再在已登录的 `personal-agent.cn` 页面确认。本机从一次入口完成 Node 接入和用途隔离的资源授权，并自动刷新检测结果。每个未通过项都会显示原因、处理步骤和可用入口。安装细节、签名校验、回滚和开发环境见 [入门文档](docs/getting-started.md)。
+纯本机模式默认可用。公网连接、邮箱和微信都不会阻塞本机 Console 与主 Agent；微信是按需配置的可选连接。需要公网域名和 Agent 邮箱时，在 Setup Center 点击“验证公网与邮箱”，再在已登录的 `personal-agent.cn` 页面确认。本机从一次入口完成 Node 接入和用途隔离的资源授权，并自动刷新检测结果。每个未通过项都会显示原因、处理步骤和可用入口。安装细节、签名校验、回滚和开发环境见 [入门文档](docs/getting-started.md)。
 
 Beta/RC 为持续迭代版本，可以暂缓付费的 Windows/macOS 原生签名，因此操作系统可能要求用户明确放行；每个 Release 都必须公开 `RELEASE-SECURITY.json`、SHA-256、Sigstore、provenance 与 SBOM。稳定版仍强制 Authenticode 和 Apple Developer ID/notarization。
 

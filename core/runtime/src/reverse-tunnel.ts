@@ -130,16 +130,17 @@ export class ReverseTunnelConnector {
   startStream(message) {
     if (this.streams.has(message.id)) throw tunnelError("TUNNEL_STREAM_DUPLICATE", "Duplicate tunnel stream");
     if (this.streams.size >= DEFAULT_MAX_STREAMS) return this.sendError(message.id, "STREAM_LIMIT_EXCEEDED");
-    if (!isTunnelRouteAllowed(this.config.distribution, message.path, message.kind)) {
+    if (!isTunnelRouteAllowed(this.config.distribution, message.path, message.kind, message.method)) {
       this.streams.set(message.id, { id: message.id, kind: "rejected", nextRequestSeq: 0, requestBytes: 0 });
       return this.sendError(message.id, "REMOTE_ROUTE_DENIED");
     }
+    const tunnelPath = resolveTunnelRequestPath(message.path);
     const headers = sanitizeRequestHeaders(message.headers);
     headers.host = this.config.domain || "127.0.0.1";
     const stream = { id: message.id, kind: message.kind, nextRequestSeq: 0, nextResponseSeq: 0, requestBytes: 0, responseBytes: 0, ended: false, endRequested: false, draining: false, pendingHttp: [], pendingBytes: 0, request: null, localSocket: null };
     this.streams.set(message.id, stream);
     if (message.kind === "websocket") return this.startWebSocketStream(stream, message, headers);
-    const request = this.httpRequest({ hostname: "127.0.0.1", port: this.config.gateway.port, method: message.method, path: message.path, headers }, (response) => {
+    const request = this.httpRequest({ hostname: "127.0.0.1", port: this.config.gateway.port, method: message.method, path: tunnelPath, headers }, (response) => {
       if (!this.streams.has(stream.id)) return response.destroy();
       this.send({ v: 1, type: "response.start", id: stream.id, status: response.statusCode || 502, headers: sanitizeResponseHeaders(response.headers) });
       response.on("data", (chunk) => {
@@ -370,11 +371,51 @@ export function normalizeTunnelPath(value) {
   return `${url.pathname}${url.search}`;
 }
 
-export function isTunnelRouteAllowed(_distribution, requestPath, kind = "http") {
-  if (!["http", "websocket"].includes(kind)) return false;
-  try { normalizeTunnelPath(requestPath); return true; }
-  catch { return false; }
+export function resolveTunnelRequestPath(requestPath) {
+  const normalized = normalizeTunnelPath(requestPath);
+  const url = new URL(normalized, "http://127.0.0.1");
+  if (url.pathname === "/" || url.pathname === "/app") url.pathname = "/app/mobile";
+  return `${url.pathname}${url.search}`;
 }
+
+export function isTunnelRouteAllowed(_distribution, requestPath, kind = "http", method = "GET") {
+  if (kind !== "http") return false;
+  let pathname;
+  try { pathname = new URL(resolveTunnelRequestPath(requestPath), "http://127.0.0.1").pathname; }
+  catch { return false; }
+  const normalizedMethod = String(method || "GET").toUpperCase();
+  if (pathname === "/login" || pathname === "/logout") return ["GET", "HEAD", "POST"].includes(normalizedMethod);
+  if (!["GET", "HEAD"].includes(normalizedMethod)) return false;
+  if (MOBILE_TUNNEL_EXACT_PATHS.has(pathname)) return true;
+  return MOBILE_TUNNEL_PATH_PREFIXES.some((prefix) => pathname.startsWith(prefix));
+}
+
+const MOBILE_TUNNEL_EXACT_PATHS = new Set([
+  "/app/mobile",
+  "/favicon.ico",
+  "/api/node/v1/client/overview",
+  "/api/node/v1/client/runtime",
+  "/api/system/apps",
+  "/api/system/mail/status",
+  "/api/skills",
+  "/api/channels",
+  "/api/chat/sessions",
+  "/api/app/mail/messages",
+]);
+
+const MOBILE_TUNNEL_PATH_PREFIXES = [
+  "/app/mobile/",
+  "/_next/static/",
+  "/_next/image",
+  "/apps/",
+  "/api/mobile/",
+  "/api/chat/sessions/",
+  "/api/app/mail/messages/",
+  "/public/",
+  "/pages/",
+  "/publications/",
+  "/uploads/",
+];
 
 export function sanitizeRequestHeaders(headers) {
   const normalized = normalizeHeaderObject(headers);

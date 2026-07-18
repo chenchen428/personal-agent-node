@@ -47,7 +47,7 @@ test('customer Harness classifies and ships portable creation skills', () => {
 
 test('customer Harness carries the portable Node acceptance standard', () => {
   const standard = fs.readFileSync(path.join(root, 'skills/personal-agent/references/acceptance.md'), 'utf8');
-  for (const requirement of ['Node Core Gate', 'Optional Managed Cloud Integration', 'local-admin', 'ten minutes', 'previous-release rollback', 'public GitHub Release asset', '"route": "/app/chat"', '"uniquePrompt": true', '"realAgentRuntime": true', '"sameSessionAgentReply": true', '"wechatRequired": true', 'channels.wechat', 'WeChat never substitutes', 'Stable Go launchers', 'Setup Center']) assert.match(standard, new RegExp(requirement));
+  for (const requirement of ['Node Core Gate', 'Optional Managed Cloud Integration', 'local-admin', 'ten minutes', 'previous-release rollback', 'public GitHub Release asset', '"route": "/app/chat"', '"uniquePrompt": true', '"realAgentRuntime": true', '"sameSessionAgentReply": true', '"wechatRequired": false', 'connections.wechat', 'optional evidence', 'Stable Go launchers', 'Setup Center']) assert.match(standard, new RegExp(requirement));
   assert.equal(fs.existsSync(path.join(root, 'test/fixtures/skill-cases/personal-agent-acceptance/case.json')), true);
   const expected = JSON.parse(fs.readFileSync(path.join(root, 'test/fixtures/skill-cases/personal-agent-acceptance/expected.json'), 'utf8'));
   assert.deepEqual(Object.keys(expected.node.webConversation), [
@@ -60,15 +60,15 @@ test('customer Harness carries the portable Node acceptance standard', () => {
     'wechatRequired'
   ]);
   assert.equal(expected.node.webConversation.route, '/app/chat');
-  assert.equal(expected.node.webConversation.wechatRequired, true);
+  assert.equal(expected.node.webConversation.wechatRequired, false);
   const releaseWorkflow = fs.readFileSync(path.join(root, 'workflows/release.md'), 'utf8');
-  for (const requirement of ['Post-release Node gate', 'exact public asset', 'authenticated `/app/setup`', 'real Codex reply', 'same authenticated `/app/chat` session', '"wechatRequired": true']) assert.match(releaseWorkflow, new RegExp(requirement));
+  for (const requirement of ['Post-release Node gate', 'exact public asset', 'authenticated `/app/setup`', 'real Codex reply', 'same authenticated `/app/chat` session', '"wechatRequired": false']) assert.match(releaseWorkflow, new RegExp(requirement));
   const artifactVerifier = fs.readFileSync(path.join(root, 'scripts/verify-private-site-node-dist.mjs'), 'utf8');
   assert.match(artifactVerifier, /webConversation:\s*\{/);
   assert.match(artifactVerifier, /route: "\/app\/chat"/);
   assert.match(artifactVerifier, /realAgentRuntimeRequired: true/);
   assert.match(artifactVerifier, /sameSessionReplyRequired: true/);
-  assert.match(artifactVerifier, /wechatRequired: true/);
+  assert.match(artifactVerifier, /wechatRequired: false/);
 });
 
 test('seeded Node home links only to current path-based application routes', () => {

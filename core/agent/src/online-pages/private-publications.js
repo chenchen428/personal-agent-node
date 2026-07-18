@@ -1,11 +1,11 @@
 import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
+import { decodePageThumbnail, pageProperties } from "./page-thumbnail.js";
 
 export class PrivatePublicationStore {
-  constructor({ rootDir, baseUrl } = {}) {
+  constructor({ rootDir } = {}) {
     this.rootDir = path.resolve(rootDir || process.cwd());
-    this.baseUrl = String(baseUrl || "").replace(/\/+$/, "");
     fs.mkdirSync(this.rootDir, { recursive: true, mode: 0o700 });
     fs.chmodSync(this.rootDir, 0o700);
   }
@@ -30,7 +30,56 @@ export class PrivatePublicationStore {
     current.files = [...current.files.filter((item) => item.name !== name), entry].sort((a, b) => a.name.localeCompare(b.name));
     current.updatedAt = entry.updatedAt;
     fs.writeFileSync(manifestPath, `${JSON.stringify(current, null, 2)}\n`, { mode: 0o600 });
-    return { ...entry, publicationId: id, url: `${this.baseUrl}/publications/${encodeURIComponent(id)}/${encodeURIComponent(name)}` };
+    return { ...entry, publicationId: id, url: publicationUrl(id, name) };
+  }
+
+  publish(input = {}) {
+    const fileName = safeFileName(input.fileName || "index.html");
+    if (!/\.html?$/i.test(fileName)) throw new Error("pages publish requires an HTML entry file");
+    const desktopThumbnail = decodePageThumbnail(input.desktopThumbnail, { variant: "desktop" });
+    const mobileThumbnail = decodePageThumbnail(input.mobileThumbnail, { variant: "mobile" });
+    if (desktopThumbnail.buffer.equals(mobileThumbnail.buffer)) throw new Error("desktop and mobile Page thumbnails must be different screenshots");
+    const properties = pageProperties(input, desktopThumbnail, mobileThumbnail);
+    const desktopThumbnailAsset = this.upload({
+      publicationId: input.publicationId,
+      fileName: desktopThumbnail.fileName,
+      content: desktopThumbnail.buffer.toString("base64"),
+      encoding: "base64",
+      mimeType: desktopThumbnail.mimeType,
+      overwrite: true,
+    });
+    const mobileThumbnailAsset = this.upload({
+      publicationId: desktopThumbnailAsset.publicationId,
+      fileName: mobileThumbnail.fileName,
+      content: mobileThumbnail.buffer.toString("base64"),
+      encoding: "base64",
+      mimeType: mobileThumbnail.mimeType,
+      overwrite: true,
+    });
+    const asset = this.upload({ ...input, publicationId: desktopThumbnailAsset.publicationId, fileName });
+    const directory = path.join(this.rootDir, asset.publicationId);
+    const manifestPath = path.join(directory, "publication.json");
+    const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf8"));
+    const desktopMetadata = privateThumbnailMetadata(desktopThumbnailAsset, desktopThumbnail, properties.desktopThumbnailAlt);
+    const mobileMetadata = privateThumbnailMetadata(mobileThumbnailAsset, mobileThumbnail, properties.mobileThumbnailAlt);
+    manifest.page = {
+      pageId: `private-${asset.publicationId}`,
+      title: properties.title,
+      summary: properties.summary,
+      entryFile: asset.fileName,
+      visibility: "private",
+      thumbnail: desktopMetadata,
+      thumbnails: { desktop: desktopMetadata, mobile: mobileMetadata },
+    };
+    fs.writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`, { mode: 0o600 });
+    return {
+      ...asset,
+      pageId: manifest.page.pageId,
+      page: manifest.page,
+      thumbnailUrl: desktopThumbnailAsset.url,
+      desktopThumbnailUrl: desktopThumbnailAsset.url,
+      mobileThumbnailUrl: mobileThumbnailAsset.url,
+    };
   }
 
   list() {
@@ -40,7 +89,7 @@ export class PrivatePublicationStore {
         const manifestPath = path.join(this.rootDir, entry.name, "publication.json");
         if (!fs.existsSync(manifestPath)) return null;
         const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf8"));
-        return { ...manifest, url: `${this.baseUrl}/publications/${encodeURIComponent(entry.name)}/index.html` };
+        return { ...manifest, url: publicationUrl(entry.name, "index.html") };
       })
       .filter(Boolean)
       .sort((a, b) => String(b.updatedAt || b.createdAt).localeCompare(String(a.updatedAt || a.createdAt)));
@@ -55,6 +104,21 @@ export class PrivatePublicationStore {
     if (!fs.existsSync(filePath) || !fs.statSync(filePath).isFile()) return null;
     return { filePath, mimeType: mimeFromName(name), fileName: name };
   }
+}
+
+function publicationUrl(publicationId, fileName) {
+  return `/publications/${encodeURIComponent(publicationId)}/${encodeURIComponent(fileName)}`;
+}
+
+function privateThumbnailMetadata(asset, thumbnail, alt) {
+  return {
+    fileName: asset.fileName,
+    mimeType: thumbnail.mimeType,
+    width: thumbnail.width,
+    height: thumbnail.height,
+    alt,
+    sha256: asset.sha256,
+  };
 }
 
 function safeSegment(value) {

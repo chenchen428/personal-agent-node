@@ -12,10 +12,11 @@ export type WechatLogin = {
 
 export type WechatLoginPhase = "idle" | "generating" | "ready" | "scanned" | "expired" | "error" | "connected";
 
-export function useWechatLogin({ connected, onConnected, autoStart = false }: {
+export function useWechatLogin({ connected, onConnected, autoStart = false, reconnectOnMount = false }: {
   connected: boolean;
   onConnected: () => Promise<void>;
   autoStart?: boolean;
+  reconnectOnMount?: boolean;
 }) {
   const [login, setLogin] = useState<WechatLogin | null>(null);
   const [phase, setPhase] = useState<WechatLoginPhase>(connected ? "connected" : "idle");
@@ -32,7 +33,7 @@ export function useWechatLogin({ connected, onConnected, autoStart = false }: {
       const response = await fetch("/api/channels/wechat/login/start", { method: "POST" });
       const payload = await response.json() as WechatLogin & { ok?: boolean; error?: string };
       if (!response.ok || payload.ok === false || !payload.session || !payload.qrSvg) throw new Error(payload.error || `HTTP ${response.status}`);
-      setLogin(payload);
+      setLogin({ ...payload, expiresAt: payload.expiresAt || new Date(Date.now() + 2 * 60_000).toISOString() });
       setPhase("ready");
       setMessage("等待你在微信中确认。这个页面会自动更新连接状态。");
     } catch {
@@ -42,14 +43,14 @@ export function useWechatLogin({ connected, onConnected, autoStart = false }: {
   }, []);
 
   useEffect(() => {
-    if (!autoStart || connected || autoStarted.current) return;
+    if (!autoStart || (connected && !reconnectOnMount) || autoStarted.current) return;
     autoStarted.current = true;
     void startLogin();
-  }, [autoStart, connected, startLogin]);
+  }, [autoStart, connected, reconnectOnMount, startLogin]);
 
   useEffect(() => {
-    if (connected) setPhase("connected");
-  }, [connected]);
+    if (connected && !login) setPhase("connected");
+  }, [connected, login]);
 
   useEffect(() => {
     const session = login?.session;
@@ -58,6 +59,12 @@ export function useWechatLogin({ connected, onConnected, autoStart = false }: {
     let timer = 0;
     const poll = async () => {
       let terminal = false;
+      if (login.expiresAt && Date.now() >= new Date(login.expiresAt).getTime()) {
+        terminal = true;
+        setPhase("expired");
+        setMessage("二维码已过期，请重新生成。");
+        return;
+      }
       try {
         const response = await fetch(`/api/channels/wechat/login/status?session=${encodeURIComponent(session)}`, { cache: "no-store" });
         const payload = await response.json() as Partial<WechatLogin> & { ok?: boolean; error?: string };
@@ -85,7 +92,7 @@ export function useWechatLogin({ connected, onConnected, autoStart = false }: {
     };
     timer = window.setTimeout(() => void poll(), 1800);
     return () => { cancelled = true; window.clearTimeout(timer); };
-  }, [login?.session, onConnected]);
+  }, [login?.expiresAt, login?.session, onConnected]);
 
-  return { login, phase, message, working: phase === "generating", startLogin };
+  return { login, phase, message, active: ["generating", "ready", "scanned"].includes(phase), working: phase === "generating", startLogin };
 }

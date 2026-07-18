@@ -107,16 +107,30 @@ test('release installation does not materialize repository Agent compatibility l
   assert.doesNotMatch(installer, /materializeHarnessLinks|verifyHarnessLinks/);
 });
 
-test('fresh release installation points to the local Setup Center with required WeChat guidance', () => {
+test('fresh release installation points to the local Setup Center with optional WeChat guidance', () => {
   const installer = fs.readFileSync(path.join(root, 'scripts', 'install-private-site-node-release.mjs'), 'utf8');
   const githubInstaller = fs.readFileSync(path.join(root, 'scripts', 'install-from-github-release.mjs'), 'utf8');
   for (const source of [installer, githubInstaller]) {
     assert.match(source, /requiredAction:\s*["']open-setup-center["']/);
     assert.match(source, /\/app\/setup/);
-    assert.match(source, /wechatRequired:\s*true/);
+    assert.match(source, /wechatRequired:\s*false/);
     assert.match(source, /personal-agent setup status --json/);
     assert.doesNotMatch(source, /bind WeChat first/);
   }
+});
+
+test('Windows double-click setup selects one root for Core, Workspace, and staging without changing macOS', () => {
+  const setup = fs.readFileSync(path.join(root, 'core', 'runtime', 'native', 'cmd', 'personal-agent-setup', 'main.go'), 'utf8');
+  const windowsPicker = fs.readFileSync(path.join(root, 'core', 'runtime', 'native', 'cmd', 'personal-agent-setup', 'install_location_windows.go'), 'utf8');
+  const otherPlatforms = fs.readFileSync(path.join(root, 'core', 'runtime', 'native', 'cmd', 'personal-agent-setup', 'install_location_other.go'), 'utf8');
+  assert.match(setup, /installCommand\(nil, true\)/);
+  assert.match(setup, /resolveInstallHome\(\*homeRoot, interactive, runtime\.GOOS, selectInstallHome\)/);
+  assert.match(setup, /filepath\.Join\(\*homeRoot, "core"\)/);
+  assert.match(setup, /filepath\.Join\(\*homeRoot, "workspace"\)/);
+  assert.match(setup, /os\.MkdirTemp\(temporaryBase, "\.personal-agent-setup-"\)/);
+  assert.match(windowsPicker, /SHBrowseForFolderW/);
+  assert.match(windowsPicker, /选择 Personal Agent 安装位置/);
+  assert.match(otherPlatforms, /return defaultPath, true, nil/);
 });
 
 test('installed personal-agent command follows the immutable current release', () => {

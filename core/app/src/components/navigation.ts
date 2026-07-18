@@ -1,6 +1,6 @@
 import type { ComponentType } from "react";
 import {
-  Activity, AppWindow, Bot, Boxes, Cable, CalendarClock, Database, FileText,
+  Activity, AppWindow, BarChart3, Bot, Cable, Database, FileText,
   Gauge, Info, LayoutDashboard, Mail, MessageCircle, Settings,
 } from "lucide-react";
 
@@ -16,14 +16,16 @@ export const desktopNavigationGroups: NavigationGroup[] = [
   { label: "核心功能", items: [
     { label: "总览", href: "/app", icon: LayoutDashboard },
     { label: "对话", href: "/app/conversations", icon: MessageCircle },
-    { label: "渠道", href: "/app/channels", icon: Cable },
+    { label: "连接", href: "/app/connections", icon: Cable },
   ] },
   { label: "Agent 组件", items: [
     { label: "任务", href: "/app/workers", icon: Bot },
     { label: "邮件", href: "/app/mail", icon: Mail },
     { label: "数据", href: "/app/data", icon: Database },
     { label: "发布页", href: "/app/pages", icon: FileText },
-    { label: "自动化", href: "/app/automations", icon: CalendarClock },
+  ] },
+  { label: "统计目录", items: [
+    { label: "Token 统计", href: "/app/statistics/token-usage", icon: BarChart3 },
   ] },
 ];
 
@@ -38,6 +40,6 @@ export const mobileNavigation: NavigationItem[] = [
   { label: "最近动态", href: "/app/mobile", icon: Activity },
   { label: "发布页", href: "/app/mobile/pages", icon: FileText },
   { label: "任务", href: "/app/mobile/workers", icon: Bot },
-  { label: "应用", href: "/app/mobile/apps", icon: AppWindow },
+  { label: "全部应用", href: "/app/mobile/apps", icon: AppWindow },
   { label: "关于", href: "/app/mobile/about", icon: Info },
 ];

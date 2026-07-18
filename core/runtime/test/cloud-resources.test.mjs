@@ -4,6 +4,7 @@ import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 import { authorizeCloudResources, managedServiceReadiness, onboardingStatus, refreshCloudResources } from '../src/cloud-resources.ts';
+import { initializeSite } from '../src/config.ts';
 
 const resources = {
   account: { githubUserId: '12345678', githubLogin: 'owner-login' },
@@ -18,10 +19,13 @@ test('CLI browser authorization stores only the short-lived token and enables se
   const dataRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'personal-agent-cloud-resources-'));
   const calls = [];
   let clock = new Date('2026-07-15T00:00:00.000Z');
+  const { config } = initializeSite({ dataRoot, domain: 'personal-agent.local' });
   const fetchImpl = async (url, options) => {
     calls.push({ url: String(url), options });
     if (String(url).endsWith('/api/cli/auth/start')) {
-      assert.deepEqual(JSON.parse(options.body), { clientName: 'personal-agent-cli', clientVersion: '0.1.0-test' });
+      const body = JSON.parse(options.body);
+      assert.deepEqual({ ...body, installationId: undefined }, { clientName: 'personal-agent-cli', clientVersion: '0.1.0-test', installationId: undefined, spaceId: config.space.id, spaceKind: 'personal', spaceSlug: 'personal' });
+      assert.match(body.installationId, /^ins_/);
       return Response.json({
         deviceCode: 'private-device-code-that-is-long-enough',
         userCode: 'ABCD-EFGH',
@@ -39,7 +43,7 @@ test('CLI browser authorization stores only the short-lived token and enables se
     return Response.json({ ok: true, resources });
   };
   try {
-    const before = managedServiceReadiness({ dataRoot });
+    const before = managedServiceReadiness({ dataRoot: config.dataRoot });
     assert.equal(before.state, 'disabled');
     assert.equal(before.reason, 'cloud-binding-required');
     const authorizations = [];
@@ -59,9 +63,9 @@ test('CLI browser authorization stores only the short-lived token and enables se
     assert.equal(loggedIn.serviceReadiness.state, 'enabled');
     assert.equal(loggedIn.serviceReadiness.managedMail.enabled, true);
     assert.equal(loggedIn.serviceReadiness.managedConfiguration.enabled, true);
-    const publicDocument = fs.readFileSync(path.join(dataRoot, 'config', 'cloud-resources.json'), 'utf8');
+    const publicDocument = fs.readFileSync(path.join(config.dataRoot, 'config', 'cloud-resources.json'), 'utf8');
     assert.doesNotMatch(publicDocument, /private-device-code|cli-session-token/);
-    const secretDocument = fs.readFileSync(path.join(dataRoot, 'secrets', 'applications', 'cloud-cli-session.json'), 'utf8');
+    const secretDocument = fs.readFileSync(path.join(config.dataRoot, 'secrets', 'applications', 'cloud-cli-session.json'), 'utf8');
     assert.match(secretDocument, /cli-session-token/);
     assert.doesNotMatch(secretDocument, /private-device-code|password|githubUserId/i);
     const refreshed = await refreshCloudResources({ dataRoot, fetchImpl, now: () => new Date('2026-07-15T01:00:00.000Z') });

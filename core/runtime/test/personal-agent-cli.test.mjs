@@ -111,6 +111,22 @@ test('Activity CLI uses an ephemeral main-Agent capability and never returns it'
     assert.equal(missing.status, 5);
     assert.equal(JSON.parse(missing.stderr).error.code, 'MAIN_AGENT_REQUIRED');
 
+    const pageWithoutTarget = await runAsync([
+      'activity', 'upsert', '--capability', capability, '--type', 'page',
+      '--title', 'Page published', '--detail', 'The Page is ready.',
+      '--idempotency-key', 'page-without-target', '--json', '--data-root', dataRoot,
+    ], '', { OPEN_AGENT_BRIDGE_PORT: String(port) });
+    assert.equal(pageWithoutTarget.status, 2);
+    assert.match(JSON.parse(pageWithoutTarget.stderr).error.message, /--target-type page and --target-id/);
+
+    const partialTarget = await runAsync([
+      'activity', 'upsert', '--capability', capability, '--type', 'work',
+      '--title', 'Linked work', '--detail', 'The work is ready.',
+      '--target-type', 'work', '--idempotency-key', 'partial-target', '--json', '--data-root', dataRoot,
+    ], '', { OPEN_AGENT_BRIDGE_PORT: String(port) });
+    assert.equal(partialTarget.status, 2);
+    assert.match(JSON.parse(partialTarget.stderr).error.message, /must be provided together/);
+
     const result = await runAsync([
       'activity', 'upsert',
       '--capability', capability,
@@ -150,7 +166,7 @@ test('setup status exposes separate readiness dimensions and remains read-only',
     assert.equal(body.command, 'setup status');
     assert.deepEqual(Object.keys(body.result.readiness), ['console', 'agent', 'remote', 'mail']);
     assert.equal(body.result.readiness.remote, 'not-selected');
-    assert.equal(body.result.checks.find((check) => check.id === 'channels.wechat').requirement, 'required-for-agent');
+    assert.equal(body.result.checks.find((check) => check.id === 'connections.wechat').requirement, 'optional');
     assert.deepEqual(snapshotDataRoot(dataRoot), before);
   } finally {
     fs.rmSync(dataRoot, { recursive: true, force: true });
@@ -218,6 +234,7 @@ test('cloud enrollment does not accept long-lived or invitation credentials on t
 
 test('cloud login uses browser authorization and emits only public authorization plus redacted resources', async (t) => {
   const dataRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'personal-agent-cloud-login-cli-'));
+  initializeSite({ domain: 'local.example', dataRoot });
   const server = http.createServer(async (request, response) => {
     const body = await new Promise((resolve) => {
       const chunks = [];
@@ -227,6 +244,7 @@ test('cloud login uses browser authorization and emits only public authorization
     response.setHeader('content-type', 'application/json');
     if (request.url === '/api/cli/auth/start') {
       assert.equal(body.clientName, 'personal-agent-cli');
+      assert.match(body.installationId, /^ins_[A-Za-z0-9_-]+$/);
       response.writeHead(201);
       response.end(JSON.stringify({
         deviceCode: 'private-device-code-that-is-long-enough',
@@ -342,8 +360,8 @@ test('mail status is R0 read-only while mail plan is preview-only', () => {
 test('Personal App CLI verifies trusted Workspace Apps and controls the default entry', () => {
   const dataRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'personal-agent-cli-app-'));
   try {
-    initializeSite({ domain: 'local.example', dataRoot });
-    const appRoot = path.join(dataRoot, 'apps', 'example.dashboard');
+    const { config } = initializeSite({ domain: 'local.example', dataRoot });
+    const appRoot = path.join(config.appsDir, 'example.dashboard');
     fs.mkdirSync(path.join(appRoot, 'dist'), { recursive: true });
     fs.writeFileSync(path.join(appRoot, 'personal-agent.app.json'), `${JSON.stringify({
       apiVersion: 'personal-agent/app-v1',
@@ -368,12 +386,37 @@ test('Personal App CLI verifies trusted Workspace Apps and controls the default 
 
     const cleared = JSON.parse(runOk(['app', 'clear-default', '--json', '--data-root', dataRoot]).stdout);
     assert.equal(cleared.result.route, '/app');
-    assert.equal(JSON.parse(fs.readFileSync(path.join(dataRoot, 'config', 'apps.json'), 'utf8')).defaultAppId, '');
+    assert.equal(JSON.parse(fs.readFileSync(config.appsConfigPath, 'utf8')).defaultAppId, '');
 
     fs.rmSync(path.join(appRoot, 'dist', 'index.html'));
     const invalid = run(['app', 'verify', 'example.dashboard', '--json', '--data-root', dataRoot]);
     assert.equal(invalid.status, 8);
     assert.equal(JSON.parse(invalid.stderr).error.code, 'ACCEPTANCE_FAILED');
+  } finally {
+    fs.rmSync(dataRoot, { recursive: true, force: true });
+  }
+});
+
+test('Space CLI creates isolated runtimes and requires exact confirmation before deletion', () => {
+  const dataRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'personal-agent-cli-space-'));
+  try {
+    initializeSite({ domain: 'personal-agent.local', dataRoot });
+    const created = JSON.parse(runOk(['space', 'create', '--slug', 'family', '--name', '家庭', '--json', '--data-root', dataRoot]).stdout);
+    assert.equal(created.result.space.slug, 'family');
+    assert.equal(created.result.space.displayName, '家庭');
+    assert.match(created.result.space.localUrl, /^http:\/\/127\.0\.0\.1:/);
+    const listed = JSON.parse(runOk(['space', 'list', '--json', '--data-root', dataRoot]).stdout);
+    assert.deepEqual(listed.result.spaces.map((space) => space.slug), ['personal', 'family']);
+    assert.notEqual(listed.result.spaces[0].workspaceRoot, listed.result.spaces[1].workspaceRoot);
+
+    const requestedStop = JSON.parse(runOk(['space', 'stop', 'family', '--json', '--data-root', dataRoot]).stdout);
+    assert.equal(requestedStop.result.space.desiredState, 'stopped');
+    const missingConfirmation = run(['space', 'delete', 'family', '--json', '--data-root', dataRoot]);
+    assert.equal(missingConfirmation.status, 5);
+    assert.equal(JSON.parse(missingConfirmation.stderr).error.code, 'APPROVAL_REQUIRED');
+    const deleted = JSON.parse(runOk(['space', 'delete', 'family', '--confirm', 'family', '--json', '--data-root', dataRoot]).stdout);
+    assert.equal(deleted.result.space.state, 'deleted');
+    assert.deepEqual(JSON.parse(runOk(['space', 'list', '--json', '--data-root', dataRoot]).stdout).result.spaces.map((space) => space.slug), ['personal']);
   } finally {
     fs.rmSync(dataRoot, { recursive: true, force: true });
   }

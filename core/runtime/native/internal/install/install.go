@@ -163,11 +163,9 @@ func Install(ctx context.Context, opts Options, runner Runner) (result Result, r
 			return result, fmt.Errorf("activate staged directory: %w", err)
 		}
 	}
-	if workspaceSeed := filepath.Join(target, "workspace"); pathExists(workspaceSeed) {
-		if err := mergeMissingTree(workspaceSeed, resolved.DataRoot); err != nil {
-			return result, fmt.Errorf("materialize Workspace seed: %w", err)
-		}
-	}
+	// Mutable Agent workspace content is provisioned by `private-site prepare`
+	// inside the default personal Space. The installation data root contains
+	// only installation metadata and the Space registry.
 	node := bundledNode(target, resolved.Platform)
 	privateSite := filepath.Join(target, "core", "runtime", "bin", "private-site.mjs")
 	env := envFor(resolved)
@@ -280,7 +278,7 @@ func Install(ctx context.Context, opts Options, runner Runner) (result Result, r
 		"activatedAt":     time.Now().UTC().Format(time.RFC3339),
 		"current":         current,
 		"previous":        pointerTarget(previous),
-		"setup":           map[string]any{"path": "/app/setup", "wechatRequired": true},
+		"setup":           map[string]any{"path": "/app/setup", "wechatRequired": false},
 	}
 	if err := writeJSON(filepath.Join(resolved.InstallRoot, "installation.json"), state, 0o600); err != nil {
 		return result, err
@@ -641,7 +639,7 @@ func deactivateService(ctx context.Context, opts Options, runner Runner, env []s
 }
 
 func waitForSupervisorShutdown(ctx context.Context, dataRoot string, timeout time.Duration) {
-	statusPath := filepath.Join(dataRoot, "runtime", "supervisor.json")
+	statusPath := filepath.Join(dataRoot, "installation", "runtime", "supervisor.json")
 	deadline := time.Now().Add(timeout)
 	for {
 		var status struct {

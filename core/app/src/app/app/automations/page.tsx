@@ -1,2 +1,5 @@
-import { AutomationsPage as DesktopAutomationsPage } from "@/components/desktop-v627/automations-page";
-export default function AutomationsPage() { return <DesktopAutomationsPage />; }
+import { redirect } from "next/navigation";
+
+export default function AutomationsCompatibilityPage() {
+  redirect("/app/connections");
+}

@@ -1,13 +1,16 @@
 {
   "schemaVersion": 1,
   "id": "xiaohongshu-managed-platform",
-  "workflow": "Xiaohongshu managed-platform baseline",
+  "workflow": "Social browser read connector baseline",
   "cloudIndependent": true,
-  "given": "A deterministic local Xiaohongshu adapter with mocked external responses",
-  "when": "Account login, verification, search, and invalid QR inputs are exercised",
+  "given": "Deterministic legacy managed and current OpenCLI social providers with mocked external responses",
+  "when": "Browser executor status, fixed-site opening, historical login, and read-only content inputs are exercised",
   "acceptance": [
-    "Account login is coordinated without leaking verification codes",
+    "Historical account login is coordinated without leaking verification codes",
     "Read-only search results are normalized",
-    "Invalid login and QR input is rejected"
+    "Invalid legacy login and QR input is rejected",
+    "Current social status inspects only the browser executor, and opening a site creates no account connection",
+    "OpenCLI execution is allowlisted, bounded, shell-free, and does not receive unrelated Personal Agent secrets",
+    "Twitter/X exposes normalized search and thread reads without inspecting login state or exposing OpenCLI write commands"
   ]
 }

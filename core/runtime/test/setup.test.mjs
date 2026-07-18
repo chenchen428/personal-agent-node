@@ -7,34 +7,43 @@ import test from 'node:test';
 import { initializeSite } from '../src/config.ts';
 import { inspectRemoteConnectivity, setupDiagnostics, setupStatus, writeWebConversationAcceptance } from '../src/setup.ts';
 
-test('setup status keeps WeChat as required Agent readiness', async () => {
+test('setup status resolves a direct Space root and keeps WeChat optional after Agent readiness', async () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'personal-agent-setup-status-'));
   const dataRoot = path.join(root, 'data');
   const installRoot = path.join(root, 'install');
   const current = path.join(installRoot, 'releases', 'release-one');
   try {
-    initializeSite({ dataRoot, domain: 'personal-agent.local' });
+    const { config } = initializeSite({ dataRoot, domain: 'personal-agent.local' });
+    const spaceRoot = config.dataRoot;
     fs.mkdirSync(current, { recursive: true });
     if (process.platform === 'win32') fs.writeFileSync(path.join(installRoot, 'current'), `${current}\n`);
     else fs.symlinkSync(path.relative(installRoot, current), path.join(installRoot, 'current'));
     fs.writeFileSync(path.join(installRoot, 'installation.json'), `${JSON.stringify({ activeReleaseId: 'release-one' })}\n`);
-    const envPath = path.join(dataRoot, 'secrets', 'applications', 'site.env');
+    const envPath = path.join(spaceRoot, 'secrets', 'applications', 'site.env');
     fs.appendFileSync(envPath, 'PERSONAL_AGENT_AUTH_PASSWORD=test-only-password\n');
-    fs.writeFileSync(path.join(dataRoot, 'config', 'local-auth.json'), `${JSON.stringify({ schemaVersion: 1, algorithm: 'scrypt', verifier: 'test-verifier' })}\n`);
-    fs.mkdirSync(path.join(dataRoot, 'runtime'), { recursive: true });
-    fs.writeFileSync(path.join(dataRoot, 'runtime', 'supervisor.json'), `${JSON.stringify({
+    fs.writeFileSync(path.join(spaceRoot, 'config', 'local-auth.json'), `${JSON.stringify({ schemaVersion: 1, algorithm: 'scrypt', verifier: 'test-verifier' })}\n`);
+    fs.mkdirSync(path.join(dataRoot, 'installation', 'runtime'), { recursive: true });
+    fs.writeFileSync(path.join(dataRoot, 'installation', 'runtime', 'supervisor.json'), `${JSON.stringify({ pid: 122, status: 'running' })}\n`);
+    fs.mkdirSync(path.join(spaceRoot, 'runtime'), { recursive: true });
+    fs.writeFileSync(path.join(spaceRoot, 'runtime', 'supervisor.json'), `${JSON.stringify({
       pid: 123,
       status: 'running',
       components: Object.fromEntries(['personal-agent-control', 'open-agent-bridge', 'open-agent-bridge-worker', 'personal-agent-control-api', 'personal-agent-app', 'private-site-gateway', 'personal-agent-tunnel'].map((name, index) => [name, { pid: index + 10 }])),
     })}\n`);
-    fs.mkdirSync(path.join(dataRoot, 'runtime', 'setup'), { recursive: true });
-    fs.writeFileSync(path.join(dataRoot, 'runtime', 'setup', 'managed-cloud-action.json'), `${JSON.stringify({ schemaVersion: 1, state: 'running', phase: 'resources', pid: 123, secret: 'must-not-leak' })}\n`);
-    writeWebConversationAcceptance({ dataRoot, now: () => new Date('2026-07-15T00:00:00.000Z') });
+    fs.mkdirSync(path.join(spaceRoot, 'runtime', 'setup'), { recursive: true });
+    fs.writeFileSync(path.join(spaceRoot, 'runtime', 'setup', 'managed-cloud-action.json'), `${JSON.stringify({ schemaVersion: 1, state: 'running', phase: 'resources', pid: 123, secret: 'must-not-leak' })}\n`);
+    writeWebConversationAcceptance({ dataRoot: spaceRoot, now: () => new Date('2026-07-15T00:00:00.000Z') });
 
     const status = await setupStatus({
-      dataRoot,
+      dataRoot: spaceRoot,
       installRoot,
-      env: { PRIVATE_SITE_DATA_ROOT: dataRoot, PRIVATE_SITE_INSTALL_ROOT: installRoot },
+      env: {
+        PERSONAL_AGENT_DATA_ROOT: dataRoot,
+        PERSONAL_AGENT_SPACE_ID: 'sp_stale',
+        PERSONAL_AGENT_SPACE_ROOT: path.join(dataRoot, 'spaces', 'sp_stale'),
+        PRIVATE_SITE_DATA_ROOT: spaceRoot,
+        PRIVATE_SITE_INSTALL_ROOT: installRoot,
+      },
       now: () => new Date('2026-07-15T00:00:00.000Z'),
       processAlive: () => true,
       portProbe: async () => true,
@@ -42,10 +51,12 @@ test('setup status keeps WeChat as required Agent readiness', async () => {
     });
     assert.equal(status.schemaVersion, 1);
     assert.equal(status.readiness.console, 'ready');
-    assert.equal(status.readiness.agent, 'action-required');
+    assert.equal(status.readiness.agent, 'ready');
     assert.equal(status.readiness.remote, 'not-selected');
     assert.equal(status.readiness.mail, 'not-selected');
-    assert.equal(status.checks.find((check) => check.id === 'channels.wechat').state, 'action-required');
+    assert.equal(status.checks.find((check) => check.id === 'installation.data-root').evidence.spaceId, config.space.id);
+    assert.equal(status.checks.find((check) => check.id === 'connections.wechat').state, 'not-selected');
+    assert.equal(status.checks.find((check) => check.id === 'connections.wechat').requirement, 'optional');
     assert.equal(status.checks.find((check) => check.id === 'mail.identity').state, 'not-selected');
     assert.match(status.checks.find((check) => check.id === 'agent.codex.executable').why, /Codex/);
     assert.match(status.checks.find((check) => check.id === 'agent.codex.executable').guidance, /官方 Codex CLI 指南/);
@@ -112,8 +123,9 @@ test('managed remote readiness requires a fresh reverse application tunnel inste
   const dataRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'personal-agent-setup-reverse-tunnel-'));
   try {
     const initialized = initializeSite({ dataRoot, domain: 'personal-agent.local' });
+    const spaceRoot = initialized.config.dataRoot;
     const now = new Date('2026-07-15T12:00:00.000Z');
-    fs.writeFileSync(path.join(dataRoot, 'config', 'cloud.json'), `${JSON.stringify({
+    fs.writeFileSync(path.join(spaceRoot, 'config', 'cloud.json'), `${JSON.stringify({
       schemaVersion: 2,
       cloudUrl: 'https://chenjianhui.site',
       managedHost: 'owner.chenjianhui.site',
@@ -121,7 +133,7 @@ test('managed remote readiness requires a fresh reverse application tunnel inste
       enrolledAt: now.toISOString(),
       tunnel: { protocol: 'pa-reverse-ws-v1', endpoint: 'wss://relay.chenjianhui.site/v1/connect', heartbeatSeconds: 20, maxFrameBytes: 131072, generation: 1 },
     })}\n`);
-    fs.writeFileSync(path.join(dataRoot, 'config', 'cloud-resources.json'), `${JSON.stringify({
+    fs.writeFileSync(path.join(spaceRoot, 'config', 'cloud-resources.json'), `${JSON.stringify({
       schemaVersion: 1,
       resources: {
         site: { managedHost: 'owner.chenjianhui.site', publicDomain: 'owner.chenjianhui.site' },
@@ -131,10 +143,10 @@ test('managed remote readiness requires a fresh reverse application tunnel inste
       syncedAt: now.toISOString(),
     })}\n`);
     fs.writeFileSync(initialized.config.configPath, `${JSON.stringify({ ...initialized.config.site, connectionMode: 'managed-cloud' })}\n`);
-    fs.mkdirSync(path.join(dataRoot, 'runtime'), { recursive: true });
-    fs.mkdirSync(path.join(dataRoot, 'runtime', 'setup'), { recursive: true });
-    fs.writeFileSync(path.join(dataRoot, 'runtime', 'reverse-tunnel.json'), `${JSON.stringify({ schemaVersion: 1, protocol: 'pa-reverse-ws-v1', state: 'ready', generation: 1, lastPongAt: now.toISOString() })}\n`);
-    fs.writeFileSync(path.join(dataRoot, 'runtime', 'setup', 'managed-cloud-action.json'), `${JSON.stringify({ schemaVersion: 1, state: 'failed', phase: 'enrollment', code: 'CLI_EXIT_7' })}\n`);
+    fs.mkdirSync(path.join(spaceRoot, 'runtime'), { recursive: true });
+    fs.mkdirSync(path.join(spaceRoot, 'runtime', 'setup'), { recursive: true });
+    fs.writeFileSync(path.join(spaceRoot, 'runtime', 'reverse-tunnel.json'), `${JSON.stringify({ schemaVersion: 1, protocol: 'pa-reverse-ws-v1', state: 'ready', generation: 1, lastPongAt: now.toISOString() })}\n`);
+    fs.writeFileSync(path.join(spaceRoot, 'runtime', 'setup', 'managed-cloud-action.json'), `${JSON.stringify({ schemaVersion: 1, state: 'failed', phase: 'enrollment', code: 'CLI_EXIT_7' })}\n`);
     const status = await setupStatus({
       dataRoot,
       installRoot: path.join(dataRoot, 'install'),

@@ -10,7 +10,7 @@ export function prepareBridgeCliShims(config, options = {}) {
   const platform = options.platform || process.platform;
   const env = options.env || process.env;
   const installRoot = canonicalDirectory(options.installRoot || env.PRIVATE_SITE_INSTALL_ROOT || path.join(env.PERSONAL_AGENT_HOME || path.join(os.homedir(), ".personal-agent"), "core"));
-  const currentEntrypoint = path.join(installRoot, "current", "core", "agent", "bin", "pa-cli.mjs");
+  const currentEntrypoint = path.join(resolveCurrentReleaseRoot(installRoot), "core", "agent", "bin", "pa-cli.mjs");
   const developmentEntrypoint = path.join(workspaceRoot, "core", "agent", "bin", "pa-cli.mjs");
   const entrypoint = fs.existsSync(currentEntrypoint) ? currentEntrypoint : developmentEntrypoint;
   if (!fs.existsSync(entrypoint)) throw new Error("The bundled pa-cli entrypoint is missing");
@@ -48,14 +48,15 @@ export function bridgeCliStatus(config, options = {}) {
   const installRoot = canonicalDirectory(options.installRoot || env.PRIVATE_SITE_INSTALL_ROOT || path.join(env.PERSONAL_AGENT_HOME || path.join(os.homedir(), ".personal-agent"), "core"));
   const binDir = path.resolve(options.binDir || defaultUserBin({ platform, env, homeDir: options.homeDir }));
   const nodeRuntime = resolveShimNodeRuntime({ platform, installRoot, configured: options.nodeRuntime });
-  const entrypoint = options.entrypoint || path.join(installRoot, "current", "core", "agent", "bin", "pa-cli.mjs");
+  const currentEntrypoint = path.join(resolveCurrentReleaseRoot(installRoot), "core", "agent", "bin", "pa-cli.mjs");
+  const entrypoint = options.entrypoint || currentEntrypoint;
   const commandPaths = options.commandPaths || bridgeCommandNames.map((name) => path.join(binDir, platform === "win32" ? `${name}.cmd` : name));
   const expectedBridgeShims = commandPaths.map((commandPath) => ({
     commandPath,
     content: renderShim({ platform, nodeRuntime, entrypoint, envPath: config.envPath, environment: shimEnvironment(config) }),
   }));
   const bridgeShimsMatch = expectedBridgeShims.every(({ commandPath, content }) => shimMatches(commandPath, content));
-  const bridgeFollowsCurrent = samePath(entrypoint, path.join(installRoot, "current", "core", "agent", "bin", "pa-cli.mjs"), platform) && bridgeShimsMatch;
+  const bridgeFollowsCurrent = samePath(entrypoint, currentEntrypoint, platform) && bridgeShimsMatch;
   const pathReady = pathEntries(env.PATH || env.Path || "").some((entry) => samePath(entry, binDir, platform));
   return {
     ready: fs.existsSync(entrypoint) && bridgeShimsMatch,
@@ -126,6 +127,17 @@ function canonicalDirectory(value) {
   } catch {
     return resolved;
   }
+}
+
+function resolveCurrentReleaseRoot(installRoot) {
+  const current = path.join(installRoot, "current");
+  try {
+    if (fs.lstatSync(current).isFile()) {
+      const pointer = fs.readFileSync(current, "utf8").trim();
+      if (pointer) return canonicalDirectory(path.isAbsolute(pointer) ? pointer : path.resolve(installRoot, pointer));
+    }
+  } catch {}
+  return canonicalDirectory(current);
 }
 
 function samePath(left, right, platform = process.platform) {

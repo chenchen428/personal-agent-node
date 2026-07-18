@@ -23,7 +23,7 @@ const badgeTone: Record<SetupState, "ready" | "warning" | "error" | "neutral"> =
 const detailGroups = [
   { key: "core", label: "本机与 Codex", sources: ["installation", "agent"] },
   { key: "online", label: "公网与 Agent 邮箱", sources: ["connectivity", "mail-identity"] },
-  { key: "optional", label: "本地邮件与渠道", sources: ["local-mail", "channels"] },
+  { key: "optional", label: "本地邮件与连接", sources: ["local-mail", "connections"] },
 ];
 
 export function SetupDashboard({ prototype = false }: { prototype?: boolean }) {
@@ -109,7 +109,7 @@ export function SetupDashboard({ prototype = false }: { prototype?: boolean }) {
 
     if (["installation.repair", "installation.service-repair"].includes(requestedAction)) return <a className={buttonVariants({ variant: "outline", size: "sm" })} href={RELEASES} target="_blank" rel="noreferrer"><Wrench className="size-3.5" />打开安装包<ExternalLink className="size-3.5" /></a>;
     if (["agent.codex.install-guide", "agent.codex.update-guide", "agent.codex.login-guide"].includes(requestedAction)) return <a className={buttonVariants({ variant: "outline", size: "sm" })} href={CODEX_GUIDE} target="_blank" rel="noreferrer">Codex 官方指南<ExternalLink className="size-3.5" /></a>;
-    if (requestedAction === "agent.open-chat") return <Link className={buttonVariants({ size: "sm" })} href="/app/chat"><MessageCircle className="size-3.5" />开始真实对话</Link>;
+    if (requestedAction === "agent.open-chat") return <Link className={buttonVariants({ size: "sm" })} href="/app/conversations"><MessageCircle className="size-3.5" />开始真实对话</Link>;
     if (["agent.codex.retry", "connectivity.retry"].includes(requestedAction)) return <Button variant="outline" size="sm" type="button" onClick={() => void refresh()} disabled={loading}><RefreshCw className="size-3.5" />重新检测</Button>;
 
     if (["connectivity.choose-mode", "connectivity.managed-authorize", "connectivity.repair"].includes(requestedAction)) {
@@ -124,7 +124,7 @@ export function SetupDashboard({ prototype = false }: { prototype?: boolean }) {
 
     if (requestedAction === "mail.enable") return <small className="text-xs text-[var(--muted)]">公网域名验证通过后会自动分配 PA 邮箱。</small>;
     if (["mail.test-delivery", "mail.test-recovery"].includes(requestedAction)) return <Link className={buttonVariants({ variant: "outline", size: "sm" })} href="/app/mail"><Mail className="size-3.5" />打开邮件页</Link>;
-    if (requestedAction === "channels.wechat.bind") return <WechatConnectPanel autoStart connected={snapshot?.checks.some((check) => check.id === "channels.wechat" && check.state === "ready") === true} onConnected={refresh} />;
+    if (requestedAction === "connections.wechat.bind") return <WechatConnectPanel autoStart connected={snapshot?.checks.some((check) => check.id === "connections.wechat" && check.state === "ready") === true} onConnected={refresh} />;
     return null;
   };
 
@@ -138,7 +138,7 @@ export function SetupDashboard({ prototype = false }: { prototype?: boolean }) {
   if (prototype) {
     const installationChecks = checks.filter((check) => check.group === "installation" && check.id !== "installation.console-auth");
     const agentChecks = checks.filter((check) => check.group === "agent");
-    const wechatCheck = checks.find((check) => check.id === "channels.wechat");
+    const wechatCheck = checks.find((check) => check.id === "connections.wechat");
     const installationReady = installationChecks.length > 0 && installationChecks.every((check) => check.state === "ready");
     const agentReady = agentChecks.length > 0 && agentChecks.every((check) => check.state === "ready");
     const wechatReady = wechatCheck?.state === "ready";
@@ -171,13 +171,13 @@ export function SetupDashboard({ prototype = false }: { prototype?: boolean }) {
           <article className={`setup-item${wechatReady ? " done" : installationReady && agentReady ? " active" : ""}`}>
             <span className="setup-number">{wechatReady ? "✓" : "3"}</span>
             <div><strong>连接微信</strong><p>{wechatReady ? "微信已经连接，可以直接向 PA 发送消息。" : "用微信扫描一次性二维码，确认后即可开始沟通。"}</p></div>
-            {wechatReady ? <Link className="pa-button" href="/app/channels">查看</Link> : <WechatConnectPanel connected={false} onConnected={refresh} compact />}
+            {wechatReady ? <Link className="pa-button" href="/app/connections">查看</Link> : <WechatConnectPanel connected={false} onConnected={refresh} compact />}
           </article>
         </section>
         <aside className="setup-aside">
           <article className="setup-option">
             <span className="pa-eyebrow">可选 · 公网域名</span><h2>在手机查看结果</h2><p>完成公网域名验证后，可从手机安全访问这台电脑上的 PA。</p>
-            {managedReady ? <Link className="pa-button" href="/app/channels">查看公网域名</Link> : <button className="pa-button" type="button" disabled={actionId === "connectivity.managed-authorize" || cloudPending} onClick={() => void runAction("connectivity.managed-authorize")}>{actionId === "connectivity.managed-authorize" ? "正在打开" : cloudPending ? "等待页面确认" : cloudAction?.state === "failed" ? "重新验证公网域名" : "验证公网域名"}</button>}
+            {managedReady ? <Link className="pa-button" href="/app/connections">查看平台域名</Link> : <button className="pa-button" type="button" disabled={actionId === "connectivity.managed-authorize" || cloudPending} onClick={() => void runAction("connectivity.managed-authorize")}>{actionId === "connectivity.managed-authorize" ? "正在打开" : cloudPending ? "等待页面确认" : cloudAction?.state === "failed" ? "重新验证平台域名" : "验证平台域名"}</button>}
             {cloudMessage ? <span className="setup-option-note" role="status">{cloudMessage}</span> : null}
           </article>
           <article className="setup-option dark">

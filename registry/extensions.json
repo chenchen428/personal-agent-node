@@ -3,8 +3,8 @@
   "manifestVersion": 1,
   "extensions": [
     { "id": "wechat", "kind": "channel", "bundled": true, "defaultEnabled": true, "status": "migrating", "permissions": ["network", "channel-state"] },
-    { "id": "xiaohongshu", "kind": "managed-platform", "bundled": true, "defaultEnabled": false, "status": "migrating", "permissions": ["network", "managed-account-state", "external-write"] },
-    { "id": "twitter", "kind": "managed-platform", "bundled": false, "defaultEnabled": false, "status": "planned", "permissions": ["network", "managed-account-state", "external-write"] },
+    { "id": "xiaohongshu", "kind": "browser-connection-provider", "bundled": true, "defaultEnabled": true, "status": "implemented", "accessMode": "browser", "skill": "social-browser-read", "executor": "opencli", "permissions": ["network-read", "browser-session"], "legacyManagedRuntime": true },
+    { "id": "twitter", "kind": "browser-connection-provider", "bundled": true, "defaultEnabled": true, "status": "implemented", "accessMode": "browser", "skill": "social-browser-read", "executor": "opencli", "permissions": ["network-read", "browser-session"] },
     { "id": "channel-egress", "kind": "infrastructure", "bundled": false, "defaultEnabled": false, "status": "migrating", "permissions": ["network-proxy"] }
   ]
 }

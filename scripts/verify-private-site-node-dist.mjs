@@ -5,6 +5,7 @@ import net from "node:net";
 import os from "node:os";
 import path from "node:path";
 import { spawn, spawnSync } from "node:child_process";
+import { verifyOpenCliRuntime } from "./lib/opencli-runtime.mjs";
 
 const requestedRoot = path.resolve(process.argv[2] || "");
 if (!fs.existsSync(requestedRoot)) throw new Error("Usage: verify-private-site-node-dist.mjs <release-root>");
@@ -29,7 +30,7 @@ async function main() {
     releasePreparation,
     application,
     localMail: { dataOwner: "workspace", smtpServerBundled: false, independentlyGoverned: true },
-    webConversation: { route: "/app/chat", realAgentRuntimeRequired: true, sameSessionReplyRequired: true, wechatRequired: true },
+    webConversation: { route: "/app/chat", realAgentRuntimeRequired: true, sameSessionReplyRequired: true, wechatRequired: false },
   }, null, 2)}\n`);
 }
 
@@ -43,6 +44,18 @@ function verifyLayout() {
   assert(manifest.delivery?.workspace?.preserveOnUninstall === true, "Workspace preservation is not declared");
   assert(manifest.pluginApi?.version === "personal-agent/v1", "Plugin API version is missing");
   assert(manifest.appApi?.version === "personal-agent/app-v1" && manifest.appApi?.cloudRequired === false, "Personal App API contract is missing");
+  const openCli = manifest.browserExecutors?.opencli;
+  assert(openCli?.package === "@jackwener/opencli" && openCli.version === "1.8.6" && openCli.bundled === true, "Bundled OpenCLI runtime contract is missing");
+  assert(openCli.installScripts === false && openCli.license === "Apache-2.0", "Bundled OpenCLI supply-chain policy is invalid");
+  assert(openCli.browserBridge?.bundled === false && openCli.browserBridge?.userConfirmationRequired === true, "Browser Bridge must require explicit user confirmation");
+  const openCliRuntime = verifyOpenCliRuntime({ releaseRoot });
+  assert(openCliRuntime.descriptor.entrypoint === openCli.entrypoint, "Bundled OpenCLI entrypoint does not match the release manifest");
+  const openCliVersion = spawnSync(process.execPath, [openCliRuntime.entrypoint, "--version"], { encoding: "utf8", timeout: 30_000, windowsHide: true });
+  assert(openCliVersion.status === 0 && String(openCliVersion.stdout || "").trim() === openCli.version, "Bundled OpenCLI runtime is not executable");
+  const sharpRuntime = at("node_modules/sharp");
+  assert(fs.statSync(sharpRuntime, { throwIfNoEntry: false })?.isDirectory(), "Bundled Sharp runtime is missing");
+  const sharpProbe = spawnSync(process.execPath, ["-e", "require(process.argv[1])", sharpRuntime], { cwd: releaseRoot, encoding: "utf8", timeout: 30_000, windowsHide: true });
+  assert(sharpProbe.status === 0, `Bundled Sharp native runtime is not executable: ${String(sharpProbe.stderr || sharpProbe.stdout || "").trim()}`);
   assert(!fs.existsSync(at("projects")), "Historical projects directory must not be distributed");
   for (const relative of [
     "core/app/server.js", "core/app/.next/static", "core/runtime/bin/personal-agent.mjs", "core/runtime/bin/private-site.mjs",
@@ -92,6 +105,7 @@ function verifyPublicBoundary() {
   assert(!/smtp-server|imapflow|haraka/i.test(dependencyText), "Raw mail server dependency is bundled");
   const sbom = readJson("SBOM.cdx.json");
   const componentPurls = new Set((sbom.components || []).map((entry) => entry.purl));
+  assert(componentPurls.has("pkg:npm/%40jackwener/opencli@1.8.6"), "Bundled OpenCLI runtime is missing from the SBOM");
   assert(componentPurls.has("pkg:cargo/tauri@2.11.5"), "Desktop Tauri runtime is missing from the SBOM");
   assert(componentPurls.has("pkg:cargo/tauri-plugin-single-instance@2.4.3"), "Desktop single-instance runtime is missing from the SBOM");
 }
@@ -118,13 +132,27 @@ function verifyPreparation() {
     assert(init.status === 0, `Release init failed: ${String(init.stderr || "").trim()}`);
     const prepare = spawnSync(process.execPath, [at(manifest.entrypoints.node), "prepare"], { env, encoding: "utf8", timeout: 60_000 });
     assert(prepare.status === 0, `Release prepare failed: ${String(prepare.stderr || "").trim()}`);
-    for (const relative of ["AGENTS.md", "skills", "workflows", "registry", "apps", "plugins", "files", "databases", "secrets"]) assert(fs.existsSync(path.join(workspaceRoot, relative)), `Prepared Workspace is missing: ${relative}`);
-    const appCompatibility = JSON.parse(fs.readFileSync(path.join(workspaceRoot, "config", "apps-compatibility.json"), "utf8"));
+    for (const relative of ["installation/installation.json", "installation/spaces.sqlite", "installation/runtime", "spaces"]) {
+      assert(fs.existsSync(path.join(workspaceRoot, ...relative.split("/"))), `Prepared installation is missing: ${relative}`);
+    }
+    const spaceDirectories = fs.readdirSync(path.join(workspaceRoot, "spaces"), { withFileTypes: true })
+      .filter((entry) => entry.isDirectory() && !entry.name.startsWith("."));
+    assert(spaceDirectories.length === 1, "Fresh preparation must create exactly one Personal Space");
+    const personalRoot = path.join(workspaceRoot, "spaces", spaceDirectories[0].name);
+    const personalIdentity = JSON.parse(fs.readFileSync(path.join(personalRoot, "space.json"), "utf8"));
+    assert(personalIdentity.kind === "personal" && personalIdentity.spaceId === spaceDirectories[0].name, "Prepared Personal Space identity is invalid");
+    for (const relative of ["config", "runtime", "apps/installed", "plugins", "files", "databases", "secrets", "mail", "publications", "agent-workspace"]) {
+      assert(fs.existsSync(path.join(personalRoot, ...relative.split("/"))), `Prepared Personal Space is missing: ${relative}`);
+    }
+    for (const relative of ["AGENTS.md", "skills", "workflows", "registry"]) {
+      assert(fs.existsSync(path.join(personalRoot, "agent-workspace", relative)), `Prepared Agent workspace is missing: ${relative}`);
+    }
+    const appCompatibility = JSON.parse(fs.readFileSync(path.join(personalRoot, "config", "apps-compatibility.json"), "utf8"));
     assert(appCompatibility.schemaVersion === 1 && appCompatibility.candidateNodeApis?.includes("1"), "Prepared Workspace is missing the Personal App compatibility report");
     assert(!fs.existsSync(path.join(workspaceRoot, "workspace")), "Workspace must not be nested inside itself");
     const repeated = spawnSync(process.execPath, [at(manifest.entrypoints.node), "prepare"], { env, encoding: "utf8", timeout: 60_000 });
     assert(repeated.status === 0, "Release preparation is not idempotent");
-    return { homeRoot: "<temporary>/.personal-agent", core: "core", workspace: "workspace", idempotent: true, workspacePreserved: true };
+    return { homeRoot: "<temporary>/.personal-agent", core: "core", workspace: "workspace", installationRegistry: true, personalSpace: true, idempotent: true, workspacePreserved: true };
   } finally { fs.rmSync(root, { recursive: true, force: true }); }
 }
 
@@ -132,7 +160,12 @@ async function verifyApplication() {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "personal-agent-app-verify-"));
   const controlPort = await availablePort();
   const appPort = await availablePort();
-  const env = { ...process.env, PRIVATE_SITE_DATA_ROOT: path.join(root, "workspace"), PERSONAL_AGENT_CONTROL_PORT: String(controlPort) };
+  const dataRoot = path.join(root, "workspace");
+  const env = { ...process.env, PERSONAL_AGENT_DATA_ROOT: dataRoot, PRIVATE_SITE_DATA_ROOT: dataRoot, PERSONAL_AGENT_CONTROL_PORT: String(controlPort) };
+  const init = spawnSync(process.execPath, [at(manifest.entrypoints.node), "init", "--domain", "personal-agent.local", "--data-root", dataRoot], { env, encoding: "utf8", timeout: 30_000 });
+  assert(init.status === 0, `Application verification init failed: ${String(init.stderr || "").trim()}`);
+  const prepare = spawnSync(process.execPath, [at(manifest.entrypoints.node), "prepare", "--data-root", dataRoot], { env, encoding: "utf8", timeout: 60_000 });
+  assert(prepare.status === 0, `Application verification prepare failed: ${String(prepare.stderr || "").trim()}`);
   const control = spawn(process.execPath, [at(manifest.entrypoints.control)], { cwd: path.dirname(at(manifest.entrypoints.control)), env, stdio: "ignore" });
   const app = spawn(process.execPath, [at(manifest.entrypoints.app)], { cwd: path.dirname(at(manifest.entrypoints.app)), env: { ...env, HOSTNAME: "127.0.0.1", PORT: String(appPort), PERSONAL_AGENT_CONTROL_URL: `http://127.0.0.1:${controlPort}` }, stdio: "ignore" });
   try {
@@ -144,9 +177,15 @@ async function verifyApplication() {
     assert(setup.status === 200, `Next BFF setup route failed: ${setup.status}`);
     const setupBody = await setup.json();
     assert(setupBody.schemaVersion === 1 && Array.isArray(setupBody.checks), "Next BFF returned an invalid setup contract");
+    const spaces = await fetch(`http://127.0.0.1:${appPort}/api/system/spaces`);
+    const spacesBody = await spaces.json();
+    assert(spaces.status === 200 && spacesBody.spaces?.length === 1 && spacesBody.spaces[0].kind === "personal", "Next BFF did not expose exactly one Personal Space");
+    const gatewayCompatibleSpaces = await fetch(`http://127.0.0.1:${appPort}/api/spaces`);
+    const gatewayCompatibleSpacesBody = await gatewayCompatibleSpaces.json();
+    assert(gatewayCompatibleSpaces.status === 200 && gatewayCompatibleSpacesBody.spaces?.length === 1, "Next BFF rejected the gateway-rewritten Space route");
     const page = await (await fetch(`http://127.0.0.1:${appPort}/app/setup`)).text();
     assert(page.includes("首次设置") && page.includes("完成 Personal Agent 初始化"), "Next Setup Center did not render");
-    return { framework: "nextjs", standalone: true, health: true, bff: true, setupCenter: true };
+    return { framework: "nextjs", standalone: true, health: true, bff: true, spaces: true, gatewayRewrittenSpaces: true, setupCenter: true };
   } finally {
     control.kill("SIGTERM");
     app.kill("SIGTERM");

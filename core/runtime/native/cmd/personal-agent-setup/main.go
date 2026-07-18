@@ -22,12 +22,12 @@ var buildVersion = "development"
 
 func main() {
 	if len(os.Args) < 2 {
-		installCommand(nil)
+		installCommand(nil, true)
 		return
 	}
 	switch os.Args[1] {
 	case "install":
-		installCommand(os.Args[2:])
+		installCommand(os.Args[2:], false)
 	case "rollback":
 		rollbackCommand(os.Args[2:])
 	case "update":
@@ -269,7 +269,33 @@ func installSetupExecutable(source, installRoot string) error {
 	return os.WriteFile(target, data, 0o700)
 }
 
-func installCommand(args []string) {
+type installHomeChooser func(string) (string, bool, error)
+
+func resolveInstallHome(defaultHome string, interactive bool, platform string, chooser installHomeChooser) (string, bool, error) {
+	resolvedDefault, err := filepath.Abs(defaultHome)
+	if err != nil {
+		return "", false, err
+	}
+	resolvedDefault = filepath.Clean(resolvedDefault)
+	if !interactive || platform != "windows" {
+		return resolvedDefault, true, nil
+	}
+	selected, accepted, err := chooser(resolvedDefault)
+	if err != nil || !accepted {
+		return "", accepted, err
+	}
+	selected = strings.TrimSpace(selected)
+	if selected == "" {
+		return "", false, fmt.Errorf("installation location is empty")
+	}
+	resolved, err := filepath.Abs(selected)
+	if err != nil {
+		return "", false, err
+	}
+	return filepath.Clean(resolved), true, nil
+}
+
+func installCommand(args []string, interactive bool) {
 	home, _ := os.UserHomeDir()
 	set := flag.NewFlagSet("install", flag.ExitOnError)
 	releaseRoot := set.String("release-root", "", "verified immutable Node release directory")
@@ -283,6 +309,14 @@ func installCommand(args []string) {
 	skipWait := set.Bool("skip-start-wait", false, "test-only: do not wait for gateway readiness")
 	skipDesktopEntry := set.Bool("skip-desktop-entry", false, "test-only: do not install the platform desktop entry")
 	_ = set.Parse(args)
+	selectedHome, accepted, selectionErr := resolveInstallHome(*homeRoot, interactive, runtime.GOOS, selectInstallHome)
+	if selectionErr != nil {
+		fail(selectionErr.Error())
+	}
+	if !accepted {
+		return
+	}
+	*homeRoot = selectedHome
 	if *installRoot == "" {
 		*installRoot = filepath.Join(*homeRoot, "core")
 	}
@@ -296,7 +330,18 @@ func installCommand(args []string) {
 	resolvedReleaseRoot, resolvedNodeRuntime := *releaseRoot, *nodeRuntime
 	temporary := ""
 	if resolvedReleaseRoot == "" && resolvedNodeRuntime == "" {
-		temporary = filepath.Join(os.TempDir(), fmt.Sprintf("personal-agent-setup-%d", time.Now().UnixNano()))
+		temporaryBase := os.TempDir()
+		if runtime.GOOS == "windows" {
+			if err := os.MkdirAll(*homeRoot, 0o700); err != nil {
+				fail(err.Error())
+			}
+			temporaryBase = *homeRoot
+		}
+		var temporaryErr error
+		temporary, temporaryErr = os.MkdirTemp(temporaryBase, ".personal-agent-setup-")
+		if temporaryErr != nil {
+			fail(temporaryErr.Error())
+		}
 		defer os.RemoveAll(temporary)
 		payload, extractErr := embedded.Extract(executable, temporary)
 		if extractErr != nil {

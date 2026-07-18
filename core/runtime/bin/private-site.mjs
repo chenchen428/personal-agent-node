@@ -7,7 +7,9 @@ import path from "node:path";
 import { spawn, spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { ensureMailIngressSecret, ensureNodeDirectories, gatewayUsesTls, initializeSite, mergeSecretEnv, migrateLegacyMailData, readEnvFile, resolveNodeConfig, workspaceRoot, writeJsonAtomic } from "../src/config.ts";
-import { runSupervisor } from "../src/supervisor.ts";
+import { runSupervisor, supervisorReleaseState } from "../src/supervisor.ts";
+import { runInstallationSupervisor } from "../src/installation-supervisor.ts";
+import { getSpace, installationPaths, listSpaces } from "../src/space-registry.ts";
 import { initializeOriginIdentity, initializeWireGuard, installOriginIdentity } from "../src/identity.ts";
 import { preparePlatformService } from "../src/platform-service.ts";
 import { installExtension, listExtensions, removeExtension } from "../src/extensions.ts";
@@ -19,12 +21,16 @@ import { writePersonalAppCompatibilityReport } from "../src/apps.ts";
 
 const args = parseArgs(process.argv.slice(2));
 const command = args._[0] || "status";
-if (args.dataRoot) process.env.PRIVATE_SITE_DATA_ROOT = path.resolve(args.dataRoot);
+if (args.dataRoot) {
+  process.env.PERSONAL_AGENT_DATA_ROOT = path.resolve(args.dataRoot);
+  process.env.PRIVATE_SITE_DATA_ROOT = path.resolve(args.dataRoot);
+}
 
 if (command === "init") await initCommand();
 else if (command === "app-compatibility") await appCompatibilityCommand();
 else if (command === "prepare") await prepareCommand();
-else if (command === "start") await runSupervisor({ config: resolveNodeConfig(), parentPid: args.parentPid });
+else if (command === "start") await runInstallationSupervisor({ dataRoot: resolveNodeConfig().installationDataRoot, parentPid: args.parentPid });
+else if (command === "start-space") await startSpaceCommand();
 else if (command === "daemon-start") await daemonStartCommand();
 else if (command === "stop") await stopCommand();
 else if (command === "status") await statusCommand();
@@ -47,7 +53,19 @@ else throw new Error(`Unknown private-site command: ${command}`);
 async function initCommand() {
   if (args.edgeMode !== undefined) throw new Error("--edge-mode was removed; use --connection-mode with local-only or self-hosted-edge");
   const { config, created } = initializeSite({ domain: args.domain, dataRoot: args.dataRoot, connectionMode: args.connectionMode || "local-only" });
-  process.stdout.write(`${JSON.stringify({ ok: true, created, dataRoot: config.dataRoot, configPath: config.configPath, envPath: config.envPath, site: config.site }, null, 2)}\n`);
+  process.stdout.write(`${JSON.stringify({ ok: true, created, installationDataRoot: config.installationDataRoot, space: config.space, dataRoot: config.dataRoot, configPath: config.configPath, envPath: config.envPath, site: config.site }, null, 2)}\n`);
+}
+
+async function startSpaceCommand() {
+  const installationDataRoot = resolveNodeConfig().installationDataRoot;
+  const space = getSpace(installationDataRoot, args.spaceId);
+  if (!space) throw new Error(`隔离空间不存在: ${args.spaceId || "empty"}`);
+  process.env.PERSONAL_AGENT_DATA_ROOT = installationDataRoot;
+  process.env.PERSONAL_AGENT_SPACE_ID = space.id;
+  process.env.PERSONAL_AGENT_SPACE_ROOT = space.root;
+  process.env.PRIVATE_SITE_DATA_ROOT = space.root;
+  const prepared = await prepareSpaceRuntime();
+  await runSupervisor({ config: prepared.config, parentPid: args.parentPid });
 }
 
 async function appCompatibilityCommand() {
@@ -58,16 +76,21 @@ async function appCompatibilityCommand() {
 }
 
 async function prepareCommand() {
+  const result = await prepareSpaceRuntime({ requirePackagedRelease: true });
+  process.stdout.write(`${JSON.stringify({ ok: true, prepared: true, dataRoot: result.config.dataRoot, databasePath: result.databasePath, bridgeCli: result.bridgeCli, mailMigration: result.mailMigration, workspaceFiles: result.workspaceFiles, personalApps: result.personalApps }, null, 2)}\n`);
+}
+
+async function prepareSpaceRuntime({ requirePackagedRelease = false } = {}) {
   let config = resolveNodeConfig(process.env, { migrateSite: true });
   const bridgeRoot = path.join(workspaceRoot, "core", "agent");
   const toolsRoot = path.join(workspaceRoot, "core", "tools");
   const bundledBridge = fs.existsSync(path.join(bridgeRoot, "app", "server.mjs"));
   const bundledWorker = fs.existsSync(path.join(bridgeRoot, "app", "worker.mjs"));
   const bundledTools = fs.existsSync(path.join(toolsRoot, "server.js"));
-  if (!fs.existsSync(path.join(workspaceRoot, "release-manifest.json")) || !bundledBridge || !bundledWorker) {
+  if (requirePackagedRelease && (!fs.existsSync(path.join(workspaceRoot, "release-manifest.json")) || !bundledBridge || !bundledWorker)) {
     throw new Error("private-site prepare must run from a verified packaged release");
   }
-  if (fs.existsSync(toolsRoot) && !bundledTools) throw new Error("The owner profile is missing its packaged lmt_tools standalone runtime");
+  if (requirePackagedRelease && fs.existsSync(toolsRoot) && !bundledTools) throw new Error("The owner profile is missing its packaged lmt_tools standalone runtime");
   // Release activation is the explicit upgrade boundary for provisioning new
   // runtime secrets. Read-only public commands never call this mutating helper.
   ensureMailIngressSecret(config);
@@ -88,7 +111,7 @@ async function prepareCommand() {
   const databasePath = path.join(config.dataRoot, "databases", "tools", "lmt-tools.sqlite");
   const migrationPath = path.join(toolsRoot, "prisma", "migrations", "0001_initial", "migration.sql");
   if (fs.existsSync(migrationPath)) run(process.execPath, [path.join(workspaceRoot, "scripts", "init-lmt-tools-database.mjs"), databasePath, migrationPath], workspaceRoot);
-  process.stdout.write(`${JSON.stringify({ ok: true, prepared: true, dataRoot: config.dataRoot, databasePath, bridgeCli, mailMigration, workspaceFiles, personalApps }, null, 2)}\n`);
+  return { config, databasePath, bridgeCli, mailMigration, workspaceFiles, personalApps };
 }
 
 function seedPublications(config) {
@@ -166,49 +189,66 @@ function directoryHasEntries(directory) {
 }
 
 async function daemonStartCommand() {
-  const config = resolveNodeConfig();
+  let config = resolveNodeConfig();
+  if (!config.space) config = initializeSite({ dataRoot: config.installationDataRoot }).config;
   ensureNodeDirectories(config);
-  const status = readSupervisor(config);
-  if (status?.pid && processAlive(status.pid)) {
+  const paths = installationPaths(config.installationDataRoot);
+  const status = readInstallationSupervisor(config);
+  const releaseState = supervisorReleaseState(status, workspaceRoot, { alive: processAlive(status?.pid) });
+  if (releaseState === "current") {
     process.stdout.write(`${JSON.stringify({ ok: true, alreadyRunning: true, pid: status.pid })}\n`);
     return;
   }
-  const logPath = path.join(config.logsDir, "supervisor.log");
+  if (releaseState === "replace") {
+    terminateSupervisor(status.pid);
+    if (!await waitForProcessExit(status.pid, 5_000)) throw new Error(`Previous Personal Agent release did not stop (pid ${status.pid})`);
+  }
+  const logPath = path.join(paths.installationRoot, "logs", "supervisor.log");
   const output = fs.openSync(logPath, "a");
   const child = spawn(process.execPath, [fileURLToPath(import.meta.url), "start"], {
     cwd: workspaceRoot,
     detached: true,
     windowsHide: true,
     stdio: ["ignore", output, output],
-    env: { ...process.env, PRIVATE_SITE_DATA_ROOT: config.dataRoot },
+    env: { ...process.env, PERSONAL_AGENT_DATA_ROOT: config.installationDataRoot, PRIVATE_SITE_DATA_ROOT: config.installationDataRoot },
   });
   child.unref();
-  writeJsonAtomic(path.join(config.runtimeDir, "supervisor.json"), { pid: child.pid, status: "launching", startedAt: new Date().toISOString() });
+  writeJsonAtomic(path.join(paths.runtimeRoot, "supervisor.json"), { pid: child.pid, status: "launching", releaseRoot: workspaceRoot, startedAt: new Date().toISOString() });
   process.stdout.write(`${JSON.stringify({ ok: true, pid: child.pid, logPath }, null, 2)}\n`);
 }
 
 async function stopCommand() {
   const config = resolveNodeConfig();
-  const status = readSupervisor(config);
+  const paths = installationPaths(config.installationDataRoot);
+  const status = readInstallationSupervisor(config);
+  const expectedPid = Number(args.expectedPid || 0);
+  if (expectedPid > 0 && Number(status?.pid || 0) !== expectedPid) {
+    process.stdout.write(`${JSON.stringify({ ok: true, stopped: false, detail: "supervisor changed", expectedPid })}\n`);
+    return;
+  }
   if (!status?.pid || !processAlive(status.pid)) {
     process.stdout.write(`${JSON.stringify({ ok: true, stopped: true, detail: "already stopped" })}\n`);
     return;
   }
-  if (process.platform === "win32") spawnSync("taskkill.exe", ["/PID", String(status.pid), "/T", "/F"], { stdio: "ignore" });
-  else process.kill(status.pid, "SIGTERM");
-  writeJsonAtomic(path.join(config.runtimeDir, "supervisor.json"), { pid: status.pid, status: "stopped", stoppedAt: new Date().toISOString() });
+  terminateSupervisor(status.pid);
+  writeJsonAtomic(path.join(paths.runtimeRoot, "supervisor.json"), { pid: status.pid, status: "stopped", releaseRoot: status.releaseRoot || "", stoppedAt: new Date().toISOString() });
   process.stdout.write(`${JSON.stringify({ ok: true, stopped: true, pid: status.pid })}\n`);
 }
 
 async function statusCommand() {
   const config = resolveNodeConfig();
   const supervisor = readSupervisor(config);
+  const installationSupervisor = readInstallationSupervisor(config);
   const services = {};
   for (const service of config.distribution.services) {
     const host = service.name === "private-site-gateway" ? config.gateway.host : "127.0.0.1";
     services[service.name] = service.port ? await probePort(host, service.name === "private-site-gateway" ? config.gateway.port : service.port) : { state: supervisor?.components?.[service.name] ? "running" : "unknown" };
   }
-  const result = { ok: true, site: config.site, dataRoot: config.dataRoot, agentWorkspaceRoot: config.agentWorkspaceRoot, extensions: listExtensions(config), supervisor: supervisor ? { ...supervisor, alive: processAlive(supervisor.pid) } : null, backup: readBackupState(config), bridgeCli: bridgeCliStatus(config), services };
+  const spaces = listSpaces(config.installationDataRoot).map((space) => ({
+    ...space,
+    localUrl: `http://127.0.0.1:${space.ports.gateway}`,
+  }));
+  const result = { ok: true, installationDataRoot: config.installationDataRoot, space: config.space, spaces, site: config.site, dataRoot: config.dataRoot, agentWorkspaceRoot: config.agentWorkspaceRoot, extensions: listExtensions(config), installationSupervisor: installationSupervisor ? { ...installationSupervisor, alive: processAlive(installationSupervisor.pid) } : null, supervisor: supervisor ? { ...supervisor, alive: processAlive(supervisor.pid) } : null, backup: readBackupState(config), bridgeCli: bridgeCliStatus(config), services };
   process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
 }
 
@@ -481,6 +521,11 @@ function readSupervisor(config) {
   try { return JSON.parse(fs.readFileSync(filePath, "utf8")); } catch { return null; }
 }
 
+function readInstallationSupervisor(config) {
+  const filePath = path.join(installationPaths(config.installationDataRoot).runtimeRoot, "supervisor.json");
+  try { return JSON.parse(fs.readFileSync(filePath, "utf8")); } catch { return null; }
+}
+
 function processAlive(pid) {
   if (!Number.isInteger(Number(pid)) || Number(pid) <= 0) return false;
   try {
@@ -490,6 +535,17 @@ function processAlive(pid) {
     // EPERM still proves that the process exists when another security context owns it.
     return error?.code === "EPERM";
   }
+}
+
+function terminateSupervisor(pid) {
+  if (process.platform === "win32") spawnSync("taskkill.exe", ["/PID", String(pid), "/T", "/F"], { stdio: "ignore" });
+  else process.kill(Number(pid), "SIGTERM");
+}
+
+async function waitForProcessExit(pid, timeoutMs) {
+  const deadline = Date.now() + timeoutMs;
+  while (processAlive(pid) && Date.now() < deadline) await new Promise((resolve) => setTimeout(resolve, 50));
+  return !processAlive(pid);
 }
 
 function run(commandName, commandArgs, cwd) {

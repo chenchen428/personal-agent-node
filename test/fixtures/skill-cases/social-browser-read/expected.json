@@ -1,0 +1,10 @@
+{
+  "schemaVersion": 1,
+  "productSurface": "connection",
+  "accessMode": "browser",
+  "skill": "social-browser-read",
+  "loginStateOwnedBy": "user-browser",
+  "loginStateInspected": false,
+  "externalWrite": false,
+  "operations": ["status", "open", "search", "read"]
+}

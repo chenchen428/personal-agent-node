@@ -4,6 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
 import { domainToASCII, fileURLToPath } from "node:url";
+import { getSpace, initializeInstallation, installationPaths } from "./space-registry.ts";
 
 const moduleProjectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 export const workspaceRoot = findWorkspaceRoot([moduleProjectRoot, path.dirname(path.resolve(process.argv[1] || process.cwd())), process.cwd()]);
@@ -31,7 +32,9 @@ function findWorkspaceRoot(starts) {
 
 export function resolveNodeConfig(env = process.env, options = {}) {
   const homeRoot = resolvePersonalAgentHome(env);
-  const dataRoot = path.resolve(env.PRIVATE_SITE_DATA_ROOT || path.join(homeRoot, "workspace"));
+  const spaceContext = resolveSpaceContext(env, homeRoot);
+  const installationDataRoot = spaceContext.installationDataRoot;
+  const dataRoot = spaceContext.dataRoot;
   const configDir = path.join(dataRoot, "config");
   const configPath = path.join(configDir, "site.json");
   const providersPath = path.join(configDir, "providers.json");
@@ -47,9 +50,15 @@ export function resolveNodeConfig(env = process.env, options = {}) {
   const providers = readProviderDocument(providersPath);
   const domain = normalizeApexDomain(mergedEnv.SITE_DOMAIN || site?.asciiDomain || "personal-agent.local");
   const routingMode = normalizeRoutingMode(mergedEnv.PERSONAL_AGENT_ROUTING_MODE || site?.routingMode || "path");
-  const agentWorkspaceRoot = path.resolve(mergedEnv.PRIVATE_SITE_AGENT_WORKSPACE || dataRoot);
+  const agentWorkspaceRoot = path.resolve(mergedEnv.PRIVATE_SITE_AGENT_WORKSPACE || path.join(dataRoot, "agent-workspace"));
+  const defaultPorts = spaceContext.space?.ports || { bridge: 8788, admin: 8791, control: 8792, gateway: 8843, tools: 9955, xiaohongshu: 18060 };
   return {
     homeRoot,
+    installationDataRoot,
+    installationRoot: spaceContext.paths.installationRoot,
+    installationRuntimeDir: spaceContext.paths.runtimeRoot,
+    spacesRoot: spaceContext.paths.spacesRoot,
+    space: spaceContext.space,
     dataRoot,
     mailDir: path.join(dataRoot, "mail"),
     configDir,
@@ -64,9 +73,9 @@ export function resolveNodeConfig(env = process.env, options = {}) {
     env: mergedEnv,
     domain,
     routingMode,
-    allowedHosts: normalizeHostList(mergedEnv.PERSONAL_AGENT_ALLOWED_HOSTS, [domain, mergedEnv.PRIVATE_SITE_LOCAL_DOMAIN || `${domain}.local`, "localhost", "127.0.0.1"]),
+    allowedHosts: normalizeHostList(mergedEnv.PERSONAL_AGENT_ALLOWED_HOSTS, [domain, spaceContext.space?.managedHost, mergedEnv.PRIVATE_SITE_LOCAL_DOMAIN || `${domain}.local`, "localhost", "127.0.0.1"]),
     agentWorkspaceRoot,
-    appsDir: path.join(dataRoot, "apps"),
+    appsDir: path.join(dataRoot, "apps", "installed"),
     appsConfigPath: path.join(configDir, "apps.json"),
     appsCompatibilityPath: path.join(configDir, "apps-compatibility.json"),
     pluginsDir: path.join(dataRoot, "plugins"),
@@ -75,7 +84,7 @@ export function resolveNodeConfig(env = process.env, options = {}) {
     localDomain: mergedEnv.PRIVATE_SITE_LOCAL_DOMAIN || `${domain}.local`,
     gateway: {
       host: mergedEnv.PRIVATE_SITE_GATEWAY_HOST || "127.0.0.1",
-      port: numberValue(mergedEnv.PRIVATE_SITE_GATEWAY_PORT, 8843),
+      port: numberValue(mergedEnv.PRIVATE_SITE_GATEWAY_PORT, defaultPorts.gateway),
       tlsCert: mergedEnv.PRIVATE_SITE_ORIGIN_TLS_CERT || "",
       tlsKey: mergedEnv.PRIVATE_SITE_ORIGIN_TLS_KEY || "",
       tlsCa: mergedEnv.PRIVATE_SITE_ORIGIN_TLS_CA || "",
@@ -83,22 +92,64 @@ export function resolveNodeConfig(env = process.env, options = {}) {
       trustEdgeHeaders: mergedEnv.PRIVATE_SITE_TRUST_EDGE_HEADERS === "1",
     },
     ports: {
-      bridge: numberValue(mergedEnv.OPEN_AGENT_BRIDGE_PORT, 8788),
-      admin: numberValue(mergedEnv.ADMIN_PANEL_PORT, 8791),
-      control: numberValue(mergedEnv.PERSONAL_AGENT_CONTROL_PORT, 8792),
-      tools: numberValue(mergedEnv.LMT_TOOLS_PORT || mergedEnv.PORT, 9955),
-      xiaohongshu: numberValue(mergedEnv.XIAOHONGSHU_CHANNEL_PORT, 18060),
+      bridge: numberValue(mergedEnv.OPEN_AGENT_BRIDGE_PORT, defaultPorts.bridge),
+      admin: numberValue(mergedEnv.ADMIN_PANEL_PORT, defaultPorts.admin),
+      control: numberValue(mergedEnv.PERSONAL_AGENT_CONTROL_PORT, defaultPorts.control),
+      tools: numberValue(mergedEnv.LMT_TOOLS_PORT || mergedEnv.PORT, defaultPorts.tools),
+      xiaohongshu: numberValue(mergedEnv.XIAOHONGSHU_CHANNEL_PORT, defaultPorts.xiaohongshu),
     },
   };
 }
 
-export function initializeSite({ domain, dataRoot, connectionMode = "local-only", distributionVersion = "0.1.0" } = {}) {
+function resolveSpaceContext(env, homeRoot) {
+  const configuredRoot = path.resolve(env.PERSONAL_AGENT_DATA_ROOT || env.PRIVATE_SITE_DATA_ROOT || path.join(homeRoot, "workspace"));
+  const configuredSpaceRoot = String(env.PERSONAL_AGENT_SPACE_ROOT || "").trim();
+  let installationDataRoot = configuredRoot;
+  let explicitSpaceRoot = configuredSpaceRoot ? path.resolve(configuredSpaceRoot) : "";
+  if (!configuredSpaceRoot && fs.existsSync(path.join(configuredRoot, "space.json"))) {
+    explicitSpaceRoot = configuredRoot;
+    installationDataRoot = path.dirname(path.dirname(configuredRoot));
+  }
+  const paths = installationPaths(installationDataRoot);
+  const selector = String(env.PERSONAL_AGENT_SPACE_ID || "").trim();
+  const space = getSpace(installationDataRoot, selector || undefined);
+  if (selector && !space) throw new Error(`隔离空间不存在: ${selector}`);
+  if (explicitSpaceRoot && space && explicitSpaceRoot !== space.root) throw new Error("隔离空间目录与注册表不一致");
+  return {
+    installationDataRoot,
+    paths,
+    space,
+    dataRoot: explicitSpaceRoot || space?.root || path.join(paths.spacesRoot, "uninitialized"),
+  };
+}
+
+export function initializeSite({ domain, dataRoot, spaceId, connectionMode = "local-only", distributionVersion = "0.1.0" } = {}) {
   const normalizedDomain = normalizeApexDomain(domain || process.env.SITE_DOMAIN || "personal-agent.local");
   const normalizedConnectionMode = normalizeConnectionMode(connectionMode);
   if (normalizedConnectionMode === "managed-cloud") {
     throw new Error("managed-cloud can only be activated by a completed personal-agent cloud connect flow");
   }
-  const config = resolveNodeConfig({ ...process.env, PRIVATE_SITE_DATA_ROOT: dataRoot || process.env.PRIVATE_SITE_DATA_ROOT, SITE_DOMAIN: normalizedDomain }, { migrateSite: true });
+  const homeRoot = resolvePersonalAgentHome(process.env);
+  let installationDataRoot = path.resolve(dataRoot || process.env.PERSONAL_AGENT_DATA_ROOT || process.env.PRIVATE_SITE_DATA_ROOT || path.join(homeRoot, "workspace"));
+  let requestedSpaceId = spaceId;
+  const directSpacePath = path.join(installationDataRoot, "space.json");
+  const directSpaceDocument = fs.existsSync(directSpacePath) ? readJson(directSpacePath) : null;
+  if (directSpaceDocument?.spaceId) {
+    requestedSpaceId ||= directSpaceDocument.spaceId;
+    installationDataRoot = path.dirname(path.dirname(installationDataRoot));
+  }
+  const initialized = initializeInstallation({ dataRoot: installationDataRoot });
+  const selectedSpace = getSpace(installationDataRoot, requestedSpaceId || process.env.PERSONAL_AGENT_SPACE_ID || initialized.personal.id);
+  if (!selectedSpace) throw new Error(`隔离空间不存在: ${requestedSpaceId || "personal"}`);
+  const selectionEnv = {
+    ...process.env,
+    PERSONAL_AGENT_DATA_ROOT: installationDataRoot,
+    PERSONAL_AGENT_SPACE_ID: selectedSpace.id,
+    PERSONAL_AGENT_SPACE_ROOT: selectedSpace.root,
+    PRIVATE_SITE_DATA_ROOT: selectedSpace.root,
+    SITE_DOMAIN: normalizedDomain,
+  };
+  const config = resolveNodeConfig(selectionEnv, { migrateSite: true });
   ensureNodeDirectories(config);
   if (fs.existsSync(config.configPath)) {
     const existing = readJson(config.configPath);
@@ -106,7 +157,7 @@ export function initializeSite({ domain, dataRoot, connectionMode = "local-only"
       throw new Error(`Site data root already belongs to ${existing.asciiDomain}`);
     }
     ensureMailIngressSecret(config);
-    return { config: resolveNodeConfig({ ...process.env, PRIVATE_SITE_DATA_ROOT: config.dataRoot }), created: false };
+    return { config: resolveNodeConfig(selectionEnv), created: false };
   }
   const now = new Date().toISOString();
   const site = {
@@ -132,7 +183,7 @@ export function initializeSite({ domain, dataRoot, connectionMode = "local-only"
     PERSONAL_AGENT_AUTH_COOKIE_SECRET: randomSecret(),
     ...(fs.existsSync(path.join(workspaceRoot, "core", "tools")) ? { LMT_SESSION_SECRET: randomSecret() } : {}),
   });
-  return { config: resolveNodeConfig({ ...process.env, PRIVATE_SITE_DATA_ROOT: config.dataRoot }), created: true };
+  return { config: resolveNodeConfig(selectionEnv), created: true };
 }
 
 export function normalizeConnectionMode(value) {
@@ -263,6 +314,13 @@ export function buildServiceEnvironment(config) {
   return {
     NODE_ENV: "production",
     SITE_DOMAIN: siteDomain,
+    PRIVATE_SITE_RELEASE_ROOT: workspaceRoot,
+    PERSONAL_AGENT_DATA_ROOT: config.installationDataRoot,
+    PERSONAL_AGENT_INSTALLATION_ROOT: config.installationRoot,
+    PERSONAL_AGENT_SPACE_ID: config.space?.id || "",
+    PERSONAL_AGENT_SPACE_SLUG: config.space?.slug || "",
+    PERSONAL_AGENT_SPACE_KIND: config.space?.kind || "",
+    PERSONAL_AGENT_SPACE_ROOT: config.dataRoot,
     PRIVATE_SITE_DATA_ROOT: config.dataRoot,
     OPEN_AGENT_BRIDGE_HOST: "127.0.0.1",
     OPEN_AGENT_BRIDGE_PORT: String(config.ports.bridge),
@@ -294,7 +352,7 @@ export function buildServiceEnvironment(config) {
     PERSONAL_AGENT_AUTH_PASSWORD: config.env.PERSONAL_AGENT_AUTH_PASSWORD,
     PERSONAL_AGENT_AUTH_VERIFIER_FILE: path.join(config.dataRoot, "config", "local-auth.json"),
     PERSONAL_AGENT_AUTH_COOKIE_SECRET: config.env.PERSONAL_AGENT_AUTH_COOKIE_SECRET,
-    PERSONAL_AGENT_AUTH_COOKIE_NAME: config.routingMode === "path" ? "__Host-personal_agent" : "personal_agent",
+    PERSONAL_AGENT_AUTH_COOKIE_NAME: spaceCookieName(config),
     PERSONAL_AGENT_AUTH_COOKIE_HOST_ONLY: config.routingMode === "path" ? "1" : "0",
     PERSONAL_AGENT_AUTH_COOKIE_DOMAINS: config.routingMode === "path" ? "" : `${siteDomain},${config.localDomain}`,
     ADMIN_PANEL_HOST: "127.0.0.1",
@@ -320,6 +378,11 @@ export function buildServiceEnvironment(config) {
     OPENAI_BASE_URL: tokenProvider.endpoint || config.env.OPENAI_BASE_URL || "",
     OPENAI_API_KEY: tokenProvider.credentialEnv ? config.env[tokenProvider.credentialEnv] || "" : config.env.OPENAI_API_KEY || "",
   };
+}
+
+function spaceCookieName(config) {
+  const suffix = crypto.createHash("sha256").update(String(config.space?.id || config.dataRoot)).digest("hex").slice(0, 12);
+  return config.routingMode === "path" ? `__Host-personal_agent_${suffix}` : `personal_agent_${suffix}`;
 }
 
 function readProviderDocument(filePath) {

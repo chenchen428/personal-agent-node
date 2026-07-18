@@ -9,7 +9,7 @@
     { "id": "connectivity", "label": "公网连接", "order": 30 },
     { "id": "mail-identity", "label": "Agent 邮箱身份", "order": 40 },
     { "id": "local-mail", "label": "本地邮件", "order": 50 },
-    { "id": "channels", "label": "必选渠道", "order": 60 }
+    { "id": "connections", "label": "可选连接", "order": 60 }
   ],
   "checks": [
     { "id": "installation.release", "group": "installation", "requirement": "required-for-console", "dimension": "console", "why": "完整发行版提供可校验、可升级和可回滚的 Core。", "guidance": "重新运行与你系统匹配的 Personal Agent 安装包并选择修复；已有 Workspace 不会被覆盖。", "actionIds": ["installation.repair"] },
@@ -33,6 +33,6 @@
     { "id": "mail.local-ingest", "group": "local-mail", "requirement": "optional", "dimension": "mail", "why": "本地邮件入口把你的邮件来源交给 Workspace 保存和处理。", "guidance": "Personal Agent 不捆绑 SMTP 服务；启用检测后，在邮件页按引导连接你自己的邮件来源。", "actionIds": ["mail.enable"] },
     { "id": "mail.delivery", "group": "local-mail", "requirement": "optional", "dimension": "mail", "why": "真实投递验证比“配置已保存”更能证明邮件链路可用。", "guidance": "前往邮件页发送或接收一封测试邮件，确认归档后再回来检测。", "actionIds": ["mail.test-delivery"] },
     { "id": "mail.recovery", "group": "local-mail", "requirement": "optional", "dimension": "mail", "why": "恢复验证保证邮件归档在升级或迁移后仍可找回。", "guidance": "前往邮件页按恢复演练说明验证备份；不使用本地邮件时无需执行。", "actionIds": ["mail.test-recovery"] },
-    { "id": "channels.wechat", "group": "channels", "requirement": "required-for-agent", "dimension": "agent", "why": "微信是 Personal Agent 的必选移动入口，完成连接后才能从手机持续与本机 Agent 对话。", "guidance": "打开微信连接页，生成二维码后使用微信扫码并在手机确认；页面会自动检测连接结果。", "actionIds": ["channels.wechat.bind"] }
+    { "id": "connections.wechat", "group": "connections", "requirement": "optional", "dimension": "agent", "why": "微信用于离开电脑后继续联系主 Agent，但不影响本机对话和初始化完成。", "guidance": "需要微信远程访问时，打开连接页生成二维码，再使用微信扫码并确认。", "actionIds": ["connections.wechat.bind"] }
   ]
 }

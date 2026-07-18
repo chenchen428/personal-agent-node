@@ -5,6 +5,7 @@ import path from "node:path";
 import { execFileSync } from "node:child_process";
 import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
+import { assembleOpenCliRuntime } from "./lib/opencli-runtime.mjs";
 import { pruneLocalDist } from "./prune-local-dist.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -27,9 +28,11 @@ async function main() {
   copySupportFiles();
   assembleWorkspaceSeed();
   copyNextStandalone();
+  copyNativeDependencies();
   await bundleCore();
-  writeManifest();
-  writeSbom();
+  const openCliRuntime = assembleOpenCliRuntime({ workspaceRoot: root, releaseRoot: outputRoot, npmInvocation });
+  writeManifest(openCliRuntime);
+  writeSbom(openCliRuntime);
   normalizeShellScripts();
   writeChecksums();
   const retention = path.dirname(outputRoot) === releasesRoot
@@ -74,6 +77,17 @@ function copyNextStandalone() {
   fs.writeFileSync(path.join(outputRoot, "core", "app", "package.json"), `${JSON.stringify({ name: "@personal-agent/app-runtime", private: true, type: "module" }, null, 2)}\n`);
 }
 
+function copyNativeDependencies() {
+  const imageRuntimeRoot = path.join(root, "node_modules", "@img");
+  if (!fs.existsSync(imageRuntimeRoot)) throw new Error("Sharp native runtime packages are missing");
+  const runtimePackages = fs.readdirSync(imageRuntimeRoot, { withFileTypes: true })
+    .filter((entry) => entry.isDirectory() && entry.name.startsWith("sharp-"));
+  if (runtimePackages.length === 0) throw new Error("Sharp native runtime package is missing for this build host");
+  for (const entry of runtimePackages) {
+    copyDirectory(path.join(imageRuntimeRoot, entry.name), path.join(outputRoot, "node_modules", "@img", entry.name));
+  }
+}
+
 async function bundleCore() {
   const entries = [
     ["core/runtime/bin/private-site.mjs", "core/runtime/bin/private-site.mjs"],
@@ -101,7 +115,7 @@ async function bundleCore() {
   }));
 }
 
-function writeManifest() {
+function writeManifest(openCliRuntime) {
   const manifest = {
     schemaVersion: 2,
     releaseType: "personal-agent-node",
@@ -130,6 +144,7 @@ function writeManifest() {
       harnessCli: "core/agent/bin/pa-cli.mjs",
       mailIngest: "core/agent/bin/pa-cli.mjs",
     },
+    browserExecutors: { opencli: openCliRuntime },
     pluginApi: { version: "personal-agent/v1", manifest: "core/plugins/schema/personal-agent.plugin.schema.json", installRoot: "workspace/plugins" },
     appApi: { version: "personal-agent/app-v1", nodeApiMajors: ["1"], manifest: "core/apps/schema/personal-agent.app.schema.json", installRoot: "workspace/apps", cloudRequired: false },
     harness: { owner: "workspace", supportedAgentRuntime: "codex", root: "workspace", catalog: "workspace/registry/skills.json", workflows: "workspace/workflows" },
@@ -138,9 +153,12 @@ function writeManifest() {
   fs.writeFileSync(path.join(outputRoot, "release-manifest.json"), `${JSON.stringify(manifest, null, 2)}\n`);
 }
 
-function writeSbom() {
+function writeSbom(openCliRuntime) {
   const output = execFileSync(npmInvocation.command, [...npmInvocation.prefixArgs, "sbom", "--omit=dev", "--sbom-format", "cyclonedx"], { cwd: root, encoding: "utf8", maxBuffer: 30 * 1024 * 1024 });
   const sbom = JSON.parse(output);
+  const openCliRoot = path.join(outputRoot, "core", "agent", "vendor", "opencli-runtime");
+  const openCliOutput = execFileSync(npmInvocation.command, [...npmInvocation.prefixArgs, "sbom", "--omit=dev", "--sbom-format", "cyclonedx"], { cwd: openCliRoot, encoding: "utf8", maxBuffer: 30 * 1024 * 1024 });
+  mergeCycloneDx(sbom, JSON.parse(openCliOutput), { name: "personal-agent:runtime", value: "browser-executor" });
   const cargo = JSON.parse(execFileSync("cargo", ["metadata", "--format-version", "1", "--locked", "--manifest-path", path.join(root, "core", "desktop", "src-tauri", "Cargo.toml")], { cwd: root, encoding: "utf8", maxBuffer: 30 * 1024 * 1024 }));
   const cargoRefs = new Map(cargo.packages.map((entry) => [entry.id, cargoPurl(entry)]));
   const cargoComponents = cargo.packages.map((entry) => ({
@@ -165,8 +183,38 @@ function writeSbom() {
   })).filter((entry) => entry.ref && !dependencyRefs.has(entry.ref));
   sbom.dependencies = [...existingDependencies, ...cargoDependencies].sort((left, right) => String(left.ref).localeCompare(String(right.ref)));
   sbom.metadata ||= {};
-  sbom.metadata.properties = [...(sbom.metadata.properties || []), { name: "personal-agent:desktop-shell", value: "tauri-2" }];
+  sbom.metadata.properties = [
+    ...(sbom.metadata.properties || []),
+    { name: "personal-agent:desktop-shell", value: "tauri-2" },
+    { name: "personal-agent:opencli-runtime", value: `${openCliRuntime.package}@${openCliRuntime.version}` },
+  ];
   fs.writeFileSync(path.join(outputRoot, "SBOM.cdx.json"), `${JSON.stringify(sbom, null, 2)}\n`);
+}
+
+function mergeCycloneDx(target, addition, property) {
+  const additionRoot = addition.metadata?.component;
+  if (!additionRoot?.["bom-ref"]) throw new Error("OpenCLI SBOM root component is missing");
+  additionRoot.properties = [...(additionRoot.properties || []), property];
+  const components = new Map((target.components || []).map((entry) => [entry["bom-ref"] || entry.purl, entry]));
+  for (const entry of [additionRoot, ...(addition.components || [])]) {
+    const key = entry["bom-ref"] || entry.purl;
+    if (key && !components.has(key)) components.set(key, entry);
+  }
+  target.components = [...components.values()].sort((left, right) => String(left["bom-ref"] || left.name).localeCompare(String(right["bom-ref"] || right.name)));
+
+  const dependencies = new Map((target.dependencies || []).map((entry) => [entry.ref, { ...entry, dependsOn: [...(entry.dependsOn || [])] }]));
+  for (const entry of addition.dependencies || []) {
+    const current = dependencies.get(entry.ref) || { ref: entry.ref, dependsOn: [] };
+    current.dependsOn = [...new Set([...(current.dependsOn || []), ...(entry.dependsOn || [])])].sort();
+    dependencies.set(entry.ref, current);
+  }
+  const targetRootRef = target.metadata?.component?.["bom-ref"];
+  if (targetRootRef) {
+    const rootDependency = dependencies.get(targetRootRef) || { ref: targetRootRef, dependsOn: [] };
+    rootDependency.dependsOn = [...new Set([...(rootDependency.dependsOn || []), additionRoot["bom-ref"]])].sort();
+    dependencies.set(targetRootRef, rootDependency);
+  }
+  target.dependencies = [...dependencies.values()].sort((left, right) => String(left.ref).localeCompare(String(right.ref)));
 }
 
 function cargoPurl(entry) { return `pkg:cargo/${encodeURIComponent(entry.name)}@${entry.version}`; }

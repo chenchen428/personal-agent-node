@@ -1,15 +1,19 @@
+import type { ReactNode } from "react";
+
 type IllustratedEmptyStateProps = {
   variant: "data" | "pages";
   title: string;
   description: string;
   className?: string;
+  children?: ReactNode;
 };
 
-export function IllustratedEmptyState({ variant, title, description, className = "" }: IllustratedEmptyStateProps) {
+export function IllustratedEmptyState({ variant, title, description, className = "", children }: IllustratedEmptyStateProps) {
   return <div className={`illustrated-empty-state ${className}`.trim()} role="status">
     {variant === "data" ? <DataIllustration /> : <PagesIllustration />}
     <strong>{title}</strong>
     <p>{description}</p>
+    {children}
   </div>;
 }
 

@@ -5,8 +5,10 @@ import { spawn } from "node:child_process";
 import { buildServiceEnvironment, ensureNodeDirectories, requireRuntimeSecrets, resolveNodeConfig, workspaceRoot, writeJsonAtomic, writeWorkerConfig } from "./config.ts";
 import { extensionComponentSpecs } from "./extensions.ts";
 import { startBackupScheduler } from "./backup-scheduler.ts";
+import { updateSpaceRuntimeState } from "./space-registry.ts";
 
 export async function runSupervisor({ config = resolveNodeConfig(), logger = console, parentPid = 0 } = {}) {
+  if (!config.space?.id) throw new Error("Personal Agent Runtime 必须绑定到一个隔离空间");
   ensureNodeDirectories(config);
   requireRuntimeSecrets(config);
   const environment = { ...process.env, ...buildServiceEnvironment(config) };
@@ -22,6 +24,8 @@ export async function runSupervisor({ config = resolveNodeConfig(), logger = con
   writeJsonAtomic(path.join(config.runtimeDir, "supervisor.json"), {
     pid: process.pid,
     status: "starting",
+    releaseRoot: workspaceRoot,
+    spaceId: config.space.id,
     siteId: config.site?.siteId || "",
     nodeId: config.site?.nodeId || "",
     startedAt: new Date().toISOString(),
@@ -55,16 +59,20 @@ export async function runSupervisor({ config = resolveNodeConfig(), logger = con
     writeJsonAtomic(path.join(config.runtimeDir, "supervisor.json"), {
       pid: process.pid,
       status: "running",
+      releaseRoot: workspaceRoot,
+      spaceId: config.space.id,
       siteId: config.site?.siteId || "",
       nodeId: config.site?.nodeId || "",
       startedAt: new Date().toISOString(),
       backupScheduler: { enabled: backupScheduler.enabled, intervalHours: backupScheduler.intervalHours, retentionCount: backupScheduler.retentionCount },
       components: Object.fromEntries([...children.entries()].map(([name, entry]) => [name, { pid: entry.child.pid, logPath: entry.logPath }])),
     });
+    updateSpaceRuntimeState(config.installationDataRoot, config.space.id, "running");
   } catch (error) {
     stopping = true;
     if (parentMonitor) clearInterval(parentMonitor);
     await stopChildren(children);
+    updateSpaceRuntimeState(config.installationDataRoot, config.space.id, "degraded");
     throw error;
   }
 
@@ -74,7 +82,8 @@ export async function runSupervisor({ config = resolveNodeConfig(), logger = con
     backupScheduler?.stop();
     logger.log("[private-site-node] stopping");
     await stopChildren(children);
-    writeJsonAtomic(path.join(config.runtimeDir, "supervisor.json"), { pid: process.pid, status: "stopped", stoppedAt: new Date().toISOString() });
+    updateSpaceRuntimeState(config.installationDataRoot, config.space.id, "stopped");
+    writeJsonAtomic(path.join(config.runtimeDir, "supervisor.json"), { pid: process.pid, status: "stopped", releaseRoot: workspaceRoot, spaceId: config.space.id, stoppedAt: new Date().toISOString() });
     process.exit(0);
   };
   process.on("SIGINT", stop);
@@ -86,6 +95,12 @@ export async function runSupervisor({ config = resolveNodeConfig(), logger = con
     parentMonitor.unref?.();
   }
   await new Promise(() => {});
+}
+
+export function supervisorReleaseState(status, expectedReleaseRoot, { alive = false } = {}) {
+  if (!status?.pid || !alive) return "stopped";
+  if (!status.releaseRoot) return "replace";
+  return path.resolve(String(status.releaseRoot)) === path.resolve(expectedReleaseRoot) ? "current" : "replace";
 }
 
 function processAlive(pid) {

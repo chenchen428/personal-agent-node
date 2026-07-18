@@ -1,7 +1,7 @@
 # ADR 0002: Self-contained installation and local Setup Center
 
 Managed Cloud tunnel implementation details in this ADR are superseded by [ADR 0004](0004-managed-cloud-reverse-tunnel.md).
-The original optional-WeChat decision was amended on 2026-07-15: WeChat is now a required guided Agent-readiness check, while the authenticated Web conversation remains an independent required fact.
+The 2026-07-15 required-WeChat amendment was superseded on 2026-07-17: WeChat is an optional Connection, while the authenticated Web conversation remains the independent required Agent-readiness fact.
 
 - Status: Accepted
 - Date: 2026-07-15
@@ -360,12 +360,12 @@ mail support from an HTTPS page. The setup action may guide a user to an existin
 mail connector or a reviewed local MTA plan; execution remains preview-only until
 locally approved.
 
-### 12. Require a guided WeChat connection
+### 12. Offer a guided optional WeChat connection
 
-WeChat appears as a required Agent-readiness task after the core runtime checks.
-The Setup Center links directly to a Channels page that generates a one-time QR,
+WeChat appears as an optional Connection after the core runtime checks.
+The Setup Center links directly to a Connections page that generates a one-time QR,
 explains the mobile confirmation steps, and polls until the connection is ready.
-The Web conversation and WeChat connection remain separate acceptance facts.
+The Web conversation is required; WeChat connection evidence is optional and separate.
 
 ### 13. Replace prompt-based support with sanitized diagnostics
 
@@ -550,7 +550,7 @@ A Node release using this design passes only when sanitized evidence proves:
    device code or token.
 9. Agent mail identity never sets `mailOperational`; a real local message and
    recovery evidence do.
-10. WeChat connection is required for Agent readiness, and the independent Web conversation acceptance must also pass.
+10. WeChat is optional and never blocks Agent readiness; the independent Web conversation acceptance must pass.
 11. A failed candidate automatically restores the previous release, and explicit
     rollback remains available even when the current Node process cannot start.
 12. Uninstall removes product binaries and services only after explicit local

@@ -5,8 +5,10 @@ import { FileText, Mail, Search } from "lucide-react";
 import type { MailView } from "./types";
 import { errorMessage, fetchJson, formatBytes, formatDateTime, relativeTime } from "./shared";
 import { LoadingState } from "../desktop-v72/loading-state";
+import { useSearchParams } from "next/navigation";
 
 export function MailPage() {
+  const searchParams = useSearchParams();
   const [view, setView] = useState<MailView | null>(null);
   const [selectedId, setSelectedId] = useState("");
   const [query, setQuery] = useState("");
@@ -25,11 +27,13 @@ export function MailPage() {
   }, []);
 
   useEffect(() => {
-    void load();
+    const requestedMessage = searchParams.get("message") || "";
+    setSelectedId(requestedMessage);
+    void load(requestedMessage);
     void fetchJson<{ status: { suggestedRecipients?: string[] } }>("/api/system/mail/status")
       .then((status) => setRecipient(status.status?.suggestedRecipients?.[0] || "agent@你的域名"))
       .catch(() => undefined);
-  }, [load]);
+  }, [load, searchParams]);
   const events = (view?.events || []).filter((item) => !query || `${item.title} ${item.sender.displayName} ${item.sender.address}`.toLowerCase().includes(query.toLowerCase()));
   const selected = view?.selectedEvent;
 

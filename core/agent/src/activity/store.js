@@ -365,6 +365,9 @@ export class ActivityStore {
       throw activityError(400, "DUPLICATE_ATTACHMENT", "Activity attachments must be unique");
     }
     const target = normalizeTarget(input.target);
+    if (type === "page" && (target?.type !== "page" || !target.id)) {
+      throw activityError(400, "PAGE_TARGET_REQUIRED", "Page Activity must reference the published Page id");
+    }
     const correlationKey = cleanInlineText(input.correlationKey, 160);
     const idempotencyKey = requiredInlineText(input.idempotencyKey, "idempotencyKey", 200);
     const occurredAt = normalizeIso(input.occurredAt) || new Date().toISOString();

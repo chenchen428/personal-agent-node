@@ -28,6 +28,7 @@ test('browser device authorization emits only public codes then consumes a one-t
   const delays = [];
   let clock = Date.parse('2026-07-13T12:00:00.000Z');
   t.after(async () => { await close(cloud.server); fs.rmSync(dataRoot, { recursive: true, force: true }); });
+  const initialized = initializeSite({ domain: 'personal-agent.local', dataRoot });
   const result = await enrollWithCloudDeviceAuthorization({
     cloudUrl: cloud.url,
     dataRoot,
@@ -46,11 +47,11 @@ test('browser device authorization emits only public codes then consumes a one-t
   assert.equal('enrollmentCredential' in progress[0], false);
   assert.equal('nodeToken' in result, false);
   assert.equal('localPassword' in result, false);
-  const metadata = fs.readFileSync(path.join(dataRoot, 'config', 'cloud.json'), 'utf8');
+  const metadata = fs.readFileSync(path.join(initialized.config.configDir, 'cloud.json'), 'utf8');
   assert.doesNotMatch(metadata, /device-code-123456|enrollment-credential-123456|node-secret-token/);
-  const env = fs.readFileSync(path.join(dataRoot, 'secrets', 'applications', 'site.env'), 'utf8');
+  const env = fs.readFileSync(initialized.config.envPath, 'utf8');
   assert.match(env, /PERSONAL_AGENT_CLOUD_TOKEN="node-secret-token"/);
-  if (process.platform !== 'win32') assert.equal(fs.statSync(path.join(dataRoot, 'secrets', 'applications', 'site.env')).mode & 0o777, 0o600);
+  if (process.platform !== 'win32') assert.equal(fs.statSync(initialized.config.envPath).mode & 0o777, 0o600);
 });
 
 test('browser authorization attaches an existing local-only Node without replacing its identity or data', async (t) => {
@@ -59,7 +60,7 @@ test('browser authorization attaches an existing local-only Node without replaci
   t.after(async () => { await close(cloud.server); fs.rmSync(dataRoot, { recursive: true, force: true }); });
   const initialized = initializeSite({ domain: 'personal-agent.local', dataRoot });
   const original = JSON.parse(fs.readFileSync(initialized.config.configPath, 'utf8'));
-  fs.writeFileSync(path.join(dataRoot, 'memory.txt'), 'preserve me');
+  fs.writeFileSync(path.join(initialized.config.dataRoot, 'memory.txt'), 'preserve me');
   const result = await enrollWithCloudDeviceAuthorization({
     cloudUrl: cloud.url,
     dataRoot,
@@ -73,27 +74,28 @@ test('browser authorization attaches an existing local-only Node without replaci
   assert.equal(attached.asciiDomain, 'user-one.chenjianhui.site');
   assert.equal(attached.connectionMode, 'managed-cloud');
   assert.equal('edgeMode' in attached, false);
-  assert.equal(fs.readFileSync(path.join(dataRoot, 'memory.txt'), 'utf8'), 'preserve me');
+  assert.equal(fs.readFileSync(path.join(initialized.config.dataRoot, 'memory.txt'), 'utf8'), 'preserve me');
 });
 
 test('invalid reverse tunnel enrollment remains local-only', async (t) => {
   const cloud = await mockCloud({ tunnel: { protocol: 'wireguard-v1', endpoint: 'edge.chenjianhui.site:51821' } });
   const dataRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'personal-agent-device-failed-'));
   t.after(async () => { await close(cloud.server); fs.rmSync(dataRoot, { recursive: true, force: true }); });
+  const initialized = initializeSite({ domain: 'personal-agent.local', dataRoot });
   await assert.rejects(enrollWithCloudDeviceAuthorization({
     cloudUrl: cloud.url,
     dataRoot,
     openBrowser: async () => true,
     sleep: async () => {},
   }), /Unsupported reverse tunnel protocol/);
-  assert.equal(fs.existsSync(path.join(dataRoot, 'config', 'site.json')), false);
-  assert.equal(fs.existsSync(path.join(dataRoot, 'config', 'cloud.json')), false);
+  assert.equal(JSON.parse(fs.readFileSync(initialized.config.configPath, 'utf8')).connectionMode, 'local-only');
+  assert.equal(fs.existsSync(path.join(initialized.config.configDir, 'cloud.json')), false);
 });
 
 test('device authorization refuses a verification URL outside the selected Cloud origin', async (t) => {
   const cloud = await mockCloud({ verificationUrl: 'https://evil.example/connect' });
   t.after(async () => { await close(cloud.server); });
-  await assert.rejects(startCloudDeviceAuthorization({ cloudUrl: cloud.url }), /不受信任/);
+  await assert.rejects(startCloudDeviceAuthorization({ cloudUrl: cloud.url, installationId: 'ins_AAAAAAAAAAAAAAAA', spaceId: 'sp_AAAAAAAAAAAAAAAA' }), /不受信任/);
   assert.deepEqual(cloud.calls, ['auth-start']);
 });
 
@@ -121,7 +123,12 @@ async function mockCloud(options = {}) {
     const body = await read(request);
     if (request.url === '/api/node/auth/start') {
       calls.push('auth-start');
-      assert.deepEqual(body, { clientName: 'personal-agent-cli', clientVersion: '0.1.0-beta' });
+      assert.equal(body.clientName, 'personal-agent-cli');
+      assert.equal(body.clientVersion, '0.1.0-beta');
+      assert.equal(body.spaceKind, 'personal');
+      assert.equal(body.spaceSlug, 'personal');
+      assert.match(body.installationId, /^ins_/);
+      if (body.spaceId !== undefined) assert.match(body.spaceId, /^sp_/);
       return send(response, 201, { deviceCode: 'device-code-123456', userCode: 'PA-1234', verificationUrl: options.verificationUrl || `${serverUrl(server)}/connect`, verificationUrlComplete: `${serverUrl(server)}/connect?code=PA-1234`, expiresIn: 600, interval: 1 });
     }
     if (request.url === '/api/node/auth/poll') {

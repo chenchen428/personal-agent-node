@@ -15,6 +15,8 @@ async function requestJson<T>(url: string, init?: RequestInit): Promise<T> {
   const text = await response.text();
   let payload: any;
   try { payload = JSON.parse(text); } catch { throw new Error("本机服务返回了无法读取的内容"); }
-  if (!response.ok || payload.ok === false) throw new Error(typeof payload.error === "string" ? payload.error : payload.error?.message || `请求失败（${response.status}）`);
+  if (!response.ok || payload.ok === false) {
+    throw new Error(typeof payload.error === "string" ? payload.error : payload.error?.message || `请求失败（${response.status}）`);
+  }
   return (payload.data ?? payload.result ?? payload) as T;
 }

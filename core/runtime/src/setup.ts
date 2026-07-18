@@ -9,6 +9,7 @@ import { spawn, spawnSync } from 'node:child_process';
 import { managedServiceReadiness } from './cloud-resources.ts';
 import { localMailStatus } from './mail.ts';
 import { resolveCodexCli, resolveNodeConfig, workspaceRoot } from './config.ts';
+import { installationPaths } from './space-registry.ts';
 
 const setupRegistry = readJson(path.join(workspaceRoot, 'registry', 'setup-checks.json'));
 const stateSet = new Set(setupRegistry.states);
@@ -26,38 +27,55 @@ export async function setupStatus({
   platform = process.platform,
 } = {}) {
   const homeRoot = path.resolve(env.PERSONAL_AGENT_HOME || path.join(os.homedir(), '.personal-agent'));
-  const resolvedDataRoot = path.resolve(dataRoot || env.PRIVATE_SITE_DATA_ROOT || path.join(homeRoot, 'workspace'));
+  const requestedDataRoot = path.resolve(dataRoot || env.PRIVATE_SITE_DATA_ROOT || path.join(homeRoot, 'workspace'));
   const resolvedInstallRoot = path.resolve(installRoot || env.PRIVATE_SITE_INSTALL_ROOT || path.join(homeRoot, 'core'));
-  const effectiveEnv = { ...env, PRIVATE_SITE_DATA_ROOT: resolvedDataRoot, PRIVATE_SITE_INSTALL_ROOT: resolvedInstallRoot };
+  const directSpace = readJson(path.join(requestedDataRoot, 'space.json'));
+  const directSpaceRoot = directSpace?.spaceId ? requestedDataRoot : '';
+  const requestedInstallationDataRoot = directSpaceRoot ? path.dirname(path.dirname(directSpaceRoot)) : requestedDataRoot;
+  let effectiveEnv = {
+    ...env,
+    PERSONAL_AGENT_DATA_ROOT: requestedInstallationDataRoot,
+    PRIVATE_SITE_DATA_ROOT: directSpaceRoot || requestedDataRoot,
+    PRIVATE_SITE_INSTALL_ROOT: resolvedInstallRoot,
+    ...(directSpaceRoot ? {
+      PERSONAL_AGENT_SPACE_ID: String(directSpace.spaceId),
+      PERSONAL_AGENT_SPACE_ROOT: directSpaceRoot,
+    } : {}),
+  };
   const generatedDate = now();
   const generatedAt = generatedDate.toISOString();
   const installation = readJson(path.join(resolvedInstallRoot, 'installation.json'));
   const config = safeConfig(effectiveEnv);
-  const supervisor = readJson(path.join(resolvedDataRoot, 'runtime', 'supervisor.json'));
+  const installationDataRoot = config?.installationDataRoot || requestedInstallationDataRoot;
+  const spaceDataRoot = config?.dataRoot || directSpaceRoot || requestedDataRoot;
+  effectiveEnv = { ...effectiveEnv, PERSONAL_AGENT_DATA_ROOT: installationDataRoot, PRIVATE_SITE_DATA_ROOT: spaceDataRoot };
+  const installationSupervisor = readJson(path.join(installationPaths(installationDataRoot).runtimeRoot, 'supervisor.json'));
+  const installationSupervisorAlive = Boolean(installationSupervisor?.pid && installationSupervisor.status === 'running' && processAlive(installationSupervisor.pid));
+  const supervisor = readJson(path.join(spaceDataRoot, 'runtime', 'supervisor.json'));
   const supervisorAlive = Boolean(supervisor?.pid && supervisor.status === 'running' && processAlive(supervisor.pid));
   const gatewayReady = Boolean(config && await portProbe(config.gateway.host, config.gateway.port));
-  const localAuthDocument = readJson(path.join(resolvedDataRoot, 'config', 'local-auth.json'));
+  const localAuthDocument = readJson(path.join(spaceDataRoot, 'config', 'local-auth.json'));
   const localAuthReady = Boolean(config?.env?.PERSONAL_AGENT_AUTH_PASSWORD || (localAuthDocument?.algorithm === 'scrypt' && localAuthDocument?.verifier));
   const codex = config?.site
     ? await codexProbe({ config, env: effectiveEnv, platform })
     : emptyCodex();
-  const managed = managedServiceReadiness({ dataRoot: resolvedDataRoot, env: effectiveEnv });
+  const managed = managedServiceReadiness({ dataRoot: spaceDataRoot, env: effectiveEnv });
   const connectionMode = config?.site?.connectionMode || 'local-only';
   const remoteSelected = connectionMode !== 'local-only';
-  const cloud = readJson(path.join(resolvedDataRoot, 'config', 'cloud.json'));
-  const reverseTunnel = readJson(path.join(resolvedDataRoot, 'runtime', 'reverse-tunnel.json'));
-  const connectivityAcceptance = readJson(path.join(resolvedDataRoot, 'runtime', 'setup', 'connectivity.json'));
-  const conversationAcceptance = readJson(path.join(resolvedDataRoot, 'runtime', 'setup', 'web-conversation.json'));
-  const mailAcceptance = readJson(path.join(resolvedDataRoot, 'runtime', 'setup', 'mail.json'));
-  const managedCloudAction = readJson(path.join(resolvedDataRoot, 'runtime', 'setup', 'managed-cloud-action.json'));
-  const selections = readJson(path.join(resolvedDataRoot, 'config', 'setup-selections.json')) || {};
+  const cloud = readJson(path.join(spaceDataRoot, 'config', 'cloud.json'));
+  const reverseTunnel = readJson(path.join(spaceDataRoot, 'runtime', 'reverse-tunnel.json'));
+  const connectivityAcceptance = readJson(path.join(spaceDataRoot, 'runtime', 'setup', 'connectivity.json'));
+  const conversationAcceptance = readJson(path.join(spaceDataRoot, 'runtime', 'setup', 'web-conversation.json'));
+  const mailAcceptance = readJson(path.join(spaceDataRoot, 'runtime', 'setup', 'mail.json'));
+  const managedCloudAction = readJson(path.join(spaceDataRoot, 'runtime', 'setup', 'managed-cloud-action.json'));
+  const selections = readJson(path.join(spaceDataRoot, 'config', 'setup-selections.json')) || {};
   const mailSelected = selections.mail === true;
-  const wechatAccount = readJson(path.join(resolvedDataRoot, 'channels', 'wechat', 'account.json'));
+  const wechatAccount = readJson(path.join(spaceDataRoot, 'channels', 'wechat', 'account.json'));
   const mail = config ? safeMailStatus(config, { env: effectiveEnv, installRoot: resolvedInstallRoot }) : null;
 
   const releaseReady = Boolean(installation?.activeReleaseId && pointerExists(path.join(resolvedInstallRoot, 'current')));
-  const siteReady = Boolean(config?.site?.siteId && config?.site?.nodeId && fs.statSync(resolvedDataRoot, { throwIfNoEntry: false })?.isDirectory());
-  const serviceReady = supervisorAlive && requiredComponentsReady(supervisor);
+  const siteReady = Boolean(config?.space?.id && config?.site?.siteId && config?.site?.nodeId && fs.statSync(spaceDataRoot, { throwIfNoEntry: false })?.isDirectory());
+  const serviceReady = installationSupervisorAlive && supervisorAlive && requiredComponentsReady(supervisor);
   const codexConversationReady = conversationAcceptance?.schemaVersion === 1
     && conversationAcceptance.realAgentRuntime === true
     && conversationAcceptance.sameSessionAgentReply === true
@@ -81,7 +99,7 @@ export async function setupStatus({
 
   const checks = [
     makeCheck('installation.release', releaseReady, releaseReady ? '已安装可信发行版' : '需要完成发行版安装', { installed: releaseReady, releaseId: releaseReady ? String(installation.activeReleaseId).slice(0, 128) : '' }, generatedAt),
-    makeCheck('installation.data-root', siteReady, siteReady ? '本机数据目录已初始化' : '本机数据目录尚未初始化', { initialized: siteReady, confined: path.isAbsolute(resolvedDataRoot) }, generatedAt),
+    makeCheck('installation.data-root', siteReady, siteReady ? '本机数据目录已初始化' : '本机数据目录尚未初始化', { initialized: siteReady, confined: path.isAbsolute(spaceDataRoot), spaceId: config?.space?.id || '' }, generatedAt),
     makeCheck('installation.service', serviceReady, serviceReady ? '后台服务正在运行' : '后台服务需要启动或修复', { running: serviceReady }, generatedAt),
     makeCheck('installation.gateway', gatewayReady, gatewayReady ? '本机网关可访问' : '本机网关暂不可访问', { reachable: gatewayReady, loopback: config?.gateway?.host === '127.0.0.1' }, generatedAt),
     makeCheck('installation.console-auth', localAuthReady, localAuthDocument?.verifier ? '外部访问密码已使用不可逆校验器' : localAuthReady ? '外部访问密码已配置' : '桌面本机直达；手机访问密码尚未设置', { configured: localAuthReady, durableVerifier: Boolean(localAuthDocument?.verifier), protectsLocalDesktop: false, protectsRemoteAccess: true }, generatedAt, localAuthReady ? undefined : 'not-selected'),
@@ -101,7 +119,7 @@ export async function setupStatus({
     makeCheck('mail.local-ingest', Boolean(mail?.ingress?.ready), mail?.ingress?.ready ? '本地邮件入口已就绪' : '本地邮件入口尚未配置', { ready: Boolean(mail?.ingress?.ready), smtpServerBundled: false }, generatedAt, mailSelected ? undefined : 'not-selected'),
     makeCheck('mail.delivery', mailAcceptance?.delivery === true, mailAcceptance?.delivery === true ? '真实邮件投递已验证' : '尚未验证真实邮件投递', { verified: mailAcceptance?.delivery === true }, generatedAt, mailSelected ? undefined : 'not-selected'),
     makeCheck('mail.recovery', mailAcceptance?.recovery === true, mailAcceptance?.recovery === true ? '邮件备份恢复已验证' : '尚未验证邮件备份恢复', { verified: mailAcceptance?.recovery === true }, generatedAt, mailSelected ? undefined : 'not-selected'),
-    makeCheck('channels.wechat', Boolean(wechatAccount?.accountId && wechatAccount?.userId), wechatAccount?.accountId && wechatAccount?.userId ? '微信渠道已连接' : '需要连接微信', { bound: Boolean(wechatAccount?.accountId && wechatAccount?.userId) }, generatedAt),
+    makeCheck('connections.wechat', Boolean(wechatAccount?.accountId && wechatAccount?.userId), wechatAccount?.accountId && wechatAccount?.userId ? '微信连接已就绪' : '微信未连接（可选）', { bound: Boolean(wechatAccount?.accountId && wechatAccount?.userId) }, generatedAt, wechatAccount?.accountId && wechatAccount?.userId ? undefined : 'not-selected'),
   ];
 
   return {
@@ -179,7 +197,7 @@ export function writeWebConversationAcceptance({ dataRoot, now = () => new Date(
     authenticated: true,
     realAgentRuntime: true,
     sameSessionAgentReply: true,
-    wechatRequired: true,
+    wechatRequired: false,
     verifiedAt: now().toISOString(),
   });
   return target;

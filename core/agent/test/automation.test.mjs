@@ -6,7 +6,7 @@ import test from "node:test";
 import { AutomationEngine } from "../src/automation/engine.js";
 import { BridgeStore } from "../src/store/store.js";
 
-test("automation defaults expose all Agent mail and create one idempotent Agent task", async () => {
+test("built-in mail connection processing creates one idempotent Agent task", async () => {
   const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), "oab-automation-"));
   const store = new BridgeStore({ dataDir, consoleBaseUrl: "https://agent.example.test" });
   let sequence = 0;
@@ -18,8 +18,8 @@ test("automation defaults expose all Agent mail and create one idempotent Agent 
     const engine = new AutomationEngine({ store, broker, workspaceRoot: dataDir });
     engine.ensureDefaults();
     const input = {
-      sourceId: "src_mail_agent",
-      eventType: "message.received",
+      sourceId: "connection_local_mail",
+      eventType: "mail.received",
       title: "电子账单",
       sender: { address: "bank@example.com" },
       dedupeKey: "sha256:mail-1",
@@ -46,6 +46,27 @@ test("automation defaults expose all Agent mail and create one idempotent Agent 
   }
 });
 
+test("domain verification mail is archived for inspection without creating an Agent task", async () => {
+  const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), "oab-domain-mail-"));
+  const store = new BridgeStore({ dataDir, consoleBaseUrl: "https://agent.example.test" });
+  const engine = new AutomationEngine({ store, broker: { createBrokerSession() { assert.fail("verification mail created a task"); } }, workspaceRoot: dataDir });
+  try {
+    engine.ensureDefaults();
+    const result = await engine.ingest({
+      sourceId: "connection_local_mail",
+      eventType: "mail.received",
+      title: "Personal Agent 绑定验证 · pa-domain-0123456789abcdef01234567",
+      sender: { address: "verify@personal-agent.cn" },
+      dedupeKey: "sha256:domain-verification",
+      payload: { recipients: ["agent@owner.personal-agent.cn"], textPreview: "pa-domain-0123456789abcdef01234567" },
+    }, { dispatch: false });
+    assert.equal(result.systemOnly, true);
+    assert.equal(store.listAutomationEvents().length, 1);
+    assert.equal(store.listAutomationRuns().length, 0);
+    assert.equal(store.getAutomationMailUsageSummary().receivedCount, 0);
+  } finally { store.close(); }
+});
+
 test("mail protection enforces sender limits and automatically blocks repeated violations", async () => {
   const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), "oab-mail-protection-"));
   const store = new BridgeStore({ dataDir, consoleBaseUrl: "https://agent.example.test" });
@@ -64,8 +85,8 @@ test("mail protection enforces sender limits and automatically blocks repeated v
     });
     engine.ensureDefaults();
     const mail = (number) => ({
-      sourceId: "src_mail_agent",
-      eventType: "message.received",
+      sourceId: "connection_local_mail",
+      eventType: "mail.received",
       title: `Message ${number}`,
       sender: { address: "flood@example.com" },
       dedupeKey: `sha256:flood-${number}`,
@@ -108,8 +129,8 @@ test("mail protection promotes authenticated senders without bypassing the bound
     engine.ensureDefaults();
     for (let index = 1; index <= 5; index += 1) {
       await engine.ingest({
-        sourceId: "src_mail_agent",
-        eventType: "message.received",
+        sourceId: "connection_local_mail",
+        eventType: "mail.received",
         title: `Bill ${index}`,
         sender: { address: "billing@example.com" },
         dedupeKey: `sha256:billing-${index}`,

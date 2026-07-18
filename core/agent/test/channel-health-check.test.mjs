@@ -67,9 +67,9 @@ test("daily channel health dry-run reports failure without notifying", async () 
 
 test("channel health belongs to the local Node instead of an ECS systemd timer", () => {
   const registry = JSON.parse(fs.readFileSync(path.join(workspaceRoot, "registry", "capabilities.json"), "utf8"));
-  const channels = registry.capabilities.find((capability) => capability.id === "channels");
-  assert.equal(channels.owner, "personal-agent-node");
-  assert.equal(channels.dataScope, "local-private");
+  const connections = registry.capabilities.find((capability) => capability.id === "connections");
+  assert.equal(connections.owner, "personal-agent-node");
+  assert.equal(connections.dataScope, "local-private");
   assert.equal(fs.existsSync(path.join(workspaceRoot, "infra", "systemd", "open-agent-bridge-channel-health.timer")), false);
   assert.equal(fs.existsSync(path.join(workspaceRoot, "scripts", "install-open-agent-bridge-release.sh")), false);
 });

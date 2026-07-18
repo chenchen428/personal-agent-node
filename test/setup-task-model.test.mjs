@@ -28,14 +28,12 @@ test("setup task model promotes public domain and Agent mail into one current ta
     check("connectivity.enrollment", "conditional", "not-selected", "connectivity", ["connectivity.managed-authorize"]),
     check("mail.identity", "conditional", "not-selected", "mail-identity", ["connectivity.managed-authorize"]),
     check("mail.local-ingest", "optional", "not-selected", "local-mail", ["mail.enable"]),
-    check("channels.wechat", "required-for-agent", "action-required", "channels", ["channels.wechat.bind"]),
+    check("connections.wechat", "optional", "not-selected", "connections", ["connections.wechat.bind"]),
   ]);
-  assert.equal(model.requiredTasks.length, 2);
-  assert.equal(model.requiredTasks[0].check.id, "channels.wechat");
-  assert.equal(model.requiredTasks[0].actionId, "channels.wechat.bind");
-  assert.equal(model.requiredTasks[1].check.id, "connectivity.public-and-mail");
-  assert.equal(model.requiredTasks[1].title, "验证公网域名与 Agent 邮箱");
-  assert.equal(model.requiredTasks[1].actionId, "connectivity.managed-authorize");
+  assert.equal(model.requiredTasks.length, 1);
+  assert.equal(model.requiredTasks[0].check.id, "connectivity.public-and-mail");
+  assert.equal(model.requiredTasks[0].title, "验证公网域名与 Agent 邮箱");
+  assert.equal(model.requiredTasks[0].actionId, "connectivity.managed-authorize");
   assert.deepEqual(model.optionalTasks.map((task) => task.check.id), ["mail.local-ingest"]);
   assert.equal(model.onlineReady, false);
   assert.equal(canonicalSetupAction("connectivity.repair"), "connectivity.managed-authorize");

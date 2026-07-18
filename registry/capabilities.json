@@ -7,12 +7,11 @@
     { "id": "apps", "owner": "personal-agent-node", "dataScope": "local-private", "status": "implemented" },
     { "id": "agent", "owner": "personal-agent-node", "dataScope": "local-private", "status": "migrating" },
     { "id": "activity", "owner": "personal-agent-node", "dataScope": "local-private", "status": "implemented" },
-    { "id": "channels", "owner": "personal-agent-node", "dataScope": "local-private", "status": "migrating" },
+    { "id": "connections", "owner": "personal-agent-node", "dataScope": "local-private", "status": "implemented" },
     { "id": "managed-platforms", "owner": "personal-agent-node", "dataScope": "local-private", "status": "planned" },
     { "id": "skills", "owner": "personal-agent-node", "dataScope": "release", "status": "implemented" },
     { "id": "files", "owner": "personal-agent-node", "dataScope": "local-private", "status": "migrating" },
     { "id": "mail", "owner": "personal-agent-node", "dataScope": "local-private", "status": "migrating" },
-    { "id": "automation", "owner": "personal-agent-node", "dataScope": "local-private", "status": "migrating" },
     { "id": "publications", "owner": "personal-agent-node", "dataScope": "mixed", "status": "migrating" },
     { "id": "extensions", "owner": "personal-agent-node", "dataScope": "isolated-extension", "status": "migrating" },
     { "id": "edge-transport", "owner": "private-site-edge", "dataScope": "transport-metadata", "status": "implemented" }

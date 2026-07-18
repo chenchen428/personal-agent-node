@@ -9,6 +9,10 @@
     "WeChat identity maps to a reusable local Agent session",
     "Health failure asks for confirmation before login",
     "Verification codes are bounded and are not persisted as conversation input",
-    "Cloud resource binding sends a same-origin browser authorization link without intercepting ordinary conversation or exposing the resource token"
+    "Cloud resource binding sends a same-origin browser authorization link without intercepting ordinary conversation or exposing the resource token",
+    "WeChat materializes system-relative links on the current managed HTTPS domain and fails closed before any local path or loopback URL can leave the Node",
+    "The independent personal WeChat connector accepts only loopback Qianxun HTTP origins, pins callbacks to the Q0000 account, never exposes SafeKey, defaults to deny, and only routes policy-authorized text callbacks into the main Agent conversation",
+    "Personal WeChat reads contacts and groups from Qianxun before accepting a policy, rejects unknown identifiers, deduplicates callbacks, excludes self messages, and sends replies through Qianxun rather than WeChat claw",
+    "Qianxun account writes require a digest-bound R2 or R3 plan, authenticated local human approval, and a semantic allowlisted operation"
   ]
 }

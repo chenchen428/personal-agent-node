@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "skill": "personal-agent",
+  "title": "Online Pages dual-device screenshots and linked Activity",
+  "prompt": "Publish a Page with separate desktop and mobile screenshots. Keep internal links relative, use shareUrl only for explicit sharing, and create a Page Activity that targets the returned pageId.",
+  "commands": [
+    "pa-cli pages publish --file index.html --folder release-notes --desktop-thumbnail page-thumbnail-desktop.png --mobile-thumbnail page-thumbnail-mobile.png --title \"Update notes\" --summary \"This client release\" --desktop-thumbnail-alt \"Desktop update notes preview\" --mobile-thumbnail-alt \"Mobile update notes preview\" --overwrite --json",
+    "personal-agent activity upsert --capability <ephemeral> --type page --title \"Update notes published\" --detail \"The release Page is ready to open.\" --target-type page --target-id \"<pageId returned by pa-cli pages publish>\" --idempotency-key \"page:release-notes:published\" --correlation-key \"page:release-notes\" --json"
+  ],
+  "artifacts": [{ "path": "expected.json", "label": "Page screenshot and Activity target expectation" }]
+}

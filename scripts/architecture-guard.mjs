@@ -39,7 +39,7 @@ checks.push({ name: 'setup readiness dimensions are explicit', ok: ['console', '
 checks.push({ name: 'setup groups and checks are unique', ok: setupGroupIds.size === setupChecks.groups.length && setupCheckIds.size === setupChecks.checks.length });
 checks.push({ name: 'setup checks reference declared groups and dimensions', ok: setupChecks.checks.every((entry) => setupGroupIds.has(entry.group) && (entry.dimension === null || setupChecks.readinessDimensions.includes(entry.dimension))) });
 checks.push({ name: 'setup checks carry self-service guidance', ok: setupChecks.checks.every((entry) => typeof entry.why === 'string' && entry.why.trim() && typeof entry.guidance === 'string' && entry.guidance.trim()) });
-checks.push({ name: 'WeChat is required Agent readiness', ok: setupChecks.checks.some((entry) => entry.id === 'channels.wechat' && entry.requirement === 'required-for-agent' && entry.dimension === 'agent') });
+checks.push({ name: 'WeChat is an optional connection', ok: setupChecks.checks.some((entry) => entry.id === 'connections.wechat' && entry.requirement === 'optional' && entry.dimension === 'agent') });
 checks.push({ name: 'bundled Node runtime is exact and covers the release matrix', ok: /^22\.\d+\.\d+$/.test(nodeRuntime.version) && nodeRuntime.source.endsWith(`/v${nodeRuntime.version}`) && ['win32-x64', 'darwin-x64', 'darwin-arm64', 'linux-x64', 'linux-arm64'].every((target) => nodeRuntime.platforms.includes(target)) });
 checks.push({ name: 'capability ids are unique', ok: capabilityIds.size === capabilities.capabilities.length });
 checks.push({ name: 'capabilities have registered owners', ok: capabilities.capabilities.every((entry) => projectNames.has(entry.owner)) });

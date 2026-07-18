@@ -35,6 +35,24 @@ The platform release includes a compiled Tauri 2 desktop shell. Direct runtime d
 
 The shell links to the operating system WebView runtime rather than redistributing Chromium, WebView2, WKWebView, or WebKitGTK inside the immutable Node payload.
 
+## Page thumbnail renderer
+
+Personal Agent uses `sharp` `0.34.5` (Apache-2.0, source `https://github.com/lovell/sharp`) to render the desktop and mobile PNG previews that are stored with a published Page. Its platform package and libvips notices are recorded in the generated release SBOM.
+
+## OpenCLI browser runtime
+
+Personal Agent Node releases include `@jackwener/opencli` `1.8.6` and its
+locked production dependency graph as an internal browser executor.
+
+- Source: https://github.com/jackwener/opencli
+- Package: https://www.npmjs.com/package/@jackwener/opencli/v/1.8.6
+- License: Apache-2.0
+- Installation lifecycle scripts are disabled during release assembly.
+- The upstream license is distributed beside the package, and the complete
+  dependency graph and license declarations are recorded in `SBOM.cdx.json`.
+- The Chrome Browser Bridge is not bundled or silently enabled. Chrome retains
+  the permission decision and requires explicit user confirmation.
+
 ## Guizang social card skill
 
 Source: https://github.com/op7418/guizang-social-card-skill

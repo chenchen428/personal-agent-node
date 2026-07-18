@@ -8,6 +8,12 @@
   "acceptance": [
     "Private publication records remain authenticated",
     "Rendered pages do not expose internal system modules",
-    "Published and private content have distinct routes"
+    "Published and private content have distinct routes",
+    "Internal Page and thumbnail URLs remain relative to the current desktop or mobile origin",
+    "pa-cli pages publish returns the managed-tunnel HTTPS URL alongside the canonical internalUrl, or an explicit unavailable-domain notice when no accessible domain exists",
+    "Public shareUrl is separate and never replaces the managed delivery URL or internal URL",
+    "Every new Page persists different desktop and mobile screenshots and each client renders its matching screenshot",
+    "Page publication returns a stable pageId and Page Activity must target that id so the Activity card opens Page detail",
+    "Page Activity uses the stored mobile screenshot as representative feed media without scraping Page HTML"
   ]
 }

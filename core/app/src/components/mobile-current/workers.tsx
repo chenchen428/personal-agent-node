@@ -64,11 +64,13 @@ export function MobileWorkers({ sessionId = "", conversations = false }: { sessi
     { value: "interrupted", label: "已中断", count: taskCounts.interrupted },
   ];
   const selectedFilter = options.find((option) => option.value === filter) || options[0];
+  const hasConditions = Boolean(query) || filter !== "all";
+  const conditionSummary = [query ? `“${query}”` : "", filter !== "all" ? selectedFilter.label : ""].filter(Boolean).join(" · ");
   return <MobileListShell section="workers" title="任务" note={filter === "all" ? `${taskCounts.running} 项任务进行中` : `${selectedFilter.count} 项${selectedFilter.label}`} query={query} setQuery={setQuery} searchLabel="搜索任务" searchPlaceholder="搜索任务…" filter={{ label: "筛选任务状态", description: "选择要查看的任务状态", value: filter, setValue: setFilter, options }}>
     <div className="mobile-task-list">
       {error ? <InlineError message={error} /> : null}
-      {query && sessions.length ? <SearchStatus query={query} count={sessions.length} /> : null}
-      {!loading && !sessions.length ? <TaskEmpty query={query} /> : null}
+      {hasConditions ? <SearchStatus count={sessions.length} summary={conditionSummary} onClear={() => { setQuery(""); setFilter("all"); }} /> : null}
+      {!loading && !sessions.length ? <TaskEmpty hasConditions={hasConditions} /> : null}
       <div className="mobile-task-items">{sessions.map((item) => <TaskRow session={item} key={item.id} />)}</div>
       {loading ? <LoadSentinel loading canLoad={false} exhausted={false} onLoad={() => undefined} /> : null}
     </div>
@@ -86,8 +88,8 @@ function TaskRow({ session }: { session: Session }) {
   </Link>;
 }
 
-function TaskEmpty({ query }: { query: string }) {
-  return <div className="mobile-task-empty"><Bot aria-hidden="true" /><strong>{query ? "没有找到任务" : "还没有任务"}</strong><span>{query ? "调整搜索词或状态后再试。" : "PA 开始工作后会显示在这里。"}</span></div>;
+function TaskEmpty({ hasConditions }: { hasConditions: boolean }) {
+  return <div className="mobile-task-empty"><Bot aria-hidden="true" /><strong>{hasConditions ? "没有找到任务" : "还没有任务"}</strong><span>{hasConditions ? "调整搜索词或状态后再试。" : "PA 开始工作后会显示在这里。"}</span></div>;
 }
 
 function TaskDetail({ session, loading, error, returnHref, returnLabel }: { session: Session | null; loading: boolean; error: string; returnHref: string; returnLabel: string }) {
@@ -156,6 +158,13 @@ function TaskPlan({ steps }: { steps: PlanStep[] }) {
   return <section className="mobile-task-plan" aria-label="本轮计划"><header><strong>本轮计划</strong><span>{completed} / {steps.length}</span></header><ol>{steps.map((step, index) => <li data-status={step.status} key={`${index}-${step.step}`}><i aria-hidden="true">{step.status === "completed" ? "✓" : ""}</i><span>{step.step}</span></li>)}</ol></section>;
 }
 
-function TaskLoading() { return <div className="mobile-task-state loading" role="status" aria-label="正在加载任务详情"><div className="mobile-task-skeleton avatar" /><div className="mobile-task-skeleton copy"><i /><i /><i /></div><div className="mobile-task-skeleton plan"><i /><i /><i /></div><span>正在读取任务进展…</span></div>; }
+function TaskLoading() { return <div className="mobile-task-state loading" role="status" aria-label="正在加载任务详情">
+  <div className="mobile-task-loading-thread" aria-hidden="true">
+    <div className="mobile-task-loading-message user"><div className="mobile-task-skeleton bubble"><i /><i /></div><div className="mobile-task-skeleton avatar" /></div>
+    <div className="mobile-task-loading-message agent"><div className="mobile-task-skeleton avatar" /><div className="mobile-task-loading-copy"><i /><i /><i /></div></div>
+    <div className="mobile-task-skeleton plan"><div className="mobile-task-loading-plan-header"><i /><i /></div><div className="mobile-task-loading-step"><b /><i /></div><div className="mobile-task-loading-step"><b /><i /></div><div className="mobile-task-loading-step"><b /><i /></div></div>
+  </div>
+  <div className="mobile-task-loading-label"><i aria-hidden="true" /><span>正在读取任务进展</span></div>
+</div>; }
 
 function TaskUnavailable({ error = false }: { error?: boolean }) { const Icon = error ? AlertCircle : Inbox; return <div className={`mobile-task-state ${error ? "error" : "empty"}`} role="status"><Icon aria-hidden="true" /><strong>{error ? "暂时无法读取任务" : "还没有可展示的进展"}</strong><p>{error ? "连接恢复后重新打开本页即可继续查看。" : "任务产生可见回复后，会按时间顺序显示在这里。"}</p></div>; }

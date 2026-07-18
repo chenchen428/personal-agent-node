@@ -8,7 +8,6 @@ import { useJson } from "./shared";
 import { Badge, Button, DetailHeader, KeyValueGrid } from "../desktop-v72/primitives";
 import { CollectionDetail } from "../desktop-v72/collection-detail";
 import { WechatConnectPanel } from "@/components/wechat-connect-panel";
-import { XiaohongshuConnectPanel } from "@/components/xiaohongshu-connect-panel";
 
 const iconFor = (provider: string) => provider === "wechat" ? <MessageCircle /> : provider === "xiaohongshu" ? <Sparkles /> : provider.includes("mail") ? <Mail /> : <Globe2 />;
 
@@ -33,7 +32,7 @@ function channelTone(state = ""): "success" | "warning" | "danger" | "info" {
 
 function channelValues(selected: Channel | undefined, overview: Overview | null) {
   if (selected?.provider === "wechat") return [{ label: "连接状态", value: selected.statusLabel }, { label: "用途", value: "唯一主会话" }, { label: "内容保存", value: "本机工作区" }, { label: "授权位置", value: "微信手机端" }];
-  if (selected?.provider === "xiaohongshu") return [{ label: "连接状态", value: selected.statusLabel }, { label: "运行环境", value: "本机可用" }, { label: "接入方式", value: "扫码登录" }, { label: "操作方式", value: "由主 Agent 托管" }];
+  if (selected?.provider === "xiaohongshu") return [{ label: "能力入口", value: "浏览器只读操作" }, { label: "账号会话", value: "由用户浏览器持有" }, { label: "登录检测", value: "不读取" }, { label: "历史渠道", value: "仅兼容保留" }];
   if (selected?.provider.includes("mail")) return [{ label: "处理状态", value: selected.statusLabel }, { label: "附件", value: "仅保存在本机" }, { label: "接收方式", value: "PA 邮箱" }, { label: "内容保存", value: "本机工作区" }];
   const address = overview?.machine.mobileAddress;
   return [{ label: "公网地址", value: address ? <a className="v72-inline-link" href={address} target="_blank" rel="noreferrer">{address}</a> : "尚未启用" }, { label: "连接", value: "Personal Agent Cloud" }, { label: "内容", value: "仍保存在本机" }, { label: "状态", value: selected?.statusLabel || "等待连接" }];
@@ -41,7 +40,7 @@ function channelValues(selected: Channel | undefined, overview: Overview | null)
 
 function ChannelActions({ channel, address, refresh }: { channel: Channel; address?: string; refresh: () => void }) {
   if (channel.provider === "wechat") return <WechatConnectPanel connected={channel.state === "connected"} onConnected={async () => refresh()} compact />;
-  if (channel.provider === "xiaohongshu") return <XiaohongshuConnectPanel connected={["connected", "logged_in", "ready"].includes(channel.state)} onConnected={async () => refresh()} />;
+  if (channel.provider === "xiaohongshu") return <div className="page-actions"><Button onClick={refresh}>重新检测</Button><Link className="button primary" href="/app/connections?connection=xiaohongshu">查看浏览器能力</Link></div>;
   if (channel.provider === "public-domain") return <div className="page-actions"><Button onClick={refresh}>重新检测</Button>{address ? <a className="button primary" href={address} target="_blank" rel="noreferrer">打开公网域名</a> : <Link className="button primary" href="/app/setup">启用公网域名</Link>}</div>;
   return <div className="page-actions"><Button onClick={refresh}>重新检测</Button><Link className="button primary" href="/app/setup">管理连接</Link></div>;
 }
