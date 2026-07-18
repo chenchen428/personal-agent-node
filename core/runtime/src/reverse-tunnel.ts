@@ -9,6 +9,8 @@ export const DEFAULT_MAX_FRAME_BYTES = 128 * 1024;
 const DEFAULT_MAX_BODY_BYTES = 25 * 1024 * 1024;
 const DEFAULT_MAX_BUFFERED_BYTES = 2 * 1024 * 1024;
 const DEFAULT_MAX_STREAMS = 64;
+const DEFAULT_MAX_REJECTED_STREAMS = 64;
+const REJECTED_STREAM_TTL_MS = 60_000;
 const HOP_BY_HOP_HEADERS = new Set([
   "connection", "keep-alive", "proxy-authenticate", "proxy-authorization", "te", "trailer", "transfer-encoding", "upgrade",
 ]);
@@ -46,6 +48,7 @@ export class ReverseTunnelConnector {
     this.random = random;
     this.statePath = path.join(config.runtimeDir, "reverse-tunnel.json");
     this.streams = new Map();
+    this.rejectedStreams = new Map();
     this.socket = null;
     this.stopped = false;
     this.ready = false;
@@ -53,6 +56,8 @@ export class ReverseTunnelConnector {
     this.reconnectTimer = null;
     this.watchdogTimer = null;
     this.lastServerActivity = 0;
+    this.connectedAt = 0;
+    this.disconnectCause = "";
   }
 
   start() {
@@ -72,6 +77,8 @@ export class ReverseTunnelConnector {
 
   connect() {
     if (this.stopped) return;
+    this.connectedAt = Date.now();
+    this.lastServerActivity = this.connectedAt;
     this.writeState("connecting");
     const socket = new this.WebSocketImpl(this.tunnel.endpoint, REVERSE_TUNNEL_PROTOCOL, {
       headers: { authorization: `Bearer ${this.tunnel.token}` },
@@ -82,6 +89,9 @@ export class ReverseTunnelConnector {
     this.socket = socket;
     socket.on("open", () => {
       this.lastServerActivity = Date.now();
+      this.connectedAt = this.lastServerActivity;
+      this.disconnectCause = "";
+      this.logger.log?.("[reverse-tunnel] connected");
       this.send({ v: 1, type: "hello", protocol: REVERSE_TUNNEL_PROTOCOL, clientVersion: this.tunnel.clientVersion, capabilities: ["http", "stream", "websocket"] });
     });
     socket.on("message", (data, isBinary) => {
@@ -90,15 +100,26 @@ export class ReverseTunnelConnector {
       try { this.handleMessage(parseTunnelMessage(data, { maxFrameBytes: this.tunnel.maxFrameBytes })); }
       catch (error) { this.failConnection(error.code || "TUNNEL_PROTOCOL_ERROR", error.message); }
     });
-    socket.on("close", (code) => {
+    socket.on("close", (code, reason) => {
       if (socket !== this.socket) return;
       this.ready = false;
       this.cancelAll("tunnel_disconnected");
-      this.writeState("disconnected", { closeCode: Number(code) || 0 });
-      if (!this.stopped) this.scheduleReconnect();
+      const closedAt = Date.now();
+      const cause = diagnosticCloseCause(code, reason, this.disconnectCause);
+      const detail = { closeCode: Number(code) || 0, cause, connectedMs: Math.max(0, closedAt - this.connectedAt), lastServerActivityMs: Math.max(0, closedAt - this.lastServerActivity) };
+      if (this.stopped) {
+        this.logger.log?.(`[reverse-tunnel] stopped: code=${detail.closeCode} cause=${cause}`);
+        this.writeState("stopped", detail);
+        return;
+      }
+      this.logger.error?.(`[reverse-tunnel] disconnected: code=${detail.closeCode} cause=${cause} connected_ms=${detail.connectedMs} server_idle_ms=${detail.lastServerActivityMs}`);
+      this.writeState("disconnected", detail);
+      this.scheduleReconnect();
     });
     socket.on("error", (error) => {
-      this.logger.error(`[reverse-tunnel] connection failed: ${safeErrorCode(error)}`);
+      const code = safeErrorCode(error);
+      this.disconnectCause ||= `socket_error_${String(code).toLowerCase()}`;
+      this.logger.error?.(`[reverse-tunnel] connection failed: ${code}`);
     });
     this.startWatchdog();
   }
@@ -111,6 +132,7 @@ export class ReverseTunnelConnector {
       this.tunnel.generation = message.generation;
       if (message.heartbeatSeconds) this.tunnel.heartbeatSeconds = message.heartbeatSeconds;
       if (message.maxFrameBytes) this.tunnel.maxFrameBytes = Math.min(this.tunnel.maxFrameBytes, message.maxFrameBytes);
+      this.logger.log?.(`[reverse-tunnel] ready: generation=${this.tunnel.generation} heartbeat_seconds=${this.tunnel.heartbeatSeconds}`);
       this.writeState("ready", { connectionId: boundedOpaque(message.connectionId, "connectionId"), lastPongAt: this.now().toISOString() });
       return;
     }
@@ -128,10 +150,10 @@ export class ReverseTunnelConnector {
   }
 
   startStream(message) {
-    if (this.streams.has(message.id)) throw tunnelError("TUNNEL_STREAM_DUPLICATE", "Duplicate tunnel stream");
+    if (this.streams.has(message.id) || this.rejectedStreams.has(message.id)) throw tunnelError("TUNNEL_STREAM_DUPLICATE", "Duplicate tunnel stream");
     if (this.streams.size >= DEFAULT_MAX_STREAMS) return this.sendError(message.id, "STREAM_LIMIT_EXCEEDED");
     if (!isTunnelRouteAllowed(this.config.distribution, message.path, message.kind, message.method)) {
-      this.streams.set(message.id, { id: message.id, kind: "rejected", nextRequestSeq: 0, requestBytes: 0 });
+      this.rememberRejectedStream(message.id);
       return this.sendError(message.id, "REMOTE_ROUTE_DENIED");
     }
     const tunnelPath = resolveTunnelRequestPath(message.path);
@@ -192,13 +214,14 @@ export class ReverseTunnelConnector {
   }
 
   writeStream(message) {
+    const rejected = this.rejectedStreams.get(message.id);
+    if (rejected) return this.drainRejectedStream(rejected, message);
     const stream = this.requireStream(message.id);
     if (message.seq !== stream.nextRequestSeq) throw tunnelError("TUNNEL_SEQUENCE_INVALID", "Out-of-order tunnel frame");
     stream.nextRequestSeq += 1;
     const data = decodeFrameData(message.data, this.tunnel.maxFrameBytes);
     stream.requestBytes += data.length;
     if (stream.requestBytes > DEFAULT_MAX_BODY_BYTES) return this.abortStream(stream, "REQUEST_TOO_LARGE");
-    if (stream.kind === "rejected") return;
     if (stream.kind === "websocket") {
       if (message.opcode === "close") { stream.localSocket?.close(message.closeCode || 1000); return; }
       if (message.opcode === "ping") { stream.localSocket?.ping(data); return; }
@@ -226,8 +249,8 @@ export class ReverseTunnelConnector {
   }
 
   endStream(id) {
+    if (this.forgetRejectedStream(id)) return;
     const stream = this.requireStream(id);
-    if (stream.kind === "rejected") { this.streams.delete(id); return; }
     if (stream.ended) throw tunnelError("TUNNEL_STREAM_ENDED", "Tunnel stream already ended");
     stream.ended = true;
     if (stream.kind === "http") {
@@ -264,6 +287,7 @@ export class ReverseTunnelConnector {
   }
 
   cancelStream(id) {
+    if (this.forgetRejectedStream(id)) return;
     const stream = this.streams.get(id);
     if (!stream) return;
     this.streams.delete(id);
@@ -273,6 +297,29 @@ export class ReverseTunnelConnector {
 
   cancelAll(reason) {
     for (const id of [...this.streams.keys()]) this.cancelStream(id, reason);
+    for (const id of [...this.rejectedStreams.keys()]) this.forgetRejectedStream(id);
+  }
+
+  rememberRejectedStream(id) {
+    if (this.rejectedStreams.size >= DEFAULT_MAX_REJECTED_STREAMS) this.forgetRejectedStream(this.rejectedStreams.keys().next().value);
+    const timer = setTimeout(() => this.forgetRejectedStream(id), REJECTED_STREAM_TTL_MS);
+    timer.unref?.();
+    this.rejectedStreams.set(id, { id, nextRequestSeq: 0, requestBytes: 0, timer });
+  }
+
+  drainRejectedStream(stream, message) {
+    if (message.seq !== stream.nextRequestSeq) throw tunnelError("TUNNEL_SEQUENCE_INVALID", "Out-of-order tunnel frame");
+    stream.nextRequestSeq += 1;
+    stream.requestBytes += decodeFrameData(message.data, this.tunnel.maxFrameBytes).length;
+    if (stream.requestBytes > DEFAULT_MAX_BODY_BYTES) this.forgetRejectedStream(stream.id);
+  }
+
+  forgetRejectedStream(id) {
+    const stream = this.rejectedStreams.get(id);
+    if (!stream) return false;
+    clearTimeout(stream.timer);
+    this.rejectedStreams.delete(id);
+    return true;
   }
 
   requireStream(id) {
@@ -309,7 +356,12 @@ export class ReverseTunnelConnector {
     if (this.watchdogTimer) clearInterval(this.watchdogTimer);
     this.watchdogTimer = setInterval(() => {
       if (!this.socket || this.socket.readyState !== this.WebSocketImpl.OPEN) return;
-      if (Date.now() - this.lastServerActivity > this.tunnel.heartbeatSeconds * 2250) this.socket.terminate();
+      const idleMs = Date.now() - this.lastServerActivity;
+      if (idleMs > this.tunnel.heartbeatSeconds * 2250) {
+        this.disconnectCause = "heartbeat_timeout";
+        this.logger.error?.(`[reverse-tunnel] heartbeat timeout: server_idle_ms=${idleMs}`);
+        this.socket.terminate();
+      }
     }, Math.max(1000, this.tunnel.heartbeatSeconds * 1000));
     this.watchdogTimer.unref?.();
   }
@@ -318,6 +370,7 @@ export class ReverseTunnelConnector {
     const base = Math.min(30_000, 1000 * 2 ** Math.min(this.reconnectAttempt, 5));
     const delay = Math.round(base * (0.8 + this.random() * 0.4));
     this.reconnectAttempt += 1;
+    this.logger.log?.(`[reverse-tunnel] reconnect scheduled: attempt=${this.reconnectAttempt} delay_ms=${delay}`);
     this.reconnectTimer = setTimeout(() => this.connect(), delay);
     this.reconnectTimer.unref?.();
   }
@@ -396,6 +449,7 @@ const MOBILE_TUNNEL_EXACT_PATHS = new Set([
   "/api/node/v1/client/overview",
   "/api/node/v1/client/runtime",
   "/api/system/apps",
+  "/api/system/spaces",
   "/api/system/mail/status",
   "/api/skills",
   "/api/channels",
@@ -483,6 +537,13 @@ function boundedInteger(value, minimum, maximum, label) {
 
 function safeErrorCode(error) {
   return /^[A-Z0-9_]{1,64}$/.test(String(error?.code || "")) ? error.code : "CONNECTION_ERROR";
+}
+
+function diagnosticCloseCause(code, reason, preferred) {
+  if (/^[a-z0-9_]{1,64}$/.test(String(preferred || ""))) return preferred;
+  const text = Buffer.isBuffer(reason) ? reason.toString("utf8") : String(reason || "");
+  if (/^[a-z0-9_]{1,64}$/.test(text)) return text;
+  return `close_${Number(code) || 0}`;
 }
 
 function tunnelError(code, message) {

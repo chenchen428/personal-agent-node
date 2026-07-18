@@ -43,6 +43,8 @@ test("reverse tunnel protocol rejects unsafe paths, headers, oversized frames, a
   assert.equal(isTunnelRouteAllowed(distribution, "/public/report", "http"), true);
   assert.equal(isTunnelRouteAllowed(distribution, "/api/chat/ws", "websocket"), false);
   assert.equal(isTunnelRouteAllowed(distribution, "/api/system/setup", "http"), false);
+  assert.equal(isTunnelRouteAllowed(distribution, "/api/system/spaces", "http"), true);
+  assert.equal(isTunnelRouteAllowed(distribution, "/api/system/spaces", "http", "POST"), false);
   assert.equal(isTunnelRouteAllowed(distribution, "/api/mobile/activity", "http"), true);
   assert.equal(isTunnelRouteAllowed(distribution, "/apps/future-app/", "http"), true);
   assert.equal(isTunnelRouteAllowed(distribution, "/app/conversations", "http"), false);
@@ -117,6 +119,20 @@ test("connector forwards HTTP streams only to the fixed loopback gateway and nev
   await waitFor(() => messages.some((message) => message.type === "response.error" && message.id === "stream-future-0001"));
   assert.equal(messages.find((message) => message.type === "response.error" && message.id === "stream-future-0001").code, "REMOTE_ROUTE_DENIED");
   assert.equal(requests.length, 1);
+
+  const deniedIds = Array.from({ length: 65 }, (_, index) => `stream-denied-${String(index).padStart(4, "0")}`);
+  for (const id of deniedIds) peer.send(JSON.stringify({ v: 1, type: "request.start", id, kind: "http", method: "GET", path: "/future/capability", headers: {} }));
+  await waitFor(() => messages.filter((message) => message.type === "response.error" && deniedIds.includes(message.id)).length === deniedIds.length);
+  assert.equal(connector.streams.size, 0);
+  assert.equal(connector.rejectedStreams.size, 64);
+  assert.equal(messages.some((message) => message.code === "STREAM_LIMIT_EXCEEDED"), false);
+
+  peer.send(JSON.stringify({ v: 1, type: "request.start", id: "stream-spaces-0001", kind: "http", method: "GET", path: "/api/system/spaces", headers: {} }));
+  peer.send(JSON.stringify({ v: 1, type: "request.end", id: "stream-spaces-0001" }));
+  await waitFor(() => messages.some((message) => message.type === "response.end" && message.id === "stream-spaces-0001"));
+  assert.equal(requests.at(-1).url, "/api/system/spaces");
+  for (const id of deniedIds) peer.send(JSON.stringify({ v: 1, type: "request.cancel", id }));
+  await waitFor(() => connector.rejectedStreams.size === 0);
 });
 
 test("connector denies tunneled WebSockets because remote access is mobile read-only", async (t) => {
