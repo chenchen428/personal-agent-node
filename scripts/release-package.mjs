@@ -18,7 +18,7 @@ execFileSync(process.execPath, [path.join(root, 'scripts/build-private-site-node
 execFileSync(process.execPath, [path.join(root, 'scripts/verify-private-site-node-dist.mjs'), stage], { cwd: root, stdio: 'inherit' });
 const base = `personal-agent-node-${tag}-universal`;
 const archive = path.join(output, `${base}.tar.gz`);
-execFileSync('tar', ['-czf', archive, '-C', path.dirname(stage), path.basename(stage)], { cwd: root, stdio: 'inherit' });
+execFileSync('tar', ['-czf', path.basename(archive), '-C', path.dirname(stage), path.basename(stage)], { cwd: output, stdio: 'inherit' });
 for (const name of ['release-manifest.json', 'SBOM.cdx.json']) fs.copyFileSync(path.join(stage, name), path.join(output, `${base}-${name}`));
 const files = fs.readdirSync(output).filter((name) => name !== 'SHA256SUMS').sort();
 fs.writeFileSync(path.join(output, 'SHA256SUMS'), `${files.map((name) => `${sha256(path.join(output, name))}  ${name}`).join('\n')}\n`);
