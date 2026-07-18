@@ -215,3 +215,49 @@ jobs:
           generate_release_notes: true
           prerelease: ${{ contains(github.ref_name, '-') }}
           fail_on_unmatched_files: true
+
+  sync-cloud-download:
+    name: Verify Cloud website downloads this release
+    needs: publish
+    runs-on: ubuntu-24.04
+    timeout-minutes: 18
+    steps:
+      - name: Create scoped private-workspace token
+        id: cloud-token
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ secrets.CLOUD_SYNC_GITHUB_APP_ID }}
+          private-key: ${{ secrets.CLOUD_SYNC_GITHUB_APP_PRIVATE_KEY }}
+          owner: chenchen428
+          repositories: personal-agent
+      - name: Dispatch and await Cloud download synchronization
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ steps.cloud-token.outputs.token }}
+          script: |
+            const owner = 'chenchen428';
+            const repo = 'personal-agent';
+            const workflow_id = 'node-release-download-sync.yml';
+            const tag = context.ref.replace('refs/tags/', '');
+            const correlationId = `${context.runId}-${context.runAttempt}`;
+            await github.rest.repos.createDispatchEvent({
+              owner,
+              repo,
+              event_type: 'node-release-published',
+              client_payload: {
+                tag,
+                source_repository: `${context.repo.owner}/${context.repo.repo}`,
+                source_sha: context.sha,
+                correlation_id: correlationId,
+              },
+            });
+            let targetRun;
+            for (let attempt = 1; attempt <= 60; attempt += 1) {
+              const response = await github.rest.actions.listWorkflowRuns({ owner, repo, workflow_id, event: 'repository_dispatch', per_page: 30 });
+              targetRun = response.data.workflow_runs.find((run) => run.display_title?.includes(correlationId));
+              if (targetRun?.status === 'completed') break;
+              await new Promise((resolve) => setTimeout(resolve, 15_000));
+            }
+            if (!targetRun) throw new Error(`Cloud download synchronization run was not created for ${correlationId}`);
+            if (targetRun.status !== 'completed') throw new Error(`Cloud download synchronization did not finish: ${targetRun.html_url}`);
+            if (targetRun.conclusion !== 'success') throw new Error(`Cloud download synchronization failed: ${targetRun.html_url}`);
