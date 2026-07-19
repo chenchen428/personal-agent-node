@@ -136,6 +136,37 @@ digest. It re-reads the job from the owner-only Workspace path and rejects raw
 release URLs, caller-selected install roots, unsigned local payloads, expired
 plans, version downgrades, and digest changes.
 
+### Governed pre-release candidate acceptance
+
+Before a GitHub Release is created, maintainers may validate the exact
+self-contained platform updater on the same computer through the updater's
+`candidate-plan`, `candidate-approve`, and `candidate-apply` commands. This is
+not a second installer path: apply hands the staged updater to the same desktop
+lifecycle owner and native immutable installer used by a published update.
+
+The platform builder must opt in with `--candidate`. That embeds
+`CANDIDATE-SECURITY.json` in the checksummed payload. The plan rejects a
+candidate unless its release manifest, complete `SHA256SUMS`, SBOM, exact Git
+revision, candidate security metadata, and OS/architecture all agree. Stable
+candidates still require native platform signing; prerelease signing may only
+use the explicitly documented deferred-prerelease policy.
+
+Planning copies the exact updater into
+`workspace/installation/updates/<job-id>` and binds its SHA-256, size, revision,
+current installed release, operation ID, and operation digest for ten minutes.
+The R3 operation is written to the personal Space operation store so the
+existing `personal-agent operation approve` interactive local-TTY flow can
+approve it. Chat, an Agent process, a Worker, and redirected stdin cannot
+approve. Apply rechecks the approved operation, expiry, artifact bytes, and
+installed-state fingerprint before the desktop owner stops the runtime. The
+native installer retains `previous`, atomically switches `current`, preserves
+Workspace data, and records `succeeded`, `rolled_back`, or `failed`.
+
+Candidate evidence must say `candidateAssetRuntime=true` (or
+`releaseAssetRuntime=false`). It never satisfies final acceptance, which still
+requires reinstalling the immutable public GitHub Release asset and recording
+`releaseAssetRuntime=true`.
+
 ### Runtime update coordinator
 
 The control service owns update discovery and the persisted job state. It is the
@@ -253,6 +284,19 @@ personal-agent update rollback --operation <id> --digest <digest> --json
 the local control service and never accept arbitrary URLs or filesystem paths.
 The existing registry entry that groups all update verbs as R3 must be split
 when implementation starts.
+
+The bootstrap-only pre-release surface is intentionally on the self-contained
+updater rather than the already-installed older runtime:
+
+```text
+personal-agent-setup candidate-plan --expected-revision <40-hex-commit>
+personal-agent operation approve <operation-id> --digest <digest> --json
+personal-agent-setup candidate-apply --operation <operation-id> --digest <digest>
+```
+
+Only the middle command approves, and it requires its normal authenticated
+interactive local TTY challenge. The candidate executable never accepts a raw
+release directory, URL, install root, or confirmation flag.
 
 ## Console experience
 

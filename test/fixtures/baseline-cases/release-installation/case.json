@@ -12,6 +12,7 @@
     "Fresh installation opens the local Setup Center directly in the Tauri desktop shell without desktop login and presents WeChat as an optional connection without requiring a development Agent",
     "The desktop shell uses the system WebView, exposes no native page API, starts and continuously monitors the local runtime while open, restarts it after repeated health failures, stops it when closed, and remains bound to current/previous rollback",
     "The local Console and main Agent share one digest-bound update plan, verified platform artifact, native desktop handoff, and persisted restart result",
+    "A pre-release self-contained candidate can create a ten-minute digest-bound plan only when its commit, manifest, checksums, SBOM, candidate security metadata and platform agree; it reuses the desktop handoff and immutable installer, records candidateAssetRuntime=true, and never satisfies public Release acceptance",
     "Applying executable updates requires fresh authenticated local approval and the Agent cannot approve its own operation",
     "The reverse tunnel exposes only the password-protected mobile surface; desktop routes remain loopback-only, and password reset invalidates existing remote sessions",
     "Browser and CLI recovery remain available",

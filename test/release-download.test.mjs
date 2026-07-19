@@ -185,6 +185,23 @@ test('release packaging delegates customer installation to self-contained Go pla
   assert.match(platformBuilder, /nodeRuntime/);
 });
 
+test('pre-release candidate stays digest-bound and reuses the native desktop handoff', () => {
+  const root = new URL('..', import.meta.url);
+  const platformBuilder = fs.readFileSync(new URL('scripts/build-platform-installer.mjs', root), 'utf8');
+  const candidateExecutor = fs.readFileSync(new URL('core/runtime/native/cmd/personal-agent-setup/candidate.go', root), 'utf8');
+  const setupExecutor = fs.readFileSync(new URL('core/runtime/native/cmd/personal-agent-setup/main.go', root), 'utf8');
+  assert.match(platformBuilder, /--candidate/);
+  assert.match(platformBuilder, /CANDIDATE-SECURITY\.json/);
+  assert.match(platformBuilder, /candidateAssetRuntime:\s*true/);
+  assert.match(candidateExecutor, /candidatePlanTTL\s*=\s*10 \* time\.Minute/);
+  assert.match(candidateExecutor, /personal-agent operation approve/);
+  assert.match(candidateExecutor, /interactive local TTY/);
+  assert.match(candidateExecutor, /--apply-update/);
+  assert.match(candidateExecutor, /candidateOperationPath/);
+  assert.match(setupExecutor, /workspace", "installation", "updates/);
+  assert.doesNotMatch(candidateExecutor, /https?:\/\//);
+});
+
 test('public installation documentation pins the workspace release version', () => {
   const root = new URL('..', import.meta.url);
   const version = JSON.parse(fs.readFileSync(new URL('package.json', root), 'utf8')).version;

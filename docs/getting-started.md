@@ -83,6 +83,14 @@ The bridge command creates ignored development-only links for `.agents`, `.codex
 
 Final Node acceptance uses the public GitHub Release installation's authenticated local `/app/chat`. Sanitized evidence records `releaseAssetRuntime=true`, `route=/app/chat`, `authenticated=true`, `uniquePrompt=true`, `realAgentRuntime=true`, `sameSessionAgentReply=true`, and `wechatRequired=false`; optional `connections.wechat` evidence never blocks the gate. It stores no prompt, reply, session identifier, QR content, or connection credential.
 
+A release maintainer may first build a `--candidate` self-contained updater and
+create its ten-minute, digest-bound local install plan. The exact updater is
+staged under Workspace, its candidate security metadata and embedded release
+are verified, and R3 approval still comes only from the existing authenticated
+local TTY operation flow. Candidate smoke evidence must use
+`candidateAssetRuntime=true` and `releaseAssetRuntime=false`; it does not replace
+the public GitHub Release installation acceptance above.
+
 ## Discover CLI capabilities
 
 ```bash

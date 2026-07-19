@@ -40,23 +40,35 @@ func main() {
 		verifyCommand(os.Args[2:])
 	case "inspect":
 		inspectEmbedded()
+	case "candidate-plan":
+		candidatePlanCommand(os.Args[2:])
+	case "candidate-approve":
+		candidateApproveCommand(os.Args[2:])
+	case "candidate-apply":
+		candidateApplyCommand(os.Args[2:])
 	default:
 		fail("unknown setup command: " + os.Args[1])
 	}
 }
 
 type updateJob struct {
-	SchemaVersion   int            `json:"schemaVersion"`
-	ID              string         `json:"id"`
-	Kind            string         `json:"kind"`
-	Status          string         `json:"status"`
-	TargetReleaseID string         `json:"targetReleaseId"`
-	ArtifactPath    string         `json:"artifactPath,omitempty"`
-	HandoffNonce    string         `json:"handoffNonce"`
-	UpdatedAt       string         `json:"updatedAt"`
-	CompletedAt     string         `json:"completedAt,omitempty"`
-	Failure         map[string]any `json:"failure,omitempty"`
-	Warning         map[string]any `json:"warning,omitempty"`
+	SchemaVersion   int               `json:"schemaVersion"`
+	ID              string            `json:"id"`
+	Kind            string            `json:"kind"`
+	Status          string            `json:"status"`
+	TargetReleaseID string            `json:"targetReleaseId"`
+	ArtifactPath    string            `json:"artifactPath,omitempty"`
+	HandoffNonce    string            `json:"handoffNonce"`
+	UpdatedAt       string            `json:"updatedAt"`
+	CompletedAt     string            `json:"completedAt,omitempty"`
+	Failure         map[string]any    `json:"failure,omitempty"`
+	Warning         map[string]any    `json:"warning,omitempty"`
+	Source          string            `json:"source,omitempty"`
+	OperationID     string            `json:"operationId,omitempty"`
+	OperationDigest string            `json:"operationDigest,omitempty"`
+	OperationPath   string            `json:"candidateOperationPath,omitempty"`
+	PlanExpiresAt   string            `json:"candidatePlanExpiresAt,omitempty"`
+	Artifact        candidateArtifact `json:"artifact,omitempty"`
 }
 
 func updateCommand(args []string) {
@@ -68,6 +80,9 @@ func updateCommand(args []string) {
 	}
 	if !sameFile(executable, job.ArtifactPath) {
 		failUpdate(jobPath, &job, fmt.Errorf("candidate executable does not match the approved artifact"))
+	}
+	if err := verifyCandidateHandoff(home, jobPath, &job); err != nil {
+		failUpdate(jobPath, &job, err)
 	}
 	temporary := filepath.Join(os.TempDir(), fmt.Sprintf("personal-agent-update-%d", time.Now().UnixNano()))
 	defer os.RemoveAll(temporary)
@@ -95,6 +110,7 @@ func updateCommand(args []string) {
 		job.Failure = map[string]any{"code": "UPDATE_INSTALL_FAILED", "message": truncate(err.Error(), 300)}
 		job.CompletedAt = time.Now().UTC().Format(time.RFC3339)
 		writeUpdateJob(jobPath, &job)
+		completeCandidateOperation(jobPath, &job, "rolled_back", err)
 		_ = launchInstalledDesktop(home, "/app/update")
 		fail(err.Error())
 	}
@@ -105,6 +121,7 @@ func updateCommand(args []string) {
 	job.CompletedAt = time.Now().UTC().Format(time.RFC3339)
 	job.Failure = nil
 	writeUpdateJob(jobPath, &job)
+	completeCandidateOperation(jobPath, &job, "succeeded", nil)
 }
 
 func rollbackUpdateCommand(args []string) {
@@ -140,11 +157,11 @@ func updateFlags(name string, args []string) (string, string, string) {
 	if *job == "" || *nonce == "" {
 		fail("update handoff requires --job and --nonce")
 	}
-	return filepath.Clean(*homeRoot), filepath.Clean(*job), *nonce
+	return normalizeUpdateHome(*homeRoot), filepath.Clean(*job), *nonce
 }
 
 func requireUpdateJob(home, jobPath, nonce, kind string) updateJob {
-	allowedRoot := filepath.Join(home, "workspace", "runtime", "updates")
+	allowedRoot := updateJobAllowedRoot(home)
 	relative, err := filepath.Rel(allowedRoot, jobPath)
 	if err != nil || relative == "." || strings.HasPrefix(relative, ".."+string(filepath.Separator)) || filepath.Base(jobPath) != "job.json" {
 		fail("update job is outside the Personal Agent workspace")
@@ -161,6 +178,10 @@ func requireUpdateJob(home, jobPath, nonce, kind string) updateJob {
 		fail("update handoff nonce is invalid")
 	}
 	return job
+}
+
+func updateJobAllowedRoot(home string) string {
+	return filepath.Join(home, "workspace", "installation", "updates")
 }
 
 func writeUpdateJob(jobPath string, job *updateJob) {
@@ -184,7 +205,20 @@ func failUpdate(jobPath string, job *updateJob, err error) {
 	job.Failure = map[string]any{"code": "UPDATE_EXECUTOR_FAILED", "message": truncate(err.Error(), 300)}
 	job.CompletedAt = time.Now().UTC().Format(time.RFC3339)
 	writeUpdateJob(jobPath, job)
+	completeCandidateOperation(jobPath, job, "failed", err)
 	fail(err.Error())
+}
+
+func normalizeUpdateHome(value string) string {
+	cleaned := filepath.Clean(value)
+	if _, err := os.Stat(filepath.Join(cleaned, "core", "installation.json")); err == nil {
+		return cleaned
+	}
+	candidate := filepath.Join(cleaned, ".personal-agent")
+	if _, err := os.Stat(filepath.Join(candidate, "core", "installation.json")); err == nil {
+		return candidate
+	}
+	return cleaned
 }
 
 func sameFile(left, right string) bool {

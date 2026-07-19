@@ -36,6 +36,7 @@ try {
   fs.copyFileSync(launcherBinary, path.join(payloadRelease, platform === 'win32' ? 'personal-agent.exe' : 'personal-agent'));
   fs.copyFileSync(uiLauncherBinary, path.join(payloadRelease, platform === 'win32' ? 'personal-agent-ui.exe' : 'personal-agent-ui'));
   signPlatformPayload(payloadRelease);
+  if (args.candidate) writeCandidateSecurityMetadata(payloadRelease);
   finalizePlatformRelease(payloadRelease);
   const payload = path.join(temporary, 'payload.tar.gz');
   run('tar', ['-czf', path.basename(payload), '-C', path.basename(payloadRoot), 'release', 'node'], { cwd: temporary });
@@ -104,6 +105,31 @@ function finalizePlatformRelease(payloadRelease) {
     .map((file) => path.relative(payloadRelease, file).replaceAll('\\', '/'))
     .filter((relative) => relative !== 'SHA256SUMS');
   fs.writeFileSync(path.join(payloadRelease, 'SHA256SUMS'), `${entries.map((relative) => `${sha256(path.join(payloadRelease, relative))}  ${relative}`).join('\n')}\n`);
+}
+
+function writeCandidateSecurityMetadata(payloadRelease) {
+  const manifest = JSON.parse(fs.readFileSync(path.join(payloadRelease, 'release-manifest.json'), 'utf8'));
+  const signed = platform === 'win32'
+    ? Boolean(String(process.env.PERSONAL_AGENT_WINDOWS_SIGNING_CERTIFICATE || '').trim())
+    : platform === 'darwin'
+      ? Boolean(String(process.env.PERSONAL_AGENT_APPLE_APPLICATION_IDENTITY || '').trim())
+      : false;
+  const document = {
+    schemaVersion: 1,
+    kind: 'personal-agent-local-candidate',
+    releaseTag: tag,
+    releaseId: manifest.releaseId,
+    revision: manifest.revision,
+    platform: `${platform}-${architecture}`,
+    formalRelease: false,
+    candidateAssetRuntime: true,
+    nativePlatformSigning: {
+      required: !String(manifest.releaseId || '').includes('-'),
+      status: signed ? 'verified' : String(manifest.releaseId || '').includes('-') ? 'deferred-prerelease' : 'missing',
+    },
+    verification: { manifest: true, sha256: true, sbom: true, platform: true },
+  };
+  fs.writeFileSync(path.join(payloadRelease, 'CANDIDATE-SECURITY.json'), `${JSON.stringify(document, null, 2)}\n`);
 }
 
 function appendPayload(binaryPath, payloadPath) {
@@ -244,4 +270,4 @@ function run(command, commandArgs, options = {}) {
 
 function sha256(file) { return crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex'); }
 function required(value, label) { if (!String(value || '').trim()) throw new Error(`${label} is required`); return String(value); }
-function parseArgs(argv) { const out = {}; for (let index = 0; index < argv.length; index += 1) { const key = argv[index]; if (key === '--tag') out.tag = argv[++index]; else if (key === '--release-root') out.releaseRoot = argv[++index]; else if (key === '--node-runtime') out.nodeRuntime = argv[++index]; else if (key === '--output') out.output = argv[++index]; else if (key === '--platform') out.platform = argv[++index]; else if (key === '--arch') out.arch = argv[++index]; else if (key === '--require-signing') out.requireSigning = true; else throw new Error(`Unknown option: ${key}`); } return out; }
+function parseArgs(argv) { const out = {}; for (let index = 0; index < argv.length; index += 1) { const key = argv[index]; if (key === '--tag') out.tag = argv[++index]; else if (key === '--release-root') out.releaseRoot = argv[++index]; else if (key === '--node-runtime') out.nodeRuntime = argv[++index]; else if (key === '--output') out.output = argv[++index]; else if (key === '--platform') out.platform = argv[++index]; else if (key === '--arch') out.arch = argv[++index]; else if (key === '--require-signing') out.requireSigning = true; else if (key === '--candidate') out.candidate = true; else throw new Error(`Unknown option: ${key}`); } return out; }
