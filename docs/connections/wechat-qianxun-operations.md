@@ -69,6 +69,8 @@ pa-cli connection wechat-personal history --conversation <pwc_id> --limit 100 --
 
 ## 写操作
 
+Ordinary current-session Agent replies are separate from the manual commands below. When the canonical main Agent selects managed `obj_` images or safe files through the final-reply envelope, the orchestrator validates them and uses this same connector to send the visible text followed by native `sendImage` or `sendFile` messages to the inbound conversation only. Workers cannot invoke this path, and it never accepts a caller-supplied path, URL, or recipient. See `docs/final-reply-attachments.md`.
+
 每个写操作都分为计划、人工审批和执行三步。例如发送文本：
 
 ```powershell

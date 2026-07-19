@@ -179,3 +179,37 @@ test("desktop conversation hides legacy duplicate WeChat runner echoes", () => {
     "wechat-later-repeat",
   ]);
 });
+
+test("desktop conversation keeps attachment-only replies and resolves image and file delivery state", () => {
+  const objectId = "obj_0123456789abcdef01234567";
+  const fileObjectId = "obj_89abcdef0123456701234567";
+  const session = {
+    id: "wechat-main",
+    role: "main",
+    channel: "wechat",
+    status: "idle",
+    childSessions: [],
+    messages: [{
+      id: "image-only-reply",
+      role: "assistant",
+      content: "",
+      metadata: {
+        finalReply: { schemaVersion: 1, requestId: "request-1", idempotencyKey: "reply-1" },
+        attachments: [
+          { objectId, kind: "image", name: "result.png", mimeType: "image/png", sizeBytes: 20, width: 12, height: 9, alt: "Result", previewUrl: `/api/chat/attachments/${objectId}`, deliveryState: "pending" },
+          { objectId: fileObjectId, kind: "file", name: "report.pdf", mimeType: "application/pdf", sizeBytes: 1200, caption: "Report", downloadUrl: `/api/chat/attachments/${fileObjectId}?download=1`, deliveryState: "pending" },
+        ],
+      },
+    }],
+    events: [
+      { payload: { metadata: { eventType: "wechat/final-reply-part", idempotencyKey: "reply-1", part: "attachment", objectId, state: "sent" } } },
+      { payload: { metadata: { eventType: "wechat/final-reply-part", idempotencyKey: "reply-1", part: "attachment", objectId: fileObjectId, state: "failed" } } },
+    ],
+  };
+  const view = buildDesktopConversationView(session);
+  assert.equal(view.messages.length, 1);
+  assert.equal(view.messages[0].metadata.attachments[0].deliveryState, "sent");
+  assert.equal(view.messages[0].metadata.attachments[0].previewUrl, `/api/chat/attachments/${objectId}`);
+  assert.equal(view.messages[0].metadata.attachments[1].deliveryState, "failed");
+  assert.equal(view.messages[0].metadata.attachments[1].downloadUrl, `/api/chat/attachments/${fileObjectId}?download=1`);
+});

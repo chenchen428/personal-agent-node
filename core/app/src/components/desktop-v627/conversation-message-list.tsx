@@ -15,7 +15,7 @@ export function ConversationMessageList({ messages, loading, loadingEarlier, has
       const user = message.role === "user";
       return <article className={`message${user ? " user" : ""}${message.metadata?.optimistic ? " optimistic" : ""}`} key={message.id}>
         <span className={`avatar${user ? " user" : ""}`}>{user ? "你" : "PA"}</span>
-        <div className="message-body"><div><MarkdownContent content={message.content} linkTransform={localTaskDetailHref} />{(message.metadata?.attachments || []).map((attachment) => <span className="message-attachment" key={`${message.id}-${attachment.name}`}>{attachment.name}</span>)}{linkedTask && index === linkedIndex ? <TaskReference task={linkedTask} /> : null}</div>{index === planIndex ? <ConversationPlan plan={plan} /> : null}<div className="message-meta">{user && message.metadata?.sourceLabel ? <span className="message-source">{message.metadata.sourceLabel}</span> : null}<time className="message-time" dateTime={message.createdAt}>{formatTime(message.createdAt)}</time></div></div>
+        <div className="message-body"><div><MarkdownContent content={message.content} linkTransform={localTaskDetailHref} /><MessageAttachments messageId={message.id} attachments={message.metadata?.attachments || []} />{linkedTask && index === linkedIndex ? <TaskReference task={linkedTask} /> : null}</div>{index === planIndex ? <ConversationPlan plan={plan} /> : null}<div className="message-meta">{user && message.metadata?.sourceLabel ? <span className="message-source">{message.metadata.sourceLabel}</span> : null}<time className="message-time" dateTime={message.createdAt}>{formatTime(message.createdAt)}</time></div></div>
       </article>;
     })}
     {processing ? <article className="message message-processing" role="status" aria-live="polite"><span className="avatar">PA</span><div className="message-body"><span className="message-dots" aria-hidden="true"><i /><i /><i /></span><p>正在处理，回复会自动显示</p></div></article> : null}
@@ -34,6 +34,25 @@ function ConversationEmpty() {
 }
 
 function findLastAssistant(messages: Message[], sessionId = "") { for (let index = messages.length - 1; index >= 0; index -= 1) if (messages[index].role === "assistant" && (!sessionId || messages[index].sessionId === sessionId)) return index; return -1; }
+
+function MessageAttachments({ messageId, attachments }: { messageId: string; attachments: NonNullable<Message["metadata"]>["attachments"] }) {
+  if (!attachments?.length) return null;
+  return <div className="message-attachments">{attachments.map((attachment) => attachment.kind === "image" && attachment.previewUrl
+    ? <a className="message-image" href={attachment.previewUrl} target="_blank" rel="noreferrer" key={`${messageId}-${attachment.objectId || attachment.name}`}>
+      <img src={attachment.previewUrl} alt={attachment.alt || attachment.name} width={attachment.width} height={attachment.height} />
+      <span><strong>{attachment.caption || attachment.name}</strong><small>{attachment.width && attachment.height ? `${attachment.width} × ${attachment.height} · ` : ""}{deliveryLabel(attachment.deliveryState)}</small></span>
+    </a>
+    : <a className="message-file" href={attachment.downloadUrl || attachment.previewUrl} key={`${messageId}-${attachment.objectId || attachment.name}`}>
+      <span className="message-file-type" aria-hidden="true">{fileType(attachment.name)}</span>
+      <span><strong>{attachment.caption || attachment.name}</strong><small>{formatAttachmentBytes(attachment.sizeBytes)} · {deliveryLabel(attachment.deliveryState)}</small></span>
+      <em>下载</em>
+    </a>)}</div>;
+}
+
+function deliveryLabel(state?: string) { return ({ pending: "等待发送", sending: "发送中", sent: "已发送", failed: "发送失败", ambiguous: "状态待确认" } as Record<string, string>)[state || "pending"] || "已保存"; }
+
+function fileType(name: string) { return name.split(".").pop()?.slice(0, 5).toUpperCase() || "FILE"; }
+function formatAttachmentBytes(value = 0) { if (value < 1024) return `${value} B`; if (value < 1024 ** 2) return `${(value / 1024).toFixed(1)} KB`; return `${(value / 1024 ** 2).toFixed(1)} MB`; }
 
 function TaskReference({ task }: { task: LinkedTask }) {
   return <div className="message-task" aria-label={`正在处理任务：${task.title}`}><i aria-hidden="true" /><b title={task.title}>{task.title}</b><small>处理中</small></div>;

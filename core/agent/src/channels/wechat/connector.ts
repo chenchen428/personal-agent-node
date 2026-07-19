@@ -206,7 +206,8 @@ export class WeChatConnector {
     return this.transport.getDefaultRecipientId();
   }
 
-  async sendFile(recipientId: string | undefined, filePath: string, title?: string) {
+  async sendFile(recipientId: string | undefined, filePath: string, title?: string, caption?: string) {
+    if (caption?.trim()) await this.sendText(recipientId, caption.trim());
     return await this.transport.sendFile(filePath, { recipientId, title });
   }
 

@@ -85,10 +85,22 @@ test("Mobile Activity renders target-derived representative media", () => {
 });
 
 test("Mobile task detail keeps long-form conversation typography readable", () => {
+  const workers = read("core/app/src/components/mobile-current/workers.tsx");
+  const types = read("core/app/src/components/mobile-current/types.ts");
   const css = read("core/app/src/app/mobile-current.css");
   assert.match(css, /\.mobile-task-message-body \{[^}]*font: 400 14px\/1\.75 var\(--pa-sans\)/);
   assert.match(css, /\.mobile-task-message-body \{[^}]*color: #4b4843/);
   assert.match(css, /\.mobile-task-plan li \{[^}]*font-weight: 400/);
+  assert.match(types, /attachments\?: ChatAttachment\[\]/);
+  assert.match(workers, /message\.metadata\?\.attachments\?\.length/);
+  assert.match(workers, /TaskMessageAttachments/);
+  assert.match(workers, /attachment\.previewUrl/);
+  assert.match(workers, /attachment\.deliveryState/);
+  assert.match(workers, /attachment\.downloadUrl/);
+  assert.match(workers, /mobile-task-file/);
+  assert.match(workers, /formatMobileAttachmentBytes/);
+  assert.match(css, /\.mobile-task-message-attachments img/);
+  assert.match(css, /\.mobile-task-message-attachments \.mobile-task-file/);
 });
 
 test("Mobile primary loading states use layout-matched skeletons", () => {

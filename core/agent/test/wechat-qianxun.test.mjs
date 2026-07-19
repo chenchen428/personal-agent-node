@@ -258,6 +258,8 @@ test("personal WeChat policy defaults to deny and only dispatches allowed Qianxu
   const dataRoot = fs.mkdtempSync(path.join(os.tmpdir(), "pa-personal-wechat-policy-"));
   const inbound = [];
   const sent = [];
+  const sentImages = [];
+  const sentFiles = [];
   const operationStore = createOperationStore({ dataRoot });
   const connector = new WeChatQianxunConnector({
     dataRoot,
@@ -270,6 +272,8 @@ test("personal WeChat policy defaults to deny and only dispatches allowed Qianxu
       if (body.type === "getFriendList") return Response.json({ code: 200, result: [{ wxid: "wxid_friend", nickname: "Alice" }, { wxid: "wxid_other", nickname: "Bob" }] });
       if (body.type === "getGroupList") return Response.json({ code: 200, result: [{ wxid: "family@chatroom", nickname: "Family" }] });
       if (body.type === "sendText") { sent.push(body.data); return Response.json({ code: 200, result: { accepted: true } }); }
+      if (body.type === "sendImage") { sentImages.push(body.data); return Response.json({ code: 200, result: { accepted: true } }); }
+      if (body.type === "sendFile") { sentFiles.push(body.data); return Response.json({ code: 200, result: { accepted: true } }); }
       return Response.json({ code: 200, result: {} });
     },
   });
@@ -333,6 +337,16 @@ test("personal WeChat policy defaults to deny and only dispatches allowed Qianxu
 
   await connector.sendText("family@chatroom", "reply");
   assert.deepEqual(sent, [{ wxid: "family@chatroom", msg: "reply" }]);
+  const replyImage = path.join(dataRoot, "reply.png");
+  fs.writeFileSync(replyImage, "native-image-fixture");
+  await connector.sendImage("family@chatroom", replyImage, "caption");
+  assert.deepEqual(sent.at(-1), { wxid: "family@chatroom", msg: "caption" });
+  assert.deepEqual(sentImages, [{ wxid: "family@chatroom", path: replyImage, fileName: "reply.png" }]);
+  const replyFile = path.join(dataRoot, "report.pdf");
+  fs.writeFileSync(replyFile, "%PDF-1.7\n%%EOF");
+  await connector.sendFile("family@chatroom", replyFile, "Q2 Report.pdf", "file caption");
+  assert.deepEqual(sent.at(-1), { wxid: "family@chatroom", msg: "file caption" });
+  assert.deepEqual(sentFiles, [{ wxid: "family@chatroom", path: replyFile, fileName: "Q2 Report.pdf" }]);
 });
 
 test("Qianxun CLI reads SafeKey from a file and maps semantic commands", async (t) => {

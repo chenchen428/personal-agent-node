@@ -312,6 +312,28 @@ export class WeChatQianxunConnector {
     return { sent: true, endpointStyle: result.endpointStyle, accountWxid: config.bindWxid };
   }
 
+  async sendImage(recipientId: string | undefined, imagePath: string, caption?: string) {
+    const wxid = boundedRequired(recipientId, "recipientId", 160);
+    const config = this.requireConfig();
+    if (caption?.trim()) await this.sendText(wxid, caption.trim());
+    const result = await this.client.invoke(
+      this.effectiveClientConfig(config),
+      qianxunEnvelope("sendImage", localFileData(wxid, imagePath)),
+    );
+    return { sent: true, endpointStyle: result.endpointStyle, accountWxid: config.bindWxid };
+  }
+
+  async sendFile(recipientId: string | undefined, filePath: string, title?: string, caption?: string) {
+    const wxid = boundedRequired(recipientId, "recipientId", 160);
+    const config = this.requireConfig();
+    if (caption?.trim()) await this.sendText(wxid, caption.trim());
+    const result = await this.client.invoke(
+      this.effectiveClientConfig(config),
+      qianxunEnvelope("sendFile", localFileData(wxid, filePath, title)),
+    );
+    return { sent: true, endpointStyle: result.endpointStyle, accountWxid: config.bindWxid };
+  }
+
   private async executeConfigure(input: Record<string, unknown>) {
     const candidate: StoredConfig = {
       schemaVersion: 1,
@@ -529,9 +551,14 @@ function requireRegularFile(value: unknown) {
   return filePath;
 }
 
-function localFileData(wxid: unknown, value: unknown) {
+function localFileData(wxid: unknown, value: unknown, title?: unknown) {
   const filePath = requireRegularFile(value);
-  return { wxid, path: filePath, fileName: path.basename(filePath) };
+  const requestedName = String(title || "").trim();
+  const fileName = requestedName
+    ? path.basename(requestedName.replace(/[\u0000-\u001f\u007f<>:"|?*]/g, "_")).slice(0, 180)
+    : path.basename(filePath);
+  if (!fileName) throw connectorError("INVALID_ARGUMENT", "fileName is invalid", 400);
+  return { wxid, path: filePath, fileName };
 }
 
 function payloadDigest(payload: PlannedPayload) {

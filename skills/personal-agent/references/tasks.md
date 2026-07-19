@@ -67,6 +67,7 @@ This envelope is part of the Work's final chat reply, not task-completion metada
 - `summary` states the verified result in user language.
 - `artifacts` lists only real, verified deliverables. Use stable governed IDs such as a Page `pageId`; never substitute a URL, folder, local path, or guessed route.
 - `objectIds` contains only ready managed `obj_...` objects that may safely become Activity attachments.
+- `objectIds` are also only candidates for a final-reply attachment. The canonical main Agent must explicitly choose the images the user should receive and use the versioned `<personal-agent-reply>` contract; a Worker never emits that reply envelope or sends media itself.
 - Use an empty `artifacts` array when the Work produced no independent deliverable. Keep the Work reference so a resulting `work` Activity can still open task detail.
 - Put the envelope first so long narrative output cannot truncate the information the main Agent needs.
 

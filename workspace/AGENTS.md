@@ -25,4 +25,9 @@ generated content as private local data.
 - Use `personal-agent` for runtime lifecycle and diagnostics. Use `pa-cli` for
   assistant sessions, channels, data, automation, files, and Pages. Do not use
   or recreate the removed `open-abg`, `oab`, or `open-agent-bridge` aliases.
+- Only the canonical main Agent may attach ready current-Space `obj_` images or safe files to
+  an ordinary final reply through the versioned `<personal-agent-reply>`
+  contract. Workers report candidate IDs in `<personal-agent-artifacts>` and
+  never send media or files. Do not use Activity or manual/legacy notification commands
+  as a substitute for the final-reply attachment path.
 - Preserve user files and databases during upgrade, rollback, and uninstall.

@@ -22,6 +22,8 @@ import { assertInside } from "../online-pages/path-utils.js";
 import { ManagedFileCatalog } from "../managed-files/catalog.js";
 import { LocalManagedProvider } from "../managed-files/local-provider.js";
 import { ManagedFileService } from "../managed-files/service.js";
+import { inspectSendableFile } from "../final-reply/file-policy.js";
+import { FINAL_REPLY_MAX_IMAGE_BYTES } from "../final-reply/control.js";
 import { AgentDataStore } from "../data/agent-data.js";
 import { AutomationEngine } from "../automation/engine.js";
 import { ingestRawEmail, MAX_MAIL_BYTES } from "../automation/mail-ingest.js";
@@ -40,7 +42,7 @@ import { AgentBridgeBroker } from "../broker/agent-bridge-broker.js";
 import { readWorkspaceSkillCatalog } from "../skills/catalog.js";
 import { assertMinimumCronInterval, ScheduledTaskRunner, nextRunAt, normalizeTimezone, parseCronExpression } from "../scheduler/scheduled-tasks.js";
 import { BrowserHub } from "./broadcast.js";
-import { buildDesktopConversationView } from "./desktop-conversation.js";
+import { buildConversationAttachmentDeliveryView, buildDesktopConversationView } from "./desktop-conversation.js";
 import { SessionOrchestrator } from "./orchestrator.js";
 import { renderAutomationPage, renderAutomationRunsFragment, renderConsoleSessionsFragment, renderCronPage, renderDashboard, renderDataPage, renderDataRowsFragment, renderMessagesFragment, renderNewSession, renderPagesIndex, renderPrivateFileBatch, renderPrivateFilePreview, renderReleaseNotesPage, renderSessionDetail, renderSkillCatalogPage } from "../web/pages.js";
 import { renderMailPage } from "../web/mail-page.js";
@@ -372,6 +374,48 @@ async function handleRequest(request: http.IncomingMessage, response: http.Serve
       item.attachment.name,
       !(item.attachment.kind === "image" && url.searchParams.get("preview") === "1"),
     );
+    return;
+  }
+
+  const chatAttachmentMatch = /^\/api\/attachments\/(obj_[a-f0-9]{24})$/.exec(url.pathname);
+  if (chatAttachmentMatch && (request.method === "GET" || request.method === "HEAD")) {
+    try {
+      const object = managedFiles.stat(chatAttachmentMatch[1]);
+      const securityStatus = String(object.securityStatus || "").trim().toLowerCase();
+      const unsafeState = Boolean(securityStatus && !["clean", "safe", "passed", "verified"].includes(securityStatus));
+      if (object.status !== "ready" || unsafeState) {
+        sendText(response, 404, "Not Found", request.method === "HEAD");
+        return;
+      }
+      const materialized = await managedFiles.materialize(object.objectId, {
+        ttlDays: 1,
+        taskId: `chat-attachment-${object.objectId}`,
+      });
+      const stat = await fs.promises.stat(materialized.localPath);
+      if (!stat.isFile()) {
+        sendText(response, 404, "Not Found", request.method === "HEAD");
+        return;
+      }
+      const contentType = String(object.contentType || "").split(";", 1)[0].trim().toLowerCase();
+      const image = ["image/jpeg", "image/png", "image/gif", "image/webp"].includes(contentType);
+      if (image && Number(object.sizeBytes || 0) > FINAL_REPLY_MAX_IMAGE_BYTES) {
+        sendText(response, 404, "Not Found", request.method === "HEAD");
+        return;
+      }
+      if (!image) await inspectSendableFile({ filePath: materialized.localPath, declaredMime: contentType, originalName: object.originalName });
+      streamPrivateFile(
+        request,
+        response,
+        materialized.localPath,
+        stat,
+        contentType,
+        object.originalName || (image ? "image" : "attachment"),
+        !image || url.searchParams.get("download") === "1",
+      );
+    } catch (error: any) {
+      if (error?.code === "ENOENT") sendText(response, 404, "Not Found", request.method === "HEAD");
+      else throw error;
+    }
     return;
   }
 
@@ -1597,7 +1641,7 @@ async function handleRequest(request: http.IncomingMessage, response: http.Serve
     if (!action && request.method === "GET") {
       const session = store.getSession(sessionId);
       if (!session) sendJson(response, 404, { ok: false, error: "session not found" });
-      else sendJson(response, 200, { ok: true, session });
+      else sendJson(response, 200, { ok: true, session: buildConversationAttachmentDeliveryView(session) });
       return;
     }
     if (!action && request.method === "PATCH") {

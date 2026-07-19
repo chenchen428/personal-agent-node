@@ -6,7 +6,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { elapsedSeconds, fetchJson, firstCharacter, formatDateTime, formatDetailedElapsed, formatTaskDuration, isRunning, latestPlan, relativeTaskTime, relativeTime, richText, statusLabel, useClock, useRememberedQuery, useSourcePage } from "./data";
 import { BackIcon, InlineError, LoadSentinel, MobileListShell, SearchStatus } from "./shell";
 import { MobileContentSkeleton } from "./skeletons";
-import type { FilterOption, Message, MobileTaskResult, PlanStep, Session } from "./types";
+import type { ChatAttachment, FilterOption, Message, MobileTaskResult, PlanStep, Session } from "./types";
 
 export function MobileWorkers({ sessionId = "", conversations = false }: { sessionId?: string; conversations?: boolean }) {
   const from = useSourcePage("workers");
@@ -121,7 +121,7 @@ function TaskDetail({ session, loading, error, returnHref, returnLabel }: { sess
   }, [count, scrollLatest, session]);
 
   const plan = session ? latestPlan(session) : [];
-  const messages = (session?.messages || []).filter((message) => ["user", "assistant", "agent", "error"].includes(message.role) && message.content?.trim());
+  const messages = (session?.messages || []).filter((message) => ["user", "assistant", "agent", "error"].includes(message.role) && (message.content?.trim() || message.metadata?.attachments?.length));
   const running = session ? isRunning(session.status) : false;
   return <div className="mobile-current"><div className="mobile-stage"><div className="phone content-detail-phone task-conversation-phone">
     <main className="content-detail-screen">
@@ -150,11 +150,25 @@ function taskRuntimeLabel(session: Session, now: number) {
 
 function TaskMessage({ message, userName }: { message: Message; userName: string }) {
   const user = message.role === "user";
-  const content = <div><div className="mobile-task-message-body">{richText(message.content)}</div><time dateTime={message.createdAt} title={formatDateTime(message.createdAt)}>{relativeTaskTime(message.createdAt)}</time></div>;
+  const content = <div>{message.content?.trim() ? <div className="mobile-task-message-body">{richText(message.content)}</div> : null}<TaskMessageAttachments attachments={message.metadata?.attachments || []} /><time dateTime={message.createdAt} title={formatDateTime(message.createdAt)}>{relativeTaskTime(message.createdAt)}</time></div>;
   return <article className={`mobile-task-message ${user ? "user" : "agent"}`}>
     {user ? <><span className="mobile-task-avatar user" aria-label={userName}>{firstCharacter(userName)}</span>{content}</> : <><span className="mobile-task-avatar agent" aria-label="PA">PA</span>{content}</>}
   </article>;
 }
+
+function TaskMessageAttachments({ attachments }: { attachments: ChatAttachment[] }) {
+  if (!attachments.length) return null;
+  return <div className="mobile-task-message-attachments">{attachments.map((attachment) => attachment.kind === "image" && attachment.previewUrl
+    ? <a href={attachment.previewUrl} target="_blank" rel="noreferrer" key={attachment.objectId || attachment.name}><img src={attachment.previewUrl} alt={attachment.alt || attachment.name} width={attachment.width} height={attachment.height} /><span><strong>{attachment.caption || attachment.name}</strong><small>{attachment.width && attachment.height ? `${attachment.width} × ${attachment.height} · ` : ""}{mobileAttachmentDeliveryLabel(attachment.deliveryState)}</small></span></a>
+    : (attachment.downloadUrl || attachment.previewUrl) ? <a className="mobile-task-file" href={attachment.downloadUrl || attachment.previewUrl} key={attachment.objectId || attachment.name}><i aria-hidden="true">{mobileFileType(attachment.name)}</i><span><strong>{attachment.caption || attachment.name}</strong><small>{formatMobileAttachmentBytes(attachment.sizeBytes)} · {mobileAttachmentDeliveryLabel(attachment.deliveryState)}</small></span><em>下载</em></a> : null)}</div>;
+}
+
+function mobileAttachmentDeliveryLabel(state?: ChatAttachment["deliveryState"]) {
+  return state === "failed" ? "发送失败" : state === "sending" ? "发送中" : state === "sent" ? "已发送" : "待发送";
+}
+
+function mobileFileType(name: string) { return name.split(".").pop()?.slice(0, 5).toUpperCase() || "FILE"; }
+function formatMobileAttachmentBytes(value = 0) { if (value < 1024) return `${value} B`; if (value < 1024 ** 2) return `${(value / 1024).toFixed(1)} KB`; return `${(value / 1024 ** 2).toFixed(1)} MB`; }
 
 function TaskPlan({ steps }: { steps: PlanStep[] }) {
   const completed = steps.filter((step) => step.status === "completed").length;

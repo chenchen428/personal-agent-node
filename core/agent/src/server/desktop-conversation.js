@@ -54,12 +54,23 @@ export function buildDesktopConversationView(input, {
   };
 }
 
+export function buildConversationAttachmentDeliveryView(session) {
+  if (!session) return session;
+  const states = replyAttachmentDeliveryStates(session.events || []);
+  return {
+    ...session,
+    messages: (session.messages || []).map((message) => withReplyAttachmentDelivery(message, states)),
+  };
+}
+
 function visibleConversationMessages(session) {
+  const deliveryStates = replyAttachmentDeliveryStates(session.events || []);
   const visible = (session.messages || []).filter((message) =>
     VISIBLE_ROLES.has(message.role)
     && !(message.role === "error" && message.metadata?.willRetry === true)
     && !isInternalAgentInput(message)
-    && String(message.content || "").trim());
+    && (String(message.content || "").trim() || message.metadata?.attachments?.length))
+    .map((message) => withReplyAttachmentDelivery(message, deliveryStates));
   if (normalizeChannel(session.channel) !== "wechat") return visible;
 
   const deduplicated = [];
@@ -69,6 +80,32 @@ function visibleConversationMessages(session) {
     deduplicated.push(message);
   }
   return deduplicated;
+}
+
+function replyAttachmentDeliveryStates(events) {
+  const states = new Map();
+  for (const event of events) {
+    const metadata = event?.payload?.metadata;
+    if (metadata?.eventType !== "wechat/final-reply-part" || metadata.part !== "attachment" || !metadata.objectId) continue;
+    states.set(`${metadata.idempotencyKey}:${metadata.objectId}`, metadata.state);
+  }
+  return states;
+}
+
+function withReplyAttachmentDelivery(message, states) {
+  const attachments = message.metadata?.attachments;
+  const idempotencyKey = message.metadata?.finalReply?.idempotencyKey;
+  if (!Array.isArray(attachments) || !attachments.length || !idempotencyKey) return message;
+  return {
+    ...message,
+    metadata: {
+      ...message.metadata,
+      attachments: attachments.map((attachment) => ({
+        ...attachment,
+        deliveryState: states.get(`${idempotencyKey}:${attachment.objectId}`) || attachment.deliveryState || "pending",
+      })),
+    },
+  };
 }
 
 function isLegacyWechatUserEcho(previous, message) {

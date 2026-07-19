@@ -3,6 +3,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
+import sharp from "sharp";
 import { config } from "../src/config.js";
 import { ActivityStore } from "../src/activity/store.js";
 import { dailyTokenLimitSettings } from "../src/agent/daily-token-limit.ts";
@@ -1512,6 +1513,239 @@ test("reads the Space Codex model and reasoning effort before every new Agent tu
       ["gpt-first", "medium"],
       ["gpt-second", "high"],
     ]);
+  } finally {
+    orchestrator.stop();
+    store.close();
+    fs.rmSync(dataDir, { recursive: true, force: true });
+  }
+});
+
+test("delivers selected managed images as an idempotent native WeChat final reply and stores chat attachments", async () => {
+  const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), "oab-orchestrator-final-media-"));
+  const imagePath = path.join(dataDir, "result.png");
+  await sharp({ create: { width: 12, height: 9, channels: 4, background: "#2255aa" } }).png().toFile(imagePath);
+  const sizeBytes = fs.statSync(imagePath).size;
+  const objectIds = ["obj_0123456789abcdef01234567", "obj_89abcdef0123456701234567"];
+  const calls = [];
+  const envelope = `<personal-agent-reply>${JSON.stringify({
+    schemaVersion: 1,
+    requestId: "request-native-images",
+    idempotencyKey: "reply-native-images",
+    text: "Images are ready.",
+    attachments: objectIds.map((current, index) => ({ objectId: current, alt: `Image ${index + 1}`, caption: `Caption ${index + 1}` })),
+  })}</personal-agent-reply>`;
+  const store = new BridgeStore({ dataDir, consoleBaseUrl: "https://agent.example.test" });
+  const main = store.getOrCreateMainSessionForChannel({ channel: "wechat", senderId: "wx-media", senderName: "Media User", workspaceRoot: dataDir });
+  const orchestrator = new SessionOrchestrator({
+    store,
+    hub: { broadcast: () => {} },
+    progressTimerEnabled: false,
+    managedFiles: {
+      stat: (id) => ({ objectId: id, originalName: `${id}.png`, contentType: "image/png", sizeBytes, status: "ready" }),
+      materialize: async (id) => ({ objectId: id, localPath: imagePath, verified: true }),
+    },
+    channels: {
+      wechat: {
+        sendText: async (recipientId, content) => calls.push({ type: "text", recipientId, content }),
+        sendImage: async (recipientId, filePath, caption) => calls.push({ type: "image", recipientId, filePath, caption }),
+      },
+    },
+    runner: {
+      runAppServerCommand: async (input) => {
+        await input.onSessionEvent({
+          sessionId: input.sessionId,
+          kind: "session.assistant_message",
+          payload: { content: envelope, persistedMessageId: "native-image-reply", metadata: { streamState: "completed" } },
+        });
+        return { ok: true };
+      },
+      stopAppServerCommand: () => false,
+    },
+  });
+  try {
+    await orchestrator.runTurn(main.id, "first", { notifyWechat: true, developerInstructions: "test" });
+    await waitFor(() => calls.length === 5);
+    assert.deepEqual(calls.map((item) => item.type), ["text", "text", "image", "text", "image"]);
+    assert.deepEqual(calls.filter((item) => item.type === "text").map((item) => item.content), ["Images are ready.", "Caption 1", "Caption 2"]);
+    assert.deepEqual(calls.filter((item) => item.type === "image").map((item) => item.caption), [undefined, undefined]);
+    assert.equal(calls.every((item) => item.recipientId === "wx-media"), true);
+    const firstView = store.getSession(main.id);
+    const reply = firstView.messages.find((message) => message.metadata?.finalReply?.idempotencyKey === "reply-native-images");
+    assert.equal(reply.content, "Images are ready.");
+    assert.deepEqual(reply.metadata.attachments.map((item) => [item.objectId, item.previewUrl]), [
+      [objectIds[0], `/api/chat/attachments/${objectIds[0]}`],
+      [objectIds[1], `/api/chat/attachments/${objectIds[1]}`],
+    ]);
+    assert.equal(JSON.stringify(reply.metadata).includes(imagePath), false);
+
+    await orchestrator.runTurn(main.id, "retry", { notifyWechat: true, developerInstructions: "test" });
+    await new Promise((resolve) => setTimeout(resolve, 30));
+    assert.equal(calls.length, 5);
+    assert.equal(store.getSession(main.id).messages.filter((message) => message.metadata?.finalReply?.idempotencyKey === "reply-native-images").length, 1);
+    const delivery = store.listEvents(main.id).filter((event) => event.payload?.metadata?.eventType === "wechat/final-reply-part");
+    assert.equal(delivery.filter((event) => event.payload.metadata.part === "attachment" && event.payload.metadata.state === "sent").length, 2);
+  } finally {
+    orchestrator.stop();
+    store.close();
+    fs.rmSync(dataDir, { recursive: true, force: true });
+  }
+});
+
+test("records native image failure explicitly and retries only the failed WeChat part", async () => {
+  const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), "oab-orchestrator-media-retry-"));
+  const store = new BridgeStore({ dataDir, consoleBaseUrl: "https://agent.example.test" });
+  const main = store.getOrCreateMainSessionForChannel({ channel: "wechat", senderId: "wx-retry", senderName: "Retry User", workspaceRoot: dataDir });
+  const calls = [];
+  let imageFails = true;
+  const orchestrator = new SessionOrchestrator({
+    store,
+    hub: { broadcast: () => {} },
+    progressTimerEnabled: false,
+    channels: { wechat: {
+      sendText: async (_recipientId, content) => calls.push({ type: "text", content }),
+      sendImage: async () => {
+        calls.push({ type: "image" });
+        if (imageFails) throw Object.assign(new Error("upstream failed"), { code: "UPLOAD_FAILED" });
+      },
+    } },
+  });
+  const attachment = { objectId: "obj_0123456789abcdef01234567", localPath: path.join(dataDir, "image.png"), caption: "Image caption" };
+  try {
+    const first = await orchestrator.enqueueWechatReply(main.id, "wx-retry", { text: "Reply body", idempotencyKey: "retry-key", attachments: [attachment] });
+    assert.equal(first.sent, false);
+    assert.deepEqual(calls.map((item) => item.type), ["text", "text", "image", "text"]);
+    assert.equal(calls.filter((item) => item.type === "text" && item.content === "Image caption").length, 1);
+    assert.match(calls.at(-1).content, /附件发送失败/);
+    assert.equal(orchestrator.wechatReplyPartState(main.id, "retry-key", "attachment", attachment.objectId), "failed");
+
+    imageFails = false;
+    const second = await orchestrator.enqueueWechatReply(main.id, "wx-retry", { text: "Reply body", idempotencyKey: "retry-key", attachments: [attachment] });
+    assert.equal(second.sent, true);
+    assert.deepEqual(calls.map((item) => item.type), ["text", "text", "image", "text", "image"]);
+    assert.equal(calls.filter((item) => item.type === "text" && item.content === "Image caption").length, 1);
+    assert.equal(orchestrator.wechatReplyPartState(main.id, "retry-key", "text"), "sent");
+    assert.equal(orchestrator.wechatReplyPartState(main.id, "retry-key", "attachment", attachment.objectId), "sent");
+  } finally {
+    orchestrator.stop();
+    store.close();
+    fs.rmSync(dataDir, { recursive: true, force: true });
+  }
+});
+
+test("delivers an ordered image and multiple files as native WeChat media in one idempotent reply", async () => {
+  const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), "oab-orchestrator-final-mixed-"));
+  const imagePath = path.join(dataDir, "result.png");
+  const pdfPath = path.join(dataDir, "report.pdf");
+  const textPath = path.join(dataDir, "notes.txt");
+  await sharp({ create: { width: 10, height: 7, channels: 4, background: "#336699" } }).png().toFile(imagePath);
+  fs.writeFileSync(pdfPath, "%PDF-1.7\n%%EOF");
+  fs.writeFileSync(textPath, "Safe notes\n");
+  const objects = [
+    { objectId: "obj_111111111111111111111111", originalName: "result.png", contentType: "image/png", filePath: imagePath },
+    { objectId: "obj_222222222222222222222222", originalName: "report.pdf", contentType: "application/pdf", filePath: pdfPath },
+    { objectId: "obj_333333333333333333333333", originalName: "notes.txt", contentType: "text/plain", filePath: textPath },
+  ];
+  const calls = [];
+  const envelope = `<personal-agent-reply>${JSON.stringify({
+    schemaVersion: 1,
+    requestId: "request-native-mixed",
+    idempotencyKey: "reply-native-mixed",
+    text: "Mixed attachments are ready.",
+    attachments: [
+      { objectId: objects[0].objectId, alt: "Result image", caption: "Image caption" },
+      { objectId: objects[1].objectId, displayName: "Q2 Report.pdf", caption: "Report caption" },
+      { objectId: objects[2].objectId },
+    ],
+  })}</personal-agent-reply>`;
+  const store = new BridgeStore({ dataDir, consoleBaseUrl: "https://agent.example.test" });
+  const main = store.getOrCreateMainSessionForChannel({ channel: "wechat", senderId: "wx-mixed", senderName: "Mixed User", workspaceRoot: dataDir });
+  const orchestrator = new SessionOrchestrator({
+    store,
+    hub: { broadcast: () => {} },
+    progressTimerEnabled: false,
+    managedFiles: {
+      stat: (id) => { const item = objects.find((object) => object.objectId === id); return { ...item, sizeBytes: fs.statSync(item.filePath).size, status: "ready" }; },
+      materialize: async (id) => { const item = objects.find((object) => object.objectId === id); return { objectId: id, localPath: item.filePath, verified: true }; },
+    },
+    channels: { wechat: {
+      sendText: async (recipientId, content) => calls.push({ type: "text", recipientId, content }),
+      sendImage: async (recipientId, filePath, caption) => calls.push({ type: "image", recipientId, filePath, caption }),
+      sendFile: async (recipientId, filePath, title, caption) => calls.push({ type: "file", recipientId, filePath, title, caption }),
+    } },
+    runner: {
+      runAppServerCommand: async (input) => {
+        await input.onSessionEvent({ sessionId: input.sessionId, kind: "session.assistant_message", payload: { content: envelope, persistedMessageId: "mixed-reply", metadata: { streamState: "completed" } } });
+        return { ok: true };
+      },
+      stopAppServerCommand: () => false,
+    },
+  });
+  try {
+    await orchestrator.runTurn(main.id, "send mixed", { notifyWechat: true, developerInstructions: "test" });
+    await waitFor(() => calls.length === 6);
+    assert.deepEqual(calls.map((call) => call.type), ["text", "text", "image", "text", "file", "file"]);
+    assert.deepEqual(calls.filter((call) => call.type === "text").map((call) => call.content), ["Mixed attachments are ready.", "Image caption", "Report caption"]);
+    assert.deepEqual(calls.filter((call) => call.type === "file").map((call) => [call.title, call.caption]), [["Q2 Report.pdf", undefined], ["notes.txt", undefined]]);
+    const reply = store.getSession(main.id).messages.find((message) => message.metadata?.finalReply?.idempotencyKey === "reply-native-mixed");
+    assert.deepEqual(reply.metadata.attachments.map((attachment) => [attachment.kind, attachment.name]), [["image", "result.png"], ["file", "Q2 Report.pdf"], ["file", "notes.txt"]]);
+    assert.equal(reply.metadata.attachments.every((attachment) => attachment.downloadUrl?.includes(attachment.objectId)), true);
+    assert.equal(JSON.stringify(reply.metadata).includes(dataDir), false);
+    await orchestrator.runTurn(main.id, "retry mixed", { notifyWechat: true, developerInstructions: "test" });
+    await new Promise((resolve) => setTimeout(resolve, 30));
+    assert.equal(calls.length, 6);
+  } finally {
+    orchestrator.stop();
+    store.close();
+    fs.rmSync(dataDir, { recursive: true, force: true });
+  }
+});
+
+test("reports an unsupported native file explicitly without degrading to a URL", async () => {
+  const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), "oab-orchestrator-file-unsupported-"));
+  const store = new BridgeStore({ dataDir, consoleBaseUrl: "https://agent.example.test" });
+  const main = store.getOrCreateMainSessionForChannel({ channel: "wechat", senderId: "wx-file-fail", senderName: "File User", workspaceRoot: dataDir });
+  const calls = [];
+  const orchestrator = new SessionOrchestrator({ store, hub: { broadcast: () => {} }, progressTimerEnabled: false, channels: { wechat: { sendText: async (_recipientId, content) => calls.push(content) } } });
+  try {
+    const result = await orchestrator.enqueueWechatReply(main.id, "wx-file-fail", {
+      text: "File follows.",
+      idempotencyKey: "file-unsupported",
+      attachments: [{ objectId: "obj_444444444444444444444444", kind: "file", localPath: path.join(dataDir, "report.pdf"), name: "report.pdf" }],
+    });
+    assert.equal(result.sent, false);
+    assert.equal(calls.length, 2);
+    assert.equal(calls.some((content) => /https?:\/\//.test(content)), false);
+    const failed = store.listEvents(main.id).find((event) => event.payload?.metadata?.objectId === "obj_444444444444444444444444" && event.payload?.metadata?.state === "failed");
+    assert.equal(failed.payload.metadata.code, "CHANNEL_FILE_UNSUPPORTED");
+  } finally {
+    orchestrator.stop();
+    store.close();
+    fs.rmSync(dataDir, { recursive: true, force: true });
+  }
+});
+
+test("retries only a failed native file without duplicating body, caption, or successful parts", async () => {
+  const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), "oab-orchestrator-file-retry-"));
+  const store = new BridgeStore({ dataDir, consoleBaseUrl: "https://agent.example.test" });
+  const main = store.getOrCreateMainSessionForChannel({ channel: "wechat", senderId: "wx-file-retry", senderName: "File Retry", workspaceRoot: dataDir });
+  const calls = [];
+  let fileFails = true;
+  const orchestrator = new SessionOrchestrator({ store, hub: { broadcast: () => {} }, progressTimerEnabled: false, channels: { wechat: {
+    sendText: async (_recipientId, content) => calls.push({ type: "text", content }),
+    sendFile: async (_recipientId, _filePath, title) => { calls.push({ type: "file", title }); if (fileFails) throw Object.assign(new Error("upload failed"), { code: "UPLOAD_FAILED" }); },
+  } } });
+  const attachment = { objectId: "obj_555555555555555555555555", kind: "file", localPath: path.join(dataDir, "report.pdf"), name: "report.pdf", caption: "Report caption" };
+  try {
+    const first = await orchestrator.enqueueWechatReply(main.id, "wx-file-retry", { text: "Reply body", idempotencyKey: "file-retry", attachments: [attachment] });
+    assert.equal(first.sent, false);
+    assert.deepEqual(calls.map((call) => call.type), ["text", "text", "file", "text"]);
+    fileFails = false;
+    const second = await orchestrator.enqueueWechatReply(main.id, "wx-file-retry", { text: "Reply body", idempotencyKey: "file-retry", attachments: [attachment] });
+    assert.equal(second.sent, true);
+    assert.deepEqual(calls.map((call) => call.type), ["text", "text", "file", "text", "file"]);
+    assert.equal(calls.filter((call) => call.content === "Reply body").length, 1);
+    assert.equal(calls.filter((call) => call.content === "Report caption").length, 1);
+    assert.equal(orchestrator.wechatReplyPartState(main.id, "file-retry", "attachment", attachment.objectId), "sent");
   } finally {
     orchestrator.stop();
     store.close();

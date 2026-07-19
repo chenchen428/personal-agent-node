@@ -321,6 +321,8 @@ function summarize(object) {
     sizeBytes: object.sizeBytes,
     sha256: object.sha256,
     status: object.status,
+    spaceId: String(object.metadata?.spaceId || ""),
+    securityStatus: String(object.metadata?.securityStatus || object.metadata?.scanStatus || ""),
     uploadedAt: object.uploadedAt,
     tier: copy?.tier || "cold",
     localPath: copy?.localPath || "",

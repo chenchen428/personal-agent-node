@@ -11,6 +11,8 @@
 
 ## CLI 交互
 
+For an ordinary reply in the current inbound WeChat conversation, native managed image/file delivery is owned by the canonical main-Agent final-reply contract, not by the manual CLI commands below. The main Agent selects ready `obj_` objects; the orchestrator validates them and chooses the existing connector `sendImage` or `sendFile` method. Workers do not send, and Activity attachments do not trigger channel delivery. See [final reply attachments](../final-reply-attachments.md).
+
 命令入口：`pa-cli connection wechat`
 
 提供 status、connect、send-file 和 send-image；状态输出经过脱敏。

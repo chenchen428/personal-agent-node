@@ -1703,9 +1703,7 @@ export class WeChatTransport {
     const filekey = crypto.randomBytes(16).toString("hex");
     const aeskey = crypto.randomBytes(16);
 
-    this.logger.log(
-      `Uploading ${label}: ${filePath} (${rawsize} bytes, md5=${rawfilemd5})`,
-    );
+    this.logger.log(`Uploading ${label} attachment (${rawsize} bytes)`);
 
     const uploadResp = await getUploadUrl(account, {
       filekey,

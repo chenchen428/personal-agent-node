@@ -1062,6 +1062,15 @@
 .mobile-task-message.user .mobile-task-message-body { padding: 12px 14px; border-radius: 17px; background: #eeece6; color: #57534d; }
 .mobile-task-message time { display: block; margin-top: 7px; color: #aaa59e; font-size: 8px; }
 .mobile-task-message.user time { text-align: right; }
+.mobile-task-message-attachments { display: grid; gap: 8px; margin-top: 10px; }
+.mobile-task-message-attachments a { display: grid; gap: 7px; overflow: hidden; color: inherit; text-decoration: none; }
+.mobile-task-message-attachments img { width: min(100%, 280px); height: auto; max-height: 360px; border: 1px solid #dfdcd5; border-radius: 13px; background: #f4f2ed; object-fit: contain; }
+.mobile-task-message-attachments span { display: grid; gap: 2px; }
+.mobile-task-message-attachments strong { overflow: hidden; color: #4b4843; font-size: 11px; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+.mobile-task-message-attachments small { color: #918c84; font-size: 9px; }
+.mobile-task-message-attachments .mobile-task-file { grid-template-columns: 38px minmax(0, 1fr) auto; align-items: center; padding: 9px; border: 1px solid #dfdcd5; border-radius: 12px; background: #f8f7f3; }
+.mobile-task-file > i { display: grid; place-items: center; width: 38px; height: 38px; border-radius: 9px; background: #ebe8e1; color: #78736b; font-size: 9px; font-style: normal; font-weight: 700; }
+.mobile-task-file > em { color: #4b64c0; font-size: 10px; font-style: normal; }
 .mobile-task-plan { margin: -7px 40px 26px; border-radius: 14px; padding: 14px; background: #eeece6; }
 .mobile-task-plan header { display: flex; justify-content: space-between; margin-bottom: 7px; color: #5e5a54; font-size: 10px; }
 .mobile-task-plan header strong { font-weight: 600; }

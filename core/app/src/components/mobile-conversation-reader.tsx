@@ -6,7 +6,8 @@ import { ArrowLeft, ArrowUpRight, Clock3, MessageCircle, RefreshCw } from "lucid
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 
-type ChatMessage = { id: string; role: "user" | "assistant" | "agent" | "tool" | "system" | "error"; content: string; createdAt?: string };
+type ChatAttachment = { objectId?: string; kind?: "image" | "file"; name: string; previewUrl?: string; downloadUrl?: string; sizeBytes?: number; alt?: string; caption?: string; width?: number; height?: number; deliveryState?: string };
+type ChatMessage = { id: string; role: "user" | "assistant" | "agent" | "tool" | "system" | "error"; content: string; createdAt?: string; metadata?: { attachments?: ChatAttachment[] } };
 type ChatSession = { id: string; title: string; status: string; summary?: string; updatedAt?: string; messages?: ChatMessage[] };
 
 const runningStates = new Set(["start", "running"]);
@@ -61,11 +62,17 @@ export function MobileConversationReader({ initialSessionId = "" }: { initialSes
     <section className="mobile-conversation-transcript" aria-live="polite">
       {session?.messages?.length ? session.messages.map((message) => <article className={`mobile-conversation-message role-${message.role}`} key={message.id}>
         <header><span>{messageLabel(message.role)}</span>{message.createdAt ? <time>{formatTime(message.createdAt)}</time> : null}</header>
-        <div>{message.content}</div>
+        <div>{message.content}{message.metadata?.attachments?.length ? <div className="mobile-message-attachments">{message.metadata.attachments.map((attachment) => attachment.kind === "image" && attachment.previewUrl
+          ? <a href={attachment.previewUrl} target="_blank" rel="noreferrer" key={attachment.objectId || attachment.name}><img src={attachment.previewUrl} alt={attachment.alt || attachment.name} width={attachment.width} height={attachment.height} /><span><strong>{attachment.caption || attachment.name}</strong><small>{mobileDeliveryLabel(attachment.deliveryState)}</small></span></a>
+          : <a className="mobile-message-file" href={attachment.downloadUrl || attachment.previewUrl} key={attachment.objectId || attachment.name}><i aria-hidden="true">{attachment.name.split(".").pop()?.slice(0, 5).toUpperCase() || "FILE"}</i><span><strong>{attachment.caption || attachment.name}</strong><small>{formatAttachmentBytes(attachment.sizeBytes)} · {mobileDeliveryLabel(attachment.deliveryState)}</small></span><em>下载</em></a>)}</div> : null}</div>
       </article>) : !loading ? <div className="mobile-conversation-empty"><MessageCircle className="size-6" /><strong>暂无可阅读内容</strong><span>这段会话还没有保存消息。</span></div> : null}
     </section>
   </main>;
 }
+
+function mobileDeliveryLabel(state = "pending") { return ({ pending: "等待发送", sending: "发送中", sent: "已发送", failed: "发送失败", ambiguous: "状态待确认" } as Record<string, string>)[state] || "已保存"; }
+
+function formatAttachmentBytes(value = 0) { if (value < 1024) return `${value} B`; if (value < 1024 ** 2) return `${(value / 1024).toFixed(1)} KB`; return `${(value / 1024 ** 2).toFixed(1)} MB`; }
 
 function ReaderHeader({ title, description, onRefresh, loading }: { title: string; description: string; onRefresh: () => Promise<void>; loading: boolean }) {
   return <header className="mobile-conversation-list-heading"><div><Link href="/app/mobile"><ArrowLeft className="size-4" />阅读首页</Link><span className="toolbar-kicker">CONVERSATIONS</span><h1>{title}</h1><p>{description}</p></div><Button variant="outline" size="icon" type="button" aria-label="刷新对话列表" title="刷新" disabled={loading} onClick={() => void onRefresh()}><RefreshCw className={loading ? "size-4 animate-spin" : "size-4"} /></Button></header>;
