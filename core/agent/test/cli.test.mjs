@@ -27,6 +27,65 @@ test("legacy Memory CLI fails closed and points to main-Agent Activity", async (
   );
 });
 
+test("cron CLI creates and verifies a governed scheduled task", async (t) => {
+  const requests = [];
+  const scheduledTask = {
+    id: "task-daily-folic-acid",
+    name: "每日叶酸提醒",
+    cron: "0 21 * * *",
+    timezone: "Asia/Shanghai",
+    prompt: "提醒用户吃叶酸。",
+    enabled: true,
+    nextRunAt: "2026-07-20T13:00:00.000Z",
+  };
+  const server = http.createServer(async (request, response) => {
+    const chunks = [];
+    for await (const chunk of request) chunks.push(chunk);
+    const body = chunks.length ? JSON.parse(Buffer.concat(chunks).toString("utf8")) : {};
+    requests.push({ method: request.method, url: request.url, body });
+    response.writeHead(200, { "content-type": "application/json" });
+    response.end(JSON.stringify(request.method === "POST"
+      ? { ok: true, task: scheduledTask }
+      : { ok: true, tasks: [scheduledTask] }));
+  });
+  await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
+  t.after(() => server.close());
+  const address = server.address();
+  const env = {
+    ...process.env,
+    OPEN_AGENT_BRIDGE_API_BASE: `http://127.0.0.1:${address.port}`,
+    OPEN_AGENT_BRIDGE_API_TOKEN: "cli-test-token",
+  };
+  const cli = path.join(projectRoot, "bin", "pa-cli.mjs");
+
+  const created = await execFileAsync(process.execPath, [
+    cli, "cron", "create",
+    "--name", "每日叶酸提醒",
+    "--cron", "0 21 * * *",
+    "--timezone", "Asia/Shanghai",
+    "--prompt", "提醒用户吃叶酸。",
+    "--json",
+  ], { cwd: projectRoot, env });
+  const listed = await execFileAsync(process.execPath, [cli, "cron", "list", "--json"], { cwd: projectRoot, env });
+
+  assert.deepEqual(requests, [
+    {
+      method: "POST",
+      url: "/api/agent-corn/tasks",
+      body: {
+        name: "每日叶酸提醒",
+        cron: "0 21 * * *",
+        timezone: "Asia/Shanghai",
+        prompt: "提醒用户吃叶酸。",
+        enabled: true,
+      },
+    },
+    { method: "GET", url: "/api/agent-corn/tasks", body: {} },
+  ]);
+  assert.deepEqual(JSON.parse(created.stdout), scheduledTask);
+  assert.deepEqual(JSON.parse(listed.stdout), [scheduledTask]);
+});
+
 test("session CLI requires concise child-task metadata and supports updates", async (t) => {
   const requests = [];
   const server = http.createServer(async (request, response) => {

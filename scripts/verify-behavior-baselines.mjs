@@ -14,7 +14,7 @@ const registry = readJson(registryPath, "registry/behavior-baselines.json");
 if (registry?.schemaVersion !== 1) fail("registry schemaVersion must be 1");
 if (registry?.phase !== 0) fail("registry phase must be 0");
 requireTrackedFile(registry?.architectureDecision, "accepted architecture decision");
-if (!Array.isArray(registry?.workflows) || registry.workflows.length !== 8) fail("registry must contain the eight Phase 0 workflows");
+if (!Array.isArray(registry?.workflows) || registry.workflows.length !== 9) fail("registry must contain the nine Phase 0 workflows");
 
 const ids = new Set();
 for (const workflow of registry?.workflows || []) {
@@ -50,7 +50,7 @@ if (failures.length) {
   process.exit(1);
 }
 for (const message of passed) process.stdout.write(`[OK] ${message}\n`);
-process.stdout.write(`Phase 0 behavior baselines ${replay ? "replayed" : "verified"}: ${ids.size}/8\n`);
+process.stdout.write(`Phase 0 behavior baselines ${replay ? "replayed" : "verified"}: ${ids.size}/9\n`);
 
 function requireTrackedFile(relative, label) {
   if (typeof relative !== "string" || !relative || path.isAbsolute(relative) || relative.split(/[\\/]/).includes("..")) {

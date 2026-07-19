@@ -7,6 +7,7 @@
     { "id": "apps", "owner": "personal-agent-node", "dataScope": "local-private", "status": "implemented" },
     { "id": "agent", "owner": "personal-agent-node", "dataScope": "local-private", "status": "migrating" },
     { "id": "activity", "owner": "personal-agent-node", "dataScope": "local-private", "status": "implemented" },
+    { "id": "schedules", "owner": "personal-agent-node", "dataScope": "local-private", "status": "implemented" },
     { "id": "connections", "owner": "personal-agent-node", "dataScope": "local-private", "status": "implemented" },
     { "id": "managed-platforms", "owner": "personal-agent-node", "dataScope": "local-private", "status": "planned" },
     { "id": "skills", "owner": "personal-agent-node", "dataScope": "release", "status": "implemented" },

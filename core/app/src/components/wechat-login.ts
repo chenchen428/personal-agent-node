@@ -24,8 +24,10 @@ export function useWechatLogin({ connected, onConnected, autoStart = false, reco
     ? "微信已经连接，可以直接给 Agent 发消息。"
     : autoStart ? "正在生成一次性二维码…" : "生成一次性二维码后即可重新连接微信。");
   const autoStarted = useRef(false);
+  const attempt = useRef(0);
 
   const startLogin = useCallback(async () => {
+    const currentAttempt = ++attempt.current;
     setLogin(null);
     setPhase("generating");
     setMessage("正在向微信申请一次性二维码…");
@@ -33,14 +35,23 @@ export function useWechatLogin({ connected, onConnected, autoStart = false, reco
       const response = await fetch("/api/channels/wechat/login/start", { method: "POST" });
       const payload = await response.json() as WechatLogin & { ok?: boolean; error?: string };
       if (!response.ok || payload.ok === false || !payload.session || !payload.qrSvg) throw new Error(payload.error || `HTTP ${response.status}`);
+      if (attempt.current !== currentAttempt) return;
       setLogin({ ...payload, expiresAt: payload.expiresAt || new Date(Date.now() + 2 * 60_000).toISOString() });
       setPhase("ready");
       setMessage("等待你在微信中确认。这个页面会自动更新连接状态。");
     } catch {
+      if (attempt.current !== currentAttempt) return;
       setPhase("error");
       setMessage("暂时无法生成二维码。请检查当前网络后重试。");
     }
   }, []);
+
+  const cancelLogin = useCallback(() => {
+    attempt.current += 1;
+    setLogin(null);
+    setPhase(connected ? "connected" : "idle");
+    setMessage(connected ? "已取消本次重新连接，原有微信连接保持不变。" : "已取消本次微信连接。需要时可以重新生成二维码。");
+  }, [connected]);
 
   useEffect(() => {
     if (!autoStart || (connected && !reconnectOnMount) || autoStarted.current) return;
@@ -94,5 +105,5 @@ export function useWechatLogin({ connected, onConnected, autoStart = false, reco
     return () => { cancelled = true; window.clearTimeout(timer); };
   }, [login?.expiresAt, login?.session, onConnected]);
 
-  return { login, phase, message, active: ["generating", "ready", "scanned"].includes(phase), working: phase === "generating", startLogin };
+  return { login, phase, message, active: ["generating", "ready", "scanned"].includes(phase), working: phase === "generating", startLogin, cancelLogin };
 }

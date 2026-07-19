@@ -221,6 +221,20 @@ async function handleRequest(request, response) {
     await sendJson(response, result || { ok: false, error: { message: '主 Agent 尚未就绪' } }, request.method === 'HEAD');
     return;
   }
+  if (url.pathname === '/api/codex-settings') {
+    if (request.method !== 'GET' && request.method !== 'POST') {
+      send(response, 405, 'text/plain; charset=utf-8', 'Method Not Allowed');
+      return;
+    }
+    const input = request.method === 'POST' ? await readRequestJson(request) : undefined;
+    const result = await requestOpenAgentBridge('/api/node/v1/client/codex-settings', {
+      method: request.method,
+      headers: input ? { 'content-type': 'application/json' } : undefined,
+      body: input ? JSON.stringify(input) : undefined,
+    });
+    await sendJson(response, result || { ok: false, error: { message: '本机 Agent 尚未就绪' } }, request.method === 'HEAD');
+    return;
+  }
   if (url.pathname === '/api/data-export') {
     if (request.method === 'POST') {
       await readRequestJson(request);

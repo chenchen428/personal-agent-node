@@ -49,8 +49,10 @@ import { ReleaseNotesStore } from "../release-notes/store.js";
 import { AppHistoryStore } from "../apps/history-store.js";
 import { ActivityStore } from "../activity/store.js";
 import { buildActivityTargetPreview } from "../activity/presentation.js";
-import { authorizationSettings, readAuthorizationMode, writeAuthorizationMode } from "../agent/authorization-mode.ts";
+import { authorizationSettings, readAuthorizationMode, withAuthorizationCliFlag, writeAuthorizationMode } from "../agent/authorization-mode.ts";
 import { readDailyTokenLimit, writeDailyTokenLimit } from "../agent/daily-token-limit.ts";
+import { readCodexRuntimeSettings, writeCodexRuntimeSettings } from "../agent/codex-runtime-settings.ts";
+import { discoverAppServerDefaultModel, discoverAppServerModels } from "../agent/app-server-runner.ts";
 import { shutdownAppServerClient } from "../agent/app-server-client.ts";
 import { managedServiceReadiness } from "../../../runtime/src/cloud-resources.ts";
 
@@ -450,6 +452,37 @@ async function handleRequest(request: http.IncomingMessage, response: http.Serve
     }
   }
 
+  if (url.pathname === "/api/node/v1/client/codex-settings") {
+    if (!isTrustedLocalRequest(request)) {
+      sendJson(response, 403, { ok: false, error: "Codex settings require local access" });
+      return;
+    }
+    if (request.method !== "GET" && request.method !== "POST") {
+      sendJson(response, 405, { ok: false, error: "Method Not Allowed" });
+      return;
+    }
+    try {
+      const catalog = await discoverCodexRuntimeCatalog();
+      if (request.method === "GET") {
+        sendJson(response, 200, { ok: true, ...codexRuntimeSettingsView(catalog) });
+        return;
+      }
+      const input = await readJsonBody(request);
+      const model = typeof input?.model === "string" ? input.model.trim() : "";
+      const reasoningEffort = typeof input?.reasoningEffort === "string" ? input.reasoningEffort.trim() : "";
+      validateCodexRuntimeSelection({ model, reasoningEffort }, catalog);
+      writeCodexRuntimeSettings(config.codexRuntimeSettingsFile, { model, reasoningEffort });
+      sendJson(response, 200, { ok: true, ...codexRuntimeSettingsView(catalog) });
+    } catch (error) {
+      const statusCode = Number(error?.statusCode || 503);
+      sendJson(response, statusCode, { ok: false, error: {
+        code: error?.code || "CODEX_MODEL_CATALOG_UNAVAILABLE",
+        message: error?.message || "无法读取本机 Codex 模型目录",
+      } });
+    }
+    return;
+  }
+
   if (url.pathname === "/api/node/v1/mail/messages" && request.method === "GET") {
     sendNodeApiResult(response, 200, await buildMailViewData(url));
     return;
@@ -815,7 +848,7 @@ async function handleRequest(request: http.IncomingMessage, response: http.Serve
       setup: {
         qianxunDocsUrl: "https://daenmax.github.io/qxpro-doc/doc/start/",
         qianxunBaseUrl: savedQianxunConfig?.baseUrl || "http://127.0.0.1:8055",
-        callbackUrl: `http://127.0.0.1:${config.port}/api/internal/channels/wechat-personal/callback`,
+        callbackUrl: personalWechatCallbackUrl(),
       },
     });
     return;
@@ -836,17 +869,17 @@ async function handleRequest(request: http.IncomingMessage, response: http.Serve
     return;
   }
   if (url.pathname === "/api/connections/wechat-personal/connectivity-test/start" && request.method === "POST") {
-    if (!isTrustedLocalRequest(request)) { sendJson(response, 403, { ok: false, error: "个人微信收发测试只能从本机开始" }); return; }
+    if (!isTrustedLocalConsoleRequest(request)) { sendJson(response, 403, { ok: false, error: "个人微信收发测试只能从本机开始" }); return; }
     sendChannelJson(response, 200, { ok: true, test: await wechatQianxun.startConnectivityTest() });
     return;
   }
   if (url.pathname === "/api/connections/wechat-personal/connectivity-test/reply-plan" && request.method === "POST") {
-    if (!isTrustedLocalRequest(request)) { sendJson(response, 403, { ok: false, error: "个人微信测试回复只能从本机准备" }); return; }
+    if (!isTrustedLocalConsoleRequest(request)) { sendJson(response, 403, { ok: false, error: "个人微信测试回复只能从本机准备" }); return; }
     sendChannelJson(response, 202, { ok: true, ...wechatQianxun.planConnectivityTestReply() });
     return;
   }
   if (url.pathname === "/api/connections/wechat-personal/connectivity-test/reply" && request.method === "POST") {
-    if (!isTrustedLocalRequest(request)) { sendJson(response, 403, { ok: false, error: "个人微信测试回复只能从本机确认" }); return; }
+    if (!isTrustedLocalConsoleRequest(request)) { sendJson(response, 403, { ok: false, error: "个人微信测试回复只能从本机确认" }); return; }
     const body = await readJsonBody(request, 64 * 1024);
     sendChannelJson(response, 200, { ok: true, test: await wechatQianxun.executeConnectivityTestReply(String(body.operationId || ""), String(body.digest || "")) });
     return;
@@ -1859,6 +1892,13 @@ function personalWechatCatalogStatus(status: Record<string, unknown>, policy: { 
   };
 }
 
+function personalWechatCallbackUrl() {
+  const callbackPath = "/api/internal/channels/wechat-personal/callback";
+  if (!config.spaceId) return `http://127.0.0.1:${config.port}${callbackPath}`;
+  if (config.spaceKind === "personal") return `http://127.0.0.1:8843${callbackPath}`;
+  return `http://127.0.0.1:8843${callbackPath}/${encodeURIComponent(config.spaceSlug)}`;
+}
+
 function platformConnectionStatuses() {
   const services = managedServiceReadiness({ dataRoot: config.siteDataRoot });
   const external = config.externalAccess();
@@ -2137,6 +2177,75 @@ function buildClientRuntime() {
     channelPollingEnabled: config.channelPollEnabled,
     shellLifecycle: "client-owned",
   };
+}
+
+async function discoverCodexRuntimeCatalog() {
+  const authorization = authorizationSettings(readAuthorizationMode(config.agentAuthorizationFile));
+  const runnerConfig = {
+    workspace: config.workspaceRoot,
+    command: config.codexCommand,
+    appServerCommand: config.codexAppServerCommand,
+    appServerArgs: withAuthorizationCliFlag(config.codexAppServerArgs, authorization.mode),
+    agentEnv: process.env,
+  };
+  try {
+    const [models, defaultModel] = await Promise.all([
+      discoverAppServerModels(runnerConfig),
+      discoverAppServerDefaultModel(runnerConfig),
+    ]);
+    return { models, defaultModel, catalogAvailable: true };
+  } catch {
+    const settings = readCodexRuntimeSettings(config.codexRuntimeSettingsFile, {
+      model: config.codexModel,
+      reasoningEffort: config.codexReasoningEffort,
+    });
+    const id = settings.model || config.codexModel || "";
+    const efforts = ["none", "minimal", "low", "medium", "high", "xhigh"];
+    return {
+      models: id ? [{ id, label: id, efforts, defaultEffort: settings.reasoningEffort || config.codexReasoningEffort || "" }] : [],
+      defaultModel: id ? { id, label: id } : null,
+      catalogAvailable: false,
+    };
+  }
+}
+
+function codexRuntimeSettingsView(catalog: any) {
+  const settings = readCodexRuntimeSettings(config.codexRuntimeSettingsFile, {
+    model: config.codexModel,
+    reasoningEffort: config.codexReasoningEffort,
+  });
+  const effectiveModel = settings.model || catalog.defaultModel?.id || "";
+  const effectiveOption = catalog.models.find((item: any) => item.id === effectiveModel);
+  const reasoningEfforts = Array.from(new Set(catalog.models.flatMap((item: any) => item.efforts || [])));
+  return {
+    ...settings,
+    models: catalog.models,
+    defaultModel: catalog.defaultModel,
+    effectiveModel,
+    effectiveReasoningEffort: settings.reasoningEffort || effectiveOption?.defaultEffort || "",
+    reasoningEfforts,
+    catalogAvailable: catalog.catalogAvailable !== false,
+  };
+}
+
+function validateCodexRuntimeSelection(settings: any, catalog: any) {
+  const selectedModel = settings.model || catalog.defaultModel?.id || "";
+  const model = catalog.models.find((item: any) => item.id === selectedModel);
+  if (settings.model && !model) {
+    throw Object.assign(new Error("所选 Codex 模型当前不可用"), {
+      code: "INVALID_CODEX_MODEL",
+      statusCode: 400,
+    });
+  }
+  const availableEfforts = model?.efforts?.length
+    ? model.efforts
+    : Array.from(new Set(catalog.models.flatMap((item: any) => item.efforts || [])));
+  if (settings.reasoningEffort && availableEfforts.length && !availableEfforts.includes(settings.reasoningEffort)) {
+    throw Object.assign(new Error("所选推理强度不受当前 Codex 模型支持"), {
+      code: "INVALID_CODEX_REASONING_EFFORT",
+      statusCode: 400,
+    });
+  }
 }
 
 function clientSessionStatus(status: string) {
@@ -2782,6 +2891,14 @@ function isTrustedLocalRequest(request: http.IncomingMessage) {
   if (request.headers["x-forwarded-for"]) return false;
   const address = request.socket.remoteAddress || "";
   return address === "127.0.0.1" || address === "::1" || address === "::ffff:127.0.0.1";
+}
+
+function isTrustedLocalConsoleRequest(request: http.IncomingMessage) {
+  if (isTrustedLocalRequest(request)) return true;
+  if (!isTrustedProxyRequest(request) || request.headers["x-personal-agent-authenticated"] !== "1") return false;
+  const forwarded = request.headers["x-forwarded-for"];
+  if (typeof forwarded !== "string" || forwarded.includes(",")) return false;
+  return ["127.0.0.1", "::1", "::ffff:127.0.0.1"].includes(forwarded.trim().toLowerCase());
 }
 
 function isTrustedProxyRequest(request: http.IncomingMessage) {

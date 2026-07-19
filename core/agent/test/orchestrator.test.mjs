@@ -661,6 +661,11 @@ test("acknowledges WeChat immediately and queues the completed reply behind the 
   assert.match(calls[0].appServerDeveloperInstructions, /简单问答.*直接自然地回答/);
   assert.match(calls[0].appServerDeveloperInstructions, /不要轮询/);
   assert.match(calls[0].appServerDeveloperInstructions, /1 至 3 句话/);
+  assert.match(calls[0].appServerDeveloperInstructions, /pa-cli cron create\|update\|delete\|run/);
+  assert.match(calls[0].appServerDeveloperInstructions, /Do not start or resume a child task merely to manage a schedule/);
+  assert.match(calls[0].appServerDeveloperInstructions, /search main-Agent Activity first/);
+  assert.match(calls[0].appServerDeveloperInstructions, /Do not create a child task merely to retrieve an existing result/);
+  assert.match(calls[0].appServerDeveloperInstructions, /silently try the other registered local indexes/);
   assert.doesNotMatch(calls[0].appServerDeveloperInstructions, /你好，在吗/);
   await waitFor(() => !orchestrator.running.has(session.id));
   assert.equal(orchestrator.running.has(session.id), false);
@@ -1480,6 +1485,38 @@ test("materializes managed object references before starting an Agent turn", asy
   orchestrator.stop();
   store.close();
   fs.rmSync(dataDir, { recursive: true, force: true });
+});
+
+test("reads the Space Codex model and reasoning effort before every new Agent turn", async () => {
+  const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), "oab-orchestrator-codex-settings-"));
+  const store = new BridgeStore({ dataDir, consoleBaseUrl: "https://agent.example.test" });
+  const main = store.getOrCreateDesktopMainSession({ workspaceRoot: dataDir });
+  const calls = [];
+  let settings = { model: "gpt-first", reasoningEffort: "medium" };
+  const orchestrator = new SessionOrchestrator({
+    store,
+    hub: { broadcast: () => {} },
+    channels: {},
+    progressTimerEnabled: false,
+    codexRuntimeSettings: () => settings,
+    runner: {
+      runAppServerCommand: async (input) => { calls.push(input); return { ok: true }; },
+      stopAppServerCommand: () => false,
+    },
+  });
+  try {
+    await orchestrator.resumeSession(main.id, "first turn");
+    settings = { model: "gpt-second", reasoningEffort: "high" };
+    await orchestrator.resumeSession(main.id, "second turn");
+    assert.deepEqual(calls.map((call) => [call.appServerModel, call.appServerReasoningEffort]), [
+      ["gpt-first", "medium"],
+      ["gpt-second", "high"],
+    ]);
+  } finally {
+    orchestrator.stop();
+    store.close();
+    fs.rmSync(dataDir, { recursive: true, force: true });
+  }
 });
 
 async function waitFor(predicate, timeoutMs = 1000) {

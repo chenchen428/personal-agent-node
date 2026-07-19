@@ -4,6 +4,7 @@ import path from "node:path";
 import { runAppServerCommand, steerActiveTurn, stopAppServerCommand } from "../agent/app-server-runner.ts";
 import { authorizationSettings, readAuthorizationMode, withAuthorizationCliFlag } from "../agent/authorization-mode.ts";
 import { dailyTokenLimitError, dailyTokenLimitExceeded, readDailyTokenLimit } from "../agent/daily-token-limit.ts";
+import { readCodexRuntimeSettings } from "../agent/codex-runtime-settings.ts";
 import { buildActivityResultHook, containsActivityControl, executeActivityCommand, isStreamingActivityControl, processActivityControl, stripActivityControls } from "../activity/control.js";
 import { config } from "../config.js";
 import { buildPrivateAttachmentPreviewUrl, relativeAttachmentPath, storedAttachmentDisplayName } from "../private-files/attachments.js";
@@ -35,6 +36,10 @@ export class SessionOrchestrator {
     externalAccess = config.externalAccess,
     siteDataRoot = config.siteDataRoot,
     dailyTokenLimit = () => readDailyTokenLimit(config.dailyTokenLimitFile),
+    codexRuntimeSettings = () => readCodexRuntimeSettings(config.codexRuntimeSettingsFile, {
+      model: config.codexModel,
+      reasoningEffort: config.codexReasoningEffort,
+    }),
     now = Date.now,
   } = {}) {
     this.store = store;
@@ -46,6 +51,7 @@ export class SessionOrchestrator {
     this.channelLoginCoordinator = channelLoginCoordinator;
     this.externalAccess = externalAccess;
     this.dailyTokenLimit = dailyTokenLimit;
+    this.codexRuntimeSettings = codexRuntimeSettings;
     this.running = new Set();
     this.queues = new Map();
     this.wechatNotificationQueues = new Map();
@@ -606,6 +612,7 @@ export class SessionOrchestrator {
       ? `${baseDeveloperInstructions}\n${buildActivityCliInstructions(activityCapability)}`
       : baseDeveloperInstructions;
     const authorization = authorizationSettings(readAuthorizationMode(config.agentAuthorizationFile));
+    const codexSettings = this.codexRuntimeSettings();
 
     let turnError = null;
     let pendingWechatEvent = null;
@@ -628,8 +635,8 @@ export class SessionOrchestrator {
         appServerApprovalPolicy: authorization.approvalPolicy,
         appServerSandbox: authorization.sandbox,
         ...(developerInstructions ? { appServerDeveloperInstructions: developerInstructions } : {}),
-        ...(config.codexModel ? { appServerModel: config.codexModel } : {}),
-        ...(config.codexReasoningEffort ? { appServerReasoningEffort: config.codexReasoningEffort } : {}),
+        ...(codexSettings.model ? { appServerModel: codexSettings.model } : {}),
+        ...(codexSettings.reasoningEffort ? { appServerReasoningEffort: codexSettings.reasoningEffort } : {}),
         onSessionEvent: async (event) => {
           event = redactActivityCapability(event, activityCapability);
           if ((options.internalInput === true || options.userMessagePersisted === true)
@@ -1031,6 +1038,9 @@ function buildWechatReceipt(message) {
 
 function buildMainAgentInstructions(session) {
   return [
+    "Reminder and recurring-schedule requests are a direct main-Agent capability. Use pa-cli cron create|update|delete|run with --json, then verify persisted state with pa-cli cron list --json. Do not start or resume a child task merely to manage a schedule, and do not describe scheduled tasks as removed or unsupported.",
+    "When the user asks to find, resend, or reopen a previous Page, file, report, or other result, search main-Agent Activity first and follow its governed target. Fall back to pa-cli session search only when Activity has no matching result. Do not create a child task merely to retrieve an existing result.",
+    "If one read-only retrieval path is unavailable or asks for renewed authentication, silently try the other registered local indexes before replying. Do not expose internal authentication or permission mechanics as the user's next step unless every safe R0 fallback has failed; then explain the missing result and the single concrete recovery action.",
     "你是唯一可以操作全局“动态”的主 Agent。动态是面向用户的近况说明，不是系统日志，也不是内部推理记录。",
     "当你开始一项值得用户关注的工作、取得实质进展、完成交付或发生需要用户知道的变化时，应主动创建或更新动态。标题不超过 30 个可见字符，详情要说明结果、影响和用户可继续采取的行动；附件最多 10 个，只能引用已托管的 obj_ 对象。",
     "动态类型只使用 work、page、mail、data、automation、note。优先用 correlationKey + upsert 持续更新同一事项，避免把每个工具调用都写成一条新动态。不得记录密钥、内部路径、原始日志、工具调用流水或无用户价值的状态。",
@@ -1042,7 +1052,7 @@ function buildMainAgentInstructions(session) {
     "你是 Personal Agent 的唯一主 Agent。先判断用户是在聊天，还是要求执行实际工作。",
     "寒暄、确认、简单问答、澄清问题以及不需要操作工具的回复，由你直接自然地回答；不要创建子会话，也不要调用工具。",
     "只有当请求确实需要读写文件、运行命令、检索资料、部署或持续执行时，才进入任务调度。",
-    "调度前先提取用户描述里的主题关键词并检索历史会话；如需了解主 Agent 近期做过什么，使用动态 search 控制信封查询：",
+    "只有在确实需要委派新工作时，才提取主题关键词并检索历史会话；找回既有成果优先使用动态 search 控制信封，不要为检索旧成果创建 Worker：",
     `pa-cli session search --query "<主题关键词>" --json`,
     "搜索结果只是摘要；对候选会话先运行 pa-cli session status --session <会话ID> --json 查看完整上下文。",
     "若历史 worker 与当前请求明确属于同一事项，且 parentSessionId 与当前主会话一致，使用 pa-cli session resume --session <会话ID> --task \"<继续任务>\"；不要仅因为关键词相似就续错会话。",

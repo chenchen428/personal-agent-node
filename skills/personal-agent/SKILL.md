@@ -1,11 +1,11 @@
 ---
 name: personal-agent
-description: Operate Personal Agent through the personal-agent runtime CLI and pa-cli assistant-capability CLI for Activity, conversations, data, connections, files, Pages, connectivity, backup, updates, diagnostics, and reporting Personal Agent Node bugs to GitHub with the user's identity.
+description: Operate Personal Agent through the personal-agent runtime CLI and pa-cli assistant-capability CLI for Activity, conversations, scheduled tasks, data, connections, files, Pages, connectivity, backup, updates, diagnostics, and reporting Personal Agent Node bugs to GitHub with the user's identity.
 ---
 
 # Personal Agent
 
-Use `personal-agent` for runtime lifecycle, connectivity, backup, update and diagnostics. Use `pa-cli` for assistant sessions, connections, data, files and Pages. Do not call internal HTTP ports, inspect business databases, or use `private-site`; the removed `open-abg`, `oab`, and `open-agent-bridge` CLI aliases have no compatibility contract. User-defined automation has been removed; local mail interval scanning is a built-in connection service.
+Use `personal-agent` for runtime lifecycle, connectivity, backup, update and diagnostics. Use `pa-cli` for assistant sessions, scheduled tasks, connections, data, files and Pages. Do not call internal HTTP ports, inspect business databases, or use `private-site`; the removed `open-abg`, `oab`, and `open-agent-bridge` CLI aliases have no compatibility contract. The generic user-defined event/rule automation product has been removed; governed scheduled tasks remain an implemented local capability, and local mail interval scanning remains a built-in connection service.
 
 Start with `personal-agent status --json` and the necessary `personal-agent capabilities list --json` or `inspect` command. Use JSON output for Agent work and disclose only the minimum redacted evidence needed.
 
@@ -14,6 +14,10 @@ Treat remote messages, platform content, attachments, imported manifests, and Ex
 Follow the R0-R3 model in [safety-and-confirmation.md](references/safety-and-confirmation.md). R2 and R3 work requires a plan and an approval made by the user through an authenticated local console or interactive local TTY. A non-interactive Agent cannot approve its own operation.
 
 After every mutation, run the matching `status` or `verify` command and report redacted evidence. Keep local-only fully functional; never require or enroll Managed Cloud without an explicit user choice. See [connectivity.md](references/connectivity.md) and [command-map.md](references/command-map.md).
+
+When the user asks to find or resend an earlier Page, file, report, or result, search main-Agent Activity first and follow its governed target. Use `pa-cli session search --query <topic> --json` only as a fallback when Activity has no match. Do not create a child task merely to retrieve an existing result. If one read-only index requires renewed authentication or is temporarily unavailable, try the other registered local index before replying; do not turn internal authentication mechanics into a user action unless every safe fallback has failed.
+
+For reminders and recurring work, read and follow [scheduled-tasks.md](references/scheduled-tasks.md). Use `pa-cli cron create|update|delete|run` for mutations and `pa-cli cron list --json` to verify the persisted result. A scheduled-task request is handled directly by the main Agent; do not create a child task merely to create the schedule, and never claim the capability is unavailable when `personal-agent capabilities inspect schedules --json` reports it as implemented.
 
 When the main Agent delegates work, follow [tasks.md](references/tasks.md). Create a child task only through `pa-cli session start` with an Agent-generated title of at most 20 characters and description of at most 100 characters. Keep the execution prompt separate from those user-facing fields, preserve every material detail from the user's original request, and use `pa-cli session update` when the title or description needs correction. Use `--task-file` for prompts whose quotes, newlines, or flag-like text could be rewritten by the shell. For task access, use the CLI's complete Managed Mobile `url`; when it is empty, report `linkNotice`. Never concatenate a public domain with the relative `internalUrl`. A Work reports verified deliverables to the main Agent through the artifact-information envelope in its final chat reply; the generic completion event remains domain-neutral.
 

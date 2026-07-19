@@ -32,6 +32,9 @@ test("V6.22 read-only client API is local, searchable and self-contained", async
       OPEN_AGENT_BRIDGE_UPLOADS_DIR: uploadsDir,
       OPEN_AGENT_BRIDGE_MAIL_DATA_DIR: path.join(root, "mail"),
       PRIVATE_SITE_DATA_ROOT: path.join(root, "workspace"),
+      PERSONAL_AGENT_SPACE_ID: "sp_clientv622test",
+      PERSONAL_AGENT_SPACE_SLUG: "personal",
+      PERSONAL_AGENT_SPACE_KIND: "personal",
       OPEN_AGENT_BRIDGE_CHANNEL_POLL: "0",
       OPEN_AGENT_BRIDGE_SCHEDULER: "0",
       OPEN_AGENT_BRIDGE_ALLOW_LOCAL_ONLY_MANAGED_FILES: "1",
@@ -79,7 +82,7 @@ test("V6.22 read-only client API is local, searchable and self-contained", async
   const personalWechatSetup = await get(port, token, "/api/connections/wechat-personal/setup");
   assert.equal(personalWechatSetup.setup.qianxunDocsUrl, "https://daenmax.github.io/qxpro-doc/doc/start/");
   assert.equal(personalWechatSetup.setup.qianxunBaseUrl, "http://127.0.0.1:8055");
-  assert.equal(personalWechatSetup.setup.callbackUrl, `http://127.0.0.1:${port}/api/internal/channels/wechat-personal/callback`);
+  assert.equal(personalWechatSetup.setup.callbackUrl, "http://127.0.0.1:8843/api/internal/channels/wechat-personal/callback");
   if (process.platform === "win32") {
     assert.equal(typeof (await get(port, token, "/api/connections/wechat-personal/status?probe=0")).connection, "object");
   } else {
@@ -95,6 +98,26 @@ test("V6.22 read-only client API is local, searchable and self-contained", async
   });
   assert.equal(callback.status, 200);
   assert.equal((await callback.text()).trim(), "ignored:not_configured");
+  const localProxyStart = await fetch(`http://127.0.0.1:${port}/api/connections/wechat-personal/connectivity-test/start`, {
+    method: "POST",
+    headers: {
+      authorization: `Bearer ${token}`,
+      "x-personal-agent-authenticated": "1",
+      "x-forwarded-for": "127.0.0.1",
+    },
+  });
+  assert.equal(localProxyStart.status, 409);
+  assert.notEqual((await localProxyStart.json()).error, "个人微信收发测试只能从本机开始");
+  const remoteProxyStart = await fetch(`http://127.0.0.1:${port}/api/connections/wechat-personal/connectivity-test/start`, {
+    method: "POST",
+    headers: {
+      authorization: `Bearer ${token}`,
+      "x-personal-agent-authenticated": "1",
+      "x-forwarded-for": "203.0.113.9",
+    },
+  });
+  assert.equal(remoteProxyStart.status, 403);
+  assert.equal((await remoteProxyStart.json()).error, "个人微信收发测试只能从本机开始");
 
   const activity = await get(port, token, "/api/node/v1/client/activity?q=does-not-exist&limit=3");
   assert.deepEqual(activity.result.items, []);

@@ -493,6 +493,7 @@
         "test/fixtures/skill-cases/personal-agent-mail/case.json",
         "test/fixtures/skill-cases/personal-agent-activity/case.json",
         "test/fixtures/skill-cases/personal-agent-tasks/case.json",
+        "test/fixtures/skill-cases/personal-agent-schedules/case.json",
         "test/fixtures/skill-cases/personal-agent-pages/case.json",
         "test/fixtures/skill-cases/personal-agent-bug-report/case.json",
         "test/fixtures/skill-cases/personal-agent-acceptance/case.json"

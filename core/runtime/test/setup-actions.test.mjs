@@ -7,7 +7,7 @@ import test from 'node:test';
 import { verifyPasswordVerifier } from '../../agent/src/auth/personal-auth.js';
 import { initializeSite, readEnvFile } from '../src/config.ts';
 import { createOperationStore } from '../src/operations.ts';
-import { disconnectManagedCloud, executeSetupAction, managedCliRuntimeArgs, managedCloudAuthorizationPhase, planSetupAction, safeCliFailureCode } from '../src/setup-actions.ts';
+import { cancelManagedCloudSetup, disconnectManagedCloud, executeSetupAction, managedCliRuntimeArgs, managedCloudAuthorizationPhase, planSetupAction, safeCliFailureCode } from '../src/setup-actions.ts';
 
 test('local auth setup uses an approved R2 plan and removes the migration plaintext', async () => {
   const dataRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'personal-agent-setup-action-'));
@@ -127,6 +127,23 @@ test('managed disconnect removes the local platform binding while preserving enr
     assert.equal(fs.existsSync(cloudFile), true);
     assert.equal(fs.readFileSync(workspaceFile, 'utf8'), 'preserve me');
     assert.equal(JSON.parse(fs.readFileSync(config.configPath, 'utf8')).connectionMode, 'local-only');
+  } finally { fs.rmSync(dataRoot, { recursive: true, force: true }); }
+});
+
+test('managed authorization cancellation preserves an existing binding and records a recoverable state', () => {
+  const dataRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'personal-agent-setup-cloud-cancel-'));
+  try {
+    const { config } = initializeSite({ dataRoot, domain: 'personal-agent.local' });
+    const cloudFile = path.join(config.configDir, 'cloud.json');
+    const statusFile = path.join(config.dataRoot, 'runtime', 'setup', 'managed-cloud-action.json');
+    fs.mkdirSync(path.dirname(statusFile), { recursive: true });
+    fs.writeFileSync(cloudFile, `${JSON.stringify({ schemaVersion: 1, managedHost: 'node.personal-agent.cn' })}\n`);
+    fs.writeFileSync(statusFile, `${JSON.stringify({ schemaVersion: 1, state: 'running', phase: 'resources', pid: 0 })}\n`);
+
+    assert.deepEqual(cancelManagedCloudSetup({ dataRoot }), { cancelled: true, existingBindingPreserved: true });
+    assert.equal(fs.existsSync(cloudFile), true);
+    const status = JSON.parse(fs.readFileSync(statusFile, 'utf8'));
+    assert.deepEqual({ state: status.state, phase: status.phase, code: status.code }, { state: 'cancelled', phase: 'resources', code: 'USER_CANCELLED' });
   } finally { fs.rmSync(dataRoot, { recursive: true, force: true }); }
 });
 

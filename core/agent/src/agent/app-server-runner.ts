@@ -665,7 +665,7 @@ export async function discoverAppServerSkills(config) {
 
 /** Discover selectable models for upstream reporting (runner capabilities -> web model picker). */
 export async function discoverAppServerModels(config) {
-  const res = await getAppServerClient({ cwd: config?.workspace, env: config?.agentEnv }).call('model/list', {});
+  const res = await getAppServerClient(appServerClientOptions(config || {})).call('model/list', {});
   return normalizeModelList(res?.data);
 }
 
@@ -693,7 +693,7 @@ export function resolveDefaultModel(rawModels, configModel) {
  * web simply omits the concrete name (config/read is optional; falls back to the catalog default).
  */
 export async function discoverAppServerDefaultModel(config) {
-  const client = getAppServerClient({ cwd: config?.workspace, env: config?.agentEnv });
+  const client = getAppServerClient(appServerClientOptions(config || {}));
   const [modelsRes, configRes] = await Promise.all([
     client.call('model/list', {}),
     client.call('config/read', { includeLayers: false }).catch(() => null),

@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "capability": { "id": "schedules", "status": "implemented" },
+  "task": {
+    "name": "每日叶酸提醒",
+    "cron": "0 21 * * *",
+    "timezone": "Asia/Shanghai",
+    "prompt": "提醒用户吃叶酸。",
+    "enabled": true,
+    "persistedVerificationRequired": true,
+    "minimumIntervalMinutes": 15,
+    "cloudIndependent": true
+  }
+}

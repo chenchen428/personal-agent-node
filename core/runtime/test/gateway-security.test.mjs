@@ -147,6 +147,103 @@ test("canonical Console and domain API routes authenticate and rewrite to intern
   }
 });
 
+test("fixed local gateway routes Personal WeChat callbacks by user-defined Space code", async () => {
+  const dataRoot = fs.mkdtempSync(path.join(os.tmpdir(), "personal-agent-wechat-callback-gateway-"));
+  const received = [];
+  const target = http.createServer((request, response) => {
+    const chunks = [];
+    request.on("data", (chunk) => chunks.push(chunk));
+    request.on("end", () => {
+      received.push({
+        url: request.url,
+        body: Buffer.concat(chunks).toString("utf8"),
+        authorization: request.headers.authorization,
+        cookie: request.headers.cookie,
+        forwardedFor: request.headers["x-forwarded-for"],
+      });
+      response.writeHead(200, { "content-type": "text/plain; charset=utf-8" });
+      response.end("successful");
+    });
+  });
+  await listen(target);
+  try {
+    initializeSite({ domain: "example.site", dataRoot });
+    const config = resolveNodeConfig({ PRIVATE_SITE_DATA_ROOT: dataRoot, SITE_DOMAIN: "example.site" });
+    const targetSpace = {
+      id: "sp_callbacktarget",
+      slug: "pwx",
+      kind: "user",
+      state: "running",
+      desiredState: "running",
+      ports: { bridge: target.address().port },
+    };
+    const personalSpace = {
+      id: "sp_personaltarget",
+      slug: "personal",
+      kind: "personal",
+      state: "running",
+      desiredState: "running",
+      ports: { bridge: target.address().port },
+    };
+    const { server } = createPrivateSiteGateway({
+      config,
+      personalWechatSpaceResolver: (selector) => selector === undefined ? personalSpace : selector === targetSpace.slug ? targetSpace : null,
+    });
+    await listen(server);
+    try {
+      const port = server.address().port;
+      const body = JSON.stringify({ type: "recvMsg", data: { msgType: 1 } });
+      const callback = await request({
+        port,
+        host: "127.0.0.1",
+        path: `/api/internal/channels/wechat-personal/callback/${targetSpace.slug}`,
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          authorization: "Bearer untrusted",
+          cookie: "untrusted=1",
+          "x-forwarded-for": "203.0.113.9",
+        },
+        body,
+      });
+      assert.equal(callback.status, 200);
+      assert.equal(callback.body, "successful");
+      const personalCallback = await request({
+        port,
+        host: "127.0.0.1",
+        path: "/api/internal/channels/wechat-personal/callback",
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body,
+      });
+      assert.equal(personalCallback.status, 200);
+      assert.deepEqual(received, [{
+        url: "/api/internal/channels/wechat-personal/callback",
+        body,
+        authorization: undefined,
+        cookie: undefined,
+        forwardedFor: undefined,
+      }, {
+        url: "/api/internal/channels/wechat-personal/callback",
+        body,
+        authorization: undefined,
+        cookie: undefined,
+        forwardedFor: undefined,
+      }]);
+      assert.equal((await request({ port, host: "127.0.0.1", path: "/api/internal/channels/wechat-personal/callback?space=sp_legacy", method: "POST" })).status, 400);
+      assert.equal((await request({ port, host: "127.0.0.1", path: "/api/internal/channels/wechat-personal/callback/missing", method: "POST" })).status, 404);
+      assert.equal((await request({ port, host: "example.site", path: `/api/internal/channels/wechat-personal/callback/${targetSpace.slug}`, method: "POST" })).status, 403);
+      targetSpace.state = "stopped";
+      assert.equal((await request({ port, host: "127.0.0.1", path: `/api/internal/channels/wechat-personal/callback/${targetSpace.slug}`, method: "POST" })).status, 503);
+    } finally {
+      await close(server);
+    }
+  } finally {
+    await close(target);
+    fs.rmSync(dataRoot, { recursive: true, force: true });
+  }
+});
+
 test("tunneled login preserves the session cookie through the gateway", async () => {
   const dataRoot = fs.mkdtempSync(path.join(os.tmpdir(), "personal-agent-login-gateway-"));
   const bridge = http.createServer((request, response) => {

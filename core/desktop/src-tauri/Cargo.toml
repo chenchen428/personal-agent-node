@@ -1,6 +1,6 @@
 [package]
 name = "personal-agent-desktop"
-version = "0.2.0-beta.20"
+version = "0.2.0-beta.21"
 description = "Lightweight desktop shell for Personal Agent Node"
 authors = ["Personal Agent contributors"]
 license = "Apache-2.0"

@@ -8,6 +8,7 @@ import mime from "mime-types";
 import { resolveNodeConfig, workspaceRoot } from "./config.ts";
 import { listExtensions } from "./extensions.ts";
 import { resolveDefaultPersonalApp, resolvePersonalAppAsset } from "./apps.ts";
+import { getSpace } from "./space-registry.ts";
 
 const isEntrypoint = ["gateway.mjs", "gateway.ts"].includes(path.basename(process.argv[1] || ""));
 
@@ -52,6 +53,17 @@ export function createPrivateSiteGateway(options = {}) {
       const url = new URL(request.url || "/", `http://${host || "localhost"}`);
       if (url.pathname === "/__private-site/health") {
         sendJson(response, 200, { ok: true, service: "private-site-gateway", site: config.domain, tls: gatewayUsesTls(config) }, request.method === "HEAD");
+        return;
+      }
+      const personalWechatCallback = resolvePersonalWechatCallbackTarget(request, url, config, options.personalWechatSpaceResolver);
+      if (personalWechatCallback) {
+        if (personalWechatCallback.statusCode) {
+          sendText(response, personalWechatCallback.statusCode, `${personalWechatCallback.message}\n`, request.method === "HEAD");
+          return;
+        }
+        preparePersonalWechatCallbackProxyHeaders(request);
+        request.url = personalWechatCallback.upstreamPath;
+        proxy.web(request, response, { target: personalWechatCallback.target });
         return;
       }
       if (url.pathname === "/login" || url.pathname === "/logout") {
@@ -197,6 +209,39 @@ export function isDirectLoopbackConsoleRequest(request) {
   const host = normalizeRequestHost(request.headers.host);
   return isLoopbackAddress(request.socket.remoteAddress)
     && ["127.0.0.1", "localhost", "::1"].includes(host);
+}
+
+export function resolvePersonalWechatCallbackTarget(request, url, config, resolver = null) {
+  const callbackPath = "/api/internal/channels/wechat-personal/callback";
+  const userSpaceMatch = new RegExp(`^${callbackPath.replaceAll("/", "\\/")}\\/([a-z0-9](?:[a-z0-9-]{1,26}[a-z0-9])?)$`).exec(url.pathname);
+  if (url.pathname !== callbackPath && !userSpaceMatch) return null;
+  if (request.method !== "POST") return { statusCode: 405, message: "Method Not Allowed" };
+  if (config.space?.kind !== "personal" || !isDirectLoopbackConsoleRequest(request)) {
+    return { statusCode: 403, message: "Personal WeChat callbacks require the fixed local gateway" };
+  }
+  if (url.search) return { statusCode: 400, message: "Personal WeChat callback URL must not contain a query" };
+  const spaceCode = userSpaceMatch?.[1] || "";
+  const lookup = resolver || ((selector) => getSpace(config.installationDataRoot, selector));
+  const space = lookup(spaceCode || undefined);
+  if (!space || (spaceCode ? space.slug !== spaceCode || space.kind === "personal" : space.kind !== "personal")) {
+    return { statusCode: 404, message: "Personal WeChat callback space was not found" };
+  }
+  if (space.state !== "running" || space.desiredState !== "running") return { statusCode: 503, message: "Personal WeChat callback space is not running" };
+  const bridgePort = Number(space.ports?.bridge || 0);
+  if (!Number.isInteger(bridgePort) || bridgePort < 1 || bridgePort > 65_535) return { statusCode: 503, message: "Personal WeChat callback target is unavailable" };
+  return { target: `http://127.0.0.1:${bridgePort}`, upstreamPath: callbackPath, spaceCode: space.slug };
+}
+
+function preparePersonalWechatCallbackProxyHeaders(request) {
+  for (const header of [
+    "authorization",
+    "cookie",
+    "x-personal-agent-authenticated",
+    "x-real-ip",
+    "x-forwarded-for",
+    "x-forwarded-proto",
+    "x-forwarded-host",
+  ]) delete request.headers[header];
 }
 
 function isLoopbackAddress(value) {

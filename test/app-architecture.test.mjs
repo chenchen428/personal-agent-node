@@ -34,6 +34,7 @@ test("Next.js owns the approved V6.35 mobile client and V7.3 desktop workspace",
   const tokenUsageHook = read("core/app/src/components/token-usage/use-token-usage.ts");
   const dataExportControl = read("core/app/src/components/desktop-v627/data-export-control.tsx");
   const agentServer = read("core/agent/src/server/server.ts");
+  const controlServer = read("core/control/server.ts");
   const mobileClient = [
     "mobile-current.tsx",
     "mobile-current/activity.tsx",
@@ -250,6 +251,10 @@ test("Next.js owns the approved V6.35 mobile client and V7.3 desktop workspace",
   assert.match(desktopComponents, /\/api\/system\/update/);
   assert.match(desktopComponents, /安装后自动重启/);
   assert.match(desktopComponents, /\/api\/system\/authorization/);
+  assert.match(desktopComponents, /\/api\/system\/codex-settings/);
+  assert.match(desktopComponents, /模型与推理强度/);
+  assert.match(agentServer, /\/api\/node\/v1\/client\/codex-settings/);
+  assert.match(controlServer, /\/api\/codex-settings/);
   assert.match(desktopComponents, /bypass/);
   assert.match(desktopComponents, /confirm/);
   assert.match(desktopComponents, /if \(bypass\) await applyPlan/);

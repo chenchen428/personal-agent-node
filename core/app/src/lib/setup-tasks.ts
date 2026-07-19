@@ -21,9 +21,10 @@ export type SetupTask = {
 };
 
 export type ManagedCloudAction = {
-  state: "idle" | "starting" | "running" | "succeeded" | "failed";
+  state: "idle" | "starting" | "running" | "succeeded" | "failed" | "cancelled";
   phase: "idle" | "enrollment" | "resources" | "complete";
   code?: string;
+  authorizationUrl?: string;
 };
 
 const requiredRequirements = new Set<SetupRequirement>(["required-for-console", "required-for-agent"]);
@@ -53,6 +54,7 @@ export function validateLocalPasswordInput(password: string, confirmation: strin
 }
 
 export function managedCloudActionMessage(action?: ManagedCloudAction) {
+  if (action?.state === "cancelled") return "已取消本次页面验证，原有连接保持不变。";
   if (action?.state === "failed") return cloudFailureMessage(action.code);
   if (action?.phase === "resources") return "公网接入已确认，正在分配公网域名和 PA 邮箱。";
   if (["starting", "running"].includes(action?.state || "idle")) return "验证页面已打开，请在浏览器中确认这台电脑。";

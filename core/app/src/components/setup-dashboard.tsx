@@ -118,6 +118,8 @@ export function SetupDashboard({ prototype = false }: { prototype?: boolean }) {
       const cloudMessage = managedCloudActionMessage(cloudAction);
       return <div className="grid justify-items-start gap-2">
         <Button size="sm" type="button" disabled={actionId === "connectivity.managed-authorize" || cloudPending} onClick={() => void runAction("connectivity.managed-authorize")}>{cloudPending ? "等待页面确认" : "验证公网与邮箱"}</Button>
+        {cloudPending && cloudAction?.authorizationUrl ? <a className={buttonVariants({ variant: "outline", size: "sm" })} href={cloudAction.authorizationUrl} target="_blank" rel="noreferrer">打开授权页面<ExternalLink className="size-3.5" /></a> : null}
+        {cloudPending ? <Button variant="ghost" size="sm" type="button" disabled={actionId === "connectivity.managed-cancel"} onClick={() => void runAction("connectivity.managed-cancel")}>取消本次验证</Button> : null}
         {cloudMessage || actionMessage["connectivity.managed-authorize"] ? <small className="text-xs leading-relaxed text-[var(--muted)]" role="status">{cloudMessage || actionMessage["connectivity.managed-authorize"]}</small> : null}
       </div>;
     }
@@ -178,6 +180,8 @@ export function SetupDashboard({ prototype = false }: { prototype?: boolean }) {
           <article className="setup-option">
             <span className="pa-eyebrow">可选 · 公网域名</span><h2>在手机查看结果</h2><p>完成公网域名验证后，可从手机安全访问这台电脑上的 PA。</p>
             {managedReady ? <Link className="pa-button" href="/app/connections">查看平台域名</Link> : <button className="pa-button" type="button" disabled={actionId === "connectivity.managed-authorize" || cloudPending} onClick={() => void runAction("connectivity.managed-authorize")}>{actionId === "connectivity.managed-authorize" ? "正在打开" : cloudPending ? "等待页面确认" : cloudAction?.state === "failed" ? "重新验证平台域名" : "验证平台域名"}</button>}
+            {cloudPending && cloudAction?.authorizationUrl ? <a className="pa-button" href={cloudAction.authorizationUrl} target="_blank" rel="noreferrer">打开授权页面<ExternalLink /></a> : null}
+            {cloudPending ? <button className="pa-button" type="button" onClick={() => void runAction("connectivity.managed-cancel")}>取消本次验证</button> : null}
             {cloudMessage ? <span className="setup-option-note" role="status">{cloudMessage}</span> : null}
           </article>
           <article className="setup-option dark">

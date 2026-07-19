@@ -347,6 +347,8 @@
 .desktop-v72 .domain-sop-head em.danger { background: #fff0ee; color: #ad352b; }
 .desktop-v72 .domain-sop-head em.working { background: #fff6df; color: #8b6314; }
 .desktop-v72 .domain-sop-body { padding: 16px 14px 14px; }
+.desktop-v72 .domain-sop-focus-panel { margin-top: 14px; }
+.desktop-v72 .domain-sop-focus-panel > :first-child { margin-top: 0; }
 .desktop-v72 .domain-sop-steps { display: grid; grid-template-columns: repeat(var(--connection-step-count,5),minmax(0,1fr)); }
 .desktop-v72 .domain-sop-step { position: relative; min-width: 0; display: grid; justify-items: center; gap: 5px; text-align: center; }
 .desktop-v72 .domain-sop-step > span { position: relative; z-index: 1; width: 25px; height: 25px; display: grid; place-items: center; border: 1px solid var(--pa-border-strong); border-radius: 50%; background: #fff; color: #a3a6a1; }
@@ -527,7 +529,7 @@
 }
 
 .desktop-v72 .v72-page-scroll:has(> .personal-wechat-history-page) { overflow: hidden; }
-.desktop-v72 .v72-page-scroll > .personal-wechat-history-page { width: 100%; height: 100%; min-height: 0; }
+.desktop-v72 .v72-page-scroll > .personal-wechat-history-page { width: 100%; height: 100%; min-height: 0; margin: 0; padding: 0; }
 .desktop-v72 .personal-wechat-history-page { display: flex; flex-direction: column; background: #fafaf9; }
 .desktop-v72 .personal-wechat-history-header { min-height: 76px; flex: 0 0 auto; display: grid; grid-template-columns: 132px minmax(0,1fr) auto; align-items: center; gap: 18px; border-bottom: 1px solid var(--pa-border); padding: 0 22px; background: #fff; }
 .desktop-v72 .personal-wechat-history-return { width: max-content; display: inline-flex; align-items: center; gap: 6px; color: var(--pa-muted); font-size: 10px; font-weight: 600; }
@@ -895,6 +897,8 @@
 .desktop-v72 .settings-action-panel p { margin: 0; color: var(--pa-muted); font-size: 10px; }
 .desktop-v72 .settings-section-title { margin: 18px 0 8px; font-size: 12px; }
 .desktop-v72 .settings-select { min-height: 34px; min-width: 126px; border: 1px solid var(--pa-border-strong); border-radius: 9px; padding: 0 30px 0 10px; background: #fff; color: var(--pa-ink); }
+.desktop-v72 .settings-codex-runtime { display: flex; align-items: center; justify-content: flex-end; gap: 7px; flex-wrap: wrap; }
+.desktop-v72 .settings-codex-runtime .settings-select:first-of-type { min-width: 220px; max-width: 300px; }
 .desktop-v72 .settings-token-limit { display: flex; align-items: center; gap: 7px; }
 .desktop-v72 .settings-token-limit input { width: 96px; min-height: 34px; border: 1px solid var(--pa-border-strong); border-radius: 9px; padding: 0 10px; background: #fff; color: var(--pa-ink); font: inherit; text-align: right; }
 .desktop-v72 .settings-token-limit span { color: var(--pa-muted); font-size: 10px; }

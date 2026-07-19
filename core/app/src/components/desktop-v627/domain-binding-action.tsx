@@ -1,7 +1,7 @@
 "use client";
 
-import { LoaderCircle } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { LoaderCircle, X } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 import { Button } from "../desktop-v72/primitives";
 import type { Connection, DomainVerification } from "./connection-types";
 import { DomainBindingSop } from "./domain-binding-sop";
@@ -21,6 +21,8 @@ export function DomainBindingAction({ connection, refresh }: { connection: Conne
   const [deadline, setDeadline] = useState(0);
   const [remaining, setRemaining] = useState(0);
   const [confirmRemove, setConfirmRemove] = useState(false);
+  const [authorizationUrl, setAuthorizationUrl] = useState("");
+  const attempt = useRef(0);
   useEffect(() => {
     if (!deadline) { setRemaining(0); return; }
     const update = () => setRemaining(Math.max(0, Math.ceil((deadline - Date.now()) / 1000)));
@@ -29,22 +31,35 @@ export function DomainBindingAction({ connection, refresh }: { connection: Conne
   useEffect(() => { if (!busy) setVerification(connection.details?.domainVerification || idleVerification(kind)); }, [busy, connection.details?.domainVerification, kind]);
 
   const startBinding = async () => {
+    const currentAttempt = ++attempt.current;
     const deadlineAt = Date.now() + BINDING_TIMEOUT_MS;
-    setBusy(true); setExpanded(true); setMessage(""); setDeadline(deadlineAt);
+    setBusy(true); setExpanded(true); setMessage(""); setAuthorizationUrl(""); setDeadline(deadlineAt);
     setVerification(authorizingVerification(kind, new Date(deadlineAt).toISOString()));
     try {
       await runSetupAction("connectivity.managed-authorize");
-      await waitForAssignedResource(connection.id, deadlineAt);
+      await waitForAssignedResource(connection.id, deadlineAt, setAuthorizationUrl, () => attempt.current !== currentAttempt);
+      if (attempt.current !== currentAttempt) return;
       const started = await fetchJson<{ verification: DomainVerification }>(`/api/connections/${kind}/domain-binding`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ deadlineAt: new Date(deadlineAt).toISOString() }) });
       setVerification(started.verification);
-      const completed = await waitForVerification(kind, deadlineAt, setVerification);
+      const completed = await waitForVerification(kind, deadlineAt, setVerification, () => attempt.current !== currentAttempt);
+      if (attempt.current !== currentAttempt) return;
       if (completed.phase !== "verified") throw new Error(completed.error?.message || "绑定验证未通过");
       setMessage(kind === "mail" ? "测试邮件已在本机收到，平台邮箱绑定成功。" : "公网发布内容验证一致，Site 域名绑定成功。");
       await refresh();
     } catch (error) {
+      if (attempt.current !== currentAttempt) return;
       setMessage(errorMessage(error));
       setVerification((current) => current.phase === "failed" ? current : { ...current, phase: "failed", error: { code: "BINDING_FAILED", message: errorMessage(error) }, steps: current.steps.map((step) => step.status === "active" ? { ...step, status: "failed" } : step) });
-    } finally { setBusy(false); setDeadline(0); }
+    } finally { if (attempt.current === currentAttempt) { setBusy(false); setDeadline(0); } }
+  };
+
+  const cancelBinding = async () => {
+    attempt.current += 1;
+    setBusy(false); setDeadline(0); setAuthorizationUrl("");
+    try { await runSetupAction("connectivity.managed-cancel"); }
+    catch {}
+    setVerification(idleVerification(kind)); setExpanded(false);
+    setMessage("已取消本次绑定流程，原有连接与本机数据保持不变。");
   };
 
   const removeBinding = async () => {
@@ -62,23 +77,26 @@ export function DomainBindingAction({ connection, refresh }: { connection: Conne
   const label = busy ? bound ? "正在移除…" : `绑定验证中${remaining ? ` ${formatRemaining(remaining)}` : ""}` : bound ? "移除域名绑定" : "使用平台域名";
   const button = <Button className="connection-compact-action" variant="primary" disabled={busy} onClick={() => bound ? setConfirmRemove(true) : void startBinding()}>{busy ? <LoaderCircle className="connection-spinner" /> : null}{label}</Button>;
   const showSop = expanded || bound || verification.phase !== "idle";
-  return <div className="connection-domain-flow"><div className="connection-domain-action">{button}{message ? <span role="status">{message}</span> : null}</div>{showSop ? <DomainBindingSop kind={kind} verification={verification} remainingSeconds={remaining} collapsed={!expanded} onToggle={() => setExpanded((value) => !value)} /> : null}{confirmRemove ? <DomainUnbindDialog busy={busy} onCancel={() => setConfirmRemove(false)} onConfirm={() => void removeBinding()} /> : null}</div>;
+  return <div className="connection-domain-flow"><div className="connection-domain-action">{button}{busy && !bound ? <Button className="connection-compact-action" onClick={() => void cancelBinding()}><X />取消绑定</Button> : null}{message ? <span role="status">{message}</span> : null}</div>{showSop ? <DomainBindingSop kind={kind} verification={verification} remainingSeconds={remaining} authorizationUrl={authorizationUrl} collapsed={!expanded} onToggle={() => setExpanded((value) => !value)} /> : null}{confirmRemove ? <DomainUnbindDialog busy={busy} onCancel={() => setConfirmRemove(false)} onConfirm={() => void removeBinding()} /> : null}</div>;
 }
 
-async function waitForAssignedResource(id: string, deadline: number) {
+async function waitForAssignedResource(id: string, deadline: number, onAuthorizationUrl: (value: string) => void, cancelled: () => boolean) {
   while (Date.now() < deadline) {
-    const [detail, setup] = await Promise.all([fetchJson<{ connection: Connection }>(`/api/connections/${id}/status`), fetchJson<{ actions?: { managedCloud?: { state?: string; code?: string } } }>("/api/system/setup")]);
+    if (cancelled()) throw new Error("绑定流程已取消");
+    const [detail, setup] = await Promise.all([fetchJson<{ connection: Connection }>(`/api/connections/${id}/status`), fetchJson<{ actions?: { managedCloud?: { state?: string; code?: string; authorizationUrl?: string } } }>("/api/system/setup")]);
     const assigned = id === "mail" ? detail.connection.details?.mailAddress : detail.connection.details?.platformDomain;
     if (assigned) return;
     const cloud = setup.actions?.managedCloud;
+    if (cloud?.authorizationUrl) onAuthorizationUrl(cloud.authorizationUrl);
     if (cloud?.state === "failed") throw new Error(cloud.code ? `平台授权失败（${cloud.code}），请重新发起。` : "平台授权失败，请重新发起。");
     await pause(1500);
   }
   throw new Error("绑定流程已超过 3 分钟，平台授权或资源分配尚未完成。");
 }
 
-async function waitForVerification(kind: "mail" | "sites", deadline: number, update: (value: DomainVerification) => void) {
+async function waitForVerification(kind: "mail" | "sites", deadline: number, update: (value: DomainVerification) => void, cancelled: () => boolean) {
   while (Date.now() < deadline) {
+    if (cancelled()) throw new Error("绑定流程已取消");
     const result = await fetchJson<{ verification: DomainVerification }>(`/api/connections/${kind}/domain-binding`);
     update(result.verification);
     if (["verified", "failed"].includes(result.verification.phase)) return result.verification;

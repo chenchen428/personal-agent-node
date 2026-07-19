@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "id": "scheduled-tasks",
+  "workflow": "Governed scheduled tasks",
+  "cloudIndependent": true,
+  "given": "An isolated Personal Agent store, scheduler, and stable pa-cli cron capability",
+  "when": "The main Agent creates, verifies, and later triggers a recurring reminder",
+  "acceptance": [
+    "The schedules capability is registered as implemented and the Personal Agent Skill routes reminder requests through pa-cli cron",
+    "A scheduled task persists its cron expression, IANA timezone, prompt, enabled state and next run, and the Agent verifies mutations by listing persisted schedules",
+    "Schedules reject intervals shorter than fifteen minutes",
+    "A due schedule creates a normal local task and records its execution without depending on Cloud"
+  ]
+}

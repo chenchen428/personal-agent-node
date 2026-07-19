@@ -22,6 +22,11 @@ const mutationActions = Object.freeze({
     summary: 'Remove the local public domain and Agent mail binding without deleting Workspace data',
     target: 'managed-cloud',
   },
+  'connectivity.managed-cancel': {
+    risk: 'R1',
+    summary: 'Cancel the current managed Cloud browser authorization without changing an existing binding',
+    target: 'managed-cloud',
+  },
   'mail.enable': {
     risk: 'R1',
     summary: 'Enable local mail readiness checks',
@@ -47,6 +52,7 @@ export async function executeSetupAction({ actionId, input, dataRoot }) {
   if (actionId === 'installation.local-auth') return establishLocalAuth({ input, dataRoot });
   if (actionId === 'connectivity.managed-authorize') return launchManagedCloudSetup({ dataRoot });
   if (actionId === 'connectivity.managed-disconnect') return disconnectManagedCloud({ dataRoot });
+  if (actionId === 'connectivity.managed-cancel') return cancelManagedCloudSetup({ dataRoot });
   if (actionId === 'mail.enable') return enableMailChecks({ dataRoot });
   throw setupActionError('ACTION_UNAVAILABLE', `Setup action cannot be executed: ${actionId}`);
 }
@@ -62,6 +68,17 @@ export function disconnectManagedCloud({ dataRoot }) {
     fs.rmSync(filePath, { force: true });
   }
   return { disconnected: true, mode: 'local-only', localDataPreserved: true };
+}
+
+export function cancelManagedCloudSetup({ dataRoot }) {
+  const config = resolveNodeConfig({ ...process.env, PRIVATE_SITE_DATA_ROOT: dataRoot });
+  const statusFile = path.join(config.dataRoot, 'runtime', 'setup', 'managed-cloud-action.json');
+  const current = readJson(statusFile);
+  if (current?.pid && processAlive(current.pid)) {
+    try { process.kill(Number(current.pid), 'SIGTERM'); } catch {}
+  }
+  writeActionStatus(statusFile, { state: 'cancelled', phase: current?.phase || 'enrollment', code: 'USER_CANCELLED' });
+  return { cancelled: true, existingBindingPreserved: true };
 }
 
 function enableMailChecks({ dataRoot }) {
@@ -95,13 +112,17 @@ function launchManagedCloudSetup({ dataRoot }) {
     writeActionStatus(statusFile, { state: 'succeeded', phase: 'complete' });
     return { started: false, state: 'succeeded', phase: 'complete' };
   }
+  const exposeAuthorization = (phase, pid, authorization) => {
+    const authorizationUrl = safeAuthorizationUrl(authorization?.verificationUrlComplete || authorization?.verificationUrl);
+    if (authorizationUrl) writeActionStatus(statusFile, { state: 'running', phase, pid: pid || 0, authorizationUrl });
+  };
   const startResourceAuthorization = () => {
-    const { child: resource, diagnostics } = spawnManagedCli(cli, ['--space', config.space.id, 'cloud', 'login', '--data-root', config.installationDataRoot, '--json'], config.installationDataRoot);
+    const { child: resource, diagnostics } = spawnManagedCli(cli, ['--space', config.space.id, 'cloud', 'login', '--data-root', config.installationDataRoot, '--json'], config.installationDataRoot, (authorization) => exposeAuthorization('resources', resource.pid, authorization));
     writeActionStatus(statusFile, { state: 'running', phase: 'resources', pid: resource.pid || 0 });
     resource.once('error', (error) => writeActionStatus(statusFile, { state: 'failed', phase: 'resources', code: safeCode(error) }));
-    resource.once('exit', (resourceCode) => writeActionStatus(statusFile, resourceCode === 0
+    resource.once('exit', (resourceCode) => { if (actionCancelled(statusFile)) return; writeActionStatus(statusFile, resourceCode === 0
       ? { state: 'succeeded', phase: 'complete' }
-      : { state: 'failed', phase: 'resources', code: safeCliFailureCode(diagnostics.value, resourceCode) }));
+      : { state: 'failed', phase: 'resources', code: safeCliFailureCode(diagnostics.value, resourceCode) }); });
     return resource;
   };
   if (startingPhase === 'resources') {
@@ -110,10 +131,11 @@ function launchManagedCloudSetup({ dataRoot }) {
     return { started: true, state: 'running', phase: 'resources' };
   }
   writeActionStatus(statusFile, { state: 'starting', phase: 'enrollment' });
-  const { child: first, diagnostics } = spawnManagedCli(cli, ['--space', config.space.id, 'cloud', 'connect', '--data-root', config.installationDataRoot, '--json'], config.installationDataRoot);
+  const { child: first, diagnostics } = spawnManagedCli(cli, ['--space', config.space.id, 'cloud', 'connect', '--data-root', config.installationDataRoot, '--json'], config.installationDataRoot, (authorization) => exposeAuthorization('enrollment', first.pid, authorization));
   writeActionStatus(statusFile, { state: 'running', phase: 'enrollment', pid: first.pid || 0 });
   first.once('error', (error) => writeActionStatus(statusFile, { state: 'failed', phase: 'enrollment', code: safeCode(error) }));
   first.once('exit', (code) => {
+    if (actionCancelled(statusFile)) return;
     if (code !== 0) {
       writeActionStatus(statusFile, { state: 'failed', phase: 'enrollment', code: safeCliFailureCode(diagnostics.value, code) });
       return;
@@ -123,8 +145,9 @@ function launchManagedCloudSetup({ dataRoot }) {
   return { started: true, state: 'running', phase: 'enrollment' };
 }
 
-function spawnManagedCli(cli, args, dataRoot) {
+function spawnManagedCli(cli, args, dataRoot, onAuthorization = () => {}) {
   const diagnostics = { value: '' };
+  let lineBuffer = '';
   const child = spawn(process.execPath, [...managedCliRuntimeArgs(), cli, ...args], {
     detached: false,
     stdio: ['ignore', 'ignore', 'pipe'],
@@ -132,7 +155,18 @@ function spawnManagedCli(cli, args, dataRoot) {
     env: { ...process.env, PRIVATE_SITE_DATA_ROOT: dataRoot },
   });
   child.stderr?.setEncoding('utf8');
-  child.stderr?.on('data', (chunk) => { diagnostics.value = `${diagnostics.value}${chunk}`.slice(-16_384); });
+  child.stderr?.on('data', (chunk) => {
+    diagnostics.value = `${diagnostics.value}${chunk}`.slice(-16_384);
+    lineBuffer += String(chunk);
+    const lines = lineBuffer.split(/\r?\n/);
+    lineBuffer = lines.pop() || '';
+    for (const line of lines) {
+      try {
+        const event = JSON.parse(line);
+        if (['cloud.device-authorization', 'cloud.resource-authorization'].includes(event?.event)) onAuthorization(event.result || {});
+      } catch {}
+    }
+  });
   return { child, diagnostics };
 }
 
@@ -179,6 +213,18 @@ function readJson(filePath) {
 
 function processAlive(pid) {
   try { process.kill(Number(pid), 0); return true; } catch { return false; }
+}
+
+function actionCancelled(filePath) {
+  return readJson(filePath)?.state === 'cancelled';
+}
+
+function safeAuthorizationUrl(value) {
+  try {
+    const url = new URL(String(value || ''));
+    if (!['https:', 'http:'].includes(url.protocol) || (url.protocol === 'http:' && !['127.0.0.1', 'localhost'].includes(url.hostname))) return '';
+    return url.href.length <= 2048 ? url.href : '';
+  } catch { return ''; }
 }
 
 function safeCode(error) {

@@ -143,18 +143,27 @@ export function setupDiagnostics(snapshot) {
     generatedAt: snapshot.generatedAt,
     readiness: snapshot.readiness,
     checks: (snapshot.checks || []).map(({ id, group, requirement, dimension, state, summary, evidence, checkedAt }) => ({ id, group, requirement, dimension, state, summary, evidence, checkedAt })),
-    actions: { managedCloud: publicManagedCloudAction(snapshot.actions?.managedCloud) },
+    actions: { managedCloud: publicManagedCloudAction(snapshot.actions?.managedCloud, false) },
   };
   return { ...value, diagnosticDigest: crypto.createHash('sha256').update(JSON.stringify(value)).digest('hex') };
 }
 
-function publicManagedCloudAction(value) {
-  const allowedStates = new Set(['idle', 'starting', 'running', 'succeeded', 'failed']);
+function publicManagedCloudAction(value, includeAuthorization = true) {
+  const allowedStates = new Set(['idle', 'starting', 'running', 'succeeded', 'failed', 'cancelled']);
   const allowedPhases = new Set(['idle', 'enrollment', 'resources', 'complete']);
   const state = allowedStates.has(value?.state) ? value.state : 'idle';
   const phase = allowedPhases.has(value?.phase) ? value.phase : state === 'succeeded' ? 'complete' : 'idle';
   const code = /^[A-Z0-9_]{1,64}$/.test(String(value?.code || '')) ? String(value.code) : '';
-  return { state, phase, ...(code ? { code } : {}) };
+  const authorizationUrl = includeAuthorization ? safePublicAuthorizationUrl(value?.authorizationUrl) : '';
+  return { state, phase, ...(code ? { code } : {}), ...(authorizationUrl ? { authorizationUrl } : {}) };
+}
+
+function safePublicAuthorizationUrl(value) {
+  try {
+    const url = new URL(String(value || ''));
+    if (!['https:', 'http:'].includes(url.protocol) || (url.protocol === 'http:' && !['127.0.0.1', 'localhost'].includes(url.hostname))) return '';
+    return url.href.length <= 2048 ? url.href : '';
+  } catch { return ''; }
 }
 
 export async function inspectRemoteConnectivity({ host, token, lookup = dns.lookup, fetchImpl = fetch } = {}) {

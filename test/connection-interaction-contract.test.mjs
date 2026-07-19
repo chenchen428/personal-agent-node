@@ -32,6 +32,8 @@ test("connection UI separates OpenCLI browser reads from QR and account authoriz
   assert.match(domainAction, /移除域名绑定/);
   assert.match(domainAction, /platformDomainBound/);
   assert.match(domainAction, /BINDING_TIMEOUT_MS = 3 \* 60_000/);
+  assert.match(domainAction, /connectivity\.managed-cancel/);
+  assert.match(domainAction, /取消绑定/);
   assert.match(domainAction, /\/api\/connections\/\$\{id\}\/status/);
   assert.match(domainAction, /domain-binding/);
   assert.doesNotMatch(domainAction, /window\.confirm/);
@@ -46,11 +48,15 @@ test("connection UI separates OpenCLI browser reads from QR and account authoriz
   assert.doesNotMatch(publicMailSender, /cloud-resources|domain-verification\/mail/);
   assert.match(mailPage, /searchParams\.get\("message"\)/);
   assert.match(domainSop, /QRCode\.toDataURL/);
+  assert.match(domainSop, /打开授权页面/);
+  assert.match(domainSop, /stepPanels=/);
   assert.match(unbindDialog, /role="alertdialog"/);
   assert.match(unbindDialog, /本机数据不会删除/);
   assert.match(wechat, /重新生成二维码/);
   assert.match(wechat, /剩余/);
   assert.match(wechat, /ConnectionOperationSop/);
+  assert.match(wechat, /取消连接/);
+  assert.match(wechat, /stepPanels=/);
   assert.match(wechat, /生成登录二维码/);
   assert.match(wechat, /手机确认连接/);
   assert.match(actions, /OpenCliAction/);
@@ -58,7 +64,11 @@ test("connection UI separates OpenCLI browser reads from QR and account authoriz
   assert.match(actions, /检测浏览器操作/);
   assert.match(actions, /校验平台只读能力/);
   assert.match(actions, /确认工作区授权/);
+  assert.match(actions, /再次打开授权页/);
+  assert.match(actions, /取消.*重新连接/);
   assert.match(operationSop, /domain-sop-steps/);
+  assert.match(operationSop, /domain-sop-focus-panel/);
+  assert.match(operationSop, /focusStep/);
   assert.match(actions, /\/api\/connections\/\$\{connection\.id\}\/open/);
   assert.match(actions, /修复浏览器连接/);
   assert.doesNotMatch(actions, /npm install|查看官方安装说明/);
@@ -98,6 +108,8 @@ test("personal WeChat is independent from WeChat claw and configures a Qianxun-b
   assert.match(action, /wechat-personal\/directory/);
   assert.match(action, /ConnectionOperationSop/);
   assert.match(action, /读取联系人与群/);
+  assert.match(action, /取消重新配置/);
+  assert.match(action, /stepPanels=/);
   assert.match(action, /href="\/app\/connections\/wechat-personal"/);
   assert.match(action, /最近 100 条记录/);
   assert.match(setupGuide, /daenmax\.github\.io\/qxpro-doc\/doc\/start/);
