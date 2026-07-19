@@ -40,7 +40,7 @@ export function validateReverseTunnelContract(value) {
 }
 
 export class ReverseTunnelConnector {
-  constructor({ config, tunnel, refreshCredential = null, logger = console, WebSocketImpl = WebSocket, httpRequest = http.request, now = () => new Date(), random = Math.random } = {}) {
+  constructor({ config, tunnel, refreshCredential = null, silentCredential = null, logger = console, WebSocketImpl = WebSocket, httpRequest = http.request, now = () => new Date(), random = Math.random } = {}) {
     this.config = config;
     this.tunnel = { ...tunnel };
     this.logger = logger;
@@ -49,6 +49,7 @@ export class ReverseTunnelConnector {
     this.now = now;
     this.random = random;
     this.refreshCredential = refreshCredential;
+    this.silentCredential = silentCredential;
     this.statePath = path.join(config.runtimeDir, "reverse-tunnel.json");
     this.streams = new Map();
     this.rejectedStreams = new Map();
@@ -404,15 +405,24 @@ export class ReverseTunnelConnector {
   recoverCredential(reason, { keepConnection = false } = {}) {
     if (this.authRecovery) return this.authRecovery;
     this.writeState("degraded", { cause: reason, authorizationRequired: false });
-    if (!this.tunnel.refreshAvailable || typeof this.refreshCredential !== "function") {
+    if ((!this.tunnel.refreshAvailable || typeof this.refreshCredential !== "function") && typeof this.silentCredential !== "function") {
       this.reauthRequired = true;
       this.writeState("reauth_required", { cause: "refresh_unavailable", authorizationRequired: true, setupAction: "connectivity.managed-authorize" });
       return Promise.resolve(false);
     }
-    this.writeState("refreshing", { cause: reason, authorizationRequired: false });
     let recovered = false;
     this.authRecovery = Promise.resolve()
-      .then(() => this.refreshCredential())
+      .then(async () => {
+        if (this.tunnel.refreshAvailable && typeof this.refreshCredential === "function") {
+          this.writeState("refreshing", { cause: reason, authorizationRequired: false });
+          try { return await this.refreshCredential(); }
+          catch (error) {
+            if (!requiresReauthorization(safeErrorCode(error)) || typeof this.silentCredential !== "function") throw error;
+          }
+        }
+        this.writeState("authorizing", { cause: reason, authorizationRequired: false, method: "silent-browser-session" });
+        return this.silentCredential();
+      })
       .then((credential) => {
         this.tunnel.token = String(credential.token);
         this.tunnel.accessExpiresAt = credential.accessExpiresAt;
@@ -617,6 +627,8 @@ function requiresReauthorization(code) {
   return new Set([
     "CLOUD_REFRESH_TOKEN_MISSING", "CLOUD_DEVICE_BINDING_MISMATCH", "DEVICE_BINDING_MISMATCH",
     "INVALID_REFRESH_TOKEN", "REFRESH_REPLAYED", "REFRESH_EXPIRED", "REFRESH_FAMILY_SUPERSEDED", "SITE_REVOKED", "CLOUD_REFRESH_REJECTED",
+    "CLOUD_SILENT_LOGIN_REQUIRED", "CLOUD_SILENT_CONSENT_REQUIRED", "CLOUD_SILENT_INTERACTION_REQUIRED", "CLOUD_SILENT_MFA_REQUIRED",
+    "CLOUD_SILENT_RISK_BLOCKED", "CLOUD_BROWSER_UNAVAILABLE", "CLOUD_SILENT_TIMEOUT", "CLOUD_SILENT_DEVICE_KEY_MISSING",
   ]).has(String(code || "").toUpperCase());
 }
 

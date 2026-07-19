@@ -21,6 +21,12 @@ test("external access requires a configured mode and a fresh managed tunnel hear
     fs.writeFileSync(path.join(runtimeDir, "reverse-tunnel.json"), JSON.stringify({ state: "ready", lastPongAt: "2026-07-17T07:58:00.000Z" }));
     assert.deepEqual(resolveExternalAccess({ dataRoot: root, now }), { ready: false, reason: "tunnel-offline", origin: "" });
 
+    fs.writeFileSync(path.join(runtimeDir, "reverse-tunnel.json"), JSON.stringify({ state: "authorizing" }));
+    assert.deepEqual(resolveExternalAccess({ dataRoot: root, now }), { ready: false, reason: "authorizing", origin: "" });
+
+    fs.writeFileSync(path.join(runtimeDir, "reverse-tunnel.json"), JSON.stringify({ state: "reauth_required" }));
+    assert.deepEqual(resolveExternalAccess({ dataRoot: root, now }), { ready: false, reason: "reauth_required", origin: "" });
+
     fs.writeFileSync(path.join(runtimeDir, "reverse-tunnel.json"), JSON.stringify({ state: "ready", lastPongAt: "2026-07-17T07:59:40.000Z" }));
     assert.deepEqual(resolveExternalAccess({ dataRoot: root, now }), { ready: true, reason: "ready", origin: "https://owner.personal-agent.cn" });
   } finally {

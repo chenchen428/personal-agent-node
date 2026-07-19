@@ -186,8 +186,9 @@ async function mockCloud(options = {}) {
       return send(response, 200, { status: 'approved', enrollmentCredential: 'enrollment-credential-123456' });
     }
     if (request.url === '/api/node/enroll') {
-      calls.push('enroll'); assert.deepEqual(Object.keys(body).sort(), ['enrollmentCredential']);
+      calls.push('enroll'); assert.deepEqual(Object.keys(body).sort(), ['deviceProofKey', 'enrollmentCredential']);
       assert.equal(body.enrollmentCredential, 'enrollment-credential-123456');
+      assert.match(body.deviceProofKey, /^[A-Za-z0-9_-]{40,256}$/);
       return send(response, 201, {
         ok: true,
         site: { id: 'site-1', slug: 'user-one', managed_host: 'user-one.chenjianhui.site', plan: 'free', status: 'active' },

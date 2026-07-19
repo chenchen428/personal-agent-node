@@ -6,6 +6,7 @@ import { setProvider } from './providers.ts';
 import { validateReverseTunnelContract } from './reverse-tunnel.ts';
 import { initializeInstallation, setSpaceManagedIdentity } from './space-registry.ts';
 import { validateCredentialContract } from './cloud-token-refresh.ts';
+import { ensureCloudDeviceIdentity } from './cloud-device-identity.ts';
 
 export const DEFAULT_CLOUD_URL = 'https://personal-agent.cn';
 const DEFAULT_POLL_INTERVAL_SECONDS = 5;
@@ -33,6 +34,7 @@ export async function enrollWithCloudDeviceAuthorization({
 
   if (!preliminary.space?.id) throw new Error('Cloud 接入必须绑定到一个隔离空间');
   const installationId = initializeInstallation({ dataRoot: preliminary.installationDataRoot }).installation.installationId;
+  const deviceIdentity = ensureCloudDeviceIdentity({ dataRoot: preliminary.dataRoot });
   const authorization = await startCloudDeviceAuthorization({
     baseUrl,
     fetchImpl,
@@ -49,7 +51,7 @@ export async function enrollWithCloudDeviceAuthorization({
   try { browserOpened = await openBrowser(authorization.verificationUrlComplete || authorization.verificationUrl); } catch {}
 
   const enrollmentCredential = await pollCloudDeviceAuthorization({ baseUrl, fetchImpl, authorization, sleep, now });
-  const enrolled = await requestJson(fetchImpl, `${baseUrl}/api/node/enroll`, { enrollmentCredential });
+  const enrolled = await requestJson(fetchImpl, `${baseUrl}/api/node/enroll`, { enrollmentCredential, deviceProofKey: deviceIdentity.verificationKey });
   const activationSite = normalizeEnrolledSite(enrolled.site);
   validateEnrollmentResponse(enrolled, activationSite);
   const resumable = { schemaVersion: 3, flow: 'device-authorization', baseUrl, activationSite, enrolled, createdAt: new Date(now()).toISOString() };

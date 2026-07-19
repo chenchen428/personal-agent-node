@@ -239,6 +239,31 @@ test("invalid refresh transitions to reauth_required, stops the retry storm, and
   assert.equal(connector.reconnectTimer, null);
 });
 
+test("terminal refresh failure enters authorizing and recovers through one silent browser bootstrap", async (t) => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "personal-agent-reverse-silent-"));
+  let silentCalls = 0;
+  let resolveSilent;
+  const connector = new ReverseTunnelConnector({
+    config: testConfig(root, 8790),
+    tunnel: { ...tunnelAtFake(), accessExpiresAt: "2020-07-13T12:15:00.000Z", refreshAvailable: true },
+    refreshCredential: async () => { throw Object.assign(new Error("expired"), { code: "REFRESH_EXPIRED" }); },
+    silentCredential: () => {
+      silentCalls += 1;
+      return new Promise((resolve) => { resolveSilent = resolve; });
+    },
+    logger: silentLogger,
+  });
+  connector.ready = true;
+  t.after(() => { connector.stop(); fs.rmSync(root, { recursive: true, force: true }); });
+  const recovery = connector.recoverCredential("broker_401", { keepConnection: true });
+  await waitFor(() => readState(root)?.state === "authorizing");
+  assert.equal(silentCalls, 1);
+  resolveSilent({ token: "silently-recovered-token", accessExpiresAt: "2030-07-13T12:30:00.000Z", generation: 2 });
+  assert.equal(await recovery, true);
+  assert.equal(readState(root).state, "ready");
+  assert.equal(connector.tunnel.token, "silently-recovered-token");
+});
+
 function tunnelAt(server) {
   return { protocol: "pa-reverse-ws-v1", endpoint: `ws://127.0.0.1:${server.address().port}/v1/connect`, heartbeatSeconds: 20, maxFrameBytes: 131072, generation: 1, token: "node-secret-token", clientVersion: "test" };
 }

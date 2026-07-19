@@ -49,3 +49,18 @@ test("sites connection remains locally connected before a platform domain is bou
   assert.equal(status.statusLabel, "本地已连接");
   assert.equal(status.details.publicStatus, "not-bound");
 });
+
+test("sites connection exposes silent authorization and interaction-required states instead of OK", () => {
+  const authorizing = buildSitesConnectionStatus({
+    domainReady: true, domain: "owner.example.test", verified: true,
+    external: { ready: false, reason: "authorizing", origin: "" }, verification,
+  });
+  assert.equal(authorizing.state, "degraded");
+  assert.equal(authorizing.details.publicStatus, "authorizing");
+  const reauth = buildSitesConnectionStatus({
+    domainReady: true, domain: "owner.example.test", verified: true,
+    external: { ready: false, reason: "reauth_required", origin: "" }, verification,
+  });
+  assert.equal(reauth.state, "degraded");
+  assert.equal(reauth.details.publicStatus, "reauth_required");
+});

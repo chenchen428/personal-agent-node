@@ -122,7 +122,8 @@ export function resolveExternalAccess({ dataRoot = siteDataRoot, consoleBaseUrl 
     const lastPongAt = Date.parse(String(state?.lastPongAt || ""));
     const heartbeatMs = Number(cloud?.tunnel?.heartbeatSeconds || 20) * 3000;
     if (state?.state !== "ready" || !Number.isFinite(lastPongAt) || now.getTime() - lastPongAt > heartbeatMs) {
-      return { ready: false, reason: "tunnel-offline", origin: "" };
+      const recoveryState = ["degraded", "refreshing", "authorizing", "reauth_required"].includes(state?.state) ? state.state : "tunnel-offline";
+      return { ready: false, reason: recoveryState, origin: "" };
     }
   }
   return { ready: true, reason: "ready", origin: `https://${host}` };
