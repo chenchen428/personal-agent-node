@@ -12,9 +12,13 @@ import { BridgeStore } from "../../agent/src/store/store.js";
 test("each Space receives a complete process group with isolated ports, secrets, databases, cookies, and workspace", () => {
   const dataRoot = fs.mkdtempSync(path.join(os.tmpdir(), "personal-agent-space-runtime-"));
   try {
+    const codexExecutable = path.join(dataRoot, process.platform === "win32" ? "codex.exe" : "codex");
+    fs.writeFileSync(codexExecutable, "fixture\n");
     const personal = initializeSite({ dataRoot, domain: "personal-agent.local" }).config;
     const customRecord = createSpace({ dataRoot, slug: "work", displayName: "工作" });
     const custom = initializeSite({ dataRoot, spaceId: customRecord.id, domain: "personal-agent.local" }).config;
+    personal.env.PRIVATE_SITE_CODEX_EXECUTABLE = codexExecutable;
+    custom.env.PRIVATE_SITE_CODEX_EXECUTABLE = codexExecutable;
     const personalEnvironment = buildServiceEnvironment(personal);
     const customEnvironment = buildServiceEnvironment(custom);
     const personalComponents = componentSpecs(personal, writeWorkerConfig(personal));
