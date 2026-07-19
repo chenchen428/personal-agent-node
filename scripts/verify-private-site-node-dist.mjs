@@ -6,6 +6,7 @@ import os from "node:os";
 import path from "node:path";
 import { spawn, spawnSync } from "node:child_process";
 import { verifyOpenCliRuntime } from "./lib/opencli-runtime.mjs";
+import { releaseVerificationEnvironment } from "./lib/release-verification-env.mjs";
 
 const requestedRoot = path.resolve(process.argv[2] || "");
 if (!fs.existsSync(requestedRoot)) throw new Error("Usage: verify-private-site-node-dist.mjs <release-root>");
@@ -127,8 +128,14 @@ function verifyPreparation() {
     fs.mkdirSync(installRoot, { recursive: true });
     fs.symlinkSync(process.platform === "win32" ? releaseRoot : path.relative(installRoot, releaseRoot), path.join(installRoot, "current"), process.platform === "win32" ? "junction" : "dir");
     fs.writeFileSync(path.join(installRoot, "installation.json"), `${JSON.stringify({ schemaVersion: 2, activeReleaseId: manifest.releaseId, revision: manifest.revision, dataRoot: workspaceRoot, service: "skipped" })}\n`);
-    const env = { ...process.env, PERSONAL_AGENT_HOME: homeRoot, PRIVATE_SITE_INSTALL_ROOT: installRoot, PRIVATE_SITE_DATA_ROOT: workspaceRoot, PRIVATE_SITE_CLI_BIN: binRoot };
-    const init = spawnSync(process.execPath, [at(manifest.entrypoints.node), "init", "--domain", "personal-agent.local"], { env, encoding: "utf8", timeout: 30_000 });
+    const env = releaseVerificationEnvironment(process.env, {
+      PERSONAL_AGENT_HOME: homeRoot,
+      PERSONAL_AGENT_DATA_ROOT: workspaceRoot,
+      PRIVATE_SITE_INSTALL_ROOT: installRoot,
+      PRIVATE_SITE_DATA_ROOT: workspaceRoot,
+      PRIVATE_SITE_CLI_BIN: binRoot,
+    });
+    const init = spawnSync(process.execPath, [at(manifest.entrypoints.node), "init", "--domain", "personal-agent.local", "--data-root", workspaceRoot], { env, encoding: "utf8", timeout: 30_000 });
     assert(init.status === 0, `Release init failed: ${String(init.stderr || "").trim()}`);
     const prepare = spawnSync(process.execPath, [at(manifest.entrypoints.node), "prepare"], { env, encoding: "utf8", timeout: 60_000 });
     assert(prepare.status === 0, `Release prepare failed: ${String(prepare.stderr || "").trim()}`);
@@ -161,7 +168,11 @@ async function verifyApplication() {
   const controlPort = await availablePort();
   const appPort = await availablePort();
   const dataRoot = path.join(root, "workspace");
-  const env = { ...process.env, PERSONAL_AGENT_DATA_ROOT: dataRoot, PRIVATE_SITE_DATA_ROOT: dataRoot, PERSONAL_AGENT_CONTROL_PORT: String(controlPort) };
+  const env = releaseVerificationEnvironment(process.env, {
+    PERSONAL_AGENT_DATA_ROOT: dataRoot,
+    PRIVATE_SITE_DATA_ROOT: dataRoot,
+    PERSONAL_AGENT_CONTROL_PORT: String(controlPort),
+  });
   const init = spawnSync(process.execPath, [at(manifest.entrypoints.node), "init", "--domain", "personal-agent.local", "--data-root", dataRoot], { env, encoding: "utf8", timeout: 30_000 });
   assert(init.status === 0, `Application verification init failed: ${String(init.stderr || "").trim()}`);
   const prepare = spawnSync(process.execPath, [at(manifest.entrypoints.node), "prepare", "--data-root", dataRoot], { env, encoding: "utf8", timeout: 60_000 });
