@@ -5,6 +5,7 @@ import { initializeSite, mergeSecretEnv, resolveNodeConfig, setConnectionMode, w
 import { setProvider } from './providers.ts';
 import { validateReverseTunnelContract } from './reverse-tunnel.ts';
 import { initializeInstallation, setSpaceManagedIdentity } from './space-registry.ts';
+import { validateCredentialContract } from './cloud-token-refresh.ts';
 
 export const DEFAULT_CLOUD_URL = 'https://personal-agent.cn';
 const DEFAULT_POLL_INTERVAL_SECONDS = 5;
@@ -21,13 +22,14 @@ export async function enrollWithCloudDeviceAuthorization({
   now = () => Date.now(),
   clientName = 'personal-agent-cli',
   clientVersion = '0.1.0-beta',
+  repairExisting = false,
 } = {}) {
   const baseUrl = normalizeCloudUrl(cloudUrl);
   const preliminary = resolveNodeConfig({ ...process.env, PRIVATE_SITE_DATA_ROOT: dataRoot || process.env.PRIVATE_SITE_DATA_ROOT });
   const pendingPath = path.join(preliminary.dataRoot, 'secrets', 'applications', 'cloud-enrollment-pending.json');
   const pending = readDevicePendingEnrollment(pendingPath, baseUrl);
   if (pending) return finalizeEnrollment({ pending, pendingPath, dataRoot: preliminary.dataRoot, fetchImpl });
-  if (fs.existsSync(path.join(preliminary.configDir, 'cloud.json'))) throw new Error('当前 Node 已接入 Cloud；请先检查 cloud status 或执行受控断开');
+  if (fs.existsSync(path.join(preliminary.configDir, 'cloud.json')) && !repairExisting) throw new Error('当前 Node 已接入 Cloud；请先检查 cloud status 或执行受控断开');
 
   if (!preliminary.space?.id) throw new Error('Cloud 接入必须绑定到一个隔离空间');
   const installationId = initializeInstallation({ dataRoot: preliminary.installationDataRoot }).installation.installationId;
@@ -115,11 +117,16 @@ async function finalizeEnrollment({ pending, pendingPath, dataRoot, fetchImpl })
     config = initializeSite({ domain: activationSite.managedHost, dataRoot }).config;
   }
   const tunnel = validateReverseTunnelContract(enrolled.tunnel);
-  mergeSecretEnv(config.envPath, { SITE_DOMAIN: activationSite.managedHost, PERSONAL_AGENT_CLOUD_TOKEN: enrolled.nodeToken }, ['SITE_DOMAIN', 'PERSONAL_AGENT_CLOUD_TOKEN']);
+  const credential = validateCredentialContract(enrolled.credential, pending.baseUrl, { requireFuture: true });
+  mergeSecretEnv(config.envPath, {
+    SITE_DOMAIN: activationSite.managedHost,
+    PERSONAL_AGENT_CLOUD_TOKEN: enrolled.nodeToken,
+    PERSONAL_AGENT_CLOUD_REFRESH_TOKEN: enrolled.refreshToken,
+  }, ['SITE_DOMAIN', 'PERSONAL_AGENT_CLOUD_TOKEN', 'PERSONAL_AGENT_CLOUD_REFRESH_TOKEN']);
   config = resolveNodeConfig({ ...process.env, PRIVATE_SITE_DATA_ROOT: config.dataRoot });
   setProvider(resolveNodeConfig({ ...process.env, PRIVATE_SITE_DATA_ROOT: config.dataRoot }), { kind: 'tunnel', provider: 'personal-agent-cloud', endpoint: `${pending.baseUrl}/${selectedSlug}`, credentialEnv: 'PERSONAL_AGENT_CLOUD_TOKEN' });
   const heartbeat = await requestJson(fetchImpl, `${pending.baseUrl}/api/node/heartbeat`, undefined, { authorization: `Bearer ${enrolled.nodeToken}` });
-  const metadata = { schemaVersion: 2, cloudUrl: pending.baseUrl, slug: selectedSlug, managedHost: activationSite.managedHost, siteId: enrolled.site.id, plan: activationSite.plan || 'free', status: heartbeat.status || enrolled.site.status, tunnel: { ...tunnel, generation: heartbeat.tunnelGeneration || tunnel.generation }, enrolledAt: new Date().toISOString() };
+  const metadata = { schemaVersion: 3, cloudUrl: pending.baseUrl, slug: selectedSlug, managedHost: activationSite.managedHost, siteId: enrolled.site.id, plan: activationSite.plan || 'free', status: heartbeat.status || enrolled.site.status, credential, tunnel: { ...tunnel, generation: heartbeat.tunnelGeneration || tunnel.generation }, enrolledAt: new Date().toISOString() };
   writeJsonAtomic(path.join(config.configDir, 'cloud.json'), metadata, 0o600);
   if (config.space?.id) setSpaceManagedIdentity({ dataRoot: config.installationDataRoot, selector: config.space.id, managedHost: metadata.managedHost });
   setConnectionMode(config, 'managed-cloud');
@@ -139,6 +146,7 @@ function readDevicePendingEnrollment(pendingPath, baseUrl) {
 }
 
 function validatePending(pending) {
+  if (!pending.enrolled?.refreshToken || !pending.enrolled?.credential) throw new Error('Local Cloud enrollment recovery state is missing rotating credentials');
   if (!pending.enrolled?.nodeToken || !pending.enrolled?.tunnel || !pending.activationSite?.managedHost) throw new Error('本机 Cloud 接入恢复状态无效');
 }
 
@@ -148,6 +156,7 @@ function normalizeEnrolledSite(site) {
 }
 
 function validateEnrollmentResponse(enrolled, site) {
+  if (!enrolled?.refreshToken || !enrolled?.credential) throw new Error('Cloud did not return rotating Node credentials');
   if (!enrolled?.nodeToken || enrolled.site?.status !== 'active' || !enrolled.tunnel || !site.managedHost || !site.slug) throw new Error('Cloud 设备接入未激活');
   validateReverseTunnelContract(enrolled.tunnel);
 }

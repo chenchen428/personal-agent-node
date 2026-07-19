@@ -1,4 +1,5 @@
 import { resolveNodeConfig } from "./config.ts";
+import { refreshManagedCloudCredential } from "./cloud-token-refresh.ts";
 import { loadReverseTunnelConfig, ReverseTunnelConnector } from "./reverse-tunnel.ts";
 
 let connector = null;
@@ -17,7 +18,11 @@ function reconcile() {
     if (connector && fingerprint === nextFingerprint) return;
     stopConnector();
     fingerprint = nextFingerprint;
-    connector = new ReverseTunnelConnector({ config, tunnel });
+    connector = new ReverseTunnelConnector({
+      config,
+      tunnel,
+      refreshCredential: () => refreshManagedCloudCredential({ config: resolveNodeConfig() }),
+    });
     connector.start();
   } catch (error) {
     stopConnector();

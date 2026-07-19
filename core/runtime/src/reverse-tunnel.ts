@@ -22,7 +22,9 @@ export function loadReverseTunnelConfig(config) {
   const tunnel = validateReverseTunnelContract(document.tunnel);
   const token = String(config.env?.PERSONAL_AGENT_CLOUD_TOKEN || "").trim();
   if (token.length < 16 || token.length > 2048) throw tunnelError("TUNNEL_TOKEN_MISSING", "Reverse tunnel credential is missing");
-  return { ...tunnel, token, clientVersion: String(document.clientVersion || process.env.npm_package_version || "unknown").slice(0, 40) };
+  const accessExpiresAt = validTimestamp(document.credential?.accessExpiresAt);
+  const refreshAvailable = Boolean(String(config.env?.PERSONAL_AGENT_CLOUD_REFRESH_TOKEN || "").trim() && document.credential?.refreshEndpoint);
+  return { ...tunnel, token, accessExpiresAt, refreshAvailable, clientVersion: String(document.clientVersion || process.env.npm_package_version || "unknown").slice(0, 40) };
 }
 
 export function validateReverseTunnelContract(value) {
@@ -38,7 +40,7 @@ export function validateReverseTunnelContract(value) {
 }
 
 export class ReverseTunnelConnector {
-  constructor({ config, tunnel, logger = console, WebSocketImpl = WebSocket, httpRequest = http.request, now = () => new Date(), random = Math.random } = {}) {
+  constructor({ config, tunnel, refreshCredential = null, logger = console, WebSocketImpl = WebSocket, httpRequest = http.request, now = () => new Date(), random = Math.random } = {}) {
     this.config = config;
     this.tunnel = { ...tunnel };
     this.logger = logger;
@@ -46,6 +48,7 @@ export class ReverseTunnelConnector {
     this.httpRequest = httpRequest;
     this.now = now;
     this.random = random;
+    this.refreshCredential = refreshCredential;
     this.statePath = path.join(config.runtimeDir, "reverse-tunnel.json");
     this.streams = new Map();
     this.rejectedStreams = new Map();
@@ -58,6 +61,8 @@ export class ReverseTunnelConnector {
     this.lastServerActivity = 0;
     this.connectedAt = 0;
     this.disconnectCause = "";
+    this.authRecovery = null;
+    this.reauthRequired = false;
   }
 
   start() {
@@ -76,7 +81,7 @@ export class ReverseTunnelConnector {
   }
 
   connect() {
-    if (this.stopped) return;
+    if (this.stopped || this.reauthRequired || this.authRecovery) return;
     this.connectedAt = Date.now();
     this.lastServerActivity = this.connectedAt;
     this.writeState("connecting");
@@ -87,6 +92,14 @@ export class ReverseTunnelConnector {
       perMessageDeflate: false,
     });
     this.socket = socket;
+    socket.on("unexpected-response", (_request, response) => {
+      if (socket !== this.socket) return;
+      response?.resume?.();
+      if (Number(response?.statusCode) === 401) {
+        this.disconnectCause = "credential_rejected";
+        void this.recoverCredential("broker_401");
+      }
+    });
     socket.on("open", () => {
       this.lastServerActivity = Date.now();
       this.connectedAt = this.lastServerActivity;
@@ -113,7 +126,8 @@ export class ReverseTunnelConnector {
         return;
       }
       this.logger.error?.(`[reverse-tunnel] disconnected: code=${detail.closeCode} cause=${cause} connected_ms=${detail.connectedMs} server_idle_ms=${detail.lastServerActivityMs}`);
-      this.writeState("disconnected", detail);
+      if (this.authRecovery || this.reauthRequired || cause === "credential_rejected") return;
+      this.writeState("degraded", detail);
       this.scheduleReconnect();
     });
     socket.on("error", (error) => {
@@ -133,7 +147,7 @@ export class ReverseTunnelConnector {
       if (message.heartbeatSeconds) this.tunnel.heartbeatSeconds = message.heartbeatSeconds;
       if (message.maxFrameBytes) this.tunnel.maxFrameBytes = Math.min(this.tunnel.maxFrameBytes, message.maxFrameBytes);
       this.logger.log?.(`[reverse-tunnel] ready: generation=${this.tunnel.generation} heartbeat_seconds=${this.tunnel.heartbeatSeconds}`);
-      this.writeState("ready", { connectionId: boundedOpaque(message.connectionId, "connectionId"), lastPongAt: this.now().toISOString() });
+      this.writeState("ready", { connectionId: boundedOpaque(message.connectionId, "connectionId"), lastPongAt: this.now().toISOString(), authorizationRequired: false });
       return;
     }
     if (message.type === "ping") {
@@ -355,6 +369,10 @@ export class ReverseTunnelConnector {
   startWatchdog() {
     if (this.watchdogTimer) clearInterval(this.watchdogTimer);
     this.watchdogTimer = setInterval(() => {
+      if (this.shouldRefreshCredential()) {
+        void this.recoverCredential("access_expiring", { keepConnection: true });
+        return;
+      }
       if (!this.socket || this.socket.readyState !== this.WebSocketImpl.OPEN) return;
       const idleMs = Date.now() - this.lastServerActivity;
       if (idleMs > this.tunnel.heartbeatSeconds * 2250) {
@@ -367,12 +385,68 @@ export class ReverseTunnelConnector {
   }
 
   scheduleReconnect() {
+    if (this.stopped || this.reauthRequired || this.authRecovery) return;
     const base = Math.min(30_000, 1000 * 2 ** Math.min(this.reconnectAttempt, 5));
     const delay = Math.round(base * (0.8 + this.random() * 0.4));
     this.reconnectAttempt += 1;
+    const nextRetryAt = new Date(this.now().getTime() + delay).toISOString();
     this.logger.log?.(`[reverse-tunnel] reconnect scheduled: attempt=${this.reconnectAttempt} delay_ms=${delay}`);
+    this.writeState("degraded", { cause: this.disconnectCause || "connection_failed", reconnectAttempt: this.reconnectAttempt, nextRetryAt });
     this.reconnectTimer = setTimeout(() => this.connect(), delay);
     this.reconnectTimer.unref?.();
+  }
+
+  shouldRefreshCredential() {
+    const expiresAt = Date.parse(String(this.tunnel.accessExpiresAt || ""));
+    return Boolean(this.tunnel.refreshAvailable && this.refreshCredential && !this.authRecovery && Number.isFinite(expiresAt) && expiresAt - this.now().getTime() <= 2 * 60_000);
+  }
+
+  recoverCredential(reason, { keepConnection = false } = {}) {
+    if (this.authRecovery) return this.authRecovery;
+    this.writeState("degraded", { cause: reason, authorizationRequired: false });
+    if (!this.tunnel.refreshAvailable || typeof this.refreshCredential !== "function") {
+      this.reauthRequired = true;
+      this.writeState("reauth_required", { cause: "refresh_unavailable", authorizationRequired: true, setupAction: "connectivity.managed-authorize" });
+      return Promise.resolve(false);
+    }
+    this.writeState("refreshing", { cause: reason, authorizationRequired: false });
+    let recovered = false;
+    this.authRecovery = Promise.resolve()
+      .then(() => this.refreshCredential())
+      .then((credential) => {
+        this.tunnel.token = String(credential.token);
+        this.tunnel.accessExpiresAt = credential.accessExpiresAt;
+        if (credential.generation) this.tunnel.generation = Number(credential.generation);
+        this.reauthRequired = false;
+        recovered = true;
+        this.reconnectAttempt = 0;
+        this.disconnectCause = "";
+        this.writeState(keepConnection && this.ready ? "ready" : "recovered", { recoveredAt: this.now().toISOString(), authorizationRequired: false });
+        if (!keepConnection || !this.ready) {
+          try { this.socket?.terminate?.(); } catch {}
+          this.socket = null;
+        }
+        return true;
+      })
+      .catch((error) => {
+        const code = safeErrorCode(error);
+        if (requiresReauthorization(code)) {
+          this.reauthRequired = true;
+          this.writeState("reauth_required", { cause: String(code).toLowerCase(), authorizationRequired: true, setupAction: "connectivity.managed-authorize" });
+        } else {
+          this.writeState("degraded", { cause: String(code).toLowerCase(), authorizationRequired: false });
+        }
+        return false;
+      })
+      .finally(() => {
+        const shouldReconnect = !keepConnection || !this.ready;
+        this.authRecovery = null;
+        if (shouldReconnect && !this.reauthRequired && !this.stopped) {
+          if (recovered) this.connect();
+          else this.scheduleReconnect();
+        }
+      });
+    return this.authRecovery;
   }
 
   writeState(state, extra = {}) {
@@ -537,6 +611,18 @@ function boundedInteger(value, minimum, maximum, label) {
 
 function safeErrorCode(error) {
   return /^[A-Z0-9_]{1,64}$/.test(String(error?.code || "")) ? error.code : "CONNECTION_ERROR";
+}
+
+function requiresReauthorization(code) {
+  return new Set([
+    "CLOUD_REFRESH_TOKEN_MISSING", "CLOUD_DEVICE_BINDING_MISMATCH", "DEVICE_BINDING_MISMATCH",
+    "INVALID_REFRESH_TOKEN", "REFRESH_REPLAYED", "REFRESH_EXPIRED", "REFRESH_FAMILY_SUPERSEDED", "SITE_REVOKED", "CLOUD_REFRESH_REJECTED",
+  ]).has(String(code || "").toUpperCase());
+}
+
+function validTimestamp(value) {
+  const timestamp = new Date(String(value || ""));
+  return Number.isFinite(timestamp.getTime()) ? timestamp.toISOString() : "";
 }
 
 function diagnosticCloseCause(code, reason, preferred) {

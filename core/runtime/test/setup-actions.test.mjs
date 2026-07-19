@@ -74,6 +74,8 @@ test('managed verification skips completed enrollment and resource authorization
       syncedAt: '2026-07-15T00:00:00.000Z',
     })}\n`);
     assert.equal(managedCloudAuthorizationPhase({ dataRoot }), 'complete');
+    fs.writeFileSync(path.join(config.runtimeDir, 'reverse-tunnel.json'), `${JSON.stringify({ schemaVersion: 1, state: 'reauth_required' })}\n`);
+    assert.equal(managedCloudAuthorizationPhase({ dataRoot }), 'reauth');
   } finally { fs.rmSync(dataRoot, { recursive: true, force: true }); }
 });
 

@@ -43,7 +43,7 @@ test('personal-agent exposes machine-readable help and capability discovery', ()
 
   const cloudConnectHelp = JSON.parse(runOk(['cloud', 'connect', '--help', '--json']).stdout);
   assert.equal(cloudConnectHelp.result.visibility, 'command');
-  assert.equal(cloudConnectHelp.result.command.usage, 'personal-agent cloud connect [--cloud-url <https-url>] [--no-open] [--data-root <path>] --json');
+  assert.equal(cloudConnectHelp.result.command.usage, 'personal-agent cloud connect [--repair] [--cloud-url <https-url>] [--no-open] [--data-root <path>] --json');
   assert.equal(cloudConnectHelp.result.command.risk, 'R2');
   assert.equal(cloudConnectHelp.result.command.authorization.method, 'browser-device-authorization');
   assert.equal(cloudConnectHelp.result.command.authorization.userActionRequired, true);
@@ -51,6 +51,7 @@ test('personal-agent exposes machine-readable help and capability discovery', ()
   assert.equal(cloudUrlOption.default, 'https://personal-agent.cn');
   assert.equal(cloudUrlOption.environment, 'PERSONAL_AGENT_CLOUD_URL');
   assert.ok(cloudConnectHelp.result.command.options.some((option) => option.name === '--no-open'));
+  assert.ok(cloudConnectHelp.result.command.options.some((option) => option.name === '--repair'));
   assert.ok(cloudConnectHelp.result.command.authorization.forbiddenCommandLineInputs.includes('nodeToken'));
 });
 

@@ -131,7 +131,8 @@ function launchManagedCloudSetup({ dataRoot }) {
     return { started: true, state: 'running', phase: 'resources' };
   }
   writeActionStatus(statusFile, { state: 'starting', phase: 'enrollment' });
-  const { child: first, diagnostics } = spawnManagedCli(cli, ['--space', config.space.id, 'cloud', 'connect', '--data-root', config.installationDataRoot, '--json'], config.installationDataRoot, (authorization) => exposeAuthorization('enrollment', first.pid, authorization));
+  const connectArgs = ['--space', config.space.id, 'cloud', 'connect', ...(startingPhase === 'reauth' ? ['--repair'] : []), '--data-root', config.installationDataRoot, '--json'];
+  const { child: first, diagnostics } = spawnManagedCli(cli, connectArgs, config.installationDataRoot, (authorization) => exposeAuthorization('enrollment', first.pid, authorization));
   writeActionStatus(statusFile, { state: 'running', phase: 'enrollment', pid: first.pid || 0 });
   first.once('error', (error) => writeActionStatus(statusFile, { state: 'failed', phase: 'enrollment', code: safeCode(error) }));
   first.once('exit', (code) => {
@@ -200,6 +201,8 @@ export function safeCliFailureCode(output, exitCode) {
 export function managedCloudAuthorizationPhase({ dataRoot }) {
   const config = resolveNodeConfig({ ...process.env, PRIVATE_SITE_DATA_ROOT: dataRoot });
   if (!fs.existsSync(path.join(config.configDir, 'cloud.json'))) return 'enrollment';
+  const tunnel = readJson(path.join(config.dataRoot, 'runtime', 'reverse-tunnel.json'));
+  if (tunnel?.state === 'reauth_required') return 'reauth';
   return managedServiceReadiness({ dataRoot: config.dataRoot }).state === 'enabled' ? 'complete' : 'resources';
 }
 

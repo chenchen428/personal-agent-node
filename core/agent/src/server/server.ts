@@ -28,6 +28,7 @@ import { ingestRawEmail, MAX_MAIL_BYTES } from "../automation/mail-ingest.js";
 import { parseMailForDisplay, readMailAttachment } from "../automation/mail-reader.js";
 import { TemplateRuntime } from "../automation/template-runtime.js";
 import { buildConnectionCatalog, inspectConnection, readConnectionRegistry } from "../connections/catalog.js";
+import { buildSitesConnectionStatus } from "../connections/sites-status.js";
 import { MailConnectionScanner } from "../connections/mail/scanner.js";
 import { PublicTestMailSender } from "../connections/mail/public-test-sender.js";
 import { DomainBindingVerification } from "../connections/domain-binding-verification.js";
@@ -739,10 +740,9 @@ async function handleRequest(request: http.IncomingMessage, response: http.Serve
     const wechatStatus = wechat.catalogStatus();
     const personalWechatStatus = await wechatQianxun.status({ probe: false });
     const platform = platformConnectionStatuses();
-    const [xiaohongshuStatus, twitterStatus] = await Promise.all([
-      xiaohongshuBrowser.status(),
-      twitter.status(),
-    ]);
+    const xiaohongshuStatus = xiaohongshuBrowser.catalogStatus();
+    const twitterStatus = twitter.catalogStatus();
+    void Promise.all([xiaohongshuBrowser.status(), twitter.status()]);
     const connections = buildConnectionCatalog({
       registry: connectionRegistry,
       statuses: {
@@ -1907,16 +1907,13 @@ function platformConnectionStatuses() {
   const domain = services.publicDomain.value || "";
   const mailAddress = services.agentMail.value || "";
   return {
-    sites: {
-      state: "connected",
-      primaryAction: siteBound ? "移除域名绑定" : "使用平台域名",
-      statusLabel: siteBound ? "已验证平台域名" : "本地已连接",
-      runtime: [
-        { label: "公网域名", value: domain || "尚未分配" },
-        { label: "公网访问", value: siteBound && external.ready ? external.origin : services.publicDomain.ready ? "等待绑定验证" : "分配域名后可用" },
-      ],
-      details: { platformDomainBound: siteBound, platformDomain: domain, publicReady: siteBound && external.ready, publicOrigin: siteBound && external.ready ? external.origin : "", domainVerification: domainBindingVerification.status("sites") },
-    },
+    sites: buildSitesConnectionStatus({
+      domainReady: services.publicDomain.ready,
+      domain,
+      verified: siteBound,
+      external,
+      verification: domainBindingVerification.status("sites"),
+    }),
     mail: {
       state: "connected",
       primaryAction: mailBound ? "移除域名绑定" : "使用平台域名",

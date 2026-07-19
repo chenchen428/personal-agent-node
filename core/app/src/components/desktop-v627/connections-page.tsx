@@ -34,6 +34,17 @@ export function ConnectionsPage() {
     return matchesView && matchesCategory && text.includes(query.trim().toLocaleLowerCase("zh-CN"));
   }), [category, connections, query, view]);
   useEffect(() => { setSelectedId(requested || ""); }, [requested]);
+  useEffect(() => {
+    const refreshWhenVisible = () => { if (document.visibilityState === "visible") void refresh(); };
+    const timer = window.setInterval(refreshWhenVisible, 15_000);
+    window.addEventListener("focus", refreshWhenVisible);
+    document.addEventListener("visibilitychange", refreshWhenVisible);
+    return () => {
+      window.clearInterval(timer);
+      window.removeEventListener("focus", refreshWhenVisible);
+      document.removeEventListener("visibilitychange", refreshWhenVisible);
+    };
+  }, [refresh]);
   const selected = filtered.find((item) => item.id === selectedId) || filtered.find((item) => item.id === requested) || filtered[0];
   const select = (id: string) => {
     setSelectedId(id);

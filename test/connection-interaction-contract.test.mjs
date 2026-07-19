@@ -189,6 +189,9 @@ test("connection directory separates all connections from connections with effec
   assert.match(page, /setSelectedId\(id\)/);
   assert.match(page, /router\.replace\(`\/app\/connections\?connection=\$\{encodeURIComponent\(id\)\}`/);
   assert.match(page, /\{ scroll: false \}/);
+  assert.match(page, /window\.setInterval\(refreshWhenVisible, 15_000\)/);
+  assert.match(page, /window\.addEventListener\("focus", refreshWhenVisible\)/);
+  assert.match(page, /document\.addEventListener\("visibilitychange", refreshWhenVisible\)/);
   assert.match(viewSwitch, /role="group" aria-label="连接视图"/);
   assert.match(viewSwitch, /aria-pressed=\{value === "all"\}/);
   assert.match(viewSwitch, /aria-pressed=\{value === "effective"\}/);

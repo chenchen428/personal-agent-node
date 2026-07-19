@@ -302,6 +302,7 @@ async function cloudConnect(args) {
     cloudUrl,
     dataRoot: config.dataRoot,
     clientVersion: packageMetadata?.version || 'unknown',
+    repairExisting: args.repair === true,
     ...(args.noOpen ? { openBrowser: async () => false } : {}),
     onAuthorization: (authorization) => emitProgress('cloud.device-authorization', authorization),
   });
@@ -466,7 +467,7 @@ function commandHelp(command, descriptor) {
   if (command === 'cloud connect') {
     return {
       name: command,
-      usage: 'personal-agent cloud connect [--cloud-url <https-url>] [--no-open] [--data-root <path>] --json',
+      usage: 'personal-agent cloud connect [--repair] [--cloud-url <https-url>] [--no-open] [--data-root <path>] --json',
       risk: descriptor.risk,
       capability: descriptor.capability,
       implementationStatus: descriptor.implementationStatus,
@@ -475,6 +476,7 @@ function commandHelp(command, descriptor) {
         ...commonOptions,
         { name: '--cloud-url', type: 'https-url', required: false, secret: false, default: DEFAULT_CLOUD_URL, environment: 'PERSONAL_AGENT_CLOUD_URL', description: 'Select the trusted Cloud origin; the command-line value overrides the environment.' },
         { name: '--no-open', type: 'boolean', required: false, secret: false, description: 'Do not launch a browser; use verificationUrlComplete from progress output.' },
+        { name: '--repair', type: 'boolean', required: false, secret: false, description: 'Re-enroll an existing binding after Cloud reports that its credential is invalid or revoked.' },
       ],
       authorization: {
         method: 'browser-device-authorization',
@@ -638,6 +640,7 @@ function parseArgs(argv) {
     else if (value === '--channel') result.channel = argv[++index];
     else if (value === '--cloud-url') result.cloudUrl = argv[++index];
     else if (value === '--no-open') result.noOpen = true;
+    else if (value === '--repair') result.repair = true;
     else if (value === '--capability') result.capability = argv[++index];
     else if (value === '--request-id') result.requestId = argv[++index];
     else if (value === '--query') result.query = argv[++index];

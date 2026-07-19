@@ -4,6 +4,7 @@ import http from "node:http";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
+import { EventEmitter } from "node:events";
 import { WebSocketServer } from "ws";
 
 import {
@@ -169,9 +170,79 @@ test("connector denies tunneled WebSockets because remote access is mobile read-
   assert.equal(localWs.clients.size, 0);
 });
 
+test("broker 401 triggers one credential rotation and reconnects without exposing either token", async (t) => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "personal-agent-reverse-refresh-"));
+  let refreshCalls = 0;
+  class RefreshingWebSocket extends EventEmitter {
+    static OPEN = 1;
+    static instances = 0;
+    constructor() {
+      super();
+      this.readyState = 0;
+      this.index = ++RefreshingWebSocket.instances;
+      queueMicrotask(() => {
+        if (this.index === 1) this.emit("unexpected-response", {}, { statusCode: 401, resume() {} });
+        else {
+          this.readyState = RefreshingWebSocket.OPEN;
+          this.emit("open");
+          this.emit("message", Buffer.from(JSON.stringify({ v: 1, type: "ready", connectionId: "connection-refreshed", generation: 2 })), false);
+        }
+      });
+    }
+    send() {}
+    close() { this.readyState = 3; this.emit("close", 1000, Buffer.alloc(0)); }
+    terminate() { this.readyState = 3; this.emit("close", 1006, Buffer.alloc(0)); }
+  }
+  const connector = new ReverseTunnelConnector({
+    config: testConfig(root, 8790),
+    tunnel: { ...tunnelAtFake(), accessExpiresAt: '2030-07-13T12:15:00.000Z', refreshAvailable: true },
+    WebSocketImpl: RefreshingWebSocket,
+    refreshCredential: async () => {
+      refreshCalls += 1;
+      return { token: 'rotated-node-secret-token', accessExpiresAt: '2030-07-13T12:30:00.000Z', generation: 2 };
+    },
+    logger: silentLogger,
+  }).start();
+  t.after(() => { connector.stop(); fs.rmSync(root, { recursive: true, force: true }); });
+  await waitFor(() => readState(root)?.state === 'ready');
+  assert.equal(refreshCalls, 1);
+  assert.equal(RefreshingWebSocket.instances, 2);
+  const state = fs.readFileSync(path.join(root, 'reverse-tunnel.json'), 'utf8');
+  assert.doesNotMatch(state, /node-secret-token|rotated-node-secret-token/);
+  assert.equal(readState(root).authorizationRequired, false);
+});
+
+test("invalid refresh transitions to reauth_required, stops the retry storm, and single-flights concurrent refresh", async (t) => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "personal-agent-reverse-reauth-"));
+  let calls = 0;
+  let rejectRefresh;
+  const connector = new ReverseTunnelConnector({
+    config: testConfig(root, 8790),
+    tunnel: { ...tunnelAtFake(), accessExpiresAt: '2020-07-13T12:15:00.000Z', refreshAvailable: true },
+    refreshCredential: () => {
+      calls += 1;
+      return new Promise((_resolve, reject) => { rejectRefresh = reject; });
+    },
+    logger: silentLogger,
+  });
+  t.after(() => { connector.stop(); fs.rmSync(root, { recursive: true, force: true }); });
+  const first = connector.recoverCredential('broker_401');
+  const second = connector.recoverCredential('broker_401');
+  assert.equal(first, second);
+  await waitFor(() => calls === 1);
+  rejectRefresh(Object.assign(new Error('replayed'), { code: 'REFRESH_REPLAYED' }));
+  await first;
+  const state = readState(root);
+  assert.equal(state.state, 'reauth_required');
+  assert.equal(state.authorizationRequired, true);
+  assert.equal(state.setupAction, 'connectivity.managed-authorize');
+  assert.equal(connector.reconnectTimer, null);
+});
+
 function tunnelAt(server) {
   return { protocol: "pa-reverse-ws-v1", endpoint: `ws://127.0.0.1:${server.address().port}/v1/connect`, heartbeatSeconds: 20, maxFrameBytes: 131072, generation: 1, token: "node-secret-token", clientVersion: "test" };
 }
+function tunnelAtFake() { return { protocol: "pa-reverse-ws-v1", endpoint: "wss://relay.example.test/v1/connect", heartbeatSeconds: 20, maxFrameBytes: 131072, generation: 1, token: "node-secret-token", clientVersion: "test" }; }
 function testConfig(runtimeDir, port) { return { runtimeDir, domain: "owner.chenjianhui.site", gateway: { port }, distribution: testDistribution() }; }
 function testDistribution() { return { routing: { paths: [
   { prefix: "/echo", access: "authenticated", kind: "proxy" },
@@ -195,3 +266,4 @@ async function waitFor(predicate, timeoutMs = 3000) {
     await new Promise((resolve) => setTimeout(resolve, 10));
   }
 }
+function readState(root) { try { return JSON.parse(fs.readFileSync(path.join(root, 'reverse-tunnel.json'), 'utf8')); } catch { return null; } }
