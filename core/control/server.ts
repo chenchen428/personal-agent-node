@@ -12,7 +12,7 @@ import { onboardingStatus } from '../runtime/src/cloud-resources.ts';
 import { initializeSite, resolveNodeConfig } from '../runtime/src/config.ts';
 import { localMailPlan, localMailStatus } from '../runtime/src/mail.ts';
 import { setupDiagnostics, setupStatus } from '../runtime/src/setup.ts';
-import { executeSetupAction, planSetupAction } from '../runtime/src/setup-actions.ts';
+import { executeSetupAction, planSetupAction, startAutomaticManagedCloudBootstrap } from '../runtime/src/setup-actions.ts';
 import { createOperationStore } from '../runtime/src/operations.ts';
 import { listExtensions } from '../runtime/src/extensions.ts';
 import { publicPersonalApp, scanPersonalApps } from '../runtime/src/apps.ts';
@@ -193,6 +193,14 @@ async function handleRequest(request, response) {
     await sendJson(response, await setupStatus({ dataRoot: siteDataRoot, installRoot }), request.method === 'HEAD');
     return;
   }
+  if (url.pathname === '/api/setup/managed-bootstrap') {
+    if (request.method !== 'POST') {
+      send(response, 405, 'text/plain; charset=utf-8', 'Method Not Allowed');
+      return;
+    }
+    await sendJson(response, { ok: true, bootstrap: startAutomaticManagedCloudBootstrap({ dataRoot: siteDataRoot }) });
+    return;
+  }
   if (url.pathname === '/api/authorization') {
     if (request.method !== 'GET' && request.method !== 'POST') {
       send(response, 405, 'text/plain; charset=utf-8', 'Method Not Allowed');
@@ -313,7 +321,7 @@ async function handleRequest(request, response) {
     const input = await readRequestJson(request);
     try {
       if (phase === 'plan') {
-        await sendJson(response, { ok: true, operation: planSetupAction({ actionId, operations: setupOperations, dataRoot: siteDataRoot }) });
+        await sendJson(response, { ok: true, operation: planSetupAction({ actionId, operations: setupOperations, dataRoot: siteDataRoot, input: input.input || {} }) });
         return;
       }
       const operation = setupOperations.inspect(input.operationId);
@@ -327,7 +335,7 @@ async function handleRequest(request, response) {
       const executed = await setupOperations.execute(operation.id, {
         digest: input.digest,
         actor: { kind: 'runtime' },
-        handler: () => executeSetupAction({ actionId, input: input.input || {}, dataRoot: siteDataRoot }),
+        handler: (approvedOperation) => executeSetupAction({ actionId, input: input.input || {}, dataRoot: siteDataRoot, operation: approvedOperation }),
       });
       await sendJson(response, { ok: true, operation: executed });
     } catch (error) {

@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import test from "node:test";
 import vm from "node:vm";
-import { renderAutomationPage, renderCronPage, renderDashboard, renderDataPage, renderMessagesFragment, renderNewSession, renderPagesIndex, renderPrivateFileBatch, renderReleaseNotesPage, renderSessionDetail, renderSkillCatalogPage } from "../src/web/pages.js";
+import { renderDashboard, renderDataPage, renderMessagesFragment, renderNewSession, renderPagesIndex, renderPrivateFileBatch, renderReleaseNotesPage, renderSessionDetail, renderSkillCatalogPage } from "../src/web/pages.js";
 
 test("public pages use the Personal Agent surface and canonical public URLs", () => {
   const html = renderPagesIndex({
@@ -42,10 +42,12 @@ test("token usage dialog carries an opaque themed surface", () => {
   assert.match(html, /data-token-range="today" aria-pressed="true"/);
   assert.match(html, /class="token-heatmap" data-token-heatmap/);
   assert.match(html, /data-token-day="2026-07-11" data-level="4"/);
-  assert.match(html, />3\.2M</);
-  assert.match(html, />1\.5B</);
-  assert.match(html, />1\.2K</);
+  assert.match(html, />3\.2<abbr[^>]+>M<\/abbr>/);
+  assert.match(html, />1\.5<abbr[^>]+title="B（Billion）：十亿（10⁹）"[^>]+>B<\/abbr>/);
+  assert.match(html, />1\.2<abbr[^>]+>K<\/abbr>/);
   assert.match(html, />999</);
+  assert.match(html, /1000000000000, 'T'/);
+  assert.match(html, /T（Trillion）：万亿（10¹²）/);
   assert.match(html, /loadTokenUsage\(button\.dataset\.tokenRange/);
   assert.match(html, /token-dialog-fallback/);
   assert.match(html, /data-console-menu/);
@@ -54,9 +56,9 @@ test("token usage dialog carries an opaque themed surface", () => {
   assert.match(html, /\.console-menu-popover\{position:absolute;z-index:60;[^}]*background:#fffdf8/);
   assert.doesNotMatch(html, /href="\/app\/chat\/memory"/);
   assert.match(html, /href="\/app\/data"/);
-  assert.match(html, /href="\/app\/automations"/);
+  assert.doesNotMatch(html, /href="\/app\/automations"/);
   assert.match(html, /href="\/app\/skills"/);
-  assert.match(html, /href="\/app\/schedules"/);
+  assert.match(html, /href="\/app\/workers\/schedules"[^>]*>[\s\S]*?<span>自动化<\/span>/);
   assert.match(html, /href="\/app\/update"[^>]*>[\s\S]*?<span>更新与回滚<\/span>/);
   assert.match(html, /href="\/app\/channels"[^>]*>[\s\S]*?<span>渠道管理<\/span>/);
   assert.match(html, /class="compose-fab wechat-only-hidden"/);
@@ -110,35 +112,6 @@ test("native data page renders dynamic schema, filters, aggregation, and mobile 
   assert.match(html, /fragment','rows'/);
   assert.match(html, /\.data-grid-scroll\{max-width:100%;overscroll-behavior-inline:contain/);
   assert.doesNotMatch(html, /Tabulator|DataTable|AG Grid/);
-  const inlineScript = html.match(/<script>([\s\S]*)<\/script>/)?.[1] || "";
-  assert.doesNotThrow(() => new vm.Script(inlineScript));
-});
-
-test("automation page exposes sources, readable rules, permissions, runs, and templates without edit controls", () => {
-  const html = renderAutomationPage({
-    sources: [{ id: "mail", name: "Agent 邮箱", kind: "email", accountRef: "agent@example.com", capabilities: ["message"], sensitivity: "restricted", enabled: true, health: "healthy", configVersion: 1 }],
-    rules: [{ id: "rule", name: "账单", description: "识别账单", sourceId: "mail", eventType: "message.received", conditions: { matchAll: true, semanticIntent: "识别账单和消费信息", keywords: ["账单", "statement"], sender: { operator: "endsWith", value: "@bank.example" } }, action: { type: "agent-task", steps: [{ type: "agent-analysis", output: "消费报告" }] }, permissions: { readCurrentEvent: true, readAttachments: true, data: "admin", automationWrite: false }, enabled: true, version: 1, updatedAt: new Date().toISOString() }],
-    events: [{ id: "event", title: "本月账单" }],
-    runs: [{ id: "run", ruleId: "rule", eventId: "event", matched: true, status: "queued", reason: "规则命中", createdAt: new Date().toISOString() }],
-    templates: [{ id: "template", name: "账单解析", runtime: "javascript-esm", version: 1, status: "active", purpose: "解析", sourceFingerprint: "mail", successCount: 2, failureCount: 0 }],
-  });
-  assert.match(html, /Agent 关注规则/);
-  assert.match(html, /关注条件/);
-  assert.match(html, /同时满足以下条件/);
-  assert.match(html, /识别账单和消费信息/);
-  assert.match(html, /结尾是/);
-  assert.match(html, /创建 Agent 任务/);
-  assert.match(html, /权限范围/);
-  assert.match(html, /读取附件/);
-  assert.match(html, /不允许/);
-  assert.match(html, /data-automation-tab="runs"/);
-  assert.match(html, /data-automation-tab="protection"/);
-  assert.match(html, /邮件与并发防护/);
-  assert.match(html, /data-automation-more/);
-  assert.match(html, /format=html&limit=20/);
-  assert.match(html, /\.automation-item\{min-width:0;max-width:100%;overflow:hidden/);
-  assert.doesNotMatch(html, /automation-json|<pre>\s*\{/);
-  assert.doesNotMatch(html, /保存规则|删除规则|新建规则/);
   const inlineScript = html.match(/<script>([\s\S]*)<\/script>/)?.[1] || "";
   assert.doesNotThrow(() => new vm.Script(inlineScript));
 });
@@ -208,7 +181,7 @@ test("dashboard HTML route performs no runtime data reads before responding", ()
   assert.doesNotMatch(route, /await|wechat\.status|listUploadedAssets|store\.(?:listSessionsPage|countSessions|listWorkspaces|getTokenUsageSummary)/);
 });
 
-test("web agent actions stay hidden while their implementation remains available", () => {
+test("web conversation actions stay hidden while their implementation remains available", () => {
   const session = renderSessionDetail({
     session: {
       id: "main-1",
@@ -221,15 +194,11 @@ test("web agent actions stay hidden while their implementation remains available
     },
   });
   const compose = renderNewSession({ workspaces: [] });
-  const cron = renderCronPage({ tasks: [], workspaces: [] });
 
   assert.match(session, /class="mobile-chat-composer wechat-only-hidden"/);
   assert.match(session, /data-composer/);
   assert.match(compose, /class="compose-main wechat-only-hidden"/);
   assert.match(compose, /data-new-session/);
-  assert.match(cron, /class="cron-agent-guide wechat-only-hidden"/);
-  assert.match(cron, /class="task-dialog wechat-only-hidden"/);
-  assert.match(cron, /\.wechat-only-hidden\{display:none!important\}/);
 });
 
 test("private file batches render one authenticated reference list", () => {

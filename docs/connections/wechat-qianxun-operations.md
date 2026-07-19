@@ -107,3 +107,5 @@ plan-remove-contact --wxid <wxid>
 连接器不会自动启动千寻或自动切换微信账号。收到的消息只有在本机访问策略启用并通过联系人、群和群触发方式校验后才会交给主 Agent；未授权消息只保留规范化判定记录。连接器不会在错误信息中输出 SafeKey。
 
 正式入口使用 `pa-cli connection wechat-personal ...`。历史 `pa-cli connection wechat qianxun ...` 命令保留兼容。访问策略可以在“连接 → 个人微信”的折叠配置流程中完成，也可以使用 `directory`、`policy` 和 `set-policy --file` 管理。
+
+桌面端在已配置状态显示“清空配置”。确认后会删除当前 Space 的千寻地址、SafeKey、账号绑定、访问策略、收发测试状态和待执行配置计划，并释放该账号的安装级独占归属；聊天历史继续保留。清空成功后入口恢复为“配置”。

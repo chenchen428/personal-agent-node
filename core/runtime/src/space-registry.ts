@@ -8,7 +8,7 @@ const require = createRequire(import.meta.url);
 
 export const SPACE_SCHEMA_VERSION = 1;
 export const RESERVED_SPACE_SLUGS = new Set([
-  "admin", "agent", "api", "assets", "blog", "demo", "docs", "download", "mail", "pages", "personal", "resources", "sg", "sgtools", "smtp", "status", "support", "tjcds", "token", "tools", "usercontent", "www",
+  "admin", "agent", "api", "assets", "blog", "connect", "demo", "docs", "download", "mail", "pages", "personal", "resources", "sg", "sgtools", "smtp", "status", "support", "tjcds", "token", "tools", "usercontent", "www",
 ]);
 
 export type SpaceKind = "personal" | "user";

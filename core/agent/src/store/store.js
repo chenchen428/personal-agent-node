@@ -1689,6 +1689,48 @@ export class BridgeStore {
     return Number(row?.count || 0);
   }
 
+  createMailEvent(input = {}) {
+    if (!this.getAutomationSource("connection_local_mail")) this.upsertAutomationSource({
+      id: "connection_local_mail",
+      name: "本地邮箱连接",
+      kind: "email",
+      accountRef: "local-mail",
+      capabilities: ["message", "attachment", "interval-scan"],
+      sensitivity: "restricted",
+      enabled: true,
+      health: "healthy",
+    });
+    return this.createAutomationEvent({ ...input, sourceId: "connection_local_mail", eventType: "mail.received" });
+  }
+
+  updateMailEvent(id, patch = {}) {
+    const current = this.getMailEvent(id);
+    if (!current) return null;
+    const next = normalizeAutomationEvent({ ...current, ...patch, id: current.id, sourceId: current.sourceId, dedupeKey: current.dedupeKey, createdAt: current.createdAt });
+    this.db.prepare(`
+      UPDATE automation_events SET title = ?, sender_json = ?, payload_json = ?, risk_json = ?,
+        status = ?, received_at = ? WHERE id = ? AND source_id = 'connection_local_mail'
+    `).run(next.title, toJson(next.sender), toJson(next.payload), toJson(next.risk), next.status, next.receivedAt, id);
+    return this.getMailEvent(id);
+  }
+
+  getMailEvent(id) {
+    const event = this.getAutomationEvent(id);
+    return event?.sourceId === "connection_local_mail" ? event : null;
+  }
+
+  findMailEvent(dedupeKey) {
+    return this.findAutomationEvent("connection_local_mail", dedupeKey);
+  }
+
+  listMailEvents({ limit = 100, offset = 0 } = {}) {
+    return this.listAutomationEvents({ sourceId: "connection_local_mail", limit, offset });
+  }
+
+  countMailEvents() {
+    return this.countAutomationEvents({ sourceId: "connection_local_mail" });
+  }
+
   createAutomationRun(input = {}) {
     const run = normalizeAutomationRun(input);
     this.db.prepare(`

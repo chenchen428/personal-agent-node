@@ -19,13 +19,13 @@ type ChildEntry = {
 };
 
 export function resolveSpaceInitializationDomain(space: SpaceRecord) {
-  const managedHost = String(space.managedHost || "").trim();
-  if (managedHost) return managedHost;
   try {
     const site = JSON.parse(fs.readFileSync(path.join(space.root, "config", "site.json"), "utf8"));
     const initializedHost = String(site?.asciiDomain || site?.displayDomain || "").trim();
     if (initializedHost) return initializedHost;
   } catch {}
+  const managedHost = String(space.managedHost || "").trim();
+  if (managedHost) return managedHost;
   return "personal-agent.local";
 }
 

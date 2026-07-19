@@ -5,6 +5,13 @@ Site. It owns public TLS, ACME, fixed-host routing, WireGuard origin transport,
 and origin mTLS. It does not own channel credentials, messages, files, sessions,
 or application databases.
 
+The product-level custom-domain SOP uses `self-hosted-relay.mjs` instead of the
+legacy network tunnel. The Relay authenticates one outbound Node connection with
+a random bearer key (only its SHA-256 digest is stored on the server), reuses the
+`pa-reverse-ws-v1` application protocol, and needs no WireGuard, fixed tunnel IP,
+customer-machine administrator rights, or platform quota. The low-level Edge
+registry and WireGuard tooling below remain for explicit legacy migration.
+
 The `sites.json` file registers the complete Site for the owner's apex domain. The
 renderer expands the shared distribution in registry/site-distribution.json;
 operators do not configure ad hoc sub-sites.

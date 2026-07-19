@@ -35,6 +35,25 @@ test("official Notion CLI connection starts a deterministic browser authorizatio
   ]);
 });
 
+test("clearing a Notion connection logs out the isolated CLI home and resets its status", async () => {
+  const calls = [];
+  const notion = new NotionCliConnection({
+    command: "ntn",
+    run: async (command, args, options) => {
+      calls.push({ command, args, options });
+      return { code: 0, stdout: "logged out", stderr: "" };
+    },
+  });
+  notion.lastStatus = { state: "connected", statusLabel: "已连接", details: { cliReady: true } };
+  notion.pendingLogin = { expiresAt: new Date(Date.now() + 60_000).toISOString() };
+
+  assert.deepEqual(await notion.clearConfiguration(), { state: "needs_setup", statusLabel: "需要浏览器授权", details: { cliReady: true } });
+  assert.deepEqual(calls[0].args, ["logout"]);
+  assert.equal(calls[0].options.timeoutMs, 15_000);
+  assert.equal(notion.pendingLogin, null);
+  assert.equal(notion.catalogStatus().state, "needs_setup");
+});
+
 test("missing official Notion CLI is reported without leaking a process error", async () => {
   const missing = async () => { throw Object.assign(new Error("spawn private path"), { code: "ENOENT" }); };
   const notion = new NotionCliConnection({ run: missing });

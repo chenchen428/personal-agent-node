@@ -10,13 +10,14 @@ if (manifest.releaseType !== "private-site-edge" || !manifest.releaseId || !mani
 if (manifest.dirty !== false) throw new Error("Production Edge release must be built from a clean worktree");
 for (const relative of [
   "core/edge/bin/private-site-edge.mjs",
-  "core/edge/bin/private-site-edge.mjs",
+  "core/edge/bin/self-hosted-relay.mjs",
   "core/edge/scripts/reconcile-certificates.sh",
   "infra/edge/migrate-current-site.sh",
   "infra/edge/bootstrap-host.sh",
   "infra/edge/logrotate/private-site-edge.conf",
   "infra/edge/wireguard/setup-hub.sh",
   "infra/edge/pki/init-origin-pki.sh",
+  "infra/edge/install-self-hosted-relay.sh",
   "infra/nginx/conf.d/05-private-site-edge.conf",
   "registry/site-distribution.json",
   "SHA256SUMS",

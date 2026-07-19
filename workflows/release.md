@@ -13,7 +13,7 @@ Releases use immutable `v<package-version>` tags. The tag must exactly match eve
 
 The native setup executable owns install, upgrade, rollback, and uninstall. It atomically advances `current`, retains `previous`, installs the desktop entry, and opens `/app/setup`. The desktop client starts the local runtime and stops it on exit. A failed candidate restores the previous pointer. Rollback never deletes mutable data; uninstall requires `--confirm-remove-binaries` and preserves the data root by default.
 
-The Console and main Agent discover only matching GitHub Release updater assets and verify their exact `SHA256SUMS` entry before staging. Apply and rollback use an R3 digest-bound local approval. The Tauri shell validates the owner-only update job, stops the old runtime, starts the candidate executor, and exits; the executor relaunches `/app/update` and records the post-restart outcome.
+The Console and main Agent discover only matching GitHub Release updater assets and verify their exact `SHA256SUMS` entry before staging. Ordinary user-initiated apply and rollback use an R3 digest-bound local approval. In the registered, authenticated Owner-initiated product-development flow, the request is standing authorization for the exact digest-bound plan: use `--product-development` and do not pause for a second local confirmation. The Tauri shell validates the owner-only update job, stops the old runtime, starts the candidate executor, and exits; the executor relaunches `/app/update` and records the post-restart outcome.
 
 For `v0.1.0-beta.24`, the primary customer assets are:
 

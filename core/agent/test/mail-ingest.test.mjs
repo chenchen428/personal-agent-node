@@ -3,7 +3,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
-import { ingestRawEmail, MAX_MAIL_BYTES, parseHeaders } from "../src/automation/mail-ingest.js";
+import { ingestRawEmail, MAX_MAIL_BYTES, parseHeaders } from "../src/connections/mail/mail-ingest.js";
 
 test("mail ingress archives raw EML and queues a manifest for interval scanning", async () => {
   const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), "oab-mail-ingest-"));

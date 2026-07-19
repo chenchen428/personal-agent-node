@@ -7,9 +7,10 @@ import path from 'node:path';
 import { spawn, spawnSync } from 'node:child_process';
 
 import { managedServiceReadiness } from './cloud-resources.ts';
+import { readCustomDomainBindings } from './custom-domain.ts';
 import { localMailStatus } from './mail.ts';
 import { resolveCodexCli, resolveNodeConfig, workspaceRoot } from './config.ts';
-import { installationPaths } from './space-registry.ts';
+import { getSpace, installationPaths } from './space-registry.ts';
 
 const setupRegistry = readJson(path.join(workspaceRoot, 'registry', 'setup-checks.json'));
 const stateSet = new Set(setupRegistry.states);
@@ -60,10 +61,13 @@ export async function setupStatus({
     ? await codexProbe({ config, env: effectiveEnv, platform })
     : emptyCodex();
   const managed = managedServiceReadiness({ dataRoot: spaceDataRoot, env: effectiveEnv });
+  const customDomains = config ? safeCustomDomainBindings(spaceDataRoot, effectiveEnv) : { mail: null, sites: null };
   const connectionMode = config?.site?.connectionMode || 'local-only';
-  const remoteSelected = connectionMode !== 'local-only';
+  const customSelected = Boolean(customDomains.sites?.domain || customDomains.mail?.domain);
+  const remoteSelected = connectionMode !== 'local-only' || customSelected;
   const cloud = readJson(path.join(spaceDataRoot, 'config', 'cloud.json'));
-  const reverseTunnel = readJson(path.join(spaceDataRoot, 'runtime', 'reverse-tunnel.json'));
+  const customOwner = customSelected ? getSpace(installationDataRoot, customDomains.sites?.ownerSpaceId || customDomains.mail?.ownerSpaceId) : null;
+  const reverseTunnel = readJson(path.join(customOwner?.root || spaceDataRoot, 'runtime', 'reverse-tunnel.json'));
   const connectivityAcceptance = readJson(path.join(spaceDataRoot, 'runtime', 'setup', 'connectivity.json'));
   const conversationAcceptance = readJson(path.join(spaceDataRoot, 'runtime', 'setup', 'web-conversation.json'));
   const mailAcceptance = readJson(path.join(spaceDataRoot, 'runtime', 'setup', 'mail.json'));
@@ -82,20 +86,30 @@ export async function setupStatus({
     && conversationAcceptance.route === '/app/chat';
   const enrolled = connectionMode === 'managed-cloud'
     ? Boolean(cloud?.managedHost && cloud?.siteId && cloud?.enrolledAt && cloud?.tunnel?.protocol === 'pa-reverse-ws-v1')
-    : connectionMode === 'self-hosted-edge';
-  const tunnelHeartbeatSeconds = Number(cloud?.tunnel?.heartbeatSeconds || 20);
+    : customSelected;
+  const selectedTunnel = connectionMode === 'managed-cloud' ? cloud?.tunnel : customDomains.sites?.tunnel || customDomains.mail?.tunnel;
+  const tunnelHeartbeatSeconds = Number(selectedTunnel?.heartbeatSeconds || 20);
   const lastPongAt = Date.parse(String(reverseTunnel?.lastPongAt || ''));
-  const heartbeatReady = connectionMode === 'managed-cloud'
-    ? reverseTunnel?.state === 'ready' && Number.isFinite(lastPongAt) && generatedDate.getTime() - lastPongAt <= tunnelHeartbeatSeconds * 3000
-    : Boolean(connectivityAcceptance?.heartbeat === true);
-  const tunnelReady = connectionMode === 'managed-cloud'
-    ? Boolean(enrolled && reverseTunnel?.protocol === 'pa-reverse-ws-v1' && reverseTunnel?.state === 'ready')
-    : Boolean(connectivityAcceptance?.tunnel === true);
-  const remoteHost = connectionMode === 'managed-cloud' ? String(cloud?.managedHost || '') : String(config?.domain || '');
+  const heartbeatReady = remoteSelected
+    ? connectivityAcceptance?.heartbeat === true
+      || (reverseTunnel?.state === 'ready' && Number.isFinite(lastPongAt) && generatedDate.getTime() - lastPongAt <= tunnelHeartbeatSeconds * 3000)
+    : false;
+  const tunnelReady = remoteSelected
+    ? Boolean(connectivityAcceptance?.tunnel === true
+      || (enrolled && reverseTunnel?.protocol === 'pa-reverse-ws-v1' && reverseTunnel?.state === 'ready'))
+    : false;
+  const remoteHost = connectionMode === 'managed-cloud'
+    ? String(cloud?.managedHost || '')
+    : String(customDomains.sites?.domain || customDomains.mail?.domain || config?.domain || '');
   const remote = remoteSelected && remoteHost
     ? await remoteProbe({ host: remoteHost, token: config?.env?.OPEN_AGENT_BRIDGE_API_TOKEN || '' })
     : { dns: false, tls: false, remoteApp: false };
   const managedCloudComplete = enrolled && managed.publicDomain.ready && managed.agentMail.ready && tunnelReady && heartbeatReady;
+  const customMailReady = Boolean(customDomains.mail?.domain && tunnelReady);
+  const mailIdentityReady = connectionMode === 'managed-cloud' ? managed.agentMail.ready : customMailReady;
+  const mailIdentityValue = connectionMode === 'managed-cloud'
+    ? managed.agentMail.value || ''
+    : customMailReady ? `agent@${customDomains.mail.domain}` : '';
   const effectiveManagedCloudAction = managedCloudComplete
     ? { state: 'succeeded', phase: 'complete' }
     : reverseTunnel?.state === 'reauth_required'
@@ -122,7 +136,7 @@ export async function setupStatus({
     acceptanceCheck('connectivity.dns', remote.dns || connectivityAcceptance?.dns === true, 'DNS', remoteSelected, generatedAt),
     acceptanceCheck('connectivity.tls', remote.tls || connectivityAcceptance?.tls === true, 'TLS', remoteSelected, generatedAt),
     acceptanceCheck('connectivity.remote-app', remote.remoteApp || connectivityAcceptance?.remoteApp === true, '远程 /app', remoteSelected, generatedAt),
-    makeCheck('mail.identity', managed.agentMail.ready, managed.agentMail.ready ? 'Agent 邮箱身份已匹配域名' : 'Agent 邮箱身份尚未绑定', { ready: managed.agentMail.ready, value: managed.agentMail.value || '' }, generatedAt, remoteSelected ? undefined : 'not-selected'),
+    makeCheck('mail.identity', mailIdentityReady, mailIdentityReady ? 'Agent 邮箱身份已匹配域名' : 'Agent 邮箱身份尚未绑定', { ready: mailIdentityReady, value: mailIdentityValue, binding: connectionMode === 'self-hosted-edge' ? 'custom' : 'platform' }, generatedAt, remoteSelected ? undefined : 'not-selected'),
     makeCheck('mail.local-ingest', Boolean(mail?.ingress?.ready), mail?.ingress?.ready ? '本地邮件入口已就绪' : '本地邮件入口尚未配置', { ready: Boolean(mail?.ingress?.ready), smtpServerBundled: false }, generatedAt, mailSelected ? undefined : 'not-selected'),
     makeCheck('mail.delivery', mailAcceptance?.delivery === true, mailAcceptance?.delivery === true ? '真实邮件投递已验证' : '尚未验证真实邮件投递', { verified: mailAcceptance?.delivery === true }, generatedAt, mailSelected ? undefined : 'not-selected'),
     makeCheck('mail.recovery', mailAcceptance?.recovery === true, mailAcceptance?.recovery === true ? '邮件备份恢复已验证' : '尚未验证邮件备份恢复', { verified: mailAcceptance?.recovery === true }, generatedAt, mailSelected ? undefined : 'not-selected'),
@@ -276,6 +290,11 @@ function dimensionState(checks, dimension, { ignoreOptional = false } = {}) {
 
 function safeConfig(env) {
   try { return resolveNodeConfig(env); } catch { return null; }
+}
+
+function safeCustomDomainBindings(dataRoot, env) {
+  try { return readCustomDomainBindings({ dataRoot, env }); }
+  catch { return { schemaVersion: 1, mail: null, sites: null }; }
 }
 
 function safeMailStatus(config, options) {

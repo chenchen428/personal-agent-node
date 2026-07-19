@@ -57,8 +57,8 @@ export function managedCloudActionMessage(action?: ManagedCloudAction) {
   if (action?.state === "cancelled") return "已取消本次页面验证，原有连接保持不变。";
   if (action?.state === "failed") return cloudFailureMessage(action.code);
   if (action?.phase === "resources") return "公网接入已确认，正在分配公网域名和 PA 邮箱。";
-  if (["starting", "running"].includes(action?.state || "idle")) return "验证页面已打开，请在浏览器中确认这台电脑。";
-  if (action?.state === "succeeded") return "页面验证已完成，正在刷新公网域名。";
+  if (["starting", "running"].includes(action?.state || "idle")) return "正在后台确认 Cloud 会话并分配公网域名，无需手动操作。";
+  if (action?.state === "succeeded") return "后台连接已完成，正在刷新公网域名。";
   return "";
 }
 
@@ -107,7 +107,7 @@ function buildOnlineIdentityTask(checks: SetupCheck[]): SetupTask | null {
     state: "action-required",
     summary: "验证公网域名与 Agent 邮箱",
     why: "一次统一引导完成这台 Node 的公网接入，并同步属于你的 Agent 邮箱身份。",
-    guidance: "点击验证，在已登录的 personal-agent.cn 页面确认；完成后本机会自动继续检查公网域名与 Agent 邮箱。",
+    guidance: "桌面端会在后台完成授权并继续检查公网域名与 Agent 邮箱；仅在静默失败后手动恢复。",
     actionIds: ["connectivity.managed-authorize"],
   };
   return toTask(check, [], check.summary);

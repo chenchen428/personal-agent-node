@@ -21,6 +21,8 @@ test('personal-agent exposes machine-readable help and capability discovery', ()
   assert.deepEqual(Object.keys(defaultHelp.result.commandGroups), ['implemented']);
   assert.ok(defaultHelp.result.commands.every((entry) => entry.implementationStatus === 'implemented'));
   assert.ok(defaultHelp.result.commands.every((entry) => typeof entry.description === 'string' && entry.description.length > 0));
+  assert.ok(defaultHelp.result.commands.some((entry) => entry.name === 'development status'));
+  assert.ok(defaultHelp.result.commands.some((entry) => entry.name === 'development ensure'));
 
   const previewHelp = JSON.parse(runOk(['help', '--preview', '--json']).stdout);
   assert.equal(previewHelp.result.visibility, 'preview');

@@ -328,8 +328,11 @@ by the accepted product contract.
 
 ### 10. Make managed connectivity one user flow with separate credentials
 
-When the user selects Managed Cloud, Setup Center starts a browser authorization
-flow through the public provider contract. One user-facing flow may produce
+The desktop starts Managed Cloud authorization in the background through the
+public provider contract. An existing authenticated first-party browser session
+may complete the one-time connection without an approval click; any missing
+login, risk check, denial, expiry, or provider error stops the silent attempt and
+exposes the manual recovery flow. One user-facing recovery flow may produce
 separate purpose-bound enrollment and resource grants internally; their tokens,
 lifetimes, storage, and permissions remain separate.
 

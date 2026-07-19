@@ -7,7 +7,7 @@
   "properties": {
     "schemaVersion": { "const": 1 },
     "id": { "type": "string", "pattern": "^act_[a-f0-9]{24}$" },
-    "type": { "enum": ["work", "page", "mail", "data", "automation", "note"] },
+    "type": { "enum": ["work", "page", "mail", "data", "note"] },
     "title": { "type": "string", "minLength": 1, "maxLength": 30 },
     "detail": { "type": "string", "minLength": 1, "maxLength": 2000 },
     "attachments": {
@@ -34,7 +34,7 @@
           "additionalProperties": false,
           "required": ["type", "id"],
           "properties": {
-            "type": { "enum": ["work", "page", "mail", "data", "automation", "app"] },
+            "type": { "enum": ["work", "page", "mail", "data", "app"] },
             "id": { "type": "string", "minLength": 1, "maxLength": 200 }
           }
         }

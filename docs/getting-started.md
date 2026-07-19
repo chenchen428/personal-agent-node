@@ -85,9 +85,11 @@ Final Node acceptance uses the public GitHub Release installation's authenticate
 
 A release maintainer may first build a `--candidate` self-contained updater and
 create its ten-minute, digest-bound local install plan. The exact updater is
-staged under Workspace, its candidate security metadata and embedded release
-are verified, and R3 approval still comes only from the existing authenticated
-local TTY operation flow. Candidate smoke evidence must use
+staged under Workspace, and its candidate security metadata and embedded release
+are verified. A registered product-development delivery may pass
+`--authorized-product-delivery`; the owner's initiating delivery request then
+authorizes only that exact revision and digest without a second local prompt.
+Other R3 operations still require the authenticated local TTY flow. Candidate smoke evidence must use
 `candidateAssetRuntime=true` and `releaseAssetRuntime=false`; it does not replace
 the public GitHub Release installation acceptance above.
 

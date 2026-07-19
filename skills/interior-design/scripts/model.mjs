@@ -52,8 +52,9 @@ export function validateModel(model) {
   if (!['day', 'evening'].includes(model.lighting?.mode)) errors.push('lighting.mode is invalid');
   finiteRange(model.lighting?.ambient, 0, 3, 'lighting.ambient', errors);
   if (typeof model.lighting?.shadows !== 'boolean') errors.push('lighting.shadows must be boolean');
-  if (!Array.isArray(model.camera?.segments) || model.camera.segments.length < 4) errors.push('camera.segments needs growth plus three camera segments');
-  else for (const segment of model.camera.segments) {
+  if (!['isometric', 'top', 'interior'].includes(model.camera?.initial)) errors.push('camera.initial is invalid');
+  if (model.camera?.segments !== undefined && !Array.isArray(model.camera.segments)) errors.push('camera.segments must be an array when present');
+  else for (const segment of model.camera?.segments || []) {
     finitePositive(segment.durationMs, `camera segment ${segment.id}: durationMs`, errors);
     if (segment.targetRoomId && !roomIds.has(segment.targetRoomId)) errors.push(`camera segment ${segment.id}: targetRoomId does not resolve`);
   }
@@ -94,4 +95,3 @@ function point2(point) { return Array.isArray(point) && point.length === 2 && po
 function polygonArea(points) { return points.reduce((sum, [x, z], index) => { const [nx, nz] = points[(index + 1) % points.length]; return sum + x * nz - nx * z; }, 0) / 2; }
 function bounds(points) { const xs = points.map((p) => p[0]); const zs = points.map((p) => p[1]); return { minX: Math.min(...xs), minZ: Math.min(...zs), maxX: Math.max(...xs), maxZ: Math.max(...zs) }; }
 function round(value) { return Math.round(value * 1000) / 1000; }
-

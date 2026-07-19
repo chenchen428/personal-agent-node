@@ -8,18 +8,20 @@ export function generatePage({ model, output, skillRoot }) {
   const safeModel = JSON.stringify(model).replaceAll('<', '\\u003c');
   const title = escapeHtml(model.project.title);
   const area = Number(model.project.areaM2 || 0).toFixed(1);
+  const roomButtons = model.rooms.map((room, index) => `<button type="button" data-room="${escapeAttr(room.id)}"><b>${String(index + 1).padStart(2, '0')}</b><strong>${escapeHtml(room.name)}</strong><small>进入空间</small></button>`).join('');
+  const roomOptions = model.rooms.map((room) => `<option value="${escapeAttr(room.id)}">${escapeHtml(room.name)} · 进入近景</option>`).join('');
   const html = `<!doctype html>
-<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="color-scheme" content="light"><title>${title} · 3D 概念户型</title><style>${style}</style></head>
-<body><main id="app"><canvas id="scene" aria-label="${title} 可旋转 3D 概念户型"></canvas>
-<header class="top"><div><strong>${title}</strong><span>概念建模 · ${area}㎡ · ${model.rooms.length} 房间</span></div><div class="tools" aria-label="视图工具">
-<button data-view="iso" title="等距视图">等距</button><button data-view="top" title="顶视图">顶视</button><button data-view="walk" title="漫游视图">漫游</button><button id="free" title="中断动画并自由查看">自由查看</button>
-<select id="scheme" aria-label="材料方案"><option value="warm">现代温润</option><option value="stone">暖灰石材</option><option value="green">墨绿点缀</option></select><button id="light" title="切换日间与傍晚">日间</button></div></header>
-<section class="timeline" aria-label="户型动画"><button id="play" aria-label="播放或暂停动画">暂停</button><button id="replay" aria-label="重播动画">重播</button><div class="track"><i id="progress"></i><b id="stage">地面出现</b></div><output id="time">0%</output></section>
-<div id="fallback" hidden><strong>无法启动 3D 视图</strong><span>此设备未提供可用 WebGL。仍可下载概念模型数据进行校准。</span></div><script id="model" type="application/json">${safeModel}</script><script>${script}</script></main></body></html>`;
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="color-scheme" content="light"><title>${title} · 装修设计交付</title><style>${style}</style></head>
+<body><main id="app">
+<header class="top"><span class="mark">PA</span><div class="identity"><strong>${title}</strong><span>概念建模 · ${area}㎡ · ${model.rooms.length} 个空间</span></div><label class="mobile-room"><span>当前空间</span><select id="room-select" aria-label="进入空间查看细节"><option value="">整体方案 · 完整户型</option>${roomOptions}</select></label><span class="status"><i></i>完成态模型 · 手动查看</span></header>
+<section class="stage"><nav class="rooms" aria-label="浏览空间"><span>浏览空间</span><button class="active" type="button" data-room=""><b>00</b><strong>整体方案</strong><small>完整户型</small></button>${roomButtons}</nav><div class="viewport"><canvas id="scene" aria-label="${title} 可旋转、平移和缩放的 3D 概念户型"></canvas><span class="gesture">拖动旋转 · 滚轮或双指缩放 · 右键平移</span></div>
+<div class="views" role="group" aria-label="切换查看视角"><button class="active" type="button" data-view="iso">3D 鸟瞰</button><button type="button" data-view="top">平面</button><button type="button" data-view="walk">室内</button><button id="reset" type="button" aria-label="重置为完整户型的 3D 鸟瞰" title="重置">↺</button></div></section>
+<aside id="fallback" hidden><strong>3D 投影模式</strong><span>当前设备未启用 WebGL，拖动仍可从不同方向查看空间关系。</span></aside><p class="orientation-hint">横屏查看空间更完整</p><script id="model" type="application/json">${safeModel}</script><script>${script}</script></main></body></html>`;
   const index = path.join(output, 'index.html');
   fs.writeFileSync(index, html);
   fs.writeFileSync(path.join(output, 'model.json'), `${JSON.stringify(model, null, 2)}\n`);
   return index;
 }
 
-function escapeHtml(value) { return String(value).replace(/[&<>'"]/g, (character) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[character])); }
+function escapeHtml(value) { return String(value).replace(/[&<>'"]/g, (character) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' })[character]); }
+function escapeAttr(value) { return escapeHtml(value).replaceAll('`', '&#96;'); }

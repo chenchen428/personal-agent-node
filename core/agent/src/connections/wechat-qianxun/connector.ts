@@ -15,6 +15,7 @@ import {
   type PersonalWechatDirectory,
   type PersonalWechatMessage,
 } from "./access-policy.ts";
+import type { InstallationConnectionOwnership } from "../connection-ownership.ts";
 
 type StoredConfig = {
   schemaVersion: 1;
@@ -44,6 +45,7 @@ export class WeChatQianxunConnector {
   private readonly history: PersonalWechatHistoryStore;
   private readonly policies: PersonalWechatPolicyStore;
   private readonly connectivityTest: PersonalWechatConnectivityTest;
+  private readonly ownership?: { store: InstallationConnectionOwnership; spaceId: string };
   private onInboundMessage: ((message: {
     senderId: string;
     sender: string;
@@ -54,10 +56,11 @@ export class WeChatQianxunConnector {
     createdAt: string;
   }) => Promise<unknown>) | null;
 
-  constructor({ dataRoot, fetchImpl = fetch, operationStore, onInboundMessage = null }: {
+  constructor({ dataRoot, fetchImpl = fetch, operationStore, onInboundMessage = null, ownership }: {
     dataRoot: string;
     fetchImpl?: typeof fetch;
     operationStore?: ReturnType<typeof createOperationStore>;
+    ownership?: { store: InstallationConnectionOwnership; spaceId: string };
     onInboundMessage?: ((message: { senderId: string; sender: string; sessionId: string; text: string; conversationHistory: PersonalWechatHistoryMessage[]; attachments: never[]; createdAt: string }) => Promise<unknown>) | null;
   }) {
     if (!path.isAbsolute(dataRoot || "")) throw new Error("Qianxun data root must be absolute");
@@ -71,6 +74,7 @@ export class WeChatQianxunConnector {
     this.policies = new PersonalWechatPolicyStore(dataRoot);
     this.connectivityTest = new PersonalWechatConnectivityTest(dataRoot);
     this.onInboundMessage = onInboundMessage;
+    this.ownership = ownership;
     this.client = new QianxunProtocolClient({
       fetchImpl,
       onStyleLearned: (style) => this.persistLearnedStyle(style),
@@ -95,9 +99,37 @@ export class WeChatQianxunConnector {
     };
   }
 
+  clearConfiguration() {
+    const configuredBefore = Boolean(this.readConfig());
+    this.ownership?.store.release("wechat-personal", this.ownership.spaceId);
+    for (const file of [this.configFile, path.join(this.rootDir, "access-policy.json"), path.join(this.rootDir, "connectivity-test.json")]) {
+      fs.rmSync(file, { force: true });
+    }
+    fs.rmSync(this.pendingDir, { recursive: true, force: true });
+    return {
+      cleared: true,
+      configuredBefore,
+      config: null,
+      policy: this.policies.read(),
+      connectivityTest: this.connectivityTest.status(),
+    };
+  }
+
   async status({ probe = true } = {}) {
     const config = this.readConfig();
     if (!config) return { configured: false, reachable: false, state: "needs_setup", callbackPath: "/api/internal/channels/wechat-personal/callback" };
+    try { this.assertOwnership(config); }
+    catch (error) {
+      return {
+        configured: true,
+        reachable: false,
+        state: "space_conflict",
+        config: this.publicConfig(),
+        callbackPath: "/api/internal/channels/wechat-personal/callback",
+        errorCode: "WECHAT_SPACE_CONFLICT",
+        error: error instanceof Error ? error.message : String(error),
+      };
+    }
     if (!probe) return { configured: true, reachable: null, state: "configured", config: this.publicConfig(), callbackPath: "/api/internal/channels/wechat-personal/callback" };
     try {
       const result = await this.client.invoke(this.effectiveClientConfig(config), qianxunEnvelope("checkWeChat"));
@@ -287,6 +319,8 @@ export class WeChatQianxunConnector {
     if (!callback) return { accepted: false, reason: "invalid_callback" };
     const config = this.readConfig();
     if (!config) return { accepted: false, reason: "not_configured" };
+    try { this.assertOwnership(config); }
+    catch { return { accepted: false, reason: "space_conflict" }; }
     if (!callback.accountWxid || callback.accountWxid !== config.bindWxid) return { accepted: false, reason: "account_mismatch" };
     const appended = this.events.appendUnique(callback);
     if (appended.duplicate) return { accepted: true, dispatched: false, reason: "duplicate", eventId: appended.record.id, type: callback.type };
@@ -350,6 +384,7 @@ export class WeChatQianxunConnector {
     if (candidate.bindWxid && candidate.bindWxid !== detectedWxid) throw connectorError("QIANXUN_ACCOUNT_MISMATCH", "Qianxun is logged in to a different wxid than the approved plan", 409);
     candidate.bindWxid = detectedWxid;
     candidate.learnedEndpointStyle = probe.endpointStyle;
+    this.replaceOwnership(detectedWxid);
     this.writeConfig(candidate);
     return { configured: true, accountWxid: detectedWxid, endpointStyle: probe.endpointStyle, safeKeyConfigured: Boolean(candidate.safeKey) };
   }
@@ -412,7 +447,18 @@ export class WeChatQianxunConnector {
   private requireConfig() {
     const config = this.readConfig();
     if (!config) throw connectorError("QIANXUN_NOT_CONFIGURED", "Qianxun connector is not configured", 409);
+    this.assertOwnership(config);
     return config;
+  }
+
+  private assertOwnership(config: StoredConfig) {
+    try { this.ownership?.store.assertOrClaim("wechat-personal", [config.bindWxid], this.ownership.spaceId); }
+    catch (error) { throw connectorError("WECHAT_SPACE_CONFLICT", error instanceof Error ? error.message : String(error), 409); }
+  }
+
+  private replaceOwnership(accountWxid: string) {
+    try { this.ownership?.store.replace("wechat-personal", [accountWxid], this.ownership.spaceId); }
+    catch (error) { throw connectorError("WECHAT_SPACE_CONFLICT", error instanceof Error ? error.message : String(error), 409); }
   }
 
   private readConfig(): StoredConfig | null {

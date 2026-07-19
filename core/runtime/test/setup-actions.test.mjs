@@ -7,7 +7,7 @@ import test from 'node:test';
 import { verifyPasswordVerifier } from '../../agent/src/auth/personal-auth.js';
 import { initializeSite, readEnvFile } from '../src/config.ts';
 import { createOperationStore } from '../src/operations.ts';
-import { cancelManagedCloudSetup, disconnectManagedCloud, executeSetupAction, managedCliRuntimeArgs, managedCloudAuthorizationPhase, planSetupAction, safeCliFailureCode } from '../src/setup-actions.ts';
+import { cancelManagedCloudSetup, disconnectManagedCloud, executeSetupAction, managedCliRuntimeArgs, managedCloudAuthorizationPhase, planSetupAction, safeCliFailureCode, startAutomaticManagedCloudBootstrap } from '../src/setup-actions.ts';
 
 test('local auth setup uses an approved R2 plan and removes the migration plaintext', async () => {
   const dataRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'personal-agent-setup-action-'));
@@ -149,6 +149,29 @@ test('managed authorization cancellation preserves an existing binding and recor
   } finally { fs.rmSync(dataRoot, { recursive: true, force: true }); }
 });
 
+test('automatic managed bootstrap never retries a failed or explicitly cancelled silent attempt', () => {
+  const dataRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'personal-agent-setup-cloud-auto-stop-'));
+  try {
+    const { config } = initializeSite({ dataRoot, domain: 'personal-agent.local' });
+    const statusFile = path.join(config.dataRoot, 'runtime', 'setup', 'managed-cloud-action.json');
+    fs.mkdirSync(path.dirname(statusFile), { recursive: true });
+    fs.writeFileSync(statusFile, `${JSON.stringify({ schemaVersion: 1, state: 'failed', phase: 'enrollment', code: 'CLOUD_AUTH_FAILED' })}\n`);
+    assert.deepEqual(startAutomaticManagedCloudBootstrap({ dataRoot }), {
+      started: false,
+      state: 'failed',
+      phase: 'enrollment',
+      code: 'CLOUD_AUTH_FAILED',
+    });
+    fs.writeFileSync(statusFile, `${JSON.stringify({ schemaVersion: 1, state: 'cancelled', phase: 'idle', code: 'USER_DISCONNECTED' })}\n`);
+    assert.deepEqual(startAutomaticManagedCloudBootstrap({ dataRoot }), {
+      started: false,
+      state: 'cancelled',
+      phase: 'idle',
+      code: 'USER_DISCONNECTED',
+    });
+  } finally { fs.rmSync(dataRoot, { recursive: true, force: true }); }
+});
+
 test('managed verification exposes only a safe CLI failure code', () => {
   const output = [
     JSON.stringify({ ok: true, event: 'cloud.device-authorization', result: { userCode: 'PRIVATE-CODE', verificationUrl: 'https://chenjianhui.site/connect' } }),
@@ -167,4 +190,22 @@ test('managed verification preserves source module loaders without copying debug
     managedCliRuntimeArgs(['--experimental-loader=custom-loader', '--experimental-strip-types']),
     ['--experimental-loader=custom-loader', '--experimental-strip-types'],
   );
+});
+
+test('custom-domain R2 plan binds only the approved domain and kind', async () => {
+  const dataRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'personal-agent-custom-domain-plan-'));
+  try {
+    const { config } = initializeSite({ dataRoot, domain: 'personal-agent.local' });
+    const operations = createOperationStore({ dataRoot: config.dataRoot, randomUUID: () => '00000000-0000-4000-8000-000000000099' });
+    const input = { kind: 'sites', domain: 'agent.example.net' };
+    const plan = planSetupAction({ actionId: 'connectivity.custom-domain-start', operations, dataRoot: config.dataRoot, input });
+    assert.equal(plan.risk, 'R2');
+    assert.match(plan.stateFingerprint, /sites:agent\.example\.net$/);
+    operations.approve(plan.id, { digest: plan.digest, actor: { kind: 'human', authenticated: true, loopback: true, channel: 'local-console' } });
+    await assert.rejects(operations.execute(plan.id, {
+      digest: plan.digest,
+      actor: { kind: 'runtime' },
+      handler: (operation) => executeSetupAction({ actionId: 'connectivity.custom-domain-start', input: { ...input, domain: 'changed.example.net' }, dataRoot: config.dataRoot, operation }),
+    }), /已批准计划不一致/);
+  } finally { fs.rmSync(dataRoot, { recursive: true, force: true }); }
 });

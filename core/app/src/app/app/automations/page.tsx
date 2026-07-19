@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
 
 export default function AutomationsCompatibilityPage() {
-  redirect("/app/connections");
+  redirect("/app/workers/schedules");
 }

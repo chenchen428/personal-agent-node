@@ -262,7 +262,8 @@ test("Next.js owns the approved V6.35 mobile client and V7.3 desktop workspace",
   assert.match(setupDashboard, /验证后分配 PA 邮箱/);
   assert.match(setupDashboard, /无需单独接入/);
   assert.ok(setupDashboard.indexOf("可选 · 公网域名") < setupDashboard.indexOf("可选 · 邮件"));
-  assert.match(setupDashboard, /验证公网与邮箱/);
+  assert.match(setupDashboard, /PA 会在后台自动连接并分配资源/);
+  assert.doesNotMatch(setupDashboard, />验证公网与邮箱</);
   assert.match(setupDashboard, /cloudPending/);
   assert.match(setupDashboard, /role="status"/);
   assert.doesNotMatch(setupDashboard, /启用邮件检测|了解接入|可选 · 手机/);
@@ -331,7 +332,7 @@ test("Next.js owns the approved V6.35 mobile client and V7.3 desktop workspace",
 
 test("all finalized client routes have independently buildable Next pages", () => {
   const pages = [
-    "app/page.tsx", "app/conversations/page.tsx", "app/workers/page.tsx", "app/workers/schedules/page.tsx", "app/schedules/page.tsx", "app/mail/page.tsx",
+    "app/page.tsx", "app/conversations/page.tsx", "app/workers/page.tsx", "app/workers/schedules/page.tsx", "app/schedules/page.tsx", "app/automations/page.tsx", "app/mail/page.tsx",
     "app/pages/page.tsx", "app/pages/[pageId]/page.tsx", "app/data/page.tsx", "app/apps/page.tsx", "app/apps/[appId]/page.tsx",
     "app/connections/page.tsx", "app/connections/wechat-personal/page.tsx", "app/channels/page.tsx", "app/skills/page.tsx", "app/statistics/token-usage/page.tsx", "app/setup/page.tsx", "app/runtime/page.tsx", "app/settings/page.tsx", "app/update/page.tsx",
     "app/mobile/page.tsx", "app/mobile/pages/page.tsx", "app/mobile/pages/[pageId]/page.tsx",
@@ -341,6 +342,8 @@ test("all finalized client routes have independently buildable Next pages", () =
     "app/mobile/apps/[appId]/page.tsx",
   ];
   for (const page of pages) assert.equal(fs.existsSync(path.join(root, "core/app/src/app", page)), true, page);
+  assert.match(read("core/app/src/app/app/schedules/page.tsx"), /redirect\("\/app\/workers\/schedules"\)/);
+  assert.match(read("core/app/src/app/app/automations/page.tsx"), /redirect\("\/app\/workers\/schedules"\)/);
 });
 
 test("desktop Pages previews read the persisted thumbnail without embedding the published page", () => {
@@ -375,6 +378,7 @@ test("gateway routes the approved client to Next and its read-only data to the l
   assert.equal(routes.find((route) => route.key === "api-system-setup-actions").access, "local-admin");
   assert.deepEqual(routes.find((route) => route.key === "api-system-update"), { key: "api-system-update", prefix: "/api/system/update", access: "local-admin", kind: "proxy", targetKey: "console", upstreamPath: "/api/update" });
   assert.deepEqual(routes.find((route) => route.key === "public-pages"), { key: "public-pages", prefix: "/public", access: "public", kind: "proxy", targetKey: "agent", upstreamPath: "/pages" });
+  assert.deepEqual(routes.find((route) => route.key === "private-publications"), { key: "private-publications", prefix: "/publications", access: "authenticated", kind: "proxy", targetKey: "agent", upstreamPath: "/publications" });
   assert.match(nextBff, /path\[0\] === "system"/);
   assert.match(nextBff, /"authorization"/);
   assert.match(nextBff, /"data-export"/);

@@ -164,6 +164,37 @@ test('managed remote readiness requires a fresh reverse application tunnel inste
   } finally { fs.rmSync(dataRoot, { recursive: true, force: true }); }
 });
 
+test('self-hosted readiness uses the selected custom domain and custom mail identity', async () => {
+  const dataRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'personal-agent-setup-custom-domain-'));
+  try {
+    const initialized = initializeSite({ dataRoot, domain: 'personal-agent.local' });
+    const spaceRoot = initialized.config.dataRoot;
+    fs.writeFileSync(initialized.config.configPath, `${JSON.stringify({ ...initialized.config.site, connectionMode: 'self-hosted-edge' })}\n`);
+    fs.writeFileSync(path.join(spaceRoot, 'config', 'custom-domain-bindings.json'), `${JSON.stringify({
+      schemaVersion: 1,
+      sites: { domain: 'agent.example.com', serviceReady: true, phase: 'dns' },
+      mail: { domain: 'mail.example.com', serviceReady: true, phase: 'dns' },
+    })}\n`);
+    fs.mkdirSync(path.join(spaceRoot, 'runtime', 'setup'), { recursive: true });
+    fs.writeFileSync(path.join(spaceRoot, 'runtime', 'setup', 'connectivity.json'), `${JSON.stringify({ heartbeat: true, tunnel: true })}\n`);
+    let probedHost = '';
+    const status = await setupStatus({
+      dataRoot: spaceRoot,
+      installRoot: path.join(dataRoot, 'install'),
+      portProbe: async () => false,
+      codexProbe: async () => ({ installed: false, version: '', versionSupported: false, authenticated: false, handshake: false }),
+      remoteProbe: async ({ host }) => { probedHost = host; return { dns: true, tls: true, remoteApp: true }; },
+    });
+    assert.equal(probedHost, 'agent.example.com');
+    assert.equal(status.checks.find((check) => check.id === 'connectivity.mode').evidence.mode, 'self-hosted-edge');
+    assert.deepEqual(status.checks.find((check) => check.id === 'mail.identity').evidence, {
+      ready: true,
+      value: 'agent@mail.example.com',
+      binding: 'custom',
+    });
+  } finally { fs.rmSync(dataRoot, { recursive: true, force: true }); }
+});
+
 test('setup status blocks downstream Agent checks when Codex is missing', async () => {
   const dataRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'personal-agent-setup-missing-codex-'));
   try {

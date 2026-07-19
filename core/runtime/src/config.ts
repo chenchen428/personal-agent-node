@@ -50,6 +50,7 @@ export function resolveNodeConfig(env = process.env, options = {}) {
   const providers = readProviderDocument(providersPath);
   const domain = normalizeApexDomain(mergedEnv.SITE_DOMAIN || site?.asciiDomain || "personal-agent.local");
   const routingMode = normalizeRoutingMode(mergedEnv.PERSONAL_AGENT_ROUTING_MODE || site?.routingMode || "path");
+  const managedDirectGateway = site?.connectionMode === "managed-cloud";
   const agentWorkspaceRoot = path.resolve(mergedEnv.PRIVATE_SITE_AGENT_WORKSPACE || path.join(dataRoot, "agent-workspace"));
   const defaultPorts = spaceContext.space?.ports || { bridge: 8788, admin: 8791, control: 8792, gateway: 8843, tools: 9955, xiaohongshu: 18060 };
   return {
@@ -83,13 +84,13 @@ export function resolveNodeConfig(env = process.env, options = {}) {
     extensionsDir: path.join(dataRoot, "plugins"),
     localDomain: mergedEnv.PRIVATE_SITE_LOCAL_DOMAIN || `${domain}.local`,
     gateway: {
-      host: mergedEnv.PRIVATE_SITE_GATEWAY_HOST || "127.0.0.1",
+      host: managedDirectGateway ? (mergedEnv.PRIVATE_SITE_GATEWAY_HOST || "127.0.0.1") : "127.0.0.1",
       port: numberValue(mergedEnv.PRIVATE_SITE_GATEWAY_PORT, defaultPorts.gateway),
-      tlsCert: mergedEnv.PRIVATE_SITE_ORIGIN_TLS_CERT || "",
-      tlsKey: mergedEnv.PRIVATE_SITE_ORIGIN_TLS_KEY || "",
-      tlsCa: mergedEnv.PRIVATE_SITE_ORIGIN_TLS_CA || "",
-      edgeClientFingerprint: normalizeFingerprint(mergedEnv.PRIVATE_SITE_EDGE_CLIENT_FINGERPRINT || ""),
-      trustEdgeHeaders: mergedEnv.PRIVATE_SITE_TRUST_EDGE_HEADERS === "1",
+      tlsCert: managedDirectGateway ? (mergedEnv.PRIVATE_SITE_ORIGIN_TLS_CERT || "") : "",
+      tlsKey: managedDirectGateway ? (mergedEnv.PRIVATE_SITE_ORIGIN_TLS_KEY || "") : "",
+      tlsCa: managedDirectGateway ? (mergedEnv.PRIVATE_SITE_ORIGIN_TLS_CA || "") : "",
+      edgeClientFingerprint: managedDirectGateway ? normalizeFingerprint(mergedEnv.PRIVATE_SITE_EDGE_CLIENT_FINGERPRINT || "") : "",
+      trustEdgeHeaders: managedDirectGateway && mergedEnv.PRIVATE_SITE_TRUST_EDGE_HEADERS === "1",
     },
     ports: {
       bridge: numberValue(mergedEnv.OPEN_AGENT_BRIDGE_PORT, defaultPorts.bridge),
@@ -106,12 +107,14 @@ function resolveSpaceContext(env, homeRoot) {
   const configuredSpaceRoot = String(env.PERSONAL_AGENT_SPACE_ROOT || "").trim();
   let installationDataRoot = configuredRoot;
   let explicitSpaceRoot = configuredSpaceRoot ? path.resolve(configuredSpaceRoot) : "";
+  let inferredSpaceId = "";
   if (!configuredSpaceRoot && fs.existsSync(path.join(configuredRoot, "space.json"))) {
     explicitSpaceRoot = configuredRoot;
     installationDataRoot = path.dirname(path.dirname(configuredRoot));
+    inferredSpaceId = String(readJson(path.join(configuredRoot, "space.json"))?.spaceId || "").trim();
   }
   const paths = installationPaths(installationDataRoot);
-  const selector = String(env.PERSONAL_AGENT_SPACE_ID || "").trim();
+  const selector = String(env.PERSONAL_AGENT_SPACE_ID || inferredSpaceId).trim();
   const space = getSpace(installationDataRoot, selector || undefined);
   if (selector && !space) throw new Error(`隔离空间不存在: ${selector}`);
   if (explicitSpaceRoot && space && explicitSpaceRoot !== space.root) throw new Error("隔离空间目录与注册表不一致");

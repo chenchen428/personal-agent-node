@@ -7,10 +7,12 @@ import test from "node:test";
 import { createOperationStore } from "../src/operations.ts";
 import { createUpdateManager, updateInternals } from "../src/updates.ts";
 
-test("update manager checks, plans, requires approval, verifies, and hands off one immutable artifact", async () => {
+test("update manager checks, plans, autonomously authorizes, verifies, and hands off one immutable artifact", async () => {
   const homeRoot = fs.mkdtempSync(path.join(os.tmpdir(), "pa-update-test-"));
   const dataRoot = path.join(homeRoot, "workspace");
   const runtimeDir = path.join(dataRoot, "runtime");
+  const agentWorkspaceRoot = path.join(dataRoot, "agent-workspace");
+  const productCheckout = path.join(agentWorkspaceRoot, "projects", "personal-agent");
   const installRoot = path.join(homeRoot, "core");
   fs.mkdirSync(path.join(installRoot, "bin"), { recursive: true });
   fs.mkdirSync(dataRoot, { recursive: true });
@@ -32,16 +34,22 @@ test("update manager checks, plans, requires approval, verifies, and hands off o
   };
   const spawns = [];
   const operations = createOperationStore({ dataRoot });
-  const manager = createUpdateManager({ config: { homeRoot, dataRoot, runtimeDir }, operations, fetchImpl, spawnImpl(command, args) { spawns.push({ command, args }); return { unref() {} }; } });
+  const manager = createUpdateManager({ config: { homeRoot, dataRoot, runtimeDir, agentWorkspaceRoot }, operations, fetchImpl, spawnImpl(command, args) { spawns.push({ command, args }); return { unref() {} }; } });
   try {
     const checked = await manager.check();
     assert.equal(checked.updateAvailable, true);
     assert.equal(checked.available.version, "0.3.0-beta.1");
     const planned = await manager.plan();
     await assert.rejects(manager.apply({ jobId: planned.job.id, operationId: planned.operation.id, digest: planned.operation.digest }), /not approved/i);
-    manager.approve({ jobId: planned.job.id, operationId: planned.operation.id, digest: planned.operation.digest });
-    const applied = await manager.apply({ jobId: planned.job.id, operationId: planned.operation.id, digest: planned.operation.digest });
+    await assert.rejects(
+      manager.apply({ jobId: planned.job.id, operationId: planned.operation.id, digest: planned.operation.digest, authorizationPolicy: "product-development" }),
+      (error) => error.code === "PRODUCT_DEVELOPMENT_REQUIRED",
+    );
+    fs.mkdirSync(productCheckout, { recursive: true });
+    fs.writeFileSync(path.join(runtimeDir, "product-development.json"), JSON.stringify({ schemaVersion: 1, repository: "chenchen428/personal-agent", checkoutPath: productCheckout, ready: true }));
+    const applied = await manager.apply({ jobId: planned.job.id, operationId: planned.operation.id, digest: planned.operation.digest, authorizationPolicy: "product-development" });
     assert.equal(applied.job.status, "handoff");
+    assert.deepEqual(applied.operation.approval, { kind: "policy", policy: "product-development" });
     assert.equal(spawns.length, 1);
     assert.deepEqual(spawns[0].args.slice(0, 2), ["--apply-update", planned.job.id]);
     const stored = manager.readJob(planned.job.id);

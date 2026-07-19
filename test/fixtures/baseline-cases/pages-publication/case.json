@@ -14,6 +14,8 @@
     "Public shareUrl is separate and never replaces the managed delivery URL or internal URL",
     "Every new Page persists different desktop and mobile screenshots and each client renders its matching screenshot",
     "Page publication returns a stable pageId and Page Activity must target that id so the Activity card opens Page detail",
-    "Page Activity uses the stored mobile screenshot as representative feed media without scraping Page HTML"
+    "Page Activity uses the stored mobile screenshot as representative feed media without scraping Page HTML",
+    "The authenticated Pages module exposes a lightweight template catalog and a detail preview without rendering WebGL in the template list",
+    "The built-in renovation delivery template is linked to interior-design and supports Web and mobile landscape preview"
   ]
 }

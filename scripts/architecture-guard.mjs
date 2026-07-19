@@ -15,6 +15,7 @@ const setupChecks = readJson('registry/setup-checks.json');
 const nodeRuntime = readJson('registry/node-runtime.json');
 const distribution = readJson('registry/site-distribution.json');
 const delivery = readJson('registry/delivery.json');
+const productDevelopment = readJson('registry/product-development.json');
 const projectNames = new Set(projects.projects.map((entry) => entry.name));
 const capabilityIds = new Set(capabilities.capabilities.map((entry) => entry.id));
 const commandStatuses = commands.implementationStatuses || {};
@@ -26,6 +27,24 @@ checks.push({ name: 'historical projects directory is absent', ok: !exists('proj
 checks.push({ name: 'Next.js application is the unified Web surface', ok: exists('core/app/next.config.ts') && exists('core/app/src/app/app/layout.tsx') });
 checks.push({ name: 'delivery separates immutable core from mutable workspace', ok: delivery.schemaVersion === 1 && delivery.core?.path === 'core' && delivery.core?.mutable === false && delivery.workspace?.path === 'workspace' && delivery.workspace?.mutable === true && delivery.workspace?.preserveOnUninstall === true });
 checks.push({ name: 'workspace carries the customer Harness contract', ok: ['AGENTS.md', 'registry', 'skills', 'workflows'].every((entry) => delivery.workspace?.harness?.includes(entry)) && exists('workspace/AGENTS.md') });
+checks.push({
+  name: 'installed product development clones the registered private root outside immutable current',
+  ok: productDevelopment.schemaVersion === 1
+    && productDevelopment.mode === 'autonomous'
+    && productDevelopment.repository === 'chenchen428/personal-agent'
+    && productDevelopment.url === 'https://github.com/chenchen428/personal-agent.git'
+    && productDevelopment.visibility === 'private'
+    && ['WRITE', 'MAINTAIN', 'ADMIN'].includes(productDevelopment.requiredPermission)
+    && productDevelopment.checkout?.relativePath === 'projects/personal-agent'
+    && productDevelopment.checkout?.recurseSubmodules === true
+    && productDevelopment.confirmationPolicy === 'never'
+    && productDevelopment.cloneFailurePolicy === 'stop'
+    && productDevelopment.immutableRuntimePath === 'core/current'
+    && exists('schemas/personal-agent/product-development.schema.json')
+    && exists('core/runtime/src/product-development.ts')
+    && exists('workflows/product-development.md')
+    && exists('skills/personal-agent/references/product-development.md'),
+});
 checks.push({ name: 'plugin schema and SDK are versioned', ok: exists('core/plugins/schema/personal-agent.plugin.schema.json') && exists('core/plugins/sdk/manifest.ts') });
 checks.push({ name: 'application logic is TypeScript', ok: !containsExtension(['core/runtime/src', 'core/control', 'core/plugins'], '.mjs') && ['core/runtime/src/config.ts', 'core/runtime/src/supervisor.ts', 'core/control/server.ts', 'core/plugins/runtime/store.ts', 'core/agent/src/agent/app-server-runner.ts', 'core/edge/src/edge.ts'].every(exists) });
 for (const file of ['capabilities', 'routes', 'extensions', 'commands', 'setup-checks']) {

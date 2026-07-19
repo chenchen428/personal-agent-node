@@ -3,7 +3,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
-import { ingestRawEmail } from "../src/automation/mail-ingest.js";
+import { ingestRawEmail } from "../src/connections/mail/mail-ingest.js";
 import { DomainBindingVerification, DOMAIN_BINDING_TIMEOUT_MS } from "../src/connections/domain-binding-verification.js";
 import { MailConnectionScanner } from "../src/connections/mail/scanner.js";
 
@@ -131,6 +131,45 @@ test("a verified result is invalidated when Cloud assigns a different resource",
   assert.equal(verifier.isVerified("sites"), false);
 });
 
+test("custom Site binding uses the three-step SOP and verifies the final custom HTTPS origin", async (t) => {
+  const dataRoot = fs.mkdtempSync(path.join(os.tmpdir(), "pa-custom-domain-site-"));
+  t.after(() => fs.rmSync(dataRoot, { recursive: true, force: true }));
+  let requested = "";
+  let publication = null;
+  const verifier = fixture({
+    dataRoot,
+    customBindings: () => ({ sites: { domain: "agent.example.net", phase: "dns", serviceReady: true } }),
+    publishPage: async (input) => { publication = input; return { url: "/public/uploads/domain-verification/index.html" }; },
+    fetchImpl: async (url) => { requested = String(url); return new Response(publication.content, { status: 200 }); },
+  });
+  const started = verifier.start("sites", { binding: "custom" });
+  assert.equal(started.binding, "custom");
+  assert.deepEqual(started.steps.map((step) => step.label), ["启动转发服务", "配置自定义域名", "验证并生效"]);
+  await verifier.running.get("sites");
+  assert.equal(verifier.status("sites", "custom").phase, "verified");
+  assert.equal(requested, "https://agent.example.net/public/uploads/domain-verification/index.html");
+  assert.equal(verifier.status("sites", "platform").phase, "idle");
+});
+
+test("custom mail binding sends to agent at the custom domain and requires real local receipt", async (t) => {
+  const dataRoot = fs.mkdtempSync(path.join(os.tmpdir(), "pa-custom-domain-mail-"));
+  t.after(() => fs.rmSync(dataRoot, { recursive: true, force: true }));
+  let delivery;
+  const events = [];
+  const verifier = fixture({
+    dataRoot,
+    customBindings: () => ({ mail: { domain: "mail.example.net", phase: "dns", serviceReady: true } }),
+    sendVerificationMail: async (input) => { delivery = input; events.push({ id: "custom-mail", sender: { address: "test@sendtest.joltmx.com" }, receivedAt: new Date().toISOString(), payload: { recipients: [input.recipient] } }); return { accepted: true, senderDomain: "sendtest.joltmx.com" }; },
+    listMailEvents: () => events,
+  });
+  verifier.start("mail", { binding: "custom" });
+  await verifier.running.get("mail");
+  assert.equal(delivery.recipient, "agent@mail.example.net");
+  const result = verifier.status("mail", "custom");
+  assert.equal(result.phase, "verified");
+  assert.equal(result.steps.length, 3);
+});
+
 function fixture(overrides = {}) {
   let publishedContent = "";
   return new DomainBindingVerification({
@@ -141,6 +180,7 @@ function fixture(overrides = {}) {
     sendVerificationMail: overrides.sendVerificationMail || (async () => ({ accepted: true, senderDomain: "sendtest.joltmx.com" })),
     scanMail: overrides.scanMail || (async () => ({})),
     listMailEvents: overrides.listMailEvents || (() => []),
+    customBindings: overrides.customBindings || (() => ({})),
     fetchImpl: overrides.fetchImpl || (async () => new Response(publishedContent, { status: 200 })),
     now: overrides.now,
     sleep: overrides.sleep || (async () => {}),

@@ -3,9 +3,9 @@ import fs from "node:fs";
 import path from "node:path";
 import { DatabaseSync } from "node:sqlite";
 
-const ACTIVITY_TYPES = new Set(["work", "page", "mail", "data", "automation", "note"]);
+const ACTIVITY_TYPES = new Set(["work", "page", "mail", "data", "note"]);
 const ACTIVITY_STATES = new Set(["visible", "hidden"]);
-const TARGET_TYPES = new Set(["work", "page", "mail", "data", "automation", "app"]);
+const TARGET_TYPES = new Set(["work", "page", "mail", "data", "app"]);
 const OBJECT_ID = /^obj_[a-f0-9]{24}$/;
 const MAX_TITLE_CHARACTERS = 30;
 const MAX_DETAIL_CHARACTERS = 2000;
@@ -89,6 +89,10 @@ export class ActivityStore {
       );
       CREATE INDEX IF NOT EXISTS idx_activity_audit_owner_time
         ON activity_audit(owner_id, created_at DESC, id DESC);
+    `);
+    this.db.exec(`
+      UPDATE activities SET activity_type = 'work' WHERE activity_type = 'automation';
+      UPDATE activities SET target_type = 'work' WHERE target_type = 'automation';
     `);
   }
 

@@ -66,6 +66,25 @@ test("control socket requires a one-time approval challenge and survives malform
   }
 });
 
+test("registered product development can authorize an update without a human approval", async () => {
+  const dataRoot = fs.mkdtempSync(path.join(os.tmpdir(), "personal-agent-policy-"));
+  const store = createOperationStore({ dataRoot });
+  try {
+    const planned = store.plan({ command: "update apply", risk: "R3", inputSummary: "Install accepted Node release", target: "beta:v1" });
+    assert.throws(
+      () => store.authorize(planned.id, { digest: planned.digest, actor: { kind: "agent-policy", policy: "unregistered" } }),
+      /limited to registered product development/i,
+    );
+    const authorized = store.authorize(planned.id, { digest: planned.digest, actor: { kind: "agent-policy", policy: "product-development" } });
+    assert.equal(authorized.status, "approved");
+    assert.deepEqual(authorized.approval, { kind: "policy", policy: "product-development" });
+    const executed = await store.execute(planned.id, { digest: planned.digest, actor: { kind: "runtime" }, handler: async () => ({ release: "v1" }) });
+    assert.equal(executed.status, "succeeded");
+  } finally {
+    fs.rmSync(dataRoot, { recursive: true, force: true });
+  }
+});
+
 function rawRequest(endpoint, body) {
   return new Promise((resolve, reject) => {
     const socket = net.createConnection(endpoint, () => socket.end(body));

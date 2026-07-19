@@ -71,7 +71,7 @@ test("Mobile V6.35 implements the approved task and navigation interactions", ()
   assert.ok(about.indexOf("<MobileTokenUsageSection />") > about.indexOf("mobile-about-email"));
   assert.ok(about.indexOf("<MobileTokenUsageSection />") < about.indexOf("mobile-about-skills"));
   assert.match(tokenUsage, /TokenUsageHeatmap/);
-  assert.match(tokenUsage, /formatCompactTokenCount/);
+  assert.match(tokenUsage, /CompactTokenCount/);
 });
 
 test("Mobile Activity renders target-derived representative media", () => {

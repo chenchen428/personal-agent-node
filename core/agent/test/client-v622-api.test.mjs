@@ -5,6 +5,7 @@ import net from "node:net";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
+import { initializeInstallation } from "../../runtime/src/space-registry.ts";
 
 const agentRoot = path.resolve(import.meta.dirname, "..");
 const workspaceRoot = path.resolve(agentRoot, "..", "..");
@@ -13,6 +14,8 @@ test("V6.22 read-only client API is local, searchable and self-contained", async
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "personal-agent-client-v622-"));
   const port = await freePort();
   const token = "client-v622-test-token";
+  const installationRoot = path.join(root, "workspace");
+  const { personal } = initializeInstallation({ dataRoot: installationRoot });
   const uploadsDir = path.join(root, "uploads");
   fs.mkdirSync(path.join(uploadsDir, "relative-page"), { recursive: true });
   fs.writeFileSync(path.join(uploadsDir, "relative-page", "index.html"), "<h1>Relative page</h1>");
@@ -31,8 +34,9 @@ test("V6.22 read-only client API is local, searchable and self-contained", async
       OPEN_AGENT_BRIDGE_PRIVATE_PUBLICATIONS_DIR: path.join(root, "private-publications"),
       OPEN_AGENT_BRIDGE_UPLOADS_DIR: uploadsDir,
       OPEN_AGENT_BRIDGE_MAIL_DATA_DIR: path.join(root, "mail"),
-      PRIVATE_SITE_DATA_ROOT: path.join(root, "workspace"),
-      PERSONAL_AGENT_SPACE_ID: "sp_clientv622test",
+      PRIVATE_SITE_DATA_ROOT: installationRoot,
+      PERSONAL_AGENT_SPACE_ID: personal.id,
+      PERSONAL_AGENT_SPACE_ROOT: personal.root,
       PERSONAL_AGENT_SPACE_SLUG: "personal",
       PERSONAL_AGENT_SPACE_KIND: "personal",
       OPEN_AGENT_BRIDGE_CHANNEL_POLL: "0",

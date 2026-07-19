@@ -1,6 +1,6 @@
 # Scheduled Tasks
 
-Scheduled tasks are an implemented, local-first Personal Agent capability. They are distinct from the removed generic event/rule automation product.
+Scheduled tasks are the implemented, local-first engine behind the task module's user-visible “自动化” view. The standalone generic event/rule automation product is removed; every scheduled trigger creates a normal task.
 
 Use the stable `pa-cli cron` commands and always request JSON output:
 

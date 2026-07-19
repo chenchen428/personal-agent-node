@@ -17,23 +17,24 @@ function reconcile() {
   let config;
   try { config = resolveNodeConfig(); }
   catch { return stopConnector(); }
-  if (config.site?.connectionMode !== "managed-cloud") return stopConnector();
+  if (!new Set(["managed-cloud", "self-hosted-edge"]).has(config.site?.connectionMode)) return stopConnector();
   try {
     const tunnel = loadReverseTunnelConfig(config);
     const nextFingerprint = JSON.stringify([tunnel.protocol, tunnel.endpoint, tunnel.generation, tunnel.token]);
     if (connector && fingerprint === nextFingerprint) return;
     stopConnector();
     fingerprint = nextFingerprint;
+    const managed = config.site?.connectionMode === "managed-cloud";
     connector = new ReverseTunnelConnector({
       config,
       tunnel,
-      refreshCredential: () => refreshManagedCloudCredential({ config: resolveNodeConfig() }),
-      silentCredential: () => silentBootstrapManagedCloudCredential({ config: resolveNodeConfig() }),
+      refreshCredential: managed ? () => refreshManagedCloudCredential({ config: resolveNodeConfig() }) : null,
+      silentCredential: managed ? () => silentBootstrapManagedCloudCredential({ config: resolveNodeConfig() }) : null,
     });
     connector.start();
   } catch (error) {
     stopConnector();
-    if (error?.code === "TUNNEL_TOKEN_MISSING" && !bootstrapRecovery && !bootstrapBlocked && Date.now() >= bootstrapRetryAt) {
+    if (config.site?.connectionMode === "managed-cloud" && error?.code === "TUNNEL_TOKEN_MISSING" && !bootstrapRecovery && !bootstrapBlocked && Date.now() >= bootstrapRetryAt) {
       writeJsonAtomic(path.join(config.runtimeDir, "reverse-tunnel.json"), { schemaVersion: 1, protocol: "pa-reverse-ws-v1", state: "authorizing", cause: "access_token_missing", authorizationRequired: false, updatedAt: new Date().toISOString() }, 0o600);
       bootstrapRecovery = silentBootstrapManagedCloudCredential({ config })
         .then(() => { bootstrapRetryAt = 0; bootstrapAttempt = 0; })

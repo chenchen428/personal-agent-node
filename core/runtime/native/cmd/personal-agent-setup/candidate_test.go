@@ -87,6 +87,21 @@ func TestCandidateApprovalRequiresCharacterDevices(t *testing.T) {
 	}
 }
 
+func TestAuthorizedProductDeliveryApprovesOnlyTheExactCandidateState(t *testing.T) {
+	job := candidateJob{Status: "planned"}
+	operation := candidateOperation{
+		candidateBinding: candidateBinding{ID: "op_test", Risk: "R3"},
+		Digest:           "digest", Status: "planned",
+	}
+	approveCandidateState(&job, &operation, "2026-07-19T00:00:00Z", "owner-delegated-agent", "registered-product-development")
+	if job.Status != "approved" || operation.Status != "approved" || operation.ApprovedAt == "" {
+		t.Fatal("authorized product delivery must approve the planned candidate state")
+	}
+	if operation.Approval["kind"] != "owner-delegated-agent" || operation.Approval["channel"] != "registered-product-development" || operation.Approval["scope"] != "exact-candidate-digest" {
+		t.Fatalf("unexpected delegated approval: %#v", operation.Approval)
+	}
+}
+
 func TestCandidateSecurityMetadataMustBeChecksummed(t *testing.T) {
 	root := t.TempDir()
 	security := filepath.Join(root, "CANDIDATE-SECURITY.json")

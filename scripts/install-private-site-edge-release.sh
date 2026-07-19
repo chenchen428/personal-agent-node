@@ -12,6 +12,7 @@ command -v logrotate >/dev/null 2>&1 || { echo "Edge host prerequisite is missin
 (cd "$RELEASE_DIR" && sha256sum -c SHA256SUMS >/dev/null)
 chmod 755 \
   "$RELEASE_DIR/core/edge/bin/private-site-edge.mjs" \
+  "$RELEASE_DIR/core/edge/bin/self-hosted-relay.mjs" \
   "$RELEASE_DIR/core/edge/scripts/"*.sh \
   "$RELEASE_DIR/infra/edge/"*.sh \
   "$RELEASE_DIR/infra/edge/pki/"*.sh \

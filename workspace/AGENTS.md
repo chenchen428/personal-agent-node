@@ -10,6 +10,9 @@ generated content as private local data.
 - Read `docs/capabilities.md` before assuming a capability and
   `docs/self-iteration.md` before changing the workspace Harness, an App, Skill,
   workflow, automation, or reusable instruction.
+- Product capability development is a separate workflow. Read
+  `workflows/product-development.md`, run `personal-agent development ensure
+  --json`, and use its returned checkout as the development task workspace.
 - Keep credentials under `secrets/`; never print them into chat, logs, or reports.
 - Install plugins only through the governed Personal Agent operation flow.
 - Create trusted local Personal Apps only under `apps/<app-id>`. Keep App source,
@@ -21,7 +24,9 @@ generated content as private local data.
   and desktop compositions. Share API/state code and reusable components, but
   never substitute a narrowed desktop page for the mobile surface. Follow the
   dual-surface routes and acceptance checks in `docs/personal-app-development.md`.
-- Do not edit files below `../core/current`; core upgrades replace them.
+- Do not edit files below `../core/current`; core upgrades replace them. Product
+  development always happens in the registered private repository clone below
+  `projects/personal-agent` in this Agent workspace.
 - Use `personal-agent` for runtime lifecycle and diagnostics. Use `pa-cli` for
   assistant sessions, channels, data, automation, files, and Pages. Do not use
   or recreate the removed `open-abg`, `oab`, or `open-agent-bridge` aliases.

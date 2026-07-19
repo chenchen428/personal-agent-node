@@ -1,24 +1,17 @@
 # Interior output rules
 
-## Still image
+## Still render
 
-Default composition: high isometric camera, roof removed, complete floor plan in frame, white or very light neutral background, warm-white walls, light oak and warm-grey stone, realistic but restrained furniture, soft daylight and contact shadows. Keep geometry legible; avoid cinematic depth of field, fisheye distortion, people, labels, watermarks, brand marks, or invented windows and rooms.
+Default to a high isometric, roofless dollhouse on a light neutral background with restrained real materials, legible furniture, soft daylight, and contact shadows. Distinguish structure evidence from style evidence and describe uncertain geometry as conceptual.
 
-The prompt must distinguish structural evidence from style evidence and say that uncertain geometry is conceptual. Save the final prompt before generation. Inspect the output at delivery size for plan continuity, room adjacency, furniture scale, clipped edges, material consistency, and forbidden text.
+Inspect the final image at delivery size for plan continuity, room adjacency, furniture scale, clipped edges, material consistency, and invented text. Avoid cinematic depth of field, fisheye distortion, people, labels, watermarks, brand marks, and ungrounded windows or rooms.
 
 ## Interactive Page
 
-The generated Page is a viewer, not a marketing site:
-
-- canvas fills the viewport; no decorative card frame;
-- auto-play stages floor, walls, materials, furniture, then push, lateral, and detail cameras;
-- pause, replay, progress, free view, isometric, top, and walk controls are real;
-- OrbitControls enables rotate, zoom, and pan after or during interruption;
-- material scheme and day/evening state update live Three.js materials and lighting;
-- use local assets only and provide a visible WebGL fallback;
-- controls are at least 44 px, have labels/tooltips, visible focus, and safe-area spacing;
-- reduced motion skips staged object transforms and camera tours, leaving the finished free-view scene;
-- desktop and mobile use the same full-canvas subject with independently arranged tool groups, not a squeezed desktop panel.
-
-Design tokens and the two-pass rationale are persisted under `design-system/interior-design-page/`.
-
+- Render the finished model immediately. No automatic build sequence, camera tour, timeline, playback, or decorative motion.
+- Keep the whole plan in frame by default. Room selection changes the camera target and distance to a genuine close view.
+- OrbitControls provides rotate, pan, and zoom. View and reset controls have accessible names, visible focus, and observable results.
+- Use only the shipped local Three.js bundle. Do not load remote assets or fonts.
+- Keep the subject dominant. Desktop may use a compact room rail; mobile landscape places the room selector in the Header and a compact view toolbar at the lower right.
+- Provide a non-blocking portrait orientation hint and a model-derived projection fallback when WebGL is unavailable.
+- Keep the Page read-only. Agent-authored model and copy are the only editing surface.

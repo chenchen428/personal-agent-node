@@ -4,6 +4,7 @@ import { spawn } from 'node:child_process';
 
 import { writePasswordVerifier } from '../../agent/src/auth/personal-auth.js';
 import { managedServiceReadiness } from './cloud-resources.ts';
+import { customDomainInputFingerprint, normalizeCustomDomainInput, removeCustomDomainBinding, startCustomDomainForwarder } from './custom-domain.ts';
 import { removeSecretEnvKeys, resolveNodeConfig, setConnectionMode, writeJsonAtomic, workspaceRoot } from './config.ts';
 
 const mutationActions = Object.freeze({
@@ -27,6 +28,16 @@ const mutationActions = Object.freeze({
     summary: 'Cancel the current managed Cloud browser authorization without changing an existing binding',
     target: 'managed-cloud',
   },
+  'connectivity.custom-domain-start': {
+    risk: 'R2',
+    summary: 'Prepare a custom-domain Relay binding and detection contract',
+    target: 'custom-domain',
+  },
+  'connectivity.custom-domain-remove': {
+    risk: 'R2',
+    summary: 'Remove the local custom-domain binding while preserving Workspace data',
+    target: 'custom-domain',
+  },
   'mail.enable': {
     risk: 'R1',
     summary: 'Enable local mail readiness checks',
@@ -34,39 +45,75 @@ const mutationActions = Object.freeze({
   },
 });
 
-export function planSetupAction({ actionId, operations, dataRoot }) {
+export function planSetupAction({ actionId, operations, dataRoot, input = {} }) {
   const definition = mutationActions[actionId];
   if (!definition) throw setupActionError('ACTION_NOT_MUTATING', `Setup action does not require an execution plan: ${actionId}`);
   const config = resolveNodeConfig({ ...process.env, PRIVATE_SITE_DATA_ROOT: dataRoot });
+  const customFingerprint = actionId === 'connectivity.custom-domain-start' ? customDomainInputFingerprint(input)
+    : actionId === 'connectivity.custom-domain-remove' ? `remove:${String(input.kind || '')}` : '';
   return operations.plan({
     command: `setup ${actionId}`,
     risk: definition.risk,
     inputSummary: definition.summary,
     target: definition.target,
-    stateFingerprint: `${config.site?.siteId || 'uninitialized'}:${config.site?.connectionMode || 'local-only'}`,
+    stateFingerprint: `${config.site?.siteId || 'uninitialized'}:${config.site?.connectionMode || 'local-only'}${customFingerprint ? `:${customFingerprint}` : ''}`,
     idempotencyKey: actionId,
   });
 }
 
-export async function executeSetupAction({ actionId, input, dataRoot }) {
+export async function executeSetupAction({ actionId, input, dataRoot, operation }) {
   if (actionId === 'installation.local-auth') return establishLocalAuth({ input, dataRoot });
   if (actionId === 'connectivity.managed-authorize') return launchManagedCloudSetup({ dataRoot });
   if (actionId === 'connectivity.managed-disconnect') return disconnectManagedCloud({ dataRoot });
   if (actionId === 'connectivity.managed-cancel') return cancelManagedCloudSetup({ dataRoot });
+  if (actionId === 'connectivity.custom-domain-start') {
+    assertCustomDomainOperation(operation, actionId, input, dataRoot);
+    return startCustomDomainForwarder({ dataRoot, input });
+  }
+  if (actionId === 'connectivity.custom-domain-remove') {
+    assertCustomDomainRemoveOperation(operation, actionId, input, dataRoot);
+    return removeCustomDomainBinding({ dataRoot, kind: input?.kind });
+  }
   if (actionId === 'mail.enable') return enableMailChecks({ dataRoot });
   throw setupActionError('ACTION_UNAVAILABLE', `Setup action cannot be executed: ${actionId}`);
 }
 
+function assertCustomDomainOperation(operation, actionId, input, dataRoot) {
+  const config = resolveNodeConfig({ ...process.env, PRIVATE_SITE_DATA_ROOT: dataRoot });
+  const normalized = normalizeCustomDomainInput(input);
+  const expected = `${config.site?.siteId || 'uninitialized'}:${config.site?.connectionMode || 'local-only'}:${customDomainInputFingerprint(normalized)}`;
+  if (operation?.command !== `setup ${actionId}` || operation?.stateFingerprint !== expected) throw setupActionError('ACTION_PLAN_MISMATCH', '自定义域名输入与已批准计划不一致');
+}
+
+function assertCustomDomainRemoveOperation(operation, actionId, input, dataRoot) {
+  const config = resolveNodeConfig({ ...process.env, PRIVATE_SITE_DATA_ROOT: dataRoot });
+  const kind = String(input?.kind || '');
+  if (!['mail', 'sites'].includes(kind)) throw setupActionError('CUSTOM_DOMAIN_KIND_INVALID', '仅支持本地邮箱和 Sites 自定义域名');
+  const expected = `${config.site?.siteId || 'uninitialized'}:${config.site?.connectionMode || 'local-only'}:remove:${kind}`;
+  if (operation?.command !== `setup ${actionId}` || operation?.stateFingerprint !== expected) throw setupActionError('ACTION_PLAN_MISMATCH', '移除目标与已批准计划不一致');
+}
+
+export function startAutomaticManagedCloudBootstrap({ dataRoot }) {
+  const config = resolveNodeConfig({ ...process.env, PRIVATE_SITE_DATA_ROOT: dataRoot });
+  const statusFile = path.join(config.dataRoot, 'runtime', 'setup', 'managed-cloud-action.json');
+  const current = readJson(statusFile);
+  if (['failed', 'cancelled'].includes(current?.state)) {
+    return { started: false, state: current.state, phase: current.phase || 'idle', code: current.code || '' };
+  }
+  return launchManagedCloudSetup({ dataRoot });
+}
+
 export function disconnectManagedCloud({ dataRoot }) {
   const config = resolveNodeConfig({ ...process.env, PRIVATE_SITE_DATA_ROOT: dataRoot });
+  const statusFile = path.join(config.dataRoot, 'runtime', 'setup', 'managed-cloud-action.json');
   setConnectionMode(config, 'local-only');
   for (const filePath of [
     path.join(config.configDir, 'cloud-resources.json'),
     path.join(config.dataRoot, 'secrets', 'applications', 'cloud-cli-session.json'),
-    path.join(config.dataRoot, 'runtime', 'setup', 'managed-cloud-action.json'),
   ]) {
     fs.rmSync(filePath, { force: true });
   }
+  writeActionStatus(statusFile, { state: 'cancelled', phase: 'idle', code: 'USER_DISCONNECTED' });
   return { disconnected: true, mode: 'local-only', localDataPreserved: true };
 }
 

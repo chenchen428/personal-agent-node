@@ -15,7 +15,7 @@ personal-agent activity hide <id> --capability <ephemeral> --expected-revision <
 personal-agent activity restore <id> --capability <ephemeral> --expected-revision <n> --json
 ```
 
-Types are `work`, `page`, `mail`, `data`, `automation`, and `note`. Titles are required and limited to 30 visible characters. Details are required. Attachments use repeated `--attachment obj_...` options and are limited to ten total. Never use local paths or arbitrary URLs as attachments.
+Types are `work`, `page`, `mail`, `data`, and `note`. Scheduled automation creates ordinary tasks and therefore uses `work`; there is no separate automation Activity type. Titles are required and limited to 30 visible characters. Details are required. Attachments use repeated `--attachment obj_...` options and are limited to ten total. Never use local paths or arbitrary URLs as attachments.
 
 When an Activity has a user-visible detail object, provide `--target-type` and `--target-id` together so the Activity card opens that object. Page Activity is stricter: it must use `--target-type page` and the stable `pageId` returned by `pa-cli pages publish`. Never substitute the Page URL, share URL, folder, local path, or a guessed client route for that ID.
 

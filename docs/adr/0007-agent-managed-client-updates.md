@@ -20,10 +20,11 @@ restore `previous` and relaunch the known-good release.
 
 The Agent may own checking, planning, safe-window selection, progress reporting,
 post-restart continuation, and recovery. Applying or rolling back an update is
-an R3 operation. The first release requires a fresh authenticated local approval
-for every apply or rollback. A later standing delegation policy may allow the
-Agent to apply a narrowly constrained stable-channel update without another
-prompt; creating or widening that policy is itself an R3 local-human action.
+an R3 operation. Ordinary customer update and rollback flows require fresh
+authenticated local approval. A registered product-development delivery is the
+scoped exception: the owner's initiating request authorizes that delivery's exact
+revision and digest without a redundant second prompt. Broader standing update
+delegation remains a separate R3 local-human policy decision.
 
 ## V1 implementation note
 
@@ -39,8 +40,9 @@ signing follows the repository's disclosed deferred-prerelease policy.
 The release pipeline continues to publish Sigstore bundles and provenance for
 acceptance. Runtime verification of those keyless bundles, or a separate signed
 static channel index, remains a release-hardening follow-up and is required
-before standing no-prompt delegation can be enabled. V1 always requires a fresh
-local-human approval, so this follow-up does not widen Agent authority.
+before general standing no-prompt delegation can be enabled. V1 keeps fresh
+local-human approval for ordinary updates; the registered product-development
+exception does not create a reusable channel policy.
 
 ## Existing foundations
 
@@ -154,10 +156,13 @@ use the explicitly documented deferred-prerelease policy.
 Planning copies the exact updater into
 `workspace/installation/updates/<job-id>` and binds its SHA-256, size, revision,
 current installed release, operation ID, and operation digest for ten minutes.
-The R3 operation is written to the personal Space operation store so the
-existing `personal-agent operation approve` interactive local-TTY flow can
-approve it. Chat, an Agent process, a Worker, and redirected stdin cannot
-approve. Apply rechecks the approved operation, expiry, artifact bytes, and
+The R3 operation is written to the personal Space operation store. Ordinary
+candidate use is approved through the existing `personal-agent operation approve`
+interactive local-TTY flow. For a registered product-development delivery, the
+owner's initiating request is standing authorization for only the exact revision
+and digest, so the delivery Agent may pass `--authorized-product-delivery` without
+a second prompt. Workers, remote callers, and unrelated Agent activity cannot
+widen or reuse that authorization. Apply rechecks the approved operation, expiry, artifact bytes, and
 installed-state fingerprint before the desktop owner stops the runtime. The
 native installer retains `previous`, atomically switches `current`, preserves
 Workspace data, and records `succeeded`, `rolled_back`, or `failed`.
@@ -294,9 +299,12 @@ personal-agent operation approve <operation-id> --digest <digest> --json
 personal-agent-setup candidate-apply --operation <operation-id> --digest <digest>
 ```
 
-Only the middle command approves, and it requires its normal authenticated
-interactive local TTY challenge. The candidate executable never accepts a raw
-release directory, URL, install root, or confirmation flag.
+The normal flow uses the middle command and its authenticated interactive local
+TTY challenge. A registered product-development delivery instead uses
+`candidate-plan --authorized-product-delivery`; this records an owner-delegated
+approval scoped to the exact candidate digest and removes the redundant second
+prompt. The candidate executable never accepts a raw release directory, URL, or
+install root.
 
 ## Console experience
 
@@ -360,7 +368,7 @@ Implementation is not complete until CI and fresh-machine acceptance cover:
   product updater.
 - The native installer stays the single release root of trust and activation
   implementation.
-- Agent delegation becomes useful without weakening the local-human boundary for
-  executable replacement.
+- Owner-delegated product delivery removes redundant confirmation while retaining
+  an exact revision, digest, expiry, installed-state fingerprint, and audit trail.
 - Update success is reported only after the new release has restarted and passed
   acceptance; “installer exited successfully” is not sufficient evidence.

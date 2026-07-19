@@ -61,9 +61,9 @@ function verifyLayout() {
   for (const relative of [
     "core/app/server.js", "core/app/.next/static", "core/runtime/bin/personal-agent.mjs", "core/runtime/bin/private-site.mjs",
     "core/runtime/app/control-service.mjs", "core/runtime/app/gateway.mjs", "core/runtime/app/reverse-tunnel.mjs", "core/agent/app/server.mjs", "core/agent/app/worker.mjs",
-    "core/control/server.mjs", "core/apps/schema/personal-agent.app.schema.json", "core/plugins/schema/personal-agent.plugin.schema.json",
-    "workspace/AGENTS.md", "workspace/skills", "workspace/workflows", "workspace/registry/skills.json", "workspace/registry/plugins.json",
-    "registry/delivery.json", "docs/adr/0003-core-workspace-next-architecture.md", "SBOM.cdx.json", "SHA256SUMS",
+    "core/control/server.mjs", "core/edge/bin/self-hosted-relay.mjs", "infra/edge/install-self-hosted-relay.sh", "core/apps/schema/personal-agent.app.schema.json", "core/plugins/schema/personal-agent.plugin.schema.json",
+    "workspace/AGENTS.md", "workspace/skills", "workspace/workflows", "workspace/workflows/product-development.md", "workspace/registry/skills.json", "workspace/registry/plugins.json", "workspace/registry/product-development.json",
+    "registry/delivery.json", "registry/product-development.json", "schemas/personal-agent/product-development.schema.json", "docs/adr/0003-core-workspace-next-architecture.md", "SBOM.cdx.json", "SHA256SUMS",
   ]) assert(fs.existsSync(at(relative)), `Release file is missing: ${relative}`);
   const installer = fs.readFileSync(at("scripts/install-private-site-node-release.mjs"), "utf8");
   assert(!/from\s+["'][^"']+\.ts["']/.test(installer), "Release installer depends on unpackaged TypeScript source");
@@ -153,6 +153,9 @@ function verifyPreparation() {
     }
     for (const relative of ["AGENTS.md", "skills", "workflows", "registry"]) {
       assert(fs.existsSync(path.join(personalRoot, "agent-workspace", relative)), `Prepared Agent workspace is missing: ${relative}`);
+    }
+    for (const relative of ["registry/product-development.json", "workflows/product-development.md", "skills/personal-agent/references/product-development.md"]) {
+      assert(fs.existsSync(path.join(personalRoot, "agent-workspace", ...relative.split("/"))), `Prepared Agent workspace is missing product development contract: ${relative}`);
     }
     const appCompatibility = JSON.parse(fs.readFileSync(path.join(personalRoot, "config", "apps-compatibility.json"), "utf8"));
     assert(appCompatibility.schemaVersion === 1 && appCompatibility.candidateNodeApis?.includes("1"), "Prepared Workspace is missing the Personal App compatibility report");

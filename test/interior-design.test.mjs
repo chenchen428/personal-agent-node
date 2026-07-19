@@ -14,6 +14,9 @@ test('validates the normalized concept fixture and rejects broken references', (
   const broken = structuredClone(fixture);
   broken.furniture[0].roomId = 'missing';
   assert.match(validateModel(broken).join('\n'), /roomId does not resolve/);
+  broken.furniture[0].roomId = fixture.furniture[0].roomId;
+  broken.camera.initial = 'tour';
+  assert.match(validateModel(broken).join('\n'), /camera.initial is invalid/);
 });
 
 test('normalizes coordinates and recomputes room area', () => {
@@ -28,12 +31,17 @@ test('normalizes coordinates and recomputes room area', () => {
   assert.equal(normalized.project.bounds.minX, 0);
 });
 
-test('generates a self-contained viewer without remote dependencies', () => {
+test('generates the self-contained static renovation delivery template', () => {
   const output = fs.mkdtempSync(path.join(os.tmpdir(), 'interior-page-'));
   const index = generatePage({ model: fixture, output, skillRoot: path.join(root, 'skills/interior-design') });
   const html = fs.readFileSync(index, 'utf8');
   assert.match(html, /OrbitControls/);
-  assert.match(html, /prefers-reduced-motion/);
+  assert.match(html, /id="room-select"/);
+  assert.match(html, /整体方案 · 完整户型/);
+  assert.match(html, /3D 鸟瞰/);
+  assert.match(html, /3D 投影模式/);
+  assert.match(html, /pointermove/);
+  assert.doesNotMatch(html, /id="play"|id="replay"|class="timeline"|animateTimeline|cameraTour/);
   assert.doesNotMatch(html, /<(?:script|link|iframe)[^>]+(?:src|href)=["']https?:\/\//i);
   assert.ok(fs.statSync(index).size > 100_000);
 });

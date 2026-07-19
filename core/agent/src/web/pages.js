@@ -1,5 +1,12 @@
 import { renderMarkdown } from "./markdown.js";
 
+const TOKEN_UNIT_DETAILS = {
+  K: { title: "K（Kilo）：千（10³）", label: "K，Kilo，千，10 的 3 次方" },
+  M: { title: "M（Million）：百万（10⁶）", label: "M，Million，百万，10 的 6 次方" },
+  B: { title: "B（Billion）：十亿（10⁹）", label: "B，Billion，十亿，10 的 9 次方" },
+  T: { title: "T（Trillion）：万亿（10¹²）", label: "T，Trillion，万亿，10 的 12 次方" },
+};
+
 export function renderDashboard({ sessions = [], totalSessions = sessions.length, pagination = {}, pageSize = 20, initialLoading = false, tokenUsage = emptyTokenUsage() } = {}) {
   const activeSessions = sessions.filter((session) => session.status !== "archived");
   return layout({
@@ -19,16 +26,15 @@ export function renderDashboard({ sessions = [], totalSessions = sessions.length
             <div class="console-header-actions">
               <button class="console-token-button" type="button" data-token-open title="Token 用量" aria-label="查看 Token 用量">
                 ${icon("chart-bar")}
-                <span data-token-total-label>${escapeHtml(formatTokenCount(tokenUsage.totalTokens))}</span>
+                <span data-token-total-label>${formatTokenCountHtml(tokenUsage.totalTokens)}</span>
               </button>
               <div class="console-menu-wrap">
                 <button class="console-icon-button" type="button" data-console-menu-trigger title="更多" aria-label="更多" aria-haspopup="menu" aria-expanded="false">${icon("more-horizontal")}</button>
                 <div class="console-menu-popover" data-console-menu role="menu" hidden>
                   <a href="/app/data" role="menuitem">${icon("database")}<span>数据</span></a>
-                  <a href="/app/automations" role="menuitem">${icon("workflow")}<span>自动化</span></a>
                   <a href="/app/channels" role="menuitem">${icon("radio")}<span>渠道管理</span></a>
                   <a href="/app/skills" role="menuitem">${icon("book-open")}<span>技能清单</span></a>
-                  <a href="/app/schedules" role="menuitem">${icon("calendar-clock")}<span>定时任务</span></a>
+                  <a href="/app/workers/schedules" role="menuitem">${icon("calendar-clock")}<span>自动化</span></a>
                   <a href="/app/update" role="menuitem">${icon("rotate-cw")}<span>更新与回滚</span></a>
                   <button type="button" data-refresh role="menuitem">${icon("rotate-cw")}<span>刷新</span></button>
                 </div>
@@ -77,7 +83,7 @@ function renderTokenUsageDialog(tokenUsage) {
         <section class="token-total-band">
           <div class="token-total-copy">
             <span data-token-range-label>${escapeHtml(tokenRangeLabel(tokenUsage.range))}</span>
-            <strong data-token-value="totalTokens" data-token-format="compact">${escapeHtml(formatTokenCount(tokenUsage.totalTokens))}</strong>
+            <strong data-token-value="totalTokens" data-token-format="compact">${formatTokenCountHtml(tokenUsage.totalTokens)}</strong>
             <small>Tokens consumed · <span data-token-updated>${escapeHtml(tokenUsage.updatedAt ? `更新于 ${formatTime(tokenUsage.updatedAt)}` : "暂无用量记录")}</span></small>
           </div>
           <div class="token-pulse" aria-hidden="true">${icon("activity")}<strong>Pulse</strong><span data-token-pulse-label>${escapeHtml(tokenRangeLabel(tokenUsage.range))}</span></div>
@@ -114,7 +120,7 @@ function renderTokenUsageDialog(tokenUsage) {
 }
 
 function tokenMetric(label, key, value, accent = "cyan", suffix = "") {
-  return `<div data-accent="${escapeAttr(accent)}"><dt>${escapeHtml(label)}</dt><dd><span data-token-value="${escapeAttr(key)}">${escapeHtml(formatTokenCount(value))}</span>${escapeHtml(suffix)}</dd></div>`;
+  return `<div data-accent="${escapeAttr(accent)}"><dt>${escapeHtml(label)}</dt><dd><span data-token-value="${escapeAttr(key)}">${formatTokenCountHtml(value)}</span>${escapeHtml(suffix)}</dd></div>`;
 }
 
 function tokenRangeLabel(range) {
@@ -135,7 +141,7 @@ function renderTokenSessionRows(sessions = []) {
   if (!sessions.length) return `<div class="token-empty">暂无会话用量</div>`;
   return sessions.map((session) => `<a class="token-session-row" href="/app/chat/session/${encodeURIComponent(session.sessionId)}/live">
     <span><strong>${escapeHtml(session.title || "未命名会话")}</strong><small>${escapeHtml(session.threadCount === 1 ? "1 个线程" : `${session.threadCount} 个线程`)}</small></span>
-    <span><b>${escapeHtml(formatTokenCount(session.totalTokens))}</b><time>${escapeHtml(timeAgo(session.updatedAt))}</time></span>
+    <span><b>${formatTokenCountHtml(session.totalTokens)}</b><time>${escapeHtml(timeAgo(session.updatedAt))}</time></span>
   </a>`).join("");
 }
 
@@ -198,50 +204,6 @@ export function renderNewSession({ workspaces = [], initialWorkspaceName = "", i
         </div>
       </section>
       <script>${composeScript()}</script>
-    `,
-  });
-}
-
-export function renderCronPage({ tasks = [], workspaces = [] }) {
-  const examplePrompt = "请帮我创建一个定时任务：每个工作日 9:00（Asia/Shanghai）整理项目待办，触发时通过微信通知我，并开启新的 Codex 会话。";
-  return layout({
-    title: "定时任务 · Agent Bridge",
-    body: `
-      <section class="agent-bridge-app-viewport agent-bridge-theme console-page cron-page">
-        <div class="console-frame cron-frame">
-          <header class="console-header">
-            ${consoleBackButtons()}
-            <div class="console-title">
-              <span>定时任务</span>
-              <small>
-                <i class="presence-dot online" aria-hidden="true"></i>
-                <span>本机 · ${tasks.length} 个任务</span>
-              </small>
-            </div>
-            <button class="console-icon-button" type="button" data-refresh title="刷新" aria-label="刷新">${icon("more-horizontal")}</button>
-          </header>
-
-          <main class="agent-bridge-app-content console-scroll cron-scroll">
-            <section class="cron-agent-guide wechat-only-hidden" aria-hidden="true">
-              <div class="cron-agent-guide-icon" aria-hidden="true">${icon("message-square")}</div>
-              <div class="cron-agent-guide-copy">
-                <strong>告诉 Agent 你想定时做什么</strong>
-                <p>说明任务内容、触发时间和是否需要微信通知。任务周期最短为 15 分钟。</p>
-                <blockquote>${escapeHtml(examplePrompt)}</blockquote>
-              </div>
-              <a class="cron-agent-guide-action" href="/app/chat/new?prompt=${encodeURIComponent(examplePrompt)}">${icon("message-square")}<span>告诉 Agent</span></a>
-            </section>
-
-            <div class="cron-list-heading"><strong>任务列表</strong><span>${tasks.length} 个</span></div>
-            <div class="cron-list">
-              ${tasks.length ? tasks.map(renderCronTask).join("") : renderCronEmpty()}
-            </div>
-          </main>
-          ${renderTaskDetailDialog(workspaces)}
-          ${renderTaskActionDialog()}
-        </div>
-      </section>
-      <script>${cronScript()}</script>
     `,
   });
 }
@@ -320,50 +282,7 @@ export function renderDataPage({ status = {}, selectedObject = "", result = null
   });
 }
 
-export function renderAutomationPage({ sources = [], rules = [], events = [], runs = [], templates = [], policies = [], totals = {}, protection = {} }) {
-  const runTotal = Number(totals.runs ?? runs.length);
-  return layout({
-    title: "自动化 · Agent Bridge",
-    body: `
-      <section class="agent-bridge-app-viewport agent-bridge-theme console-page automation-page">
-        <div class="console-frame automation-frame">
-          <header class="console-header">
-            ${consoleBackButtons()}
-            <div class="console-title"><span>自动化</span><small>${escapeHtml(`${rules.filter((rule) => rule.enabled).length} 个运行中 · ${sources.length} 个来源`)}</small></div>
-            <span class="console-header-spacer" aria-hidden="true"></span>
-          </header>
-          <nav class="automation-tabs" aria-label="自动化视图">
-            ${[["rules", "自动化", rules.length], ["sources", "来源", sources.length], ["runs", "运行", runTotal], ["protection", "防护", protection.mail?.policyCount ?? policies.length], ["templates", "模板", templates.length]].map(([value, label, count], index) => `<button type="button" data-automation-tab="${value}" aria-pressed="${index === 0 ? "true" : "false"}"><span>${label}</span><small>${count}</small></button>`).join("")}
-          </nav>
-          <main class="agent-bridge-app-content automation-scroll">
-            <section data-automation-panel="rules">
-              <div class="automation-list-heading"><strong>Agent 关注规则</strong><span>只读 · 通过对话调整</span></div>
-              <div class="automation-list">${rules.length ? rules.map((rule) => renderAutomationRule(rule, sources)).join("") : renderAutomationEmpty("暂无自动化规则")}</div>
-            </section>
-            <section data-automation-panel="sources" hidden>
-              <div class="automation-list-heading"><strong>信息来源</strong><span>渠道与健康状态</span></div>
-              <div class="automation-list">${sources.length ? sources.map(renderAutomationSource).join("") : renderAutomationEmpty("暂无信息来源")}</div>
-            </section>
-            <section data-automation-panel="runs" hidden>
-              <div class="automation-list-heading"><strong>最近运行</strong><span>${escapeHtml(String(totals.events ?? events.length))} 个事件</span></div>
-              <div class="automation-list" data-automation-runs>${runs.length ? renderAutomationRunsFragment(runs, rules, events) : renderAutomationEmpty("暂无运行记录")}</div>
-              <button class="automation-load-more" type="button" data-automation-more data-offset="${runs.length}" data-total="${runTotal}" ${runs.length < runTotal ? "" : "hidden"}><span class="console-loading-dot" aria-hidden="true"></span><span data-automation-more-label>下滑加载更多</span></button>
-            </section>
-            <section data-automation-panel="protection" hidden>
-              <div class="automation-list-heading"><strong>邮件与并发防护</strong><span>系统自动执行 · Agent 可审计调整</span></div>
-              ${renderAutomationProtection(protection, policies)}
-            </section>
-            <section data-automation-panel="templates" hidden>
-              <div class="automation-list-heading"><strong>解析模板</strong><span>版本与健康状态</span></div>
-              <div class="automation-list">${templates.length ? templates.map(renderAutomationTemplate).join("") : renderAutomationEmpty("暂无解析模板")}</div>
-            </section>
-          </main>
-        </div>
-      </section>
-      <script>${automationPageScript()}</script>
-    `,
-  });
-}
+
 
 export function renderSkillCatalogPage({ categories = [], skills = [] }) {
   const groups = categories.map((category) => ({
@@ -723,150 +642,6 @@ if(dataPagination&&'IntersectionObserver'in window){const observer=new Intersect
 function escapeDataHtml(value){return String(value).replace(/[&<>"']/g,(character)=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[character]));}`;
 }
 
-function renderAutomationRule(rule, sources) {
-  const source = sources.find((item) => item.id === rule.sourceId);
-  return `<details class="automation-item"><summary><span class="automation-item-icon">${icon("workflow")}</span><span class="automation-item-copy"><strong>${escapeHtml(rule.name)}</strong><small>${escapeHtml(`${source?.name || "全部来源"} · ${automationEventLabel(rule.eventType)} · v${rule.version}`)}</small></span><span class="automation-status ${rule.enabled ? "enabled" : "disabled"}">${rule.enabled ? "运行中" : "已停用"}</span>${icon("chevron-right")}</summary><div class="automation-detail"><p>${escapeHtml(rule.description || "暂无说明")}</p><div class="automation-definition-grid">${renderAutomationDefinition("关注条件", rule.conditions, "conditions")}${renderAutomationDefinition("后续动作", rule.action, "action")}${renderAutomationDefinition("权限范围", rule.permissions, "permissions")}</div><footer><span>更新于 ${escapeHtml(timeAgo(rule.updatedAt))}</span><span>用户只读</span></footer></div></details>`;
-}
-
-function renderAutomationSource(source) {
-  return `<article class="automation-item automation-source"><div class="automation-source-row"><span class="automation-item-icon">${icon(source.kind === "email" ? "mail" : "radio")}</span><span class="automation-item-copy"><strong>${escapeHtml(source.name)}</strong><small>${escapeHtml(`${source.kind} · ${source.accountRef || "未设置账户"}`)}</small></span><span class="automation-status ${source.enabled ? "enabled" : "disabled"}">${escapeHtml(source.enabled ? source.health : "已停用")}</span></div><dl class="automation-source-meta"><div><dt>能力</dt><dd>${escapeHtml(source.capabilities.join("、") || "无")}</dd></div><div><dt>敏感级别</dt><dd>${escapeHtml(source.sensitivity)}</dd></div><div><dt>最近事件</dt><dd>${escapeHtml(source.lastEventAt ? timeAgo(source.lastEventAt) : "暂无")}</dd></div><div><dt>配置版本</dt><dd>v${escapeHtml(String(source.configVersion))}</dd></div></dl></article>`;
-}
-
-function renderAutomationRun(run, rules, events) {
-  const rule = rules.find((item) => item.id === run.ruleId);
-  const event = events.find((item) => item.id === run.eventId);
-  return `<article class="automation-item automation-run"><div class="automation-source-row"><span class="automation-item-icon">${icon(run.matched ? "play" : "archive")}</span><span class="automation-item-copy"><strong>${escapeHtml(rule?.name || run.ruleId || "已删除规则")}</strong><small>${escapeHtml(event?.title || run.eventId || "无事件")} · ${escapeHtml(timeAgo(run.createdAt))}</small></span><span class="automation-status ${run.status === "failed" ? "failed" : run.matched ? "enabled" : "disabled"}">${escapeHtml(run.status)}</span></div><p class="automation-run-reason">${escapeHtml(run.reason || run.error || "暂无判断理由")}</p>${run.sessionId ? `<a class="automation-session-link" href="/app/chat/session/${escapeAttr(run.sessionId)}/live">查看 Agent 会话 ${icon("chevron-right")}</a>` : ""}</article>`;
-}
-
-export function renderAutomationRunsFragment(runs = [], rules = [], events = []) {
-  return runs.map((run) => renderAutomationRun(run, rules, events)).join("");
-}
-
-function renderAutomationProtection(protection = {}, policies = []) {
-  const concurrency = protection.concurrency || {};
-  const mail = protection.mail || {};
-  const limits = mail.limits || {};
-  return `<div class="automation-protection">
-    <section class="protection-metrics" aria-label="自动化保护状态">
-      ${protectionMetric("今日邮件", mail.receivedCount || 0, `全局上限 ${limits.globalDailyLimit || "-"}`)}
-      ${protectionMetric("已拦截", mail.suppressedCount || 0, `${mail.riskCount || 0} 封高风险`)}
-      ${protectionMetric("活动任务", concurrency.active || 0, `并发上限 ${concurrency.limit || "-"}`)}
-      ${protectionMetric("等待队列", concurrency.queued || 0, `队列上限 ${concurrency.queueLimit || "-"}`)}
-    </section>
-    <section class="protection-limits">
-      <header><strong>分层日配额</strong><span>可信发件人仍受全局硬限制</span></header>
-      <dl><div><dt>普通发件人</dt><dd>${escapeHtml(String(limits.senderDailyLimit || "-"))}</dd></div><div><dt>可信发件人</dt><dd>${escapeHtml(String(limits.trustedSenderDailyLimit || "-"))}</dd></div><div><dt>发件域</dt><dd>${escapeHtml(String(limits.domainDailyLimit || "-"))}</dd></div><div><dt>全部邮件</dt><dd>${escapeHtml(String(limits.globalDailyLimit || "-"))}</dd></div></dl>
-    </section>
-    <section class="protection-policies">
-      <header><strong>发件人策略</strong><span>${mail.trustedCount || 0} 个可信 · ${mail.blockedCount || 0} 个阻断</span></header>
-      <div class="automation-list">${policies.length ? policies.map(renderAutomationPolicy).join("") : `<p class="protection-empty">收到邮件后会在这里建立可审计的信誉策略。</p>`}</div>
-    </section>
-  </div>`;
-}
-
-function protectionMetric(label, value, note) {
-  return `<div><span>${escapeHtml(label)}</span><strong>${escapeHtml(formatInteger(value))}</strong><small>${escapeHtml(note)}</small></div>`;
-}
-
-function renderAutomationPolicy(policy) {
-  const status = policy.policy === "blocked" ? "failed" : policy.policy === "trusted" ? "enabled" : "disabled";
-  const label = policy.policy === "blocked" ? "已阻断" : policy.policy === "trusted" ? "可信" : "观察中";
-  return `<article class="automation-item automation-policy"><div class="automation-source-row"><span class="automation-item-icon">${icon(policy.policy === "blocked" ? "shield-alert" : "shield-check")}</span><span class="automation-item-copy"><strong>${escapeHtml(policy.senderKey)}</strong><small>${escapeHtml(policy.reason || "自动信誉评估")}</small></span><span class="automation-status ${status}">${label}</span></div><dl class="automation-source-meta"><div><dt>来源</dt><dd>${policy.origin === "agent" ? "Agent 规则" : "自动识别"}</dd></div><div><dt>安全记录</dt><dd>${escapeHtml(formatInteger(policy.safeCount || 0))}</dd></div><div><dt>违规记录</dt><dd>${escapeHtml(formatInteger(policy.violationCount || 0))}</dd></div><div><dt>最近出现</dt><dd>${escapeHtml(timeAgo(policy.lastSeenAt))}</dd></div></dl></article>`;
-}
-
-function renderAutomationTemplate(template) {
-  const total = template.successCount + template.failureCount;
-  const successRate = total ? Math.round(template.successCount / total * 100) : 0;
-  return `<article class="automation-item automation-source"><div class="automation-source-row"><span class="automation-item-icon">${icon("file-code")}</span><span class="automation-item-copy"><strong>${escapeHtml(template.name)}</strong><small>${escapeHtml(`${template.runtime} · v${template.version}`)}</small></span><span class="automation-status ${template.status === "active" ? "enabled" : "disabled"}">${escapeHtml(template.status)}</span></div><dl class="automation-source-meta"><div><dt>用途</dt><dd>${escapeHtml(template.purpose || "未说明")}</dd></div><div><dt>成功率</dt><dd>${successRate}%</dd></div><div><dt>指纹</dt><dd>${escapeHtml(template.sourceFingerprint || "未绑定")}</dd></div><div><dt>SHA-256</dt><dd>${escapeHtml(template.sha256 ? template.sha256.slice(0, 12) : "未记录")}</dd></div></dl></article>`;
-}
-
-function renderAutomationDefinition(title, value, kind) {
-  const definition = value && typeof value === "object" && !Array.isArray(value) ? value : {};
-  const iconName = kind === "conditions" ? "filter" : kind === "action" ? "play" : "check";
-  const entries = Object.entries(definition).filter(([key, item]) => item !== undefined && !(kind === "conditions" && key === "matchAll"));
-  const summary = kind === "conditions"
-    ? definition.matchAll === true ? "同时满足以下条件" : definition.matchAll === false ? "满足任一条件" : "由 Agent 综合判断"
-    : kind === "action" ? automationActionSummary(definition) : "Agent 执行时可使用的范围";
-  return `<section class="automation-definition automation-definition-${kind}"><header><span class="automation-definition-icon">${icon(iconName)}</span><span><strong>${escapeHtml(title)}</strong><small>${escapeHtml(summary)}</small></span></header><div class="automation-fields">${entries.length ? entries.map(([key, item]) => renderAutomationField(key, item, kind, 0)).join("") : `<p class="automation-field-empty">未配置额外项目</p>`}</div></section>`;
-}
-
-function renderAutomationField(key, value, kind, depth) {
-  const label = automationFieldLabel(key);
-  if (Array.isArray(value)) {
-    const primitives = value.filter((item) => item === null || typeof item !== "object");
-    const structured = value.filter((item) => item && typeof item === "object");
-    return `<div class="automation-field"><dt>${escapeHtml(label)}</dt><dd>${primitives.length ? `<span class="automation-tag-list">${primitives.map((item) => `<span class="automation-tag">${escapeHtml(automationValueLabel(key, item, kind))}</span>`).join("")}</span>` : ""}${structured.length ? `<div class="automation-nested-list">${structured.map((item, index) => `<section><strong>${escapeHtml(automationItemTitle(item, index))}</strong>${renderAutomationObject(item, kind, depth + 1)}</section>`).join("")}</div>` : ""}${!value.length ? `<span class="automation-muted">无</span>` : ""}</dd></div>`;
-  }
-  if (value && typeof value === "object") {
-    return `<div class="automation-field automation-field-group"><dt>${escapeHtml(label)}</dt><dd>${renderAutomationObject(value, kind, depth + 1)}</dd></div>`;
-  }
-  if (typeof value === "boolean") {
-    const allowed = value === true;
-    return `<div class="automation-field"><dt>${escapeHtml(label)}</dt><dd><span class="automation-permission ${allowed ? "allowed" : "blocked"}">${icon(allowed ? "check" : "x")}<span>${allowed ? "允许" : "不允许"}</span></span></dd></div>`;
-  }
-  return `<div class="automation-field"><dt>${escapeHtml(label)}</dt><dd><span class="automation-value">${escapeHtml(automationValueLabel(key, value, kind))}</span></dd></div>`;
-}
-
-function renderAutomationObject(value, kind, depth) {
-  if (depth > 4) return `<span class="automation-muted">更深层配置由 Agent 管理</span>`;
-  const entries = Object.entries(value || {}).filter(([, item]) => item !== undefined);
-  return entries.length ? `<dl class="automation-nested">${entries.map(([key, item]) => renderAutomationField(key, item, kind, depth)).join("")}</dl>` : `<span class="automation-muted">未配置</span>`;
-}
-
-function automationItemTitle(value, index) {
-  return value?.name || value?.label || value?.type && automationValueLabel("type", value.type, "action") || `第 ${index + 1} 项`;
-}
-
-function automationActionSummary(value) {
-  if (!value?.type) return "命中后交由 Agent 决定";
-  return automationValueLabel("type", value.type, "action");
-}
-
-function automationEventLabel(value) {
-  const labels = { "message.received": "收到消息", "mail.received": "收到邮件", "file.received": "收到文件", "schedule.triggered": "定时触发" };
-  return labels[value] || value || "任意事件";
-}
-
-function automationFieldLabel(key) {
-  const labels = {
-    semanticIntent: "关注意图", keywords: "关键词", keyword: "关键词", sender: "发件人", recipients: "收件人",
-    subject: "主题", attachments: "附件", attachmentTypes: "附件类型", required: "是否必需", operator: "判断方式",
-    value: "匹配内容", values: "匹配内容", anyOf: "任一条件", allOf: "全部条件", noneOf: "排除条件",
-    type: "执行方式", prompt: "Agent 指令", workspace: "工作区", workspaceName: "工作区", queue: "任务队列",
-    steps: "处理步骤", output: "产出", destination: "目标位置", readCurrentEvent: "读取当前事件",
-    readAttachments: "读取附件", data: "数据权限", automationWrite: "修改自动化", writeData: "写入数据",
-    createTables: "创建数据表", publishPages: "发布 Online Pages", notify: "发送通知", channel: "通知渠道",
-  };
-  if (labels[key]) return labels[key];
-  return String(key || "配置项").replace(/[_-]+/g, " ").replace(/([a-z0-9])([A-Z])/g, "$1 $2");
-}
-
-function automationValueLabel(key, value, kind) {
-  if (value === null || value === undefined || value === "") return "未设置";
-  const text = String(value);
-  const labels = {
-    "agent-task": "创建 Agent 任务", "agent-analysis": "交由 Agent 分析", "store-data": "写入结构化数据",
-    contains: "包含", equals: "等于", startsWith: "开头是", endsWith: "结尾是", matches: "符合模式",
-    admin: "完全管理", read: "只读", write: "可读写", none: "不可访问", healthy: "正常", restricted: "受限",
-  };
-  if (labels[text]) return labels[text];
-  if (kind === "permissions" && key === "data") return text === "admin" ? "完全管理" : text;
-  return text;
-}
-
-function renderAutomationEmpty(message) {
-  return `<div class="console-empty automation-empty">${icon("workflow")}<strong>${escapeHtml(message)}</strong><span>Agent 创建后会显示在这里。</span></div>`;
-}
-
-function automationPageScript() {
-  return `
-const automationMore=document.querySelector('[data-automation-more]');
-for(const button of document.querySelectorAll('[data-automation-tab]'))button.addEventListener('click',()=>{for(const item of document.querySelectorAll('[data-automation-tab]'))item.setAttribute('aria-pressed',String(item===button));for(const panel of document.querySelectorAll('[data-automation-panel]'))panel.hidden=panel.dataset.automationPanel!==button.dataset.automationTab;if(button.dataset.automationTab==='runs')setTimeout(()=>automationMore?.scrollIntoView({block:'nearest'}),0);});
-async function loadMoreAutomationRuns(){if(!automationMore||automationMore.hidden||automationMore.disabled)return;automationMore.disabled=true;automationMore.dataset.loading='true';const label=automationMore.querySelector('[data-automation-more-label]');if(label)label.textContent='正在加载';try{const offset=Number(automationMore.dataset.offset||0);const response=await fetch('/api/app/automations/runs?format=html&limit=20&offset='+offset,{headers:{accept:'application/json'},cache:'no-store'});const result=await response.json();if(!response.ok||result.ok===false)throw new Error(result.error||response.statusText);document.querySelector('[data-automation-runs]')?.insertAdjacentHTML('beforeend',result.html||'');const next=offset+(result.runs||[]).length;automationMore.dataset.offset=String(next);automationMore.hidden=!result.hasMore;if(label)label.textContent=result.hasMore?'下滑加载更多':'已加载全部';}catch(error){if(label)label.textContent='加载失败，点击重试';}finally{automationMore.disabled=false;automationMore.dataset.loading='false';}}
-automationMore?.addEventListener('click',()=>void loadMoreAutomationRuns());
-if(automationMore&&'IntersectionObserver'in window){const observer=new IntersectionObserver((entries)=>{const runsTab=document.querySelector('[data-automation-tab="runs"]');if(entries.some((entry)=>entry.isIntersecting)&&runsTab?.getAttribute('aria-pressed')==='true')void loadMoreAutomationRuns();},{root:document.querySelector('.automation-scroll'),rootMargin:'180px 0px'});observer.observe(automationMore);}`;
-}
-
 function serializeForInlineScript(value) {
   return JSON.stringify(value ?? null).replace(/</g, "\\u003c").replace(/>/g, "\\u003e").replace(/&/g, "\\u0026").replace(/\u2028/g, "\\u2028").replace(/\u2029/g, "\\u2029");
 }
@@ -936,96 +711,6 @@ function renderWorkspaceSelector(workspaces, selectedWorkspace) {
     </label>`;
   }
   return "";
-}
-
-function renderCronTask(task) {
-  return `<button class="cron-task-row" type="button" data-task-open
-      data-task-id="${escapeAttr(task.id)}"
-      data-task-name="${escapeAttr(task.name)}"
-      data-task-cron="${escapeAttr(task.cron)}"
-      data-task-timezone="${escapeAttr(task.timezone)}"
-      data-task-workspace-name="${escapeAttr(task.workspaceName)}"
-      data-task-recipient-id="${escapeAttr(task.recipientId)}"
-      data-task-prompt="${escapeAttr(task.prompt)}"
-      data-task-enabled="${task.enabled ? "1" : "0"}"
-      data-task-run-count="${escapeAttr(String(task.runCount))}"
-      data-task-next-run-at="${escapeAttr(task.nextRunAt || "")}"
-      data-task-last-run-at="${escapeAttr(task.lastRunAt || "")}"
-      data-task-last-session-id="${escapeAttr(task.lastSessionId || "")}"
-      data-task-last-error="${escapeAttr(task.lastError || "")}"
-      aria-label="查看任务 ${escapeAttr(task.name)}">
-      <span class="cron-task-row-icon">${icon("calendar-clock")}</span>
-      <span class="cron-task-copy">
-        <strong>${escapeHtml(task.name)}</strong>
-        <small>${escapeHtml(task.cron)} · ${escapeHtml(task.timezone)}${task.nextRunAt ? ` · 下次 ${escapeHtml(formatTime(task.nextRunAt))}` : ""}</small>
-      </span>
-      <span class="cron-task-status ${task.enabled ? "enabled" : "disabled"}">${task.enabled ? "启用" : "停用"}</span>
-      <span class="workspace-chevron">${icon("chevron-right")}</span>
-  </button>`;
-}
-
-function renderTaskDetailDialog(workspaces) {
-  return `<dialog class="task-dialog wechat-only-hidden" data-task-dialog aria-labelledby="task-dialog-title">
-    <div class="task-dialog-content">
-      <header class="task-dialog-header">
-        <div>
-          <span>定时任务</span>
-          <h2 id="task-dialog-title" data-task-dialog-name>任务详情</h2>
-        </div>
-        <button class="task-dialog-close" type="button" data-task-dialog-close title="关闭" aria-label="关闭">${icon("x")}</button>
-      </header>
-      <form class="cron-task-form task-dialog-form" data-task-form>
-      <div class="cron-grid">
-        <label><span>名称</span><input name="name" required></label>
-        <label><span>Cron</span><input name="cron" required></label>
-        <label><span>时区</span><select name="timezone">${timezoneOptions("Asia/Shanghai")}</select></label>
-        <label><span>工作区</span><select name="workspaceName">${workspaceOptions(workspaces, "")}</select></label>
-        <label><span>微信接收人</span><input name="recipientId" placeholder="留空使用最近联系人"></label>
-      </div>
-      <label class="cron-prompt"><span>任务内容</span><textarea name="prompt" required rows="4"></textarea></label>
-      <div class="cron-meta">
-        <span data-task-run-count></span>
-        <span data-task-next-run></span>
-        <span data-task-last-run></span>
-        <a data-task-last-session hidden>上次会话</a>
-        <span class="cron-error-text" data-task-last-error hidden></span>
-      </div>
-      <div class="cron-actions">
-        <label class="cron-enabled"><input name="enabled" type="checkbox"><span>启用</span></label>
-        <button class="cron-secondary" type="button" data-run-task>${icon("play")}<span>运行</span></button>
-        <button class="cron-secondary danger" type="button" data-delete-task>${icon("trash-2")}<span>删除</span></button>
-        <button class="cron-primary" type="submit">${icon("save")}<span>保存</span></button>
-      </div>
-      <p class="compose-error" data-task-error hidden></p>
-      </form>
-    </div>
-  </dialog>`;
-}
-
-function renderCronEmpty() {
-  return `<div class="console-empty">
-    ${icon("calendar-clock")}
-    <strong>暂无定时任务</strong>
-    <span>告诉 Agent 你的计划，创建后的任务会显示在这里。</span>
-  </div>`;
-}
-
-function renderTaskActionDialog() {
-  return `<dialog class="alert-dialog wechat-only-hidden" data-action-dialog aria-labelledby="task-action-title" aria-describedby="task-action-description">
-    <div class="alert-dialog-content">
-      <div class="alert-dialog-icon" data-action-icon="delete" aria-hidden="true">${icon("trash-2")}</div>
-      <div class="alert-dialog-icon run" data-action-icon="run" aria-hidden="true" hidden>${icon("play")}</div>
-      <div class="alert-dialog-copy">
-        <h2 id="task-action-title" data-action-title>确认操作</h2>
-        <p id="task-action-description"><span data-action-description></span>“<strong data-action-task-name></strong>”</p>
-      </div>
-      <p class="alert-dialog-error" data-action-dialog-error hidden></p>
-      <div class="alert-dialog-actions">
-        <button class="alert-dialog-cancel" type="button" data-action-cancel>取消</button>
-        <button class="alert-dialog-confirm" type="button" data-action-confirm data-variant="destructive"><span data-action-confirm-icon="delete">${icon("trash-2")}</span><span data-action-confirm-icon="run" hidden>${icon("play")}</span><span data-action-confirm-label>确认</span></button>
-      </div>
-    </div>
-  </dialog>`;
 }
 
 function renderSkillGroup(group) {
@@ -1098,17 +783,6 @@ function skillInitials(name) {
   return (parts.length > 1 ? parts.slice(0, 2).map((part) => part[0]) : [parts[0]?.slice(0, 2)])
     .join("")
     .toUpperCase();
-}
-
-function workspaceOptions(workspaces, selectedName) {
-  const options = workspaces.length ? workspaces : [{ name: "", workspaceRoot: "" }];
-  return options.map((workspace) => `<option value="${escapeAttr(workspace.name || "")}" ${workspace.name === selectedName ? "selected" : ""}>${escapeHtml(workspace.name || "默认工作区")}</option>`).join("");
-}
-
-function timezoneOptions(selectedTimezone) {
-  const common = ["Asia/Shanghai", "UTC", "local"];
-  const values = common.includes(selectedTimezone) ? common : [selectedTimezone, ...common];
-  return values.map((timezone) => `<option value="${escapeAttr(timezone)}" ${timezone === selectedTimezone ? "selected" : ""}>${escapeHtml(timezone === "local" ? "服务器本地时区" : timezone)}</option>`).join("");
 }
 
 function workspaceGroups(sessions, workspaces) {
@@ -1464,12 +1138,12 @@ tokenDialog?.addEventListener('click', (event) => {
 
 function updateTokenUsage(usage) {
   const totalLabel = document.querySelector('[data-token-total-label]');
-  if (totalLabel) totalLabel.textContent = tokenCompact(usage.totalTokens);
+  if (totalLabel) setTokenCompact(totalLabel, usage.totalTokens);
   for (const key of ['totalTokens', 'inputTokens', 'cachedInputTokens', 'outputTokens', 'reasoningOutputTokens', 'sessionCount', 'requestCount']) {
     const element = document.querySelector('[data-token-value="' + key + '"]');
-    if (element) element.textContent = element.dataset.tokenFormat === 'integer'
-      ? tokenInteger(usage[key])
-      : tokenCompact(usage[key]);
+    if (!element) continue;
+    if (element.dataset.tokenFormat === 'integer') element.textContent = tokenInteger(usage[key]);
+    else setTokenCompact(element, usage[key]);
   }
   const cacheRate = document.querySelector('[data-token-value="cacheRate"]');
   if (cacheRate) cacheRate.textContent = tokenInteger(usage.cacheRate);
@@ -1524,7 +1198,7 @@ function renderTokenSessions(sessions) {
     primary.append(title, threads);
     const secondary = document.createElement('span');
     const total = document.createElement('b');
-    total.textContent = tokenCompact(session.totalTokens);
+    setTokenCompact(total, session.totalTokens);
     const time = document.createElement('time');
     time.textContent = session.updatedAt ? new Date(session.updatedAt).toLocaleString('zh-CN', { hour12: false }) : '';
     secondary.append(total, time);
@@ -1540,13 +1214,33 @@ function tokenInteger(value) {
 
 function tokenCompact(value) {
   const number = Math.max(0, Number(value) || 0);
-  const units = [[1000000000, 'B'], [1000000, 'M'], [1000, 'K']];
+  const units = [[1000000000000, 'T'], [1000000000, 'B'], [1000000, 'M'], [1000, 'K']];
   for (const [threshold, suffix] of units) {
     if (number >= threshold) {
       return new Intl.NumberFormat('en-US', { maximumFractionDigits: 1 }).format(number / threshold) + suffix;
     }
   }
   return new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 }).format(number);
+}
+
+function setTokenCompact(element, value) {
+  const formatted = tokenCompact(value);
+  const suffix = /[KMBT]$/.test(formatted) ? formatted.slice(-1) : '';
+  element.textContent = suffix ? formatted.slice(0, -1) : formatted;
+  if (!suffix) return;
+  const details = {
+    K: ['K（Kilo）：千（10³）', 'K，Kilo，千，10 的 3 次方'],
+    M: ['M（Million）：百万（10⁶）', 'M，Million，百万，10 的 6 次方'],
+    B: ['B（Billion）：十亿（10⁹）', 'B，Billion，十亿，10 的 9 次方'],
+    T: ['T（Trillion）：万亿（10¹²）', 'T，Trillion，万亿，10 的 12 次方'],
+  }[suffix];
+  const unit = document.createElement('abbr');
+  unit.className = 'token-count-unit';
+  unit.title = details[0];
+  unit.setAttribute('aria-label', details[1]);
+  unit.tabIndex = 0;
+  unit.textContent = suffix;
+  element.append(unit);
 }
 
 loadPage({ reset: true });
@@ -1607,185 +1301,6 @@ form?.addEventListener('submit', async (event) => {
     submitButton.disabled = false;
   }
 });
-async function json(url, options) {
-  const res = await fetch(url, options);
-  const text = await res.text();
-  const data = text ? JSON.parse(text) : {};
-  if (!res.ok || data.ok === false) throw new Error(data.error || text || res.statusText);
-  return data;
-}`;
-}
-
-function cronScript() {
-  return `
-document.querySelector('[data-refresh]')?.addEventListener('click', () => location.reload());
-const taskDialog = document.querySelector('[data-task-dialog]');
-const taskDialogName = taskDialog?.querySelector('[data-task-dialog-name]');
-const taskDialogClose = taskDialog?.querySelector('[data-task-dialog-close]');
-const taskForm = taskDialog?.querySelector('[data-task-form]');
-const actionDialog = document.querySelector('[data-action-dialog]');
-const actionTitle = actionDialog?.querySelector('[data-action-title]');
-const actionDescription = actionDialog?.querySelector('[data-action-description]');
-const actionTaskName = actionDialog?.querySelector('[data-action-task-name]');
-const actionDialogError = actionDialog?.querySelector('[data-action-dialog-error]');
-const actionCancel = actionDialog?.querySelector('[data-action-cancel]');
-const actionConfirm = actionDialog?.querySelector('[data-action-confirm]');
-const actionConfirmLabel = actionDialog?.querySelector('[data-action-confirm-label]');
-let pendingAction = null;
-
-for (const button of document.querySelectorAll('[data-task-open]')) {
-  button.addEventListener('click', () => openTaskDialog(button.dataset));
-}
-
-function openTaskDialog(task) {
-  if (!taskForm || !taskDialog) return;
-  taskForm.dataset.taskId = task.taskId || '';
-  taskForm.dataset.taskName = task.taskName || '';
-  taskForm.elements.name.value = task.taskName || '';
-  taskForm.elements.cron.value = task.taskCron || '';
-  setSelectValue(taskForm.elements.timezone, task.taskTimezone || 'Asia/Shanghai');
-  setSelectValue(taskForm.elements.workspaceName, task.taskWorkspaceName || '');
-  taskForm.elements.recipientId.value = task.taskRecipientId || '';
-  taskForm.elements.prompt.value = task.taskPrompt || '';
-  taskForm.elements.enabled.checked = task.taskEnabled === '1';
-  if (taskDialogName) taskDialogName.textContent = task.taskName || '任务详情';
-  setText('[data-task-run-count]', '运行 ' + (task.taskRunCount || '0') + ' 次');
-  setText('[data-task-next-run]', task.taskNextRunAt ? '下次 ' + formatClientTime(task.taskNextRunAt) : '');
-  setText('[data-task-last-run]', task.taskLastRunAt ? '上次 ' + formatClientTime(task.taskLastRunAt) : '');
-  const sessionLink = taskDialog.querySelector('[data-task-last-session]');
-  if (sessionLink) {
-    sessionLink.hidden = !task.taskLastSessionId;
-    sessionLink.href = task.taskLastSessionId ? '/app/chat/session/' + encodeURIComponent(task.taskLastSessionId) + '/live' : '#';
-  }
-  const lastError = taskDialog.querySelector('[data-task-last-error]');
-  if (lastError) {
-    lastError.hidden = !task.taskLastError;
-    lastError.textContent = task.taskLastError || '';
-  }
-  const formError = taskForm.querySelector('[data-task-error]');
-  if (formError) formError.hidden = true;
-  taskDialog.showModal();
-  requestAnimationFrame(() => taskDialogClose?.focus());
-}
-
-function setText(selector, value) {
-  const element = taskDialog?.querySelector(selector);
-  if (element) {
-    element.textContent = value;
-    element.hidden = !value;
-  }
-}
-
-function setSelectValue(select, value) {
-  if (!select) return;
-  if (value && !Array.from(select.options).some((option) => option.value === value)) {
-    select.add(new Option(value, value));
-  }
-  select.value = value;
-}
-
-function formatClientTime(value) {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return value;
-  return new Intl.DateTimeFormat('zh-CN', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }).format(date);
-}
-
-taskDialogClose?.addEventListener('click', () => taskDialog?.close('close'));
-taskForm?.addEventListener('submit', async (event) => {
-  event.preventDefault();
-  const id = taskForm.dataset.taskId;
-  const error = taskForm.querySelector('[data-task-error]');
-  await submitCronForm(taskForm, '/api/app/schedules/tasks/' + encodeURIComponent(id), 'PATCH', error);
-});
-taskForm?.querySelector('[data-delete-task]')?.addEventListener('click', () => openActionDialog('delete'));
-taskForm?.querySelector('[data-run-task]')?.addEventListener('click', () => openActionDialog('run'));
-
-function openActionDialog(type) {
-  if (!taskForm || !actionDialog) return;
-  pendingAction = { type, id: taskForm.dataset.taskId, name: taskForm.dataset.taskName, form: taskForm };
-  const deleting = type === 'delete';
-  if (actionTitle) actionTitle.textContent = deleting ? '删除定时任务？' : '立即运行这个任务？';
-  if (actionDescription) actionDescription.textContent = deleting ? '任务将被永久删除，此操作无法撤销：' : '将立即发送微信通知并开启新的 Codex 会话：';
-  if (actionTaskName) actionTaskName.textContent = pendingAction.name || '未命名任务';
-  if (actionConfirmLabel) actionConfirmLabel.textContent = deleting ? '删除任务' : '立即运行';
-  if (actionConfirm) actionConfirm.dataset.variant = deleting ? 'destructive' : 'default';
-  for (const iconElement of actionDialog.querySelectorAll('[data-action-icon], [data-action-confirm-icon]')) {
-    const iconType = iconElement.dataset.actionIcon || iconElement.dataset.actionConfirmIcon;
-    iconElement.hidden = iconType !== type;
-  }
-  if (actionDialogError) actionDialogError.hidden = true;
-  taskDialog?.close('action');
-  actionDialog.showModal();
-  requestAnimationFrame(() => actionCancel?.focus());
-}
-
-actionCancel?.addEventListener('click', () => actionDialog?.close('cancel'));
-actionDialog?.addEventListener('cancel', (event) => {
-  event.preventDefault();
-  actionDialog.close('cancel');
-});
-actionDialog?.addEventListener('close', () => {
-  if (actionConfirm) actionConfirm.disabled = false;
-  if (actionDialog.returnValue === 'cancel' && pendingAction?.form) {
-    requestAnimationFrame(() => taskDialog?.showModal());
-    return;
-  }
-  pendingAction = null;
-});
-actionConfirm?.addEventListener('click', async () => {
-  if (!pendingAction || !actionConfirm) return;
-  actionConfirm.disabled = true;
-  if (actionDialogError) actionDialogError.hidden = true;
-  try {
-    if (pendingAction.type === 'delete') {
-      await json('/api/app/schedules/tasks/' + encodeURIComponent(pendingAction.id), { method: 'DELETE' });
-      actionDialog.close('complete');
-      location.reload();
-      return;
-    }
-    const result = await json('/api/app/schedules/tasks/' + encodeURIComponent(pendingAction.id) + '/run', { method: 'POST' });
-    actionDialog.close('complete');
-    if (result.session?.url) location.href = result.session.url;
-    else location.reload();
-  } catch (err) {
-    showError(actionDialogError, err);
-    actionConfirm.disabled = false;
-  }
-});
-
-async function submitCronForm(form, url, method, error) {
-  const button = form.querySelector('button[type="submit"]');
-  button.disabled = true;
-  if (error) error.hidden = true;
-  try {
-    await json(url, {
-      method,
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify(cronPayload(form)),
-    });
-    location.reload();
-  } catch (err) {
-    showError(error, err);
-    button.disabled = false;
-  }
-}
-function cronPayload(form) {
-  const data = new FormData(form);
-  return {
-    name: String(data.get('name') || '').trim(),
-    cron: String(data.get('cron') || '').trim(),
-    timezone: String(data.get('timezone') || 'Asia/Shanghai').trim(),
-    workspaceName: String(data.get('workspaceName') || '').trim(),
-    recipientId: String(data.get('recipientId') || '').trim(),
-    prompt: String(data.get('prompt') || '').trim(),
-    enabled: data.get('enabled') === 'on',
-  };
-}
-function showError(error, err) {
-  if (!error) return;
-  error.textContent = err.message || String(err);
-  error.hidden = false;
-}
 async function json(url, options) {
   const res = await fetch(url, options);
   const text = await res.text();
@@ -1953,6 +1468,7 @@ function styles() {
 .console-search{position:relative;flex:0 0 auto;border-bottom:1px solid hsl(var(--border));background:hsl(var(--card) / .35);padding:.75rem 1rem}.console-search svg{position:absolute;left:1.85rem;top:50%;transform:translateY(-50%);color:hsl(var(--muted-foreground));pointer-events:none}.console-search input{width:100%;height:2.25rem;border:1px solid hsl(var(--input));border-radius:.55rem;background:hsl(var(--background));padding:0 .85rem 0 2.35rem;color:hsl(var(--foreground));font:inherit;font-size:.875rem;outline:0}.console-search input:focus{border-color:hsl(var(--primary) / .45);box-shadow:0 0 0 1px hsl(var(--primary) / .14)}.console-search input::placeholder{color:hsl(var(--muted-foreground) / .62)}
 .console-initial-loading{display:flex;flex-direction:column;gap:.2rem;padding-top:2.15rem}.console-loading-row{height:3.05rem;display:flex;align-items:center;gap:.65rem;padding:.5rem .55rem;animation:console-skeleton-pulse 1.15s ease-in-out infinite alternate;animation-delay:calc(var(--loading-index) * 70ms)}.console-loading-mark{width:1.75rem;height:1.75rem;flex:0 0 auto;border-radius:.5rem;background:hsl(var(--muted))}.console-loading-copy{min-width:0;flex:1;display:grid;gap:.4rem}.console-loading-copy i,.console-loading-time{display:block;border-radius:.2rem;background:hsl(var(--muted))}.console-loading-copy i:first-child{width:min(15rem,62%);height:.65rem}.console-loading-copy i:last-child{width:min(22rem,82%);height:.45rem}.console-loading-time{width:2.75rem;height:.45rem;flex:0 0 auto}@keyframes console-skeleton-pulse{from{opacity:.42}to{opacity:.82}}
 .console-scroll{min-width:0;min-height:0;flex:1;overflow-y:auto;overflow-x:hidden;padding:.75rem .75rem 6rem;-webkit-overflow-scrolling:touch}.console-list{width:100%;max-width:42rem;margin:0 auto;display:flex;flex-direction:column;gap:.25rem}.console-load-more{width:min(100%,42rem);min-height:2.5rem;margin:.65rem auto 0;border:0;background:transparent;color:hsl(var(--muted-foreground));display:flex;align-items:center;justify-content:center;gap:.45rem;font:inherit;font-size:.75rem;cursor:pointer}.console-load-more[hidden]{display:none}.console-load-more:disabled{cursor:default}.console-loading-dot{width:.45rem;height:.45rem;border-radius:999px;background:hsl(var(--primary) / .55)}.console-load-more[data-loading="true"] .console-loading-dot{animation:console-pulse .9s ease-in-out infinite alternate}@keyframes console-pulse{to{opacity:.28;transform:scale(.72)}}.workspace-group{min-width:0}.workspace-group[hidden],.console-session[hidden]{display:none}.workspace-group summary{list-style:none}.workspace-group summary::-webkit-details-marker{display:none}
+.token-count-unit{text-decoration:underline dotted;text-underline-offset:.16em;cursor:help}.token-count-unit:focus-visible{border-radius:2px;outline:2px solid hsl(var(--primary) / .34);outline-offset:2px}
 .token-dialog{width:min(calc(100% - 2rem),52rem);max-width:52rem}.token-dialog::backdrop{background:hsl(60 2% 8% / .56);backdrop-filter:blur(3px)}.token-dialog .task-dialog-content{isolation:isolate;background:hsl(var(--background));box-shadow:0 28px 80px -22px hsl(60 2% 8% / .72)}.token-dialog-body{min-height:0;overflow-y:auto;padding:1rem 1.1rem 1.25rem}.token-range-tabs{width:max-content;margin:0 0 .9rem auto;display:flex;border:1px solid hsl(var(--border));border-radius:.5rem;background:hsl(var(--card) / .35);padding:.2rem}.token-range-tabs button{height:2rem;min-width:4.25rem;border:0;border-radius:.35rem;background:transparent;color:hsl(var(--muted-foreground));font:inherit;font-size:.75rem;font-weight:650;cursor:pointer}.token-range-tabs button[aria-pressed="true"]{background:hsl(var(--background));color:hsl(var(--foreground));box-shadow:0 1px 4px hsl(var(--foreground) / .12)}.token-total-band{display:grid;grid-template-columns:minmax(0,1.45fr) 10rem;gap:1rem;border-top:3px solid #2fb7c7;border-bottom:1px solid hsl(var(--border));padding:1.1rem 0}.token-total-copy{min-width:0;display:grid;align-content:start;gap:.35rem}.token-total-copy>span,.token-total-copy>small{color:hsl(var(--muted-foreground));font-size:.75rem}.token-total-copy>strong{min-width:0;overflow:hidden;text-overflow:ellipsis;font-size:clamp(2.25rem,8vw,4.35rem);line-height:1.05;font-weight:760;letter-spacing:0}.token-pulse{grid-column:2;grid-row:1 / span 2;min-height:9.5rem;border:1px solid #2d99b7;border-radius:.5rem;background:#eaf7f7;color:#16788b;display:grid;grid-template-columns:auto 1fr;align-content:center;gap:.6rem .7rem;padding:1rem}.token-pulse svg{width:2rem;height:2rem;grid-column:1 / -1}.token-pulse strong{font-size:1.05rem;text-transform:uppercase}.token-pulse span{align-self:center;color:#52747a;font-size:.75rem}.token-signal-metrics{grid-column:1;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:.65rem;margin:.55rem 0 0}.token-signal-metrics>div{min-width:0;border-left:3px solid currentColor;background:hsl(var(--card) / .38);padding:.7rem .75rem}.token-signal-metrics dt,.token-metrics dt{color:hsl(var(--muted-foreground));font-size:11px}.token-signal-metrics dd,.token-metrics dd{min-width:0;margin:.25rem 0 0;overflow:hidden;text-overflow:ellipsis;font-size:1.25rem;font-weight:750}.token-signal-metrics [data-accent="cyan"],.token-metrics [data-accent="cyan"]{color:#118fa5}.token-signal-metrics [data-accent="blue"],.token-metrics [data-accent="blue"]{color:#386fd2}.token-signal-metrics [data-accent="green"],.token-metrics [data-accent="green"]{color:#248757}.token-metrics [data-accent="violet"]{color:#7654ad}.token-breakdown,.token-heatmap-section,.token-recent{padding-top:1rem}.token-section-heading{display:flex;align-items:flex-end;justify-content:space-between;gap:.75rem;margin-bottom:.55rem}.token-section-heading>div{min-width:0;display:grid;gap:.15rem}.token-section-heading h3{margin:0;font-size:.8125rem;letter-spacing:0}.token-section-heading small{color:hsl(var(--muted-foreground));font-size:11px}.token-section-heading>span{color:hsl(var(--destructive));font-size:11px}.token-metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));margin:0;border-top:1px solid hsl(var(--border));border-bottom:1px solid hsl(var(--border))}.token-metrics>div{min-width:0;display:grid;gap:.1rem;padding:.8rem .7rem;border-right:1px solid hsl(var(--border))}.token-metrics>div:last-child{border-right:0}.token-heatmap-legend{display:flex!important;grid-auto-flow:column;align-items:center;gap:.3rem;color:hsl(var(--muted-foreground));font-size:11px}.token-heatmap-legend i,.token-heatmap span{display:block;border-radius:.2rem;background:hsl(var(--muted) / .75)}.token-heatmap-legend i{width:.75rem;height:.75rem}.token-heatmap{display:grid;grid-template-rows:repeat(7,.8rem);grid-auto-flow:column;grid-auto-columns:.8rem;gap:.24rem;max-width:100%;overflow-x:auto;padding:.25rem 0 .4rem}.token-heatmap span{width:.8rem;height:.8rem}.token-heatmap [data-level="1"],.token-heatmap-legend [data-level="1"]{background:#b9e4e2}.token-heatmap [data-level="2"],.token-heatmap-legend [data-level="2"]{background:#67c5c4}.token-heatmap [data-level="3"],.token-heatmap-legend [data-level="3"]{background:#438de0}.token-heatmap [data-level="4"],.token-heatmap-legend [data-level="4"]{background:#295bb7}.token-session-list{display:grid}.token-session-row{min-width:0;display:flex;align-items:center;justify-content:space-between;gap:1rem;border-top:1px solid hsl(var(--border));padding:.7rem .1rem}.token-session-row:last-child{border-bottom:1px solid hsl(var(--border))}.token-session-row:hover strong{color:hsl(var(--primary))}.token-session-row>span{min-width:0;display:grid;gap:.15rem}.token-session-row>span:last-child{flex:0 0 auto;text-align:right}.token-session-row strong{min-width:0;max-width:28rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:.8125rem}.token-session-row small,.token-session-row time{color:hsl(var(--muted-foreground));font-size:11px}.token-session-row b{font-size:.8125rem}.token-empty{border-top:1px solid hsl(var(--border));border-bottom:1px solid hsl(var(--border));padding:1rem 0;color:hsl(var(--muted-foreground));font-size:.8125rem;text-align:center}.token-dialog-fallback[open]{position:fixed!important;z-index:1000!important;inset:0!important;width:100%!important;max-width:none!important;height:100%!important;max-height:none!important;margin:0!important;display:flex!important;align-items:center;justify-content:center;border:0!important;background:hsl(60 2% 8% / .56)!important;padding:1rem!important}.token-modal-open{overflow:hidden}
 .workspace-summary{min-width:0;display:flex;align-items:center;gap:.5rem;border-radius:.55rem;padding:.4rem .45rem;cursor:pointer;transition:background-color .15s ease}.workspace-summary:hover{background:hsl(var(--card) / .58)}.workspace-symbol{width:1.75rem;height:1.75rem;min-width:1.75rem;border-radius:.5rem;color:hsl(var(--primary));display:inline-flex;align-items:center;justify-content:center}.workspace-copy{min-width:0;flex:1;display:grid;gap:.05rem}.workspace-copy span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:.875rem;font-weight:650}.workspace-copy small{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:hsl(var(--muted-foreground));font-size:11px}.session-count{height:1.3rem;min-width:1.3rem;border:1px solid hsl(var(--border));border-radius:999px;display:inline-flex;align-items:center;justify-content:center;padding:0 .35rem;color:hsl(var(--muted-foreground));font-size:11px}.workspace-chevron{color:hsl(var(--muted-foreground));transition:transform .15s ease}.workspace-group[open] .workspace-chevron{transform:rotate(90deg)}
 .workspace-sessions{margin-left:2.05rem;display:flex;flex-direction:column}.workspace-empty{margin:.25rem 0 .5rem;border:1px dashed hsl(var(--border));border-radius:.5rem;background:hsl(var(--card) / .2);padding:.8rem;color:hsl(var(--muted-foreground));text-align:center;font-size:11px}.console-session{min-width:0;display:flex;align-items:center;gap:.55rem;border-radius:.55rem;padding:.52rem .55rem;transition:background-color .15s ease}.console-session:hover{background:hsl(var(--card) / .7)}.console-session-copy{min-width:0;flex:1;display:grid;gap:.12rem}.console-session-copy span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:hsl(var(--foreground));font-size:.875rem}.console-session-copy small{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:hsl(var(--muted-foreground));font-size:11px}.console-session time{flex:0 0 auto;color:hsl(var(--muted-foreground));font-size:11px}
@@ -2002,11 +1518,10 @@ function styles() {
 @media(max-width:767px){.memory-sheet{width:100%;max-width:none}.memory-sheet-content{border-inline:0}.console-session-group{margin-bottom:.7rem}}
 .skill-count{width:2.25rem;height:2.25rem;min-width:2.25rem;border:1px solid hsl(var(--border));border-radius:50%;display:grid;place-items:center;color:hsl(var(--foreground));font-size:.75rem;font-weight:750}.skill-scroll{padding:1rem 1rem 2rem}.skill-search{position:relative;width:min(100%,52rem);height:2.6rem;margin:0 auto 1rem;border:1px solid hsl(var(--input));border-radius:.5rem;background:hsl(var(--background));display:flex;align-items:center}.skill-search svg{position:absolute;left:.75rem;width:1rem;height:1rem;color:hsl(var(--muted-foreground));pointer-events:none}.skill-search input{width:100%;height:100%;border:0;background:transparent;padding:0 .8rem 0 2.25rem;color:hsl(var(--foreground));font:inherit;font-size:.8125rem;outline:0}.skill-search:focus-within{border-color:hsl(var(--ring) / .55);box-shadow:0 0 0 1px hsl(var(--ring) / .14)}.skill-groups{width:min(100%,52rem);margin:0 auto;display:grid;gap:1.15rem}.skill-group[hidden],.skill-row[hidden],.skill-empty[hidden]{display:none}.skill-group{min-width:0}.skill-group-heading{min-height:2.4rem;display:flex;align-items:center;justify-content:space-between;gap:1rem;border-bottom:1px solid hsl(var(--foreground));padding:.25rem .1rem}.skill-group-heading>span{min-width:0;display:flex;align-items:baseline;gap:.5rem}.skill-group-heading strong{font-size:.8125rem}.skill-group-heading small{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:hsl(var(--muted-foreground));font-size:11px}.skill-group-heading b{color:hsl(var(--muted-foreground));font-size:11px;font-weight:600}.skill-list{display:flex;flex-direction:column}.skill-row{width:100%;min-height:4.6rem;border:0;border-bottom:1px solid hsl(var(--border));background:transparent;color:hsl(var(--foreground));display:grid;grid-template-columns:2.5rem minmax(0,1fr) auto;align-items:center;gap:.75rem;padding:.7rem .1rem;font:inherit;text-align:left;cursor:pointer}.skill-row:focus-visible{outline:2px solid hsl(var(--ring) / .45);outline-offset:2px}.skill-mark{width:2.35rem;height:2.35rem;border:1px solid hsl(var(--primary) / .55);border-radius:.45rem;background:hsl(var(--primary) / .07);color:hsl(var(--primary));display:grid;place-items:center;font-size:.7rem;font-weight:800}.skill-row-copy{min-width:0;display:grid;gap:.18rem}.skill-row-copy strong{font-size:.875rem}.skill-row-copy small{min-width:0;display:-webkit-box;overflow:hidden;-webkit-line-clamp:2;-webkit-box-orient:vertical;color:hsl(var(--muted-foreground));font-size:11px;line-height:1.45;overflow-wrap:anywhere}.skill-row-meta{display:flex;align-items:center;gap:.35rem;color:hsl(var(--muted-foreground));font-size:11px}.skill-row-meta svg{width:.95rem;height:.95rem}.skill-empty{width:min(100%,52rem);margin:0 auto;border-top:1px solid hsl(var(--foreground));padding:2rem 0;color:hsl(var(--muted-foreground));text-align:center;font-size:.8125rem}.skill-detail-overlay[hidden]{display:none!important}.skill-detail-overlay{position:fixed;z-index:1000;inset:0;display:flex;align-items:flex-end;justify-content:center;background:hsl(60 2% 8% / .48);padding:0}.skill-detail-sheet{width:min(100%,42rem);max-height:min(78dvh,42rem);display:flex;flex-direction:column;overflow:hidden;border:1px solid hsl(var(--border));border-bottom:0;border-radius:.5rem .5rem 0 0;background:hsl(var(--background));box-shadow:0 -20px 60px -24px hsl(var(--foreground) / .55);animation:memory-sheet-in .18s ease-out}.skill-detail-header{min-height:4.5rem;display:grid;grid-template-columns:2.5rem minmax(0,1fr) 2.25rem;align-items:center;gap:.75rem;border-bottom:1px solid hsl(var(--border));padding:.75rem 1rem}.skill-detail-header>div{min-width:0;display:grid;gap:.05rem}.skill-detail-header>div>span{color:hsl(var(--muted-foreground));font-size:11px}.skill-detail-header h2{min-width:0;margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:1rem;letter-spacing:0}.skill-detail-header button{width:2.25rem;height:2.25rem;border:1px solid hsl(var(--border));border-radius:.5rem;background:transparent;color:hsl(var(--muted-foreground));display:grid;place-items:center;cursor:pointer}.skill-detail-header button svg{width:1rem;height:1rem}.skill-detail-body{min-height:0;overflow-y:auto;padding:1rem max(1rem,env(safe-area-inset-right)) max(1rem,env(safe-area-inset-bottom))}.skill-detail-body>p{margin:0;color:hsl(var(--foreground));font-size:.875rem;line-height:1.75;white-space:pre-wrap;overflow-wrap:anywhere}.skill-detail-meta{display:grid;margin:1rem 0 0;border-top:1px solid hsl(var(--border))}.skill-detail-meta>div{display:grid;grid-template-columns:5rem minmax(0,1fr);gap:.75rem;border-bottom:1px solid hsl(var(--border));padding:.7rem 0}.skill-detail-meta>div[hidden]{display:none}.skill-detail-meta dt{color:hsl(var(--muted-foreground));font-size:11px}.skill-detail-meta dd{min-width:0;margin:0;overflow-wrap:anywhere;font-size:.8125rem}.skill-detail-open{overflow:hidden}@media(max-width:767px){.skill-scroll{padding:.75rem .75rem 1.5rem}.skill-row{grid-template-columns:2.5rem minmax(0,1fr) auto}.skill-row-meta>span{display:none}.skill-detail-sheet{border-inline:0}}
 .private-batch-page{min-height:100dvh;background:hsl(var(--background));color:hsl(var(--foreground))}.private-batch-header{position:sticky;top:0;z-index:10;min-height:4.25rem;display:grid;grid-template-columns:2.5rem minmax(0,1fr) 2.5rem;align-items:center;gap:.75rem;border-bottom:1px solid hsl(var(--border));background:hsl(var(--background) / .96);padding:.55rem max(1rem,env(safe-area-inset-right))}.private-batch-header>div{min-width:0;display:grid;gap:.05rem}.private-batch-header span{color:hsl(var(--muted-foreground));font-size:11px}.private-batch-header h1{margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:1rem;letter-spacing:0}.private-batch-count{width:2.2rem;height:2.2rem;border:1px solid hsl(var(--border));border-radius:50%;display:grid;place-items:center;color:hsl(var(--foreground))!important;font-weight:700}.private-batch-main{width:min(100%,46rem);margin:0 auto;padding:1rem max(1rem,env(safe-area-inset-right)) max(2rem,env(safe-area-inset-bottom))}.private-batch-summary{display:flex;align-items:center;justify-content:space-between;gap:1rem;border-bottom:1px solid hsl(var(--foreground));padding:.5rem 0 1rem}.private-batch-summary strong{font-size:.875rem}.private-batch-summary time{color:hsl(var(--muted-foreground));font-size:11px}.private-batch-list{display:flex;flex-direction:column}.private-batch-item{min-width:0;min-height:4.5rem;display:grid;grid-template-columns:3rem minmax(0,1fr) auto;align-items:center;gap:.75rem;border-bottom:1px solid hsl(var(--border));color:inherit;text-decoration:none}.private-batch-item:hover,.private-batch-item:focus-visible{background:hsl(var(--card) / .45);outline:0}.private-batch-reference{width:2.7rem;height:2rem;border:1px solid hsl(var(--primary) / .35);border-radius:.4rem;display:grid;place-items:center;color:hsl(var(--primary));font-size:.75rem;font-weight:700}.private-batch-copy{min-width:0;display:grid;gap:.15rem}.private-batch-copy strong,.private-batch-copy small{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.private-batch-copy strong{font-size:.875rem}.private-batch-copy small{color:hsl(var(--muted-foreground));font-size:11px}.private-batch-item>svg{width:1rem;height:1rem;color:hsl(var(--muted-foreground))}
-.data-frame{width:min(100%,88rem)}.data-workspace{min-width:0;min-height:0;flex:1;display:grid;grid-template-columns:14rem minmax(0,1fr) 13rem;overflow:hidden}.data-catalog,.data-activity{min-width:0;min-height:0;overflow-y:auto;background:hsl(var(--card) / .22);padding:.75rem}.data-catalog{border-right:1px solid hsl(var(--border))}.data-activity{border-left:1px solid hsl(var(--border))}.data-catalog-heading{height:2rem;display:flex;align-items:center;justify-content:space-between;gap:.5rem;color:hsl(var(--muted-foreground));font-size:11px}.data-catalog-heading strong{color:hsl(var(--foreground));font-size:.75rem}.data-catalog-list{display:grid;gap:.2rem}.data-catalog-list a{min-width:0;min-height:3.4rem;display:grid;grid-template-columns:2rem minmax(0,1fr);align-items:center;gap:.55rem;border:1px solid transparent;border-radius:.45rem;padding:.4rem .45rem}.data-catalog-list a[aria-current="page"]{border-color:hsl(var(--primary) / .28);background:hsl(var(--background));box-shadow:0 1px 2px hsl(var(--foreground) / .06)}.data-catalog-list a>span:last-child{min-width:0;display:grid;gap:.12rem}.data-catalog-list strong,.data-catalog-list small{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.data-catalog-list strong{font-size:.8rem}.data-catalog-list small{color:hsl(var(--muted-foreground));font-size:10px}.data-object-icon,.automation-item-icon{width:2rem;height:2rem;border-radius:.45rem;background:hsl(var(--primary) / .09);color:hsl(var(--primary));display:grid;place-items:center}.data-object-icon svg,.automation-item-icon svg{width:1rem;height:1rem}.data-storage-status{display:grid;gap:.2rem;border-top:1px solid hsl(var(--border));margin-top:.7rem;padding-top:.7rem;color:hsl(var(--muted-foreground));font-size:10px}.data-surface{min-width:0;min-height:0;overflow:auto;padding:1rem}.data-object-heading{display:flex;align-items:flex-end;justify-content:space-between;gap:1rem;border-bottom:1px solid hsl(var(--foreground));padding:0 0 .8rem}.data-object-heading>div{min-width:0;display:grid;gap:.12rem}.data-object-heading span{color:hsl(var(--muted-foreground));font-size:11px}.data-object-heading h1{margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:1.05rem;letter-spacing:0}.data-object-heading dl{display:flex;gap:1rem;margin:0}.data-object-heading dl>div{display:grid;gap:.1rem;text-align:right}.data-object-heading dt{color:hsl(var(--muted-foreground));font-size:10px}.data-object-heading dd{margin:0;font-size:.875rem;font-weight:700}.data-query-toolbar{display:grid;grid-template-columns:minmax(12rem,1fr) auto auto auto auto;gap:.45rem;padding:.75rem 0}.data-search{position:relative;min-width:0}.data-search svg{position:absolute;left:.65rem;top:50%;width:1rem;height:1rem;transform:translateY(-50%);color:hsl(var(--muted-foreground))}.data-search input,.data-query-toolbar select,.data-query-toolbar input{width:100%;height:2.35rem;border:1px solid hsl(var(--input));border-radius:.45rem;background:hsl(var(--background));color:hsl(var(--foreground));padding:0 .65rem;font:inherit;font-size:.75rem;outline:0}.data-search input{padding-left:2rem}.data-tool-button,.data-query-submit,.data-query-reset{height:2.35rem;border:1px solid hsl(var(--border));border-radius:.45rem;background:hsl(var(--background));color:hsl(var(--foreground));display:inline-flex;align-items:center;justify-content:center;gap:.35rem;padding:0 .65rem;font:inherit;font-size:.75rem;cursor:pointer}.data-tool-button svg,.data-query-submit svg,.data-query-reset svg{width:.9rem;height:.9rem}.data-query-submit{background:hsl(var(--primary));border-color:hsl(var(--primary));color:hsl(var(--primary-foreground))}.data-query-reset{width:2.35rem;padding:0;color:hsl(var(--muted-foreground))}.data-filter-row,.data-aggregate-row{grid-column:1 / -1;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:.45rem;border-left:3px solid hsl(var(--primary));background:hsl(var(--card) / .28);padding:.55rem}.data-filter-row[hidden],.data-aggregate-row[hidden]{display:none}.data-filter-row label,.data-aggregate-row label{min-width:0;display:grid;gap:.25rem}.data-filter-row label>span,.data-aggregate-row label>span{color:hsl(var(--muted-foreground));font-size:10px}.data-result-meta{display:flex;align-items:center;justify-content:space-between;gap:1rem;padding:.2rem 0 .45rem;color:hsl(var(--muted-foreground));font-size:10px}.data-grid-scroll{min-width:0;overflow:auto;border:1px solid hsl(var(--border));border-radius:.45rem;background:hsl(var(--background))}.data-grid{width:100%;border-collapse:separate;border-spacing:0;font-size:.75rem}.data-grid th{position:sticky;z-index:2;top:0;background:hsl(var(--secondary));border-bottom:1px solid hsl(var(--border));color:hsl(var(--muted-foreground));font-weight:650;text-align:left}.data-grid th a{min-width:7rem;height:2.35rem;display:flex;align-items:center;justify-content:space-between;gap:.5rem;padding:0 .65rem}.data-grid th svg{width:.8rem;height:.8rem}.data-grid td{max-width:22rem;border-bottom:1px solid hsl(var(--border));padding:.55rem .65rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.data-grid tr:last-child td{border-bottom:0}.data-grid code{font:10px/1.4 ui-monospace,SFMono-Regular,Menlo,monospace}.data-null{color:hsl(var(--muted-foreground) / .62);font-style:italic}.data-number{font-variant-numeric:tabular-nums}.data-row-action{width:2.5rem!important;min-width:2.5rem!important}.data-row-action button{width:2rem;height:2rem;border:0;border-radius:.4rem;background:transparent;color:hsl(var(--muted-foreground));display:grid;place-items:center;cursor:pointer}.data-row-action svg{width:.9rem;height:.9rem}.data-pagination{min-height:3.25rem;display:flex;align-items:center;justify-content:center;gap:1rem;color:hsl(var(--muted-foreground));font-size:11px}.data-pagination a{height:2rem;display:inline-flex;align-items:center;gap:.3rem;border:1px solid hsl(var(--border));border-radius:.4rem;padding:0 .55rem}.data-pagination a[aria-disabled="true"]{pointer-events:none;opacity:.38}.data-pagination svg{width:.8rem;height:.8rem}.data-operation{display:grid;gap:.15rem;border-bottom:1px solid hsl(var(--border));padding:.65rem 0}.data-operation-kind{width:max-content;border:1px solid hsl(var(--border));border-radius:999px;padding:.1rem .35rem;color:hsl(var(--muted-foreground));font-size:9px}.data-operation strong{font-size:.75rem}.data-operation small,.data-side-empty{color:hsl(var(--muted-foreground));font-size:10px}.data-side-empty{padding:.75rem 0}.data-record-fields{min-height:0;overflow:auto;margin:0;padding:.5rem 1rem 1rem}.data-record-fields>div{display:grid;grid-template-columns:minmax(6rem,10rem) minmax(0,1fr);gap:1rem;border-bottom:1px solid hsl(var(--border));padding:.65rem 0}.data-record-fields dt{color:hsl(var(--muted-foreground));font-size:11px}.data-record-fields dd{min-width:0;margin:0;white-space:pre-wrap;overflow-wrap:anywhere;font-size:.8125rem;line-height:1.5}.data-catalog-trigger{display:none}
-.automation-frame{width:min(100%,64rem)}.automation-tabs{height:3rem;flex:0 0 auto;display:flex;align-items:stretch;border-bottom:1px solid hsl(var(--border));background:hsl(var(--card) / .22);padding:0 .75rem}.automation-tabs button{min-width:6rem;border:0;border-bottom:2px solid transparent;background:transparent;color:hsl(var(--muted-foreground));display:flex;align-items:center;justify-content:center;gap:.4rem;font:inherit;font-size:.75rem;cursor:pointer}.automation-tabs button[aria-pressed="true"]{border-bottom-color:hsl(var(--primary));color:hsl(var(--foreground));font-weight:700}.automation-tabs small{min-width:1.2rem;border-radius:999px;background:hsl(var(--muted));padding:.08rem .3rem;font-size:9px}.automation-scroll{min-width:0;min-height:0;flex:1;overflow:auto;padding:1rem}.automation-scroll>section{width:min(100%,52rem);margin:0 auto}.automation-list-heading{min-height:2.5rem;display:flex;align-items:center;justify-content:space-between;gap:1rem;border-bottom:1px solid hsl(var(--foreground))}.automation-list-heading strong{font-size:.8rem}.automation-list-heading span{color:hsl(var(--muted-foreground));font-size:10px}.automation-list{display:flex;flex-direction:column}.automation-item{min-width:0;border-bottom:1px solid hsl(var(--border));background:transparent}.automation-item summary{min-height:4.5rem;list-style:none;display:flex;align-items:center;gap:.7rem;cursor:pointer}.automation-item summary::-webkit-details-marker{display:none}.automation-item summary>svg{width:.9rem;height:.9rem;color:hsl(var(--muted-foreground));transition:transform .15s}.automation-item[open] summary>svg{transform:rotate(90deg)}.automation-item-copy{min-width:0;flex:1;display:grid;gap:.15rem}.automation-item-copy strong,.automation-item-copy small{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.automation-item-copy strong{font-size:.82rem}.automation-item-copy small{color:hsl(var(--muted-foreground));font-size:10px}.automation-status{height:1.45rem;border-radius:999px;padding:0 .45rem;display:inline-flex;align-items:center;font-size:9px;font-weight:700}.automation-status.enabled{background:#dcfce7;color:#166534}.automation-status.disabled{background:hsl(var(--muted));color:hsl(var(--muted-foreground))}.automation-status.failed{background:#fee2e2;color:#991b1b}.automation-detail{display:grid;gap:.85rem;border-top:1px solid hsl(var(--border));padding:.9rem 0 1rem}.automation-detail>p,.automation-run-reason{margin:0;color:hsl(var(--muted-foreground));font-size:.75rem;line-height:1.6}.automation-definition-grid{display:grid;gap:.65rem}.automation-definition{overflow:hidden;border:1px solid hsl(var(--border));border-radius:.45rem;background:hsl(var(--background))}.automation-definition>header{min-height:3.25rem;display:flex;align-items:center;gap:.65rem;border-bottom:1px solid hsl(var(--border));background:hsl(var(--card) / .35);padding:.55rem .7rem}.automation-definition>header>span:last-child{min-width:0;display:grid;gap:.08rem}.automation-definition>header strong{font-size:.75rem}.automation-definition>header small{color:hsl(var(--muted-foreground));font-size:10px}.automation-definition-icon{width:1.8rem;height:1.8rem;flex:0 0 auto;border-radius:.4rem;background:hsl(var(--primary) / .09);color:hsl(var(--primary));display:grid;place-items:center}.automation-definition-icon svg{width:.9rem;height:.9rem}.automation-fields{margin:0;padding:.15rem .7rem}.automation-field{min-width:0;display:grid;grid-template-columns:minmax(5.5rem,8rem) minmax(0,1fr);gap:.7rem;border-bottom:1px solid hsl(var(--border) / .75);padding:.55rem 0}.automation-field:last-child{border-bottom:0}.automation-field dt{color:hsl(var(--muted-foreground));font-size:10px;line-height:1.5}.automation-field dd{min-width:0;margin:0;font-size:.75rem;line-height:1.5;overflow-wrap:anywhere}.automation-field-empty{margin:0;padding:.8rem 0;color:hsl(var(--muted-foreground));font-size:11px}.automation-value{white-space:pre-wrap}.automation-tag-list{display:flex;flex-wrap:wrap;gap:.3rem}.automation-tag{max-width:100%;border:1px solid hsl(var(--border));border-radius:999px;background:hsl(var(--card) / .45);padding:.12rem .42rem;font-size:10px;overflow-wrap:anywhere}.automation-permission{width:max-content;max-width:100%;display:inline-flex;align-items:center;gap:.3rem;font-size:10px;font-weight:700}.automation-permission svg{width:.8rem;height:.8rem}.automation-permission.allowed{color:#166534}.automation-permission.blocked{color:hsl(var(--muted-foreground))}.automation-nested{min-width:0;margin:0;border-left:2px solid hsl(var(--primary) / .2);padding-left:.6rem}.automation-nested .automation-field{grid-template-columns:minmax(5rem,7rem) minmax(0,1fr);padding:.4rem 0}.automation-nested-list{display:grid;gap:.45rem;margin-top:.35rem}.automation-nested-list>section{border-left:2px solid hsl(var(--primary) / .22);padding:.35rem 0 .35rem .6rem}.automation-nested-list>section>strong{font-size:10px}.automation-muted{color:hsl(var(--muted-foreground));font-size:10px}.automation-detail footer{display:flex;justify-content:space-between;color:hsl(var(--muted-foreground));font-size:9px}.automation-source,.automation-run{padding:.7rem 0}.automation-source-row{min-height:3rem;display:flex;align-items:center;gap:.7rem}.automation-source-meta{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));margin:.55rem 0 0;border-top:1px solid hsl(var(--border))}.automation-source-meta>div{min-width:0;display:grid;gap:.15rem;border-right:1px solid hsl(var(--border));padding:.55rem}.automation-source-meta>div:last-child{border-right:0}.automation-source-meta dt{color:hsl(var(--muted-foreground));font-size:9px}.automation-source-meta dd{min-width:0;margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:10px}.automation-run-reason{padding:.35rem 0}.automation-session-link{width:max-content;display:flex;align-items:center;gap:.25rem;color:hsl(var(--primary));font-size:10px;font-weight:650}.automation-session-link svg{width:.8rem;height:.8rem}.automation-empty{margin-top:1rem}
+.data-frame{width:min(100%,88rem)}.data-workspace{min-width:0;min-height:0;flex:1;display:grid;grid-template-columns:14rem minmax(0,1fr) 13rem;overflow:hidden}.data-catalog,.data-activity{min-width:0;min-height:0;overflow-y:auto;background:hsl(var(--card) / .22);padding:.75rem}.data-catalog{border-right:1px solid hsl(var(--border))}.data-activity{border-left:1px solid hsl(var(--border))}.data-catalog-heading{height:2rem;display:flex;align-items:center;justify-content:space-between;gap:.5rem;color:hsl(var(--muted-foreground));font-size:11px}.data-catalog-heading strong{color:hsl(var(--foreground));font-size:.75rem}.data-catalog-list{display:grid;gap:.2rem}.data-catalog-list a{min-width:0;min-height:3.4rem;display:grid;grid-template-columns:2rem minmax(0,1fr);align-items:center;gap:.55rem;border:1px solid transparent;border-radius:.45rem;padding:.4rem .45rem}.data-catalog-list a[aria-current="page"]{border-color:hsl(var(--primary) / .28);background:hsl(var(--background));box-shadow:0 1px 2px hsl(var(--foreground) / .06)}.data-catalog-list a>span:last-child{min-width:0;display:grid;gap:.12rem}.data-catalog-list strong,.data-catalog-list small{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.data-catalog-list strong{font-size:.8rem}.data-catalog-list small{color:hsl(var(--muted-foreground));font-size:10px}.data-object-icon{width:2rem;height:2rem;border-radius:.45rem;background:hsl(var(--primary) / .09);color:hsl(var(--primary));display:grid;place-items:center}.data-object-icon svg{width:1rem;height:1rem}.data-storage-status{display:grid;gap:.2rem;border-top:1px solid hsl(var(--border));margin-top:.7rem;padding-top:.7rem;color:hsl(var(--muted-foreground));font-size:10px}.data-surface{min-width:0;min-height:0;overflow:auto;padding:1rem}.data-object-heading{display:flex;align-items:flex-end;justify-content:space-between;gap:1rem;border-bottom:1px solid hsl(var(--foreground));padding:0 0 .8rem}.data-object-heading>div{min-width:0;display:grid;gap:.12rem}.data-object-heading span{color:hsl(var(--muted-foreground));font-size:11px}.data-object-heading h1{margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:1.05rem;letter-spacing:0}.data-object-heading dl{display:flex;gap:1rem;margin:0}.data-object-heading dl>div{display:grid;gap:.1rem;text-align:right}.data-object-heading dt{color:hsl(var(--muted-foreground));font-size:10px}.data-object-heading dd{margin:0;font-size:.875rem;font-weight:700}.data-query-toolbar{display:grid;grid-template-columns:minmax(12rem,1fr) auto auto auto auto;gap:.45rem;padding:.75rem 0}.data-search{position:relative;min-width:0}.data-search svg{position:absolute;left:.65rem;top:50%;width:1rem;height:1rem;transform:translateY(-50%);color:hsl(var(--muted-foreground))}.data-search input,.data-query-toolbar select,.data-query-toolbar input{width:100%;height:2.35rem;border:1px solid hsl(var(--input));border-radius:.45rem;background:hsl(var(--background));color:hsl(var(--foreground));padding:0 .65rem;font:inherit;font-size:.75rem;outline:0}.data-search input{padding-left:2rem}.data-tool-button,.data-query-submit,.data-query-reset{height:2.35rem;border:1px solid hsl(var(--border));border-radius:.45rem;background:hsl(var(--background));color:hsl(var(--foreground));display:inline-flex;align-items:center;justify-content:center;gap:.35rem;padding:0 .65rem;font:inherit;font-size:.75rem;cursor:pointer}.data-tool-button svg,.data-query-submit svg,.data-query-reset svg{width:.9rem;height:.9rem}.data-query-submit{background:hsl(var(--primary));border-color:hsl(var(--primary));color:hsl(var(--primary-foreground))}.data-query-reset{width:2.35rem;padding:0;color:hsl(var(--muted-foreground))}.data-filter-row,.data-aggregate-row{grid-column:1 / -1;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:.45rem;border-left:3px solid hsl(var(--primary));background:hsl(var(--card) / .28);padding:.55rem}.data-filter-row[hidden],.data-aggregate-row[hidden]{display:none}.data-filter-row label,.data-aggregate-row label{min-width:0;display:grid;gap:.25rem}.data-filter-row label>span,.data-aggregate-row label>span{color:hsl(var(--muted-foreground));font-size:10px}.data-result-meta{display:flex;align-items:center;justify-content:space-between;gap:1rem;padding:.2rem 0 .45rem;color:hsl(var(--muted-foreground));font-size:10px}.data-grid-scroll{min-width:0;overflow:auto;border:1px solid hsl(var(--border));border-radius:.45rem;background:hsl(var(--background))}.data-grid{width:100%;border-collapse:separate;border-spacing:0;font-size:.75rem}.data-grid th{position:sticky;z-index:2;top:0;background:hsl(var(--secondary));border-bottom:1px solid hsl(var(--border));color:hsl(var(--muted-foreground));font-weight:650;text-align:left}.data-grid th a{min-width:7rem;height:2.35rem;display:flex;align-items:center;justify-content:space-between;gap:.5rem;padding:0 .65rem}.data-grid th svg{width:.8rem;height:.8rem}.data-grid td{max-width:22rem;border-bottom:1px solid hsl(var(--border));padding:.55rem .65rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.data-grid tr:last-child td{border-bottom:0}.data-grid code{font:10px/1.4 ui-monospace,SFMono-Regular,Menlo,monospace}.data-null{color:hsl(var(--muted-foreground) / .62);font-style:italic}.data-number{font-variant-numeric:tabular-nums}.data-row-action{width:2.5rem!important;min-width:2.5rem!important}.data-row-action button{width:2rem;height:2rem;border:0;border-radius:.4rem;background:transparent;color:hsl(var(--muted-foreground));display:grid;place-items:center;cursor:pointer}.data-row-action svg{width:.9rem;height:.9rem}.data-pagination{min-height:3.25rem;display:flex;align-items:center;justify-content:center;gap:1rem;color:hsl(var(--muted-foreground));font-size:11px}.data-pagination a{height:2rem;display:inline-flex;align-items:center;gap:.3rem;border:1px solid hsl(var(--border));border-radius:.4rem;padding:0 .55rem}.data-pagination a[aria-disabled="true"]{pointer-events:none;opacity:.38}.data-pagination svg{width:.8rem;height:.8rem}.data-operation{display:grid;gap:.15rem;border-bottom:1px solid hsl(var(--border));padding:.65rem 0}.data-operation-kind{width:max-content;border:1px solid hsl(var(--border));border-radius:999px;padding:.1rem .35rem;color:hsl(var(--muted-foreground));font-size:9px}.data-operation strong{font-size:.75rem}.data-operation small,.data-side-empty{color:hsl(var(--muted-foreground));font-size:10px}.data-side-empty{padding:.75rem 0}.data-record-fields{min-height:0;overflow:auto;margin:0;padding:.5rem 1rem 1rem}.data-record-fields>div{display:grid;grid-template-columns:minmax(6rem,10rem) minmax(0,1fr);gap:1rem;border-bottom:1px solid hsl(var(--border));padding:.65rem 0}.data-record-fields dt{color:hsl(var(--muted-foreground));font-size:11px}.data-record-fields dd{min-width:0;margin:0;white-space:pre-wrap;overflow-wrap:anywhere;font-size:.8125rem;line-height:1.5}.data-catalog-trigger{display:none}
 @media(max-width:1100px){.data-workspace{grid-template-columns:13rem minmax(0,1fr)}.data-activity{display:none}}
-.data-surface,.automation-scroll{max-width:100%;overflow-x:hidden}.data-grid-scroll{max-width:100%;overscroll-behavior-inline:contain}.automation-list{gap:.55rem;padding:.55rem 0}.automation-item{min-width:0;max-width:100%;overflow:hidden;border:1px solid hsl(var(--border));border-radius:.5rem;background:hsl(var(--background))}.automation-item summary{padding:0 .75rem}.automation-detail{padding:.9rem .75rem 1rem}.automation-source,.automation-run,.automation-policy{padding:.7rem .75rem}.automation-field dd,.automation-run-reason{min-width:0;max-width:100%;overflow-x:auto;overscroll-behavior-inline:contain;overflow-wrap:anywhere}.automation-value{display:block;max-width:100%;white-space:pre-wrap;overflow-wrap:anywhere}.automation-load-more{width:100%;min-height:3rem;border:0;background:transparent;color:hsl(var(--muted-foreground));display:flex;align-items:center;justify-content:center;gap:.45rem;font:inherit;font-size:.75rem;cursor:pointer}.automation-load-more[hidden]{display:none}.automation-load-more[data-loading="true"] .console-loading-dot{animation:console-pulse .9s ease-in-out infinite alternate}.automation-protection{display:grid;gap:.75rem;padding:.75rem 0}.protection-metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:.55rem}.protection-metrics>div{min-width:0;border:1px solid hsl(var(--border));border-top:3px solid hsl(var(--primary));border-radius:.45rem;background:hsl(var(--background));display:grid;gap:.25rem;padding:.7rem}.protection-metrics span,.protection-metrics small{color:hsl(var(--muted-foreground));font-size:9px}.protection-metrics strong{font-size:1.2rem;font-variant-numeric:tabular-nums}.protection-limits,.protection-policies{border:1px solid hsl(var(--border));border-radius:.45rem;background:hsl(var(--background));overflow:hidden}.protection-limits>header,.protection-policies>header{display:flex;align-items:center;justify-content:space-between;gap:.75rem;border-bottom:1px solid hsl(var(--border));background:hsl(var(--card) / .35);padding:.65rem .75rem}.protection-limits header strong,.protection-policies header strong{font-size:.75rem}.protection-limits header span,.protection-policies header span{color:hsl(var(--muted-foreground));font-size:9px}.protection-limits dl{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));margin:0}.protection-limits dl>div{display:grid;gap:.2rem;border-right:1px solid hsl(var(--border));padding:.65rem .75rem}.protection-limits dl>div:last-child{border-right:0}.protection-limits dt{color:hsl(var(--muted-foreground));font-size:9px}.protection-limits dd{margin:0;font-size:.85rem;font-weight:700}.protection-policies .automation-list{padding:.55rem}.protection-empty{margin:0;padding:1rem;color:hsl(var(--muted-foreground));font-size:.75rem;text-align:center}
-@media(max-width:767px){.data-workspace{display:block;overflow:auto}.data-catalog,.data-activity{display:none}.data-catalog-trigger{display:inline-flex}.data-surface{overflow:visible;padding:.75rem}.data-query-toolbar{grid-template-columns:minmax(0,1fr) auto auto}.data-query-submit{grid-column:1 / 3}.data-query-reset{grid-column:3}.data-tool-button span{display:none}.data-filter-row,.data-aggregate-row{grid-template-columns:1fr}.data-object-heading{align-items:center}.data-object-heading dl{gap:.65rem}.data-grid-scroll{border:0;background:transparent;overflow:visible}.data-grid,.data-grid tbody{display:block}.data-grid thead{display:none}.data-grid tr{display:block;max-width:100%;overflow-x:auto;overscroll-behavior-inline:contain;border:1px solid hsl(var(--border));border-radius:.45rem;background:hsl(var(--background));margin-bottom:.55rem;padding:.35rem .55rem}.data-grid td{max-width:none;display:grid;grid-template-columns:minmax(6rem,38%) minmax(0,1fr);gap:.65rem;border-bottom:1px solid hsl(var(--border));padding:.5rem .1rem;white-space:normal;overflow:visible;overflow-wrap:anywhere}.data-grid td::before{content:attr(data-label);color:hsl(var(--muted-foreground));font-size:10px}.data-grid td.data-row-action{width:100%!important;display:flex;justify-content:flex-end;border-bottom:0;padding:.35rem 0 0}.data-grid td.data-row-action::before{display:none}.data-row-action button{border:1px solid hsl(var(--border))}.data-pagination{justify-content:center;gap:.4rem}.data-pagination a{display:none}.data-record-dialog{width:calc(100% - 1rem)}.automation-tabs{padding:0;overflow-x:auto}.automation-tabs button{min-width:4rem;flex:1}.automation-scroll{padding:.75rem}.automation-source-meta{grid-template-columns:repeat(2,minmax(0,1fr))}.automation-source-meta>div:nth-child(2){border-right:0}.automation-source-meta>div:nth-child(n+3){border-top:1px solid hsl(var(--border))}.automation-status{display:none}.automation-definition>header{padding:.5rem .6rem}.automation-fields{padding:.1rem .6rem}.automation-field{grid-template-columns:minmax(5rem,34%) minmax(0,1fr);gap:.5rem}.automation-nested .automation-field{grid-template-columns:1fr;gap:.2rem}.automation-nested-list>section{padding-left:.5rem}.protection-metrics,.protection-limits dl{grid-template-columns:repeat(2,minmax(0,1fr))}.protection-metrics>div:nth-child(n+3){border-top-color:hsl(var(--accent))}.protection-limits dl>div:nth-child(2){border-right:0}.protection-limits dl>div:nth-child(n+3){border-top:1px solid hsl(var(--border))}.protection-limits>header,.protection-policies>header{align-items:flex-start;flex-direction:column;gap:.2rem}}
+.data-surface{max-width:100%;overflow-x:hidden}.data-grid-scroll{max-width:100%;overscroll-behavior-inline:contain}
+@media(max-width:767px){.data-workspace{display:block;overflow:auto}.data-catalog,.data-activity{display:none}.data-catalog-trigger{display:inline-flex}.data-surface{overflow:visible;padding:.75rem}.data-query-toolbar{grid-template-columns:minmax(0,1fr) auto auto}.data-query-submit{grid-column:1 / 3}.data-query-reset{grid-column:3}.data-tool-button span{display:none}.data-filter-row,.data-aggregate-row{grid-template-columns:1fr}.data-object-heading{align-items:center}.data-object-heading dl{gap:.65rem}.data-grid-scroll{border:0;background:transparent;overflow:visible}.data-grid,.data-grid tbody{display:block}.data-grid thead{display:none}.data-grid tr{display:block;max-width:100%;overflow-x:auto;overscroll-behavior-inline:contain;border:1px solid hsl(var(--border));border-radius:.45rem;background:hsl(var(--background));margin-bottom:.55rem;padding:.35rem .55rem}.data-grid td{max-width:none;display:grid;grid-template-columns:minmax(6rem,38%) minmax(0,1fr);gap:.65rem;border-bottom:1px solid hsl(var(--border));padding:.5rem .1rem;white-space:normal;overflow:visible;overflow-wrap:anywhere}.data-grid td::before{content:attr(data-label);color:hsl(var(--muted-foreground));font-size:10px}.data-grid td.data-row-action{width:100%!important;display:flex;justify-content:flex-end;border-bottom:0;padding:.35rem 0 0}.data-grid td.data-row-action::before{display:none}.data-row-action button{border:1px solid hsl(var(--border))}.data-pagination{justify-content:center;gap:.4rem}.data-pagination a{display:none}.data-record-dialog{width:calc(100% - 1rem)}}
 .wechat-only-hidden{display:none!important}
 .memory-overlay[hidden]{display:none!important}.memory-overlay{position:fixed!important;z-index:1000!important;inset:0!important;width:100%!important;max-width:none!important;height:100%!important;max-height:none!important;margin:0!important;display:flex!important;align-items:flex-end;justify-content:center;border:0!important;background:hsl(60 2% 8% / .48)!important;padding:0!important}.memory-overlay.task-dialog,.memory-overlay.alert-dialog{align-items:center;padding:.5rem!important}.memory-overlay .memory-sheet-content{width:min(100%,42rem)}.memory-overlay .task-dialog-content{width:min(calc(100% - 1rem),44rem)}.memory-modal-open{overflow:hidden}
 .token-session-row:hover strong{color:inherit}.workspace-summary:hover,.console-session:hover,.mobile-chat-icon-button:hover,.prompt-tool-button:hover,.prompt-chip:hover{background:transparent}.main-session-group .console-session:hover{background:hsl(var(--background) / .72)}.memory-row:hover,.cron-task-row:hover{border-color:hsl(var(--border));background:hsl(var(--background));box-shadow:none}.memory-selector:hover{border-color:hsl(var(--input));box-shadow:none}.memory-sheet-option:hover{background:transparent}.memory-sheet-option[aria-pressed="true"]{background:hsl(var(--card) / .4)}.private-batch-item:hover{background:transparent}
@@ -2086,13 +1601,21 @@ function formatInteger(value) {
 
 function formatTokenCount(value) {
   const number = Math.max(0, Number(value) || 0);
-  const units = [[1_000_000_000, "B"], [1_000_000, "M"], [1_000, "K"]];
+  const units = [[1_000_000_000_000, "T"], [1_000_000_000, "B"], [1_000_000, "M"], [1_000, "K"]];
   for (const [threshold, suffix] of units) {
     if (number >= threshold) {
       return `${new Intl.NumberFormat("en-US", { maximumFractionDigits: 1 }).format(number / threshold)}${suffix}`;
     }
   }
   return new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 }).format(number);
+}
+
+function formatTokenCountHtml(value) {
+  const formatted = formatTokenCount(value);
+  const suffix = formatted.match(/[KMBT]$/)?.[0];
+  if (!suffix) return escapeHtml(formatted);
+  const detail = TOKEN_UNIT_DETAILS[suffix];
+  return `${escapeHtml(formatted.slice(0, -1))}<abbr class="token-count-unit" title="${escapeAttr(detail.title)}" aria-label="${escapeAttr(detail.label)}" tabindex="0">${suffix}</abbr>`;
 }
 
 function formatFileSize(value) {

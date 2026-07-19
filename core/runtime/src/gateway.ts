@@ -50,6 +50,16 @@ export function createPrivateSiteGateway(options = {}) {
         sendText(response, 400, "Unsafe request path\n", request.method === "HEAD");
         return;
       }
+      const spaceProxy = resolveRelaySpaceProxyTarget(request, config);
+      if (spaceProxy?.statusCode) {
+        sendText(response, spaceProxy.statusCode, `${spaceProxy.message}\n`, request.method === "HEAD");
+        return;
+      }
+      if (spaceProxy) {
+        request.headers.host = spaceProxy.host;
+        proxy.web(request, response, { target: spaceProxy.target });
+        return;
+      }
       const url = new URL(request.url || "/", `http://${host || "localhost"}`);
       if (url.pathname === "/__private-site/health") {
         sendJson(response, 200, { ok: true, service: "private-site-gateway", site: config.domain, tls: gatewayUsesTls(config) }, request.method === "HEAD");
@@ -126,6 +136,13 @@ export function createPrivateSiteGateway(options = {}) {
       if (!edgeClientAuthorized(request, config)) return rejectUpgrade(socket, 403);
       const host = normalizeRequestHost(request.headers.host);
       if (!hostAllowed(host, config) || !requestPathAllowed(request.url)) return rejectUpgrade(socket, 404);
+      const spaceProxy = resolveRelaySpaceProxyTarget(request, config);
+      if (spaceProxy?.statusCode) return rejectUpgrade(socket, spaceProxy.statusCode);
+      if (spaceProxy) {
+        request.headers.host = spaceProxy.host;
+        proxy.ws(request, socket, head, { target: spaceProxy.target });
+        return;
+      }
       const url = new URL(request.url || "/", `http://${host || "localhost"}`);
       const route = matchRoute(routes, host, url.pathname, config);
       if (!route?.target || !route.websocket) return rejectUpgrade(socket, 404);
@@ -230,6 +247,24 @@ export function resolvePersonalWechatCallbackTarget(request, url, config, resolv
   const bridgePort = Number(space.ports?.bridge || 0);
   if (!Number.isInteger(bridgePort) || bridgePort < 1 || bridgePort > 65_535) return { statusCode: 503, message: "Personal WeChat callback target is unavailable" };
   return { target: `http://127.0.0.1:${bridgePort}`, upstreamPath: callbackPath, spaceCode: space.slug };
+}
+
+export function resolveRelaySpaceProxyTarget(request, config, resolver = null) {
+  const header = request.headers["x-personal-agent-space-route"];
+  delete request.headers["x-personal-agent-space-route"];
+  if (header === undefined) return null;
+  const slug = String(Array.isArray(header) ? header[0] : header || "").trim().toLowerCase();
+  if (!/^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/.test(slug)) return { statusCode: 400, message: "Invalid Space route" };
+  const lookup = resolver || ((selector) => getSpace(config.installationDataRoot, selector));
+  const space = lookup(slug);
+  if (!space || space.slug !== slug || space.kind === "personal" || space.id === config.space?.id) return { statusCode: 404, message: "Space route was not found" };
+  if (space.state !== "running" || space.desiredState !== "running") return { statusCode: 503, message: "Space is not running" };
+  const gatewayPort = Number(space.ports?.gateway || 0);
+  if (!Number.isInteger(gatewayPort) || gatewayPort < 1 || gatewayPort > 65_535) return { statusCode: 503, message: "Space gateway is unavailable" };
+  const site = readJson(path.join(space.root, "config", "site.json"));
+  const targetHost = String(site?.asciiDomain || space.managedHost || "").trim().toLowerCase();
+  if (!targetHost) return { statusCode: 503, message: "Space hostname is unavailable" };
+  return { target: `http://127.0.0.1:${gatewayPort}`, host: targetHost, spaceId: space.id, slug: space.slug };
 }
 
 function preparePersonalWechatCallbackProxyHeaders(request) {
@@ -445,6 +480,10 @@ function edgeClientAuthorized(request, config) {
 
 function statFile(filePath) {
   try { return fs.statSync(filePath); } catch { return null; }
+}
+
+function readJson(filePath) {
+  try { return JSON.parse(fs.readFileSync(filePath, "utf8")); } catch { return null; }
 }
 
 function sendJson(response, statusCode, value, head = false) {

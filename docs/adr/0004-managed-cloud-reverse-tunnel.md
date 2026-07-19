@@ -9,7 +9,7 @@ Personal Agent Node needs to receive HTTP, streaming, and WebSocket requests for
 
 The previous managed enrollment allocated a WireGuard address and activated `wg-quick` on the customer machine. That introduced administrator privileges, platform prerequisites, tunnel interfaces, routes, and possible DNS interaction for an application forwarding problem.
 
-Self-hosted Edge remains an independent provider and may explicitly use WireGuard. This decision only changes the built-in `managed-cloud` provider.
+Self-hosted custom domains remain an independent provider and now reuse the same application-layer reverse WebSocket protocol with a user-owned, single-key Relay. Legacy WireGuard tooling remains available only for explicit low-level Edge migration and is not part of the custom-domain SOP.
 
 ## Decision
 
@@ -31,4 +31,4 @@ Managed enrollment must not generate WireGuard keys, install WireGuard, execute 
 - HTTP streaming, WebSocket boundaries, backpressure, cancellation, heartbeats, reconnects, and resource limits become explicit application protocol responsibilities.
 - Cloud must terminate public TLS and operate a compatible Tunnel Broker.
 - Setup readiness uses Connector `ready` state and a fresh pong instead of interface or peer state.
-- Existing self-hosted Edge commands and WireGuard implementation remain available only for explicit self-hosted operation.
+- Existing low-level Edge and WireGuard commands remain available for legacy migration, while the product custom-domain path uses the self-hosted WSS Relay.

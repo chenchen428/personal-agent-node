@@ -31,7 +31,7 @@ export function buildInboundAttachmentDisplayName({ kind, fileName, createdAt, u
 export function buildPrivateAttachmentPreviewUrl({ rootDir, filePath }) {
   const relativePath = relativeAttachmentPath(rootDir, filePath);
   if (!relativePath) return "";
-  return `/files/view/${encodeRelativePath(relativePath)}`;
+  return `/app/files/view/${encodeRelativePath(relativePath)}`;
 }
 
 export function relativeAttachmentPath(rootDir, filePath) {

@@ -3,7 +3,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import qrcodeTerminal from "qrcode-terminal";
-import { ingestRawEmail, MAX_MAIL_BYTES } from "../src/automation/mail-ingest.js";
+import { ingestRawEmail, MAX_MAIL_BYTES } from "../src/connections/mail/mail-ingest.js";
 import { normalizeTaskCreate, normalizeTaskPatch } from "../src/server/task-contract.js";
 
 const personalAgentHome = path.resolve(process.env.PERSONAL_AGENT_HOME || path.join(os.homedir(), ".personal-agent"));
@@ -37,7 +37,7 @@ try {
   } else if (command === "memory") {
     throw new Error("The legacy Memory domain has been removed; the verified main Agent must use pa-cli activity");
   } else if (command === "automation") {
-    throw new Error("The user automation product has been removed; local mail interval scanning is a built-in connection capability");
+    throw new Error("The standalone automation product has been removed; use pa-cli cron for task-based automation");
   } else if (command === "session" && (subcommand === "list" || subcommand === "search")) {
     const query = args.query || args.q || (subcommand === "search" ? args._.slice(2).join(" ") : "");
     if (subcommand === "search" && !query) throw new Error("--query is required");
@@ -238,6 +238,13 @@ try {
         ? "Authenticate with personal-agent.cn after confirming the platform-domain and secure-tunnel change."
         : "Remove the local binding after confirmation; Workspace data and Cloud enrollment are preserved.",
     });
+    else if (["mail", "sites"].includes(connectionId) && operation === "use-custom-domain") {
+      const domain = String(args.domain || "").trim();
+      if (!domain) throw new Error("--domain is required");
+      print({ ok: true, connectionId, confirmationRequired: true, risk: "R2", setupAction: "connectivity.custom-domain-start", input: { kind: connectionId, domain }, command: `pa-cli connection ${connectionId} use-custom-domain`, next: "Approve the domain-bound plan, follow the Relay and DNS preparation guide, then run verification." });
+    }
+    else if (["mail", "sites"].includes(connectionId) && operation === "verify-custom-domain") print(await post(`/api/connections/${connectionId}/domain-binding`, { binding: "custom", deadlineAt: new Date(Date.now() + 3 * 60_000).toISOString() }));
+    else if (["mail", "sites"].includes(connectionId) && operation === "remove-custom-domain") print({ ok: true, connectionId, confirmationRequired: true, risk: "R2", setupAction: "connectivity.custom-domain-remove", input: { kind: connectionId }, command: `pa-cli connection ${connectionId} remove-custom-domain`, next: "Approve removal in the authenticated local Console; Workspace data remains local." });
     else throw new Error(`Unsupported connection operation: ${connectionId} ${operation}`);
   } else if (command === "channel" && subcommand === "status") {
     const provider = channelProvider();
@@ -681,7 +688,7 @@ function help() {
   pa-cli session status --session <id> [--json]
   pa-cli data status [--json]
   pa-cli data schema [--object <table>] [--json]
-  pa-cli data sql --statement "<SQL>" [--session <id>] [--run <automation-run>] [--json]
+  pa-cli data sql --statement "<SQL>" [--session <id>] [--run <task-run>] [--json]
   pa-cli data sql --file <sql-file> [--json]
   pa-cli data query --object <table> [--search <text>] [--field <column> --operator <op> --value <value>] [--group <column> --aggregate <fn> --metric <column>]
   pa-cli data snapshots [--json]
@@ -731,7 +738,11 @@ function help() {
   pa-cli connection notion connect|poll [--json]
   pa-cli connection mail scan|history [--json]
   pa-cli connection mail use-platform-domain|remove-platform-domain [--json]
+  pa-cli connection mail use-custom-domain --domain <domain> [--json]
+  pa-cli connection mail verify-custom-domain|remove-custom-domain [--json]
   pa-cli connection sites list|tunnel-status|use-platform-domain|remove-platform-domain [--json]
+  pa-cli connection sites use-custom-domain --domain <domain> [--json]
+  pa-cli connection sites verify-custom-domain|remove-custom-domain [--json]
   pa-cli channel status xiaohongshu [--json]
   pa-cli channel login xiaohongshu [--execute] [--recipient <wechat-id>] [--json]
   pa-cli channel login-status xiaohongshu --session <login-session> [--json]

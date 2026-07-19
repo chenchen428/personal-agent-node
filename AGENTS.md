@@ -25,6 +25,13 @@ This repository is both the public, local-first Personal Agent runtime and the c
 - Top-level `skills/` is the portable skill source. Compatibility paths `.agents`, `.codex`, `.claude`, `.cursor`, and `CLAUDE.md` are generated locally and ignored.
 - Production releases are immutable artifacts. Mutable state must never be packaged into `dist/`.
 
+## Private Asset Delivery
+
+- Every inbound upload and Agent-produced file that may be referenced later belongs under the owning Space's user-owned `workspace/`: inbound files under `files/inbound`, managed outputs under `files/managed`, materialized copies under `files/materialized`, and private Page bundles under `publications/private`.
+- Register reusable files in the Space-local managed-file catalog and carry their stable `obj_` ID in Activity or final-reply attachment contracts. Never bind an Activity, Page, HTML attachment, or chat attachment to an absolute path, `file://` URL, loopback URL, or an unregistered temporary file.
+- Browser access to private files uses authenticated same-origin `/app/files/*`; browser access to private Page bundles uses authenticated same-origin `/publications/*`. The gateway must fail closed before proxying either route, and the serving capability must re-check the current Space object or path.
+- A WeChat upload receipt only confirms the received file names or counts. It must not send private preview, batch, local-path, object-store, or loopback links. When the user later asks to view, download, bind, or resend a file, resolve the governed object and provide the appropriate authenticated UI action or native channel attachment.
+
 ## Agent-Owned Activity
 
 Activity is a primary interface between the main Agent and the user, not an operation log, notification dump, or system-generated timeline. The unique main Agent is the only producer that decides what becomes user-visible activity and owns its wording, attachments, updates, and lifecycle.
@@ -32,17 +39,17 @@ Activity is a primary interface between the main Agent and the user, not an oper
 - Core services and Open Agent Bridge may expose verified facts, normalized events, object references, database results, task state, and timestamps. They must not automatically turn those facts into activity titles, descriptions, cards, or feed items.
 - Workers and child tasks report facts, progress, files, and results back to the main Agent. They never create, search, update, hide, restore, or delete global activity themselves. The main Agent decides whether a child result is worth publishing and writes the user-facing activity in its own voice.
 - Never generate activity directly from tool calls, heartbeats, token usage, debug output, raw Bridge events, or every task state transition. Those records belong in execution history, diagnostics, or audit data.
-- Be proactive when a change has user value. Create or update activity when assigning a meaningful subtask, reaching a useful milestone, producing or materially revising a result, finding an issue that changes the expected outcome, recovering from a failure, or completing important work in Pages, mail, data, automation, or another registered capability.
+- Be proactive when a change has user value. Create or update activity when assigning a meaningful subtask, reaching a useful milestone, producing or materially revising a result, finding an issue that changes the expected outcome, recovering from a failure, or completing important work in Pages, mail, data, scheduled tasks, or another registered capability.
 - Prefer one evolving story over repeated posts. Use a stable correlation key and update the existing activity for frequent progress on the same work. Create a separate item only when there is a distinct result, decision, failure/recovery event, or deliverable worth revisiting.
 - Activity must remain useful without exposing implementation mechanics. Explain what changed, why it matters to the user, what result is available, and any next action the user may need to take.
 
 Every activity contract must support these user-facing fields and constraints:
 
-- `type`: a controlled type. Core types are `work`, `page`, `mail`, `data`, `automation`, and `note`; use `note` for general activity that does not honestly fit another type.
+- `type`: a controlled type. Core types are `work`, `page`, `mail`, `data`, and `note`; scheduled automation is an ordinary task and uses `work`. Use `note` for general activity that does not honestly fit another type.
 - `title`: required, concise, and no more than 30 user-visible characters after normalization. Reject an overlong title; do not silently truncate it.
 - `detail`: required user-facing content organized by the Agent. Keep it plain text or safely rendered restricted Markdown; never accept arbitrary HTML.
 - `attachments`: an ordered list of zero to ten references. The limit of ten includes images and non-image files together. Reject an eleventh attachment instead of dropping it silently.
-- `target`: an optional typed reference to the task, Page, mail item, data object, automation, App, or other governed product object that owns the full detail.
+- `target`: an optional typed reference to the task, Page, mail item, data object, App, or other governed product object that owns the full detail. A scheduled automation targets its ordinary task.
 - `correlationKey`, `revision`, and an idempotency key: use them for deduplication, optimistic updates, and safe retries.
 
 ### Main-Agent Isolation
@@ -65,7 +72,7 @@ Use Open Agent Bridge and registered Node capabilities to gather the facts neede
 
 - Task creation and progress come from normalized parent/child session identity, visible Agent replies, explicit plans, stable timestamps, and verified terminal state.
 - Data activity may use governed schema inspection, structured queries, object metadata, and result counts. Do not read business databases directly, expose database paths, dump raw rows, or treat an internal data mutation record as user-facing copy.
-- Mail, Pages, files, automation, channels, and Personal Apps remain separate capability owners. Activity may reference their objects but does not bypass their permissions, approval policy, publication state, or retention rules.
+- Mail, Pages, files, scheduled tasks, channels, and Personal Apps remain separate capability owners. Activity may reference their objects but does not bypass their permissions, approval policy, publication state, or retention rules.
 - A Personal App's existing app-local activity ledger is not global Activity and grants no Activity authority. Rename or retire that ledger as App history when implementing this contract so the two concepts cannot be confused. Only the main Agent may create a new global Activity item that references an App result; an App must never promote its own record or inject items into the global feed.
 
 ### Activity Replaces Product Memory
@@ -79,7 +86,7 @@ Do not maintain a separate product Memory domain. The main Agent uses owner-scop
 - Never auto-convert legacy memory rows into Activity because system-authored migration would violate main-Agent ownership. During a bounded migration window, expose old rows read-only to the verified main Agent; it may search, discard, or explicitly rewrite still-useful content as `note` Activity. Then remove the legacy store after backup, upgrade, rollback, and public-surface acceptance pass.
 - A rollback may temporarily read the legacy store required by the previous immutable release, but the active release must not resume writing it. Migration state stays under the user data root and must be idempotent and recoverable.
 
-The installed CLIs have separate stable contracts: `personal-agent` owns runtime lifecycle and diagnostics; `pa-cli` owns assistant sessions, channels, data, automation, files, and Pages. Read `skills/personal-agent/SKILL.md`, start with `personal-agent status --json`, and use only registered, executable commands. Do not call internal HTTP ports, inspect internal databases, use `private-site`, or recreate the removed `open-abg`, `oab`, and `open-agent-bridge` aliases. Report capability gaps honestly; never fabricate a successful write.
+The installed CLIs have separate stable contracts: `personal-agent` owns runtime lifecycle and diagnostics; `pa-cli` owns assistant sessions, channels, data, scheduled tasks (`cron`), files, and Pages. Read `skills/personal-agent/SKILL.md`, start with `personal-agent status --json`, and use only registered, executable commands. Do not call internal HTTP ports, inspect internal databases, use `private-site`, or recreate the removed `open-abg`, `oab`, and `open-agent-bridge` aliases. Report capability gaps honestly; never fabricate a successful write.
 
 Authorized Activity reads, searches, and previews are R0. Creating or updating private local activity is an auditable R1 write. Hiding and restoring activity must remain reversible and audited. Risk level never bypasses main-Agent isolation. Referencing an object never grants permission to mutate, publish, send, or disclose that object; those actions retain the owning capability's R2/R3 rules and explicit human approval requirements.
 

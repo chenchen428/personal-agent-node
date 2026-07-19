@@ -15,7 +15,7 @@ import {
   privateFilePreviewKind,
 } from "../src/private-files/attachments.js";
 import { ManagedFileCatalog } from "../src/managed-files/catalog.js";
-import { configurePrivateManagedFiles, uploadPrivateAttachment } from "../src/private-files/local-store.js";
+import { configurePrivateManagedFiles, signPrivateAttachmentUrl, uploadPrivateAttachment } from "../src/private-files/local-store.js";
 import { BridgeStore } from "../src/store/store.js";
 
 const workspaceRoot = path.resolve(fileURLToPath(new URL("../../..", import.meta.url)));
@@ -46,7 +46,7 @@ test("builds readable attachment names and authenticated preview URLs", () => {
     rootDir,
     filePath: "/private/files/wechat/user-a/2026-07-10/家庭清单.xlsx",
     consoleBaseUrl: "https://agent.example.test/",
-  }), "/files/view/wechat/user-a/2026-07-10/%E5%AE%B6%E5%BA%AD%E6%B8%85%E5%8D%95.xlsx");
+  }), "/app/files/view/wechat/user-a/2026-07-10/%E5%AE%B6%E5%BA%AD%E6%B8%85%E5%8D%95.xlsx");
   assert.equal(buildPrivateAttachmentPreviewUrl({ rootDir, filePath: "/private/other/file", consoleBaseUrl: "https://agent.example.test" }), "");
   assert.throws(() => decodePrivateAttachmentPath("wechat/%2E%2E/secret"), /invalid private file path/);
   assert.equal(privateFilePreviewKind("text/html"), "text");
@@ -166,6 +166,27 @@ test("private attachments remain searchable as ready local copies", async () => 
     if (previousRoot === undefined) delete process.env.WECHAT_INBOUND_ATTACHMENTS_DIR;
     else process.env.WECHAT_INBOUND_ATTACHMENTS_DIR = previousRoot;
     catalog.close();
+    fs.rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test("private attachment links use the authenticated gateway route", () => {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), "oab-private-link-"));
+  const previousRoot = process.env.WECHAT_INBOUND_ATTACHMENTS_DIR;
+  const previousBase = process.env.OPEN_AGENT_BRIDGE_CONSOLE_BASE_URL;
+  try {
+    process.env.WECHAT_INBOUND_ATTACHMENTS_DIR = directory;
+    process.env.OPEN_AGENT_BRIDGE_CONSOLE_BASE_URL = "https://owner.example.test/app";
+    const relativePath = "wechat/user-test/report.pdf";
+    const filePath = path.join(directory, relativePath);
+    fs.mkdirSync(path.dirname(filePath), { recursive: true });
+    fs.writeFileSync(filePath, "private report");
+    assert.equal(signPrivateAttachmentUrl(relativePath).url, "https://owner.example.test/app/files/raw/wechat/user-test/report.pdf");
+  } finally {
+    if (previousRoot === undefined) delete process.env.WECHAT_INBOUND_ATTACHMENTS_DIR;
+    else process.env.WECHAT_INBOUND_ATTACHMENTS_DIR = previousRoot;
+    if (previousBase === undefined) delete process.env.OPEN_AGENT_BRIDGE_CONSOLE_BASE_URL;
+    else process.env.OPEN_AGENT_BRIDGE_CONSOLE_BASE_URL = previousBase;
     fs.rmSync(directory, { recursive: true, force: true });
   }
 });

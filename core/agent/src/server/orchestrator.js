@@ -123,8 +123,8 @@ export class SessionOrchestrator {
       if (delivery.sent) return this.flushPendingWechatNotifications(session.id, preparedMessage.senderId);
       return null;
     });
-    const displayContent = formatInboundUserContent(preparedMessage);
-    const content = formatInboundAgentContent(preparedMessage, displayContent);
+    const displayContent = formatInboundDisplayContent(preparedMessage);
+    const content = formatInboundAgentContent(preparedMessage, formatInboundUserContent(preparedMessage));
     this.appendAndBroadcast(session.id, "session.user_message", {
       content: displayContent,
       source: session.channel,
@@ -198,7 +198,7 @@ export class SessionOrchestrator {
         fileBatch: {
           id: fileBatch.id,
           title: fileBatch.title,
-          url: `/files/batches/${encodeURIComponent(fileBatch.id)}`,
+          url: `/app/files/batches/${encodeURIComponent(fileBatch.id)}`,
         },
       };
     } catch (error) {
@@ -1223,10 +1223,7 @@ function buildWechatReceipt(message) {
   if (!attachments.length) return "收到";
   if (attachments.length === 1) {
     const attachment = attachments[0];
-    return truncateForWechat([
-      `收到文件 ${attachment.fileName}`,
-      attachment.previewUrl ? `私密预览：${attachment.previewUrl}` : "",
-    ].filter(Boolean).join("\n"));
+    return truncateForWechat(`收到文件 ${attachment.fileName}`);
   }
   const imageCount = attachments.filter((item) => item.kind === "image").length;
   const fileCount = attachments.length - imageCount;
@@ -1237,7 +1234,6 @@ function buildWechatReceipt(message) {
   } else {
     lines.push([imageCount ? `图片 ${imageCount}` : "", fileCount ? `文件 ${fileCount}` : ""].filter(Boolean).join(" · "));
   }
-  if (message.fileBatch?.url) lines.push(`查看与引用：${message.fileBatch.url}`);
   return truncateForWechat(lines.join("\n"));
 }
 
@@ -1250,7 +1246,7 @@ function buildMainAgentInstructions(session) {
     "If one read-only retrieval path is unavailable or asks for renewed authentication, silently try the other registered local indexes before replying. Do not expose internal authentication or permission mechanics as the user's next step unless every safe R0 fallback has failed; then explain the missing result and the single concrete recovery action.",
     "你是唯一可以操作全局“动态”的主 Agent。动态是面向用户的近况说明，不是系统日志，也不是内部推理记录。",
     "当你开始一项值得用户关注的工作、取得实质进展、完成交付或发生需要用户知道的变化时，应主动创建或更新动态。标题不超过 30 个可见字符，详情要说明结果、影响和用户可继续采取的行动；附件最多 10 个，只能引用已托管的 obj_ 对象。",
-    "动态类型只使用 work、page、mail、data、automation、note。优先用 correlationKey + upsert 持续更新同一事项，避免把每个工具调用都写成一条新动态。不得记录密钥、内部路径、原始日志、工具调用流水或无用户价值的状态。",
+    "动态类型只使用 work、page、mail、data、note。定时计划触发的自动化按普通任务使用 work。优先用 correlationKey + upsert 持续更新同一事项，避免把每个工具调用都写成一条新动态。不得记录密钥、内部路径、原始日志、工具调用流水或无用户价值的状态。",
     "好的动态必须同时做到：用户只看卡片就知道得到了什么、为什么值得关注、接下来能做什么；并且能够返回承载完整结果的任务、Page 或其他受治理对象。存在稳定目标时必须填写 target，不能发布一个明知无法打开的结果卡片。代表性图片优先由 target 自身提供；attachments 只放产物信息中明确给出的 obj_ 对象。",
     "通过最终回复中的控制信封操作动态，服务端会执行并从用户可见内容中移除它：<personal-agent-activity>{\"requestId\":\"唯一请求ID\",\"action\":\"create|upsert|update|hide|restore|search|get\",\"activityId\":\"需要时填写\",\"input\":{}}</personal-agent-activity>。",
     "create/upsert 的 input 至少包含 type、title、detail、idempotencyKey；可包含 attachments、target、correlationKey、occurredAt。update/hide/restore 必须携带 expectedRevision。search 的 input 可包含 query、type、limit、cursor、includeHidden。",
@@ -1259,6 +1255,9 @@ function buildMainAgentInstructions(session) {
     "你是 Personal Agent 的唯一主 Agent。先判断用户是在聊天，还是要求执行实际工作。",
     "寒暄、确认、简单问答、澄清问题以及不需要操作工具的回复，由你直接自然地回答；不要创建子会话，也不要调用工具。",
     "只有当请求确实需要读写文件、运行命令、检索资料、部署或持续执行时，才进入任务调度。",
+    "当用户要求修改 Personal Agent 的产品功能、Cloud、Node、产品架构或交付 Harness 时，这是“产品能力共建”，不是 Workspace 自迭代。先运行 personal-agent development status --json，再运行 personal-agent development ensure --json。只有 ensure 成功后，才能使用它返回的 checkoutPath 作为 pa-cli session start --workspace 的值创建研发任务。",
+    "产品能力共建必须克隆并使用注册的 GitHub 私有根仓库；GitHub 未登录、私有仓库不可见、写权限不足、克隆失败、origin 不匹配或子模块失败时立即停止。不得修改已安装的 core/current，不得只克隆公开 Node，不得下载源码包替代，不得用 App、Skill 或 workflow 假装完成产品源码变更。",
+    "可信 Owner 主会话中发起的产品能力共建请求已经授权该事项内的分支、提交、推送、CI、Node 发布、Cloud 部署、当前 Node 升级和失败自动回滚。不要再要求本机确认、批准 operation digest 或逐项确认发布。测试、CI、扫描、制品校验、健康检查和回滚仍由 Agent 自动执行，不转交用户。",
     "只有在确实需要委派新工作时，才提取主题关键词并检索历史会话；找回既有成果优先使用动态 search 控制信封，不要为检索旧成果创建 Worker：",
     `pa-cli session search --query "<主题关键词>" --json`,
     "搜索结果只是摘要；对候选会话先运行 pa-cli session status --session <会话ID> --json 查看完整上下文。",
@@ -1376,9 +1375,19 @@ function formatInboundUserContent(message) {
       lines.push(`- ${item.referenceName ? `[${item.referenceName}] ` : ""}${item.kind}: ${item.fileName || path.basename(item.path)}`);
       lines.push(`  localPath: ${item.path}`);
       if (item.previewUrl) lines.push(`  privatePreview: ${item.previewUrl}`);
+      if (item.managedObjectId) lines.push(`  managedObjectId: ${item.managedObjectId}`);
     }
   }
   if (message.fileBatch?.url) lines.push("", `privateFileBatch: ${message.fileBatch.title} ${message.fileBatch.url}`);
+  return lines.join("\n").trim() || "(empty WeChat message)";
+}
+
+function formatInboundDisplayContent(message) {
+  const lines = [message.text || ""];
+  const attachments = Array.isArray(message.attachments) ? message.attachments : [];
+  if (attachments.length) {
+    lines.push("", attachments.map((item) => `${item.referenceName ? `[${item.referenceName}] ` : ""}${item.fileName || path.basename(item.path)}`).join("\n"));
+  }
   return lines.join("\n").trim() || "(empty WeChat message)";
 }
 

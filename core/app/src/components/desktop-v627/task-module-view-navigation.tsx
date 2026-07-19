@@ -9,7 +9,7 @@ export function TaskModuleViewNavigation({ active, scheduledCount }: { active: "
       <ListTodo aria-hidden="true" /><span>任务列表</span>
     </Link>
     <Link className={active === "schedules" ? "active" : ""} href="/app/workers/schedules" aria-current={active === "schedules" ? "page" : undefined}>
-      <CalendarClock aria-hidden="true" /><span>定时任务</span>
+      <CalendarClock aria-hidden="true" /><span>自动化</span>
       {typeof scheduledCount === "number" ? <small>{scheduledCount}</small> : null}
     </Link>
   </nav>;

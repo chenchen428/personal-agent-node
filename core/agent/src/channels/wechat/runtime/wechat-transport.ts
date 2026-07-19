@@ -151,6 +151,7 @@ export type InboundWechatAttachment = {
   fileName: string;
   sizeBytes: number;
   managedObjectKey?: string;
+  managedObjectId?: string;
 };
 
 export type InboundWechatAttachmentDescriptor = {
@@ -1432,7 +1433,10 @@ export class WeChatTransport {
             relativePath,
             contentType: mime.lookup(displayName) || "application/octet-stream",
           });
-          if (uploaded.uploaded) attachment.managedObjectKey = uploaded.objectKey;
+          if (uploaded.uploaded) {
+            attachment.managedObjectKey = uploaded.objectKey;
+            attachment.managedObjectId = uploaded.objectId;
+          }
           else failureLines.push(`[Local private storage is unavailable; ${displayName} remains at its authenticated preview.]`);
         } catch (error) {
           failureLines.push(`[Local private storage failed for ${displayName}: ${describeWechatTransportError(error)}]`);

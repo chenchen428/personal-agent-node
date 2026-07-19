@@ -11,7 +11,7 @@ export function buildSitesConnectionStatus({ domainReady, domain, verified, exte
 
   return {
     state: publicStatus === "ready" || publicStatus === "not-bound" ? "connected" : "degraded",
-    primaryAction: platformDomainBound ? "移除域名绑定" : "使用平台域名",
+    primaryAction: platformDomainBound ? "清空配置" : "配置",
     statusLabel: publicStatus === "ready"
       ? "公网访问正常"
       : publicStatus === "tunnel-offline"

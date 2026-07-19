@@ -553,7 +553,35 @@ func normalizeOptions(opts Options) (Options, error) {
 }
 
 func existingWorkspaceDomain(dataRoot string) string {
-	data, err := os.ReadFile(filepath.Join(dataRoot, "config", "site.json"))
+	if domain := siteDomain(filepath.Join(dataRoot, "config", "site.json")); domain != "" {
+		return domain
+	}
+	entries, err := os.ReadDir(filepath.Join(dataRoot, "spaces"))
+	if err != nil {
+		return ""
+	}
+	for _, entry := range entries {
+		if !entry.IsDir() {
+			continue
+		}
+		spaceRoot := filepath.Join(dataRoot, "spaces", entry.Name())
+		data, readErr := os.ReadFile(filepath.Join(spaceRoot, "space.json"))
+		if readErr != nil {
+			continue
+		}
+		var space struct {
+			Kind string `json:"kind"`
+		}
+		if json.Unmarshal(data, &space) != nil || space.Kind != "personal" {
+			continue
+		}
+		return siteDomain(filepath.Join(spaceRoot, "config", "site.json"))
+	}
+	return ""
+}
+
+func siteDomain(file string) string {
+	data, err := os.ReadFile(file)
 	if err != nil {
 		return ""
 	}

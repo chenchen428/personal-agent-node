@@ -74,7 +74,7 @@ export class ScheduledTaskRunner {
         role: "worker",
         workspaceName: task.workspaceName,
         workspaceRoot: task.workspaceRoot,
-        title: `定时任务：${task.name}`,
+        title: `自动化：${task.name}`,
         taskDescription: scheduledPrompt(task, now),
       });
 
@@ -98,7 +98,7 @@ export class ScheduledTaskRunner {
         } else {
           try {
             await this.channels.wechat.sendText(recipientId, [
-              `定时任务已触发：${task.name}`,
+              `自动化已触发：${task.name}`,
               `计划：${task.cron}`,
               `会话：${session.url}`,
             ].join("\n"));
@@ -137,7 +137,7 @@ export class ScheduledTaskRunner {
 
 export function scheduledPrompt(task, now = new Date()) {
   return [
-    "这是 open-agent-bridge 定时任务触发的新会话。",
+    "这是 Personal Agent 自动化的定时计划触发的新任务。",
     `任务名称：${task.name}`,
     `计划：${task.cron}`,
     `时区：${task.timezone}`,

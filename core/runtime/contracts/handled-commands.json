@@ -11,6 +11,8 @@
     "skill list",
     "skill inspect",
     "skill verify",
+    "development status",
+    "development ensure",
     "space list",
     "space show",
     "space create",

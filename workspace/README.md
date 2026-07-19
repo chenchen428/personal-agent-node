@@ -12,6 +12,11 @@ Pages、查询本地数据、运行自动化、处理本地邮件、使用已安
 工作流或自动化前，先读 `AGENTS.md` 和对应 registry/workflow；完整方法见
 `docs/self-iteration.md`。
 
+修改 Personal Agent 产品本身属于“产品能力共建”，不是上述自迭代。该流程先把注册的
+GitHub 私有根仓库克隆到 `agent-workspace/projects/personal-agent`，再在克隆副本中研发 Cloud
+与 Node；安装中的 `core/current` 始终保持不可变。具体流程见
+`workflows/product-development.md`。
+
 命令行分为两层：
 
 - `personal-agent`：安装、运行时、连接、备份、升级和诊断。

@@ -25,18 +25,18 @@ import { ManagedFileService } from "../managed-files/service.js";
 import { inspectSendableFile } from "../final-reply/file-policy.js";
 import { FINAL_REPLY_MAX_IMAGE_BYTES } from "../final-reply/control.js";
 import { AgentDataStore } from "../data/agent-data.js";
-import { AutomationEngine } from "../automation/engine.js";
-import { ingestRawEmail, MAX_MAIL_BYTES } from "../automation/mail-ingest.js";
-import { parseMailForDisplay, readMailAttachment } from "../automation/mail-reader.js";
-import { TemplateRuntime } from "../automation/template-runtime.js";
+import { ingestRawEmail, MAX_MAIL_BYTES } from "../connections/mail/mail-ingest.js";
+import { parseMailForDisplay, readMailAttachment } from "../connections/mail/mail-reader.js";
 import { buildConnectionCatalog, inspectConnection, readConnectionRegistry } from "../connections/catalog.js";
 import { buildSitesConnectionStatus } from "../connections/sites-status.js";
 import { MailConnectionScanner } from "../connections/mail/scanner.js";
+import { MailTaskDispatcher, mailTaskFromEvent } from "../connections/mail/task-dispatcher.js";
 import { PublicTestMailSender } from "../connections/mail/public-test-sender.js";
 import { DomainBindingVerification } from "../connections/domain-binding-verification.js";
 import { NotionCliConnection } from "../connections/notion-cli.js";
 import { OpenCliRunner } from "../connections/opencli/runner.js";
 import { WeChatQianxunConnector } from "../connections/wechat-qianxun/connector.ts";
+import { InstallationConnectionOwnership } from "../connections/connection-ownership.ts";
 import { BridgeStore } from "../store/store.js";
 import { AgentBridgeBroker } from "../broker/agent-bridge-broker.js";
 import { readWorkspaceSkillCatalog } from "../skills/catalog.js";
@@ -44,7 +44,7 @@ import { assertMinimumCronInterval, ScheduledTaskRunner, nextRunAt, normalizeTim
 import { BrowserHub } from "./broadcast.js";
 import { buildConversationAttachmentDeliveryView, buildDesktopConversationView } from "./desktop-conversation.js";
 import { SessionOrchestrator } from "./orchestrator.js";
-import { renderAutomationPage, renderAutomationRunsFragment, renderConsoleSessionsFragment, renderCronPage, renderDashboard, renderDataPage, renderDataRowsFragment, renderMessagesFragment, renderNewSession, renderPagesIndex, renderPrivateFileBatch, renderPrivateFilePreview, renderReleaseNotesPage, renderSessionDetail, renderSkillCatalogPage } from "../web/pages.js";
+import { renderConsoleSessionsFragment, renderDashboard, renderDataPage, renderDataRowsFragment, renderMessagesFragment, renderNewSession, renderPagesIndex, renderPrivateFileBatch, renderPrivateFilePreview, renderReleaseNotesPage, renderSessionDetail, renderSkillCatalogPage } from "../web/pages.js";
 import { renderMailPage } from "../web/mail-page.js";
 import { buildPrivateAttachmentPreviewUrl, decodePrivateAttachmentPath, privateFilePreviewKind, relativeAttachmentPath, sanitizeInboundAttachmentFileName, storedAttachmentDisplayName } from "../private-files/attachments.js";
 import { configurePrivateManagedFiles, headPrivateAttachment, privateStorageConfigured, readPrivateAttachment, signPrivateAttachmentUrl, verifyPrivateStorageAccess } from "../private-files/local-store.js";
@@ -58,6 +58,8 @@ import { readCodexRuntimeSettings, writeCodexRuntimeSettings } from "../agent/co
 import { discoverAppServerDefaultModel, discoverAppServerModels } from "../agent/app-server-runner.ts";
 import { shutdownAppServerClient } from "../agent/app-server-client.ts";
 import { managedServiceReadiness } from "../../../runtime/src/cloud-resources.ts";
+import { readCustomDomainBindings } from "../../../runtime/src/custom-domain.ts";
+import { getSpace } from "../../../runtime/src/space-registry.ts";
 
 ensureRuntimeDirs();
 
@@ -110,13 +112,11 @@ const agentData = new AgentDataStore({
         execute: true,
       }),
 });
-const automation = new AutomationEngine({
+const mailTasks = new MailTaskDispatcher({
   store,
   broker: agentBridgeBroker,
   workspaceRoot: config.workspaceRoot,
   logger,
-  maxConcurrency: config.automationAgentConcurrency,
-  queueLimit: config.automationQueueLimit,
   mailProtection: config.mailProtection,
 });
 const connectionRegistry = readConnectionRegistry();
@@ -126,9 +126,11 @@ let domainBindingVerification: DomainBindingVerification;
 const mailScanner = new MailConnectionScanner({
   dataDir: config.mailIngressDir,
   logger,
-  processMessage: async (message) => automation.ingest(message, { dispatch: !domainBindingVerification?.acceptsMail(message) }),
+  processMessage: async (message) => {
+    await manageMailEvent(message);
+    return mailTasks.ingest(message, { dispatch: !domainBindingVerification?.acceptsMail(message) });
+  },
 });
-const templateRuntime = new TemplateRuntime({ dataDir: config.automationDataDir });
 const privatePublications = new PrivatePublicationStore({ rootDir: config.privatePublicationsDir, baseUrl: config.consoleBaseUrl });
 domainBindingVerification = new DomainBindingVerification({
   dataRoot: config.siteDataRoot,
@@ -137,17 +139,18 @@ domainBindingVerification = new DomainBindingVerification({
   publishPage: (input: any) => publishHtmlPage(input),
   sendVerificationMail: (input: any) => publicTestMailSender.send(input),
   scanMail: () => mailScanner.scan(),
-  listMailEvents: () => store.listAutomationEvents({ sourceId: "connection_local_mail", limit: 500 }),
+  listMailEvents: () => store.listMailEvents({ limit: 500 }),
+  customBindings: () => readCustomDomainBindings({ dataRoot: config.siteDataRoot }),
   logger,
 });
 const releaseNotes = new ReleaseNotesStore({ rootDir: config.releaseNotesDir });
 const appHistory = new AppHistoryStore({ appsDir: config.appsDir });
-automation.ensureDefaults();
-automation.start();
 mailScanner.start();
 domainBindingVerification.resume();
-const wechat = new WeChatConnector(logger);
-const wechatQianxun = new WeChatQianxunConnector({ dataRoot: config.siteDataRoot });
+const connectionOwnership = new InstallationConnectionOwnership({ installationDataRoot: config.installationDataRoot });
+const ownership = { store: connectionOwnership, spaceId: config.spaceId };
+const wechat = new WeChatConnector(logger, ownership);
+const wechatQianxun = new WeChatQianxunConnector({ dataRoot: config.siteDataRoot, ownership });
 const xiaohongshu = new XiaohongshuChannel({
   baseUrl: config.xiaohongshuBaseUrl,
   logger,
@@ -234,7 +237,6 @@ for (const signal of ["SIGINT", "SIGTERM"]) {
   process.on(signal, () => {
     clearInterval(historyCleanupTimer);
     scheduledTasks.stop();
-    automation.stop();
     mailScanner.stop();
     xiaohongshuLogin.stop();
     orchestrator.stop();
@@ -317,7 +319,7 @@ async function handleRequest(request: http.IncomingMessage, response: http.Serve
   }
 
   if (url.pathname.startsWith("/api/agent-automations") || url.pathname === "/api/node/v1/client/automations") {
-    sendJson(response, 410, { ok: false, error: "用户自动化功能已下线；邮件扫描现为连接的系统内置能力。" });
+    sendJson(response, 410, { ok: false, error: "独立自动化功能已下线；请使用任务模块的自动化（cron），邮件扫描会直接创建普通任务。" });
     return;
   }
 
@@ -330,7 +332,7 @@ async function handleRequest(request: http.IncomingMessage, response: http.Serve
         data: { schema: true, query: true, distinct: true, rawSql: false },
         pages: { list: true, publish: true },
         apps: { history: { list: true, append: true, rawSql: false } },
-        client: { overview: true, activity: true, pages: true, automations: true, runtime: true, readOnly: true },
+        client: { overview: true, activity: true, pages: true, runtime: true, readOnly: true },
       },
     });
     return;
@@ -436,11 +438,6 @@ async function handleRequest(request: http.IncomingMessage, response: http.Serve
 
   if (url.pathname === "/api/node/v1/client/pages" && request.method === "GET") {
     sendNodeApiResult(response, 200, { pages: await buildClientPages(url) });
-    return;
-  }
-
-  if (url.pathname === "/api/node/v1/client/automations" && request.method === "GET") {
-    sendNodeApiResult(response, 200, buildClientAutomations());
     return;
   }
 
@@ -599,12 +596,12 @@ async function handleRequest(request: http.IncomingMessage, response: http.Serve
     const raw = await readRawBody(request, MAX_MAIL_BYTES);
     const result = await ingestRawEmail(raw, {
       dataDir: config.mailIngressDir,
-      apiBase: `http://127.0.0.1:${config.port}`,
-      apiToken: config.mailIngestToken,
       envelopeRecipient: String(url.searchParams.get("recipient") || "").slice(0, 320),
       envelopeSender: String(url.searchParams.get("sender") || "").slice(0, 320),
     });
-    sendJson(response, 201, { ok: true, imported: true, eventId: result.event?.id || "" });
+    await manageMailEvent(result.message);
+    const processed = await mailTasks.ingest(result.message);
+    sendJson(response, 201, { ok: true, imported: true, eventId: processed.event.id });
     return;
   }
 
@@ -689,15 +686,12 @@ async function handleRequest(request: http.IncomingMessage, response: http.Serve
   }
 
   if (url.pathname === "/agent-cron" && (request.method === "GET" || request.method === "HEAD")) {
-    sendRedirect(response, "/agent-corn", request.method === "HEAD");
+    sendRedirect(response, "/app/workers/schedules", request.method === "HEAD");
     return;
   }
 
   if (url.pathname === "/agent-corn" && (request.method === "GET" || request.method === "HEAD")) {
-    sendHtml(response, 200, renderCronPage({
-      tasks: store.listScheduledTasks(),
-      workspaces: store.listWorkspaces(),
-    }), request.method === "HEAD");
+    sendRedirect(response, "/app/workers/schedules", request.method === "HEAD");
     return;
   }
 
@@ -791,7 +785,12 @@ async function handleRequest(request: http.IncomingMessage, response: http.Serve
       registry: connectionRegistry,
       statuses: {
         "wechat-personal": personalWechatCatalogStatus(personalWechatStatus, wechatQianxun.accessPolicy(), wechatQianxun.connectivityTestStatus()),
-        wechat: { state: wechatStatus.connected ? "connected" : "needs_setup", statusLabel: wechatStatus.connected ? "已连接" : "待连接" },
+        wechat: {
+          state: wechatStatus.loginState === "space-conflict" ? "error" : wechatStatus.connected ? "connected" : "needs_setup",
+          statusLabel: wechatStatus.loginState === "space-conflict" ? "已被其他 Space 占用" : wechatStatus.connected ? "已连接" : "待连接",
+          ...(wechatStatus.reason ? { error: wechatStatus.reason } : {}),
+          details: { configured: wechatStatus.configured },
+        },
         xiaohongshu: xiaohongshuStatus,
         twitter: twitterStatus,
         notion: notion.catalogStatus(),
@@ -816,7 +815,11 @@ async function handleRequest(request: http.IncomingMessage, response: http.Serve
     else if (id === "twitter") dynamicStatus = await twitter.status();
     else if (id === "wechat") {
       const status = await wechat.status();
-      dynamicStatus = { state: status.connected ? "connected" : "needs_setup", statusLabel: status.connected ? "已连接" : "待连接" };
+      dynamicStatus = {
+        state: status.loginState === "space-conflict" ? "error" : status.connected ? "connected" : "needs_setup",
+        statusLabel: status.loginState === "space-conflict" ? "已被其他 Space 占用" : status.connected ? "已连接" : "待连接",
+        ...(status.reason ? { error: status.reason } : {}),
+      };
     } else if (id === "wechat-personal") {
       dynamicStatus = personalWechatCatalogStatus(await wechatQianxun.status({ probe: true }), wechatQianxun.accessPolicy(), wechatQianxun.connectivityTestStatus());
     } else if (id === "mail") dynamicStatus = { ...mailScanner.status(), ...platformConnectionStatuses().mail };
@@ -827,15 +830,17 @@ async function handleRequest(request: http.IncomingMessage, response: http.Serve
   }
   const domainBindingMatch = /^\/api\/connections\/(mail|sites)\/domain-binding$/.exec(url.pathname);
   if (domainBindingMatch && request.method === "GET") {
-    sendChannelJson(response, 200, { ok: true, verification: domainBindingVerification.status(domainBindingMatch[1]) });
+    const binding = url.searchParams.get("binding") || undefined;
+    sendChannelJson(response, 200, { ok: true, verification: domainBindingVerification.status(domainBindingMatch[1], binding) });
     return;
   }
   if (domainBindingMatch && request.method === "POST") {
     const body = await readJsonBody(request);
-    sendChannelJson(response, 202, { ok: true, verification: domainBindingVerification.start(domainBindingMatch[1], { deadlineAt: body.deadlineAt }) });
+    sendChannelJson(response, 202, { ok: true, verification: domainBindingVerification.start(domainBindingMatch[1], { deadlineAt: body.deadlineAt, binding: body.binding || "platform" }) });
     return;
   }
   if (url.pathname === "/api/connections/domain-binding" && request.method === "DELETE") {
+    if (!isTrustedLocalConsoleRequest(request)) { sendJson(response, 403, { ok: false, error: "域名连接配置只能从本机清空" }); return; }
     domainBindingVerification.reset();
     sendChannelJson(response, 200, { ok: true });
     return;
@@ -876,6 +881,11 @@ async function handleRequest(request: http.IncomingMessage, response: http.Serve
     sendChannelJson(response, 200, { ok: true, ...(await notion.pollLogin()) });
     return;
   }
+  if (url.pathname === "/api/connections/notion/configuration" && request.method === "DELETE") {
+    if (!isTrustedLocalConsoleRequest(request)) { sendJson(response, 403, { ok: false, error: "Notion 配置只能从本机清空" }); return; }
+    sendChannelJson(response, 200, { ok: true, result: await notion.clearConfiguration() });
+    return;
+  }
   if (url.pathname === "/api/connections/mail/scan" && request.method === "POST") {
     sendChannelJson(response, 200, { ok: true, result: await mailScanner.scan() });
     return;
@@ -890,11 +900,17 @@ async function handleRequest(request: http.IncomingMessage, response: http.Serve
     sendChannelJson(response, 200, {
       ok: true,
       setup: {
+        configured: Boolean(savedQianxunConfig),
         qianxunDocsUrl: "https://daenmax.github.io/qxpro-doc/doc/start/",
         qianxunBaseUrl: savedQianxunConfig?.baseUrl || "http://127.0.0.1:8055",
         callbackUrl: personalWechatCallbackUrl(),
       },
     });
+    return;
+  }
+  if (url.pathname === "/api/connections/wechat-personal/configuration" && request.method === "DELETE") {
+    if (!isTrustedLocalConsoleRequest(request)) { sendJson(response, 403, { ok: false, error: "个人微信配置只能从本机清空" }); return; }
+    sendChannelJson(response, 200, { ok: true, result: wechatQianxun.clearConfiguration() });
     return;
   }
   if (url.pathname === "/api/connections/wechat-personal/directory" && request.method === "GET") {
@@ -1224,164 +1240,7 @@ async function handleRequest(request: http.IncomingMessage, response: http.Serve
   }
 
   if (url.pathname === "/agent-automations" && (request.method === "GET" || request.method === "HEAD")) {
-    const runs = store.listAutomationRuns({ limit: 20 });
-    sendHtml(response, 200, renderAutomationPage({
-      sources: store.listAutomationSources(),
-      rules: store.listAutomationRules(),
-      events: runs.map((run) => run.eventId ? store.getAutomationEvent(run.eventId) : null).filter(Boolean),
-      runs,
-      templates: store.listAutomationTemplates(),
-      policies: store.listAutomationMailPolicies({ limit: 50 }),
-      totals: { runs: store.countAutomationRuns(), events: store.countAutomationEvents() },
-      protection: automation.protectionStatus(),
-    }), request.method === "HEAD");
-    return;
-  }
-
-  if (url.pathname === "/api/agent-automations/sources" && request.method === "GET") {
-    sendJson(response, 200, { ok: true, sources: store.listAutomationSources() });
-    return;
-  }
-  if (url.pathname === "/api/agent-automations/sources" && request.method === "POST") {
-    if (!isAgentWriteAuthorized(request)) return sendForbidden(response);
-    sendJson(response, 200, { ok: true, source: store.upsertAutomationSource(await readJsonBody(request)) });
-    return;
-  }
-  if (url.pathname === "/api/agent-automations/rules" && request.method === "GET") {
-    sendJson(response, 200, { ok: true, rules: store.listAutomationRules() });
-    return;
-  }
-  if (url.pathname === "/api/agent-automations/rules" && request.method === "POST") {
-    if (!isAgentWriteAuthorized(request)) return sendForbidden(response);
-    const body = await readJsonBody(request);
-    sendJson(response, 200, { ok: true, rule: store.createAutomationRule(body, { actor: body.actor || "agent", reason: body.reason || "created" }) });
-    return;
-  }
-  const automationRuleMatch = /^\/api\/agent-automations\/rules\/([^/]+)$/.exec(url.pathname);
-  if (automationRuleMatch && request.method === "GET") {
-    const rule = store.getAutomationRule(decodeURIComponent(automationRuleMatch[1]));
-    sendJson(response, rule ? 200 : 404, rule ? { ok: true, rule } : { ok: false, error: "automation rule not found" });
-    return;
-  }
-  if (automationRuleMatch && request.method === "PATCH") {
-    if (!isAgentWriteAuthorized(request)) return sendForbidden(response);
-    const body = await readJsonBody(request);
-    const rule = store.updateAutomationRule(decodeURIComponent(automationRuleMatch[1]), body, { actor: body.actor || "agent", reason: body.reason || "updated" });
-    sendJson(response, rule ? 200 : 404, rule ? { ok: true, rule } : { ok: false, error: "automation rule not found" });
-    return;
-  }
-  if (url.pathname === "/api/agent-automations/events" && request.method === "GET") {
-    const sourceId = url.searchParams.get("sourceId") || "";
-    const limit = Number(url.searchParams.get("limit") || 100);
-    const offset = Number(url.searchParams.get("offset") || 0);
-    const events = store.listAutomationEvents({ sourceId, limit, offset });
-    const total = store.countAutomationEvents({ sourceId });
-    sendJson(response, 200, { ok: true, events, total, offset, hasMore: offset + events.length < total });
-    return;
-  }
-  if (url.pathname === "/api/agent-automations/events" && request.method === "POST") {
-    if (!isAgentWriteAuthorized(request) && !isMailIngestAuthorized(request)) return sendForbidden(response);
-    const input = await readJsonBody(request);
-    const managedMail = await manageMailEvent(input);
-    sendJson(response, 200, { ok: true, ...(await automation.ingest(input)), ...(managedMail ? { managedMail } : {}) });
-    return;
-  }
-  const automationEventMatch = /^\/api\/agent-automations\/events\/([^/]+)$/.exec(url.pathname);
-  if (automationEventMatch && request.method === "GET") {
-    const event = store.getAutomationEvent(decodeURIComponent(automationEventMatch[1]));
-    sendJson(response, event ? 200 : 404, event ? { ok: true, event } : { ok: false, error: "automation event not found" });
-    return;
-  }
-  const automationEventReplayMatch = /^\/api\/agent-automations\/events\/([^/]+)\/replay$/.exec(url.pathname);
-  if (automationEventReplayMatch && request.method === "POST") {
-    if (!isAgentWriteAuthorized(request)) return sendForbidden(response);
-    const body = await readJsonBody(request);
-    sendJson(response, 200, { ok: true, ...(await automation.replay(decodeURIComponent(automationEventReplayMatch[1]), { ruleId: body.ruleId || "" })) });
-    return;
-  }
-  if (url.pathname === "/api/agent-automations/runs" && request.method === "GET") {
-    const limit = Number(url.searchParams.get("limit") || 100);
-    const offset = Number(url.searchParams.get("offset") || 0);
-    const runs = store.listAutomationRuns({ limit, offset });
-    const total = store.countAutomationRuns();
-    const events = runs.map((run) => run.eventId ? store.getAutomationEvent(run.eventId) : null).filter(Boolean);
-    sendJson(response, 200, {
-      ok: true,
-      runs,
-      total,
-      offset,
-      hasMore: offset + runs.length < total,
-      ...(url.searchParams.get("format") === "html" ? { html: renderAutomationRunsFragment(runs, store.listAutomationRules(), events) } : {}),
-    });
-    return;
-  }
-  if (url.pathname === "/api/agent-automations/mail-protection" && request.method === "GET") {
-    sendJson(response, 200, { ok: true, protection: automation.protectionStatus(), policies: store.listAutomationMailPolicies({ limit: Number(url.searchParams.get("limit") || 100), offset: Number(url.searchParams.get("offset") || 0) }) });
-    return;
-  }
-  if (url.pathname === "/api/agent-automations/mail-policies" && request.method === "POST") {
-    if (!isAgentWriteAuthorized(request)) return sendForbidden(response);
-    const body = await readJsonBody(request);
-    sendJson(response, 200, { ok: true, policy: store.upsertAutomationMailPolicy({ ...body, origin: "agent" }) });
-    return;
-  }
-  if (url.pathname === "/api/agent-automations/templates" && request.method === "GET") {
-    sendJson(response, 200, { ok: true, templates: store.listAutomationTemplates() });
-    return;
-  }
-  if (url.pathname === "/api/agent-automations/templates/resolve" && request.method === "GET") {
-    const template = store.resolveAutomationTemplate(url.searchParams.get("sourceFingerprint") || "");
-    sendJson(response, template ? 200 : 404, template ? { ok: true, template } : { ok: false, error: "active template not found" });
-    return;
-  }
-  if (url.pathname === "/api/agent-automations/templates" && request.method === "POST") {
-    if (!isAgentWriteAuthorized(request)) return sendForbidden(response);
-    sendJson(response, 200, { ok: true, template: store.upsertAutomationTemplate(await readJsonBody(request)) });
-    return;
-  }
-  if (url.pathname === "/api/agent-automations/templates/install" && request.method === "POST") {
-    if (!isAgentWriteAuthorized(request)) return sendForbidden(response);
-    const body = await readJsonBody(request);
-    const installed = templateRuntime.install(body);
-    const template = store.upsertAutomationTemplate({
-      ...installed,
-      codeObjectId: installed.sourcePath,
-      status: installed.state.status,
-      successCount: installed.state.successCount,
-      failureCount: installed.state.failureCount,
-    });
-    sendJson(response, 200, { ok: true, template });
-    return;
-  }
-  const automationTemplateRunMatch = /^\/api\/agent-automations\/templates\/([^/]+)\/run$/.exec(url.pathname);
-  if (automationTemplateRunMatch && request.method === "POST") {
-    if (!isAgentWriteAuthorized(request)) return sendForbidden(response);
-    const body = await readJsonBody(request);
-    const templateId = decodeURIComponent(automationTemplateRunMatch[1]);
-    try {
-      const result = await templateRuntime.run(templateId, body.input, { version: body.version });
-      syncTemplateRuntimeState(templateId, result.state);
-      sendJson(response, 200, { ok: true, result });
-    } catch (error) {
-      const state = (error as { templateState?: any } | null)?.templateState;
-      if (state) syncTemplateRuntimeState(templateId, state);
-      throw error;
-    }
-    return;
-  }
-  const automationTemplateLifecycleMatch = /^\/api\/agent-automations\/templates\/([^/]+)\/(activate|rollback|disable)$/.exec(url.pathname);
-  if (automationTemplateLifecycleMatch && request.method === "POST") {
-    if (!isAgentWriteAuthorized(request)) return sendForbidden(response);
-    const templateId = decodeURIComponent(automationTemplateLifecycleMatch[1]);
-    const action = automationTemplateLifecycleMatch[2];
-    const body = await readJsonBody(request);
-    const runtimeTemplate = action === "disable"
-      ? { ...templateRuntime.get(templateId, body.version || templateRuntime.status(templateId).version), state: templateRuntime.disable(templateId, { reason: body.reason || "disabled by Agent" }) }
-      : action === "rollback"
-        ? templateRuntime.rollback(templateId, Number(body.version), { reason: body.reason || "rollback by Agent" })
-        : templateRuntime.activate(templateId, body.version ? Number(body.version) : undefined, { reason: body.reason || "activated by Agent" });
-    const template = syncTemplateRuntimeState(templateId, runtimeTemplate.state, runtimeTemplate);
-    sendJson(response, 200, { ok: true, template });
+    sendRedirect(response, "/app/workers/schedules", request.method === "HEAD");
     return;
   }
 
@@ -1683,6 +1542,12 @@ async function handleRequest(request: http.IncomingMessage, response: http.Serve
     return;
   }
 
+  if (url.pathname === "/api/channels/wechat/configuration" && request.method === "DELETE") {
+    if (!isTrustedLocalConsoleRequest(request)) { sendJson(response, 403, { ok: false, error: "微信 claw 配置只能从本机清空" }); return; }
+    sendJson(response, 200, { ok: true, result: wechat.clearConfiguration() });
+    return;
+  }
+
   if (url.pathname === "/api/channels/wechat/notify" && request.method === "POST") {
     const body = await readJsonBody(request);
     const recipientId = body.recipientId || body.recipient_id || store.getLastWechatRecipient();
@@ -1848,13 +1713,13 @@ async function serveMailPage(
     ...data,
     basePath,
     adminUrl: "/app",
-    automationUrl: "/app/automations",
+    tasksUrl: "/app/workers/schedules",
   }), request.method === "HEAD");
 }
 
 type ClientActivityItem = {
   id: string;
-  kind: "work" | "mail" | "page" | "data" | "automation" | "note";
+  kind: "work" | "mail" | "page" | "data" | "note";
   title: string;
   summary: string;
   status: string;
@@ -1891,8 +1756,7 @@ async function buildClientOverview() {
   const wechatStatus = wechat.catalogStatus();
   const managedStatus = xiaohongshu.catalogStatus();
   const sessions = store.listSessionsPage({ includeArchived: true, limit: 50, hydrate: false }).sessions;
-  const rules = store.listAutomationRules();
-  const mailCount = store.countAutomationEvents({ sourceId: "connection_local_mail" });
+  const mailCount = store.countMailEvents();
   const dataObjectCount = agentData.countObjects();
   const recent = await buildClientActivity(new URL("http://local/api/node/v1/client/activity?limit=5"));
   const externalAccess = config.externalAccess();
@@ -1912,8 +1776,6 @@ async function buildClientOverview() {
       mail: mailCount,
       pages: pages.length,
       dataObjects: dataObjectCount,
-      automations: rules.length,
-      activeAutomations: rules.filter((rule) => rule.enabled).length,
       connectedChannels: [wechatStatus, managedStatus, externalAccess].filter((status: any) => status?.connected === true || status?.state === "connected" || status?.ready === true).length,
     },
     recent: recent.items,
@@ -1921,18 +1783,20 @@ async function buildClientOverview() {
 }
 
 function personalWechatCatalogStatus(status: Record<string, unknown>, policy: { enabled: boolean; contacts: unknown[]; groups: unknown[] }, connectivityTest: { phase: string }) {
+  const conflict = status.state === "space_conflict";
   const protocolReady = status.state === "connected" || status.state === "configured";
   const testPassed = connectivityTest.phase === "complete";
   const connected = protocolReady && policy.enabled && testPassed;
   return {
-    state: connected ? "connected" : protocolReady && policy.enabled ? "needs_test" : protocolReady ? "needs_policy" : "needs_setup",
-    statusLabel: connected ? "已连接" : protocolReady && policy.enabled ? "待收发测试" : protocolReady ? "待配置策略" : "待检测",
+    state: conflict ? "error" : connected ? "connected" : protocolReady && policy.enabled ? "needs_test" : protocolReady ? "needs_policy" : "needs_setup",
+    statusLabel: conflict ? "已被其他 Space 占用" : connected ? "已连接" : protocolReady && policy.enabled ? "待收发测试" : protocolReady ? "待配置策略" : "待检测",
     runtime: [
-      { label: "协议服务", value: protocolReady ? "千寻已配置" : "等待本机检测" },
+      { label: "协议服务", value: conflict ? "连接归属冲突" : protocolReady ? "千寻已配置" : "等待本机检测" },
       { label: "触发策略", value: policy.enabled ? `${policy.contacts.length} 位联系人 · ${policy.groups.length} 个群` : "默认拒绝" },
       { label: "收发测试", value: testPassed ? "已通过" : "待完成" },
     ],
     details: { policyEnabled: policy.enabled, connectivityTestPassed: testPassed },
+    ...(conflict ? { error: status.error } : {}),
   };
 }
 
@@ -1946,27 +1810,58 @@ function personalWechatCallbackUrl() {
 function platformConnectionStatuses() {
   const services = managedServiceReadiness({ dataRoot: config.siteDataRoot });
   const external = config.externalAccess();
-  const siteBound = services.publicDomain.ready && domainBindingVerification.isVerified("sites");
-  const mailBound = services.agentMail.ready && domainBindingVerification.isVerified("mail");
+  const custom = readCustomDomainBindings({ dataRoot: config.siteDataRoot });
+  const customSite = custom.sites?.domain ? custom.sites : null;
+  const customMail = custom.mail?.domain ? custom.mail : null;
+  const customOwner = getSpace(config.installationDataRoot, customSite?.ownerSpaceId || customMail?.ownerSpaceId);
+  const customTunnel = customOwner ? readJsonFile(path.join(customOwner.root, "runtime", "reverse-tunnel.json")) : null;
+  const customServiceReady = customTunnel?.state === "ready";
+  const customSiteBound = Boolean(customSite && domainBindingVerification.isVerified("sites", "custom"));
+  const customMailBound = Boolean(customMail && domainBindingVerification.isVerified("mail", "custom"));
+  const siteBound = !customSite && services.publicDomain.ready && domainBindingVerification.isVerified("sites");
+  const mailBound = !customMail && services.agentMail.ready && domainBindingVerification.isVerified("mail");
   const domain = services.publicDomain.value || "";
   const mailAddress = services.agentMail.value || "";
+  const customSiteVerification = domainBindingVerification.status("sites", "custom");
+  const customMailVerification = domainBindingVerification.status("mail", "custom");
+  const sites = customSite ? {
+    state: customSiteBound ? "connected" : "degraded",
+    primaryAction: "清空配置",
+    statusLabel: customSiteBound ? "自定义域名已生效" : "等待自定义域名验证",
+    runtime: [
+      { label: "自定义域名", value: customSite.domain },
+      { label: "Relay 连接", value: customServiceReady ? "已连接" : "等待连接" },
+      { label: "公网访问", value: customSiteBound ? `https://${customSite.domain}` : "等待 DNS、TLS 与内容验证" },
+    ],
+    details: { platformDomainBound: false, bindingMode: "custom", customDomain: customSite.domain, customPublicAddress: customSite.publicAddress, customServiceReady, publicReady: customSiteBound, publicStatus: customSiteBound ? "ready" : customServiceReady ? "unavailable" : "tunnel-offline", publicOrigin: customSiteBound ? `https://${customSite.domain}` : "", domainVerification: customSiteVerification },
+  } : buildSitesConnectionStatus({
+    domainReady: services.publicDomain.ready,
+    domain,
+    verified: siteBound,
+    external,
+    verification: domainBindingVerification.status("sites", "platform"),
+  });
   return {
-    sites: buildSitesConnectionStatus({
-      domainReady: services.publicDomain.ready,
-      domain,
-      verified: siteBound,
-      external,
-      verification: domainBindingVerification.status("sites"),
-    }),
-    mail: {
+    sites,
+    mail: customMail ? {
       state: "connected",
-      primaryAction: mailBound ? "移除域名绑定" : "使用平台域名",
+      primaryAction: "清空配置",
+      statusLabel: customMailBound ? "自定义邮箱已生效" : "等待自定义邮箱验证",
+      runtime: [
+        { label: "自定义邮箱地址", value: `agent@${customMail.domain}` },
+        { label: "转发服务", value: customServiceReady ? "已连接" : "等待准备" },
+        { label: "公网收件", value: customMailBound ? "测试邮件已在本机收到" : "等待 MX 与真实收件验证" },
+      ],
+      details: { platformDomainBound: false, bindingMode: "custom", customDomain: customMail.domain, customPublicAddress: customMail.publicAddress, customServiceReady, mailAddress: `agent@${customMail.domain}`, domainVerification: customMailVerification },
+    } : {
+      state: "connected",
+      primaryAction: mailAddress ? "清空配置" : "配置",
       statusLabel: mailBound ? "已验证平台邮箱" : "本地已连接",
       runtime: [
         { label: "平台邮箱地址", value: mailAddress || "尚未分配" },
         { label: "公网收件", value: mailBound ? "测试邮件已在本机收到" : services.agentMail.ready ? "等待绑定验证" : "分配域名后可用" },
       ],
-      details: { platformDomainBound: mailBound, platformDomain: domain, mailAddress, domainVerification: domainBindingVerification.status("mail") },
+      details: { platformDomainBound: mailBound, bindingMode: mailBound ? "platform" : "", platformDomain: domain, mailAddress, domainVerification: domainBindingVerification.status("mail", "platform") },
     },
   };
 }
@@ -2019,7 +1914,6 @@ function clientActivityTargetHref(target: { type: string; id: string } | null) {
   if (target.type === "page") return `/app/mobile/pages/${encodeURIComponent(target.id)}`;
   if (target.type === "mail") return `/app/mobile/mail/${encodeURIComponent(target.id)}`;
   if (target.type === "data") return "/app/data";
-  if (target.type === "automation") return "/app/automations";
   if (target.type === "app") return `/app/mobile/apps/${encodeURIComponent(target.id)}`;
   return "";
 }
@@ -2164,45 +2058,6 @@ function buildMobileTasks(url: URL) {
   };
 }
 
-function buildClientAutomations() {
-  const sources = store.listAutomationSources();
-  const rules = store.listAutomationRules();
-  const runs = store.listAutomationRuns({ limit: 100 });
-  return {
-    sources: sources.map((source) => ({
-      id: source.id,
-      name: source.name,
-      kind: source.kind,
-      enabled: source.enabled,
-      health: source.health,
-      lastEventAt: source.lastEventAt,
-    })),
-    rules: rules.map((rule) => ({
-      id: rule.id,
-      name: rule.name,
-      description: rule.description,
-      sourceId: rule.sourceId,
-      eventType: rule.eventType,
-      enabled: rule.enabled,
-      version: rule.version,
-      updatedAt: rule.updatedAt,
-      recentRuns: runs.filter((run) => run.ruleId === rule.id).slice(0, 5).map((run) => ({
-        id: run.id,
-        status: run.status,
-        matched: run.matched,
-        reason: String(run.reason || run.error || "").slice(0, 600),
-        createdAt: run.createdAt,
-      })),
-    })),
-    counts: {
-      total: rules.length,
-      enabled: rules.filter((rule) => rule.enabled).length,
-      recentRuns: runs.length,
-      failedRuns: runs.filter((run) => run.status === "failed").length,
-    },
-  };
-}
-
 function buildClientRuntime() {
   const dataStatus = agentData.getStatus();
   return {
@@ -2332,18 +2187,11 @@ async function buildMailViewData(url: URL) {
   const query = String(url.searchParams.get("q") || "").trim().slice(0, 160);
   const requestedFilter = String(url.searchParams.get("filter") || "all");
   const filter = ["all", "matched", "attachments"].includes(requestedFilter) ? requestedFilter : "all";
-  const allEvents = store.listAutomationEvents({ sourceId: "connection_local_mail", limit: 500 });
-  const allRuns = store.listAutomationRuns({ limit: 500 });
-  const runsByEvent = new Map<string, any[]>();
-  for (const run of allRuns) {
-    const bucket = runsByEvent.get(run.eventId) || [];
-    bucket.push(run);
-    runsByEvent.set(run.eventId, bucket);
-  }
+  const allEvents = store.listMailEvents({ limit: 500 });
   const normalizedQuery = query.toLocaleLowerCase("zh-CN");
   const filteredEvents = allEvents.filter((event) => {
-    const runs = runsByEvent.get(event.id) || [];
-    if (filter === "matched" && !runs.some((run) => run.matched)) return false;
+    const task = mailTaskFromEvent(event);
+    if (filter === "matched" && !task?.sessionId) return false;
     if (filter === "attachments" && !(Array.isArray(event.payload?.attachments) && event.payload.attachments.length)) return false;
     if (!normalizedQuery) return true;
     return [
@@ -2355,9 +2203,14 @@ async function buildMailViewData(url: URL) {
     ].some((value) => String(value || "").toLocaleLowerCase("zh-CN").includes(normalizedQuery));
   });
   const selectedId = String(url.searchParams.get("message") || "");
-  const selectedEvent = selectedId ? store.getAutomationEvent(selectedId) : null;
-  const safeSelectedEvent = selectedEvent?.sourceId === "connection_local_mail" ? selectedEvent : null;
-  const selectedRuns = safeSelectedEvent ? runsByEvent.get(safeSelectedEvent.id) || [] : [];
+  const safeSelectedEvent = selectedId ? store.getMailEvent(selectedId) : null;
+  const selectedTask = mailTaskFromEvent(safeSelectedEvent);
+  const selectedRuns = selectedTask ? [{
+    matched: Boolean(selectedTask.sessionId),
+    reason: String(selectedTask.reason || "").slice(0, 1000),
+    sessionId: String(selectedTask.sessionId || ""),
+    status: String(selectedTask.status || ""),
+  }] : [];
   let content = null;
   if (safeSelectedEvent) {
     try {
@@ -2374,15 +2227,12 @@ async function buildMailViewData(url: URL) {
       };
     }
   }
-  const events = filteredEvents.slice(0, 100).map((event) => ({
-    ...event,
-    matched: (runsByEvent.get(event.id) || []).some((run) => run.matched),
-  }));
+  const events = filteredEvents.slice(0, 100).map((event) => ({ ...event, matched: Boolean(mailTaskFromEvent(event)?.sessionId) }));
   return {
     events: events.map(publicMailEvent),
     total: filteredEvents.length,
-    selectedEvent: safeSelectedEvent ? publicMailEvent({ ...safeSelectedEvent, matched: selectedRuns.some((run) => run.matched) }) : null,
-    selectedRuns: selectedRuns.map((run) => ({ matched: run.matched === true, reason: String(run.reason || run.error || "").slice(0, 1000), sessionId: String(run.sessionId || ""), status: String(run.status || "") })),
+    selectedEvent: safeSelectedEvent ? publicMailEvent({ ...safeSelectedEvent, matched: Boolean(selectedTask?.sessionId) }) : null,
+    selectedRuns,
     content: publicMailContent(content),
     query,
     filter,
@@ -2429,8 +2279,8 @@ function publicMailContent(content: any) {
 }
 
 async function serveMailRaw(request: http.IncomingMessage, response: http.ServerResponse, eventId: string) {
-  const event = store.getAutomationEvent(eventId);
-  if (!event || event.sourceId !== "connection_local_mail") {
+  const event = store.getMailEvent(eventId);
+  if (!event) {
     sendText(response, 404, "Not Found", request.method === "HEAD");
     return;
   }
@@ -2440,8 +2290,8 @@ async function serveMailRaw(request: http.IncomingMessage, response: http.Server
 }
 
 async function serveMailAttachment(request: http.IncomingMessage, response: http.ServerResponse, eventId: string, index: number) {
-  const event = store.getAutomationEvent(eventId);
-  if (!event || event.sourceId !== "connection_local_mail") {
+  const event = store.getMailEvent(eventId);
+  if (!event) {
     sendText(response, 404, "Not Found", request.method === "HEAD");
     return;
   }
@@ -2886,26 +2736,6 @@ function findWorkspace(name: string) {
   return workspaces[0] || null;
 }
 
-function syncTemplateRuntimeState(templateId: string, state: any, manifest: any = null) {
-  const current = store.getAutomationTemplate(templateId);
-  if (!current) throw new Error("automation template metadata not found");
-  return store.upsertAutomationTemplate({
-    ...current,
-    ...(manifest ? {
-      name: manifest.name || current.name,
-      purpose: manifest.purpose || current.purpose,
-      sourceFingerprint: manifest.sourceFingerprint || current.sourceFingerprint,
-      runtime: manifest.runtime || current.runtime,
-      version: manifest.version || state.version,
-      sha256: manifest.sha256 || current.sha256,
-      codeObjectId: manifest.sourcePath || current.codeObjectId,
-    } : { version: state.version }),
-    status: state.status,
-    successCount: state.successCount,
-    failureCount: state.failureCount,
-  });
-}
-
 function isAuthorized(request: http.IncomingMessage) {
   const authorization = String(request.headers.authorization || "");
   if (config.apiToken && authorization === `Bearer ${config.apiToken}`) return true;
@@ -2917,11 +2747,6 @@ function isAgentWriteAuthorized(request: http.IncomingMessage) {
   const authorization = String(request.headers.authorization || "");
   if (config.apiToken && authorization === `Bearer ${config.apiToken}`) return true;
   return process.env.NODE_ENV !== "production" && isTrustedLocalRequest(request);
-}
-
-function isMailIngestAuthorized(request: http.IncomingMessage) {
-  const authorization = String(request.headers.authorization || "");
-  return Boolean(config.mailIngestToken && authorization === `Bearer ${config.mailIngestToken}`);
 }
 
 function sendForbidden(response: http.ServerResponse) {
@@ -3024,6 +2849,10 @@ function sendText(response: http.ServerResponse, statusCode: number, text: strin
     "X-Content-Type-Options": "nosniff",
   });
   response.end(head ? undefined : `${text}\n`);
+}
+
+function readJsonFile(filePath: string) {
+  try { return JSON.parse(fs.readFileSync(filePath, "utf8")); } catch { return null; }
 }
 
 function sendJson(response: http.ServerResponse, statusCode: number, payload: unknown, head = false) {

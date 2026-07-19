@@ -57,6 +57,13 @@ test("reverse tunnel protocol rejects unsafe paths, headers, oversized frames, a
   assert.throws(() => parseTunnelMessage(JSON.stringify({ v: 1, type: "request.start", id: "stream-0001", kind: "http", method: "GET", path: "/", headers: { "bad\nname": "x" } })), /header name/);
 });
 
+test("self-hosted Relay delegates full HTTP and WebSocket access to the authenticated local gateway", () => {
+  assert.equal(isTunnelRouteAllowed({}, "/app", "http", "GET", "gateway"), true);
+  assert.equal(isTunnelRouteAllowed({}, "/api/chat/ws", "websocket", "GET", "gateway"), true);
+  assert.equal(isTunnelRouteAllowed({}, "//evil.example/path", "http", "GET", "gateway"), false);
+  assert.equal(resolveTunnelRequestPath("/", "gateway"), "/");
+});
+
 test("connector forwards HTTP streams only to the fixed loopback gateway and never persists its token", async (t) => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "personal-agent-reverse-http-"));
   const requests = [];

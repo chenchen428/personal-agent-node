@@ -84,7 +84,7 @@ export async function handleControlRequest(request, { operations, approvalChalle
   if (request.command === "update.plan") return success(request.command, await updates.plan({ version: args.version }));
   if (request.command === "update.rollback-plan") return success(request.command, updates.planRollback());
   if (request.command === "update.console-approve") return success(request.command, updates.approve({ jobId: args.jobId, operationId: args.operationId, digest: args.digest }));
-  if (request.command === "update.apply") return success(request.command, await updates.apply({ jobId: args.jobId, operationId: args.operationId, digest: args.digest }));
+  if (request.command === "update.apply") return success(request.command, await updates.apply({ jobId: args.jobId, operationId: args.operationId, digest: args.digest, authorizationPolicy: args.authorizationPolicy }));
   throw operationError("CAPABILITY_UNAVAILABLE", `Control command is unavailable: ${request.command}`, 7);
 }
 

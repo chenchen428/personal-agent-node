@@ -22,6 +22,7 @@ import {
   type StoredAccount,
 } from "./runtime/setup.ts";
 import { wechatFetch } from "./runtime/wechat-fetch.ts";
+import type { InstallationConnectionOwnership } from "../../connections/connection-ownership.ts";
 
 type Logger = {
   log: (message: string) => void;
@@ -61,8 +62,9 @@ export class WeChatConnector {
   private lastPollCompletedAt = "";
   private lastMessageAt = "";
   private lastPollError = "";
+  private configurationGeneration = 0;
 
-  constructor(private readonly logger: Logger) {
+  constructor(private readonly logger: Logger, private readonly ownership?: { store: InstallationConnectionOwnership; spaceId: string }) {
     this.transport = new WeChatTransport({
       log: (message) => logger.log(`[wechat] ${message}`),
       logError: (message) => logger.error(`[wechat] ${message}`),
@@ -78,7 +80,7 @@ export class WeChatConnector {
       this.stopped = false;
       this.startedAtMs = Date.now();
     }
-    this.ensurePollLoop();
+    if (this.hasCredentialOwnership()) this.ensurePollLoop();
     if (!this.watchdogTimer) {
       this.watchdogTimer = setInterval(() => this.ensurePollLoop(), POLL_WATCHDOG_INTERVAL_MS);
       this.watchdogTimer.unref?.();
@@ -95,12 +97,13 @@ export class WeChatConnector {
 
   async status() {
     const account = loadExistingCredentials();
+    const ownershipError = account ? this.credentialOwnershipError(account) : null;
     const invalidReason = account
-      ? await getStoredCredentialsInvalidReason(account, { timeoutMs: 5000 })
+      ? ownershipError || await getStoredCredentialsInvalidReason(account, { timeoutMs: 5000 })
       : "No saved WeChat credentials found.";
     return {
       connected: Boolean(account && !invalidReason),
-      loginState: account && !invalidReason ? "connected" : "login-required",
+      loginState: account && !invalidReason ? "connected" : ownershipError ? "space-conflict" : "login-required",
       reason: invalidReason || "",
       credentialsFile: CREDENTIALS_FILE,
       syncFile: SYNC_BUF_FILE,
@@ -125,13 +128,31 @@ export class WeChatConnector {
   }
 
   catalogStatus() {
-    const connected = fs.existsSync(CREDENTIALS_FILE);
+    const account = loadExistingCredentials();
+    const ownershipError = account ? this.credentialOwnershipError(account) : null;
+    const connected = Boolean(account && !ownershipError);
     return {
       connected,
-      loginState: connected ? "connected" : "login-required",
+      loginState: connected ? "connected" : ownershipError ? "space-conflict" : "login-required",
+      reason: ownershipError || "",
       polling: this.polling,
       pollingEnabled: !this.stopped,
+      configured: Boolean(account),
     };
+  }
+
+  clearConfiguration() {
+    const configured = Boolean(loadExistingCredentials());
+    this.configurationGeneration += 1;
+    loginSessions.clear();
+    this.ownership?.store.release("wechat-claw", this.ownership.spaceId);
+    for (const file of [CREDENTIALS_FILE, SYNC_BUF_FILE, CONTEXT_CACHE_FILE]) fs.rmSync(file, { force: true });
+    this.missingCredentialsLogged = false;
+    this.lastPollStartedAt = "";
+    this.lastPollCompletedAt = "";
+    this.lastMessageAt = "";
+    this.lastPollError = "";
+    return { cleared: true, configuredBefore: configured };
   }
 
   async startLogin() {
@@ -184,6 +205,7 @@ export class WeChatConnector {
       userId: status.ilink_user_id,
       savedAt: new Date().toISOString(),
     };
+    this.ownership?.store.replace("wechat-claw", [account.accountId, account.userId], this.ownership.spaceId);
     saveCredentials(account);
     loginSessions.delete(sessionId);
     return {
@@ -199,6 +221,7 @@ export class WeChatConnector {
   }
 
   async sendText(recipientId: string | undefined, text: string) {
+    this.requireCredentialOwnership();
     return await this.transport.sendNotification(text, recipientId);
   }
 
@@ -207,11 +230,13 @@ export class WeChatConnector {
   }
 
   async sendFile(recipientId: string | undefined, filePath: string, title?: string, caption?: string) {
+    this.requireCredentialOwnership();
     if (caption?.trim()) await this.sendText(recipientId, caption.trim());
     return await this.transport.sendFile(filePath, { recipientId, title });
   }
 
   async sendImage(recipientId: string | undefined, imagePath: string, caption?: string) {
+    this.requireCredentialOwnership();
     return await this.transport.sendImage(imagePath, { recipientId, caption });
   }
 
@@ -221,6 +246,8 @@ export class WeChatConnector {
     try {
       while (!this.stopped) {
         try {
+          this.requireCredentialOwnership();
+          const generation = this.configurationGeneration;
           this.lastPollStartedAt = new Date().toISOString();
           const result = await this.transport.pollMessages({
             timeoutMs: CONNECTOR_LONG_POLL_TIMEOUT_MS,
@@ -228,6 +255,7 @@ export class WeChatConnector {
           });
           this.lastPollCompletedAt = new Date().toISOString();
           this.lastPollError = "";
+          if (generation !== this.configurationGeneration) continue;
           for (const message of result.messages) {
             this.lastMessageAt = new Date().toISOString();
             await this.orchestrator?.handleChannelMessage("wechat", message);
@@ -266,6 +294,27 @@ export class WeChatConnector {
       }, POLL_RESTART_DELAY_MS);
       this.restartTimer.unref?.();
     });
+  }
+
+  private hasCredentialOwnership() {
+    const account = loadExistingCredentials();
+    return !account || !this.credentialOwnershipError(account);
+  }
+
+  private requireCredentialOwnership() {
+    const account = loadExistingCredentials();
+    if (!account) throw Object.assign(new Error("No saved WeChat credentials found."), { code: "WECHAT_LOGIN_REQUIRED", statusCode: 409 });
+    const message = this.credentialOwnershipError(account);
+    if (message) throw Object.assign(new Error(message), { code: "WECHAT_SPACE_CONFLICT", statusCode: 409 });
+  }
+
+  private credentialOwnershipError(account: StoredAccount) {
+    try {
+      this.ownership?.store.assertOrClaim("wechat-claw", [account.accountId, account.userId], this.ownership.spaceId);
+      return "";
+    } catch (error) {
+      return error instanceof Error ? error.message : String(error);
+    }
   }
 }
 

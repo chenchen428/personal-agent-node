@@ -6,22 +6,27 @@ import { Button } from "../desktop-v72/primitives";
 import type { Connection, DomainVerification } from "./connection-types";
 import { DomainBindingSop } from "./domain-binding-sop";
 import { DomainUnbindDialog } from "./domain-unbind-dialog";
+import { DomainEntryMenu } from "./domain-entry-menu";
+import { CustomDomainSop } from "./custom-domain-sop";
 import { errorMessage, fetchJson } from "./shared";
+import { runSetupAction } from "@/lib/setup-action-client";
 
 const BINDING_TIMEOUT_MS = 3 * 60_000;
 
 export function DomainBindingAction({ connection, refresh }: { connection: Connection; refresh: () => Promise<void> }) {
   const kind = connection.id as "mail" | "sites";
   const bound = connection.details?.platformDomainBound === true;
+  const configured = bound || Boolean(kind === "mail" ? connection.details?.mailAddress : connection.details?.platformDomain);
   const initial = connection.details?.domainVerification || idleVerification(kind);
   const [verification, setVerification] = useState<DomainVerification>(initial);
   const [busy, setBusy] = useState(false);
-  const [expanded, setExpanded] = useState(bound || initial.phase !== "idle");
+  const [expanded, setExpanded] = useState(configured || initial.phase !== "idle");
   const [message, setMessage] = useState("");
   const [deadline, setDeadline] = useState(0);
   const [remaining, setRemaining] = useState(0);
   const [confirmRemove, setConfirmRemove] = useState(false);
   const [authorizationUrl, setAuthorizationUrl] = useState("");
+  const [entryMode, setEntryMode] = useState<"platform" | "custom">(connection.details?.bindingMode === "custom" ? "custom" : "platform");
   const attempt = useRef(0);
   useEffect(() => {
     if (!deadline) { setRemaining(0); return; }
@@ -29,6 +34,25 @@ export function DomainBindingAction({ connection, refresh }: { connection: Conne
     update(); const timer = window.setInterval(update, 1000); return () => window.clearInterval(timer);
   }, [deadline]);
   useEffect(() => { if (!busy) setVerification(connection.details?.domainVerification || idleVerification(kind)); }, [busy, connection.details?.domainVerification, kind]);
+  useEffect(() => {
+    if (configured || entryMode === "custom") return;
+    let active = true;
+    let timer = 0;
+    const read = async () => {
+      try {
+        const setup = await fetchJson<{ actions?: { managedCloud?: { state?: string; authorizationUrl?: string } } }>("/api/system/setup");
+        if (!active) return;
+        const state = setup.actions?.managedCloud?.state || "idle";
+        if (!["failed", "cancelled"].includes(state)) timer = window.setTimeout(() => void read(), 1500);
+      } catch { if (active) timer = window.setTimeout(() => void read(), 3000); }
+    };
+    void read();
+    return () => { active = false; window.clearTimeout(timer); };
+  }, [configured, entryMode, verification.phase]);
+
+  if (entryMode === "custom" || connection.details?.bindingMode === "custom") {
+    return <CustomDomainSop connection={connection} refresh={refresh} onExit={() => setEntryMode("platform")} />;
+  }
 
   const startBinding = async () => {
     const currentAttempt = ++attempt.current;
@@ -74,10 +98,12 @@ export function DomainBindingAction({ connection, refresh }: { connection: Conne
     finally { setBusy(false); }
   };
 
-  const label = busy ? bound ? "正在移除…" : `绑定验证中${remaining ? ` ${formatRemaining(remaining)}` : ""}` : bound ? "移除域名绑定" : "使用平台域名";
-  const button = <Button className="connection-compact-action" variant="primary" disabled={busy} onClick={() => bound ? setConfirmRemove(true) : void startBinding()}>{busy ? <LoaderCircle className="connection-spinner" /> : null}{label}</Button>;
-  const showSop = expanded || bound || verification.phase !== "idle";
-  return <div className="connection-domain-flow"><div className="connection-domain-action">{button}{busy && !bound ? <Button className="connection-compact-action" onClick={() => void cancelBinding()}><X />取消绑定</Button> : null}{message ? <span role="status">{message}</span> : null}</div>{showSop ? <DomainBindingSop kind={kind} verification={verification} remainingSeconds={remaining} authorizationUrl={authorizationUrl} collapsed={!expanded} onToggle={() => setExpanded((value) => !value)} /> : null}{confirmRemove ? <DomainUnbindDialog busy={busy} onCancel={() => setConfirmRemove(false)} onConfirm={() => void removeBinding()} /> : null}</div>;
+  const label = busy ? configured ? "正在清空…" : `绑定验证中${remaining ? ` ${formatRemaining(remaining)}` : ""}` : configured ? "清空配置" : "配置";
+  const button = configured
+    ? <Button className="connection-compact-action" variant="danger" disabled={busy} onClick={() => setConfirmRemove(true)}>{busy ? <LoaderCircle className="connection-spinner" /> : null}{label}</Button>
+    : <DomainEntryMenu disabled={busy} onPlatform={() => void startBinding()} onCustom={() => setEntryMode("custom")} />;
+  const showSop = expanded || configured || verification.phase !== "idle";
+  return <div className="connection-domain-flow"><div className="connection-domain-action">{button}{busy && !configured ? <Button className="connection-compact-action" onClick={() => void cancelBinding()}><X />取消绑定</Button> : null}{message ? <span role="status">{message}</span> : null}</div>{showSop ? <DomainBindingSop kind={kind} verification={verification} remainingSeconds={remaining} authorizationUrl={authorizationUrl} collapsed={!expanded} onToggle={() => setExpanded((value) => !value)} /> : null}{confirmRemove ? <DomainUnbindDialog busy={busy} onCancel={() => setConfirmRemove(false)} onConfirm={() => void removeBinding()} /> : null}</div>;
 }
 
 async function waitForAssignedResource(id: string, deadline: number, onAuthorizationUrl: (value: string) => void, cancelled: () => boolean) {
@@ -119,11 +145,3 @@ function idleVerification(kind: "mail" | "sites"): DomainVerification {
 
 function pause(milliseconds: number) { return new Promise((resolve) => window.setTimeout(resolve, milliseconds)); }
 function formatRemaining(seconds: number) { return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`; }
-
-async function runSetupAction(actionId: string) {
-  type Operation = { id: string; digest: string };
-  const post = (phase: string, body: object) => fetchJson<{ operation: Operation }>(`/api/system/setup/actions/${actionId}/${phase}`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
-  const planned = (await post("plan", {})).operation;
-  await post("approve", { operationId: planned.id, digest: planned.digest, approved: true });
-  await post("execute", { operationId: planned.id, digest: planned.digest, input: {} });
-}

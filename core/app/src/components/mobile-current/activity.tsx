@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Activity, ChevronDown, Database, FileText, ListTodo, Mail, Workflow } from "lucide-react";
+import { Activity, ChevronDown, Database, FileText, ListTodo, Mail } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { activityKind, fetchJson, formatDateTime, relativeTime, useRememberedQuery } from "./data";
 import { InlineError, LoadSentinel, MobileListShell, SearchEmpty, SearchStatus } from "./shell";
@@ -105,7 +105,7 @@ function ActivityEntry({ item }: { item: ActivityItem }) {
 }
 
 function activityIcon(kind: string) {
-  return ({ work: ListTodo, page: FileText, mail: Mail, data: Database, automation: Workflow } as const)[kind as "work" | "page" | "mail" | "data" | "automation"] || Activity;
+  return ({ work: ListTodo, page: FileText, mail: Mail, data: Database } as const)[kind as "work" | "page" | "mail" | "data"] || Activity;
 }
 
 function ActivityAttachments({ attachments }: { attachments: ActivityAttachment[] }) {

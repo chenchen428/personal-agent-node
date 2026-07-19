@@ -69,7 +69,7 @@ test("local password validation explains every blocked submission", () => {
 });
 
 test("managed Cloud action always explains waiting and failed states", () => {
-  assert.match(managedCloudActionMessage({ state: "running", phase: "enrollment" }), /浏览器中确认/);
+  assert.match(managedCloudActionMessage({ state: "running", phase: "enrollment" }), /无需手动操作/);
   assert.match(managedCloudActionMessage({ state: "running", phase: "resources" }), /正在分配公网域名/);
   assert.match(managedCloudActionMessage({ state: "failed", phase: "enrollment", code: "DEPENDENCY_UNAVAILABLE" }), /本机使用不受影响/);
   assert.match(managedCloudActionMessage({ state: "failed", phase: "enrollment", code: "UNKNOWN" }), /重新验证/);

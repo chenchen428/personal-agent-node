@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 1,
+  "templates": [
+    {
+      "id": "interior-design-delivery",
+      "name": "装修设计交付页模板",
+      "category": "装修设计",
+      "skill": "interior-design",
+      "status": "built-in",
+      "summary": "将户型、空间关系、家具软装与材质方案组织成可自由查看的沉浸式 3D 交付页。",
+      "desktop": true,
+      "mobileLandscape": true,
+      "fixedFramework": [
+        "首屏呈现完整且可辨识的概念户型",
+        "提供 3D 鸟瞰、平面和室内三类视角",
+        "支持旋转、平移、缩放和进入空间近景",
+        "提供 Web 与移动端横屏布局及 WebGL 降级"
+      ],
+      "agentFreedom": [
+        "空间数量、几何关系和房间入口",
+        "家具品类、尺度、布局和软装细节",
+        "材质配色、灯光氛围和方案说明",
+        "项目标题、空间命名和交付重点"
+      ]
+    }
+  ]
+}

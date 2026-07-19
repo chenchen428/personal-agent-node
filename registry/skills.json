@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "version": 6,
+  "version": 7,
   "updatedAt": "2026-07-19",
   "categories": [
     {
@@ -603,7 +603,7 @@
       "entrypoint": "skills/interior-design/scripts/cli.mjs",
       "command": "node skills/interior-design/scripts/cli.mjs <validate|normalize|page>",
       "workspaceCommand": "node scripts/skill-tree.mjs interior <validate|normalize|page>",
-      "description": "Validate and normalize concept floor-plan models and render self-contained Three.js Pages."
+      "description": "Validate and normalize concept floor-plan models and render self-contained, manually explorable Three.js Pages from the built-in renovation delivery template."
     },
     {
       "name": "personal-agent",

@@ -21,13 +21,13 @@ export function ScheduledTasksPage() {
   const initialLoading = loading && !value;
 
   return <main className="v72-page v72-page-flush v72-schedule-page"><div className="v72-split-view">
-    <aside className="v72-split-list" aria-label="定时任务列表" aria-busy={loading}>
+    <aside className="v72-split-list" aria-label="自动化列表" aria-busy={loading}>
       <header className="v72-split-toolbar">
         <div className="v72-split-toolbar-title"><h1>任务</h1><TaskModuleViewNavigation active="schedules" scheduledCount={value ? tasks.length : undefined} /></div>
-        <label className="v72-search"><Search aria-hidden="true" /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="搜索定时任务..." aria-label="搜索定时任务" /></label>
+        <label className="v72-search"><Search aria-hidden="true" /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="搜索自动化..." aria-label="搜索自动化" /></label>
       </header>
-      <div className="v72-list-label">{query ? "搜索结果" : "定时任务"} · {filtered.length}</div>
-      {initialLoading ? <LoadingState label="正在读取定时任务" compact /> : filtered.map((task) => {
+      <div className="v72-list-label">{query ? "搜索结果" : "自动化"} · {filtered.length}</div>
+      {initialLoading ? <LoadingState label="正在读取自动化" compact /> : filtered.map((task) => {
         const absoluteNextRun = absoluteDateTime(task.nextRunAt);
         const nextRun = task.enabled ? formatScheduleDateTime(task.nextRunAt, task.timezone, true) : "已暂停";
         return <button className={`v72-select-row schedule-select-row${selected?.id === task.id ? " selected" : ""}`} type="button" onClick={() => setSelectedId(task.id)} key={task.id}>
@@ -38,7 +38,7 @@ export function ScheduledTasksPage() {
       {!initialLoading && !filtered.length ? <div className="schedule-list-empty">{error && !value ? "读取失败" : query ? "没有匹配结果" : "暂无计划"}</div> : null}
     </aside>
     <section className="v72-split-detail" aria-busy={initialLoading}>
-      {initialLoading ? <LoadingState label="正在准备定时任务详情" /> : error && !value ? <ScheduleFeedback kind="error" onRetry={() => void refresh()} /> : selected ? <ScheduledTaskDetail task={selected} /> : <ScheduleFeedback kind={query ? "search" : "empty"} />}
+      {initialLoading ? <LoadingState label="正在准备自动化详情" /> : error && !value ? <ScheduleFeedback kind="error" onRetry={() => void refresh()} /> : selected ? <ScheduledTaskDetail task={selected} /> : <ScheduleFeedback kind={query ? "search" : "empty"} />}
     </section>
   </div></main>;
 }
@@ -47,7 +47,7 @@ function ScheduleFeedback({ kind, onRetry }: { kind: "error" | "search" | "empty
   const error = kind === "error";
   return <div className="schedule-feedback">
     {error ? <CircleAlert aria-hidden="true" /> : <CalendarClock aria-hidden="true" />}
-    <strong>{error ? "暂时无法读取定时任务" : kind === "search" ? "没有匹配的定时任务" : "还没有定时任务"}</strong>
+    <strong>{error ? "暂时无法读取自动化" : kind === "search" ? "没有匹配的自动化" : "还没有自动化"}</strong>
     <p>{error ? "检查本机 Agent 运行状态后再试一次。" : kind === "search" ? "换一个名称、时间或任务内容试试。" : "在主对话中告诉 Agent 要做什么、何时执行。"}</p>
     {error ? <button className="button" type="button" onClick={onRetry}>重新读取</button> : kind === "empty" ? <Link className="button" href="/app/conversations">前往主对话</Link> : null}
   </div>;

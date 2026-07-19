@@ -13,7 +13,21 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 function run(command, args) { return spawnSync(command, args, { cwd: root, encoding: 'utf8' }); }
 
 test('customer Harness contains architecture registries and Agent guidance', () => {
-  for (const file of ['AGENTS.md', 'docs/adr/0001-node-product-boundary-freeze.md', 'registry/projects.json', 'registry/skills.json', 'registry/behavior-baselines.json', 'registry/capabilities.json', 'registry/routes.json', 'registry/extensions.json', 'registry/commands.json', 'workflows/project-iteration.md', 'workflows/skill-iteration.md']) assert.equal(fs.existsSync(path.join(root, file)), true, file);
+  for (const file of ['AGENTS.md', 'docs/adr/0001-node-product-boundary-freeze.md', 'registry/projects.json', 'registry/skills.json', 'registry/behavior-baselines.json', 'registry/capabilities.json', 'registry/routes.json', 'registry/extensions.json', 'registry/commands.json', 'registry/product-development.json', 'schemas/personal-agent/product-development.schema.json', 'workflows/project-iteration.md', 'workflows/skill-iteration.md', 'workflows/product-development.md', 'skills/personal-agent/references/product-development.md']) assert.equal(fs.existsSync(path.join(root, file)), true, file);
+});
+
+test('installed product development is autonomous, private-root-only, and never targets current', () => {
+  const contract = JSON.parse(fs.readFileSync(path.join(root, 'registry/product-development.json'), 'utf8'));
+  assert.equal(contract.mode, 'autonomous');
+  assert.equal(contract.repository, 'chenchen428/personal-agent');
+  assert.equal(contract.visibility, 'private');
+  assert.equal(contract.confirmationPolicy, 'never');
+  assert.equal(contract.cloneFailurePolicy, 'stop');
+  assert.equal(contract.checkout.relativePath, 'projects/personal-agent');
+  assert.equal(contract.immutableRuntimePath, 'core/current');
+  assert.notEqual(contract.checkout.relativePath, contract.immutableRuntimePath);
+  const workflow = fs.readFileSync(path.join(root, 'workflows/product-development.md'), 'utf8');
+  for (const requirement of ['development ensure', 'private root', 'core/current', 'terminal', 'standing authority', 'self-iteration']) assert.match(workflow, new RegExp(requirement, 'i'));
 });
 
 test('customer Harness classifies and ships portable creation skills', () => {

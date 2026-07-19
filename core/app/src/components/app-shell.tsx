@@ -8,6 +8,7 @@ import { desktopNavigation, desktopNavigationGroups, desktopUtilityNavigation } 
 import { SpaceSwitcher } from "@/components/space-switcher";
 import { UpdateNavItem } from "@/components/update-nav-item";
 import { fetchJson } from "@/lib/client-json";
+import { ManagedConnectionsBootstrap } from "@/components/managed-connections-bootstrap";
 
 type PersonalApp = { id: string; name: string; route: string; desktopRoute?: string; compatible: boolean };
 
@@ -26,7 +27,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   useCloseProtection(mobile);
   if (mobile) return children;
-  return <DesktopShell pathname={pathname} apps={apps}>{children}</DesktopShell>;
+  return <><ManagedConnectionsBootstrap enabled /><DesktopShell pathname={pathname} apps={apps}>{children}</DesktopShell></>;
 }
 
 function DesktopShell({ pathname, apps, children }: { pathname: string; apps: PersonalApp[]; children: ReactNode }) {
@@ -36,7 +37,8 @@ function DesktopShell({ pathname, apps, children }: { pathname: string; apps: Pe
   const appActive = (app: PersonalApp) => active(app.desktopRoute || app.route);
   const currentApp = apps.find(appActive);
   const current = active("/app/connections/wechat-personal") ? "连接 · 个人微信"
-    : active("/app/workers/schedules") ? "任务 · 定时任务"
+    : active("/app/workers/schedules") ? "任务 · 自动化"
+    : active("/app/pages/templates") ? "发布页 · 模板"
     : active("/app/update") ? "软件更新"
       : active("/app/statistics/token-usage") ? "Token 统计"
         : active("/app/skills") ? "技能"

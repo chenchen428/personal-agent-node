@@ -16,8 +16,18 @@ const HOP_BY_HOP_HEADERS = new Set([
 ]);
 
 export function loadReverseTunnelConfig(config) {
+  if (config.site?.connectionMode === "self-hosted-edge") {
+    const bindings = readJson(path.join(config.configDir, "custom-domain-bindings.json"));
+    const binding = bindings?.sites || bindings?.mail;
+    if (!binding?.tunnel) throw tunnelError("TUNNEL_CONFIG_MISSING", "Self-hosted Relay configuration is missing");
+    const tunnel = validateReverseTunnelContract(binding.tunnel);
+    const credentialEnv = String(binding.tunnel.credentialEnv || "PERSONAL_AGENT_CUSTOM_DOMAIN_TOKEN");
+    const token = String(config.env?.[credentialEnv] || "").trim();
+    if (token.length < 32 || token.length > 2048) throw tunnelError("TUNNEL_TOKEN_MISSING", "Self-hosted Relay credential is missing");
+    return { ...tunnel, token, accessExpiresAt: "", refreshAvailable: false, clientVersion: String(process.env.npm_package_version || "unknown").slice(0, 40), setupAction: "connectivity.custom-domain-start" };
+  }
   const document = readJson(path.join(config.configDir, "cloud.json"));
-  if (config.site?.connectionMode !== "managed-cloud") throw tunnelError("TUNNEL_NOT_SELECTED", "Managed Cloud is not selected");
+  if (config.site?.connectionMode !== "managed-cloud") throw tunnelError("TUNNEL_NOT_SELECTED", "A reverse tunnel connection is not selected");
   if (!document?.tunnel) throw tunnelError("TUNNEL_CONFIG_MISSING", "Reverse tunnel enrollment is missing");
   const tunnel = validateReverseTunnelContract(document.tunnel);
   const token = String(config.env?.PERSONAL_AGENT_CLOUD_TOKEN || "").trim();
@@ -36,7 +46,8 @@ export function validateReverseTunnelContract(value) {
   const heartbeatSeconds = boundedInteger(value.heartbeatSeconds, 5, 120, "heartbeatSeconds");
   const maxFrameBytes = boundedInteger(value.maxFrameBytes, 16 * 1024, 1024 * 1024, "maxFrameBytes");
   const generation = boundedInteger(value.generation, 1, Number.MAX_SAFE_INTEGER, "generation");
-  return { protocol: REVERSE_TUNNEL_PROTOCOL, endpoint: endpoint.toString(), heartbeatSeconds, maxFrameBytes, generation };
+  const routePolicy = value.routePolicy === "gateway" ? "gateway" : "mobile-readonly";
+  return { protocol: REVERSE_TUNNEL_PROTOCOL, endpoint: endpoint.toString(), heartbeatSeconds, maxFrameBytes, generation, routePolicy };
 }
 
 export class ReverseTunnelConnector {
@@ -167,11 +178,11 @@ export class ReverseTunnelConnector {
   startStream(message) {
     if (this.streams.has(message.id) || this.rejectedStreams.has(message.id)) throw tunnelError("TUNNEL_STREAM_DUPLICATE", "Duplicate tunnel stream");
     if (this.streams.size >= DEFAULT_MAX_STREAMS) return this.sendError(message.id, "STREAM_LIMIT_EXCEEDED");
-    if (!isTunnelRouteAllowed(this.config.distribution, message.path, message.kind, message.method)) {
+    if (!isTunnelRouteAllowed(this.config.distribution, message.path, message.kind, message.method, this.tunnel.routePolicy)) {
       this.rememberRejectedStream(message.id);
       return this.sendError(message.id, "REMOTE_ROUTE_DENIED");
     }
-    const tunnelPath = resolveTunnelRequestPath(message.path);
+    const tunnelPath = resolveTunnelRequestPath(message.path, this.tunnel.routePolicy);
     const headers = sanitizeRequestHeaders(message.headers);
     headers.host = this.config.domain || "127.0.0.1";
     const stream = { id: message.id, kind: message.kind, nextRequestSeq: 0, nextResponseSeq: 0, requestBytes: 0, responseBytes: 0, ended: false, endRequested: false, draining: false, pendingHttp: [], pendingBytes: 0, request: null, localSocket: null };
@@ -407,7 +418,7 @@ export class ReverseTunnelConnector {
     this.writeState("degraded", { cause: reason, authorizationRequired: false });
     if ((!this.tunnel.refreshAvailable || typeof this.refreshCredential !== "function") && typeof this.silentCredential !== "function") {
       this.reauthRequired = true;
-      this.writeState("reauth_required", { cause: "refresh_unavailable", authorizationRequired: true, setupAction: "connectivity.managed-authorize" });
+      this.writeState("reauth_required", { cause: "refresh_unavailable", authorizationRequired: true, setupAction: this.tunnel.setupAction || "connectivity.managed-authorize" });
       return Promise.resolve(false);
     }
     let recovered = false;
@@ -508,14 +519,19 @@ export function normalizeTunnelPath(value) {
   return `${url.pathname}${url.search}`;
 }
 
-export function resolveTunnelRequestPath(requestPath) {
+export function resolveTunnelRequestPath(requestPath, routePolicy = "mobile-readonly") {
   const normalized = normalizeTunnelPath(requestPath);
   const url = new URL(normalized, "http://127.0.0.1");
-  if (url.pathname === "/" || url.pathname === "/app") url.pathname = "/app/mobile";
+  if (routePolicy !== "gateway" && (url.pathname === "/" || url.pathname === "/app")) url.pathname = "/app/mobile";
   return `${url.pathname}${url.search}`;
 }
 
-export function isTunnelRouteAllowed(_distribution, requestPath, kind = "http", method = "GET") {
+export function isTunnelRouteAllowed(_distribution, requestPath, kind = "http", method = "GET", routePolicy = "mobile-readonly") {
+  if (routePolicy === "gateway") {
+    try { resolveTunnelRequestPath(requestPath, routePolicy); }
+    catch { return false; }
+    return ["http", "websocket"].includes(String(kind));
+  }
   if (kind !== "http") return false;
   let pathname;
   try { pathname = new URL(resolveTunnelRequestPath(requestPath), "http://127.0.0.1").pathname; }

@@ -5,8 +5,27 @@ import os from "node:os";
 import path from "node:path";
 import test from "node:test";
 import { initializeSite, resolveNodeConfig } from "../src/config.ts";
-import { authorizeRoute, createPrivateSiteGateway } from "../src/gateway.ts";
+import { authorizeRoute, createPrivateSiteGateway, resolveRelaySpaceProxyTarget } from "../src/gateway.ts";
 import { setDefaultPersonalApp } from "../src/apps.ts";
+
+test("Relay Space routing resolves a running subdomain target without granting loopback auth", (t) => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "pa-relay-space-route-"));
+  t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+  fs.mkdirSync(path.join(root, "config"), { recursive: true });
+  fs.writeFileSync(path.join(root, "config", "site.json"), JSON.stringify({ asciiDomain: "work.example.site" }));
+  const request = { headers: { "x-personal-agent-space-route": "work" } };
+  const target = resolveRelaySpaceProxyTarget(request, { installationDataRoot: "unused", space: { id: "personal" } }, () => ({
+    id: "space_work",
+    slug: "work",
+    kind: "user",
+    state: "running",
+    desiredState: "running",
+    root,
+    ports: { gateway: 8863 },
+  }));
+  assert.deepEqual(target, { target: "http://127.0.0.1:8863", host: "work.example.site", spaceId: "space_work", slug: "work" });
+  assert.equal(request.headers["x-personal-agent-space-route"], undefined);
+});
 
 test("route access model gives direct loopback access without weakening tunneled hosts", async () => {
   const auth = http.createServer((_request, response) => { response.writeHead(204); response.end(); });
@@ -106,6 +125,12 @@ test("canonical Console and domain API routes authenticate and rewrite to intern
       assert.equal((await request({ port, host: "example.site", path: "/app/setup", headers: { cookie: "session=ok" } })).status, 302);
       assert.equal((await request({ port, host: "127.0.0.1", path: "/app/setup" })).status, 200);
       assert.equal((await request({ port, host: "example.site", path: "/app/chat", headers: { cookie: "session=ok" } })).status, 200);
+      assert.equal((await request({ port, host: "example.site", path: "/publications/private-report/index.html" })).status, 302);
+      assert.equal((await request({ port, host: "127.0.0.1", path: "/publications/private-report/index.html" })).status, 200);
+      assert.equal((await request({ port, host: "example.site", path: "/publications/private-report/index.html", headers: { cookie: "session=ok" } })).status, 200);
+      assert.equal((await request({ port, host: "example.site", path: "/app/files/view/wechat/report.pdf" })).status, 302);
+      assert.equal((await request({ port, host: "127.0.0.1", path: "/app/files/view/wechat/report.pdf" })).status, 200);
+      assert.equal((await request({ port, host: "example.site", path: "/app/files/view/wechat/report.pdf", headers: { cookie: "session=ok" } })).status, 200);
       assert.equal((await request({ port, host: "example.site", path: "/app/mail", headers: { cookie: "session=ok" } })).status, 200);
       assert.equal((await request({ port, host: "example.site", path: "/mail", headers: { cookie: "session=ok" } })).status, 404);
       assert.equal((await request({ port, host: "example.site", path: "/api/chat/sessions", headers: { cookie: "session=ok" } })).status, 200);
@@ -124,6 +149,10 @@ test("canonical Console and domain API routes authenticate and rewrite to intern
         { service: "console", url: "/app" },
         { service: "console", url: "/app/setup" },
         { service: "console", url: "/app/chat" },
+        { service: "bridge", url: "/publications/private-report/index.html" },
+        { service: "bridge", url: "/publications/private-report/index.html" },
+        { service: "bridge", url: "/private-files/view/wechat/report.pdf" },
+        { service: "bridge", url: "/private-files/view/wechat/report.pdf" },
         { service: "console", url: "/app/mail" },
         { service: "bridge", url: "/api/sessions" },
         { service: "bridge", url: "/api/node/v1/capabilities" },

@@ -78,6 +78,19 @@ export class NotionCliConnection {
     this.pendingLogin = null;
     return status;
   }
+
+  async clearConfiguration() {
+    try {
+      const result = await this.run(this.command, ["logout"], { timeoutMs: 15_000, env: this.environment });
+      if (result.code !== 0) throw Object.assign(new Error("Notion CLI logout failed"), { code: "NOTION_LOGOUT_FAILED" });
+      this.pendingLogin = null;
+      this.lastStatus = { state: "needs_setup", statusLabel: "需要浏览器授权", details: { cliReady: true } };
+      return this.lastStatus;
+    } catch (error) {
+      if (error?.code === "ENOENT") throw Object.assign(new Error("Notion 官方 ntn CLI 尚未安装"), { statusCode: 503, code: "NOTION_CLI_MISSING" });
+      throw Object.assign(new Error("Notion 配置清空失败，请重试。"), { statusCode: 502, code: error?.code === "NOTION_LOGOUT_FAILED" ? error.code : "NOTION_LOGOUT_FAILED" });
+    }
+  }
 }
 
 export function openExternalUrl(url, { platform = process.platform, spawnImpl = spawn } = {}) {

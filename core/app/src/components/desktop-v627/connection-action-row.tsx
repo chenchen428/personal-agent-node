@@ -1,8 +1,7 @@
 "use client";
 
-import { BookOpen, CheckCircle2, ExternalLink, Globe2, LoaderCircle, X } from "lucide-react";
+import { BookOpen, CheckCircle2, ExternalLink, Globe2, LoaderCircle, Trash2, X } from "lucide-react";
 import { useCallback, useRef, useState } from "react";
-import { WechatConnectPanel } from "@/components/wechat-connect-panel";
 import { Button } from "../desktop-v72/primitives";
 import { errorMessage, fetchJson } from "./shared";
 import type { Connection } from "./connection-types";
@@ -10,6 +9,8 @@ import { formatConnectionCountdown, useConnectionStatusSync, type ConnectionSync
 import { DomainBindingAction } from "./domain-binding-action";
 import { ConnectionOperationSop, type ConnectionOperationStep } from "./connection-operation-sop";
 import { PersonalWechatAction } from "./personal-wechat-action";
+import { ConnectionClearDialog } from "./connection-clear-dialog";
+import { WechatClawAction } from "./wechat-claw-action";
 
 export function ConnectionActionRow({ connection, refresh }: { connection: Connection; refresh: () => Promise<void> }) {
   if (connection.id === "wechat-personal") return <><div className="connection-summary-action"><p>{connection.description}</p><PersonalWechatAction connection={connection} refresh={refresh} /></div></>;
@@ -17,11 +18,6 @@ export function ConnectionActionRow({ connection, refresh }: { connection: Conne
 }
 
 function DefaultConnectionActionRow({ connection, refresh }: { connection: Connection; refresh: () => Promise<void> }) {
-  const [expanded, setExpanded] = useState(false);
-  const [panelAttempt, setPanelAttempt] = useState(0);
-  const [scanActive, setScanActive] = useState(false);
-  const scanConnected = connection.state === "connected";
-  const openScanPanel = () => { setExpanded(true); setPanelAttempt((value) => value + 1); };
   const action = connection.id === "mail" || connection.id === "sites"
     ? <DomainBindingAction connection={connection} refresh={refresh} />
     : connection.id === "notion"
@@ -29,13 +25,10 @@ function DefaultConnectionActionRow({ connection, refresh }: { connection: Conne
       : ["xiaohongshu", "twitter"].includes(connection.id)
         ? <OpenCliAction connection={connection} refresh={refresh} />
         : connection.id === "wechat"
-          ? <Button className="connection-compact-action" variant="primary" disabled={scanActive} onClick={openScanPanel}>{scanActive ? <><LoaderCircle className="connection-spinner" />等待扫码确认</> : scanConnected ? "重新连接" : connection.primaryAction}</Button>
+          ? <WechatClawAction connection={connection} refresh={refresh} />
           : null;
 
-  return <>
-    <div className="connection-summary-action"><p>{connection.description}</p>{action}</div>
-    {expanded && connection.id === "wechat" ? <WechatConnectPanel key={panelAttempt} connected={scanConnected} autoStart reconnectOnMount={scanConnected} onActiveChange={setScanActive} onCancel={() => { setExpanded(false); setScanActive(false); }} onConnected={refresh} compact /> : null}
-  </>;
+  return <div className="connection-summary-action"><p>{connection.description}</p>{action}</div>;
 }
 
 function OpenCliAction({ connection, refresh }: { connection: Connection; refresh: () => Promise<void> }) {
@@ -85,8 +78,11 @@ function NotionAction({ connection, refresh }: { connection: Connection; refresh
   const [syncing, setSyncing] = useState(false);
   const [started, setStarted] = useState(connection.state === "connected");
   const [failed, setFailed] = useState(false);
+  const [clearDialogOpen, setClearDialogOpen] = useState(false);
+  const [clearing, setClearing] = useState(false);
+  const [clearedLocally, setClearedLocally] = useState(false);
   const attempt = useRef(0);
-  const connected = connection.state === "connected";
+  const connected = connection.state === "connected" && !clearedLocally;
   const probe = useCallback(async (): Promise<ConnectionSyncResult> => {
     const response = await fetch("/api/connections/notion/login/poll", { method: "POST", cache: "no-store" });
     const payload = await response.json().catch(() => ({})) as { error?: string | { message?: string } };
@@ -94,7 +90,7 @@ function NotionAction({ connection, refresh }: { connection: Connection; refresh
     if (response.status === 409) return { state: "pending" };
     return { state: "failed", message: response.status === 410 ? "Notion 授权已超时，请重新连接。" : readApiError(payload) };
   }, []);
-  const complete = useCallback(() => { setSyncing(false); setFailed(false); setMessage("Notion 已连接，可以使用相关能力。"); }, []);
+  const complete = useCallback(() => { setSyncing(false); setFailed(false); setClearedLocally(false); setMessage("Notion 已连接，可以使用相关能力。"); }, []);
   const fail = useCallback((reason: string) => { setSyncing(false); setFailed(true); setMessage(reason); }, []);
   const remaining = useConnectionStatusSync({ active: syncing, complete: connected, probe, refresh, onComplete: complete, onFailure: fail });
   const start = async () => {
@@ -114,14 +110,25 @@ function NotionAction({ connection, refresh }: { connection: Connection; refresh
     setStarted(connected);
     setMessage(connected ? "已取消本次重新连接，原有 Notion 连接保持不变。" : "已取消本次 Notion 授权。");
   };
-  const label = busy ? "正在启动…" : syncing ? `等待授权 ${formatConnectionCountdown(remaining)}` : connected ? "重新连接" : "连接 Notion";
+  const clearConfiguration = async () => {
+    attempt.current += 1; setClearing(true); setSyncing(false); setMessage("");
+    try {
+      await fetchJson("/api/connections/notion/configuration", { method: "DELETE" });
+      setClearedLocally(true); setStarted(false); setFailed(false); setVerificationUrl(""); setUserCode(""); setClearDialogOpen(false);
+      setMessage("Notion 连接配置已清空，可以重新配置工作区。");
+      await refresh().catch(() => {});
+    } catch (error) { setFailed(true); setMessage(errorMessage(error)); setClearDialogOpen(false); }
+    finally { setClearing(false); }
+  };
+  const label = busy ? "正在启动…" : syncing ? `等待授权 ${formatConnectionCountdown(remaining)}` : "配置";
   const launchPanel = <div className="domain-human-guide" role="status"><strong>{failed ? "授权会话未能建立" : "正在建立授权会话"}</strong><p>{message || "准备 Notion 官方授权页。"}</p>{failed ? <Button onClick={() => void start()}>重新发起</Button> : null}</div>;
   const openPanel = <div className="domain-human-guide" role="status"><strong>打开 Notion 授权页</strong><p>如果浏览器没有自动打开，请使用下面的入口继续。</p>{verificationUrl ? <a href={verificationUrl} target="_blank" rel="noreferrer">打开授权页 <ExternalLink /></a> : null}</div>;
   const approvePanel = <div className="domain-human-guide" role="status"><strong>确认工作区授权</strong><p>选择允许 Personal Agent 访问的工作区并确认，然后返回这里等待自动检测。</p>{userCode ? <code>授权码 {userCode}</code> : null}{verificationUrl ? <a href={verificationUrl} target="_blank" rel="noreferrer">再次打开授权页 <ExternalLink /></a> : null}</div>;
   const completedPanel = <div className="connection-success-evidence"><CheckCircle2 /><div><strong>Notion 工作区已连接</strong><span>授权回调已经收到，相关读取与操作能力可以使用。</span></div></div>;
   return <div className="connection-operation-flow">
-    <div className="connection-auth-action"><Button className="connection-compact-action" variant="primary" disabled={busy || syncing} onClick={() => void start()}>{busy || syncing ? <LoaderCircle className="connection-spinner" /> : null}{label}</Button>{busy || syncing ? <Button className="connection-compact-action" onClick={cancel}><X />取消{connected ? "重新连接" : "授权"}</Button> : null}</div>
+    <div className="connection-auth-action">{connected ? <Button className="connection-compact-action" variant="danger" disabled={clearing} onClick={() => setClearDialogOpen(true)}><Trash2 />{clearing ? "正在清空…" : "清空配置"}</Button> : <Button className="connection-compact-action" variant="primary" disabled={busy || syncing} onClick={() => void start()}>{busy || syncing ? <LoaderCircle className="connection-spinner" /> : null}{label}</Button>}{busy || syncing ? <Button className="connection-compact-action" onClick={cancel}><X />取消授权</Button> : null}</div>
     {started ? <ConnectionOperationSop icon={<BookOpen />} title="Notion 工作区授权" summary={connected && !syncing ? "授权回调与能力检测均已完成" : message || "完成授权后会自动检测连接状态"} tone={connected && !syncing ? "success" : failed ? "danger" : "working"} statusLabel={connected && !syncing ? "连接成功" : failed ? "授权失败" : "等待授权"} steps={notionSteps({ busy, syncing, connected: connected && !syncing, failed, verificationUrl })} stepPanels={{ "0": launchPanel, "1": openPanel, "2": approvePanel, "3": completedPanel }} /> : null}
+    {clearDialogOpen ? <ConnectionClearDialog connectionName="Notion" configurationSummary="官方 Notion CLI 保存的工作区登录凭据会被注销，当前授权立即停止。" preservedSummary="Personal Agent 已保存的本机内容和操作记录不会被删除。" busy={clearing} onCancel={() => setClearDialogOpen(false)} onConfirm={() => void clearConfiguration()} /> : null}
   </div>;
 }
 

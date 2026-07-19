@@ -196,6 +196,9 @@ test('pre-release candidate stays digest-bound and reuses the native desktop han
   assert.match(candidateExecutor, /candidatePlanTTL\s*=\s*10 \* time\.Minute/);
   assert.match(candidateExecutor, /personal-agent operation approve/);
   assert.match(candidateExecutor, /interactive local TTY/);
+  assert.match(candidateExecutor, /authorized-product-delivery/);
+  assert.match(candidateExecutor, /registered-product-development/);
+  assert.match(candidateExecutor, /exact-candidate-digest/);
   assert.match(candidateExecutor, /--apply-update/);
   assert.match(candidateExecutor, /candidateOperationPath/);
   assert.match(setupExecutor, /workspace", "installation", "updates/);

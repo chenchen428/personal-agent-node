@@ -770,7 +770,7 @@ test("groups many inbound attachments into one reference-friendly receipt", asyn
     senderName: "批量文件用户",
     text: "",
     attachments: [
-      { kind: "image", fileName: "客厅.jpg", path: path.join(config.inboundAttachmentsDir, "wechat/user-test/2026-07-11/one.jpg") },
+      { kind: "image", fileName: "客厅.jpg", path: path.join(config.inboundAttachmentsDir, "wechat/user-test/2026-07-11/one.jpg"), managedObjectId: "obj_0123456789abcdef01234567" },
       { kind: "image", fileName: "餐桌.jpg", path: path.join(config.inboundAttachmentsDir, "wechat/user-test/2026-07-11/two.jpg") },
       { kind: "file", fileName: "清单.xlsx", path: path.join(config.inboundAttachmentsDir, "wechat/user-test/2026-07-11/three.xlsx") },
     ],
@@ -779,11 +779,16 @@ test("groups many inbound attachments into one reference-friendly receipt", asyn
   await waitFor(() => sent.length === 1);
   assert.match(sent[0].content, /^收到 3 个文件，已整理为「.+文件包 01」/);
   assert.match(sent[0].content, /图1 客厅\.jpg · 图2 餐桌\.jpg · 文件1 清单\.xlsx/);
-  assert.match(sent[0].content, /查看与引用：\/files\/batches\/files_/);
+  assert.doesNotMatch(sent[0].content, /\/app\/files|\/files\/batches|查看与引用|私密预览/);
   assert.doesNotMatch(sent[0].content, /https?:\/\//);
   assert.equal(sent.length, 1);
   assert.match(calls[0], /\[图1\] image: 客厅\.jpg/);
+  assert.match(calls[0], /managedObjectId: obj_0123456789abcdef01234567/);
   assert.match(calls[0], /privateFileBatch:/);
+  assert.match(calls[0], /\/app\/files\/batches\/files_/);
+  const visibleMessage = store.getSession(session.id).messages.find((message) => message.role === "user");
+  assert.match(visibleMessage.content, /客厅\.jpg/);
+  assert.doesNotMatch(visibleMessage.content, /localPath|privatePreview|privateFileBatch|\/app\/files/);
   await waitFor(() => !orchestrator.running.has(session.id));
 });
 

@@ -16,6 +16,7 @@ export class DomainBindingVerification {
     sendVerificationMail,
     scanMail,
     listMailEvents,
+    customBindings = () => ({}),
     fetchImpl = fetch,
     now = () => new Date(),
     sleep = (milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds)),
@@ -28,6 +29,7 @@ export class DomainBindingVerification {
     this.sendVerificationMail = sendVerificationMail;
     this.scanMail = scanMail;
     this.listMailEvents = listMailEvents;
+    this.customBindings = customBindings;
     this.fetchImpl = fetchImpl;
     this.now = now;
     this.sleep = sleep;
@@ -35,11 +37,13 @@ export class DomainBindingVerification {
     this.running = new Map();
   }
 
-  status(kind) {
+  status(kind, binding) {
     assertKind(kind);
     const document = this.readDocument();
-    const state = document[kind] || idleState(kind);
-    const resource = this.resource(kind);
+    const state = document[kind] || idleState(kind, binding || "platform");
+    const stateBinding = state.binding || "platform";
+    if (binding && binding !== stateBinding) return idleState(kind, binding);
+    const resource = this.resource(kind, stateBinding);
     if (state.phase === "verified" && state.resource !== resource) return idleState(kind);
     if (state.phase === "verifying" && Date.parse(state.deadlineAt) <= this.now().getTime()) {
       return this.fail(kind, state, "验证已超过 3 分钟，请检查链路后重新绑定。", "VERIFICATION_TIMEOUT");
@@ -47,9 +51,9 @@ export class DomainBindingVerification {
     return publicState(state);
   }
 
-  isVerified(kind) {
-    const state = this.status(kind);
-    return state.phase === "verified" && Boolean(state.resource) && state.resource === this.resource(kind);
+  isVerified(kind, binding = "platform") {
+    const state = this.status(kind, binding);
+    return state.phase === "verified" && Boolean(state.resource) && state.resource === this.resource(kind, binding);
   }
 
   acceptsMail(message) {
@@ -57,18 +61,19 @@ export class DomainBindingVerification {
     return state?.phase === "verifying" && this.beforeDeadline(state) && mailMatches(message, state);
   }
 
-  start(kind, { deadlineAt } = {}) {
+  start(kind, { deadlineAt, binding = "platform" } = {}) {
     assertKind(kind);
-    const resource = this.resource(kind);
-    if (!resource) throw domainError("DOMAIN_RESOURCE_MISSING", kind === "mail" ? "平台收件地址尚未分配" : "平台域名尚未分配", 409);
+    assertBinding(binding);
+    const resource = this.resource(kind, binding);
+    if (!resource) throw domainError("DOMAIN_RESOURCE_MISSING", binding === "custom" ? "自定义域名转发服务尚未就绪" : kind === "mail" ? "平台收件地址尚未分配" : "平台域名尚未分配", 409);
     const now = this.now();
     const requestedDeadline = Date.parse(String(deadlineAt || ""));
     const maximumDeadline = now.getTime() + DOMAIN_BINDING_TIMEOUT_MS;
     const deadlineMs = Number.isFinite(requestedDeadline) ? Math.min(requestedDeadline, maximumDeadline) : maximumDeadline;
     if (deadlineMs <= now.getTime()) throw domainError("VERIFICATION_TIMEOUT", "绑定验证已超过 3 分钟，请重新发起。", 408);
     const current = this.readDocument()[kind];
-    if (current?.phase === "verified" && current.resource === resource) return publicState(current);
-    if (current?.phase === "verifying" && current.resource === resource && Date.parse(current.deadlineAt) > now.getTime()) {
+    if (current?.phase === "verified" && current.resource === resource && (current.binding || "platform") === binding) return publicState(current);
+    if (current?.phase === "verifying" && current.resource === resource && (current.binding || "platform") === binding && Date.parse(current.deadlineAt) > now.getTime()) {
       this.run(kind, current);
       return publicState(current);
     }
@@ -76,6 +81,7 @@ export class DomainBindingVerification {
     const state = {
       schemaVersion: 1,
       kind,
+      binding,
       phase: "verifying",
       resource,
       marker,
@@ -84,7 +90,7 @@ export class DomainBindingVerification {
       updatedAt: now.toISOString(),
       error: null,
       evidence: null,
-      steps: stepDefinitions(kind).map((step, index) => ({ ...step, status: index < 2 ? "passed" : index === 2 ? "active" : "pending" })),
+      steps: stepDefinitions(kind, binding).map((step, index) => ({ ...step, status: index < 2 ? "passed" : index === 2 ? "active" : "pending" })),
     };
     this.writeState(kind, state);
     this.run(kind, state);
@@ -95,7 +101,7 @@ export class DomainBindingVerification {
     const document = this.readDocument();
     for (const kind of KINDS) {
       const state = document[kind];
-      if (state?.phase === "verifying" && Date.parse(state.deadlineAt) > this.now().getTime() && state.resource === this.resource(kind)) this.run(kind, state);
+      if (state?.phase === "verifying" && Date.parse(state.deadlineAt) > this.now().getTime() && state.resource === this.resource(kind, state.binding || "platform")) this.run(kind, state);
     }
   }
 
@@ -117,20 +123,23 @@ export class DomainBindingVerification {
   }
 
   async runSite(state) {
-    let latest = this.step("sites", state, 2, "active", "正在按 Page 标准发布验证内容与双端缩略图");
+    const custom = state.binding === "custom";
+    let latest = this.step("sites", state, 2, "active", custom ? "正在检查 DNS、TLS、加密转发和最终页面内容" : "正在按 Page 标准发布验证内容与双端缩略图");
     const publication = await createVerificationSitePublication({ marker: state.marker, domain: state.resource });
     const asset = await this.publishPage(publication);
-    latest = this.step("sites", latest, 2, "passed", "验证 Page 与双端缩略图已发布");
-    latest = this.step("sites", latest, 3, "active", "正在通过公网域名请求发布页");
+    if (!custom) {
+      latest = this.step("sites", latest, 2, "passed", "验证 Page 与双端缩略图已发布");
+      latest = this.step("sites", latest, 3, "active", "正在通过公网域名请求发布页");
+    }
     while (this.beforeDeadline(latest)) {
-      const access = this.externalAccess();
+      const access = custom ? { ready: true, origin: `https://${state.resource}` } : this.externalAccess();
       if (access?.ready && access.origin) {
         const publicUrl = new URL(asset.url, `${access.origin}/`).toString();
         try {
           const response = await this.fetchImpl(publicUrl, { headers: { accept: "text/html" }, signal: AbortSignal.timeout(10_000) });
           const content = await response.text();
           if (response.ok && content.includes(state.marker)) {
-            latest = this.step("sites", latest, 3, "passed", "公网返回 200，页面标记一致");
+            latest = this.step("sites", latest, custom ? 2 : 3, "passed", custom ? "DNS、TLS、转发与页面内容均已验证" : "公网返回 200，页面标记一致");
             return this.complete("sites", latest, { kind: "site", url: publicUrl, label: "查看验证发布" });
           }
         } catch {}
@@ -142,20 +151,23 @@ export class DomainBindingVerification {
   }
 
   async runMail(state) {
-    let latest = this.step("mail", state, 2, "active", "正在从公开测试发件地址发送验证邮件");
+    const custom = state.binding === "custom";
+    let latest = this.step("mail", state, 2, "active", custom ? "正在检查 MX、加密转发和真实本地收件" : "正在从公开测试发件地址发送验证邮件");
     const delivery = await this.sendVerificationMail({ recipient: state.resource, marker: state.marker, deadlineAt: state.deadlineAt });
     if (delivery?.accepted !== true) throw domainError("VERIFICATION_MAIL_REJECTED", "平台没有接受验证邮件发送请求，请稍后重试。", 503);
     const expectedSenderDomain = normalizeDomain(delivery.senderDomain);
     if (!expectedSenderDomain) throw domainError("VERIFICATION_MAIL_EVIDENCE_INVALID", "公开测试邮件服务没有返回有效的验证证据，请稍后重试。", 503);
     latest = { ...latest, expectedSenderDomain, updatedAt: this.now().toISOString() };
     this.writeState("mail", latest);
-    latest = this.step("mail", latest, 2, "passed", "验证邮件已发送");
-    latest = this.step("mail", latest, 3, "active", "正在等待本机收件归档");
+    if (!custom) {
+      latest = this.step("mail", latest, 2, "passed", "验证邮件已发送");
+      latest = this.step("mail", latest, 3, "active", "正在等待本机收件归档");
+    }
     while (this.beforeDeadline(latest)) {
       await this.scanMail();
       const event = this.listMailEvents().find((item) => mailMatches(item, latest));
       if (event) {
-        latest = this.step("mail", latest, 3, "passed", "本机已收到验证邮件");
+        latest = this.step("mail", latest, custom ? 2 : 3, "passed", custom ? "MX、加密转发与真实本地收件均已验证" : "本机已收到验证邮件");
         return this.complete("mail", latest, { kind: "mail", url: `/app/mail?message=${encodeURIComponent(event.id)}`, messageId: String(event.id), label: "查看测试收到的邮件" });
       }
       await this.sleep(POLL_INTERVAL_MS);
@@ -164,7 +176,13 @@ export class DomainBindingVerification {
     throw domainError("VERIFICATION_TIMEOUT", "3 分钟内本机没有收到验证邮件，邮箱内容链路未打通。", 408);
   }
 
-  resource(kind) {
+  resource(kind, binding = "platform") {
+    if (binding === "custom") {
+      const custom = this.customBindings()?.[kind];
+      if (!custom?.domain) return "";
+      const domain = normalizeDomain(custom.domain);
+      return kind === "mail" ? `agent@${domain}` : domain;
+    }
     const current = this.services();
     return kind === "mail" ? String(current?.agentMail?.value || "") : String(current?.publicDomain?.value || "");
   }
@@ -214,15 +232,16 @@ export class DomainBindingVerification {
   }
 }
 
-function stepDefinitions(kind) {
+function stepDefinitions(kind, binding = "platform") {
+  if (binding === "custom") return [["server", "启动转发服务"], ["dns", "配置自定义域名"], ["verify", "验证并生效"]].map(([id, label]) => ({ id, label, detail: "" }));
   return (kind === "mail"
     ? [["authorize", "确认平台授权"], ["allocate", "分配收件地址"], ["send", "发送验证邮件"], ["receive", "等待本机收件"], ["commit", "提交绑定状态"]]
     : [["authorize", "确认平台授权"], ["allocate", "分配域名与穿透"], ["publish", "发布验证 Page"], ["request", "请求公网链接"], ["commit", "提交绑定状态"]])
     .map(([id, label]) => ({ id, label, detail: "" }));
 }
 
-function idleState(kind) {
-  return { schemaVersion: 1, kind, phase: "idle", resource: "", startedAt: null, deadlineAt: null, updatedAt: null, error: null, evidence: null, steps: stepDefinitions(kind).map((step) => ({ ...step, status: "pending" })) };
+function idleState(kind, binding = "platform") {
+  return { schemaVersion: 1, kind, binding, phase: "idle", resource: "", startedAt: null, deadlineAt: null, updatedAt: null, error: null, evidence: null, steps: stepDefinitions(kind, binding).map((step) => ({ ...step, status: "pending" })) };
 }
 
 function publicState(state) {
@@ -254,6 +273,10 @@ function normalizeDomain(value) {
 
 function assertKind(kind) {
   if (!KINDS.has(kind)) throw domainError("DOMAIN_KIND_INVALID", "仅支持邮箱和 Site 域名验证", 400);
+}
+
+function assertBinding(binding) {
+  if (!["platform", "custom"].includes(binding)) throw domainError("DOMAIN_BINDING_INVALID", "域名入口类型无效", 400);
 }
 
 function domainError(code, message, statusCode) {

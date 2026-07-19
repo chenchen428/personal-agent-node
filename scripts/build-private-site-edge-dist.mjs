@@ -31,15 +31,18 @@ for (const relative of [
 ]) copy(relative);
 
 fs.mkdirSync(path.join(outputRoot, "core", "edge", "bin"), { recursive: true });
-buildSync({
-  entryPoints: [path.join(root, "core", "edge", "bin", "private-site-edge.mjs")],
-  outfile: path.join(outputRoot, "core", "edge", "bin", "private-site-edge.mjs"),
-  bundle: true,
-  platform: "node",
-  target: "node22",
-  format: "esm",
-  legalComments: "none",
-});
+for (const entry of ["private-site-edge.mjs", "self-hosted-relay.mjs"]) {
+  buildSync({
+    entryPoints: [path.join(root, "core", "edge", "bin", entry)],
+    outfile: path.join(outputRoot, "core", "edge", "bin", entry),
+    bundle: true,
+    platform: "node",
+    target: "node22",
+    format: "esm",
+    legalComments: "none",
+    banner: { js: "import { createRequire as __personalAgentCreateRequire } from 'node:module'; const require = __personalAgentCreateRequire(import.meta.url);" },
+  });
+}
 
 const manifest = {
   schemaVersion: 1,

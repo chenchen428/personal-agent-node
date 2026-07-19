@@ -7,8 +7,10 @@
     "privateCustomerInputsAbsent": true,
     "pageSelfContained": true,
     "remoteAssetsAbsent": true,
-    "growthAndThreeCameraSegments": true,
-    "freeViewControls": true,
-    "reducedMotionFallback": true
+    "finishedWholeHomeDefault": true,
+    "manualOrbitControls": true,
+    "roomEntryChangesCamera": true,
+    "automaticAnimationAbsent": true,
+    "projectionFallbackPresent": true
   }
 }

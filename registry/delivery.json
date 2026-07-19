@@ -47,7 +47,8 @@
       "jobSchema": "schemas/personal-agent/update-job.schema.json",
       "automaticRestart": true,
       "automaticRollback": true,
-      "localApprovalRisk": "R3"
+      "localApprovalRisk": "R3",
+      "productDevelopmentConfirmationPolicy": "never"
     }
   },
   "browserExecutors": {

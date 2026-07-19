@@ -73,7 +73,7 @@ export function SetupDashboard({ prototype = false }: { prototype?: boolean }) {
       const plan = await post("plan", {});
       await post("approve", { operationId: plan.id, digest: plan.digest, approved: true });
       await post("execute", { operationId: plan.id, digest: plan.digest, input });
-      setActionMessage((current) => ({ ...current, [requestedAction]: requestedAction === "connectivity.managed-authorize" ? "已打开 personal-agent.cn，请在浏览器页面确认。" : "已完成，正在重新检测。" }));
+      setActionMessage((current) => ({ ...current, [requestedAction]: requestedAction === "connectivity.managed-authorize" ? "已重新发起后台连接，正在等待自动回调。" : "已完成，正在重新检测。" }));
       if (requestedAction === "installation.local-auth") { setPassword(""); setConfirmation(""); }
       await refresh();
     } catch (actionError) {
@@ -115,10 +115,10 @@ export function SetupDashboard({ prototype = false }: { prototype?: boolean }) {
     if (["connectivity.choose-mode", "connectivity.managed-authorize", "connectivity.repair"].includes(requestedAction)) {
       const cloudAction = snapshot?.actions?.managedCloud;
       const cloudPending = ["starting", "running"].includes(cloudAction?.state || "idle");
+      const cloudRecovery = ["failed", "cancelled"].includes(cloudAction?.state || "idle");
       const cloudMessage = managedCloudActionMessage(cloudAction);
       return <div className="grid justify-items-start gap-2">
-        <Button size="sm" type="button" disabled={actionId === "connectivity.managed-authorize" || cloudPending} onClick={() => void runAction("connectivity.managed-authorize")}>{cloudPending ? "等待页面确认" : "验证公网与邮箱"}</Button>
-        {cloudPending && cloudAction?.authorizationUrl ? <a className={buttonVariants({ variant: "outline", size: "sm" })} href={cloudAction.authorizationUrl} target="_blank" rel="noreferrer">打开授权页面<ExternalLink className="size-3.5" /></a> : null}
+        {cloudRecovery ? <Button size="sm" type="button" disabled={actionId === "connectivity.managed-authorize"} onClick={() => void runAction("connectivity.managed-authorize")}>重新连接公网与邮箱</Button> : <small className="text-xs leading-relaxed text-[var(--muted)]" role="status">{cloudPending ? "正在后台连接…" : "PA 会在后台自动连接并分配资源。"}</small>}
         {cloudPending ? <Button variant="ghost" size="sm" type="button" disabled={actionId === "connectivity.managed-cancel"} onClick={() => void runAction("connectivity.managed-cancel")}>取消本次验证</Button> : null}
         {cloudMessage || actionMessage["connectivity.managed-authorize"] ? <small className="text-xs leading-relaxed text-[var(--muted)]" role="status">{cloudMessage || actionMessage["connectivity.managed-authorize"]}</small> : null}
       </div>;
@@ -151,6 +151,7 @@ export function SetupDashboard({ prototype = false }: { prototype?: boolean }) {
     const mailReady = checks.find((check) => check.id === "mail.local-ingest")?.state === "ready";
     const cloudAction = snapshot?.actions?.managedCloud;
     const cloudPending = ["starting", "running"].includes(cloudAction?.state || "idle");
+    const cloudRecovery = ["failed", "cancelled"].includes(cloudAction?.state || "idle");
     const cloudMessage = managedCloudActionMessage(cloudAction) || actionMessage["connectivity.managed-authorize"];
     return <>
       <header className="pa-heading">
@@ -179,8 +180,7 @@ export function SetupDashboard({ prototype = false }: { prototype?: boolean }) {
         <aside className="setup-aside">
           <article className="setup-option">
             <span className="pa-eyebrow">可选 · 公网域名</span><h2>在手机查看结果</h2><p>完成公网域名验证后，可从手机安全访问这台电脑上的 PA。</p>
-            {managedReady ? <Link className="pa-button" href="/app/connections">查看平台域名</Link> : <button className="pa-button" type="button" disabled={actionId === "connectivity.managed-authorize" || cloudPending} onClick={() => void runAction("connectivity.managed-authorize")}>{actionId === "connectivity.managed-authorize" ? "正在打开" : cloudPending ? "等待页面确认" : cloudAction?.state === "failed" ? "重新验证平台域名" : "验证平台域名"}</button>}
-            {cloudPending && cloudAction?.authorizationUrl ? <a className="pa-button" href={cloudAction.authorizationUrl} target="_blank" rel="noreferrer">打开授权页面<ExternalLink /></a> : null}
+            {managedReady ? <Link className="pa-button" href="/app/connections">查看平台域名</Link> : cloudRecovery ? <button className="pa-button" type="button" disabled={actionId === "connectivity.managed-authorize"} onClick={() => void runAction("connectivity.managed-authorize")}>重新连接平台域名</button> : <span className="setup-option-note" role="status">{cloudPending ? "正在后台连接并分配域名…" : "PA 会自动在后台连接并分配域名"}</span>}
             {cloudPending ? <button className="pa-button" type="button" onClick={() => void runAction("connectivity.managed-cancel")}>取消本次验证</button> : null}
             {cloudMessage ? <span className="setup-option-note" role="status">{cloudMessage}</span> : null}
           </article>

@@ -46,6 +46,7 @@ function copySupportFiles() {
     "AGENTS.md", "DESIGN.md", "README.md", "README.en.md", "LICENSE", "SECURITY.md", "CONTRIBUTING.md", "TRADEMARKS.md", "THIRD_PARTY_NOTICES.md",
     "package.json", ".gitignore", ".githooks", "registry", "schemas", "skills", "workflows", "docs", "scripts", "test/fixtures",
     "core/apps", "core/channels", "core/plugins", "core/runtime/contracts", "core/runtime/native", "core/runtime/README.md", "core/agent/public", "core/agent/README.md",
+    "infra/edge/install-self-hosted-relay.sh",
   ]) copy(relative);
   fs.rmSync(path.join(outputRoot, "scripts", "build-private-site-node-dist.mjs"), { force: true });
   fs.rmSync(path.join(outputRoot, "core", "plugins", "runtime"), { recursive: true, force: true });
@@ -69,12 +70,34 @@ function assembleWorkspaceSeed() {
 }
 
 function copyNextStandalone() {
+  if (args.reuseAppRelease) {
+    const releaseRoot = path.resolve(args.reuseAppRelease);
+    const releasesRoot = path.resolve(root, "dist", "personal-agent-node");
+    if (!releaseRoot.startsWith(`${releasesRoot}${path.sep}`)) throw new Error("Reusable app release must be under dist/personal-agent-node");
+    const manifest = readJson(path.join(releaseRoot, "release-manifest.json"));
+    if (manifest?.releaseType !== "personal-agent-node" || !fs.existsSync(path.join(releaseRoot, "core", "app", "server.js"))) throw new Error("Reusable app release is invalid");
+    copyTrustedBuildDirectory(path.join(releaseRoot, "core", "app"), path.join(outputRoot, "core", "app"));
+    copyTrustedBuildDirectory(path.join(releaseRoot, "node_modules"), path.join(outputRoot, "node_modules"));
+    fs.copyFileSync(path.join(releaseRoot, "package.json"), path.join(outputRoot, "package.json"));
+    fs.writeFileSync(path.join(outputRoot, "core", "app", "package.json"), `${JSON.stringify({ name: "@personal-agent/app-runtime", private: true, type: "module" }, null, 2)}\n`);
+    return;
+  }
   const standalone = path.join(root, "core", "app", ".next", "standalone");
   const staticRoot = path.join(root, "core", "app", ".next", "static");
   if (!fs.existsSync(path.join(standalone, "core", "app", "server.js"))) throw new Error("Next.js standalone server is missing");
   copyDirectory(standalone, outputRoot);
   copyDirectory(staticRoot, path.join(outputRoot, "core", "app", ".next", "static"));
   fs.writeFileSync(path.join(outputRoot, "core", "app", "package.json"), `${JSON.stringify({ name: "@personal-agent/app-runtime", private: true, type: "module" }, null, 2)}\n`);
+}
+
+function copyTrustedBuildDirectory(source, target) {
+  fs.mkdirSync(target, { recursive: true });
+  for (const entry of fs.readdirSync(source, { withFileTypes: true })) {
+    const sourcePath = path.join(source, entry.name);
+    const targetPath = path.join(target, entry.name);
+    if (entry.isDirectory()) copyTrustedBuildDirectory(sourcePath, targetPath);
+    else if (entry.isFile()) { fs.mkdirSync(path.dirname(targetPath), { recursive: true }); fs.copyFileSync(sourcePath, targetPath); fs.chmodSync(targetPath, fs.statSync(sourcePath).mode); }
+  }
 }
 
 function copyNativeDependencies() {
@@ -97,9 +120,9 @@ async function bundleCore() {
     ["core/runtime/src/reverse-tunnel-entry.ts", "core/runtime/app/reverse-tunnel.mjs"],
     ["core/agent/src/server/server.ts", "core/agent/app/server.mjs"],
     ["core/agent/vendor/agent-bridge/lib/_worker-entry.mjs", "core/agent/app/worker.mjs"],
-    ["core/agent/src/automation/template-worker.mjs", "core/agent/app/template-worker.mjs"],
     ["core/agent/bin/pa-cli.mjs", "core/agent/bin/pa-cli.mjs"],
     ["core/control/server.ts", "core/control/server.mjs"],
+    ["core/edge/bin/self-hosted-relay.mjs", "core/edge/bin/self-hosted-relay.mjs"],
     ["scripts/install-private-site-node-release.mjs", "scripts/install-private-site-node-release.mjs"],
   ];
   await Promise.all(entries.map(async ([source, target]) => {
@@ -295,6 +318,7 @@ function parseArgs(argv) {
     if (argv[index] === "--release-id") result.releaseId = argv[++index];
     else if (argv[index] === "--output") result.output = argv[++index];
     else if (argv[index] === "--skip-next-build") result.skipNextBuild = true;
+    else if (argv[index] === "--reuse-app-release") result.reuseAppRelease = argv[++index];
   }
   return result;
 }

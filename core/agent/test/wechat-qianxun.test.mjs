@@ -11,6 +11,7 @@ import { createOperationStore } from "../../runtime/src/operations.ts";
 import { QianxunProtocolClient, validateQianxunBaseUrl } from "../src/connections/wechat-qianxun/client.ts";
 import { QianxunCallbackStore } from "../src/connections/wechat-qianxun/callback-store.ts";
 import { WeChatQianxunConnector } from "../src/connections/wechat-qianxun/connector.ts";
+import { InstallationConnectionOwnership } from "../src/connections/connection-ownership.ts";
 import { qianxunEnvelope } from "../src/connections/wechat-qianxun/protocol.ts";
 
 const execFileAsync = promisify(execFile);
@@ -155,6 +156,49 @@ test("Qianxun connector binds configuration and writes to an approved operation 
   );
 });
 
+test("personal WeChat refuses the same Qianxun account in a second isolated Space", async (t) => {
+  const installationRoot = fs.mkdtempSync(path.join(os.tmpdir(), "pa-qianxun-spaces-"));
+  const firstRoot = path.join(installationRoot, "spaces", "first");
+  const secondRoot = path.join(installationRoot, "spaces", "second");
+  fs.mkdirSync(firstRoot, { recursive: true });
+  fs.mkdirSync(secondRoot, { recursive: true });
+  const ownershipStore = new InstallationConnectionOwnership({ installationDataRoot: installationRoot });
+  const fetchImpl = async () => Response.json({ code: 200, result: { wxid: "wxid_shared", isExpire: 0 } });
+  const firstOperations = createOperationStore({ dataRoot: firstRoot });
+  const secondOperations = createOperationStore({ dataRoot: secondRoot });
+  const first = new WeChatQianxunConnector({
+    dataRoot: firstRoot,
+    fetchImpl,
+    operationStore: firstOperations,
+    ownership: { store: ownershipStore, spaceId: "sp_personal00000001" },
+  });
+  const second = new WeChatQianxunConnector({
+    dataRoot: secondRoot,
+    fetchImpl,
+    operationStore: secondOperations,
+    ownership: { store: ownershipStore, spaceId: "sp_work000000000000" },
+  });
+  t.after(() => { first.close(); second.close(); fs.rmSync(installationRoot, { recursive: true, force: true }); });
+
+  const firstPlan = first.planConfigure({ baseUrl: "http://127.0.0.1:8055" });
+  firstOperations.approve(firstPlan.operation.id, { digest: firstPlan.operation.digest, actor: { kind: "human", authenticated: true, loopback: true, channel: "local-console" } });
+  await first.execute(firstPlan.operation.id, firstPlan.operation.digest);
+
+  const secondPlan = second.planConfigure({ baseUrl: "http://127.0.0.1:8055" });
+  secondOperations.approve(secondPlan.operation.id, { digest: secondPlan.operation.digest, actor: { kind: "human", authenticated: true, loopback: true, channel: "local-console" } });
+  await assert.rejects(
+    () => second.execute(secondPlan.operation.id, secondPlan.operation.digest),
+    (error) => /另一个隔离空间/.test(error.message),
+  );
+  assert.equal(second.publicConfig(), null);
+
+  first.clearConfiguration();
+  const reassignedPlan = second.planConfigure({ baseUrl: "http://127.0.0.1:8055" });
+  secondOperations.approve(reassignedPlan.operation.id, { digest: reassignedPlan.operation.digest, actor: { kind: "human", authenticated: true, loopback: true, channel: "local-console" } });
+  await second.execute(reassignedPlan.operation.id, reassignedPlan.operation.digest);
+  assert.equal(second.publicConfig().bindWxid, "wxid_shared");
+});
+
 test("Qianxun Pro callback journal rejects unpinned accounts and normalizes recvMsg", async (t) => {
   const dataRoot = fs.mkdtempSync(path.join(os.tmpdir(), "pa-qianxun-callback-"));
   const operationStore = createOperationStore({ dataRoot });
@@ -235,6 +279,15 @@ test("personal WeChat connectivity test verifies a File Transfer Assistant callb
   assert.equal(completed.phase, "complete");
   assert.deepEqual(sent, [{ wxid: "filehelper", msg: started.replyText }]);
   assert.equal(JSON.stringify(connector.connectivityTestStatus()).includes("filehelper"), false);
+
+  const retainedConversationCount = connector.listConversations().length;
+  const cleared = connector.clearConfiguration();
+  assert.equal(cleared.cleared, true);
+  assert.equal(cleared.configuredBefore, true);
+  assert.equal(connector.publicConfig(), null);
+  assert.deepEqual(connector.accessPolicy(), { schemaVersion: 1, enabled: false, contacts: [], groups: [], updatedAt: null });
+  assert.equal(connector.connectivityTestStatus().phase, "idle");
+  assert.equal(connector.listConversations().length, retainedConversationCount);
 });
 
 test("personal WeChat history imports retained callback journal records", (t) => {

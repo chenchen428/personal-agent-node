@@ -51,7 +51,7 @@ export function signPrivateAttachmentUrl(relativePath, expiresSeconds = 3600) {
   const expires = Math.min(Math.max(Number(expiresSeconds) || 3600, 60), 86400);
   const baseUrl = String(process.env.OPEN_AGENT_BRIDGE_CONSOLE_BASE_URL || "").replace(/\/+$/, "");
   const encoded = normalizeRelative(relativePath).split("/").map(encodeURIComponent).join("/");
-  return { url: `${baseUrl}/private-files/raw/${encoded}`, expires, expiresAt: new Date(Date.now() + expires * 1000).toISOString() };
+  return { url: privateFileUrl(baseUrl, encoded), expires, expiresAt: new Date(Date.now() + expires * 1000).toISOString() };
 }
 
 export async function headPrivateAttachment(relativePath) {
@@ -99,4 +99,12 @@ function normalizeRelative(value) {
   const normalized = String(value || "").replace(/\\/g, "/").replace(/^\/+/, "");
   if (!normalized || normalized.split("/").some((part) => !part || part === "." || part === "..")) throw new Error("invalid private file path");
   return normalized;
+}
+
+function privateFileUrl(baseUrl, encodedPath) {
+  try {
+    return `${new URL(baseUrl).origin}/app/files/raw/${encodedPath}`;
+  } catch {
+    return `/app/files/raw/${encodedPath}`;
+  }
 }

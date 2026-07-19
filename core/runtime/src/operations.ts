@@ -45,6 +45,22 @@ export function createOperationStore({ dataRoot, now = () => Date.now(), randomU
     return publicOperation(operation);
   }
 
+  function authorize(id, { digest: suppliedDigest, actor } = {}) {
+    const operation = requireOperation(id);
+    ensureCurrent(operation);
+    ensureDigest(operation, suppliedDigest);
+    if (operation.status !== "planned") throw operationError("INVALID_STATE", `Operation cannot be authorized from ${operation.status}`, 4);
+    if (actor?.kind !== "agent-policy" || actor?.policy !== "product-development") {
+      throw operationError("APPROVAL_REQUIRED", "Autonomous authorization is limited to registered product development", 5);
+    }
+    operation.status = "approved";
+    operation.approvedAt = new Date(now()).toISOString();
+    operation.approval = { kind: "policy", policy: actor.policy };
+    writeOperation(operation);
+    audit("approved", operation, operation.approval);
+    return publicOperation(operation);
+  }
+
   async function execute(id, options = {}) {
     if (executions.has(id)) return executions.get(id);
     const execution = executeOnce(id, options).finally(() => executions.delete(id));
@@ -123,7 +139,7 @@ export function createOperationStore({ dataRoot, now = () => Date.now(), randomU
     try { fs.chmodSync(auditFile, 0o600); } catch {}
   }
 
-  return { plan, approve, execute, inspect, list, directory, auditFile };
+  return { plan, approve, authorize, execute, inspect, list, directory, auditFile };
 }
 
 function validHumanApproval(actor) {

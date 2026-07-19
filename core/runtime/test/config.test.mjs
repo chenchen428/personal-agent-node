@@ -3,7 +3,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
-import { ensureMailIngressSecret, initializeSite, migrateLegacyMailData, normalizeApexDomain, normalizeConnectionMode, normalizeRoutingMode, readEnvFile, resolveCodexAppServer, resolveCodexCli, resolveNodeConfig } from "../src/config.ts";
+import { ensureMailIngressSecret, initializeSite, mergeSecretEnv, migrateLegacyMailData, normalizeApexDomain, normalizeConnectionMode, normalizeRoutingMode, readEnvFile, resolveCodexAppServer, resolveCodexCli, resolveNodeConfig, setConnectionMode } from "../src/config.ts";
 import { buildRoutes } from "../src/gateway.ts";
 import { createSpace } from "../src/space-registry.ts";
 
@@ -109,6 +109,43 @@ test("connection modes are canonical and managed Cloud cannot be declared before
   assert.throws(() => initializeSite({ domain: "example.site", connectionMode: "managed-cloud" }), /completed personal-agent cloud connect/i);
 });
 
+test("local and self-hosted modes ignore stale managed gateway identity", () => {
+  const dataRoot = fs.mkdtempSync(path.join(os.tmpdir(), "personal-agent-local-gateway-"));
+  try {
+    const { config } = initializeSite({ domain: "example.site", dataRoot });
+    mergeSecretEnv(config.envPath, {
+      PRIVATE_SITE_GATEWAY_HOST: "10.77.0.2",
+      PRIVATE_SITE_ORIGIN_TLS_CERT: "stale-origin.crt",
+      PRIVATE_SITE_ORIGIN_TLS_KEY: "stale-origin.key",
+      PRIVATE_SITE_ORIGIN_TLS_CA: "stale-origin-ca.crt",
+      PRIVATE_SITE_EDGE_CLIENT_FINGERPRINT: "AA".repeat(32),
+      PRIVATE_SITE_TRUST_EDGE_HEADERS: "1",
+    }, [
+      "PRIVATE_SITE_GATEWAY_HOST",
+      "PRIVATE_SITE_ORIGIN_TLS_CERT",
+      "PRIVATE_SITE_ORIGIN_TLS_KEY",
+      "PRIVATE_SITE_ORIGIN_TLS_CA",
+      "PRIVATE_SITE_EDGE_CLIENT_FINGERPRINT",
+      "PRIVATE_SITE_TRUST_EDGE_HEADERS",
+    ]);
+    for (const mode of ["local-only", "self-hosted-edge"]) {
+      setConnectionMode(resolveNodeConfig({ PRIVATE_SITE_DATA_ROOT: dataRoot }), mode);
+      const resolved = resolveNodeConfig({ PRIVATE_SITE_DATA_ROOT: dataRoot });
+      assert.deepEqual(resolved.gateway, {
+        host: "127.0.0.1",
+        port: resolved.space.ports.gateway,
+        tlsCert: "",
+        tlsKey: "",
+        tlsCa: "",
+        edgeClientFingerprint: "",
+        trustEdgeHeaders: false,
+      });
+    }
+  } finally {
+    fs.rmSync(dataRoot, { recursive: true, force: true });
+  }
+});
+
 test("each Space resolves an independent Site, secrets, mail, apps, Token database, and Agent workspace", () => {
   const dataRoot = fs.mkdtempSync(path.join(os.tmpdir(), "personal-agent-space-config-"));
   try {
@@ -122,6 +159,9 @@ test("each Space resolves an independent Site, secrets, mail, apps, Token databa
     assert.notEqual(personal.appsDir, custom.appsDir);
     assert.notEqual(personal.agentWorkspaceRoot, custom.agentWorkspaceRoot);
     assert.notEqual(personal.gateway.port, custom.gateway.port);
+    const directCustom = resolveNodeConfig({ PRIVATE_SITE_DATA_ROOT: custom.dataRoot });
+    assert.equal(directCustom.space.id, custom.space.id);
+    assert.equal(directCustom.dataRoot, custom.dataRoot);
     assert.equal(path.join(personal.dataRoot, "databases", "usage").startsWith(personal.dataRoot), true);
     assert.equal(path.join(custom.dataRoot, "databases", "usage").startsWith(custom.dataRoot), true);
     assert.equal(fs.existsSync(path.join(dataRoot, "mail")), false, "mutable mail must never fall back to the installation root");

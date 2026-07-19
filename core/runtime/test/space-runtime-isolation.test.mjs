@@ -76,6 +76,7 @@ test("installation supervisor preserves an initialized Space domain before regis
     assert.ok(space);
     assert.equal(space.managedHost, "");
     assert.equal(resolveSpaceInitializationDomain(space), "alice.personal-agent.cn");
+    assert.equal(resolveSpaceInitializationDomain({ ...space, managedHost: "legacy.personal-agent.cn" }), "alice.personal-agent.cn");
   } finally {
     fs.rmSync(dataRoot, { recursive: true, force: true });
   }

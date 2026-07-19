@@ -5,7 +5,7 @@ Date: 2026-07-19
 
 ## Context
 
-The reverse tunnel previously used one durable bearer credential. A revoked or drifted credential made the Broker return HTTP 401, while the Connector retried indefinitely and resource registration could still make Setup Center look complete. Automated recovery must not turn browser login into silent consent or give the Agent access to cookies, passwords, or session storage.
+The reverse tunnel previously used one durable bearer credential. A revoked or drifted credential made the Broker return HTTP 401, while the Connector retried indefinitely and resource registration could still make Setup Center look complete. Background authorization may reuse only an authenticated first-party browser session and a purpose-bound one-time request; it must never give the Agent access to cookies, passwords, or session storage, and it must stop at any interactive login, MFA, risk, denial, or provider failure.
 
 ## Decision
 
@@ -28,9 +28,9 @@ Setup Center is complete only when registration, resources, tunnel readiness, an
 ## Threat model and controls
 
 - **Token theft:** access tokens are short-lived and least-purpose (Node heartbeat/tunnel only); refresh tokens remain in the mode-600 secrets file and are hash-only server-side. Logs and public status contain codes and expiry times, never credentials.
-- **CSRF and substituted authorization:** enrollment keeps the existing same-origin POST consent, OAuth state and PKCE, purpose-bound device code, and one-time enrollment credential. The Agent may open the official page and poll but must not click the account consent action.
-- **Silent browser bootstrap:** explicit enrollment creates an Ed25519 device proof key and records the exact Site/account/installation/Space consent. When refresh is terminal, Node binds a two-minute transaction to state, nonce, PKCE S256, a random loopback callback, tenant, and device proof. The browser contributes only its same-site HttpOnly session Cookie through `prompt=none`; Node and Agent never read browser storage. Cloud returns only a one-minute, single-use code to loopback, never a token in a URL.
-- **Interaction boundary:** silent success is allowed only for a valid existing account session and unrevoked consent when no MFA, reauthentication, or risk interaction is required. `login_required`, `consent_required`, `interaction_required`, MFA, risk denial, timeout, and browser failure all become visible `reauth_required`; no component clicks or fabricates consent.
+- **CSRF and substituted authorization:** enrollment keeps the existing same-origin POST, OAuth state and PKCE, purpose-bound device code, and one-time enrollment credential. The official page may submit that POST automatically only after validating the first-party session and exact one-time request; Node never receives the session Cookie.
+- **Silent browser bootstrap:** installation-initiated enrollment creates an Ed25519 device proof key and records the exact Site/account/installation/Space binding. For initial connection or terminal refresh, Node binds a two-minute transaction to state, nonce, PKCE S256, a random loopback callback, tenant, and device proof. The browser contributes only its same-site HttpOnly session Cookie; Node and Agent never read browser storage. Cloud returns only a one-minute, single-use code to loopback, never a token in a URL.
+- **Interaction boundary:** silent success is allowed only for a valid existing account session and an exact unexpired one-time Node request when no MFA, reauthentication, or risk interaction is required. `login_required`, `interaction_required`, MFA, risk denial, timeout, and browser failure all become visible `reauth_required`; after that failure, only the visible recovery action may retry.
 - **Device substitution:** refresh and silent bootstrap check Site, tenant account through the Site, installation id, Space id, the Site's enrolled device id, and a signed proof from the enrolled Ed25519 key.
 - **Replay and theft detection:** consuming a refresh token is atomic. Reuse or binding mismatch revokes the token family, clears the active access hash, closes the tunnel, and creates a redacted audit event.
 - **Concurrent refresh:** Node single-flights refresh. Cloud serializes rotation with `BEGIN IMMEDIATE`; a second consumer is treated as replay and fails closed.

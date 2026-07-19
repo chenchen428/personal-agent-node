@@ -2,6 +2,7 @@ export type ConnectionTone = "success" | "warning" | "danger" | "info";
 
 export type DomainVerification = {
   kind: "mail" | "sites";
+  binding?: "platform" | "custom";
   phase: "idle" | "authorizing" | "verifying" | "verified" | "failed";
   resource: string;
   startedAt: string | null;
@@ -35,11 +36,12 @@ export type Connection = {
     userConfirmationRequired: boolean;
     customExtensionRequired: boolean;
   };
-  details?: { platformDomainBound?: boolean; platformDomain?: string; mailAddress?: string; publicReady?: boolean; publicStatus?: "ready" | "tunnel-offline" | "unavailable" | "not-bound"; publicReason?: string; publicOrigin?: string; domainVerification?: DomainVerification; policyEnabled?: boolean; connectivityTestPassed?: boolean };
+  details?: { configured?: boolean; platformDomainBound?: boolean; bindingMode?: "platform" | "custom" | ""; platformDomain?: string; customDomain?: string; customServer?: string; customPublicAddress?: string; customServiceReady?: boolean; mailAddress?: string; publicReady?: boolean; publicStatus?: "ready" | "tunnel-offline" | "unavailable" | "not-bound"; publicReason?: string; publicOrigin?: string; domainVerification?: DomainVerification; policyEnabled?: boolean; connectivityTestPassed?: boolean };
 };
 
 export type PersonalWechatDirectoryEntry = { id: string; name: string; maskedId: string };
 export type PersonalWechatSetup = {
+  configured: boolean;
   qianxunDocsUrl: string;
   qianxunBaseUrl: string;
   callbackUrl: string;

@@ -11,6 +11,7 @@ loadEnvFile(path.join(projectDir, ".env"));
 const resolvedWorkspaceRoot = path.resolve(process.env.OPEN_AGENT_BRIDGE_WORKSPACE_ROOT || workspaceRoot);
 const personalAgentHome = path.resolve(process.env.PERSONAL_AGENT_HOME || path.join(os.homedir(), ".personal-agent"));
 const siteDataRoot = path.resolve(process.env.PRIVATE_SITE_DATA_ROOT || path.join(personalAgentHome, "workspace"));
+const installationDataRoot = path.resolve(process.env.PERSONAL_AGENT_DATA_ROOT || siteDataRoot);
 const defaultDataDir = path.join(siteDataRoot, "databases", "bridge");
 const resolvedDataDir = path.resolve(process.env.OPEN_AGENT_BRIDGE_DATA_DIR || defaultDataDir);
 const resolvedMailIngressDir = path.resolve(process.env.OPEN_AGENT_BRIDGE_MAIL_DATA_DIR || path.join(siteDataRoot, "mail"));
@@ -33,6 +34,7 @@ export const config = {
   projectDir,
   workspaceRoot: resolvedWorkspaceRoot,
   siteDataRoot,
+  installationDataRoot,
   appsDir: path.join(siteDataRoot, "apps", "installed"),
   agentAuthorizationFile: path.join(siteDataRoot, "config", "agent-authorization.json"),
   dailyTokenLimitFile: path.join(siteDataRoot, "config", "daily-token-limit.json"),
@@ -44,7 +46,6 @@ export const config = {
   materializedFilesDir: path.resolve(process.env.OPEN_AGENT_BRIDGE_MATERIALIZED_FILES_DIR || path.join(resolvedDataDir, "materialized")),
   agentDataDir: path.resolve(process.env.OPEN_AGENT_BRIDGE_AGENT_DATA_DIR || path.join(resolvedDataDir, "data")),
   agentDataDatabasePath: path.resolve(process.env.OPEN_AGENT_BRIDGE_AGENT_DATA_DATABASE || path.join(resolvedDataDir, "data", "agent-data.sqlite")),
-  automationDataDir: path.resolve(process.env.OPEN_AGENT_BRIDGE_AUTOMATION_DATA_DIR || path.join(resolvedDataDir, "automations")),
   privatePublicationsDir: path.resolve(process.env.OPEN_AGENT_BRIDGE_PRIVATE_PUBLICATIONS_DIR || path.join(resolvedDataDir, "private-publications")),
   releaseNotesDir: path.resolve(process.env.OPEN_AGENT_BRIDGE_RELEASE_NOTES_DIR || path.join(siteDataRoot, "release-notes")),
   mailIngressDir: resolvedMailIngressDir,
@@ -89,8 +90,6 @@ export const config = {
   channelPollEnabled: process.env.OPEN_AGENT_BRIDGE_CHANNEL_POLL !== "0",
   schedulerEnabled: process.env.OPEN_AGENT_BRIDGE_SCHEDULER !== "0",
   schedulerTimezone: process.env.OPEN_AGENT_BRIDGE_SCHEDULER_TIMEZONE || "Asia/Shanghai",
-  automationAgentConcurrency: boundedInteger(process.env.OPEN_AGENT_BRIDGE_AUTOMATION_AGENT_CONCURRENCY || "3", 1, 10, 3),
-  automationQueueLimit: boundedInteger(process.env.OPEN_AGENT_BRIDGE_AUTOMATION_QUEUE_LIMIT || "50", 10, 500, 50),
   mailProtection: {
     senderDailyLimit: boundedInteger(process.env.OPEN_AGENT_BRIDGE_MAIL_SENDER_DAILY_LIMIT || "12", 1, 200, 12),
     trustedSenderDailyLimit: boundedInteger(process.env.OPEN_AGENT_BRIDGE_MAIL_TRUSTED_SENDER_DAILY_LIMIT || "30", 1, 500, 30),
@@ -138,7 +137,7 @@ function hostnameFromBase(value) {
 }
 
 export function ensureRuntimeDirs() {
-  for (const dir of [config.dataDir, config.publicDir, config.pagesDir, config.uploadsDir, config.materializedFilesDir, config.agentDataDir, config.automationDataDir, config.privatePublicationsDir, config.releaseNotesDir, config.mailIngressDir, config.inboundAttachmentsDir, config.appsDir]) {
+  for (const dir of [config.dataDir, config.publicDir, config.pagesDir, config.uploadsDir, config.materializedFilesDir, config.agentDataDir, config.privatePublicationsDir, config.releaseNotesDir, config.mailIngressDir, config.inboundAttachmentsDir, config.appsDir]) {
     fs.mkdirSync(dir, { recursive: true });
   }
 }

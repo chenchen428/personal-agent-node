@@ -9,8 +9,8 @@ import test from "node:test";
 import { DatabaseSync } from "node:sqlite";
 import { fileURLToPath } from "node:url";
 
-import { ingestRawEmail } from "../src/automation/mail-ingest.js";
-import { parseMailForDisplay, readMailAttachment } from "../src/automation/mail-reader.js";
+import { ingestRawEmail } from "../src/connections/mail/mail-ingest.js";
+import { parseMailForDisplay, readMailAttachment } from "../src/connections/mail/mail-reader.js";
 import { renderMailPage } from "../src/web/mail-page.js";
 
 const projectRoot = path.resolve(fileURLToPath(new URL("..", import.meta.url)));
@@ -77,7 +77,7 @@ test("mail page renders a responsive read-only inbox without executing message H
   });
   assert.match(html, /class="mail-workspace"/);
   assert.match(html, /个人认证/);
-  assert.match(html, /Agent 已关注/);
+  assert.match(html, /已创建任务/);
   assert.match(html, /\/message\/event-1\/attachments\/0/);
   assert.match(html, /@media\(max-width:760px\)/);
   assert.match(html, /mail-has-selection \.mail-list-pane\{display:none\}/);
@@ -296,14 +296,14 @@ test("mail web requires authentication and serves message, raw EML, and attachme
   const importedPayload = await imported.json();
   assert.equal(imported.status, 201);
   assert.equal(importedPayload.ok, true);
-  assert.equal(importedPayload.eventId, "");
+  assert.match(importedPayload.eventId, /^aevt_/);
 
   const importedScan = await fetch(`http://127.0.0.1:${port}/api/connections/mail/scan`, { method: "POST", headers });
   assert.equal(importedScan.status, 200);
   const importedMessages = await fetch(`http://127.0.0.1:${port}/api/mail/messages`, { headers });
   const importedMessagesPayload = await importedMessages.json();
   const importedEvent = importedMessagesPayload.events.find((event) => event.title === "Imported from setup guide");
-  assert.match(importedEvent.id, /^aevt_/);
+  assert.equal(importedEvent.id, importedPayload.eventId);
 
   const importedView = await fetch(`http://127.0.0.1:${port}/api/mail/messages?message=${encodeURIComponent(importedEvent.id)}`, { headers });
   const importedViewPayload = await importedView.json();

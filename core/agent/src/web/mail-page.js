@@ -8,7 +8,7 @@ export function renderMailPage({
   filter = "all",
   basePath = "/",
   adminUrl = "/admin",
-  automationUrl = "/app/automations",
+  tasksUrl = "/app/workers/schedules",
 } = {}) {
   const selected = Boolean(selectedEvent);
   const backHref = mailHref(basePath, { q: query, filter });
@@ -30,7 +30,7 @@ export function renderMailPage({
       </a>
       <nav class="mail-nav" aria-label="相关页面">
         <span class="mail-auth">${icon("shield-check")}个人认证</span>
-        <a href="${escapeAttr(automationUrl)}">自动化</a>
+        <a href="${escapeAttr(tasksUrl)}">自动化</a>
         <a class="mail-icon-link" href="${escapeAttr(adminUrl)}" title="返回站点导航" aria-label="返回站点导航">${icon("grid")}</a>
       </nav>
     </header>
@@ -45,7 +45,7 @@ export function renderMailPage({
           </form>
           <nav class="mail-filters" aria-label="邮件筛选">
             ${filterLink(basePath, "all", "全部", filter, query)}
-            ${filterLink(basePath, "matched", "已关注", filter, query)}
+            ${filterLink(basePath, "matched", "已创建任务", filter, query)}
             ${filterLink(basePath, "attachments", "有附件", filter, query)}
           </nav>
         </div>
@@ -73,7 +73,7 @@ function renderMailRow(event, selectedId, basePath, query, filter) {
     <time datetime="${escapeAttr(event.receivedAt)}">${escapeHtml(compactDate(event.receivedAt))}</time>
     <strong>${escapeHtml(event.title || "（无主题）")}</strong>
     <span class="mail-row-preview">${escapeHtml(preview || "暂无正文预览")}</span>
-    <span class="mail-row-meta">${event.matched ? `<i class="mail-state matched">已关注</i>` : `<i class="mail-state">已归档</i>`}${attachments ? `<i>${icon("paperclip")}${attachments}</i>` : ""}</span>
+    <span class="mail-row-meta">${event.matched ? `<i class="mail-state matched">已创建任务</i>` : `<i class="mail-state">已归档</i>`}${attachments ? `<i>${icon("paperclip")}${attachments}</i>` : ""}</span>
   </a>`;
 }
 
@@ -102,8 +102,8 @@ function renderMailDetail({ event, runs, content, backHref, basePath }) {
     </header>
     <section class="mail-judgement ${matchedRun ? "matched" : ""}" aria-label="Agent 处理状态">
       <span>${icon(matchedRun ? "sparkles" : "archive")}</span>
-      <div><strong>${matchedRun ? "Agent 已关注" : "已安全归档"}</strong><p>${escapeHtml(matchedRun?.reason || runs[0]?.reason || "邮件已保存，当前没有自动化规则需要进一步处理。")}</p></div>
-      ${matchedRun?.sessionId ? `<a href="/app/chat/session/${escapeAttr(matchedRun.sessionId)}/live">查看处理</a>` : ""}
+      <div><strong>${matchedRun ? "已创建任务" : "已安全归档"}</strong><p>${escapeHtml(matchedRun?.reason || runs[0]?.reason || "邮件已保存，当前无需创建任务。")}</p></div>
+      ${matchedRun?.sessionId ? `<a href="/app/chat/session/${escapeAttr(matchedRun.sessionId)}/live">查看任务</a>` : ""}
     </section>
     ${content?.error ? `<div class="mail-error">${icon("alert-circle")}<span>${escapeHtml(content.error)}</span></div>` : ""}
     ${attachments.length ? `<section class="mail-attachments" aria-label="附件"><strong>${attachments.length} 个附件</strong><div>${attachments.map((attachment) => `<a href="${escapeAttr(`${archiveBase}/attachments/${attachment.index}`)}">${icon("paperclip")}<span><strong>${escapeHtml(attachment.name)}</strong><small>${escapeHtml(`${attachment.contentType} · ${formatFileSize(attachment.sizeBytes)}`)}</small></span>${icon("download")}</a>`).join("")}</div></section>` : ""}

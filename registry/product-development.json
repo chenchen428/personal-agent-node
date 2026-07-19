@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "mode": "autonomous",
+  "repository": "chenchen428/personal-agent",
+  "url": "https://github.com/chenchen428/personal-agent.git",
+  "visibility": "private",
+  "requiredPermission": "WRITE",
+  "checkout": {
+    "relativePath": "projects/personal-agent",
+    "recurseSubmodules": true
+  },
+  "confirmationPolicy": "never",
+  "cloneFailurePolicy": "stop",
+  "immutableRuntimePath": "core/current"
+}

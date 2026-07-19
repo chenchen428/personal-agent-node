@@ -115,8 +115,13 @@ export function createUpdateManager({ config, operations, now = () => Date.now()
     return { job: publicJob(job), operation };
   }
 
-  async function apply({ jobId, operationId, digest }) {
+  async function apply({ jobId, operationId, digest, authorizationPolicy = "" }) {
     const job = requireBoundJob(jobId, operationId, digest);
+    if (operations.inspect(operationId).status === "planned" && authorizationPolicy === "product-development") {
+      requireProductDevelopmentState(config);
+      operations.authorize(operationId, { digest, actor: { kind: "agent-policy", policy: "product-development" } });
+      transition(job, "approved");
+    }
     const operation = await operations.execute(operationId, {
       digest,
       actor: { kind: "runtime" },
@@ -191,6 +196,23 @@ export function createUpdateManager({ config, operations, now = () => Date.now()
   async function fetchText(url, limit) { const response = await fetchImpl(url, { redirect: "follow", headers: { "user-agent": "personal-agent-updater/1" }, signal: AbortSignal.timeout(15_000) }); if (!response.ok) throw operationError("UPDATE_CHECK_FAILED", `Release metadata download failed with HTTP ${response.status}`, 7); const text = await response.text(); if (Buffer.byteLength(text) > limit) throw operationError("UPDATE_METADATA_INVALID", "Release metadata is too large", 7); return text; }
 
   return { status, check, plan, planRollback, approve, apply, readJob, listJobs, updatesRoot, installRoot };
+}
+
+function requireProductDevelopmentState(config) {
+  const state = readJson(path.join(config.dataRoot, "runtime", "product-development.json"));
+  const workspaceValue = String(config.agentWorkspaceRoot || "").trim();
+  const workspace = workspaceValue && path.isAbsolute(workspaceValue) ? path.resolve(workspaceValue) : "";
+  const expectedCheckout = workspace ? path.resolve(workspace, "projects", "personal-agent") : "";
+  const checkout = state?.checkoutPath ? path.resolve(state.checkoutPath) : "";
+  if (state?.schemaVersion !== 1
+    || state.repository !== "chenchen428/personal-agent"
+    || state.ready !== true
+    || !workspace
+    || checkout !== expectedCheckout
+    || checkout.includes(`${path.sep}core${path.sep}current`)
+    || !fs.statSync(checkout, { throwIfNoEntry: false })?.isDirectory()) {
+    throw operationError("PRODUCT_DEVELOPMENT_REQUIRED", "Autonomous update authorization requires the prepared registered product-development checkout", 5);
+  }
 }
 
 function eligibleRelease(release, channel) { return release && !release.draft && (channel === "beta" || release.prerelease !== true) && /^v?\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/.test(String(release.tag_name || "")); }

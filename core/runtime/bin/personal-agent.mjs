@@ -17,6 +17,7 @@ import { setupStatus } from '../src/setup.ts';
 import { clearDefaultPersonalApp, inspectPersonalApp, publicPersonalApp, readPersonalAppSettings, resolveDefaultPersonalApp, scanPersonalApps, setDefaultPersonalApp, verifyPersonalApp } from '../src/apps.ts';
 import { requestActivity } from '../src/activity.ts';
 import { createSpace, deleteSpace, getSpace, initializeInstallation, listSpaces, setSpaceDesiredState } from '../src/space-registry.ts';
+import { ensureProductDevelopment, productDevelopmentStatus, readProductDevelopmentContract } from '../src/product-development.ts';
 
 const handledCommandKeys = new Set(HANDLED_COMMAND_KEYS);
 
@@ -62,6 +63,8 @@ async function executeHandled({ resource, action, id, args, requestedCommand }) 
   if (resource === 'skill' && action === 'list') return skillList();
   if (resource === 'skill' && action === 'inspect') return skillInspect(id);
   if (resource === 'skill' && action === 'verify') return skillVerify(id);
+  if (resource === 'development' && action === 'status') return developmentStatus();
+  if (resource === 'development' && action === 'ensure') return developmentEnsure();
   if (resource === 'space' && action === 'list') return spaceList();
   if (resource === 'space' && action === 'show') return spaceShow(id);
   if (resource === 'space' && action === 'create') return spaceCreate(args);
@@ -91,12 +94,12 @@ async function executeHandled({ resource, action, id, args, requestedCommand }) 
   if (resource === 'update' && action === 'plan') return controlResult(await requestControl(requireConfig(), 'update.plan', { version: args.version }));
   if (resource === 'update' && action === 'apply') {
     requireId(args.operation, '--operation'); requireId(args.digest, '--digest');
-    return controlResult(await requestControl(requireConfig(), 'update.apply', { jobId: args.job, operationId: args.operation, digest: args.digest }, {}, { timeoutMs: 130_000 }));
+    return controlResult(await requestControl(requireConfig(), 'update.apply', { jobId: args.job, operationId: args.operation, digest: args.digest, authorizationPolicy: args.productDevelopment ? 'product-development' : '' }, {}, { timeoutMs: 130_000 }));
   }
   if (resource === 'update' && action === 'rollback') {
     if (!args.operation) return controlResult(await requestControl(requireConfig(), 'update.rollback-plan'));
     requireId(args.digest, '--digest');
-    return controlResult(await requestControl(requireConfig(), 'update.apply', { jobId: args.job, operationId: args.operation, digest: args.digest }, {}, { timeoutMs: 130_000 }));
+    return controlResult(await requestControl(requireConfig(), 'update.apply', { jobId: args.job, operationId: args.operation, digest: args.digest, authorizationPolicy: args.productDevelopment ? 'product-development' : '' }, {}, { timeoutMs: 130_000 }));
   }
   if (resource === 'operation' && action === 'list') return controlResult(await requestControl(requireConfig(), 'operation.list'));
   if (resource === 'operation' && action === 'show') return controlResult(await requestControl(requireConfig(), 'operation.inspect', { id }));
@@ -185,6 +188,18 @@ function skillVerify(name) {
   const result = spawnSync(process.execPath, [path.join(workspaceRoot, 'scripts', 'skill-tree.mjs'), 'cases', 'verify'], { cwd: workspaceRoot, encoding: 'utf8' });
   if (result.status !== 0) throw cliError('ACCEPTANCE_FAILED', 'Skill verification failed', 8);
   return success('skill verify', { skillName: name, verified: true, examples: skill.examples || [] });
+}
+
+function developmentStatus() {
+  const config = requireConfig();
+  return success('development status', productDevelopmentStatus({ config, contract: readProductDevelopmentContract() }));
+}
+
+function developmentEnsure() {
+  const config = requireConfig();
+  return success('development ensure', ensureProductDevelopment({ config, contract: readProductDevelopmentContract() }), [], [
+    'Start the product-development task with pa-cli session start --workspace <checkoutPath>',
+  ]);
 }
 
 function spaceList() {
@@ -527,6 +542,45 @@ function commandHelp(command, descriptor) {
       },
     };
   }
+  if (command.startsWith('development ')) {
+    return {
+      name: command,
+      usage: `personal-agent ${command} [--data-root <path>] --json`,
+      risk: descriptor.risk,
+      capability: descriptor.capability,
+      implementationStatus: descriptor.implementationStatus,
+      description: descriptor.description,
+      options: commonOptions,
+      authorization: {
+        method: 'existing-github-cli-session',
+        userActionRequired: false,
+        privateRepositoryWritePermissionRequired: true,
+        cloneFailurePolicy: 'stop',
+      },
+    };
+  }
+  if (command === 'update apply' || command === 'update rollback') {
+    return {
+      name: command,
+      usage: `personal-agent ${command} --operation <id> --digest <digest> [--job <id>] [--product-development] --json`,
+      risk: descriptor.risk,
+      capability: descriptor.capability,
+      implementationStatus: descriptor.implementationStatus,
+      description: descriptor.description,
+      options: [
+        ...commonOptions,
+        { name: '--operation', type: 'string', required: true, secret: false, description: 'Use the exact operation returned by the update plan.' },
+        { name: '--digest', type: 'string', required: true, secret: false, description: 'Bind execution to the exact update plan.' },
+        { name: '--job', type: 'string', required: false, secret: false, description: 'Select the persisted update job.' },
+        { name: '--product-development', type: 'boolean', required: false, secret: false, description: 'Use the registered Owner-initiated product-development policy without a second local confirmation.' },
+      ],
+      authorization: {
+        method: 'digest-bound-plan',
+        userActionRequired: false,
+        productDevelopmentPolicy: true,
+      },
+    };
+  }
   return {
     name: command,
     usage: `personal-agent ${command} --json`,
@@ -641,6 +695,7 @@ function parseArgs(argv) {
     else if (value === '--cloud-url') result.cloudUrl = argv[++index];
     else if (value === '--no-open') result.noOpen = true;
     else if (value === '--repair') result.repair = true;
+    else if (value === '--product-development') result.productDevelopment = true;
     else if (value === '--capability') result.capability = argv[++index];
     else if (value === '--request-id') result.requestId = argv[++index];
     else if (value === '--query') result.query = argv[++index];
