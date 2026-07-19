@@ -80,7 +80,11 @@ test("V6.22 read-only client API is local, searchable and self-contained", async
   assert.equal(personalWechatSetup.setup.qianxunDocsUrl, "https://daenmax.github.io/qxpro-doc/doc/start/");
   assert.equal(personalWechatSetup.setup.qianxunBaseUrl, "http://127.0.0.1:8055");
   assert.equal(personalWechatSetup.setup.callbackUrl, `http://127.0.0.1:${port}/api/internal/channels/wechat-personal/callback`);
-  assert.equal(typeof (await get(port, token, "/api/connections/wechat-personal/status?probe=0")).connection, "object");
+  if (process.platform === "win32") {
+    assert.equal(typeof (await get(port, token, "/api/connections/wechat-personal/status?probe=0")).connection, "object");
+  } else {
+    assert.equal(await status(port, token, "/api/connections/wechat-personal/status?probe=0"), 404);
+  }
   assert.deepEqual((await get(port, token, "/api/connections/wechat-personal/conversations?limit=50&before=100")).conversations, []);
   assert.deepEqual((await get(port, token, "/api/connections/wechat-personal/history?conversation=pwc_0123456789abcdef0123456789abcdef&limit=100")).messages, []);
   assert.equal(await status(port, token, "/api/connections/wechat-personal/history?conversation=raw-wxid"), 400);
