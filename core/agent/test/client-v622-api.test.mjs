@@ -13,6 +13,9 @@ test("V6.22 read-only client API is local, searchable and self-contained", async
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "personal-agent-client-v622-"));
   const port = await freePort();
   const token = "client-v622-test-token";
+  const uploadsDir = path.join(root, "uploads");
+  fs.mkdirSync(path.join(uploadsDir, "relative-page"), { recursive: true });
+  fs.writeFileSync(path.join(uploadsDir, "relative-page", "index.html"), "<h1>Relative page</h1>");
   const child = spawn(process.execPath, [path.join(workspaceRoot, "node_modules", "tsx", "dist", "cli.mjs"), "src/server/server.ts"], {
     cwd: agentRoot,
     env: {
@@ -26,7 +29,7 @@ test("V6.22 read-only client API is local, searchable and self-contained", async
       OPEN_AGENT_BRIDGE_AGENT_DATA_DIR: path.join(root, "agent-data"),
       OPEN_AGENT_BRIDGE_AGENT_DATA_DATABASE: path.join(root, "agent-data", "agent-data.sqlite"),
       OPEN_AGENT_BRIDGE_PRIVATE_PUBLICATIONS_DIR: path.join(root, "private-publications"),
-      OPEN_AGENT_BRIDGE_UPLOADS_DIR: path.join(root, "uploads"),
+      OPEN_AGENT_BRIDGE_UPLOADS_DIR: uploadsDir,
       OPEN_AGENT_BRIDGE_MAIL_DATA_DIR: path.join(root, "mail"),
       PRIVATE_SITE_DATA_ROOT: path.join(root, "workspace"),
       OPEN_AGENT_BRIDGE_CHANNEL_POLL: "0",
@@ -57,13 +60,41 @@ test("V6.22 read-only client API is local, searchable and self-contained", async
   assert.equal(conversationSessions.sessions[0].id, conversation.session.id);
   assert.equal(conversationSessions.sessions.some((session) => session.role === "worker"), false);
 
+  const overviewStartedAt = Date.now();
   const overview = await get(port, token, "/api/node/v1/client/overview");
+  assert.ok(Date.now() - overviewStartedAt < 1_000, "overview must not wait for remote connection probes");
   assert.equal(overview.result.machine.state, "running");
   assert.equal(overview.result.machine.mobileAccess, "unavailable");
   assert.equal(overview.result.machine.mobileAddress, "");
+  assert.equal(overview.result.machine.workspaceRoot, workspaceRoot);
   assert.equal(typeof overview.result.counts.pages, "number");
   assert.equal(typeof overview.result.counts.runningWork, "number");
   assert.equal(Array.isArray(overview.result.recent), true);
+
+  const connectionsStartedAt = Date.now();
+  const connections = await get(port, token, "/api/connections");
+  assert.ok(Date.now() - connectionsStartedAt < 1_000, "connections must not wait for browser or network probes");
+  assert.equal(Array.isArray(connections.connections), true);
+
+  const personalWechatSetup = await get(port, token, "/api/connections/wechat-personal/setup");
+  assert.equal(personalWechatSetup.setup.qianxunDocsUrl, "https://daenmax.github.io/qxpro-doc/doc/start/");
+  assert.equal(personalWechatSetup.setup.qianxunBaseUrl, "http://127.0.0.1:8055");
+  assert.equal(personalWechatSetup.setup.callbackUrl, `http://127.0.0.1:${port}/api/internal/channels/wechat-personal/callback`);
+  if (process.platform === "win32") {
+    assert.equal(typeof (await get(port, token, "/api/connections/wechat-personal/status?probe=0")).connection, "object");
+  } else {
+    assert.equal(await status(port, token, "/api/connections/wechat-personal/status?probe=0"), 404);
+  }
+  assert.deepEqual((await get(port, token, "/api/connections/wechat-personal/conversations?limit=50&before=100")).conversations, []);
+  assert.deepEqual((await get(port, token, "/api/connections/wechat-personal/history?conversation=pwc_0123456789abcdef0123456789abcdef&limit=100")).messages, []);
+  assert.equal(await status(port, token, "/api/connections/wechat-personal/history?conversation=raw-wxid"), 400);
+  const callback = await fetch(`http://127.0.0.1:${port}/api/internal/channels/wechat-personal/callback`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ type: "recvMsg", wxid: "wxid_owner", data: { msgType: 1, fromWxid: "wxid_friend", msg: "hello" } }),
+  });
+  assert.equal(callback.status, 200);
+  assert.equal((await callback.text()).trim(), "ignored:not_configured");
 
   const activity = await get(port, token, "/api/node/v1/client/activity?q=does-not-exist&limit=3");
   assert.deepEqual(activity.result.items, []);
@@ -71,6 +102,10 @@ test("V6.22 read-only client API is local, searchable and self-contained", async
 
   const pages = await get(port, token, "/api/node/v1/client/pages");
   assert.equal(Array.isArray(pages.result.pages), true);
+  const relativePage = pages.result.pages.find((page) => page.url === "/public/uploads/relative-page/index.html");
+  assert.ok(relativePage);
+  assert.equal(relativePage.shareUrl, "");
+  assert.doesNotMatch(relativePage.url, /https?:\/\//);
   const missingPages = await get(port, token, "/api/node/v1/client/pages?q=does-not-exist&visibility=private");
   assert.deepEqual(missingPages.result.pages, []);
 
@@ -88,13 +123,11 @@ test("V6.22 read-only client API is local, searchable and self-contained", async
   assert.deepEqual(mobilePages.result.items, []);
   assert.deepEqual(mobilePages.result.counts, { all: 0, private: 0, public: 0 });
 
-  const automations = await get(port, token, "/api/node/v1/client/automations");
-  assert.equal(Array.isArray(automations.result.rules), true);
-  assert.equal(typeof automations.result.counts.enabled, "number");
+  assert.equal(await status(port, token, "/api/node/v1/client/automations"), 410);
 
   const runtime = await get(port, token, "/api/node/v1/client/runtime");
   assert.equal(runtime.result.shellLifecycle, "client-owned");
-  assert.equal(runtime.result.shellStopsService, true);
+  assert.equal(runtime.result.shellStopsService, undefined);
 
   const dataSchema = await get(port, token, "/api/agent-data/schema?counts=0&preview=1");
   assert.deepEqual(dataSchema.objects, []);

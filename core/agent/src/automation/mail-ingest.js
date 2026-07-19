@@ -9,11 +9,8 @@ const DEFAULT_RETENTION_DAYS = 30;
 
 export async function ingestRawEmail(raw, {
   dataDir,
-  apiBase = "http://127.0.0.1:8788",
-  apiToken = "",
   envelopeRecipient = "",
   envelopeSender = "",
-  fetchImpl = fetch,
 } = {}) {
   const content = Buffer.isBuffer(raw) ? raw : Buffer.from(raw || "");
   if (!content.length) throw new Error("empty email");
@@ -47,8 +44,8 @@ export async function ingestRawEmail(raw, {
   ].filter(Boolean));
   const senderAddress = envelopeSender || addressList(headers.from || "")[0] || "";
   const payload = {
-    sourceId: "src_mail_agent",
-    eventType: "message.received",
+    sourceId: "connection_local_mail",
+    eventType: "mail.received",
     title: decodeMimeWords(headers.subject || ""),
     sender: { address: senderAddress, displayName: displayName(headers.from || "") },
     status: "received",
@@ -71,19 +68,9 @@ export async function ingestRawEmail(raw, {
       attachments: attachmentMetadata(content),
     },
   };
-  const response = await fetchImpl(`${String(apiBase).replace(/\/+$/, "")}/api/agent-automations/events`, {
-    method: "POST",
-    headers: {
-      "content-type": "application/json",
-      ...(apiToken ? { authorization: `Bearer ${apiToken}` } : {}),
-    },
-    body: JSON.stringify(payload),
-  });
-  const text = await response.text();
-  let result = {};
-  try { result = text ? JSON.parse(text) : {}; } catch {}
-  if (!response.ok || result.ok === false) throw new Error(result.error || text || `automation API returned ${response.status}`);
-  return { sha256, archivePath, event: result.event, runs: result.runs || [] };
+  const manifestPath = path.join(archiveDir, `${sha256}.json`);
+  if (!fs.existsSync(manifestPath)) atomicWrite(Buffer.from(`${JSON.stringify(payload, null, 2)}\n`), manifestPath, tempDir);
+  return { sha256, archivePath, manifestPath, message: payload, queuedForIntervalScan: true };
 }
 
 export function parseHeaders(raw) {

@@ -6,6 +6,7 @@
 - Writing & Content: article structure, editing, translation, and HTML preparation.
 - Visual & Media: visual planning, deterministic media work, Guizang social cards, and Guizang web presentations.
 - Travel & Location: source-backed, feasible, printable travel guidebooks.
+- Home & Living: traceable renovation briefs, budgets, materials, visual references, and stage gates.
 - Product Engineering: distinctive frontend direction and a searchable UI/UX design database.
 - Publishing & Automation: governed local Personal Agent operations.
 
@@ -19,6 +20,7 @@ These are customer capabilities and belong only to the Node Harness. The private
 | Writing & Content | `skills/content-workbench` |
 | Visual & Media | `skills/visual-content`, `skills/media-toolkit`, `skills/guizang-social-card-skill`, `skills/guizang-ppt-skill` |
 | Travel & Location | `skills/travel-guidebook` |
+| Home & Living | `skills/home-renovation` |
 | Product Engineering | `skills/frontend-design`, `skills/ui-ux-pro-max` |
 | Publishing & Automation | `skills/personal-agent` |
 
@@ -34,4 +36,4 @@ The catalog records exact upstream revisions, licenses, risks, security boundari
 - Update the owning Skill metadata, direct references, registered cases, and catalog entry together. If the change adds or alters a Node-owned CLI or product capability, also update command and capability registries, behavior baselines, schemas, implementation, semantic tests, packaging, and acceptance evidence.
 - Scan the complete public diff before delivery. Private Cloud behavior, operator configuration, secrets, customer content, local paths, and parent-workspace assumptions must never enter the public Node release.
 
-Owner-specific `blog-publishing` is excluded. `release-ops`, `open-agent-bridge`, and the old `guizang-social-card` copy are replaced by `personal-agent-operations`, `personal-agent`, and the pinned latest `guizang-social-card-skill`. `travel-planner` and `amap-jsapi` remain excluded because their upstream repositories declare no redistribution license. Run `node scripts/skill-tree.mjs catalog` to inspect the installed set.
+Owner-specific `blog-publishing` is excluded. `release-ops`, `open-agent-bridge`, and the old `guizang-social-card` copy are replaced by `personal-agent-operations`, `personal-agent`, and the pinned latest `guizang-social-card-skill`. `travel-planner`, `amap-jsapi`, and `pinterest-interior-design-skill` remain excluded because their upstream repositories declare no redistribution license. The workspace-authored `home-renovation` Skill independently covers the broader renovation lifecycle without copying those sources. Run `node scripts/skill-tree.mjs catalog` to inspect the installed set.

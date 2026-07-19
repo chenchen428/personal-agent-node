@@ -39,8 +39,8 @@ Record only the canonical sanitized object, without prompt, reply, or session id
   "uniquePrompt": true,
   "realAgentRuntime": true,
   "sameSessionAgentReply": true,
-  "wechatRequired": true
+  "wechatRequired": false
 }
 ```
 
-Any missing required boolean, mock runtime, cross-session reply, undisclosed signing status, missing stable native signature, unavailable rollback, or unconnected required WeChat channel fails release acceptance. A disclosed unsigned prerelease can pass the Beta release gate but never the stable/final native-trust gate. Cloud and public mail remain optional; WeChat readiness is required in addition to the independent local Web gate.
+Any missing required boolean, mock runtime, cross-session reply, undisclosed signing status, missing stable native signature, or unavailable rollback fails release acceptance. A disclosed unsigned prerelease can pass the Beta release gate but never the stable/final native-trust gate. Cloud, public mail, and WeChat remain optional connections; the independent local Web conversation is the required Agent gate.

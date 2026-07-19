@@ -6,6 +6,7 @@ import type { SetupCheck } from "@/lib/setup-tasks";
 import type { Overview } from "./types";
 import { desktopActivityHref, formatDuration, formatTime, statusLabel, useJson } from "./shared";
 import { buildRequiredSetupSteps, RequiredSetupGuide } from "./required-setup-guide";
+import { MobileAccessControl } from "./mobile-access-control";
 import { LoadingState } from "../desktop-v72/loading-state";
 
 export function OverviewPage() {
@@ -30,7 +31,7 @@ export function OverviewPage() {
     </section>
     <section className="v72-content-grid">
       <div className="v72-card v72-section-list"><header><strong>最近动态</strong><span>由主 Agent 整理</span></header>{(value?.recent || []).slice(0, 5).map((item) => <Link className={`v72-plain-row activity-${item.kind}`} href={desktopActivityHref(item)} key={item.id}><span className="v72-row-icon">{activityIcon(item.kind)}</span><span><strong>{item.title}</strong><small>{activityLabel(item.kind)} · {item.summary || statusLabel(item.status)}</small></span><time>{formatTime(item.updatedAt)}</time></Link>)}{!loading && !value?.recent.length ? <div className="v72-empty">还没有最近动态</div> : null}</div>
-      <aside className="v72-status-panel"><span>本机运行</span><h2>PA 已运行 {value ? formatDuration(value.machine.uptimeSeconds) : "—"}</h2><p>关闭客户端将停止本机服务；进行中的工作会先请求确认。</p><div><StatusLine label="主 Agent" value={error ? "需要检查" : "就绪"} /><StatusLine label="本机 Core" value="运行中" /><StatusLine label="公网域名访问" value={value?.machine.mobileAccess === "available" ? "已连接" : "待连接"} /><StatusLine label="公网地址" value={value?.machine.mobileAddress || "尚未启用"} href={externalAddress(value?.machine.mobileAddress)} /></div></aside>
+      <aside className="v72-status-panel"><span>本机运行</span><h2>PA 已运行 {value ? formatDuration(value.machine.uptimeSeconds) : "—"}</h2><p>关闭客户端将停止本机服务；进行中的工作会先请求确认。</p><div className="v72-status-lines"><StatusLine label="主 Agent" value={error ? "需要检查" : "就绪"} /><StatusLine label="本机 Core" value="运行中" /><StatusLine label="当前工作区" value={value?.machine.workspaceRoot || "读取中"} /><StatusLine label="公网域名访问" value={value?.machine.mobileAccess === "available" ? "已连接" : "待连接"} /><StatusLine label="公网地址" value={value?.machine.mobileAddress || "尚未启用"} href={externalAddress(value?.machine.mobileAddress)} /></div><MobileAccessControl available={value?.machine.mobileAccess === "available"} address={value?.machine.mobileAddress} /></aside>
     </section>
   </main>;
 }

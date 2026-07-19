@@ -33,7 +33,7 @@ const categoryLabels: Record<string, string> = {
   connectivity: "公网与邮箱",
   "mail-identity": "Agent 邮箱",
   "local-mail": "本地邮件",
-  channels: "微信渠道",
+  connections: "可选连接",
 };
 
 const optionalTitles: Record<string, string> = {

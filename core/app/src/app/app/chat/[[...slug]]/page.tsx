@@ -1,7 +1,5 @@
-import { ChatDashboard } from "@/components/chat-dashboard";
+import { redirect } from "next/navigation";
 
-export default async function ChatPage({ params }: { params: Promise<{ slug?: string[] }> }) {
-  const { slug = [] } = await params;
-  const initialSessionId = slug[0] === "session" ? decodeURIComponent(slug[1] || "") : "";
-  return <ChatDashboard initialSessionId={initialSessionId} />;
+export default function LegacyChatPage() {
+  redirect("/app/conversations");
 }

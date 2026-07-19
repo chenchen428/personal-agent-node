@@ -28,6 +28,29 @@ test("prepares Windows bridge CLI shims that follow current without embedding se
   fs.rmSync(root, { recursive: true, force: true });
 });
 
+test("recognizes a Windows current release stored as a text pointer", () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "pa-cli-pointer-"));
+  try {
+    const installRoot = path.join(root, "core");
+    const releaseRoot = path.join(installRoot, "releases", "test-release");
+    const binDir = path.join(root, "bin");
+    const entrypoint = path.join(releaseRoot, "core", "agent", "bin", "pa-cli.mjs");
+    fs.mkdirSync(path.dirname(entrypoint), { recursive: true });
+    fs.writeFileSync(entrypoint, "// fixture\n");
+    fs.mkdirSync(installRoot, { recursive: true });
+    fs.writeFileSync(path.join(installRoot, "current"), `${releaseRoot}\n`);
+    const config = { dataRoot: path.join(root, "workspace"), envPath: path.join(root, "site.env"), ports: { bridge: 8788 } };
+    const result = prepareBridgeCliShims(config, {
+      platform: "win32", installRoot, binDir, env: { PATH: binDir }, nodeRuntime: process.execPath,
+    });
+    assert.equal(result.ready, true);
+    assert.equal(result.followsCurrent, true);
+    assert.match(fs.readFileSync(path.join(binDir, "pa-cli.cmd"), "utf8"), /test-release/);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
 test("invokes Windows command shims through cmd call without nested quote parsing", () => {
   const invocation = bridgeCliInvocation("C:\\User Name\\pa-cli.cmd", ["wechat", "status", "--json"], { platform: "win32", env: { ComSpec: "C:\\Windows\\cmd.exe" } });
   assert.deepEqual(invocation, {
@@ -72,7 +95,7 @@ test("removes obsolete CLI shims and replaces a dangling pa-cli shim", { skip: p
   }
 });
 
-test("canonicalizes an aliased POSIX install root while keeping shims on current", { skip: process.platform === "win32" }, () => {
+test("canonicalizes an aliased POSIX install root to the immutable current release", { skip: process.platform === "win32" }, () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "private-site-cli-alias-"));
   const realRoot = path.join(root, "real");
   const aliasRoot = path.join(root, "alias");
@@ -98,13 +121,12 @@ test("canonicalizes an aliased POSIX install root while keeping shims on current
       binDir,
       env: { PATH: binDir },
     });
-    const canonicalInstallRoot = fs.realpathSync(aliasedInstallRoot);
     const content = fs.readFileSync(path.join(binDir, "pa-cli"), "utf8");
     assert.equal(result.ready, true);
     assert.equal(result.followsCurrent, true);
     assert.equal(result.mailIngest.followsCurrent, true);
-    assert.match(content, new RegExp(`${escapeRegExp(canonicalInstallRoot)}/current/core/agent/bin/pa-cli\\.mjs`));
-    assert.doesNotMatch(content, /fixture-release\/core\/agent\/bin\/pa-cli/);
+    assert.match(content, new RegExp(`${escapeRegExp(bridgeEntrypoint)}(?:'|\\s)`));
+    assert.doesNotMatch(content, /\/current\/core\/agent\/bin\/pa-cli\.mjs/);
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
   }

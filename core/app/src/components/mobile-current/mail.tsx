@@ -1,7 +1,8 @@
 "use client";
 
 import { fileType, formatBytes, formatDateTime, paragraphs, useRemote } from "./data";
-import { DetailShell, InlineError, LoadSentinel, SearchEmpty } from "./shell";
+import { DetailShell, InlineError, SearchEmpty } from "./shell";
+import { MobileContentSkeleton } from "./skeletons";
 
 type MailPayload = {
   selectedEvent: {
@@ -25,6 +26,6 @@ export function MobileMailDetail({ messageId }: { messageId: string }) {
       <dl className="mail-detail-facts"><div><dt>收件地址</dt><dd>{message.payload.recipients?.join("、") || "PA 邮箱"}</dd></div><div><dt>附件</dt><dd>{message.payload.attachments?.length || 0} 个文件</dd></div></dl>
       <div className="mail-detail-body">{paragraphs(value?.content?.body || message.payload.textPreview || "暂无正文")}</div>
       {(value?.content?.attachments || []).map((attachment) => <a className="mail-detail-attachment" href={`/app/mail/messages/${encodeURIComponent(message.id)}/attachments/${attachment.index}`} key={`${attachment.index}-${attachment.name}`}><span>{fileType(attachment.name)}</span><div><strong>{attachment.name}</strong><small>{attachment.sizeBytes ? formatBytes(attachment.sizeBytes) : "保存在本机"}</small></div><i>下载</i></a>)}
-    </article> : loading ? <LoadSentinel loading canLoad={false} exhausted={false} onLoad={() => undefined} /> : <SearchEmpty title="邮件不存在" hint="这封邮件可能已经被移除" />}
+    </article> : loading ? <MobileContentSkeleton kind="mail" /> : <SearchEmpty title="邮件不存在" hint="这封邮件可能已经被移除" />}
   </DetailShell>;
 }

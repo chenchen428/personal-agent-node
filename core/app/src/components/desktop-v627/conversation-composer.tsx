@@ -5,14 +5,15 @@ import { useRef, useState, type ChangeEvent, type FormEvent, type KeyboardEvent 
 export type PendingAttachment = { name: string; mimeType: string; sizeBytes: number; content: string };
 
 type Props = {
+  initialMessage?: string;
   sending: boolean;
   waiting: boolean;
   error: string;
   onSend: (content: string, attachment: PendingAttachment | null) => Promise<void>;
 };
 
-export function ConversationComposer({ sending, waiting, error, onSend }: Props) {
-  const [message, setMessage] = useState("");
+export function ConversationComposer({ initialMessage = "", sending, waiting, error, onSend }: Props) {
+  const [message, setMessage] = useState(initialMessage);
   const [attachment, setAttachment] = useState<PendingAttachment | null>(null);
   const [attachmentError, setAttachmentError] = useState("");
   const fileRef = useRef<HTMLInputElement>(null);
@@ -62,6 +63,7 @@ export function ConversationComposer({ sending, waiting, error, onSend }: Props)
     <label className="sr-only" htmlFor="desktop-chat-input">发消息给 PA</label>
     <textarea
       id="desktop-chat-input"
+      autoFocus
       rows={1}
       maxLength={4000}
       placeholder="让 Personal Agent 做什么…"

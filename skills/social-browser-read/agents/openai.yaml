@@ -1,0 +1,4 @@
+interface:
+  display_name: "Social Browser Read"
+  short_description: "Safely search and read social content in the user browser"
+  default_prompt: "Use $social-browser-read to search or read Xiaohongshu and Twitter through Personal Agent browser connections."

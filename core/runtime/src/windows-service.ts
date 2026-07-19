@@ -1,12 +1,13 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { installationPaths } from "./space-registry.ts";
 
 export const windowsServiceId = "PrivateSiteNode";
 
 export function prepareWindowsService(config, options = {}) {
   if ((options.platform || process.platform) !== "win32") throw new Error("The Windows task lifecycle is Windows-only");
-  const taskDir = path.join(config.dataRoot, "runtime", "windows-task");
+  const taskDir = path.join(installationPaths(config.installationDataRoot).runtimeRoot, "windows-task");
   fs.mkdirSync(taskDir, { recursive: true, mode: 0o700 });
   const taskXmlPath = path.join(taskDir, `${windowsServiceId}.xml`);
   const installRoot = options.installRoot || process.env.PRIVATE_SITE_INSTALL_ROOT || path.join(config.homeRoot, "core");
@@ -32,7 +33,7 @@ export function renderWindowsScheduledTask(config, { servicePath, userId } = {})
   return `<?xml version="1.0"?>
 <Task version="1.4" xmlns="http://schemas.microsoft.com/windows/2004/02/mit/task">
   <RegistrationInfo>
-    <Description>Local-first complete Site runtime for ${xmlEscape(config.domain)}</Description>
+    <Description>Personal Agent installation supervisor for all isolated spaces</Description>
   </RegistrationInfo>
   <Triggers>
     <LogonTrigger>
@@ -69,7 +70,7 @@ export function renderWindowsScheduledTask(config, { servicePath, userId } = {})
   <Actions Context="Author">
     <Exec>
       <Command>${xmlEscape(servicePath)}</Command>
-      <Arguments>--data-root &quot;${xmlEscape(config.dataRoot)}&quot;</Arguments>
+      <Arguments>--data-root &quot;${xmlEscape(config.installationDataRoot)}&quot;</Arguments>
       <WorkingDirectory>${xmlEscape(path.dirname(servicePath))}</WorkingDirectory>
     </Exec>
   </Actions>

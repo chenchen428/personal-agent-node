@@ -2,6 +2,7 @@
 
 import { useRemote } from "./data";
 import { InlineError, MobileListShell, SearchEmpty } from "./shell";
+import { MobileContentSkeleton } from "./skeletons";
 import type { PersonalApp } from "./types";
 
 export function MobilePersonalApp({ appId }: { appId: string }) {
@@ -16,7 +17,7 @@ export function MobilePersonalApp({ appId }: { appId: string }) {
     screenClassName="mobile-app-screen"
   >
     {error ? <InlineError message={error} /> : null}
-    {!error && loading ? <div className="mobile-app-loading" aria-live="polite">正在打开应用…</div> : null}
+    {!error && loading ? <MobileContentSkeleton kind="app" /> : null}
     {!error && !loading && !app ? <SearchEmpty title="应用不可用" hint="它可能已被移除或与当前版本不兼容" /> : null}
     {app ? <MobileAppFrame app={app} /> : null}
   </MobileListShell>;

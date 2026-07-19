@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { ConversationComposer, type PendingAttachment } from "./conversation-composer";
 import { ConversationMessageList } from "./conversation-message-list";
 import { errorMessage, fetchJson } from "./shared";
@@ -27,6 +28,7 @@ function mergeMessages(first: Message[], second: Message[]) {
 }
 
 export function ConversationPage() {
+  const searchParams = useSearchParams();
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadingEarlier, setLoadingEarlier] = useState(false);
@@ -98,10 +100,12 @@ export function ConversationPage() {
 
   useEffect(() => { void loadLatest(); }, [loadLatest]);
   useEffect(() => {
-    if (!waiting && !["start", "running"].includes(session?.status || "")) return;
+    const mainRunning = ["start", "running"].includes(session?.status || "");
+    const taskRunning = ["start", "running"].includes(session?.linkedTask?.status || "");
+    if (!waiting && !mainRunning && !taskRunning) return;
     const timer = window.setInterval(() => void loadLatest({ follow: true }), 1200);
     return () => window.clearInterval(timer);
-  }, [loadLatest, session?.status, waiting]);
+  }, [loadLatest, session?.linkedTask?.status, session?.status, waiting]);
 
   const send = async (content: string, attachment: PendingAttachment | null) => {
     const initialStatus = session?.status || "idle";
@@ -120,6 +124,8 @@ export function ConversationPage() {
       metadata: {
         clientMessageId,
         optimistic: true,
+        channel: "desktop",
+        sourceLabel: "来自桌面",
         attachments: attachment ? [{
           name: attachment.name,
           mimeType: attachment.mimeType,
@@ -163,7 +169,8 @@ export function ConversationPage() {
     }
   };
 
-  const processing = waiting || ["start", "running"].includes(session?.status || "");
+  const mainProcessing = waiting || ["start", "running"].includes(session?.status || "");
+  const processing = mainProcessing || ["start", "running"].includes(session?.linkedTask?.status || "");
 
   return <main className="page flush conversation" aria-label="与 PA 的对话" data-session-role="main">
     <div className="message-scroll" ref={threadRef} aria-live="polite"><div className="message-thread">
@@ -178,6 +185,6 @@ export function ConversationPage() {
         onLoadEarlier={() => void loadEarlier()}
       />
     </div></div>
-    <ConversationComposer sending={sending} waiting={processing} error={error} onSend={send} />
+    <ConversationComposer initialMessage={searchParams.get("draft") || ""} sending={sending} waiting={mainProcessing} error={error} onSend={send} />
   </main>;
 }

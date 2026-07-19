@@ -4,7 +4,7 @@ import { spawn } from 'node:child_process';
 
 import { writePasswordVerifier } from '../../agent/src/auth/personal-auth.js';
 import { managedServiceReadiness } from './cloud-resources.ts';
-import { removeSecretEnvKeys, resolveNodeConfig, writeJsonAtomic, workspaceRoot } from './config.ts';
+import { removeSecretEnvKeys, resolveNodeConfig, setConnectionMode, writeJsonAtomic, workspaceRoot } from './config.ts';
 
 const mutationActions = Object.freeze({
   'installation.local-auth': {
@@ -15,6 +15,11 @@ const mutationActions = Object.freeze({
   'connectivity.managed-authorize': {
     risk: 'R2',
     summary: 'Verify personal-agent.cn and bind public domain and Agent mail resources',
+    target: 'managed-cloud',
+  },
+  'connectivity.managed-disconnect': {
+    risk: 'R2',
+    summary: 'Remove the local public domain and Agent mail binding without deleting Workspace data',
     target: 'managed-cloud',
   },
   'mail.enable': {
@@ -41,8 +46,22 @@ export function planSetupAction({ actionId, operations, dataRoot }) {
 export async function executeSetupAction({ actionId, input, dataRoot }) {
   if (actionId === 'installation.local-auth') return establishLocalAuth({ input, dataRoot });
   if (actionId === 'connectivity.managed-authorize') return launchManagedCloudSetup({ dataRoot });
+  if (actionId === 'connectivity.managed-disconnect') return disconnectManagedCloud({ dataRoot });
   if (actionId === 'mail.enable') return enableMailChecks({ dataRoot });
   throw setupActionError('ACTION_UNAVAILABLE', `Setup action cannot be executed: ${actionId}`);
+}
+
+export function disconnectManagedCloud({ dataRoot }) {
+  const config = resolveNodeConfig({ ...process.env, PRIVATE_SITE_DATA_ROOT: dataRoot });
+  setConnectionMode(config, 'local-only');
+  for (const filePath of [
+    path.join(config.configDir, 'cloud-resources.json'),
+    path.join(config.dataRoot, 'secrets', 'applications', 'cloud-cli-session.json'),
+    path.join(config.dataRoot, 'runtime', 'setup', 'managed-cloud-action.json'),
+  ]) {
+    fs.rmSync(filePath, { force: true });
+  }
+  return { disconnected: true, mode: 'local-only', localDataPreserved: true };
 }
 
 function enableMailChecks({ dataRoot }) {
@@ -64,7 +83,8 @@ function establishLocalAuth({ input, dataRoot }) {
 }
 
 function launchManagedCloudSetup({ dataRoot }) {
-  const statusFile = path.join(dataRoot, 'runtime', 'setup', 'managed-cloud-action.json');
+  const config = resolveNodeConfig({ ...process.env, PRIVATE_SITE_DATA_ROOT: dataRoot });
+  const statusFile = path.join(config.dataRoot, 'runtime', 'setup', 'managed-cloud-action.json');
   const current = readJson(statusFile);
   if (current?.state === 'running' && processAlive(current.pid)) {
     return { started: false, state: 'running', phase: current.phase || 'enrollment' };
@@ -76,7 +96,7 @@ function launchManagedCloudSetup({ dataRoot }) {
     return { started: false, state: 'succeeded', phase: 'complete' };
   }
   const startResourceAuthorization = () => {
-    const { child: resource, diagnostics } = spawnManagedCli(cli, ['cloud', 'login', '--data-root', dataRoot, '--json'], dataRoot);
+    const { child: resource, diagnostics } = spawnManagedCli(cli, ['--space', config.space.id, 'cloud', 'login', '--data-root', config.installationDataRoot, '--json'], config.installationDataRoot);
     writeActionStatus(statusFile, { state: 'running', phase: 'resources', pid: resource.pid || 0 });
     resource.once('error', (error) => writeActionStatus(statusFile, { state: 'failed', phase: 'resources', code: safeCode(error) }));
     resource.once('exit', (resourceCode) => writeActionStatus(statusFile, resourceCode === 0
@@ -90,7 +110,7 @@ function launchManagedCloudSetup({ dataRoot }) {
     return { started: true, state: 'running', phase: 'resources' };
   }
   writeActionStatus(statusFile, { state: 'starting', phase: 'enrollment' });
-  const { child: first, diagnostics } = spawnManagedCli(cli, ['cloud', 'connect', '--data-root', dataRoot, '--json'], dataRoot);
+  const { child: first, diagnostics } = spawnManagedCli(cli, ['--space', config.space.id, 'cloud', 'connect', '--data-root', config.installationDataRoot, '--json'], config.installationDataRoot);
   writeActionStatus(statusFile, { state: 'running', phase: 'enrollment', pid: first.pid || 0 });
   first.once('error', (error) => writeActionStatus(statusFile, { state: 'failed', phase: 'enrollment', code: safeCode(error) }));
   first.once('exit', (code) => {
@@ -146,7 +166,7 @@ export function safeCliFailureCode(output, exitCode) {
 export function managedCloudAuthorizationPhase({ dataRoot }) {
   const config = resolveNodeConfig({ ...process.env, PRIVATE_SITE_DATA_ROOT: dataRoot });
   if (!fs.existsSync(path.join(config.configDir, 'cloud.json'))) return 'enrollment';
-  return managedServiceReadiness({ dataRoot }).state === 'enabled' ? 'complete' : 'resources';
+  return managedServiceReadiness({ dataRoot: config.dataRoot }).state === 'enabled' ? 'complete' : 'resources';
 }
 
 function writeActionStatus(filePath, value) {

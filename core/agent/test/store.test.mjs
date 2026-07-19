@@ -30,8 +30,10 @@ test("creates parent and worker sessions with events", () => {
   assert.equal(hydratedMain.childSessions.length, 1);
   assert.equal(hydratedMain.childSessions[0].id, worker.id);
   assert.equal(hydratedWorker.messages[0].role, "assistant");
-  assert.equal(hydratedWorker.url, `https://agent.example.test/app/chat/session/${worker.id}/live`);
+  assert.equal(hydratedWorker.internalUrl, `/app/chat/session/${worker.id}/live`);
+  assert.equal(hydratedWorker.url, `https://agent.example.test/app/mobile/workers/${worker.id}`);
   assert.equal(hydratedWorker.path, `/app/chat/session/${worker.id}/live`);
+  assert.equal(hydratedWorker.linkNotice, "");
 });
 
 test("lists only in-progress workers with a persisted parent for restart recovery", () => {
@@ -55,14 +57,23 @@ test("lists only in-progress workers with a persisted parent for restart recover
   }
 });
 
-test("does not expose a user link while remote access is unavailable", () => {
+test("returns the internal task path and an explicit notice while remote access is unavailable", () => {
   const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), "pa-store-local-only-"));
   const store = new BridgeStore({ dataDir, consoleBaseUrl: "https://agent.example.test", externalAccess: () => ({ ready: false, reason: "local-only" }) });
   const session = store.createSession({ role: "worker", taskDescription: "local task", workspaceRoot: dataDir });
   const hydrated = store.getSession(session.id);
+  assert.equal(hydrated.internalUrl, `/app/chat/session/${session.id}/live`);
   assert.equal(hydrated.url, "");
   assert.equal(hydrated.path, `/app/chat/session/${session.id}/live`);
-  assert.match(hydrated.linkNotice, /暂不支持.*查看/);
+  assert.equal(hydrated.linkNotice, "暂未配置可访问的公网域名，无法在线查看任务进度。");
+});
+
+test("explains when an existing managed task link is temporarily offline", () => {
+  const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), "pa-store-tunnel-offline-"));
+  const store = new BridgeStore({ dataDir, consoleBaseUrl: "https://agent.example.test", externalAccess: () => ({ ready: false, reason: "tunnel-offline", origin: "" }) });
+  const session = store.createSession({ role: "worker", taskDescription: "offline task", workspaceRoot: dataDir });
+  assert.equal(session.url, "");
+  assert.equal(session.linkNotice, "远程连接暂时离线，当前无法在线查看任务进度。");
 });
 
 test("persists and deduplicates deferred WeChat notifications", () => {
@@ -128,6 +139,7 @@ test("shares one reusable main session between desktop and WeChat while generic 
     assert.equal(resumed.role, "main");
     assert.equal(store.getOrCreateDesktopMainSession({ workspaceRoot: dataDir }).id, first.id);
     assert.equal(store.getSession(first.id).messages.some((message) => message.content === "desktop history"), true);
+    assert.deepEqual(store.listMainSessions().map((session) => session.id), [first.id]);
     assert.equal(store.listSessionsPage({ limit: 20 }).sessions.filter((session) => session.role === "main").length, 1);
     assert.equal(generic.role, "worker");
     assert.throws(() => store.getOrCreateMainSessionForChannel({
@@ -137,6 +149,33 @@ test("shares one reusable main session between desktop and WeChat while generic 
     }), /only WeChat/);
   } finally {
     store.close();
+  }
+});
+
+test("personal WeChat owns a main session independently from WeChat claw", () => {
+  const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), "oab-store-personal-wechat-main-"));
+  const store = new BridgeStore({ dataDir, consoleBaseUrl: "https://agent.example.test" });
+  try {
+    const personal = store.getOrCreateMainSessionForChannel({
+      channel: "wechat-personal",
+      senderId: "family@chatroom",
+      senderName: "Family",
+      workspaceRoot: dataDir,
+    });
+    const claw = store.getOrCreateMainSessionForChannel({
+      channel: "wechat",
+      senderId: "family@chatroom",
+      senderName: "Family claw",
+      workspaceRoot: dataDir,
+    });
+    assert.equal(personal.role, "main");
+    assert.equal(personal.channel, "wechat-personal");
+    assert.equal(claw.channel, "wechat");
+    assert.notEqual(personal.id, claw.id);
+    assert.equal(store.getOrCreateMainSessionForChannel({ channel: "wechat-personal", senderId: "family@chatroom", workspaceRoot: dataDir }).id, personal.id);
+  } finally {
+    store.close();
+    fs.rmSync(dataDir, { recursive: true, force: true });
   }
 });
 

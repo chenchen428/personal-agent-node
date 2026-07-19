@@ -16,11 +16,11 @@ export class AutomationEngine {
 
   ensureDefaults() {
     const source = this.store.upsertAutomationSource({
-      id: "src_mail_agent",
-      name: "Agent 邮箱",
+      id: "connection_local_mail",
+      name: "本地邮箱连接",
       kind: "email",
       accountRef: "agent@personal-agent.local, bills@personal-agent.local",
-      capabilities: ["message", "attachment", "push"],
+      capabilities: ["message", "attachment", "interval-scan"],
       sensitivity: "restricted",
       enabled: true,
       health: "unknown",
@@ -29,9 +29,9 @@ export class AutomationEngine {
       this.store.createAutomationRule({
         id: "rule_agent_mail_triage",
         name: "Agent 邮箱全部邮件分流",
-        description: "每封通过安全检查的邮件都交给 Agent 判断是否值得继续处理。",
+        description: "系统每分钟扫描连续时间区间，通过安全检查的新邮件交给 Agent 判断是否值得继续处理。",
         sourceId: source.id,
-        eventType: "message.received",
+        eventType: "mail.received",
         conditions: { matchAll: true, semanticIntent: "识别用户值得关注的信息，账单和消费数据优先" },
         action: {
           type: "agent-task",
@@ -43,7 +43,7 @@ export class AutomationEngine {
     }
   }
 
-  async ingest(input = {}) {
+  async ingest(input = {}, { dispatch = true } = {}) {
     const existing = input.sourceId && input.dedupeKey
       ? this.store.findAutomationEvent(input.sourceId, input.dedupeKey)
       : null;
@@ -52,7 +52,7 @@ export class AutomationEngine {
     }
     let protection = null;
     let eventInput = input;
-    if (input.sourceId === "src_mail_agent" && input.eventType === "message.received") {
+    if (dispatch && input.sourceId === "connection_local_mail" && input.eventType === "mail.received") {
       protection = this.store.evaluateMailProtection({
         sender: input.sender,
         risk: input.risk,
@@ -65,6 +65,7 @@ export class AutomationEngine {
       };
     }
     const event = this.store.createAutomationEvent(eventInput);
+    if (!dispatch) return { event, runs: [], replay: false, systemOnly: true };
     if (protection && !protection.dispatch) return { event, runs: [], replay: false, protection };
     return { ...(await this.dispatch(event)), ...(protection ? { protection } : {}) };
   }

@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "skill": "home-renovation",
+  "title": "二手房全屋改造决策包",
+  "prompt": "为一套约 90 平方米、总预算边界 30 万元的二手房全屋改造建立装修 brief、预算边界、关键风险、视觉参考计划和施工决策顺序；未知尺寸与当地规范必须明确待核实。",
+  "commands": [],
+  "artifacts": [
+    {
+      "path": "decision-pack.md",
+      "label": "Traceable renovation decision fixture"
+    }
+  ],
+  "verifiedAt": "2026-07-19",
+  "note": "The fixture contains no current price or code claims; a real project must verify local rules, measurements, product documents, and quotations."
+}

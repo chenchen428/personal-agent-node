@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "skill": "social-browser-read",
+  "title": "只读社交平台浏览器连接",
+  "prompt": "通过 Personal Agent 的小红书和 Twitter/X 浏览器连接搜索并读取内容，不接管登录态，也不执行任何发布或互动操作。",
+  "commands": [
+    "node --import tsx --test core/agent/test/opencli-runner.test.mjs core/agent/test/xiaohongshu-opencli-provider.test.mjs core/agent/test/twitter-opencli-provider.test.mjs core/agent/test/social-connection-cli.test.mjs"
+  ],
+  "artifacts": [
+    { "path": "expected.json", "label": "Browser connection and read-only Skill boundary" }
+  ],
+  "verifiedAt": "2026-07-18"
+}

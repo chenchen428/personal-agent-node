@@ -8,13 +8,13 @@ export function isWorkerRunning(status = "") {
   return ["start", "running"].includes(status);
 }
 
-export function useWorkerSessions() {
+export function useWorkerSessions(initialSessionId?: string | null) {
   const [sessions, setSessions] = useState<Session[]>([]);
   const [selected, setSelected] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const [detailLoading, setDetailLoading] = useState(false);
   const [error, setError] = useState("");
-  const selectedId = useRef("");
+  const selectedId = useRef(initialSessionId || "");
 
   const select = useCallback(async (sessionId: string, { background = false }: { background?: boolean } = {}) => {
     selectedId.current = sessionId;
@@ -35,8 +35,13 @@ export function useWorkerSessions() {
     const list = await fetchJson<{ sessions: Session[] }>("/api/chat/sessions?limit=50");
     const workers = (list.sessions || []).filter((item) => item.role === "worker");
     setSessions(workers);
-    const target = workers.find((item) => item.id === selectedId.current) || workers[0];
+    const requestedId = selectedId.current;
+    const target = requestedId ? workers.find((item) => item.id === requestedId) : workers[0];
     if (!target) {
+      if (requestedId) {
+        await select(requestedId, { background });
+        return;
+      }
       selectedId.current = "";
       setSelected(null);
       return;
@@ -45,6 +50,10 @@ export function useWorkerSessions() {
   }, [select]);
 
   useEffect(() => { void load().catch((cause) => setError(cause instanceof Error ? cause.message : "暂时无法读取任务")).finally(() => setLoading(false)); }, [load]);
+  useEffect(() => {
+    if (!initialSessionId || initialSessionId === selectedId.current) return;
+    void select(initialSessionId);
+  }, [initialSessionId, select]);
   const hasRunningWorker = sessions.some((session) => isWorkerRunning(session.status));
   useEffect(() => {
     if (!hasRunningWorker) return;

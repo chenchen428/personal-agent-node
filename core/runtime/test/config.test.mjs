@@ -5,6 +5,7 @@ import path from "node:path";
 import test from "node:test";
 import { ensureMailIngressSecret, initializeSite, migrateLegacyMailData, normalizeApexDomain, normalizeConnectionMode, normalizeRoutingMode, readEnvFile, resolveCodexAppServer, resolveCodexCli, resolveNodeConfig } from "../src/config.ts";
 import { buildRoutes } from "../src/gateway.ts";
+import { createSpace } from "../src/space-registry.ts";
 
 test("normalizes Unicode apex domains to ASCII", () => {
   assert.equal(normalizeApexDomain("陈建辉.site"), "xn--b0tw49h8he.site");
@@ -26,7 +27,7 @@ test("initializes one stable Site identity and fixed path routes", () => {
     assert.equal(first.config.site.siteId, second.config.site.siteId);
     const config = resolveNodeConfig({ PRIVATE_SITE_DATA_ROOT: dataRoot });
     const routes = buildRoutes(config);
-    for (const prefix of ["/", "/login", "/logout", "/_next/static", "/public", "/app", "/app/chat", "/app/channels", "/app/files", "/app/mail", "/app/automations", "/app/data", "/app/schedules", "/app/pages", "/app/releases", "/app/skills", "/app/settings", "/app/setup", "/app/update", "/api/app", "/api/chat", "/api/channels", "/api/managed-platforms", "/api/publications", "/api/system/setup/actions", "/api/system", "/api/extensions", "/pages", "/resources", "/blog", "/docs"]) {
+    for (const prefix of ["/", "/login", "/logout", "/_next/static", "/public", "/app", "/app/chat", "/app/connections", "/app/channels", "/app/files", "/app/mail", "/app/data", "/app/schedules", "/app/pages", "/app/releases", "/app/skills", "/app/settings", "/app/setup", "/app/update", "/api/app", "/api/chat", "/api/connections", "/api/channels", "/api/managed-platforms", "/api/publications", "/api/system/setup/actions", "/api/system", "/api/extensions", "/pages", "/resources", "/blog", "/docs"]) {
       assert.ok(routes.has(prefix), prefix);
     }
     assert.deepEqual(
@@ -42,8 +43,8 @@ test("initializes one stable Site identity and fixed path routes", () => {
       { access: "authenticated", targetKey: "console", upstreamPath: "/app/pages" },
     );
     assert.deepEqual(
-      Object.fromEntries(Object.entries(routes.get("/app/channels")).filter(([key]) => ["access", "targetKey", "upstreamPath"].includes(key))),
-      { access: "authenticated", targetKey: "console", upstreamPath: "/app/channels" },
+      Object.fromEntries(Object.entries(routes.get("/app/connections")).filter(([key]) => ["access", "targetKey", "upstreamPath"].includes(key))),
+      { access: "authenticated", targetKey: "console", upstreamPath: "/app/connections" },
     );
     assert.deepEqual(
       Object.fromEntries(Object.entries(routes.get("/app/skills")).filter(([key]) => ["access", "targetKey", "upstreamPath"].includes(key))),
@@ -70,7 +71,10 @@ test("initializes one stable Site identity and fixed path routes", () => {
     assert.equal(config.site.connectionMode, "local-only");
     assert.equal(config.site.schemaVersion, 2);
     assert.equal("edgeMode" in config.site, false);
-    assert.equal(config.mailDir, path.join(dataRoot, "mail"));
+    assert.equal(config.installationDataRoot, dataRoot);
+    assert.equal(config.space.kind, "personal");
+    assert.equal(config.mailDir, path.join(config.dataRoot, "mail"));
+    assert.equal(config.agentWorkspaceRoot, path.join(config.dataRoot, "agent-workspace"));
     assert.ok(readEnvFile(config.envPath).OPEN_AGENT_BRIDGE_MAIL_INGEST_TOKEN);
     assert.deepEqual(config.allowedHosts, ["example.site", "example.site.local", "localhost", "127.0.0.1"]);
     assert.ok(fs.existsSync(config.envPath));
@@ -105,58 +109,22 @@ test("connection modes are canonical and managed Cloud cannot be declared before
   assert.throws(() => initializeSite({ domain: "example.site", connectionMode: "managed-cloud" }), /completed personal-agent cloud connect/i);
 });
 
-test("reads legacy connection state without mutation and migrates only at an explicit boundary", () => {
-  for (const [completed, expected] of [[false, "local-only"], [true, "managed-cloud"]]) {
-    const dataRoot = fs.mkdtempSync(path.join(os.tmpdir(), "personal-agent-mode-migration-"));
-    try {
-      const configDir = path.join(dataRoot, "config");
-      fs.mkdirSync(configDir, { recursive: true });
-      fs.writeFileSync(path.join(configDir, "site.json"), `${JSON.stringify({ schemaVersion: 1, siteId: "site_old", nodeId: "node_old", asciiDomain: "legacy.example", displayDomain: "legacy.example", edgeMode: "managed", routingMode: "path" })}\n`);
-      if (completed) fs.writeFileSync(path.join(configDir, "cloud.json"), `${JSON.stringify({ schemaVersion: 1, cloudUrl: "https://personal-agent.cn", managedHost: "legacy.personal-agent.cn", siteId: "site_cloud", enrolledAt: "2026-07-13T00:00:00.000Z", tunnel: { address: "10.77.0.2/32", endpoint: "edge.personal-agent.cn:51821" } })}\n`);
-      const sitePath = path.join(configDir, "site.json");
-      const before = fs.readFileSync(sitePath);
-      const config = resolveNodeConfig({ PRIVATE_SITE_DATA_ROOT: dataRoot });
-      assert.equal(config.site.connectionMode, expected);
-      assert.equal(config.site.schemaVersion, 2);
-      assert.equal("edgeMode" in config.site, false);
-      assert.deepEqual(fs.readFileSync(sitePath), before);
-      const migrated = resolveNodeConfig({ PRIVATE_SITE_DATA_ROOT: dataRoot }, { migrateSite: true });
-      assert.deepEqual(JSON.parse(fs.readFileSync(migrated.configPath, "utf8")), migrated.site);
-    } finally {
-      fs.rmSync(dataRoot, { recursive: true, force: true });
-    }
-  }
-});
-
-test("migrates beta mail roots into mail without deleting rollback sources and fails closed on conflicts", () => {
-  const dataRoot = fs.mkdtempSync(path.join(os.tmpdir(), "personal-agent-mail-migration-"));
+test("each Space resolves an independent Site, secrets, mail, apps, Token database, and Agent workspace", () => {
+  const dataRoot = fs.mkdtempSync(path.join(os.tmpdir(), "personal-agent-space-config-"));
   try {
-    const config = resolveNodeConfig({ PRIVATE_SITE_DATA_ROOT: dataRoot });
-    const firstLegacy = path.join(dataRoot, "mail-ingress", "archive", "2026-07-13");
-    const secondLegacy = path.join(dataRoot, "channels", "mail", "archive", "2026-07-13");
-    fs.mkdirSync(firstLegacy, { recursive: true });
-    fs.mkdirSync(secondLegacy, { recursive: true });
-    fs.writeFileSync(path.join(firstLegacy, "one.eml"), "Subject: one\r\n\r\nfirst", { mode: 0o644 });
-    fs.writeFileSync(path.join(secondLegacy, "one.eml"), "Subject: one\r\n\r\nfirst", { mode: 0o644 });
-    fs.writeFileSync(path.join(secondLegacy, "two.eml"), "Subject: two\r\n\r\nsecond", { mode: 0o644 });
-
-    const first = migrateLegacyMailData(config);
-    assert.equal(first.copied, 2);
-    assert.equal(first.sourcesRetained, true);
-    assert.equal(first.rollbackSafe, true);
-    assert.equal(fs.existsSync(path.join(firstLegacy, "one.eml")), true);
-    assert.equal(fs.readFileSync(path.join(config.mailDir, "archive", "2026-07-13", "two.eml"), "utf8"), "Subject: two\r\n\r\nsecond");
-    if (process.platform !== "win32") assert.equal(fs.statSync(path.join(config.mailDir, "archive", "2026-07-13", "one.eml")).mode & 0o777, 0o600);
-
-    const second = migrateLegacyMailData(config);
-    assert.equal(second.copied, 0);
-    assert.equal(second.identical, 2);
-
-    fs.writeFileSync(path.join(firstLegacy, "conflict.eml"), "legacy");
-    fs.writeFileSync(path.join(config.mailDir, "archive", "2026-07-13", "conflict.eml"), "different");
-    fs.writeFileSync(path.join(firstLegacy, "not-copied.eml"), "must remain only in legacy");
-    assert.throws(() => migrateLegacyMailData(config), /target conflict/);
-    assert.equal(fs.existsSync(path.join(config.mailDir, "archive", "2026-07-13", "not-copied.eml")), false);
+    const personal = initializeSite({ domain: "personal-agent.local", dataRoot }).config;
+    const customSpace = createSpace({ dataRoot, slug: "work", displayName: "工作" });
+    const custom = initializeSite({ domain: "personal-agent.local", dataRoot, spaceId: customSpace.id }).config;
+    assert.notEqual(personal.dataRoot, custom.dataRoot);
+    assert.notEqual(personal.configPath, custom.configPath);
+    assert.notEqual(personal.envPath, custom.envPath);
+    assert.notEqual(personal.mailDir, custom.mailDir);
+    assert.notEqual(personal.appsDir, custom.appsDir);
+    assert.notEqual(personal.agentWorkspaceRoot, custom.agentWorkspaceRoot);
+    assert.notEqual(personal.gateway.port, custom.gateway.port);
+    assert.equal(path.join(personal.dataRoot, "databases", "usage").startsWith(personal.dataRoot), true);
+    assert.equal(path.join(custom.dataRoot, "databases", "usage").startsWith(custom.dataRoot), true);
+    assert.equal(fs.existsSync(path.join(dataRoot, "mail")), false, "mutable mail must never fall back to the installation root");
   } finally {
     fs.rmSync(dataRoot, { recursive: true, force: true });
   }

@@ -2,6 +2,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { workspaceRoot } from "./config.ts";
+import { installationPaths } from "./space-registry.ts";
 import { prepareWindowsService } from "./windows-service.ts";
 
 export const serviceIdentity = {
@@ -14,7 +15,8 @@ export function preparePlatformService(config, options = {}) {
   const platform = options.platform || process.platform;
   if (platform === "win32") return prepareWindowsService(config, options);
   const cliPath = options.cliPath || path.join(workspaceRoot, "core", "runtime", "bin", "private-site.mjs");
-  const outputDir = path.join(config.dataRoot, "runtime", platform === "darwin" ? "macos-service" : "linux-service");
+  const installation = installationPaths(config.installationDataRoot);
+  const outputDir = path.join(installation.runtimeRoot, platform === "darwin" ? "macos-service" : "linux-service");
   fs.mkdirSync(outputDir, { recursive: true, mode: 0o700 });
   if (platform === "darwin") {
     const filePath = path.join(outputDir, `${serviceIdentity.darwin}.plist`);
@@ -44,6 +46,7 @@ export function preparePlatformService(config, options = {}) {
 }
 
 export function renderLaunchdService(config, { cliPath, nodePath = process.execPath } = {}) {
+  const installation = installationPaths(config.installationDataRoot);
   return `<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
@@ -53,12 +56,12 @@ export function renderLaunchdService(config, { cliPath, nodePath = process.execP
   <array><string>${xml(nodePath)}</string><string>${xml(cliPath)}</string><string>start</string></array>
   <key>WorkingDirectory</key><string>${xml(workspaceRoot)}</string>
   <key>EnvironmentVariables</key>
-  <dict><key>PRIVATE_SITE_DATA_ROOT</key><string>${xml(config.dataRoot)}</string></dict>
+  <dict><key>PRIVATE_SITE_DATA_ROOT</key><string>${xml(config.installationDataRoot)}</string></dict>
   <key>RunAtLoad</key><true/>
   <key>KeepAlive</key><true/>
   <key>ProcessType</key><string>Background</string>
-  <key>StandardOutPath</key><string>${xml(path.join(config.logsDir, "launchd.log"))}</string>
-  <key>StandardErrorPath</key><string>${xml(path.join(config.logsDir, "launchd.log"))}</string>
+  <key>StandardOutPath</key><string>${xml(path.join(installation.installationRoot, "logs", "launchd.log"))}</string>
+  <key>StandardErrorPath</key><string>${xml(path.join(installation.installationRoot, "logs", "launchd.log"))}</string>
 </dict>
 </plist>
 `;
@@ -73,7 +76,7 @@ Wants=network-online.target
 [Service]
 Type=simple
 WorkingDirectory=${systemd(workspaceRoot)}
-Environment=PRIVATE_SITE_DATA_ROOT=${systemd(config.dataRoot)}
+Environment=PRIVATE_SITE_DATA_ROOT=${systemd(config.installationDataRoot)}
 ExecStart=${systemd(nodePath)} ${systemd(cliPath)} start
 ExecStop=${systemd(nodePath)} ${systemd(cliPath)} stop
 Restart=on-failure

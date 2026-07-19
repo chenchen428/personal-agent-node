@@ -133,10 +133,6 @@ jobs:
       - name: Fetch and verify pinned Node runtime
         shell: bash
         run: node scripts/fetch-node-runtime.mjs --platform "${{ matrix.platform }}" --arch "${{ matrix.arch }}" --output "${RUNNER_TEMP}/node-runtime${{ matrix.platform == 'win32' && '.exe' || '' }}"
-      - name: Build pinned Xiaohongshu runtime for Windows
-        if: matrix.platform == 'win32'
-        shell: bash
-        run: node scripts/build-channel-runtimes.mjs --local-xiaohongshu --output-root dist/release-payload/core/channels/xiaohongshu/runtime
       - name: Build and overlay Tauri desktop shell
         shell: bash
         run: node scripts/build-desktop-shell.mjs --platform "${{ matrix.platform }}" --arch "${{ matrix.arch }}" --output "dist/desktop/${{ matrix.platform }}-${{ matrix.arch }}" --release-root dist/release-payload

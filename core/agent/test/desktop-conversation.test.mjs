@@ -73,9 +73,109 @@ test("desktop conversation exposes only the latest unfinished structured plan", 
     "completed", "completed", "in_progress",
   ]);
   assert.equal(view.linkedTask.id, "worker-1");
+  assert.equal(view.linkedTask.parentSessionId, "main");
+  assert.equal(view.linkedTask.href, "/app/workers?task=worker-1");
+  assert.equal(view.currentPlan.href, "/app/workers?task=worker-1");
 
   worker.events[0].payload.metadata.plan[2].status = "completed";
   assert.equal(buildDesktopConversationView(main, {
     resolveSession: () => worker,
   }).currentPlan, null);
+});
+
+test("desktop conversation hides internal Agent hook inputs", () => {
+  const session = {
+    id: "main",
+    role: "main",
+    events: [],
+    childSessions: [],
+    messages: [
+      { id: "user", role: "user", content: "帮我发布页面" },
+      { id: "hook-progress", role: "user", content: "[worker-hook:progress]\n内部进度" },
+      { id: "hook-complete", role: "user", content: "[worker-hook:completed]\n内部结果" },
+      { id: "activity-hook", role: "user", content: "[activity-hook:result]\n内部动态结果" },
+      { id: "answer", role: "assistant", content: "页面已经发布。" },
+    ],
+  };
+  const view = buildDesktopConversationView(session);
+  assert.deepEqual(view.messages.map((message) => message.id), ["user", "answer"]);
+});
+
+test("desktop conversation merges desktop and WeChat main history with source labels", () => {
+  const desktop = {
+    id: "desktop-main",
+    role: "main",
+    channel: "desktop",
+    status: "idle",
+    events: [],
+    childSessions: [],
+    messages: [
+      { id: "desktop-user", role: "user", content: "桌面消息", createdAt: "2026-07-18T08:00:00.000Z", metadata: { channel: "desktop" } },
+      { id: "desktop-answer", role: "assistant", content: "桌面回复", createdAt: "2026-07-18T08:01:00.000Z" },
+    ],
+  };
+  const wechat = {
+    id: "wechat-main",
+    role: "main",
+    channel: "wechat",
+    status: "running",
+    events: [],
+    childSessions: [],
+    messages: [
+      { id: "wechat-user", role: "user", content: "微信消息", createdAt: "2026-07-18T07:59:00.000Z", source: "wechat" },
+      { id: "wechat-answer", role: "assistant", content: "微信回复", createdAt: "2026-07-18T08:02:00.000Z" },
+    ],
+  };
+
+  const view = buildDesktopConversationView([desktop, wechat]);
+  assert.deepEqual(view.messages.map((message) => message.id), [
+    "wechat-user", "desktop-user", "desktop-answer", "wechat-answer",
+  ]);
+  assert.equal(view.messages.find((message) => message.id === "wechat-user").metadata.sourceLabel, "来自微信");
+  assert.equal(view.messages.find((message) => message.id === "desktop-user").metadata.sourceLabel, "来自桌面");
+  assert.equal(view.messages.find((message) => message.id === "wechat-user").sessionId, "wechat-main");
+  assert.equal(view.status, "running");
+  assert.equal("events" in JSON.parse(JSON.stringify(view)), false);
+  assert.equal("childSessions" in JSON.parse(JSON.stringify(view)), false);
+});
+
+test("desktop conversation hides legacy duplicate WeChat runner echoes", () => {
+  const wechat = {
+    id: "wechat-main",
+    role: "main",
+    channel: "wechat",
+    status: "idle",
+    events: [],
+    childSessions: [],
+    messages: [
+      {
+        id: "wechat-channel-copy",
+        role: "user",
+        content: "send the report",
+        createdAt: "2026-07-18T08:05:00.000Z",
+        source: "wechat",
+        metadata: { channel: "wechat", senderId: "wechat-user" },
+      },
+      {
+        id: "wechat-runner-echo",
+        role: "user",
+        content: "send the report",
+        createdAt: "2026-07-18T08:05:00.050Z",
+      },
+      {
+        id: "wechat-later-repeat",
+        role: "user",
+        content: "send the report",
+        createdAt: "2026-07-18T08:05:30.000Z",
+        source: "wechat",
+        metadata: { channel: "wechat", senderId: "wechat-user" },
+      },
+    ],
+  };
+
+  const view = buildDesktopConversationView(wechat);
+  assert.deepEqual(view.messages.map((message) => message.id), [
+    "wechat-channel-copy",
+    "wechat-later-repeat",
+  ]);
 });

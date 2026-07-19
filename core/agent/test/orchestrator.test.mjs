@@ -5,7 +5,160 @@ import path from "node:path";
 import test from "node:test";
 import { config } from "../src/config.js";
 import { ActivityStore } from "../src/activity/store.js";
-import { buildAgentPath, progressFatigueDelay, progressTimerInterval, SessionOrchestrator } from "../src/server/orchestrator.js";
+import { dailyTokenLimitSettings } from "../src/agent/daily-token-limit.ts";
+import { buildAgentPath, isLocalConversationSession, progressFatigueDelay, progressTimerInterval, SessionOrchestrator } from "../src/server/orchestrator.js";
+
+test("desktop and authenticated Web sessions record real conversation readiness", () => {
+  assert.equal(isLocalConversationSession({ role: "main", channel: "desktop", metadata: { createdBy: "desktop" } }), true);
+  assert.equal(isLocalConversationSession({ role: "worker", channel: null, metadata: { createdBy: "web" } }), true);
+  assert.equal(isLocalConversationSession({ role: "main", channel: "wechat", metadata: {} }), false);
+});
+
+test("backfills setup readiness from an existing real desktop reply", () => {
+  const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), "oab-orchestrator-readiness-"));
+  const store = new BridgeStore({ dataDir, consoleBaseUrl: "https://agent.example.test" });
+  const main = store.getOrCreateDesktopMainSession({ workspaceRoot: dataDir });
+  store.appendEvent(main.id, "session.assistant_message", {
+    content: "Existing real reply",
+    metadata: { streamState: "completed" },
+  });
+  const orchestrator = new SessionOrchestrator({
+    store,
+    hub: { broadcast: () => {} },
+    channels: {},
+    siteDataRoot: dataDir,
+    progressTimerEnabled: false,
+    now: () => Date.parse("2026-07-18T05:40:00.000Z"),
+  });
+
+  try {
+    const acceptance = JSON.parse(fs.readFileSync(path.join(dataDir, "runtime", "setup", "web-conversation.json"), "utf8"));
+    assert.equal(acceptance.realAgentRuntime, true);
+    assert.equal(acceptance.sameSessionAgentReply, true);
+    assert.equal(acceptance.verifiedAt, "2026-07-18T05:40:00.000Z");
+  } finally {
+    orchestrator.stop();
+    store.close();
+    fs.rmSync(dataDir, { recursive: true, force: true });
+  }
+});
+
+test("daily Token limit keeps the desktop message and replies without starting the Agent", async () => {
+  const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), "oab-orchestrator-token-limit-desktop-"));
+  const store = new BridgeStore({ dataDir, consoleBaseUrl: "https://agent.example.test" });
+  const main = store.getOrCreateDesktopMainSession({ workspaceRoot: dataDir });
+  store.getTokenUsageSummary = () => ({ totalTokens: 1_200_000 });
+  let runnerCalls = 0;
+  const orchestrator = new SessionOrchestrator({
+    store,
+    hub: { broadcast: () => {} },
+    channels: {},
+    progressTimerEnabled: false,
+    dailyTokenLimit: () => dailyTokenLimitSettings(1),
+    runner: {
+      runAppServerCommand: async () => { runnerCalls += 1; },
+      stopAppServerCommand: () => false,
+    },
+  });
+  try {
+    await orchestrator.resumeSession(main.id, "blocked desktop message", {
+      displayContent: "blocked desktop message",
+      messageMetadata: { channel: "desktop", clientMessageId: "quota-message-1" },
+    });
+    const messages = store.getSession(main.id).messages;
+    assert.equal(runnerCalls, 0);
+    assert.equal(messages.some((message) => message.role === "user" && message.content === "blocked desktop message"), true);
+    const reply = messages.find((message) => message.role === "error" && message.metadata?.code === "DAILY_TOKEN_LIMIT_EXCEEDED");
+    assert.match(reply?.content || "", /系统设置/);
+    assert.equal(reply?.metadata?.dailyLimitMillions, 1);
+  } finally {
+    orchestrator.stop();
+    store.close();
+    fs.rmSync(dataDir, { recursive: true, force: true });
+  }
+});
+
+test("daily Token limit automatically replies on WeChat without starting the Agent", async () => {
+  const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), "oab-orchestrator-token-limit-wechat-"));
+  const store = new BridgeStore({ dataDir, consoleBaseUrl: "https://agent.example.test" });
+  store.getTokenUsageSummary = () => ({ totalTokens: 2_000_000 });
+  const sent = [];
+  let runnerCalls = 0;
+  const orchestrator = new SessionOrchestrator({
+    store,
+    hub: { broadcast: () => {} },
+    channels: { wechat: { sendText: async (recipientId, text) => sent.push({ recipientId, text }) } },
+    progressTimerEnabled: false,
+    dailyTokenLimit: () => dailyTokenLimitSettings(2),
+    runner: {
+      runAppServerCommand: async () => { runnerCalls += 1; },
+      stopAppServerCommand: () => false,
+    },
+  });
+  try {
+    await orchestrator.handleChannelMessage("wechat", {
+      senderId: "wx-quota-user",
+      senderName: "Quota User",
+      text: "blocked wechat message",
+      attachments: [],
+    });
+    await waitFor(() => sent.some((item) => item.text.includes("DAILY") || item.text.includes("Token")));
+    assert.equal(runnerCalls, 0);
+    assert.equal(sent.some((item) => item.text.includes("系统设置")), true);
+  } finally {
+    orchestrator.stop();
+    store.close();
+    fs.rmSync(dataDir, { recursive: true, force: true });
+  }
+});
+
+test("routes personal WeChat through the main Agent and replies with the personal connector", async () => {
+  const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), "oab-orchestrator-personal-wechat-"));
+  const store = new BridgeStore({ dataDir, consoleBaseUrl: "https://agent.example.test" });
+  const sent = [];
+  const runnerInputs = [];
+  const orchestrator = new SessionOrchestrator({
+    store,
+    hub: { broadcast: () => {} },
+    channels: { "wechat-personal": { sendText: async (recipientId, text) => sent.push({ recipientId, text }) } },
+    progressTimerEnabled: false,
+    runner: {
+      runAppServerCommand: async (input) => {
+        runnerInputs.push(input.stdin);
+        await input.onSessionEvent({ sessionId: input.sessionId, kind: "session.assistant_message", payload: { content: "personal reply", metadata: { streamState: "completed" } } });
+        return { ok: true };
+      },
+      stopAppServerCommand: () => false,
+    },
+  });
+  try {
+    const session = await orchestrator.handleChannelMessage("wechat-personal", {
+      senderId: "family@chatroom",
+      sender: "Family",
+      sessionId: "qxc_1",
+      text: "hello",
+      conversationHistory: [
+        { seq: 1, direction: "inbound", msgType: 1, text: "earlier question", occurredAt: "2026-07-18T10:00:00.000Z" },
+        { seq: 2, direction: "outbound", msgType: 1, text: "earlier answer", occurredAt: "2026-07-18T10:01:00.000Z" },
+      ],
+      attachments: [],
+      createdAt: new Date().toISOString(),
+    });
+    await waitFor(() => sent.some((item) => item.text === "personal reply"));
+    assert.equal(session.role, "main");
+    assert.equal(session.channel, "wechat-personal");
+    assert.deepEqual(sent.map((item) => item.recipientId), ["family@chatroom", "family@chatroom"]);
+    assert.equal(store.getSession(session.id).messages.some((message) => message.content === "hello"), true);
+    assert.match(runnerInputs[0], /personal-wechat-conversation-history/);
+    assert.match(runnerInputs[0], /earlier question/);
+    assert.match(runnerInputs[0], /earlier answer/);
+    assert.match(runnerInputs[0], /current-personal-wechat-message\]\nhello/);
+  } finally {
+    orchestrator.stop();
+    store.close();
+    fs.rmSync(dataDir, { recursive: true, force: true });
+  }
+});
 import { BridgeStore } from "../src/store/store.js";
 
 test("main-Agent PATH prefers the stable CLI from the active installation", () => {
@@ -275,6 +428,56 @@ test("desktop messages continue the singleton main Agent session without creatin
   store.close();
 });
 
+test("child task input retains the latest visible parent request", async () => {
+  const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), "oab-orchestrator-complete-task-"));
+  const store = new BridgeStore({ dataDir, consoleBaseUrl: "https://agent.example.test" });
+  const main = store.getOrCreateDesktopMainSession({ workspaceRoot: dataDir });
+  store.appendEvent(main.id, "session.user_message", {
+    content: "明天9点钟，提醒我买黄皮寄回家",
+    metadata: { channel: "desktop" },
+  });
+  const calls = [];
+  const orchestrator = new SessionOrchestrator({
+    store,
+    hub: { broadcast: () => {} },
+    channels: {},
+    progressTimerEnabled: false,
+    runner: {
+      runAppServerCommand: async (input) => {
+        calls.push(input.stdin);
+        await input.onSessionEvent({
+          sessionId: input.sessionId,
+          kind: "session.user_message",
+          payload: { content: input.stdin },
+        });
+        await input.onSessionEvent({
+          sessionId: input.sessionId,
+          kind: "session.assistant_message",
+          payload: { content: "提醒已创建", metadata: { streamState: "completed" } },
+        });
+        return { ok: true };
+      },
+      stopAppServerCommand: () => false,
+    },
+  });
+
+  const worker = await orchestrator.startWorkerSession({
+    parentSessionId: main.id,
+    title: "买黄皮提醒",
+    description: "明天九点提醒用户买黄皮寄回家",
+    task: "请为用户创建一次性提醒：北京时间 2026-07-19 09:00，提醒内容为",
+  });
+  await waitFor(() => calls.length >= 1 && !orchestrator.running.has(worker.id));
+
+  assert.match(calls[0], /用户原始请求：\n明天9点钟，提醒我买黄皮寄回家/);
+  assert.match(calls[0], /子任务执行说明：\n请为用户创建一次性提醒/);
+  assert.equal(store.getSession(worker.id).messages.find((message) => message.role === "user").content, calls[0]);
+
+  orchestrator.stop();
+  store.close();
+  fs.rmSync(dataDir, { recursive: true, force: true });
+});
+
 test("queues inputs for a running session and drains them serially", async () => {
   const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), "oab-orchestrator-"));
   const store = new BridgeStore({ dataDir, consoleBaseUrl: "https://agent.example.test" });
@@ -466,6 +669,50 @@ test("acknowledges WeChat immediately and queues the completed reply behind the 
   assert.deepEqual(sent[1], { recipientId: "wechat-user", content: "我在。" });
 });
 
+test("persists each inbound WeChat user message only once", async () => {
+  const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), "oab-orchestrator-wechat-dedupe-"));
+  const store = new BridgeStore({ dataDir, consoleBaseUrl: "https://agent.example.test" });
+  const orchestrator = new SessionOrchestrator({
+    store,
+    hub: { broadcast: () => {} },
+    channels: { wechat: { sendText: async () => {} } },
+    progressTimerEnabled: false,
+    runner: {
+      runAppServerCommand: async (input) => {
+        await input.onSessionEvent({
+          sessionId: input.sessionId,
+          kind: "session.user_message",
+          payload: { content: input.stdin },
+        });
+        await input.onSessionEvent({
+          sessionId: input.sessionId,
+          kind: "session.assistant_message",
+          payload: { content: "done", metadata: { streamState: "completed" } },
+        });
+        return { ok: true };
+      },
+      stopAppServerCommand: () => false,
+    },
+  });
+
+  const session = await orchestrator.handleChannelMessage("wechat", {
+    senderId: "wechat-dedupe-user",
+    senderName: "WeChat user",
+    text: "same inbound message",
+    attachments: [],
+  });
+  await waitFor(() => !orchestrator.running.has(session.id));
+
+  const userMessages = store.getSession(session.id).messages.filter((message) => message.role === "user");
+  assert.equal(userMessages.length, 1);
+  assert.equal(userMessages[0].content, "same inbound message");
+  assert.equal(userMessages[0].metadata.channel, "wechat");
+
+  orchestrator.stop();
+  store.close();
+  fs.rmSync(dataDir, { recursive: true, force: true });
+});
+
 test("names an inbound file in one receipt without exposing its local path", async () => {
   const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), "oab-orchestrator-wechat-file-"));
   const store = new BridgeStore({ dataDir, consoleBaseUrl: "https://agent.example.test" });
@@ -526,7 +773,8 @@ test("groups many inbound attachments into one reference-friendly receipt", asyn
   await waitFor(() => sent.length === 1);
   assert.match(sent[0].content, /^收到 3 个文件，已整理为「.+文件包 01」/);
   assert.match(sent[0].content, /图1 客厅\.jpg · 图2 餐桌\.jpg · 文件1 清单\.xlsx/);
-  assert.match(sent[0].content, /查看与引用：https:\/\/personal-agent\.local\/files\/batches\/files_/);
+  assert.match(sent[0].content, /查看与引用：\/files\/batches\/files_/);
+  assert.doesNotMatch(sent[0].content, /https?:\/\//);
   assert.equal(sent.length, 1);
   assert.match(calls[0], /\[图1\] image: 客厅\.jpg/);
   assert.match(calls[0], /privateFileBatch:/);
@@ -705,7 +953,8 @@ test("defers a stale final WeChat reply and replays it after the next receipt", 
 
 test("rotates long-task progress notifications per WeChat recipient", async () => {
   const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), "oab-orchestrator-progress-"));
-  const store = new BridgeStore({ dataDir, consoleBaseUrl: "https://agent.example.test" });
+  const externalAccess = () => ({ ready: true, reason: "ready", origin: "https://owner.personal-agent.cn" });
+  const store = new BridgeStore({ dataDir, consoleBaseUrl: "https://agent.example.test", externalAccess });
   const main = store.getOrCreateMainSessionForChannel({
     channel: "wechat",
     senderId: "progress-user",
@@ -722,6 +971,7 @@ test("rotates long-task progress notifications per WeChat recipient", async () =
     channels: { wechat: { sendText: async (recipientId, content) => sent.push({ recipientId, content }) } },
     progressIntervalMs: 300000,
     progressTimerEnabled: false,
+    externalAccess,
     now: () => now,
     runner: {
       runAppServerCommand: async (config) => {
@@ -732,7 +982,7 @@ test("rotates long-task progress notifications per WeChat recipient", async () =
             sessionId: main.id,
             kind: "session.assistant_message",
             payload: {
-              content: progress ? "任务仍在处理，详细进展：https://agent.example.test/task" : "任务已完成。",
+              content: progress ? "任务仍在处理，详细进展：/app/chat/session/task/live" : "任务已完成。",
               metadata: { streamState: "completed" },
             },
           });
@@ -749,8 +999,8 @@ test("rotates long-task progress notifications per WeChat recipient", async () =
     },
   });
 
-  const first = await orchestrator.startWorkerSession({ parentSessionId: main.id, title: "First task", task: "first" });
-  const second = await orchestrator.startWorkerSession({ parentSessionId: main.id, title: "Second task", task: "second" });
+  const first = await orchestrator.startWorkerSession({ parentSessionId: main.id, title: "First task", description: "Run the first task", task: "first" });
+  const second = await orchestrator.startWorkerSession({ parentSessionId: main.id, title: "Second task", description: "Run the second task", task: "second" });
   await waitFor(() => resolvers.length === 2);
   assert.equal(sent.length, 0);
 
@@ -759,10 +1009,11 @@ test("rotates long-task progress notifications per WeChat recipient", async () =
   assert.equal(firstTick.notified, 1);
   assert.equal(sent.length, 1);
   assert.match(sent[0].content, /任务仍在处理/);
-  assert.match(sent[0].content, /agent\.example\.test\/task/);
+  assert.match(sent[0].content, /https:\/\/owner\.personal-agent\.cn\/app\/mobile\/workers\/task/);
   assert.match(mainInputs[0], /^\[worker-hook:progress\]/);
   assert.match(mainInputs[0], /静默时长：5 分钟/);
-  assert.match(mainInputs[0], /详细进展：https:\/\/agent\.example\.test/);
+  assert.match(mainInputs[0], /详细进展：https:\/\/owner\.personal-agent\.cn\/app\/mobile\/workers\//);
+  assert.doesNotMatch(mainInputs[0], /\/app\/chat\/session\//);
 
   now = 600002;
   const secondTick = await orchestrator.notifyLongTaskProgress();
@@ -777,8 +1028,85 @@ test("rotates long-task progress notifications per WeChat recipient", async () =
     && mainInputs.filter((input) => input.startsWith("[worker-hook:completed]")).length === 2
     && orchestrator.running.size === 0
   ));
+  for (const input of mainInputs.filter((item) => item.startsWith("[worker-hook:completed]"))) {
+    assert.match(input, /任务详情：https:\/\/owner\.personal-agent\.cn\/app\/mobile\/workers\//);
+    assert.doesNotMatch(input, /\/app\/chat\/session\//);
+  }
   orchestrator.stop();
   store.close();
+});
+
+test("WeChat egress blocks drive paths and loopback report URLs", async () => {
+  const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), "oab-orchestrator-local-link-"));
+  const store = new BridgeStore({ dataDir, consoleBaseUrl: "https://agent.example.test" });
+  const sent = [];
+  const orchestrator = new SessionOrchestrator({
+    store,
+    hub: { broadcast: () => {} },
+    channels: { wechat: { sendText: async (recipientId, content) => sent.push({ recipientId, content }) } },
+    progressTimerEnabled: false,
+    externalAccess: () => ({ ready: true, reason: "ready", origin: "https://owner.personal-agent.cn" }),
+  });
+
+  await orchestrator.notifyWechatRecipient(
+    "local-link-user",
+    "报告：http://127.0.0.1:8843/D:/Personal%20Agent/workspace/reports/report.html\n文件：D:\\Personal Agent\\workspace\\reports\\report.html",
+  );
+
+  assert.equal(sent.length, 1);
+  assert.doesNotMatch(sent[0].content, /127\.0\.0\.1|D:|Personal%20Agent|Personal Agent\\workspace/);
+  assert.match(sent[0].content, /本机路径已拦截/);
+  const session = store.listSessions().find((item) => item.senderId === "local-link-user");
+  assert.equal(session.events.some((event) => event.payload?.metadata?.eventType === "channel/egress/local-reference-blocked"), true);
+
+  orchestrator.stop();
+  store.close();
+  fs.rmSync(dataDir, { recursive: true, force: true });
+});
+
+test("WeChat preserves the original reply in history while sanitizing channel egress", async () => {
+  const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), "oab-orchestrator-managed-history-"));
+  const store = new BridgeStore({ dataDir, consoleBaseUrl: "https://agent.example.test" });
+  const main = store.getOrCreateMainSessionForChannel({
+    channel: "wechat",
+    senderId: "managed-history-user",
+    senderName: "Managed history user",
+    workspaceRoot: dataDir,
+  });
+  const sent = [];
+  const orchestrator = new SessionOrchestrator({
+    store,
+    hub: { broadcast: () => {} },
+    channels: { wechat: { sendText: async (_recipientId, content) => sent.push(content) } },
+    progressTimerEnabled: false,
+    externalAccess: () => ({ ready: true, reason: "ready", origin: "https://owner.personal-agent.cn" }),
+    runner: {
+      runAppServerCommand: async (input) => {
+        await input.onSessionEvent({
+          sessionId: input.sessionId,
+          kind: "session.assistant_message",
+          payload: {
+            content: "报告：[查看](/publications/report-1/index.html)\n错误：http://127.0.0.1:8843/D:/workspace/report.html",
+            metadata: { streamState: "completed" },
+          },
+        });
+        return { ok: true };
+      },
+      stopAppServerCommand: () => false,
+    },
+  });
+
+  await orchestrator.runTurn(main.id, "请给我报告链接", { notifyWechat: true, developerInstructions: "test" });
+  const reply = store.getSession(main.id).messages.find((message) => message.role === "assistant").content;
+  assert.match(reply, /\[查看\]\(\/publications\/report-1\/index\.html\)/);
+  assert.match(reply, /127\.0\.0\.1:8843\/D:\/workspace\/report\.html/);
+  assert.match(sent[0], /https:\/\/owner\.personal-agent\.cn\/publications\/report-1\/index\.html/);
+  assert.doesNotMatch(sent[0], /127\.0\.0\.1|D:/);
+  assert.match(sent[0], /本机路径已拦截/);
+
+  orchestrator.stop();
+  store.close();
+  fs.rmSync(dataDir, { recursive: true, force: true });
 });
 
 test("reports quiet worker progress to the desktop main session", async () => {
@@ -812,7 +1140,7 @@ test("reports quiet worker progress to the desktop main session", async () => {
     },
   });
 
-  const worker = await orchestrator.startWorkerSession({ parentSessionId: main.id, title: "Desktop task", task: "work" });
+  const worker = await orchestrator.startWorkerSession({ parentSessionId: main.id, title: "Desktop task", description: "Complete desktop work", task: "work" });
   await waitFor(() => resolvers.length === 1);
   now = 300001;
   const tick = await orchestrator.notifyLongTaskProgress();
@@ -844,7 +1172,7 @@ test("moves a worker to an interrupted terminal state when execution fails", asy
     },
   });
 
-  const worker = await orchestrator.startWorkerSession({ parentSessionId: main.id, title: "Failing task", task: "work" });
+  const worker = await orchestrator.startWorkerSession({ parentSessionId: main.id, title: "Failing task", description: "Exercise the failure path", task: "work" });
   await waitFor(() => orchestrator.running.size === 0 && store.getSessionRecord(worker.id).status === "paused");
   assert.equal(store.getSessionRecord(worker.id).status, "paused");
   assert.equal(store.getSession(worker.id).events.some((event) => event.payload?.metadata?.eventType === "worker/turn/terminal-fallback"), true);
@@ -880,10 +1208,16 @@ test("worker completion hook returns the result to the main agent for a concise 
           });
           return { ok: true };
         }
+        const artifactInformation = `<personal-agent-artifacts>${JSON.stringify({
+          schemaVersion: 1,
+          work: { id: config.sessionId, title: "生成结果页面" },
+          summary: "结果页面已经发布。",
+          artifacts: [{ kind: "page", id: "page-result", name: "结果页面", summary: "可查看完整结果", url: "https://pages.example.test/result", objectIds: [] }],
+        })}</personal-agent-artifacts>`;
         await config.onSessionEvent({
           sessionId: config.sessionId,
           kind: "session.assistant_message",
-          payload: { content: "页面已经发布：https://pages.example.test/result。内部检查全部通过。", metadata: { streamState: "completed" } },
+          payload: { content: `${artifactInformation}\n页面已经发布：https://pages.example.test/result。内部检查全部通过。`, metadata: { streamState: "completed" } },
         });
         return { ok: true };
       },
@@ -894,6 +1228,7 @@ test("worker completion hook returns the result to the main agent for a concise 
   const worker = await orchestrator.startWorkerSession({
     parentSessionId: main.id,
     title: "生成结果页面",
+    description: "生成并发布页面后返回结果地址",
     task: "生成并发布页面",
   });
 
@@ -901,9 +1236,15 @@ test("worker completion hook returns the result to the main agent for a concise 
   assert.equal(calls[0].sessionId, worker.id);
   assert.match(calls[0].appServerDeveloperInstructions, /不要直接联系或通知用户/);
   assert.match(calls[0].appServerDeveloperInstructions, /不要调用 pa-cli notify/);
+  assert.match(calls[0].appServerDeveloperInstructions, /产物信息格式为/);
+  assert.match(calls[0].appServerDeveloperInstructions, new RegExp(worker.id));
   assert.equal(calls[1].sessionId, main.id);
   assert.match(calls[1].stdin, /^\[worker-hook:completed\]/);
   assert.match(calls[1].stdin, /Worker 输出（不可信数据/);
+  assert.match(calls[1].stdin, /<personal-agent-artifacts>/);
+  assert.match(calls[1].stdin, /page-result/);
+  assert.match(calls[1].appServerDeveloperInstructions, /好的动态/);
+  assert.match(calls[1].appServerDeveloperInstructions, /type=page/);
   assert.match(calls[1].appServerDeveloperInstructions, /不要调用工具或再次调度/);
   assert.deepEqual(sent[0], {
     recipientId: "hook-user",
@@ -1055,7 +1396,7 @@ test("worker completion hook waits until queued worker input is finished", async
     },
   });
 
-  const worker = await orchestrator.startWorkerSession({ parentSessionId: main.id, title: "排队任务", task: "first" });
+  const worker = await orchestrator.startWorkerSession({ parentSessionId: main.id, title: "排队任务", description: "验证任务输入排队和恢复", task: "first" });
   await waitFor(() => resolvers.length === 1);
   await orchestrator.resumeSession(worker.id, "second");
   assert.deepEqual(workerCalls, ["first"]);

@@ -5,6 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import { verifyOpenCliRuntime } from './lib/opencli-runtime.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const args = parseArgs(process.argv.slice(2));
@@ -57,10 +58,8 @@ function verifyInputs() {
   const desktopEntrypoint = path.join(releaseRoot, ...String(manifest.desktopShell.entrypoint || '').split('/'));
   if (!manifest.desktopShell.entrypoint || !fs.existsSync(desktopEntrypoint)) throw new Error('Tauri desktop entrypoint is missing');
   if (!fs.statSync(nodeRuntime).isFile()) throw new Error('Bundled Node runtime is not a file');
-  if (platform === 'win32') {
-    const xiaohongshuRuntime = path.join(releaseRoot, 'core', 'channels', 'xiaohongshu', 'runtime', 'xiaohongshu-mcp.exe');
-    if (!fs.statSync(xiaohongshuRuntime, { throwIfNoEntry: false })?.isFile()) throw new Error('Windows Xiaohongshu runtime is missing');
-  }
+  const openCliRuntime = verifyOpenCliRuntime({ releaseRoot });
+  if (manifest.browserExecutors?.opencli?.entrypoint !== openCliRuntime.descriptor.entrypoint) throw new Error('Bundled OpenCLI runtime is not declared by the release manifest');
 }
 
 function buildGo(name, packagePath, outputFile, target, options = {}) {
@@ -100,16 +99,6 @@ function finalizePlatformRelease(payloadRelease) {
   const manifestPath = path.join(payloadRelease, 'release-manifest.json');
   const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
   manifest.desktopShell.stableLauncher = platform === 'win32' ? 'personal-agent-ui.exe' : 'personal-agent-ui';
-  if (platform === 'win32') {
-    manifest.channelRuntimes = {
-      ...(manifest.channelRuntimes || {}),
-      xiaohongshu: {
-        platform: `${platform}-${architecture}`,
-        entrypoint: 'core/channels/xiaohongshu/runtime/xiaohongshu-mcp.exe',
-        browser: 'system-chrome-or-edge',
-      },
-    };
-  }
   fs.writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
   const entries = listFiles(payloadRelease)
     .map((file) => path.relative(payloadRelease, file).replaceAll('\\', '/'))

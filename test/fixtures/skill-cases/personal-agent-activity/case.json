@@ -2,11 +2,11 @@
   "schemaVersion": 1,
   "skill": "personal-agent",
   "title": "Main-Agent-only Activity lifecycle",
-  "prompt": "Use only the verified main Agent capability to search and upsert a user-readable Activity. Reject a worker or caller-supplied role. Keep the title within 30 visible characters and attachments within ten.",
+  "prompt": "Use only the verified main Agent capability to search and upsert a good user-readable Activity from Work artifact information. Reject a worker or caller-supplied role. Keep the title within 30 visible characters, attachments within ten, and link the stable governed target whenever one exists.",
   "commands": [
     "personal-agent capabilities inspect activity --json",
     "personal-agent activity search --capability <ephemeral-main-turn-capability> --query \"本地构建\" --json",
-    "personal-agent activity upsert --capability <ephemeral-main-turn-capability> --type work --title \"完成本地构建\" --detail \"安装包已经准备好，可以开始本地验收。\" --idempotency-key \"local-build-v1\" --correlation-key \"local-build\" --json"
+    "personal-agent activity upsert --capability <ephemeral-main-turn-capability> --type work --title \"完成本地构建\" --detail \"安装包已经准备好，可以开始本地验收。\" --target-type work --target-id <task-id> --idempotency-key \"local-build-v1\" --correlation-key \"local-build\" --json"
   ],
   "artifacts": [{ "path": "expected.json", "label": "Activity isolation and limits" }]
 }

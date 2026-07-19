@@ -2,19 +2,19 @@
 
 ## Install an immutable release
 
-Set `TAG=v0.2.0-beta.19` and open the matching [GitHub Release](https://github.com/chenchen428/personal-agent-node/releases/tag/v0.2.0-beta.19). A customer machine does not need Node.js, npm, Git, a source checkout, or a development Agent.
+Set `TAG=v0.2.0-beta.20` and open the matching [GitHub Release](https://github.com/chenchen428/personal-agent-node/releases/tag/v0.2.0-beta.20). A customer machine does not need Node.js, npm, Git, a source checkout, or a development Agent.
 
 | Computer | Asset |
 | --- | --- |
-| Windows x86-64 | `personal-agent-node-v0.2.0-beta.19-windows-x64-installer.exe` |
-| macOS Apple Silicon | `personal-agent-node-v0.2.0-beta.19-macos-arm64.pkg` |
-| macOS Intel | `personal-agent-node-v0.2.0-beta.19-macos-x64.pkg` |
-| Linux x86-64 | `personal-agent-node-v0.2.0-beta.19-linux-x64.tar.zst` |
-| Linux ARM64 | `personal-agent-node-v0.2.0-beta.19-linux-arm64.tar.zst` |
+| Windows x86-64 | `personal-agent-node-v0.2.0-beta.20-windows-x64-installer.exe` |
+| macOS Apple Silicon | `personal-agent-node-v0.2.0-beta.20-macos-arm64.pkg` |
+| macOS Intel | `personal-agent-node-v0.2.0-beta.20-macos-x64.pkg` |
+| Linux x86-64 | `personal-agent-node-v0.2.0-beta.20-linux-x64.tar.zst` |
+| Linux ARM64 | `personal-agent-node-v0.2.0-beta.20-linux-arm64.tar.zst` |
 
-On Windows, run the installer. On macOS, open the package. On Linux, unpack the matching archive with the desktop archive manager or `tar --zstd`, then run `./personal-agent-setup` from the extracted directory.
+On Windows, run the installer and choose the Personal Agent folder; both `core/` and the data-owning `workspace/`, including installation staging, will stay under that selected folder. On macOS, open the package. On Linux, unpack the matching archive with the desktop archive manager or `tar --zstd`, then run `./personal-agent-setup` from the extracted directory.
 
-Each package contains the Go setup executable, stable CLI and desktop launchers, the exact Node.js `22.23.1` runtime, the platform Tauri 2 shell, and the immutable application payload. Setup verifies embedded checksums, stages the release, initializes the Workspace, switches `current` while retaining `previous`, installs the desktop entry, and opens the local Setup Center directly in the shell. Direct loopback desktop access requires no login; tunneled mobile and public-domain access still requires the access password. The shell uses the system WebView, starts the bundled runtime without a terminal, and stops it when the client closes. The only default home is `~/.personal-agent`: product releases live under `core/`, while Harness, plugins, files, databases, mail and other user-owned state live under `workspace/`.
+Each package contains the Go setup executable, stable CLI and desktop launchers, the exact Node.js `22.23.1` runtime, the platform Tauri 2 shell, and the immutable application payload. Setup verifies embedded checksums, stages the release, initializes the Workspace, switches `current` while retaining `previous`, installs the desktop entry, and opens the local Setup Center directly in the shell. Direct loopback desktop access requires no login; tunneled mobile and public-domain access still requires the access password. The shell uses the system WebView, starts the bundled runtime without a terminal, and stops it when the client closes. Windows uses the folder selected during installation; other platforms default to `~/.personal-agent`. Product releases live under `core/`, while Harness, plugins, files, databases, mail and other user-owned state live under `workspace/`.
 
 Release assets include `RELEASE-SECURITY.json`, `SHA256SUMS`, Sigstore bundles, provenance, and an SBOM. Beta/RC packages may defer paid Windows and Apple native signing and can therefore trigger an operating-system approval warning; the security metadata records that fact explicitly. Stable releases require Authenticode plus Apple Developer ID/notarization and fail closed when either is absent.
 
@@ -26,7 +26,7 @@ The Personal Agent desktop window opens `/app/setup` automatically. If the shell
 2. Install or sign in to Codex when requested, retry the app-server handshake, and complete one real authenticated `/app/chat` reply.
 3. Keep `local-only` when no public access is needed, or select Personal Agent Cloud and approve the browser authorization flow.
 4. Treat the public domain and Agent mail address as identity checks. Mail becomes operational only after a real local message and recovery check pass.
-5. Open Channels, generate the one-time WeChat QR code, scan it in WeChat, and keep the page open until the required connection reports ready.
+5. After the required setup is complete, open Connections when you want to add optional WeChat remote access or another external system.
 
 Setup repairs that mutate the machine use a digest-bound R2 plan, an explicit local confirmation, one execution, and a local audit record. Read-only retry and guidance actions do not mutate state.
 
@@ -81,7 +81,7 @@ npm run check
 
 The bridge command creates ignored development-only links for `.agents`, `.codex`, `.claude`, `.cursor`, and `CLAUDE.md`. The installed product creates only the canonical workspace and `.codex/skills` bridge.
 
-Final Node acceptance uses the public GitHub Release installation's authenticated local `/app/chat`. Sanitized evidence records `releaseAssetRuntime=true`, `route=/app/chat`, `authenticated=true`, `uniquePrompt=true`, `realAgentRuntime=true`, `sameSessionAgentReply=true`, and `wechatRequired=true`, and separately proves `channels.wechat=ready`; it stores no prompt, reply, session identifier, QR content, or channel credential.
+Final Node acceptance uses the public GitHub Release installation's authenticated local `/app/chat`. Sanitized evidence records `releaseAssetRuntime=true`, `route=/app/chat`, `authenticated=true`, `uniquePrompt=true`, `realAgentRuntime=true`, `sameSessionAgentReply=true`, and `wechatRequired=false`; optional `connections.wechat` evidence never blocks the gate. It stores no prompt, reply, session identifier, QR content, or connection credential.
 
 ## Discover CLI capabilities
 

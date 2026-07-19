@@ -4,7 +4,7 @@ import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { createInterface } from 'node:readline/promises';
 import { bridgeCliStatus } from '../src/cli-shims.ts';
-import { resolveNodeConfig, workspaceRoot } from '../src/config.ts';
+import { initializeSite, resolveNodeConfig, workspaceRoot } from '../src/config.ts';
 import { listExtensions } from '../src/extensions.ts';
 import { readBackupState } from '../src/backup-scheduler.ts';
 import { providerStatus } from '../src/providers.ts';
@@ -16,12 +16,17 @@ import { authorizeCloudResources, managedServiceReadiness, onboardingStatus, ref
 import { setupStatus } from '../src/setup.ts';
 import { clearDefaultPersonalApp, inspectPersonalApp, publicPersonalApp, readPersonalAppSettings, resolveDefaultPersonalApp, scanPersonalApps, setDefaultPersonalApp, verifyPersonalApp } from '../src/apps.ts';
 import { requestActivity } from '../src/activity.ts';
+import { createSpace, deleteSpace, getSpace, initializeInstallation, listSpaces, setSpaceDesiredState } from '../src/space-registry.ts';
 
 const handledCommandKeys = new Set(HANDLED_COMMAND_KEYS);
 
 try {
   const parsed = parseArgs(process.argv.slice(2));
-  if (parsed.dataRoot) process.env.PRIVATE_SITE_DATA_ROOT = path.resolve(parsed.dataRoot);
+  if (parsed.dataRoot) {
+    process.env.PERSONAL_AGENT_DATA_ROOT = path.resolve(parsed.dataRoot);
+    process.env.PRIVATE_SITE_DATA_ROOT = path.resolve(parsed.dataRoot);
+  }
+  if (parsed.space) process.env.PERSONAL_AGENT_SPACE_ID = parsed.space;
   const response = await execute(parsed);
   process.stdout.write(`${JSON.stringify({ schemaVersion: 1, ok: true, ...response })}\n`);
 } catch (error) {
@@ -57,6 +62,12 @@ async function executeHandled({ resource, action, id, args, requestedCommand }) 
   if (resource === 'skill' && action === 'list') return skillList();
   if (resource === 'skill' && action === 'inspect') return skillInspect(id);
   if (resource === 'skill' && action === 'verify') return skillVerify(id);
+  if (resource === 'space' && action === 'list') return spaceList();
+  if (resource === 'space' && action === 'show') return spaceShow(id);
+  if (resource === 'space' && action === 'create') return spaceCreate(args);
+  if (resource === 'space' && action === 'start') return spaceDesiredState(id, 'running');
+  if (resource === 'space' && action === 'stop') return spaceDesiredState(id, 'stopped');
+  if (resource === 'space' && action === 'delete') return spaceDelete(id, args);
   if (resource === 'connection' && action === 'status') return connectionStatus();
   if (resource === 'cloud' && action === 'connect') return cloudConnect(args);
   if (resource === 'cloud' && action === 'login') return cloudLogin(args);
@@ -176,6 +187,81 @@ function skillVerify(name) {
   return success('skill verify', { skillName: name, verified: true, examples: skill.examples || [] });
 }
 
+function spaceList() {
+  const dataRoot = installationDataRoot();
+  initializeInstallation({ dataRoot });
+  return success('space list', { currentSpaceId: safeConfig()?.space?.id || null, spaces: listSpaces(dataRoot).map(publicSpace) });
+}
+
+function spaceShow(selector) {
+  requireId(selector, 'Space id or slug');
+  const space = getSpace(installationDataRoot(), selector);
+  if (!space) throw cliError('NOT_FOUND', `隔离空间不存在: ${selector}`, 3);
+  return success('space show', { space: publicSpace(space) });
+}
+
+function spaceCreate(args) {
+  requireId(args.slug, '--slug');
+  requireId(args.name, '--name');
+  const dataRoot = installationDataRoot();
+  initializeInstallation({ dataRoot });
+  let space;
+  try {
+    space = createSpace({ dataRoot, slug: args.slug, displayName: args.name });
+    initializeSite({ dataRoot, spaceId: space.id, domain: 'personal-agent.local' });
+  } catch (error) {
+    if (space) {
+      try { deleteSpace(dataRoot, space.id); } catch {}
+    }
+    throw error;
+  }
+  return success('space create', { space: publicSpace(space) }, [], ['安装级 Runtime 会自动启动这个隔离空间']);
+}
+
+function spaceDesiredState(selector, desiredState) {
+  requireId(selector, 'Space id or slug');
+  const dataRoot = installationDataRoot();
+  try {
+    const space = setSpaceDesiredState(dataRoot, selector, desiredState);
+    return success(`space ${desiredState === 'running' ? 'start' : 'stop'}`, { space: publicSpace(space) });
+  } catch (error) {
+    if (error?.code === 'SPACE_NOT_FOUND') throw cliError('NOT_FOUND', error.message, 3);
+    throw error;
+  }
+}
+
+function spaceDelete(selector, args) {
+  requireId(selector, 'Space id or slug');
+  const dataRoot = installationDataRoot();
+  const existing = getSpace(dataRoot, selector);
+  if (!existing) throw cliError('NOT_FOUND', `隔离空间不存在: ${selector}`, 3);
+  if (args.confirm !== existing.slug) throw cliError('APPROVAL_REQUIRED', `删除隔离空间需要 --confirm ${existing.slug}`, 5);
+  if (existing.state !== 'stopped' || existing.desiredState !== 'stopped') {
+    throw cliError('CONFLICT', '请先停止隔离空间，确认 Runtime 已退出后再删除', 4, [`Run personal-agent space stop ${existing.id} --json`]);
+  }
+  return success('space delete', { space: publicSpace(deleteSpace(dataRoot, existing.id)) });
+}
+
+function installationDataRoot() {
+  return safeConfig()?.installationDataRoot || path.resolve(process.env.PERSONAL_AGENT_DATA_ROOT || process.env.PRIVATE_SITE_DATA_ROOT || path.join(process.env.USERPROFILE || process.env.HOME || '', '.personal-agent', 'workspace'));
+}
+
+function publicSpace(space) {
+  return {
+    id: space.id,
+    slug: space.slug,
+    displayName: space.displayName,
+    kind: space.kind,
+    state: space.state,
+    desiredState: space.desiredState,
+    localUrl: `http://127.0.0.1:${space.ports.gateway}`,
+    managedHost: space.managedHost || null,
+    agentMail: space.agentMail || null,
+    workspaceRoot: path.join(space.root, 'agent-workspace'),
+    createdAt: space.createdAt,
+  };
+}
+
 function connectionStatus() {
   const config = requireConfig();
   return success('connection status', connectionResult(config));
@@ -191,10 +277,11 @@ function cloudStatus() {
 }
 
 async function cloudLogin(args) {
+  const config = requireConfig();
   const packageMetadata = readJsonIfExists(path.join(workspaceRoot, 'package.json'));
   const result = await authorizeCloudResources({
     cloudUrl: resolveCloudUrl({ cloudUrl: args.cloudUrl }),
-    dataRoot: args.dataRoot,
+    dataRoot: config.dataRoot,
     clientVersion: packageMetadata?.version || 'unknown',
     ...(args.noOpen ? { openBrowser: async () => false } : {}),
     onAuthorization: (authorization) => emitProgress('cloud.resource-authorization', authorization),
@@ -203,16 +290,17 @@ async function cloudLogin(args) {
 }
 
 async function cloudResources(args) {
-  const result = await refreshCloudResources({ dataRoot: args.dataRoot });
+  const result = await refreshCloudResources({ dataRoot: requireConfig().dataRoot });
   return success('cloud resources', result, [], result.refreshed ? [] : ['Run personal-agent cloud login --json']);
 }
 
 async function cloudConnect(args) {
+  const config = requireConfig();
   const cloudUrl = resolveCloudUrl({ cloudUrl: args.cloudUrl });
   const packageMetadata = readJsonIfExists(path.join(workspaceRoot, 'package.json'));
   const enrolled = await enrollWithCloudDeviceAuthorization({
     cloudUrl,
-    dataRoot: args.dataRoot,
+    dataRoot: config.dataRoot,
     clientVersion: packageMetadata?.version || 'unknown',
     ...(args.noOpen ? { openBrowser: async () => false } : {}),
     onAuthorization: (authorization) => emitProgress('cloud.device-authorization', authorization),
@@ -311,6 +399,12 @@ async function activityCommand(action, id, args) {
   } else if (action === 'show') {
     if (args.includeHidden) input.includeHidden = true;
   } else if (['create', 'upsert', 'update'].includes(action)) {
+    if (Boolean(args.targetType) !== Boolean(args.targetId)) {
+      throw cliError('INVALID_ARGUMENT', '--target-type and --target-id must be provided together', 2);
+    }
+    if (args.type === 'page' && (args.targetType !== 'page' || !args.targetId)) {
+      throw cliError('INVALID_ARGUMENT', 'Page Activity requires --target-type page and --target-id <page-id>', 2);
+    }
     if (args.type) input.type = args.type;
     if (args.title) input.title = args.title;
     if (args.detail) input.detail = args.detail;
@@ -508,8 +602,8 @@ function numericOption(value, name) {
 function activityUsage(command) {
   if (command === 'activity search' || command === 'activity list') return `personal-agent ${command} --capability <ephemeral> [--query <text>] [--type <type>] [--limit <n>] [--cursor <cursor>] [--include-hidden] --json`;
   if (command === 'activity show') return 'personal-agent activity show <id> --capability <ephemeral> [--include-hidden] --json';
-  if (command === 'activity create' || command === 'activity upsert') return `personal-agent ${command} --capability <ephemeral> --type <type> --title <text> --detail <text> --idempotency-key <key> [--attachment <object-id>] [--correlation-key <key>] --json`;
-  if (command === 'activity update') return 'personal-agent activity update <id> --capability <ephemeral> --expected-revision <n> [--title <text>] [--detail <text>] [--attachment <object-id>] --json';
+  if (command === 'activity create' || command === 'activity upsert') return `personal-agent ${command} --capability <ephemeral> --type <type> --title <text> --detail <text> --idempotency-key <key> [--target-type <type> --target-id <id>] [--attachment <object-id>] [--correlation-key <key>] --json`;
+  if (command === 'activity update') return 'personal-agent activity update <id> --capability <ephemeral> --expected-revision <n> [--title <text>] [--detail <text>] [--target-type <type> --target-id <id>] [--attachment <object-id>] --json';
   if (command === 'activity hide') return 'personal-agent activity hide <id> --capability <ephemeral> --expected-revision <n> --reason <text> --json';
   return 'personal-agent activity restore <id> --capability <ephemeral> --expected-revision <n> --json';
 }
@@ -533,6 +627,10 @@ function parseArgs(argv) {
     else if (value === '--preview') result.preview = true;
     else if (value === '--all') result.all = true;
     else if (value === '--data-root') result.dataRoot = argv[++index];
+    else if (value === '--space') result.space = argv[++index];
+    else if (value === '--slug') result.slug = argv[++index];
+    else if (value === '--name') result.name = argv[++index];
+    else if (value === '--confirm') result.confirm = argv[++index];
     else if (value === '--digest') result.digest = argv[++index];
     else if (value === '--operation') result.operation = argv[++index];
     else if (value === '--job') result.job = argv[++index];

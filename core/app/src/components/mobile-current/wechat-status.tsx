@@ -5,6 +5,7 @@ import { MessageCircle } from "lucide-react";
 import { useWechatLogin } from "@/components/wechat-login";
 import { downloadWechatQrPng } from "@/components/wechat-qr";
 import { useRemote } from "./data";
+import { MobileAboutSectionSkeleton } from "./skeletons";
 import type { Channel } from "./types";
 
 export function MobileWechatStatus() {
@@ -18,7 +19,7 @@ export function MobileWechatStatus() {
 
   useEffect(() => { if (connected) setOpen(false); }, [connected]);
 
-  if (channels.loading) return <WechatStatusState label="正在检查微信状态" />;
+  if (channels.loading) return <MobileAboutSectionSkeleton />;
   if (channels.error) return <WechatStatusState label="暂时无法读取微信状态" action="重新检查" onAction={channels.refresh} />;
 
   return <section className={`mobile-about-section about-wechat${connected ? " is-connected" : " is-offline"}`}>

@@ -30,7 +30,9 @@ export const config = {
   projectDir,
   workspaceRoot: resolvedWorkspaceRoot,
   siteDataRoot,
-  appsDir: path.join(siteDataRoot, "apps"),
+  appsDir: path.join(siteDataRoot, "apps", "installed"),
+  agentAuthorizationFile: path.join(siteDataRoot, "config", "agent-authorization.json"),
+  dailyTokenLimitFile: path.join(siteDataRoot, "config", "daily-token-limit.json"),
   dataDir: resolvedDataDir,
   publicDir: path.resolve(process.env.OPEN_AGENT_BRIDGE_PUBLIC_DIR || path.join(projectDir, "public")),
   pagesDir: path.resolve(process.env.OPEN_AGENT_BRIDGE_PAGES_DIR || path.join(resolvedDataDir, "pages")),
@@ -59,6 +61,7 @@ export const config = {
   apiToken: process.env.OPEN_AGENT_BRIDGE_API_TOKEN || "",
   mailIngestToken: process.env.OPEN_AGENT_BRIDGE_MAIL_INGEST_TOKEN || "",
   xiaohongshuBaseUrl: (process.env.OPEN_AGENT_BRIDGE_XIAOHONGSHU_BASE_URL || "http://127.0.0.1:18060").replace(/\/+$/, ""),
+  openCliCommand: process.env.PERSONAL_AGENT_OPENCLI_CLI || "",
   personalAuth: {
     password: process.env.PERSONAL_AGENT_AUTH_PASSWORD || "",
     cookieSecret: process.env.PERSONAL_AGENT_AUTH_COOKIE_SECRET || (process.env.NODE_ENV === "production" ? "" : "personal-agent-local-auth-secret"),

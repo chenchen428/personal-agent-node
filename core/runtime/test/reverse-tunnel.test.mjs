@@ -11,6 +11,7 @@ import {
   isTunnelRouteAllowed,
   parseTunnelMessage,
   ReverseTunnelConnector,
+  resolveTunnelRequestPath,
   sanitizeRequestHeaders,
   validateReverseTunnelContract,
 } from "../src/reverse-tunnel.ts";
@@ -35,15 +36,21 @@ test("reverse tunnel protocol rejects unsafe paths, headers, oversized frames, a
   for (const value of ["https://evil.example/", "//evil.example/", "/bad\\path", "/bad\npath"]) assert.throws(() => normalizeTunnelPath(value), /path is invalid/);
   assert.deepEqual(sanitizeRequestHeaders({ authorization: "secret", connection: "upgrade", host: "evil.example", cookie: "session=ok", "x-forwarded-host": "node.example" }), { cookie: "session=ok", "x-forwarded-host": "node.example" });
   const distribution = testDistribution();
-  assert.equal(isTunnelRouteAllowed(distribution, "/echo", "http"), true);
+  assert.equal(resolveTunnelRequestPath("/"), "/app/mobile");
+  assert.equal(resolveTunnelRequestPath("/app?from=domain"), "/app/mobile?from=domain");
+  assert.equal(isTunnelRouteAllowed(distribution, "/echo", "http"), false);
   assert.equal(isTunnelRouteAllowed(distribution, "/login", "http"), true);
   assert.equal(isTunnelRouteAllowed(distribution, "/public/report", "http"), true);
-  assert.equal(isTunnelRouteAllowed(distribution, "/api/chat/ws", "websocket"), true);
-  assert.equal(isTunnelRouteAllowed(distribution, "/api/system/setup", "http"), true);
+  assert.equal(isTunnelRouteAllowed(distribution, "/api/chat/ws", "websocket"), false);
+  assert.equal(isTunnelRouteAllowed(distribution, "/api/system/setup", "http"), false);
+  assert.equal(isTunnelRouteAllowed(distribution, "/api/system/spaces", "http"), true);
+  assert.equal(isTunnelRouteAllowed(distribution, "/api/system/spaces", "http", "POST"), false);
   assert.equal(isTunnelRouteAllowed(distribution, "/api/mobile/activity", "http"), true);
   assert.equal(isTunnelRouteAllowed(distribution, "/apps/future-app/", "http"), true);
-  assert.equal(isTunnelRouteAllowed(distribution, "/future/capability", "http"), true);
-  assert.equal(isTunnelRouteAllowed(distribution, "/future/socket", "websocket"), true);
+  assert.equal(isTunnelRouteAllowed(distribution, "/app/conversations", "http"), false);
+  assert.equal(isTunnelRouteAllowed(distribution, "/api/mobile/activity", "http", "POST"), false);
+  assert.equal(isTunnelRouteAllowed(distribution, "/future/capability", "http"), false);
+  assert.equal(isTunnelRouteAllowed(distribution, "/future/socket", "websocket"), false);
   assert.equal(isTunnelRouteAllowed(distribution, "/bad\\path", "http"), false);
   assert.throws(() => parseTunnelMessage(JSON.stringify({ v: 1, type: "request.data", id: "stream-0001", seq: 0, data: Buffer.alloc(17 * 1024).toString("base64") }), { maxFrameBytes: 16 * 1024 }), /too large/);
   assert.throws(() => parseTunnelMessage(JSON.stringify({ v: 1, type: "request.start", id: "stream-0001", kind: "http", method: "GET", path: "/", headers: { "bad\nname": "x" } })), /header name/);
@@ -87,13 +94,13 @@ test("connector forwards HTTP streams only to the fixed loopback gateway and nev
 
   await waitFor(() => messages.some((message) => message.type === "hello"));
   peer.send(JSON.stringify({ v: 1, type: "ready", connectionId: "connection-0001", generation: 1, heartbeatSeconds: 20, maxFrameBytes: 131072 }));
-  peer.send(JSON.stringify({ v: 1, type: "request.start", id: "stream-http-0001", kind: "http", method: "POST", path: "/echo?safe=1", headers: { authorization: "must-not-reach-local", host: "evil.example", connection: "keep-alive", "content-type": "text/plain", "x-forwarded-host": "owner.chenjianhui.site" } }));
+  peer.send(JSON.stringify({ v: 1, type: "request.start", id: "stream-http-0001", kind: "http", method: "POST", path: "/login?safe=1", headers: { authorization: "must-not-reach-local", host: "evil.example", connection: "keep-alive", "content-type": "text/plain", "x-forwarded-host": "owner.chenjianhui.site" } }));
   peer.send(JSON.stringify({ v: 1, type: "request.data", id: "stream-http-0001", seq: 0, data: Buffer.from("hello").toString("base64") }));
   peer.send(JSON.stringify({ v: 1, type: "request.end", id: "stream-http-0001" }));
 
   await waitFor(() => messages.some((message) => message.type === "response.end" && message.id === "stream-http-0001"));
   assert.equal(requests.length, 1);
-  assert.equal(requests[0].url, "/echo?safe=1");
+  assert.equal(requests[0].url, "/login?safe=1");
   assert.equal(requests[0].method, "POST");
   assert.equal(requests[0].headers.host, "owner.chenjianhui.site");
   assert.equal(requests[0].headers.authorization, undefined);
@@ -109,12 +116,26 @@ test("connector forwards HTTP streams only to the fixed loopback gateway and nev
   assert.match(state, /"state": "ready"/);
   peer.send(JSON.stringify({ v: 1, type: "request.start", id: "stream-future-0001", kind: "http", method: "GET", path: "/future/capability", headers: {} }));
   peer.send(JSON.stringify({ v: 1, type: "request.end", id: "stream-future-0001" }));
-  await waitFor(() => messages.some((message) => message.type === "response.end" && message.id === "stream-future-0001"));
-  assert.equal(requests.length, 2);
-  assert.equal(requests[1].url, "/future/capability");
+  await waitFor(() => messages.some((message) => message.type === "response.error" && message.id === "stream-future-0001"));
+  assert.equal(messages.find((message) => message.type === "response.error" && message.id === "stream-future-0001").code, "REMOTE_ROUTE_DENIED");
+  assert.equal(requests.length, 1);
+
+  const deniedIds = Array.from({ length: 65 }, (_, index) => `stream-denied-${String(index).padStart(4, "0")}`);
+  for (const id of deniedIds) peer.send(JSON.stringify({ v: 1, type: "request.start", id, kind: "http", method: "GET", path: "/future/capability", headers: {} }));
+  await waitFor(() => messages.filter((message) => message.type === "response.error" && deniedIds.includes(message.id)).length === deniedIds.length);
+  assert.equal(connector.streams.size, 0);
+  assert.equal(connector.rejectedStreams.size, 64);
+  assert.equal(messages.some((message) => message.code === "STREAM_LIMIT_EXCEEDED"), false);
+
+  peer.send(JSON.stringify({ v: 1, type: "request.start", id: "stream-spaces-0001", kind: "http", method: "GET", path: "/api/system/spaces", headers: {} }));
+  peer.send(JSON.stringify({ v: 1, type: "request.end", id: "stream-spaces-0001" }));
+  await waitFor(() => messages.some((message) => message.type === "response.end" && message.id === "stream-spaces-0001"));
+  assert.equal(requests.at(-1).url, "/api/system/spaces");
+  for (const id of deniedIds) peer.send(JSON.stringify({ v: 1, type: "request.cancel", id }));
+  await waitFor(() => connector.rejectedStreams.size === 0);
 });
 
-test("connector preserves WebSocket message boundaries through the loopback gateway", async (t) => {
+test("connector denies tunneled WebSockets because remote access is mobile read-only", async (t) => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "personal-agent-reverse-ws-"));
   const localHttp = http.createServer();
   const localWs = new WebSocketServer({ noServer: true });
@@ -143,13 +164,9 @@ test("connector preserves WebSocket message boundaries through the loopback gate
   await waitFor(() => messages.some((message) => message.type === "hello"));
   peer.send(JSON.stringify({ v: 1, type: "ready", connectionId: "connection-0002", generation: 1 }));
   peer.send(JSON.stringify({ v: 1, type: "request.start", id: "stream-websocket-0001", kind: "websocket", method: "GET", path: "/api/chat/ws", headers: {} }));
-  await waitFor(() => messages.some((message) => message.type === "response.start" && message.status === 101));
-  peer.send(JSON.stringify({ v: 1, type: "request.data", id: "stream-websocket-0001", seq: 0, data: Buffer.from("hello websocket").toString("base64"), opcode: "text" }));
-  await waitFor(() => messages.some((message) => message.type === "response.data" && message.id === "stream-websocket-0001"));
-  const echoed = messages.find((message) => message.type === "response.data" && message.id === "stream-websocket-0001");
-  assert.equal(echoed.opcode, "text");
-  assert.equal(Buffer.from(echoed.data, "base64").toString(), "hello websocket");
-  peer.send(JSON.stringify({ v: 1, type: "request.cancel", id: "stream-websocket-0001", reason: "done" }));
+  await waitFor(() => messages.some((message) => message.type === "response.error" && message.id === "stream-websocket-0001"));
+  assert.equal(messages.find((message) => message.type === "response.error" && message.id === "stream-websocket-0001").code, "REMOTE_ROUTE_DENIED");
+  assert.equal(localWs.clients.size, 0);
 });
 
 function tunnelAt(server) {

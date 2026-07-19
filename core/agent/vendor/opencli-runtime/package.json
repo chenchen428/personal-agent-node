@@ -1,0 +1,10 @@
+{
+  "name": "@personal-agent/opencli-runtime",
+  "version": "1.8.6",
+  "private": true,
+  "license": "Apache-2.0",
+  "description": "Pinned OpenCLI runtime assembled into Personal Agent Node releases.",
+  "dependencies": {
+    "@jackwener/opencli": "1.8.6"
+  }
+}
