@@ -61,7 +61,7 @@ function verifyLayout() {
   for (const relative of [
     "core/app/server.js", "core/app/.next/static", "core/runtime/bin/personal-agent.mjs", "core/runtime/bin/private-site.mjs",
     "core/runtime/app/control-service.mjs", "core/runtime/app/gateway.mjs", "core/runtime/app/reverse-tunnel.mjs", "core/agent/app/server.mjs", "core/agent/app/worker.mjs",
-    "core/control/server.mjs", "core/edge/bin/self-hosted-relay.mjs", "infra/edge/install-self-hosted-relay.sh", "core/apps/schema/personal-agent.app.schema.json", "core/plugins/schema/personal-agent.plugin.schema.json",
+    "core/control/server.mjs", "core/edge/bin/self-hosted-relay.mjs", "infra/edge/install-self-hosted-relay.sh", "infra/edge/install-self-hosted-mail.sh", "core/apps/schema/personal-agent.app.schema.json", "core/plugins/schema/personal-agent.plugin.schema.json",
     "workspace/AGENTS.md", "workspace/skills", "workspace/workflows", "workspace/workflows/product-development.md", "workspace/registry/skills.json", "workspace/registry/plugins.json", "workspace/registry/product-development.json",
     "registry/delivery.json", "registry/product-development.json", "schemas/personal-agent/product-development.schema.json", "docs/adr/0003-core-workspace-next-architecture.md", "SBOM.cdx.json", "SHA256SUMS",
   ]) assert(fs.existsSync(at(relative)), `Release file is missing: ${relative}`);

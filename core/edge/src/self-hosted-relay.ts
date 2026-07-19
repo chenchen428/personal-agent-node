@@ -77,6 +77,9 @@ export function createSelfHostedRelay({ config, logger = console }: { config: Se
   function handleHttp(request: IncomingMessage, response: ServerResponse) {
     const url = safeUrl(request, config.domain);
     if (!url) return sendText(response, 400, "Bad Request\n");
+    if (url.pathname === "/__personal_agent_relay/mail-ingest") {
+      return handleMailIngest(request, response, url);
+    }
     if (url.pathname === "/__personal_agent_relay/health") {
       return sendJson(response, 200, { ok: true, domain: config.domain, siteId: config.siteId, connected: nodeReady, protocol: SELF_HOSTED_RELAY_PROTOCOL });
     }
@@ -85,8 +88,33 @@ export function createSelfHostedRelay({ config, logger = console }: { config: Se
     if (spaceRoute === null) return sendText(response, 400, "Bad Request\n");
     if (!nodeReady || !node || node.readyState !== WebSocket.OPEN) return sendText(response, 503, "Personal Agent Node is offline\n");
     if (streams.size >= MAX_STREAMS) return sendText(response, 503, "Relay stream limit reached\n");
+    forwardHttp(request, response, request.url || "/", requestHeaders(request, spaceRoute));
+  }
+
+  function handleMailIngest(request: IncomingMessage, response: ServerResponse, url: URL) {
+    if (!isLoopbackRequest(request) || !loopbackHostAllowed(request)) return sendText(response, 404, "Not Found\n");
+    if (request.method !== "POST") return sendText(response, 405, "Method Not Allowed\n");
+    if (url.search) return sendText(response, 400, "Bad Request\n");
+    if (!/^message\/rfc822(?:\s*;|$)/i.test(String(request.headers["content-type"] || ""))) return sendText(response, 415, "Expected message/rfc822\n");
+    const recipient = normalizeEnvelopeAddress(request.headers["x-personal-agent-envelope-recipient"]);
+    const sender = normalizeEnvelopeAddress(request.headers["x-personal-agent-envelope-sender"], true);
+    const spaceRoute = recipient ? mailSpaceRoute(recipient, config.domain) : null;
+    if (!recipient || sender === null || spaceRoute === null) return sendText(response, 400, "Invalid mail envelope\n");
+    if (!nodeReady || !node || node.readyState !== WebSocket.OPEN) return sendText(response, 503, "Personal Agent Node is offline\n");
+    if (streams.size >= MAX_STREAMS) return sendText(response, 503, "Relay stream limit reached\n");
+    const headers: Record<string, string> = {
+      "content-type": "message/rfc822",
+      "x-personal-agent-mail-ingest": "relay-v1",
+      "x-personal-agent-envelope-recipient": recipient,
+      "x-personal-agent-envelope-sender": sender,
+    };
+    if (spaceRoute) headers["x-personal-agent-space-route"] = spaceRoute;
+    forwardHttp(request, response, "/__personal_agent_internal/mail-ingest", headers);
+  }
+
+  function forwardHttp(request: IncomingMessage, response: ServerResponse, requestPath: string, headers: Record<string, string | string[]>) {
     const stream = createStream("http", request, { response });
-    sendNode({ v: 1, type: "request.start", id: stream.id, kind: "http", method: request.method || "GET", path: request.url || "/", headers: requestHeaders(request, spaceRoute) });
+    sendNode({ v: 1, type: "request.start", id: stream.id, kind: "http", method: request.method || "GET", path: requestPath, headers });
     request.on("data", (chunk: Buffer) => {
       if (stream.ended) return;
       stream.bytesIn += chunk.length;
@@ -318,6 +346,33 @@ function spaceRouteForRequest(request: IncomingMessage, domain: string): string 
 function connectorHostAllowed(request: IncomingMessage, domain: string) {
   const host = String(request.headers.host || "").split(":", 1)[0].toLowerCase();
   return !host || host === domain || host === `connect.${domain}` || host === "127.0.0.1" || host === "localhost";
+}
+
+function isLoopbackRequest(request: IncomingMessage) {
+  const address = String(request.socket.remoteAddress || "").replace(/^::ffff:/, "");
+  return address === "127.0.0.1" || address === "::1";
+}
+
+function loopbackHostAllowed(request: IncomingMessage) {
+  const host = String(request.headers.host || "").trim().toLowerCase();
+  return /^(?:127\.0\.0\.1|localhost)(?::\d{1,5})?$/.test(host);
+}
+
+function normalizeEnvelopeAddress(value: string | string[] | undefined, allowEmpty = false): string | null {
+  const address = String(Array.isArray(value) ? value[0] : value || "").trim().toLowerCase();
+  if (!address) return allowEmpty ? "" : null;
+  if (address.length > 254 || !/^[a-z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-z0-9.-]+$/.test(address)) return null;
+  const [local, domain, ...extra] = address.split("@");
+  if (extra.length || !local || local.length > 64 || !/^[a-z0-9](?:[a-z0-9.-]{0,251}[a-z0-9])?$/.test(domain)) return null;
+  return address;
+}
+
+function mailSpaceRoute(recipient: string, domain: string): string | null {
+  const recipientDomain = recipient.slice(recipient.lastIndexOf("@") + 1);
+  if (recipientDomain === domain) return "";
+  if (!recipientDomain.endsWith(`.${domain}`)) return null;
+  const label = recipientDomain.slice(0, -(domain.length + 1));
+  return /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/.test(label) ? label : null;
 }
 
 function decodeChunk(value: unknown) {

@@ -47,6 +47,7 @@ function copySupportFiles() {
     "package.json", ".gitignore", ".githooks", "registry", "schemas", "skills", "workflows", "docs", "scripts", "test/fixtures",
     "core/apps", "core/channels", "core/plugins", "core/runtime/contracts", "core/runtime/native", "core/runtime/README.md", "core/agent/public", "core/agent/README.md",
     "infra/edge/install-self-hosted-relay.sh",
+    "infra/edge/install-self-hosted-mail.sh",
   ]) copy(relative);
   fs.rmSync(path.join(outputRoot, "scripts", "build-private-site-node-dist.mjs"), { force: true });
   fs.rmSync(path.join(outputRoot, "core", "plugins", "runtime"), { recursive: true, force: true });

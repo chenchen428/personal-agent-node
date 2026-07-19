@@ -61,6 +61,16 @@ export function createPrivateSiteGateway(options = {}) {
         return;
       }
       const url = new URL(request.url || "/", `http://${host || "localhost"}`);
+      const mailIngest = resolveRelayMailIngestTarget(request, url, config);
+      if (mailIngest) {
+        if (mailIngest.statusCode) {
+          sendText(response, mailIngest.statusCode, `${mailIngest.message}\n`, request.method === "HEAD");
+          return;
+        }
+        prepareRelayMailIngestProxy(request, config, mailIngest);
+        proxy.web(request, response, { target: mailIngest.target });
+        return;
+      }
       if (url.pathname === "/__private-site/health") {
         sendJson(response, 200, { ok: true, service: "private-site-gateway", site: config.domain, tls: gatewayUsesTls(config) }, request.method === "HEAD");
         return;
@@ -265,6 +275,46 @@ export function resolveRelaySpaceProxyTarget(request, config, resolver = null) {
   const targetHost = String(site?.asciiDomain || space.managedHost || "").trim().toLowerCase();
   if (!targetHost) return { statusCode: 503, message: "Space hostname is unavailable" };
   return { target: `http://127.0.0.1:${gatewayPort}`, host: targetHost, spaceId: space.id, slug: space.slug };
+}
+
+export function resolveRelayMailIngestTarget(request, url, config) {
+  if (url.pathname !== "/__personal_agent_internal/mail-ingest") return null;
+  const marker = singleHeader(request.headers["x-personal-agent-mail-ingest"]);
+  const recipient = singleHeader(request.headers["x-personal-agent-envelope-recipient"]).trim().toLowerCase();
+  const sender = singleHeader(request.headers["x-personal-agent-envelope-sender"]).trim().toLowerCase();
+  if (marker !== "relay-v1") return { statusCode: 403, message: "Unrecognized mail Relay" };
+  if (request.method !== "POST") return { statusCode: 405, message: "Method Not Allowed" };
+  if (url.search) return { statusCode: 400, message: "Mail Relay URL must not contain a query" };
+  if (!/^message\/rfc822(?:\s*;|$)/i.test(String(request.headers["content-type"] || ""))) return { statusCode: 415, message: "Expected message/rfc822" };
+  if (!validEnvelopeAddress(recipient) || (sender && !validEnvelopeAddress(sender))) return { statusCode: 400, message: "Invalid mail envelope" };
+  const recipientDomain = recipient.slice(recipient.lastIndexOf("@") + 1);
+  const expectedDomain = String(config.domain || "").trim().toLowerCase();
+  if (!expectedDomain || recipientDomain !== expectedDomain) return { statusCode: 404, message: "Mail recipient does not belong to this Space" };
+  const token = String(config.env?.OPEN_AGENT_BRIDGE_API_TOKEN || "");
+  if (!token) return { statusCode: 503, message: "Local mail ingest is unavailable" };
+  return { target: `http://127.0.0.1:${config.ports.bridge}`, recipient, sender };
+}
+
+function prepareRelayMailIngestProxy(request, config, target) {
+  for (const header of Object.keys(request.headers)) {
+    if (header === "authorization" || header === "cookie" || header.startsWith("x-personal-agent-") || header.startsWith("x-forwarded-")) delete request.headers[header];
+  }
+  request.headers.authorization = `Bearer ${config.env.OPEN_AGENT_BRIDGE_API_TOKEN}`;
+  request.headers["content-type"] = "message/rfc822";
+  request.headers.host = `127.0.0.1:${config.ports.bridge}`;
+  const query = new URLSearchParams({ recipient: target.recipient });
+  if (target.sender) query.set("sender", target.sender);
+  request.url = `/api/mail/import?${query}`;
+}
+
+function singleHeader(value) {
+  return String(Array.isArray(value) ? value[0] : value || "");
+}
+
+function validEnvelopeAddress(address) {
+  if (!address || address.length > 254 || !/^[a-z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-z0-9.-]+$/.test(address)) return false;
+  const [local, domain, ...extra] = address.split("@");
+  return !extra.length && Boolean(local) && local.length <= 64 && /^[a-z0-9](?:[a-z0-9.-]{0,251}[a-z0-9])?$/.test(domain);
 }
 
 function preparePersonalWechatCallbackProxyHeaders(request) {

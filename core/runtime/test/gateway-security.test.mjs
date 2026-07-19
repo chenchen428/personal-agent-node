@@ -5,7 +5,7 @@ import os from "node:os";
 import path from "node:path";
 import test from "node:test";
 import { initializeSite, resolveNodeConfig } from "../src/config.ts";
-import { authorizeRoute, createPrivateSiteGateway, resolveRelaySpaceProxyTarget } from "../src/gateway.ts";
+import { authorizeRoute, createPrivateSiteGateway, resolveRelayMailIngestTarget, resolveRelaySpaceProxyTarget } from "../src/gateway.ts";
 import { setDefaultPersonalApp } from "../src/apps.ts";
 
 test("Relay Space routing resolves a running subdomain target without granting loopback auth", (t) => {
@@ -25,6 +25,62 @@ test("Relay Space routing resolves a running subdomain target without granting l
   }));
   assert.deepEqual(target, { target: "http://127.0.0.1:8863", host: "work.example.site", spaceId: "space_work", slug: "work" });
   assert.equal(request.headers["x-personal-agent-space-route"], undefined);
+});
+
+test("Relay mail ingress is domain-bound and authenticates only the local Agent hop", async () => {
+  const dataRoot = fs.mkdtempSync(path.join(os.tmpdir(), "pa-relay-mail-gateway-"));
+  const received = [];
+  const bridge = http.createServer((request, response) => {
+    const chunks = [];
+    request.on("data", (chunk) => chunks.push(chunk));
+    request.on("end", () => {
+      received.push({ url: request.url, headers: request.headers, body: Buffer.concat(chunks).toString("utf8") });
+      response.writeHead(201, { "content-type": "application/json" });
+      response.end('{"ok":true}');
+    });
+  });
+  await listen(bridge);
+  try {
+    initializeSite({ domain: "work.example.site", dataRoot });
+    const base = resolveNodeConfig({ PRIVATE_SITE_DATA_ROOT: dataRoot, SITE_DOMAIN: "work.example.site" });
+    const config = { ...base, ports: { ...base.ports, bridge: bridge.address().port } };
+    const { server } = createPrivateSiteGateway({ config });
+    await listen(server);
+    try {
+      const eml = "From: sender@example.net\r\nTo: agent@work.example.site\r\nSubject: Gateway mail\r\n\r\nhello";
+      const accepted = await request({
+        port: server.address().port,
+        host: "work.example.site",
+        path: "/__personal_agent_internal/mail-ingest",
+        method: "POST",
+        headers: {
+          "content-type": "message/rfc822",
+          "x-personal-agent-mail-ingest": "relay-v1",
+          "x-personal-agent-envelope-recipient": "agent@work.example.site",
+          "x-personal-agent-envelope-sender": "sender@example.net",
+          authorization: "Bearer attacker",
+          cookie: "attacker=1",
+        },
+        body: eml,
+      });
+      assert.equal(accepted.status, 201);
+      assert.equal(received.length, 1);
+      assert.equal(received[0].url, "/api/mail/import?recipient=agent%40work.example.site&sender=sender%40example.net");
+      assert.equal(received[0].headers.authorization, `Bearer ${config.env.OPEN_AGENT_BRIDGE_API_TOKEN}`);
+      assert.equal(received[0].headers.cookie, undefined);
+      assert.equal(received[0].headers["x-personal-agent-mail-ingest"], undefined);
+      assert.equal(received[0].body, eml);
+
+      assert.equal((await request({ port: server.address().port, host: "work.example.site", path: "/__personal_agent_internal/mail-ingest", method: "POST", headers: { "content-type": "message/rfc822", "x-personal-agent-envelope-recipient": "agent@work.example.site" }, body: eml })).status, 403);
+      assert.equal((await request({ port: server.address().port, host: "work.example.site", path: "/__personal_agent_internal/mail-ingest", method: "POST", headers: { "content-type": "message/rfc822", "x-personal-agent-mail-ingest": "relay-v1", "x-personal-agent-envelope-recipient": "agent@other.example.site" }, body: eml })).status, 404);
+      assert.equal(received.length, 1);
+    } finally {
+      await close(server);
+    }
+  } finally {
+    await close(bridge);
+    fs.rmSync(dataRoot, { recursive: true, force: true });
+  }
 });
 
 test("route access model gives direct loopback access without weakening tunneled hosts", async () => {

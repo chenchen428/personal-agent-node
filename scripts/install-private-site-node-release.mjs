@@ -9,7 +9,7 @@ import { installPersonalAgentCommand } from "./personal-agent-command.mjs";
 
 const args = parseArgs(process.argv.slice(2));
 const source = path.resolve(args._[0] || "");
-if (!source || !fs.existsSync(source)) throw new Error("Usage: install-private-site-node-release.mjs <release-root> [--install-root <path>] [--data-root <path>]");
+if (!source || !fs.existsSync(source)) throw new Error("Usage: install-private-site-node-release.mjs <release-root> [--install-root <path>] [--data-root <path>] [--domain <domain>]");
 const verifier = path.join(source, "scripts", "verify-private-site-node-dist.mjs");
 if (!fs.existsSync(verifier)) throw new Error("Release verifier is missing");
 const verified = spawnSync(process.execPath, [verifier, source], { encoding: "utf8", timeout: 10 * 60_000 });
@@ -108,6 +108,7 @@ function parseArgs(argv) {
     if (argv[index] === "--install-root") result.installRoot = argv[++index];
     else if (argv[index] === "--data-root") result.dataRoot = argv[++index];
     else if (argv[index] === "--home") result.home = argv[++index];
+    else if (argv[index] === "--domain") result.domain = argv[++index];
     else result._.push(argv[index]);
   }
   return result;

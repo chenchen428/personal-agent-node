@@ -83,6 +83,10 @@ server {
     ssl_certificate $CERT_ROOT/fullchain.cer;
     ssl_certificate_key $CERT_ROOT/privkey.key;
 
+    location = /__personal_agent_relay/mail-ingest {
+        return 404;
+    }
+
     location / {
         proxy_pass http://127.0.0.1:8090;
         proxy_http_version 1.1;

@@ -18,6 +18,7 @@ for (const relative of [
   "infra/edge/wireguard/setup-hub.sh",
   "infra/edge/pki/init-origin-pki.sh",
   "infra/edge/install-self-hosted-relay.sh",
+  "infra/edge/install-self-hosted-mail.sh",
   "infra/nginx/conf.d/05-private-site-edge.conf",
   "registry/site-distribution.json",
   "SHA256SUMS",
