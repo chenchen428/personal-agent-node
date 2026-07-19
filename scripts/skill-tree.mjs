@@ -12,6 +12,7 @@ const skillEntrypoints = {
   capture: 'skills/knowledge-capture/scripts/cli.mjs',
   content: 'skills/content-workbench/scripts/cli.mjs',
   media: 'skills/media-toolkit/scripts/cli.mjs',
+  interior: 'skills/interior-design/scripts/cli.mjs',
 };
 
 const [group = 'help', action, ...rest] = process.argv.slice(2);
@@ -29,6 +30,9 @@ Usage:
   skill-tree content html --input <file.md> --output <file.html>
   skill-tree media inspect --input <image>
   skill-tree media compress --input <image> --output <image.webp> [--quality 80]
+  skill-tree interior validate --input <model.json>
+  skill-tree interior normalize --input <model.json> --output <normalized.json>
+  skill-tree interior page --input <normalized.json> --output <page-dir>
   pa-cli pages upload --file <artifact> --folder <folder> --json
   skill-tree cases verify
 `;

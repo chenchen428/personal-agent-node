@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "skill": "interior-design",
+  "title": "Synthetic two-room concept to interactive 3D Page",
+  "prompt": "Turn a synthetic two-room floor-plan reference into a normalized concept model, a managed isometric still-image plan, and a self-contained rotatable Three.js Page; do not claim survey or BIM precision.",
+  "commands": [
+    "node skills/interior-design/scripts/cli.mjs validate --input test/fixtures/skill-cases/interior-design/model.json --json",
+    "node skills/interior-design/scripts/cli.mjs page --input test/fixtures/skill-cases/interior-design/model.json --output .local/interior-design-case/page --json"
+  ],
+  "artifacts": [
+    { "path": "model.json", "label": "Synthetic normalized concept model" },
+    { "path": "still-prompt.md", "label": "Reproducible isometric image prompt" },
+    { "path": "qa-report.json", "label": "Schema and Page acceptance fixture" }
+  ],
+  "verifiedAt": "2026-07-19",
+  "note": "The fixture is synthetic. Customer drawings and generated case media are never committed to product source."
+}

@@ -1,0 +1,4 @@
+interface:
+  display_name: "室内设计与 3D 户型"
+  short_description: "把户型图转成静态 3D 效果图与可旋转动画 Page"
+  default_prompt: "Use $interior-design to turn my floor plan into a calibrated concept model, a managed isometric image, and an interactive 3D Page."

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "version": 5,
+  "version": 6,
   "updatedAt": "2026-07-19",
   "categories": [
     {
@@ -218,6 +218,7 @@
       "related": [
         "media-toolkit",
         "content-workbench",
+        "interior-design",
         "guizang-social-card-skill",
         "guizang-ppt-skill"
       ]
@@ -394,7 +395,41 @@
         "deep-research",
         "knowledge-capture",
         "social-browser-read",
-        "visual-content"
+        "visual-content",
+        "interior-design"
+      ]
+    },
+    {
+      "name": "interior-design",
+      "directory": "skills/interior-design",
+      "category": "home-living",
+      "maturity": "beta",
+      "risks": [
+        "local-write",
+        "external-generation"
+      ],
+      "security": {
+        "network": "write",
+        "dataClass": "mixed",
+        "outboundData": "content",
+        "externalWrite": false,
+        "requiresAuthorization": true,
+        "untrustedContent": true
+      },
+      "origin": {
+        "kind": "workspace",
+        "license": "Apache-2.0"
+      },
+      "cli": ["interior"],
+      "examples": ["test/fixtures/skill-cases/interior-design/case.json"],
+      "caseRequired": true,
+      "related": [
+        "home-renovation",
+        "visual-content",
+        "media-toolkit",
+        "personal-agent",
+        "frontend-design",
+        "ui-ux-pro-max"
       ]
     },
     {
@@ -559,6 +594,16 @@
       "command": "node skills/media-toolkit/scripts/cli.mjs <inspect|compress>",
       "workspaceCommand": "node scripts/skill-tree.mjs media <inspect|compress>",
       "description": "Inspect and compress raster or SVG assets with local tools."
+    },
+    {
+      "name": "interior",
+      "category": "home-living",
+      "owner": "interior-design",
+      "kind": "skill-script",
+      "entrypoint": "skills/interior-design/scripts/cli.mjs",
+      "command": "node skills/interior-design/scripts/cli.mjs <validate|normalize|page>",
+      "workspaceCommand": "node scripts/skill-tree.mjs interior <validate|normalize|page>",
+      "description": "Validate and normalize concept floor-plan models and render self-contained Three.js Pages."
     },
     {
       "name": "personal-agent",

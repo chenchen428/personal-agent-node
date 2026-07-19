@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "fixture": "synthetic-two-room",
+  "checks": {
+    "schemaValid": true,
+    "conceptStatusExplicit": true,
+    "privateCustomerInputsAbsent": true,
+    "pageSelfContained": true,
+    "remoteAssetsAbsent": true,
+    "growthAndThreeCameraSegments": true,
+    "freeViewControls": true,
+    "reducedMotionFallback": true
+  }
+}

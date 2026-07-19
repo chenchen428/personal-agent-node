@@ -1,6 +1,6 @@
 ---
 name: visual-content
-description: Plan and create coherent visual packages from source material, including article covers and illustrations, standalone infographics, technical SVG diagrams, slide-deck images, educational comics, and social image series. Use when the user asks for 配图, 封面, 信息图, 架构图/流程图, slides/PPT visuals, 知识漫画, 小红书图片, visual summary, or a consistent multi-asset visual system.
+description: Plan, generate, inspect, and deliver managed visual assets from source material, including direct 生图/generate image requests, article covers and illustrations, standalone infographics, technical SVG diagrams, slide-deck images, educational comics, social image series, and interior renders. Use when the user asks for 配图、封面、生成图片、生图、信息图、架构图/流程图、slides/PPT visuals、知识漫画、小红书图片、visual summary, or a consistent multi-asset visual system.
 ---
 
 # Visual Content
@@ -75,6 +75,10 @@ Check dimensions, aspect ratio, cropping, text legibility, factual labels, consi
 
 Use `$media-toolkit` for compression or format conversion after the creative output passes QA.
 
+### 6. Manage And Attach
+
+Read [references/managed-image-delivery.md](references/managed-image-delivery.md). Register accepted raster output as a managed object, verify its metadata and readiness, and let the main Agent select its `obj_` ID through the final-reply attachment protocol. Do not make a URL the default image delivery and do not let a Worker send a channel notification.
+
 ## Completion Contract
 
-Deliver the outline, prompt files for raster assets, final assets, dimensions, generation method, and QA result. Name failed or intentionally omitted assets. Preserve source files and intermediate prompts so one asset can be regenerated without recreating the whole set.
+Deliver the outline, prompt files for raster assets, final assets, dimensions, generation method, QA result, managed object IDs, purpose, and alt text. Name failed or intentionally omitted assets. Preserve source files and intermediate prompts so one asset can be regenerated without recreating the whole set.

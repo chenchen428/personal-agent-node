@@ -6,7 +6,7 @@
 - Writing & Content: article structure, editing, translation, and HTML preparation.
 - Visual & Media: visual planning, deterministic media work, Guizang social cards, and Guizang web presentations.
 - Travel & Location: source-backed, feasible, printable travel guidebooks.
-- Home & Living: traceable renovation briefs, budgets, materials, visual references, and stage gates.
+- Home & Living: traceable renovation decisions plus calibrated 2D-to-3D concept models, managed stills, and interactive floor-plan Pages.
 - Product Engineering: distinctive frontend direction and a searchable UI/UX design database.
 - Publishing & Automation: governed local Personal Agent operations.
 
@@ -20,11 +20,11 @@ These are customer capabilities and belong only to the Node Harness. The private
 | Writing & Content | `skills/content-workbench` |
 | Visual & Media | `skills/visual-content`, `skills/media-toolkit`, `skills/guizang-social-card-skill`, `skills/guizang-ppt-skill` |
 | Travel & Location | `skills/travel-guidebook` |
-| Home & Living | `skills/home-renovation` |
+| Home & Living | `skills/home-renovation`, `skills/interior-design` |
 | Product Engineering | `skills/frontend-design`, `skills/ui-ux-pro-max` |
 | Publishing & Automation | `skills/personal-agent` |
 
-The catalog records exact upstream revisions, licenses, risks, security boundaries, related skills, and reproducible cases. The installed release seeds the complete `skills/` tree into the customer's mutable Workspace.
+The catalog records exact upstream revisions, licenses, risks, security boundaries, related skills, and reproducible cases. The installed release seeds the complete `skills/` tree—including bundled local Three.js Page assets—into the customer's mutable Workspace on both new installation and upgrade.
 
 ## Skill ownership and evolution principles
 
