@@ -60,15 +60,19 @@ pub fn run() {
             let _ = window.set_focus();
         }))
         .setup(move |app| {
-            let runtime = RuntimeLifecycle::from_environment()?;
-            runtime.start()?;
+            let runtime = RuntimeLifecycle::from_environment(initial_handoff.is_some())?;
+            if initial_handoff.is_none() {
+                runtime.start()?;
+            }
             RUNTIME.set(runtime).map_err(|_| {
                 io::Error::new(
                     io::ErrorKind::AlreadyExists,
                     "runtime lifecycle is already initialized",
                 )
             })?;
-            start_runtime_watchdog();
+            if initial_handoff.is_none() {
+                start_runtime_watchdog();
+            }
 
             if let Some((job_id, nonce)) = initial_handoff.as_ref() {
                 accept_update_handoff(app.handle(), job_id, nonce)?;
@@ -310,7 +314,7 @@ struct RuntimeLifecycle {
 }
 
 impl RuntimeLifecycle {
-    fn from_environment() -> io::Result<Self> {
+    fn from_environment(allow_incomplete_runtime_for_handoff: bool) -> io::Result<Self> {
         let inferred_install_root = infer_install_root();
         let installed_runtime = inferred_install_root.is_some();
         let install_root = inferred_install_root
@@ -346,7 +350,7 @@ impl RuntimeLifecycle {
             .join("runtime")
             .join(if cfg!(windows) { "node.exe" } else { "node" });
         let cli = current.join("core/runtime/bin/private-site.mjs");
-        if !node.is_file() || !cli.is_file() {
+        if !allow_incomplete_runtime_for_handoff && (!node.is_file() || !cli.is_file()) {
             return Err(io::Error::new(
                 io::ErrorKind::NotFound,
                 "Personal Agent bundled runtime is incomplete",
