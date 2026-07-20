@@ -36,6 +36,7 @@ jobs:
       - run: npm test
       - run: npm run check
       - run: node scripts/release-package.mjs --tag "${GITHUB_REF_NAME}" --stage dist/release-payload --output dist/source-release
+      - run: node scripts/build-self-hosted-relay-installer.mjs --tag "${GITHUB_REF_NAME}" --output dist/relay-release
       - uses: actions/upload-artifact@v4
         with:
           name: immutable-node-payload
@@ -47,6 +48,12 @@ jobs:
         with:
           name: source-release-metadata
           path: dist/source-release
+          if-no-files-found: error
+          retention-days: 7
+      - uses: actions/upload-artifact@v4
+        with:
+          name: relay-release-assets
+          path: dist/relay-release
           if-no-files-found: error
           retention-days: 7
 
@@ -179,6 +186,10 @@ jobs:
         with:
           name: source-release-metadata
           path: dist/source-release
+      - uses: actions/download-artifact@v4
+        with:
+          name: relay-release-assets
+          path: dist/release
       - name: Assemble customer-facing assets and private release evidence
         shell: bash
         run: |

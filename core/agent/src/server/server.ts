@@ -1849,52 +1849,65 @@ function platformConnectionStatuses() {
   const customServiceReady = customTunnel?.state === "ready";
   const customSiteBound = Boolean(customSite && domainBindingVerification.isVerified("sites", "custom"));
   const customMailBound = Boolean(customMail && domainBindingVerification.isVerified("mail", "custom"));
+  const customSiteReady = customSiteBound && customServiceReady;
+  const customMailReady = customMailBound && customServiceReady;
   const siteBound = !customSite && services.publicDomain.ready && domainBindingVerification.isVerified("sites");
   const mailBound = !customMail && services.agentMail.ready && domainBindingVerification.isVerified("mail");
   const domain = services.publicDomain.value || "";
   const mailAddress = services.agentMail.value || "";
   const customSiteVerification = domainBindingVerification.status("sites", "custom");
   const customMailVerification = domainBindingVerification.status("mail", "custom");
+  const relayInstallerUrl = selfHostedRelayInstallerUrl();
   const sites = customSite ? {
-    state: customSiteBound ? "connected" : "degraded",
+    state: customSiteReady ? "connected" : "degraded",
     primaryAction: "清空配置",
-    statusLabel: customSiteBound ? "自定义域名已生效" : "等待自定义域名验证",
+    statusLabel: customSiteReady ? "自定义域名已生效" : customServiceReady ? "等待自定义域名验证" : "Relay 连接恢复中",
     runtime: [
       { label: "自定义域名", value: customSite.domain },
       { label: "Relay 连接", value: customServiceReady ? "已连接" : "等待连接" },
-      { label: "公网访问", value: customSiteBound ? `https://${customSite.domain}` : "等待 DNS、TLS 与内容验证" },
+      { label: "公网访问", value: customSiteReady ? `https://${customSite.domain}` : customSiteBound ? "Relay 恢复后可用" : "等待 DNS、TLS 与内容验证" },
     ],
-    details: { platformDomainBound: false, bindingMode: "custom", customDomain: customSite.domain, customPublicAddress: customSite.publicAddress, customServiceReady, publicReady: customSiteBound, publicStatus: customSiteBound ? "ready" : customServiceReady ? "unavailable" : "tunnel-offline", publicOrigin: customSiteBound ? `https://${customSite.domain}` : "", domainVerification: customSiteVerification },
-  } : buildSitesConnectionStatus({
+    details: { platformDomainBound: false, bindingMode: "custom", customDomain: customSite.domain, customPublicAddress: customSite.publicAddress, customServiceReady, customRelayCredentialPrepared: true, customRelayInstallerUrl: relayInstallerUrl, publicReady: customSiteReady, publicStatus: customSiteReady ? "ready" : customServiceReady ? "unavailable" : "tunnel-offline", publicOrigin: customSiteReady ? `https://${customSite.domain}` : "", domainVerification: customSiteVerification },
+  } : withRelayInstaller(buildSitesConnectionStatus({
     domainReady: services.publicDomain.ready,
     domain,
     verified: siteBound,
     external,
     verification: domainBindingVerification.status("sites", "platform"),
-  });
+  }), relayInstallerUrl);
   return {
     sites,
     mail: customMail ? {
-      state: "connected",
+      state: customMailReady ? "connected" : "degraded",
       primaryAction: "清空配置",
-      statusLabel: customMailBound ? "自定义邮箱已生效" : "等待自定义邮箱验证",
+      statusLabel: customMailReady ? "自定义邮箱已生效" : customServiceReady ? "等待自定义邮箱验证" : "转发连接恢复中",
       runtime: [
         { label: "自定义邮箱地址", value: `agent@${customMail.domain}` },
         { label: "转发服务", value: customServiceReady ? "已连接" : "等待准备" },
-        { label: "公网收件", value: customMailBound ? "测试邮件已在本机收到" : "等待 MX 与真实收件验证" },
+        { label: "公网收件", value: customMailReady ? "测试邮件已在本机收到" : customMailBound ? "转发恢复后可用" : "等待 MX 与真实收件验证" },
       ],
-      details: { platformDomainBound: false, bindingMode: "custom", customDomain: customMail.domain, customPublicAddress: customMail.publicAddress, customServiceReady, mailAddress: `agent@${customMail.domain}`, domainVerification: customMailVerification },
+      details: { platformDomainBound: false, bindingMode: "custom", customDomain: customMail.domain, customPublicAddress: customMail.publicAddress, customServiceReady, customRelayCredentialPrepared: true, customRelayInstallerUrl: relayInstallerUrl, mailAddress: `agent@${customMail.domain}`, domainVerification: customMailVerification },
     } : {
-      state: "connected",
+      state: mailBound ? "connected" : "degraded",
       primaryAction: mailAddress ? "清空配置" : "配置",
-      statusLabel: mailBound ? "已验证平台邮箱" : "本地已连接",
+      statusLabel: mailBound ? "已验证平台邮箱" : services.agentMail.ready ? "等待平台邮箱验证" : "未生效",
       runtime: [
         { label: "平台邮箱地址", value: mailAddress || "尚未分配" },
         { label: "公网收件", value: mailBound ? "测试邮件已在本机收到" : services.agentMail.ready ? "等待绑定验证" : "分配域名后可用" },
       ],
-      details: { platformDomainBound: mailBound, bindingMode: mailBound ? "platform" : "", platformDomain: domain, mailAddress, domainVerification: domainBindingVerification.status("mail", "platform") },
+      details: { platformDomainBound: mailBound, bindingMode: mailBound ? "platform" : "", platformDomain: domain, customRelayInstallerUrl: relayInstallerUrl, mailAddress, domainVerification: domainBindingVerification.status("mail", "platform") },
     },
   };
+}
+
+function selfHostedRelayInstallerUrl() {
+  const version = String(process.env.PERSONAL_AGENT_VERSION || readJsonFile(path.join(config.workspaceRoot, "package.json"))?.version || "").trim();
+  if (!/^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/.test(version)) return "";
+  return `https://github.com/chenchen428/personal-agent-node/releases/download/v${encodeURIComponent(version)}/personal-agent-relay-install.sh`;
+}
+
+function withRelayInstaller(connection: any, installerUrl: string) {
+  return { ...connection, details: { ...(connection.details || {}), customRelayInstallerUrl: installerUrl } };
 }
 
 async function buildClientActivity(url: URL) {

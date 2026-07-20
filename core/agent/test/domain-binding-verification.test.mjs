@@ -144,7 +144,7 @@ test("custom Site binding uses the three-step SOP and verifies the final custom 
   });
   const started = verifier.start("sites", { binding: "custom" });
   assert.equal(started.binding, "custom");
-  assert.deepEqual(started.steps.map((step) => step.label), ["启动转发服务", "配置自定义域名", "验证并生效"]);
+  assert.deepEqual(started.steps.map((step) => step.label), ["准备公网服务器", "配置自定义域名", "验证并生效"]);
   await verifier.running.get("sites");
   assert.equal(verifier.status("sites", "custom").phase, "verified");
   assert.equal(requested, "https://agent.example.net/public/uploads/domain-verification/index.html");

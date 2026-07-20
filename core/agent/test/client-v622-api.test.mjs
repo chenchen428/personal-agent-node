@@ -83,6 +83,13 @@ test("V6.22 read-only client API is local, searchable and self-contained", async
   assert.ok(Date.now() - connectionsStartedAt < 1_000, "connections must not wait for browser or network probes");
   assert.equal(Array.isArray(connections.connections), true);
   assert.equal(connections.connections.some((connection) => connection.id === "dingtalk"), true);
+  for (const id of ["mail", "sites"]) {
+    const connection = connections.connections.find((candidate) => candidate.id === id);
+    assert.equal(connection.state, "degraded");
+    assert.equal(connection.statusLabel, "未生效");
+    assert.equal(connection.tone, "warning");
+    assert.match(connection.details.customRelayInstallerUrl, /github\.com\/chenchen428\/personal-agent-node\/releases\/download\/v0\.2\.0-beta\.22\/personal-agent-relay-install\.sh$/);
+  }
   assert.equal((await get(port, token, "/api/connections/dingtalk/status")).connection.state, "needs_setup");
   assert.equal(await status(port, token, "/api/mobile/tasks/missing-task"), 404);
 

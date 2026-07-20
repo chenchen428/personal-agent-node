@@ -6,11 +6,17 @@ and origin mTLS. It does not own channel credentials, messages, files, sessions,
 or application databases.
 
 The product-level custom-domain SOP uses `self-hosted-relay.mjs` instead of the
-legacy network tunnel. The Relay authenticates one outbound Node connection with
-a random bearer key (only its SHA-256 digest is stored on the server), reuses the
+legacy network tunnel. A fresh server install generates a random bearer key and
+shows it once for the user to paste into the client; only its SHA-256 digest is
+stored on the server. The Relay authenticates one outbound Node connection, reuses the
 `pa-reverse-ws-v1` application protocol, and needs no WireGuard, fixed tunnel IP,
 customer-machine administrator rights, or platform quota. The low-level Edge
 registry and WireGuard tooling below remain for explicit legacy migration.
+
+The public Node GitHub Release carries `personal-agent-relay-install.sh`, a
+self-extracting, version-bound server asset containing the bundled Relay and the
+installer. It is part of the public checksum and signing set. The desktop shows
+the asset URL for its own version rather than a mutable branch URL.
 
 For custom-domain mail, a user-managed Postfix instance may use
 `install-self-hosted-mail.sh`. It accepts only the exact configured recipients

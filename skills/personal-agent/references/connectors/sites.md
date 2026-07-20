@@ -21,7 +21,7 @@
 | `status` | R0 | 检查本机访问和穿透状态。 |
 | `use-platform-domain` | R2 | 通过 personal-agent.cn 限时认证，持续检查直至取得平台域名并建立安全穿透。 |
 | `remove-platform-domain` | R2 | 移除本机的平台域名与穿透绑定并确认状态回调；保留 Workspace 数据和平台登记。 |
-| `use-custom-domain` | R2 | 只提交并批准域名，生成全部 Space 的主域名/子域名映射、单密钥 WSS Relay 连接与检测契约；服务器和 DNS 由用户按引导准备。 |
+| `use-custom-domain` | R2 | 复制当前 GitHub Release 的 Relay 安装命令，再提交域名和服务器首次安装显示的连接密钥，生成全部 Space 的主域名/子域名映射与检测契约；客户端保存明文，服务器只保存摘要。 |
 | `verify-custom-domain` | R0 | 检查 DNS、TLS、加密转发和最终 HTTPS 内容证据，全部通过后生效。 |
 | `remove-custom-domain` | R2 | 移除本机自定义域名绑定并保留 Site、Workspace 和本机能力。 |
 | `tunnel-status` | R0 | 读取脱敏穿透健康状态。 |

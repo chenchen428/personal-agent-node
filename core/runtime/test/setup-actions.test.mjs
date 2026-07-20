@@ -197,10 +197,11 @@ test('custom-domain R2 plan binds only the approved domain and kind', async () =
   try {
     const { config } = initializeSite({ dataRoot, domain: 'personal-agent.local' });
     const operations = createOperationStore({ dataRoot: config.dataRoot, randomUUID: () => '00000000-0000-4000-8000-000000000099' });
-    const input = { kind: 'sites', domain: 'agent.example.net' };
+    const input = { kind: 'sites', domain: 'agent.example.net', relayToken: 'a'.repeat(43) };
     const plan = planSetupAction({ actionId: 'connectivity.custom-domain-start', operations, dataRoot: config.dataRoot, input });
     assert.equal(plan.risk, 'R2');
-    assert.match(plan.stateFingerprint, /sites:agent\.example\.net$/);
+    assert.match(plan.stateFingerprint, /sites:agent\.example\.net:[a-f0-9]{64}$/);
+    assert.doesNotMatch(plan.stateFingerprint, new RegExp(input.relayToken));
     operations.approve(plan.id, { digest: plan.digest, actor: { kind: 'human', authenticated: true, loopback: true, channel: 'local-console' } });
     await assert.rejects(operations.execute(plan.id, {
       digest: plan.digest,

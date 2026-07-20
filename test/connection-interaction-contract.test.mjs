@@ -48,7 +48,12 @@ test("connection UI separates OpenCLI browser reads from QR and account authoriz
   assert.match(domainEntryMenu, /DropdownMenuContent/);
   assert.match(domainEntryMenu, /onSelect=\{onPlatform\}/);
   assert.match(domainEntryMenu, /onSelect=\{onCustom\}/);
-  assert.match(customDomainSop, /启动转发服务/);
+  assert.match(customDomainSop, /准备公网服务器/);
+  assert.match(customDomainSop, /type="password"/);
+  assert.match(customDomainSop, /relayToken/);
+  assert.match(customDomainSop, /personal-agent-relay-install\.sh/);
+  assert.match(customDomainSop, /navigator\.clipboard\.writeText/);
+  assert.match(customDomainSop, /复制命令/);
   assert.match(customDomainSop, /配置自定义域名/);
   assert.match(customDomainSop, /验证并生效/);
   assert.match(customDomainSop, /connectivity\.custom-domain-start/);
@@ -59,7 +64,7 @@ test("connection UI separates OpenCLI browser reads from QR and account authoriz
   assert.match(domainRuntime, /查看验证发布/);
   assert.match(domainRuntime, /查看测试收到的邮件/);
   assert.match(domainRuntime, /createVerificationSitePublication/);
-  assert.match(domainRuntime, /启动转发服务/);
+  assert.match(domainRuntime, /准备公网服务器/);
   assert.match(domainRuntime, /binding === "custom"/);
   assert.match(sitePublication, /page-thumbnail-desktop\.png/);
   assert.match(sitePublication, /page-thumbnail-mobile\.png/);
