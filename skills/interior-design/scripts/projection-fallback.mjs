@@ -4,7 +4,11 @@ export function startProjectionFallback(canvas, model) {
   const context = canvas.getContext('2d');
   let angle = -0.72, zoom = 1, focus = '', mode = 'overall', dragging = false, lastX = 0;
   const bounds = model.project.bounds || calculateBounds(model.rooms);
-  const visible = (item) => mode === 'lower' ? (item.levelId || 'lower') === 'lower' : mode === 'upper' ? item.levelId === 'upper' : true;
+  const visible = (item) => {
+    const view = model.views?.find((entry) => entry.id === mode);
+    if (view) return !item.id || view.roomIds.includes(item.id) || view.roomIds.includes(item.roomId);
+    return mode === 'lower' ? (item.levelId || 'lower') === 'lower' : mode === 'upper' ? item.levelId === 'upper' : true;
+  };
   const render = () => {
     const ratio = Math.min(devicePixelRatio, 2), width = Math.max(1, canvas.clientWidth), height = Math.max(1, canvas.clientHeight);
     canvas.width = width * ratio; canvas.height = height * ratio; context.setTransform(ratio, 0, 0, ratio, 0, 0);
@@ -17,10 +21,14 @@ export function startProjectionFallback(canvas, model) {
       const points = entry.polygon.map((point) => project(point, entry.elevation || 0)); context.beginPath(); points.forEach(([x, y], index) => index ? context.lineTo(x, y) : context.moveTo(x, y)); context.closePath();
       context.fillStyle = model.materials.find((material) => material.id === entry.material)?.color || '#c9a77b'; context.fill(); context.lineWidth = 2; context.strokeStyle = '#f3f1eb'; context.stroke();
     }
-    for (const wall of model.walls.filter(visible)) {
+    for (const wall of model.walls.filter((item) => model.views ? mode === 'overall' : visible(item))) {
       if (mode === 'section' && wall.sectionHidden) continue;
       const base = wall.elevation || 0, a = project(wall.from, base + wall.height * 0.7), b = project(wall.to, base + wall.height * 0.7);
       context.beginPath(); context.moveTo(...a); context.lineTo(...b); context.lineWidth = Math.max(3, wall.thickness * scale); context.strokeStyle = '#f3f1eb'; context.stroke();
+    }
+    const view = model.views?.find((entry) => entry.id === mode);
+    if (view?.showCirculation) for (const route of model.circulationPaths || []) {
+      const points = route.points.map((point) => project(point, 0.08)); context.beginPath(); points.forEach(([x, y], index) => index ? context.lineTo(x, y) : context.moveTo(x, y)); context.lineWidth = 3; context.strokeStyle = route.color; context.stroke();
     }
   };
   new ResizeObserver(render).observe(canvas);
@@ -29,5 +37,5 @@ export function startProjectionFallback(canvas, model) {
   canvas.addEventListener('pointerup', () => { dragging = false; });
   canvas.addEventListener('wheel', (event) => { event.preventDefault(); zoom = Math.max(0.65, Math.min(2.2, zoom - event.deltaY * 0.001)); render(); }, { passive: false });
   render();
-  return { update(view, roomId, displayMode) { focus = roomId; mode = displayMode; if (view === 'top') angle = 0; else if (view === 'walk') angle = -1.25; render(); }, setLighting() {} };
+  return { update(view, roomId, displayMode) { focus = roomId; mode = displayMode; if (view === 'top') angle = 0; else if (view === 'walk') angle = -1.25; render(); }, setRevealProgress() {}, setAnnotations() {}, setLighting() {} };
 }

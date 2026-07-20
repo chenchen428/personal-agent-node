@@ -1,4 +1,4 @@
-:root{--paper:#f5f4ef;--panel:#eff0ec;--ink:#242925;--line:#d3d6cf;--moss:#315f4a;--terra:#9b5b42;--muted:#687169;font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;color:var(--ink);background:var(--paper)}
+:root{--paper:#f2f0eb;--panel:#e9e8e3;--ink:#252a27;--line:#cfd2cc;--moss:#294f45;--terra:#9a5546;--muted:#687169;font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;color:var(--ink);background:var(--paper)}
 *{box-sizing:border-box}
 html,body,#app,#viewer-shell{width:100%;height:100%;margin:0;overflow:hidden}
 body{overscroll-behavior:none}
@@ -37,17 +37,14 @@ button:focus-visible,select:focus-visible{outline:3px solid var(--terra);outline
 #fallback[hidden]{display:none}
 #fallback strong{font-size:10px}
 #fallback span{color:var(--muted);font-size:9px;line-height:1.45}
-.orientation-gate{position:fixed;z-index:1000;inset:0;display:grid;place-items:center;padding:max(22px,env(safe-area-inset-top)) max(18px,env(safe-area-inset-right)) max(22px,env(safe-area-inset-bottom)) max(18px,env(safe-area-inset-left));background:rgba(31,35,31,.86)}
-.orientation-gate[hidden]{display:none}
-.orientation-dialog{width:min(100%,410px);border:1px solid #9da49d;padding:28px;background:#f8f7f3;color:var(--ink);box-shadow:0 24px 64px rgba(0,0,0,.28)}
-.orientation-icon{width:60px;height:60px;fill:none;stroke:var(--moss);stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
-.orientation-kicker{margin:18px 0 8px;color:var(--moss);font:700 10px ui-monospace,monospace;letter-spacing:.12em;text-transform:uppercase}
-.orientation-dialog h1{margin:0;font:500 24px/1.25 Georgia,"Times New Roman",serif}
-.orientation-dialog>p:not(.orientation-kicker){margin:12px 0 0;color:var(--muted);font-size:13px;line-height:1.65}
-.orientation-status{min-height:22px}
-.orientation-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:22px}
-.orientation-actions button{min-height:48px;border:1px solid var(--ink);padding:0 14px;background:var(--ink);color:#fff;font-size:12px;font-weight:650}
-.orientation-actions .secondary{background:transparent;color:var(--ink)}
+.concept-note{position:absolute;top:72px;right:18px;width:280px;border-left:3px solid var(--terra);padding:12px 14px;background:rgba(249,248,244,.92);box-shadow:0 8px 22px rgba(35,40,35,.09)}
+.concept-note>span{color:var(--terra);font:700 9px ui-monospace,monospace;letter-spacing:.1em}
+.concept-note strong{display:block;margin-top:5px;font:500 16px Georgia,"Times New Roman",serif}
+.concept-note p{margin:7px 0;color:var(--muted);font-size:10px;line-height:1.55}
+.concept-note ul{margin:7px 0 0;padding-left:16px;color:#4f5851;font-size:9px;line-height:1.5}
+.annotation-control{position:absolute;left:14px;bottom:16px;display:flex;align-items:center;gap:8px;min-height:44px;border:1px solid var(--line);padding:0 8px 0 12px;background:rgba(249,248,244,.95);box-shadow:0 8px 22px rgba(35,40,35,.1)}
+.annotation-control span{color:var(--muted);font-size:9px;font-weight:700;letter-spacing:.08em}
+.annotation-control select{min-width:68px;height:44px;border:0;background:transparent;color:var(--ink);font-size:10px}
 @media(max-width:900px),(orientation:landscape) and (max-height:620px){
   .top{height:60px;grid-template-columns:auto minmax(120px,.65fr) minmax(220px,1fr) auto;gap:10px;padding:8px max(10px,env(safe-area-inset-right)) 8px max(10px,env(safe-area-inset-left))}
   .mark{width:44px;height:44px}
@@ -59,6 +56,8 @@ button:focus-visible,select:focus-visible{outline:3px solid var(--terra);outline
   .stage{height:calc(100% - 60px);display:block}
   .rooms{display:none}
   .gesture{display:none}
+  .concept-note{display:none}
+  .annotation-control{left:max(10px,env(safe-area-inset-left));bottom:max(62px,calc(env(safe-area-inset-bottom) + 62px));min-height:44px}
   .level-tools{top:10px;left:max(10px,env(safe-area-inset-left));max-width:calc(100% - 20px);overflow-x:auto}
   .level-tools button{min-width:62px;min-height:44px;padding:0 9px;font-size:9px}
   .views{right:max(10px,env(safe-area-inset-right));bottom:max(9px,env(safe-area-inset-bottom));left:max(10px,env(safe-area-inset-left));justify-content:stretch}
@@ -70,7 +69,7 @@ button:focus-visible,select:focus-visible{outline:3px solid var(--terra);outline
   .status{display:none}
   .mobile-room{grid-column:1/-1}
   .stage{height:calc(100% - 108px)}
-  .portrait-allowed .level-tools{max-width:calc(100% - 20px)}
+  .level-tools{max-width:calc(100% - 20px)}
 }
 @media(max-width:520px){
   .identity{display:none}

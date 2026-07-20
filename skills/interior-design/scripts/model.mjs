@@ -1,5 +1,4 @@
 const hex = /^#[0-9a-f]{6}$/i;
-
 export function validateModel(model) {
   const errors = [];
   if (!model || typeof model !== 'object') return ['model must be an object'];
@@ -12,18 +11,16 @@ export function validateModel(model) {
   const collections = ['rooms', 'walls', 'openings', 'furniture', 'materials'];
   for (const name of collections) if (!Array.isArray(model[name])) errors.push(`${name} must be an array`);
   if (errors.length) return errors;
-
   const levelIds = validateLevels(model.levels, errors);
   const roomIds = ids(model.rooms, 'rooms', errors);
   const wallIds = ids(model.walls, 'walls', errors);
   ids(model.openings, 'openings', errors);
-  ids(model.furniture, 'furniture', errors);
+  const furnitureIds = ids(model.furniture, 'furniture', errors);
   const materialIds = ids(model.materials, 'materials', errors);
   const levelReference = (item, label) => {
     if (item.levelId !== undefined && !levelIds.has(item.levelId)) errors.push(`${label}: levelId does not resolve`);
     if (item.elevation !== undefined && !Number.isFinite(item.elevation)) errors.push(`${label}: elevation must be finite`);
   };
-
   for (const room of model.rooms) {
     validatePolygon(room.polygon, `room ${room.id}: polygon`, errors);
     finitePositive(room.height, `room ${room.id}: height`, errors);
@@ -43,6 +40,7 @@ export function validateModel(model) {
     finiteRange(opening.offset, 0, 1, `opening ${opening.id}: offset`, errors);
     finitePositive(opening.width, `opening ${opening.id}: width`, errors);
     finitePositive(opening.height, `opening ${opening.id}: height`, errors);
+    if (opening.roomId !== undefined && !roomIds.has(opening.roomId)) errors.push(`opening ${opening.id}: roomId does not resolve`);
   }
   for (const item of model.furniture) {
     if (!roomIds.has(item.roomId)) errors.push(`furniture ${item.id}: roomId does not resolve`);
@@ -56,8 +54,11 @@ export function validateModel(model) {
     if (!hex.test(material.color || '')) errors.push(`material ${material.id}: color must be #RRGGBB`);
     finiteRange(material.roughness, 0, 1, `material ${material.id}: roughness`, errors);
     if (material.opacity !== undefined) finiteRange(material.opacity, 0, 1, `material ${material.id}: opacity`, errors);
+    if (material.metalness !== undefined) finiteRange(material.metalness, 0, 1, `material ${material.id}: metalness`, errors);
+    if (material.pattern !== undefined && !['wood', 'stone', 'fabric', 'matte'].includes(material.pattern)) errors.push(`material ${material.id}: pattern is invalid`);
   }
   validateVerticalElements(model, { errors, levelIds, materialIds, roomIds });
+  validateDesignViews(model, { errors, roomIds, furnitureIds });
   validateConceptAssertions(model, errors);
   if (!['day', 'evening'].includes(model.lighting?.mode)) errors.push('lighting.mode is invalid');
   finiteRange(model.lighting?.ambient, 0, 3, 'lighting.ambient', errors);
@@ -101,8 +102,11 @@ export function normalizeModel(input) {
   for (const voidItem of model.voids || []) { voidItem.polygon = voidItem.polygon.map(map); voidItem.bottomElevation = vertical(voidItem.bottomElevation); voidItem.height = vertical(voidItem.height); }
   for (const stair of model.stairs || []) { stair.start = map(stair.start); stair.end = map(stair.end); stair.width = vertical(stair.width); stair.rise = vertical(stair.rise); }
   for (const railing of model.railings || []) { railing.points = railing.points.map(map); railing.elevation = vertical(railing.elevation); railing.height = vertical(railing.height); }
+  for (const route of model.circulationPaths || []) route.points = route.points.map(map);
+  for (const annotation of model.annotations || []) annotation.position = map(annotation.position);
   if (model.assertions?.doubleHeightM !== undefined) model.assertions.doubleHeightM = vertical(model.assertions.doubleHeightM);
   if (model.assertions?.maxStandardLowerHeight !== undefined) model.assertions.maxStandardLowerHeight = vertical(model.assertions.maxStandardLowerHeight);
+  if (model.assertions?.maxRoomHeight !== undefined) model.assertions.maxRoomHeight = vertical(model.assertions.maxRoomHeight);
   model.project.scale.normalizedToMetres = true;
   model.project.scale.metresPerUnit = 1;
   const normalizedPoints = coordinatePoints.map(map);
@@ -167,6 +171,12 @@ function validateConceptAssertions(model, errors) {
   const rules = model.assertions;
   if (rules === undefined) return;
   if (!rules || typeof rules !== 'object' || Array.isArray(rules)) { errors.push('assertions must be an object when present'); return; }
+  if (rules.singleLevelOnly) {
+    if ((model.levels || []).length > 1) errors.push('assertions.singleLevelOnly forbids multiple levels');
+    for (const name of ['slabs', 'voids', 'stairs', 'railings']) if ((model[name] || []).length) errors.push(`assertions.singleLevelOnly forbids ${name}`);
+    if (Number.isFinite(rules.maxRoomHeight)) for (const room of model.rooms) if (room.height > rules.maxRoomHeight) errors.push(`room ${room.id}: height exceeds assertions.maxRoomHeight`);
+    return;
+  }
   const targetId = rules.singleDoubleHeightRoomId;
   const lowerRooms = model.rooms.filter((room) => effectiveLevelId(room) === 'lower');
   const target = lowerRooms.find((room) => room.id === targetId);
@@ -200,6 +210,32 @@ function validateConceptAssertions(model, errors) {
   if (rules.requireStairConnectsLevels && !(model.stairs || []).some((stair) => stair.fromLevelId === 'lower' && stair.toLevelId === 'upper')) errors.push('assertions require a stair connecting lower and upper');
 }
 
+function validateDesignViews(model, { errors, roomIds, furnitureIds }) {
+  if (model.views !== undefined && (!Array.isArray(model.views) || !model.views.length)) errors.push('views must be a non-empty array when present');
+  ids(model.views || [], 'views', errors);
+  for (const view of model.views || []) {
+    if (!view.label) errors.push(`view ${view.id}: label is required`);
+    if (!Array.isArray(view.roomIds) || view.roomIds.some((id) => !roomIds.has(id))) errors.push(`view ${view.id}: roomIds must resolve`);
+    if (view.furnitureIds !== undefined && (!Array.isArray(view.furnitureIds) || view.furnitureIds.some((id) => !furnitureIds.has(id)))) errors.push(`view ${view.id}: furnitureIds must resolve`);
+    if (view.showCirculation !== undefined && typeof view.showCirculation !== 'boolean') errors.push(`view ${view.id}: showCirculation must be boolean`);
+  }
+  if (model.circulationPaths !== undefined && !Array.isArray(model.circulationPaths)) errors.push('circulationPaths must be an array when present');
+  ids(model.circulationPaths || [], 'circulationPaths', errors);
+  for (const route of model.circulationPaths || []) {
+    if (!route.name) errors.push(`circulation path ${route.id}: name is required`);
+    if (!Array.isArray(route.points) || route.points.length < 2 || route.points.some((point) => !point2(point))) errors.push(`circulation path ${route.id}: points need at least 2 valid points`);
+    if (!hex.test(route.color || '')) errors.push(`circulation path ${route.id}: color must be #RRGGBB`);
+  }
+  if (model.annotations !== undefined && !Array.isArray(model.annotations)) errors.push('annotations must be an array when present');
+  ids(model.annotations || [], 'annotations', errors);
+  for (const annotation of model.annotations || []) {
+    if (!['dimension', 'direction', 'furniture', 'opening'].includes(annotation.category)) errors.push(`annotation ${annotation.id}: category is invalid`);
+    if (!annotation.text || !point2(annotation.position)) errors.push(`annotation ${annotation.id}: text and position are required`);
+    if (annotation.roomId !== undefined && !roomIds.has(annotation.roomId)) errors.push(`annotation ${annotation.id}: roomId does not resolve`);
+    if (annotation.evidence !== undefined && !['visible', 'dimension-chain', 'estimated'].includes(annotation.evidence)) errors.push(`annotation ${annotation.id}: evidence is invalid`);
+  }
+}
+
 function collectPlanPoints(model) {
   return [
     ...model.rooms.flatMap((room) => room.polygon),
@@ -208,6 +244,8 @@ function collectPlanPoints(model) {
     ...(model.voids || []).flatMap((voidItem) => voidItem.polygon),
     ...(model.stairs || []).flatMap((stair) => [stair.start, stair.end]),
     ...(model.railings || []).flatMap((railing) => railing.points),
+    ...(model.circulationPaths || []).flatMap((route) => route.points),
+    ...(model.annotations || []).map((annotation) => annotation.position),
   ];
 }
 

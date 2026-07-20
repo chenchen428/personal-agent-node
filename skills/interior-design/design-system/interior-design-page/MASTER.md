@@ -5,9 +5,9 @@ Generated from the UI/UX Pro Max built-in priority rules because the host has no
 ## Product and visual direction
 
 - Product: professional 3D interior-design viewer for owners and designers.
-- Job: make spatial evidence, level relationships, and the 6 m void immediately inspectable.
+- Job: make source-plan continuity, functional zoning, circulation, and furnishing decisions immediately inspectable.
 - Style: quiet workshop instrument; model-first, flat tool rails, no marketing hero, card grid, glow, gradient, or decorative motion.
-- Signature: a persistent terracotta 6 m vertical marker inside the real Three.js void.
+- Signature: a restrained tea-green and oxidized-clay material system, with circulation paths appearing only in the storage/flow review mode.
 
 ## Tokens
 
@@ -20,7 +20,7 @@ Generated from the UI/UX Pro Max built-in priority rules because the host has no
 
 - Desktop: 68 px header, 210 px independently scrolling room index, remaining area is uninterrupted canvas; level tools top-left, camera/light tools bottom-right.
 - Mobile landscape: 60 px header with room selector, full canvas, horizontally arranged level tools at top and camera tools across bottom.
-- Mobile portrait: an accessible orientation dialog precedes the canvas and asks for landscape. It listens to portrait media, resize, and orientation changes, disappears automatically in landscape, and can be dismissed for a session through “仍以竖屏查看”. The dialog traps focus, supports Escape, uses a line SVG device icon, and never assumes orientation lock succeeds.
+- Mobile portrait: fully usable two-row header, room selector, horizontally scrollable review modes, uninterrupted canvas, and full-width bottom camera controls. Landscape is more immersive but never required or blocked.
 
 ## Motion and performance
 
