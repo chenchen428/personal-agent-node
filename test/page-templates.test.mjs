@@ -26,6 +26,8 @@ test("template list stays lightweight while detail owns the interactive preview"
   assert.match(detail, /Web/);
   assert.match(detail, /移动端/);
   assert.match(preview, /整体方案 · 完整户型/);
+  assert.match(preview, /SelectTrigger/);
+  assert.match(preview, /SelectItem value="all"/);
   assert.match(preview, /setRoomId\(room\.id\)/);
   assert.match(canvas, /OrbitControls/);
   assert.doesNotMatch(`${detail}\n${preview}\n${canvas}`, /setInterval|requestAnimationFrame|autoRotate/);
@@ -37,7 +39,7 @@ test("space browsing defaults to the whole home and enters a room by moving the 
   const scene = read("core/app/src/components/page-templates/interior-template-scene.ts");
   const skillClient = read("skills/interior-design/scripts/page-client.mjs");
   assert.match(preview, /const \[roomId, setRoomId\] = useState\(""\)/);
-  assert.match(preview, /<option value="">整体方案 · 完整户型<\/option>/);
+  assert.match(preview, /<SelectItem value="all">整体方案 · 完整户型<\/SelectItem>/);
   assert.match(preview, /onClick=\{\(\) => setRoomId\(room\.id\)\}/);
   assert.match(canvas, /const pose = cameraPose\(view, roomId\)/);
   assert.match(canvas, /controls\.target\.copy\(pose\.target\)/);

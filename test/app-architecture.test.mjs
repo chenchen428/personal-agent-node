@@ -185,7 +185,7 @@ test("Next.js owns the approved V6.35 mobile client and V7.3 desktop workspace",
   assert.doesNotMatch(overviewClient, /下午好|最近工作/);
   assert.match(connectionsClient, /\/api\/connections/);
   assert.match(connectionActionsClient, /connection-summary-action/);
-  assert.match(connectionsClient, /connection\.cli\.operations/);
+  assert.doesNotMatch(connectionsClient, /connection\.cli\.operations|connection-operation-strip|可用操作/);
   assert.match(connectionsClient, /accessModeLabel/);
   assert.match(connectionsClient, /浏览器连接/);
   assert.match(connectionsClient, /ConnectionViewSwitch/);

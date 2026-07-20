@@ -43,8 +43,11 @@ test("connection UI separates OpenCLI browser reads from QR and account authoriz
   assert.match(domainAction, /DomainEntryMenu/);
   assert.match(domainAction, /CustomDomainSop/);
   assert.match(domainEntryMenu, />配置</);
+  assert.match(domainEntryMenu, /使用平台域名/);
   assert.match(domainEntryMenu, /使用自定义域名/);
-  assert.match(domainEntryMenu, /role="menuitem"/);
+  assert.match(domainEntryMenu, /DropdownMenuContent/);
+  assert.match(domainEntryMenu, /onSelect=\{onPlatform\}/);
+  assert.match(domainEntryMenu, /onSelect=\{onCustom\}/);
   assert.match(customDomainSop, /启动转发服务/);
   assert.match(customDomainSop, /配置自定义域名/);
   assert.match(customDomainSop, /验证并生效/);
@@ -230,6 +233,7 @@ test("connection directory separates all connections from connections with effec
   assert.match(page, /window\.setInterval\(refreshWhenVisible, 15_000\)/);
   assert.match(page, /window\.addEventListener\("focus", refreshWhenVisible\)/);
   assert.match(page, /document\.addEventListener\("visibilitychange", refreshWhenVisible\)/);
+  assert.doesNotMatch(page, /connection-operation-strip|可用操作/);
   assert.match(viewSwitch, /role="group" aria-label="连接视图"/);
   assert.match(viewSwitch, /aria-pressed=\{value === "all"\}/);
   assert.match(viewSwitch, /aria-pressed=\{value === "effective"\}/);

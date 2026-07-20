@@ -336,18 +336,9 @@
 .desktop-v72 .connection-summary-action { display: grid; grid-template-columns: minmax(0,1fr) auto; align-items: center; gap: 16px; padding: 12px 0 16px; border-bottom: 1px solid var(--pa-border); }
 .desktop-v72 .connection-summary-action p { margin: 0; color: var(--pa-muted); font-size: 10px; line-height: 1.65; }
 .desktop-v72 .connection-compact-action { min-height: 28px; border-radius: 7px; padding: 0 11px; font-size: 9px; white-space: nowrap; }
-.desktop-v72 .domain-entry-menu { position: relative; z-index: 6; }
+.desktop-v72 .domain-entry-trigger[data-slot="button"] { height: 32px; min-height: 32px; gap: 5px; border: 0; border-radius: 7px; padding: 0 10px; background: #232322; color: #fff; font-size: 10px; }
+.desktop-v72 .domain-entry-trigger[data-state="open"] { background: #3b3b39; }
 .desktop-v72 .domain-entry-trigger svg { width: 12px; height: 12px; }
-.desktop-v72 .domain-entry-chevron { margin-left: 2px; transition: transform .16s ease; }
-.desktop-v72 .domain-entry-menu:hover .domain-entry-chevron, .desktop-v72 .domain-entry-menu:focus-within .domain-entry-chevron { transform: rotate(180deg); }
-.desktop-v72 .domain-entry-popover { position: absolute; visibility: hidden; opacity: 0; top: 100%; right: 0; width: 194px; border: 1px solid var(--pa-border); border-radius: 10px; padding: 5px; background: #fff; box-shadow: 0 12px 28px rgb(26 31 27 / 12%); transform: translateY(-3px); transition: opacity .14s ease, transform .14s ease, visibility .14s; }
-.desktop-v72 .domain-entry-menu:hover .domain-entry-popover, .desktop-v72 .domain-entry-menu:focus-within .domain-entry-popover { visibility: visible; opacity: 1; transform: translateY(0); }
-.desktop-v72 .domain-entry-popover button { width: 100%; display: grid; grid-template-columns: 28px minmax(0,1fr); align-items: center; gap: 8px; border: 0; border-radius: 7px; padding: 7px; background: transparent; color: var(--pa-body); text-align: left; cursor: pointer; }
-.desktop-v72 .domain-entry-popover button:hover, .desktop-v72 .domain-entry-popover button:focus-visible { outline: none; background: var(--pa-hover); }
-.desktop-v72 .domain-entry-popover button > svg { width: 15px; height: 15px; color: var(--pa-muted); }
-.desktop-v72 .domain-entry-popover strong, .desktop-v72 .domain-entry-popover small { display: block; }
-.desktop-v72 .domain-entry-popover strong { color: var(--pa-ink); font-size: 9px; }
-.desktop-v72 .domain-entry-popover small { margin-top: 2px; color: var(--pa-muted); font-size: 8px; }
 .desktop-v72 .connection-domain-action { display: grid; justify-items: end; gap: 6px; }
 .desktop-v72 .connection-domain-action span { max-width: 260px; color: var(--pa-muted); font-size: 9px; line-height: 1.45; text-align: right; }
 .desktop-v72 .connection-domain-flow { display: contents; }
@@ -706,11 +697,6 @@
   .desktop-v72 .personal-wechat-history-message { width: min(90%,520px); }
   .desktop-v72 .personal-wechat-history-thread-scroll { padding-inline: 12px; }
 }
-.desktop-v72 .connection-operation-strip { min-width: 0; display: flex; align-items: center; gap: 8px; border-bottom: 1px solid var(--pa-border); padding: 8px 0; }
-.desktop-v72 .connection-operation-strip > span { flex: 0 0 auto; color: var(--pa-muted); font-size: 9px; }
-.desktop-v72 .connection-operation-strip > div { min-width: 0; display: flex; gap: 5px; overflow-x: auto; scrollbar-width: thin; }
-.desktop-v72 .connection-operation-strip code { flex: 0 0 auto; display: inline-flex; align-items: center; gap: 5px; border: 1px solid var(--pa-border); border-radius: 6px; background: var(--pa-surface); padding: 4px 6px; color: var(--pa-text); font-size: 9px; }
-.desktop-v72 .connection-operation-strip small { color: var(--pa-muted); font-size: 7px; }
 .desktop-v72 .connection-capabilities { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 8px; margin: 0; padding: 0; list-style: none; }
 .desktop-v72 .connection-capabilities li { min-height: 36px; display: flex; align-items: center; border-radius: 9px; padding: 8px 10px; background: var(--pa-subtle); font-size: 10px; }
 .desktop-v72 .connection-definitions { display: grid; gap: 8px; }
