@@ -44,7 +44,8 @@ test("DingTalk credentials stay in one Space and Stream messages reply only to t
   assert.equal(clients.length, 2, "configuration validates credentials before creating the Stream client");
   assert.equal(connector.status().connected, true);
   const configFile = path.join(root, "spaces", "sp_personal00000001", "secrets", "connections", "dingtalk.json");
-  assert.equal(fs.statSync(configFile).mode & 0o777, 0o600);
+  assert.equal(fs.existsSync(configFile), true);
+  if (process.platform !== "win32") assert.equal(fs.statSync(configFile).mode & 0o777, 0o600);
   assert.doesNotMatch(JSON.stringify(connector.status()), /secret-value|test-access-token|sendBySession/);
 
   const downstream = robotDownstream({ messageId: "stream-message-1", conversationId: "conversation-1" });

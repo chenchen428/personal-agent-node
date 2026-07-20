@@ -9,7 +9,6 @@ import { BridgeStore } from "../src/store/store.js";
 
 test("DingTalk messages use a persistent main conversation and reply through DingTalk", async (t) => {
   const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), "pa-dingtalk-orchestrator-"));
-  t.after(() => fs.rmSync(dataDir, { recursive: true, force: true }));
   const store = new BridgeStore({ dataDir, consoleBaseUrl: "https://agent.example.test" });
   const sent = [];
   const orchestrator = new SessionOrchestrator({
@@ -25,7 +24,11 @@ test("DingTalk messages use a persistent main conversation and reply through Din
       stopAppServerCommand: () => false,
     },
   });
-  t.after(() => { orchestrator.stop(); store.close(); });
+  t.after(() => {
+    orchestrator.stop();
+    store.close();
+    fs.rmSync(dataDir, { recursive: true, force: true, maxRetries: 8, retryDelay: 125 });
+  });
 
   const session = await orchestrator.handleChannelMessage("dingtalk", {
     senderId: "conversation-1",
