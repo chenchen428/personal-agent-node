@@ -224,6 +224,16 @@ export class SessionOrchestrator {
       senderName: input.senderName || null,
       metadata: { createdBy: input.createdBy || "cli" },
     });
+    const displayItem = this.store.appendTaskDisplayEvent(session.id, {
+      sourceEventId: `task-description:${session.id}`,
+      kind: "requirement",
+      role: "user",
+      content: session.taskDescription,
+      createdAt: session.createdAt,
+    });
+    if (displayItem) {
+      this.broadcastTaskDisplayProjection({ type: "event", taskId: session.id, item: displayItem });
+    }
     if (session.parentSessionId) {
       const parent = this.store.getSessionRecord(session.parentSessionId);
       if (parent) {
@@ -885,7 +895,18 @@ export class SessionOrchestrator {
   appendAndBroadcast(sessionId, kind, payload) {
     const event = this.store.appendEvent(sessionId, kind, payload);
     this.hub.broadcast({ type: "session.delta", event, session: this.store.getSessionRecord(sessionId) });
+    this.broadcastTaskDisplayProjection(this.store.projectTaskDisplayEvent(event));
     return event;
+  }
+
+  broadcastTaskDisplayProjection(projection) {
+    if (!projection) return;
+    const task = this.store.getMobileTaskSummary(projection.taskId);
+    if (projection.type === "event") {
+      this.hub.broadcast({ type: "task.display.delta", taskId: projection.taskId, item: projection.item, task });
+    } else if (projection.type === "plan") {
+      this.hub.broadcast({ type: "task.display.plan", taskId: projection.taskId, latestPlan: projection.latestPlan, task });
+    }
   }
 
   maybeNotifyWechat(sessionId, event, options = {}) {
@@ -1046,6 +1067,19 @@ export class SessionOrchestrator {
         ...(detail.code ? { code: detail.code } : {}),
       },
     });
+    if (part === "attachment" && detail.objectId) {
+      const item = this.store.updateTaskDisplayAttachmentDelivery(sessionId, {
+        idempotencyKey,
+        objectId: detail.objectId,
+        state,
+      });
+      if (item) this.hub.broadcast({
+        type: "task.display.delta",
+        taskId: sessionId,
+        item,
+        task: this.store.getMobileTaskSummary(sessionId),
+      });
+    }
   }
 
   notifyWechatRecipient(recipientId, content) {

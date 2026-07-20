@@ -433,13 +433,30 @@ async function handleRequest(request: http.IncomingMessage, response: http.Serve
     return;
   }
 
+  const mobileTaskDisplayMatch = /^\/api\/mobile\/tasks\/([^/]+)\/display-events$/.exec(url.pathname);
+  if (mobileTaskDisplayMatch && request.method === "GET") {
+    try {
+      const page = store.listTaskDisplayEvents(decodeURIComponent(mobileTaskDisplayMatch[1]), {
+        limit: Number(url.searchParams.get("limit") || 20),
+        before: url.searchParams.get("before") || "",
+      });
+      if (!page) sendNodeApiError(response, 404, "TASK_NOT_FOUND", "Task not found");
+      else sendNodeApiResult(response, 200, page);
+    } catch (error: any) {
+      if (error?.code === "TASK_DISPLAY_CURSOR_INVALID") {
+        sendNodeApiError(response, 400, error.code, error.message);
+      } else throw error;
+    }
+    return;
+  }
+
   const mobileTaskMatch = /^\/api\/mobile\/tasks\/([^/]+)$/.exec(url.pathname);
   if (mobileTaskMatch && request.method === "GET") {
     const session = store.getMobileSessionDetail(decodeURIComponent(mobileTaskMatch[1]), {
       messageLimit: Number(url.searchParams.get("messageLimit") || 80),
     });
     if (!session) sendNodeApiError(response, 404, "TASK_NOT_FOUND", "Task not found");
-    else sendNodeApiResult(response, 200, { session: buildConversationAttachmentDeliveryView(session) });
+    else sendNodeApiResult(response, 200, { session });
     return;
   }
 

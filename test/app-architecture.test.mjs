@@ -5,7 +5,7 @@ import test from "node:test";
 
 const root = path.resolve(import.meta.dirname, "..");
 
-test("Next.js owns the approved V6.35 mobile client and V7.3 desktop workspace", () => {
+test("Next.js owns the approved V6.39 mobile client and V7.3 desktop workspace", () => {
   const shell = read("core/app/src/components/app-shell.tsx");
   const navigation = read("core/app/src/components/navigation.ts");
   const desktopNavigationSource = `${navigation}\n${shell}`;
@@ -40,6 +40,9 @@ test("Next.js owns the approved V6.35 mobile client and V7.3 desktop workspace",
     "mobile-current/activity.tsx",
     "mobile-current/pages.tsx",
     "mobile-current/workers.tsx",
+    "mobile-current/mobile-task-detail.tsx",
+    "mobile-current/task-display-presentation.tsx",
+    "mobile-current/use-task-display-history.ts",
     "mobile-current/apps.tsx",
     "mobile-current/personal-app.tsx",
     "mobile-current/about.tsx",
@@ -320,11 +323,14 @@ test("Next.js owns the approved V6.35 mobile client and V7.3 desktop workspace",
   assert.match(mobileClient, /有新进展/);
   assert.match(mobileClient, /hasRunningTask/);
   assert.match(mobileClient, /重启后已继续处理/);
-  assert.match(mobileClient, /session && \(messages\.length \|\| plan\.length\)/);
-  assert.match(mobileClient, /\/api\/mobile\/tasks\/\$\{encodeURIComponent\(sessionId\)\}\?messageLimit=80/);
+  assert.match(mobileClient, /\/display-events\?/);
+  assert.match(mobileClient, /data-task-display-scroll="tail"/);
+  assert.match(mobileClient, /element\.scrollTop = element\.scrollHeight/);
+  assert.match(mobileClient, /drawerOpen \? <MobileDrawer/);
+  assert.doesNotMatch(mobileClient, /messageLimit=80/);
   assert.doesNotMatch(mobileClient.match(/const navItems:[\s\S]*?\];/)?.[0] || "", /conversations/);
-  for (const responsibility of ["activity", "pages", "workers", "apps", "personal-app", "about", "wechat-status", "mail", "shell", "token-usage", "data", "types"]) {
-    const file = path.join(root, "core/app/src/components/mobile-current", `${responsibility}.${responsibility === "types" ? "ts" : "tsx"}`);
+  for (const responsibility of ["activity.tsx", "pages.tsx", "workers.tsx", "mobile-task-detail.tsx", "task-display-presentation.tsx", "use-task-display-history.ts", "apps.tsx", "personal-app.tsx", "about.tsx", "wechat-status.tsx", "mail.tsx", "shell.tsx", "token-usage.tsx", "data.tsx", "types.ts"]) {
+    const file = path.join(root, "core/app/src/components/mobile-current", responsibility);
     assert.equal(fs.existsSync(file), true, responsibility);
     assert.ok(fs.readFileSync(file, "utf8").split(/\r?\n/).length <= 300, `${responsibility} exceeds 300 lines`);
   }

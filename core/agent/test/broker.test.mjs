@@ -54,6 +54,8 @@ test("stores single-machine sessions, commands, and runner deltas in sqlite", as
     assert.equal(hydrated.messages.some((message) => message.content === "start"), true);
     assert.equal(hydrated.messages.some((message) => message.content === "done"), true);
     assert.equal(broadcasts.some((event) => event.type === "session.delta"), true);
+    assert.deepEqual(store.listTaskDisplayEvents(session.id, { limit: 20 }).items.map((item) => item.content), ["inspect billing diff", "done"]);
+    assert.equal(broadcasts.some((event) => event.type === "task.display.delta" && event.taskId === session.id), true);
   } finally {
     broker.close();
     store.close();

@@ -5,6 +5,7 @@ import net from "node:net";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
+import { DatabaseSync } from "node:sqlite";
 import { initializeInstallation } from "../../runtime/src/space-registry.ts";
 
 const agentRoot = path.resolve(import.meta.dirname, "..");
@@ -98,6 +99,23 @@ test("V6.22 read-only client API is local, searchable and self-contained", async
   }
   assert.equal((await get(port, token, "/api/connections/dingtalk/status")).connection.state, "needs_setup");
   assert.equal(await status(port, token, "/api/mobile/tasks/missing-task"), 404);
+  assert.equal(await status(port, token, "/api/mobile/tasks/missing-task/display-events"), 404);
+
+  const taskId = "api-display-task";
+  seedTaskDisplayLedger(path.join(root, "bridge", "state.sqlite"), taskId);
+  const displayTail = await get(port, token, `/api/mobile/tasks/${taskId}/display-events?limit=20`);
+  assert.deepEqual(displayTail.result.items.map((item) => item.sequence), Array.from({ length: 20 }, (_, index) => index + 6));
+  assert.equal(displayTail.result.items.at(-1).content, "display-25");
+  assert.equal(displayTail.result.items.some((item) => item.content.includes("raw Codex")), false);
+  assert.equal(displayTail.result.hasEarlier, true);
+  assert.ok(displayTail.result.beforeCursor);
+  const earlier = await get(port, token, `/api/mobile/tasks/${taskId}/display-events?limit=20&before=${encodeURIComponent(displayTail.result.beforeCursor)}`);
+  assert.deepEqual(earlier.result.items.map((item) => item.sequence), [1, 2, 3, 4, 5]);
+  assert.equal(earlier.result.hasEarlier, false);
+  assert.equal(await status(port, token, `/api/mobile/tasks/${taskId}/display-events?before=${encodeURIComponent(`${displayTail.result.beforeCursor}x`)}`), 400);
+  const legacyTaskDetail = await get(port, token, `/api/mobile/tasks/${taskId}?messageLimit=20`);
+  assert.equal(legacyTaskDetail.result.session.messages.length, 20);
+  assert.equal(legacyTaskDetail.result.session.messages.at(-1).content, "display-25");
 
   const personalWechatSetup = await get(port, token, "/api/connections/wechat-personal/setup");
   assert.equal(personalWechatSetup.setup.qianxunDocsUrl, "https://daenmax.github.io/qxpro-doc/doc/start/");
@@ -190,6 +208,37 @@ async function status(port, token, pathname) {
   return response.status;
 }
 
+function seedTaskDisplayLedger(databasePath, taskId) {
+  const db = new DatabaseSync(databasePath);
+  const now = "2026-07-20T12:00:00.000Z";
+  try {
+    db.exec("BEGIN IMMEDIATE");
+    db.prepare(`
+      INSERT INTO sessions
+        (id, role, parent_session_id, channel, sender_id, sender_name, workspace_root, agent_type, agent_alias, status, title, task_description, summary, cli_session_id, created_at, updated_at, metadata_json)
+      VALUES (?, 'worker', NULL, NULL, NULL, NULL, ?, 'codex', 'codex', 'idle', 'API display task', 'Only display the ledger', '', NULL, ?, ?, '{}')
+    `).run(taskId, path.dirname(databasePath), now, now);
+    db.prepare("INSERT INTO events (id, session_id, seq, kind, payload_json, created_at) VALUES (?, ?, 1, 'session.tool_result', ?, ?)")
+      .run("raw-internal-event", taskId, JSON.stringify({ content: "raw Codex history must remain unread" }), now);
+    db.prepare("INSERT INTO task_display_state (session_id, latest_plan_json, last_display_seq, updated_at) VALUES (?, ?, 25, ?)")
+      .run(taskId, JSON.stringify({ steps: [{ step: "Latest plan", status: "inProgress" }], updatedAt: now }), now);
+    const insertDisplay = db.prepare(`
+      INSERT INTO task_display_events
+        (id, session_id, display_seq, source_event_id, kind, role, content, metadata_json, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, '{}', ?)
+    `);
+    for (let index = 1; index <= 25; index += 1) {
+      insertDisplay.run(`display-event-${index}`, taskId, index, `source-${index}`, index === 1 ? "requirement" : "message", index === 1 ? "user" : "assistant", `display-${index}`, now);
+    }
+    db.exec("COMMIT");
+  } catch (error) {
+    try { db.exec("ROLLBACK"); } catch {}
+    throw error;
+  } finally {
+    db.close();
+  }
+}
+
 async function freePort() {
   return await new Promise((resolve, reject) => {
     const server = net.createServer();
@@ -199,7 +248,7 @@ async function freePort() {
 }
 
 async function waitForServer(port, child, getOutput) {
-  const deadline = Date.now() + 15_000;
+  const deadline = Date.now() + 30_000;
   while (Date.now() < deadline) {
     if (child.exitCode !== null) throw new Error(`Agent exited before startup (${child.exitCode})\n${getOutput()}`);
     try { const response = await fetch(`http://127.0.0.1:${port}/health`); if (response.ok) return; } catch {}

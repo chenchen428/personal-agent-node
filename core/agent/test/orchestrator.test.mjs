@@ -438,9 +438,10 @@ test("child task input retains the latest visible parent request", async () => {
     metadata: { channel: "desktop" },
   });
   const calls = [];
+  const broadcasts = [];
   const orchestrator = new SessionOrchestrator({
     store,
-    hub: { broadcast: () => {} },
+    hub: { broadcast: (event) => broadcasts.push(event) },
     channels: {},
     progressTimerEnabled: false,
     runner: {
@@ -473,6 +474,10 @@ test("child task input retains the latest visible parent request", async () => {
   assert.match(calls[0], /用户原始请求：\n明天9点钟，提醒我买黄皮寄回家/);
   assert.match(calls[0], /子任务执行说明：\n请为用户创建一次性提醒/);
   assert.equal(store.getSession(worker.id).messages.find((message) => message.role === "user").content, calls[0]);
+  const display = store.listTaskDisplayEvents(worker.id, { limit: 20 });
+  assert.deepEqual(display.items.map((item) => item.content), ["明天九点提醒用户买黄皮寄回家", "提醒已创建"]);
+  assert.equal(display.items.some((item) => item.content.includes("用户原始请求")), false);
+  assert.equal(broadcasts.some((event) => event.type === "task.display.delta" && event.taskId === worker.id), true);
 
   orchestrator.stop();
   store.close();

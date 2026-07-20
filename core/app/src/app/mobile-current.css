@@ -1049,7 +1049,10 @@
 .mobile-task-empty span { font-size: 9px; }
 .task-conversation-phone .content-detail-scroll { padding: 0; }
 .mobile-task-conversation { min-height: 100%; background: #f8f6f1; }
+.mobile-task-conversation[data-positioned="false"] { visibility: hidden; }
 .mobile-task-thread { padding: 27px 21px 42px; }
+.mobile-task-history-loader { min-height: 30px; display: flex; align-items: center; justify-content: center; gap: 7px; margin: -16px 0 18px; color: #8f8b84; font-size: 9px; }
+.mobile-task-history-loader i { width: 9px; height: 9px; border: 1.5px solid rgba(111,145,137,.28); border-top-color: #6f9189; border-radius: 50%; animation: mobile-task-spin .9s linear infinite; }
 .mobile-task-message { display: flex; align-items: flex-start; gap: 9px; margin-bottom: 26px; }
 .mobile-task-message.user { flex-direction: row-reverse; }
 .mobile-task-avatar { width: 32px; height: 32px; display: grid; flex: 0 0 32px; place-items: center; border-radius: 50%; background: #1f1f1d; color: #fff; font-size: 8px; font-weight: 650; }
@@ -1195,6 +1198,7 @@
   .mobile-task-skeleton::after,
   .mobile-skeleton-block::after,
   .mobile-task-runtime.processing i,
+  .mobile-task-history-loader i,
   .mobile-task-loading-label > i,
   .task-live-waiting i,
   .mobile-token-usage > .token-usage-status.loading svg { animation: none; }
