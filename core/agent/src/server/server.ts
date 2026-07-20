@@ -37,6 +37,7 @@ import { NotionCliConnection } from "../connections/notion-cli.js";
 import { OpenCliRunner } from "../connections/opencli/runner.js";
 import { WeChatQianxunConnector } from "../connections/wechat-qianxun/connector.ts";
 import { InstallationConnectionOwnership } from "../connections/connection-ownership.ts";
+import { DingTalkConnector } from "../connections/dingtalk/connector.ts";
 import { BridgeStore } from "../store/store.js";
 import { AgentBridgeBroker } from "../broker/agent-bridge-broker.js";
 import { readWorkspaceSkillCatalog } from "../skills/catalog.js";
@@ -151,6 +152,7 @@ const connectionOwnership = new InstallationConnectionOwnership({ installationDa
 const ownership = { store: connectionOwnership, spaceId: config.spaceId };
 const wechat = new WeChatConnector(logger, ownership);
 const wechatQianxun = new WeChatQianxunConnector({ dataRoot: config.siteDataRoot, ownership });
+const dingtalk = new DingTalkConnector({ dataRoot: config.siteDataRoot, logger, ownership });
 const xiaohongshu = new XiaohongshuChannel({
   baseUrl: config.xiaohongshuBaseUrl,
   logger,
@@ -166,11 +168,15 @@ const channelLoginCoordinator = {
     return await cloudBinding.consumeWechatMessage(message) || await xiaohongshuLogin.consumeWechatMessage(message);
   },
 };
-const orchestrator = new SessionOrchestrator({ store, hub, channels: { wechat, "wechat-personal": wechatQianxun }, managedFiles, activityStore, channelLoginCoordinator });
+const orchestrator = new SessionOrchestrator({ store, hub, channels: { wechat, "wechat-personal": wechatQianxun, dingtalk }, managedFiles, activityStore, channelLoginCoordinator });
 const scheduledTasks = new ScheduledTaskRunner({ store, broker: agentBridgeBroker, channels: { wechat }, logger });
 wechat.attach(orchestrator);
 wechatQianxun.attach((message) => orchestrator.handleChannelMessage("wechat-personal", message));
-if (config.channelPollEnabled) wechat.start();
+dingtalk.attach((message) => orchestrator.handleChannelMessage("dingtalk", message));
+if (config.channelPollEnabled) {
+  wechat.start();
+  dingtalk.start();
+}
 if (config.schedulerEnabled) scheduledTasks.start();
 
 const server = http.createServer(async (request, response) => {
@@ -241,6 +247,7 @@ for (const signal of ["SIGINT", "SIGTERM"]) {
     xiaohongshuLogin.stop();
     orchestrator.stop();
     wechat.stop();
+    dingtalk.stop();
     server.close(() => {
       wechatQianxun.close();
       managedFileCatalog.close();
@@ -423,6 +430,16 @@ async function handleRequest(request: http.IncomingMessage, response: http.Serve
 
   if (url.pathname === "/api/mobile/tasks" && request.method === "GET") {
     sendNodeApiResult(response, 200, buildMobileTasks(url));
+    return;
+  }
+
+  const mobileTaskMatch = /^\/api\/mobile\/tasks\/([^/]+)$/.exec(url.pathname);
+  if (mobileTaskMatch && request.method === "GET") {
+    const session = store.getMobileSessionDetail(decodeURIComponent(mobileTaskMatch[1]), {
+      messageLimit: Number(url.searchParams.get("messageLimit") || 80),
+    });
+    if (!session) sendNodeApiError(response, 404, "TASK_NOT_FOUND", "Task not found");
+    else sendNodeApiResult(response, 200, { session: buildConversationAttachmentDeliveryView(session) });
     return;
   }
 
@@ -791,6 +808,7 @@ async function handleRequest(request: http.IncomingMessage, response: http.Serve
           ...(wechatStatus.reason ? { error: wechatStatus.reason } : {}),
           details: { configured: wechatStatus.configured },
         },
+        dingtalk: dingtalk.catalogStatus(),
         xiaohongshu: xiaohongshuStatus,
         twitter: twitterStatus,
         notion: notion.catalogStatus(),
@@ -822,6 +840,8 @@ async function handleRequest(request: http.IncomingMessage, response: http.Serve
       };
     } else if (id === "wechat-personal") {
       dynamicStatus = personalWechatCatalogStatus(await wechatQianxun.status({ probe: true }), wechatQianxun.accessPolicy(), wechatQianxun.connectivityTestStatus());
+    } else if (id === "dingtalk") {
+      dynamicStatus = dingtalk.status();
     } else if (id === "mail") dynamicStatus = { ...mailScanner.status(), ...platformConnectionStatuses().mail };
     else if (id === "sites") dynamicStatus = platformConnectionStatuses().sites;
     const merged = inspectConnection(id, { registry: connectionRegistry, statuses: { [id]: dynamicStatus } });
@@ -847,6 +867,17 @@ async function handleRequest(request: http.IncomingMessage, response: http.Serve
   }
   if (url.pathname === "/api/connections/notion/login/start" && request.method === "POST") {
     sendChannelJson(response, 200, { ok: true, ...(await notion.startLogin()) });
+    return;
+  }
+  if (url.pathname === "/api/connections/dingtalk/configuration" && request.method === "POST") {
+    if (!isTrustedLocalConsoleRequest(request)) { sendJson(response, 403, { ok: false, error: "钉钉配置只能从本机保存" }); return; }
+    const status = await dingtalk.configure(await readJsonBody(request, 16 * 1024));
+    sendChannelJson(response, 200, { ok: true, connection: inspectConnection("dingtalk", { registry: connectionRegistry, statuses: { dingtalk: status } }) });
+    return;
+  }
+  if (url.pathname === "/api/connections/dingtalk/configuration" && request.method === "DELETE") {
+    if (!isTrustedLocalConsoleRequest(request)) { sendJson(response, 403, { ok: false, error: "钉钉配置只能从本机清空" }); return; }
+    sendChannelJson(response, 200, { ok: true, result: dingtalk.clearConfiguration() });
     return;
   }
   if (url.pathname === "/api/connections/xiaohongshu/open" && request.method === "POST") {
@@ -1818,52 +1849,65 @@ function platformConnectionStatuses() {
   const customServiceReady = customTunnel?.state === "ready";
   const customSiteBound = Boolean(customSite && domainBindingVerification.isVerified("sites", "custom"));
   const customMailBound = Boolean(customMail && domainBindingVerification.isVerified("mail", "custom"));
+  const customSiteReady = customSiteBound && customServiceReady;
+  const customMailReady = customMailBound && customServiceReady;
   const siteBound = !customSite && services.publicDomain.ready && domainBindingVerification.isVerified("sites");
   const mailBound = !customMail && services.agentMail.ready && domainBindingVerification.isVerified("mail");
   const domain = services.publicDomain.value || "";
   const mailAddress = services.agentMail.value || "";
   const customSiteVerification = domainBindingVerification.status("sites", "custom");
   const customMailVerification = domainBindingVerification.status("mail", "custom");
+  const relayInstallerUrl = selfHostedRelayInstallerUrl();
   const sites = customSite ? {
-    state: customSiteBound ? "connected" : "degraded",
+    state: customSiteReady ? "connected" : "degraded",
     primaryAction: "清空配置",
-    statusLabel: customSiteBound ? "自定义域名已生效" : "等待自定义域名验证",
+    statusLabel: customSiteReady ? "自定义域名已生效" : customServiceReady ? "等待自定义域名验证" : "Relay 连接恢复中",
     runtime: [
       { label: "自定义域名", value: customSite.domain },
       { label: "Relay 连接", value: customServiceReady ? "已连接" : "等待连接" },
-      { label: "公网访问", value: customSiteBound ? `https://${customSite.domain}` : "等待 DNS、TLS 与内容验证" },
+      { label: "公网访问", value: customSiteReady ? `https://${customSite.domain}` : customSiteBound ? "Relay 恢复后可用" : "等待 DNS、TLS 与内容验证" },
     ],
-    details: { platformDomainBound: false, bindingMode: "custom", customDomain: customSite.domain, customPublicAddress: customSite.publicAddress, customServiceReady, publicReady: customSiteBound, publicStatus: customSiteBound ? "ready" : customServiceReady ? "unavailable" : "tunnel-offline", publicOrigin: customSiteBound ? `https://${customSite.domain}` : "", domainVerification: customSiteVerification },
-  } : buildSitesConnectionStatus({
+    details: { platformDomainBound: false, bindingMode: "custom", customDomain: customSite.domain, customPublicAddress: customSite.publicAddress, customServiceReady, customRelayCredentialPrepared: true, customRelayInstallerUrl: relayInstallerUrl, publicReady: customSiteReady, publicStatus: customSiteReady ? "ready" : customServiceReady ? "unavailable" : "tunnel-offline", publicOrigin: customSiteReady ? `https://${customSite.domain}` : "", domainVerification: customSiteVerification },
+  } : withRelayInstaller(buildSitesConnectionStatus({
     domainReady: services.publicDomain.ready,
     domain,
     verified: siteBound,
     external,
     verification: domainBindingVerification.status("sites", "platform"),
-  });
+  }), relayInstallerUrl);
   return {
     sites,
     mail: customMail ? {
-      state: "connected",
+      state: customMailReady ? "connected" : "degraded",
       primaryAction: "清空配置",
-      statusLabel: customMailBound ? "自定义邮箱已生效" : "等待自定义邮箱验证",
+      statusLabel: customMailReady ? "自定义邮箱已生效" : customServiceReady ? "等待自定义邮箱验证" : "转发连接恢复中",
       runtime: [
         { label: "自定义邮箱地址", value: `agent@${customMail.domain}` },
         { label: "转发服务", value: customServiceReady ? "已连接" : "等待准备" },
-        { label: "公网收件", value: customMailBound ? "测试邮件已在本机收到" : "等待 MX 与真实收件验证" },
+        { label: "公网收件", value: customMailReady ? "测试邮件已在本机收到" : customMailBound ? "转发恢复后可用" : "等待 MX 与真实收件验证" },
       ],
-      details: { platformDomainBound: false, bindingMode: "custom", customDomain: customMail.domain, customPublicAddress: customMail.publicAddress, customServiceReady, mailAddress: `agent@${customMail.domain}`, domainVerification: customMailVerification },
+      details: { platformDomainBound: false, bindingMode: "custom", customDomain: customMail.domain, customPublicAddress: customMail.publicAddress, customServiceReady, customRelayCredentialPrepared: true, customRelayInstallerUrl: relayInstallerUrl, mailAddress: `agent@${customMail.domain}`, domainVerification: customMailVerification },
     } : {
-      state: "connected",
+      state: mailBound ? "connected" : "degraded",
       primaryAction: mailAddress ? "清空配置" : "配置",
-      statusLabel: mailBound ? "已验证平台邮箱" : "本地已连接",
+      statusLabel: mailBound ? "已验证平台邮箱" : services.agentMail.ready ? "等待平台邮箱验证" : "未生效",
       runtime: [
         { label: "平台邮箱地址", value: mailAddress || "尚未分配" },
         { label: "公网收件", value: mailBound ? "测试邮件已在本机收到" : services.agentMail.ready ? "等待绑定验证" : "分配域名后可用" },
       ],
-      details: { platformDomainBound: mailBound, bindingMode: mailBound ? "platform" : "", platformDomain: domain, mailAddress, domainVerification: domainBindingVerification.status("mail", "platform") },
+      details: { platformDomainBound: mailBound, bindingMode: mailBound ? "platform" : "", platformDomain: domain, customRelayInstallerUrl: relayInstallerUrl, mailAddress, domainVerification: domainBindingVerification.status("mail", "platform") },
     },
   };
+}
+
+function selfHostedRelayInstallerUrl() {
+  const version = String(process.env.PERSONAL_AGENT_VERSION || readJsonFile(path.join(config.workspaceRoot, "package.json"))?.version || "").trim();
+  if (!/^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/.test(version)) return "";
+  return `https://github.com/chenchen428/personal-agent-node/releases/download/v${encodeURIComponent(version)}/personal-agent-relay-install.sh`;
+}
+
+function withRelayInstaller(connection: any, installerUrl: string) {
+  return { ...connection, details: { ...(connection.details || {}), customRelayInstallerUrl: installerUrl } };
 }
 
 async function buildClientActivity(url: URL) {

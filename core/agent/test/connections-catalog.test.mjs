@@ -13,10 +13,11 @@ test("connection catalog is the shared UI, Skill, and CLI contract", () => {
     notion: { state: "connected", statusLabel: "已连接" },
     xiaohongshu: { state: "ready", statusLabel: "浏览器可用", capabilities: ["internal_runtime_capability"], setup: { customExtensionRequired: false } },
   } });
-  assert.deepEqual(catalog.map((item) => item.id), ["wechat", "wechat-personal", "xiaohongshu", "twitter", "notion", "mail", "sites"]);
+  assert.deepEqual(catalog.map((item) => item.id), ["wechat", "dingtalk", "wechat-personal", "xiaohongshu", "twitter", "notion", "mail", "sites"]);
   assert.equal(catalog.find((item) => item.id === "wechat").setupRequired, false);
   assert.equal(catalog.find((item) => item.id === "wechat").accessMode, "account");
   assert.equal(catalog.find((item) => item.id === "wechat").name, "微信 claw");
+  assert.equal(catalog.find((item) => item.id === "dingtalk").origin.version, "2.1.4");
   assert.equal(catalog.find((item) => item.id === "wechat-personal").accessMode, "local");
   assert.equal(catalog.find((item) => item.id === "mail").defaultConnected, true);
   assert.equal(catalog.find((item) => item.id === "sites").defaultConnected, true);

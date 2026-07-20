@@ -223,6 +223,7 @@ test('public GitHub release keeps customer downloads concise and CI evidence sep
   fs.mkdirSync(input);
   fs.mkdirSync(source);
   const assets = [
+    'personal-agent-relay-install.sh',
     `personal-agent-node-${tag}-windows-x64-installer.exe`,
     `personal-agent-node-${tag}-windows-x64-updater.exe`,
     `personal-agent-node-${tag}-macos-x64.pkg`,
@@ -248,6 +249,26 @@ test('public GitHub release keeps customer downloads concise and CI evidence sep
     ].sort());
     assert.equal(fs.readFileSync(path.join(output, 'SHA256SUMS'), 'utf8').trim().split('\n').length, assets.length);
     assert.equal(fs.readdirSync(output).some((name) => name.endsWith('.sha256') || name.endsWith('.sigstore.json') || name.includes('SBOM') || name.includes('manifest')), false);
+  } finally {
+    fs.rmSync(temporary, { recursive: true, force: true });
+  }
+});
+
+test('GitHub release builds one self-extracting Relay installer for a public Linux server', () => {
+  const pkg = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'));
+  const tag = `v${pkg.version}`;
+  const temporary = fs.mkdtempSync(path.join(os.tmpdir(), 'personal-agent-relay-release-'));
+  try {
+    const built = run(process.execPath, ['scripts/build-self-hosted-relay-installer.mjs', '--tag', tag, '--output', temporary]);
+    assert.equal(built.status, 0, `${built.stdout}\n${built.stderr}`);
+    const asset = path.join(temporary, 'personal-agent-relay-install.sh');
+    const source = fs.readFileSync(asset, 'utf8');
+    assert.match(source, new RegExp(`Installing Personal Agent Relay ${tag.replaceAll('.', '\\.')}`));
+    assert.match(source, /PERSONAL_AGENT_RELAY/);
+    assert.match(source, /sudo bash personal-agent-relay-install\.sh <domain>/);
+    assert.doesNotMatch(source, /core\/edge\/src\/self-hosted-relay\.ts/);
+    const syntax = run('bash', ['-n', asset]);
+    assert.equal(syntax.status, 0, `${syntax.stdout}\n${syntax.stderr}`);
   } finally {
     fs.rmSync(temporary, { recursive: true, force: true });
   }

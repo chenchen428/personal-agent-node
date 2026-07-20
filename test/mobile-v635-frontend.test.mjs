@@ -26,6 +26,8 @@ test("Mobile V6.35 keeps every destination in a focused component", () => {
 });
 
 test("Mobile V6.35 implements the approved task and navigation interactions", () => {
+  const desktopEntry = read("core/app/src/app/app/page.tsx");
+  const mobileProxy = read("core/app/src/proxy.ts");
   const shell = read("core/app/src/components/mobile-current/shell.tsx");
   const workers = read("core/app/src/components/mobile-current/workers.tsx");
   const activity = read("core/app/src/components/mobile-current/activity.tsx");
@@ -33,6 +35,11 @@ test("Mobile V6.35 implements the approved task and navigation interactions", ()
   const apps = read("core/app/src/components/mobile-current/apps.tsx");
   const about = read("core/app/src/components/mobile-current/about.tsx");
   const tokenUsage = read("core/app/src/components/mobile-current/token-usage.tsx");
+  assert.match(desktopEntry, /export const dynamic = "force-dynamic"/);
+  assert.match(desktopEntry, /redirect\("\/app\/mobile"\)/);
+  assert.match(mobileProxy, /matcher: "\/app"/);
+  assert.match(mobileProxy, /isMobileRequest\(request\.headers\)/);
+  assert.match(mobileProxy, /NextResponse\.redirect\(new URL\("\/app\/mobile", request\.url\)\)/);
   assert.match(shell, /打开侧边菜单/);
   assert.match(shell, /工作区/);
   assert.match(shell, /自定义应用/);
@@ -43,7 +50,7 @@ test("Mobile V6.35 implements the approved task and navigation interactions", ()
   assert.match(workers, /\/api\/mobile\/tasks/);
   assert.match(workers, /filter !== "all"/);
   assert.match(workers, /setFilter\("all"\)/);
-  assert.match(workers, /\/api\/chat\/sessions\/\$\{encodeURIComponent\(sessionId\)\}/);
+  assert.match(workers, /\/api\/mobile\/tasks\/\$\{encodeURIComponent\(sessionId\)\}\?messageLimit=80/);
   assert.match(workers, /TaskLoading/);
   assert.match(workers, /mobile-task-loading-message user/);
   assert.match(workers, /mobile-task-loading-message agent/);
@@ -68,6 +75,8 @@ test("Mobile V6.35 implements the approved task and navigation interactions", ()
   assert.match(pages, /setFilter\("all"\)/);
   assert.match(apps, /你的常用工具/);
   assert.match(apps, /手机与桌面共享应用/);
+  assert.match(apps, /<Link/);
+  assert.doesNotMatch(apps, /<a className="mobile-app-card/);
   assert.ok(about.indexOf("<MobileTokenUsageSection />") > about.indexOf("mobile-about-email"));
   assert.ok(about.indexOf("<MobileTokenUsageSection />") < about.indexOf("mobile-about-skills"));
   assert.match(tokenUsage, /TokenUsageHeatmap/);

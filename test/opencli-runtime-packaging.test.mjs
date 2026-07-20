@@ -34,15 +34,19 @@ test("release assembly installs the locked OpenCLI graph with lifecycle scripts 
       execute(command, args, options) {
         invocation = { command, args, options };
         const packageRoot = path.join(options.cwd, "node_modules", "@jackwener", "opencli");
+        const binRoot = path.join(options.cwd, "node_modules", ".bin");
         fs.mkdirSync(path.join(packageRoot, "dist", "src"), { recursive: true });
+        fs.mkdirSync(binRoot, { recursive: true });
         fs.writeFileSync(path.join(packageRoot, "package.json"), JSON.stringify({ name: "@jackwener/opencli", version: "1.8.6", license: "Apache-2.0" }));
         fs.writeFileSync(path.join(packageRoot, "LICENSE"), "Apache-2.0 fixture");
         fs.writeFileSync(path.join(packageRoot, "dist", "src", "main.js"), "process.stdout.write('1.8.6\\n');\n");
+        fs.writeFileSync(path.join(binRoot, "opencli"), "npm bin shim fixture");
       },
     });
     assert.equal(runtime.bundled, true);
     assert.deepEqual(invocation.args, ["ci", "--omit=dev", "--ignore-scripts", "--no-audit", "--no-fund"]);
     assert.equal(invocation.options.cwd, path.join(temporary, "core", "agent", "vendor", "opencli-runtime"));
+    assert.equal(fs.existsSync(path.join(invocation.options.cwd, "node_modules", ".bin")), false);
     assert.doesNotThrow(() => verifyOpenCliRuntime({ releaseRoot: temporary }));
   } finally {
     fs.rmSync(temporary, { recursive: true, force: true });

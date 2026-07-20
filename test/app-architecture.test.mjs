@@ -57,7 +57,7 @@ test("Next.js owns the approved V6.35 mobile client and V7.3 desktop workspace",
     "conversation-plan.tsx",
     "conversation-composer.tsx",
   ].map((file) => read(`core/app/src/components/desktop-v627/${file}`)).join("\n");
-  const overview = read("core/app/src/app/app/page.tsx");
+  const overview = `${read("core/app/src/app/app/page.tsx")}\n${read("core/app/src/lib/request-device.ts")}`;
   const mobile = read("core/app/src/app/app/mobile/page.tsx");
   const legacyCss = read("core/app/src/app/desktop-v627-v4.css");
   const css = read("core/app/src/app/desktop-v72.css");
@@ -95,6 +95,9 @@ test("Next.js owns the approved V6.35 mobile client and V7.3 desktop workspace",
   assert.match(mobileClient, /TokenUsageHeatmap/);
   assert.match(overview, /sec-ch-ua-mobile/);
   assert.match(overview, /redirect\("\/app\/mobile"\)/);
+  assert.match(read("core/app/src/app/app/loading.tsx"), /isMobileRequest/);
+  assert.match(read("core/app/src/app/app/loading.tsx"), /MobileContentSkeleton/);
+  assert.match(read("core/app/src/app/app/layout.tsx"), /initialMobileHint/);
   assert.match(overviewClient, /MobileAccessControl/);
   assert.match(mobileAccessControl, /\/app\/mobile/);
   assert.match(mobileAccessControl, /远程访问暂不可用，请在连接处配置公网域名后即可访问/);
@@ -182,7 +185,7 @@ test("Next.js owns the approved V6.35 mobile client and V7.3 desktop workspace",
   assert.doesNotMatch(overviewClient, /下午好|最近工作/);
   assert.match(connectionsClient, /\/api\/connections/);
   assert.match(connectionActionsClient, /connection-summary-action/);
-  assert.match(connectionsClient, /connection\.cli\.operations/);
+  assert.doesNotMatch(connectionsClient, /connection\.cli\.operations|connection-operation-strip|可用操作/);
   assert.match(connectionsClient, /accessModeLabel/);
   assert.match(connectionsClient, /浏览器连接/);
   assert.match(connectionsClient, /ConnectionViewSwitch/);
@@ -318,7 +321,7 @@ test("Next.js owns the approved V6.35 mobile client and V7.3 desktop workspace",
   assert.match(mobileClient, /hasRunningTask/);
   assert.match(mobileClient, /重启后已继续处理/);
   assert.match(mobileClient, /session && \(messages\.length \|\| plan\.length\)/);
-  assert.match(mobileClient, /\/api\/chat\/sessions\/\$\{encodeURIComponent\(sessionId\)\}/);
+  assert.match(mobileClient, /\/api\/mobile\/tasks\/\$\{encodeURIComponent\(sessionId\)\}\?messageLimit=80/);
   assert.doesNotMatch(mobileClient.match(/const navItems:[\s\S]*?\];/)?.[0] || "", /conversations/);
   for (const responsibility of ["activity", "pages", "workers", "apps", "personal-app", "about", "wechat-status", "mail", "shell", "token-usage", "data", "types"]) {
     const file = path.join(root, "core/app/src/components/mobile-current", `${responsibility}.${responsibility === "types" ? "ts" : "tsx"}`);

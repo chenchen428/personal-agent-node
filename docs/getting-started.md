@@ -2,15 +2,18 @@
 
 ## Install an immutable release
 
-Set `TAG=v0.2.0-beta.21` and open the matching [GitHub Release](https://github.com/chenchen428/personal-agent-node/releases/tag/v0.2.0-beta.21). A customer machine does not need Node.js, npm, Git, a source checkout, or a development Agent.
+Set `TAG=v0.2.0-beta.22` and open the matching [GitHub Release](https://github.com/chenchen428/personal-agent-node/releases/tag/v0.2.0-beta.22). A customer machine does not need Node.js, npm, Git, a source checkout, or a development Agent.
 
 | Computer | Asset |
 | --- | --- |
-| Windows x86-64 | `personal-agent-node-v0.2.0-beta.21-windows-x64-installer.exe` |
-| macOS Apple Silicon | `personal-agent-node-v0.2.0-beta.21-macos-arm64.pkg` |
-| macOS Intel | `personal-agent-node-v0.2.0-beta.21-macos-x64.pkg` |
-| Linux x86-64 | `personal-agent-node-v0.2.0-beta.21-linux-x64.tar.zst` |
-| Linux ARM64 | `personal-agent-node-v0.2.0-beta.21-linux-arm64.tar.zst` |
+| Windows x86-64 | `personal-agent-node-v0.2.0-beta.22-windows-x64-installer.exe` |
+| macOS Apple Silicon | `personal-agent-node-v0.2.0-beta.22-macos-arm64.pkg` |
+| macOS Intel | `personal-agent-node-v0.2.0-beta.22-macos-x64.pkg` |
+| Linux x86-64 | `personal-agent-node-v0.2.0-beta.22-linux-x64.tar.zst` |
+| Linux ARM64 | `personal-agent-node-v0.2.0-beta.22-linux-arm64.tar.zst` |
+
+The same Release also publishes `personal-agent-relay-install.sh`. The desktop
+shows its exact version-bound command when the user selects a custom domain.
 
 On Windows, run the installer and choose the Personal Agent folder; both `core/` and the data-owning `workspace/`, including installation staging, will stay under that selected folder. On macOS, open the package. On Linux, unpack the matching archive with the desktop archive manager or `tar --zstd`, then run `./personal-agent-setup` from the extracted directory.
 

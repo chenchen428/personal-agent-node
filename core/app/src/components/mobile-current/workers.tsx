@@ -22,7 +22,7 @@ export function MobileWorkers({ sessionId = "", conversations = false }: { sessi
     if (!background) setLoading(true);
     try {
       if (sessionId) {
-        setSession((await fetchJson<{ session: Session }>(`/api/chat/sessions/${encodeURIComponent(sessionId)}`)).session);
+        setSession((await fetchJson<{ session: Session }>(`/api/mobile/tasks/${encodeURIComponent(sessionId)}?messageLimit=80`)).session);
       } else if (conversations) {
         const result = await fetchJson<{ sessions: Session[] }>(`/api/chat/sessions?limit=50${query ? `&query=${encodeURIComponent(query)}` : ""}`);
         setSessions((result.sessions || []).filter((item) => item.role !== "worker"));

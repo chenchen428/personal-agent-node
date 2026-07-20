@@ -34,6 +34,7 @@ process.stdout.write(`${JSON.stringify({ ok: true, tag, customerAssets: [...publ
 
 function expectedAssets(value) {
   return [
+    'personal-agent-relay-install.sh',
     `personal-agent-node-${value}-windows-x64-installer.exe`,
     `personal-agent-node-${value}-macos-x64.pkg`,
     `personal-agent-node-${value}-macos-arm64.pkg`,

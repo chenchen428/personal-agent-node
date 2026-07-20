@@ -63,11 +63,7 @@ function ConnectionRow({ connection, selected, onSelect }: { connection: Connect
 }
 
 function ConnectionDetail({ connection, refresh }: { connection: Connection; refresh: () => Promise<void> }) {
-  return <div className="detail-wrap connection-detail"><DetailHeader title={connection.name} trailing={<Badge tone={connection.tone}>{connection.statusLabel}</Badge>} /><ConnectionOperations connection={connection} /><ConnectionActionRow connection={connection} refresh={refresh} /><section className="detail-section"><h2>当前运行方式</h2><KeyValueGrid items={connection.runtime} /></section><section className="detail-section"><h2>连接说明</h2><article className="connection-skill-reference"><header><Sparkles /><div><span>操作 Skill · {connection.skill.name}</span><code>{connection.skill.reference}</code></div></header><MarkdownContent className="connection-skill-markdown" content={connection.skill.document} /></article></section></div>;
-}
-
-function ConnectionOperations({ connection }: { connection: Connection }) {
-  return <div className="connection-operation-strip" aria-label="可用操作"><span>可用操作</span><div>{connection.cli.operations.map((operation) => <code title={operation.description} key={operation.name}>{operation.name}<small>{operation.risk}</small></code>)}</div></div>;
+  return <div className="detail-wrap connection-detail"><DetailHeader title={connection.name} trailing={<Badge tone={connection.tone}>{connection.statusLabel}</Badge>} /><ConnectionActionRow connection={connection} refresh={refresh} /><section className="detail-section"><h2>当前运行方式</h2><KeyValueGrid items={connection.runtime} /></section><section className="detail-section"><h2>连接说明</h2><article className="connection-skill-reference"><header><Sparkles /><div><span>操作 Skill · {connection.skill.name}</span><code>{connection.skill.reference}</code></div></header><MarkdownContent className="connection-skill-markdown" content={connection.skill.document} /></article></section></div>;
 }
 
 function accessModeLabel(mode: Connection["accessMode"]) {

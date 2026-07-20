@@ -38,6 +38,39 @@
       "defaultConnected": false
     },
     {
+      "id": "dingtalk",
+      "name": "钉钉",
+      "accessMode": "account",
+      "category": "沟通",
+      "icon": "message",
+      "summary": "通过官方 Stream 模式远程联系主 Agent",
+      "description": "连接钉钉企业内部应用机器人后，可从单聊或群聊继续主 Agent 对话并接收文字结果。Client ID 和 Client Secret 仅保存在当前 Space，本连接不参与初始化完成条件。",
+      "capabilities": ["继续主 Agent 对话", "接收钉钉文字消息", "回复文字与任务进展", "Stream 长连接与自动恢复"],
+      "runtime": [
+        { "label": "连接方式", "value": "钉钉官方 Stream SDK" },
+        { "label": "消息能力", "value": "文字收发" },
+        { "label": "凭据保存", "value": "当前 Space 本机密钥目录" },
+        { "label": "初始化", "value": "非必选" }
+      ],
+      "skillDescription": "使用企业内部应用机器人的 Client ID 和 Client Secret 建立钉钉官方 Stream 连接。先读取脱敏状态；配置和清空只允许从本机控制台发起。每个应用只能绑定一个 Space，不输出凭据、Access Token 或会话 Webhook。",
+      "skillReference": "skills/personal-agent/references/connectors/dingtalk.md",
+      "cli": {
+        "command": "pa-cli connection dingtalk",
+        "description": "读取钉钉 Stream 连接的脱敏状态；凭据配置与清空在本机连接页面完成。",
+        "operations": [
+          { "name": "status", "risk": "R0", "description": "读取脱敏连接状态、最近连接时间和最近收信时间。" }
+        ]
+      },
+      "primaryAction": "配置",
+      "setupRequired": false,
+      "defaultConnected": false,
+      "origin": {
+        "repository": "https://github.com/open-dingtalk/dingtalk-stream-sdk-nodejs",
+        "version": "2.1.4",
+        "license": "MIT"
+      }
+    },
+    {
       "id": "wechat-personal",
       "platforms": ["win32"],
       "name": "个人微信",
@@ -207,7 +240,7 @@
           { "name": "history", "risk": "R0", "description": "查看脱敏处理历史。" },
           { "name": "use-platform-domain", "risk": "R2", "description": "通过 personal-agent.cn 限时认证，持续检查直至取得平台邮箱地址并建立受控转发。" },
           { "name": "remove-platform-domain", "risk": "R2", "description": "移除本机的平台邮箱与域名绑定并确认状态回调；保留 Workspace 数据和平台登记。" },
-          { "name": "use-custom-domain", "risk": "R2", "description": "只提交并批准自定义域名，生成本机连接密钥与检测契约；服务器、邮件服务和 DNS 由用户按引导准备。" },
+          { "name": "use-custom-domain", "risk": "R2", "description": "展示当前 GitHub Release 的 Relay 安装命令，再提交自定义域名和服务器首次安装显示的连接密钥；客户端保存明文，服务器只保存摘要；邮件服务和 DNS 由用户按引导准备。" },
           { "name": "verify-custom-domain", "risk": "R0", "description": "检查 MX、加密转发和真实本地收件证据，全部通过后生效。" },
           { "name": "remove-custom-domain", "risk": "R2", "description": "移除本机自定义邮箱绑定并保留邮件、Workspace 和本机能力。" }
         ]
@@ -241,7 +274,7 @@
           { "name": "status", "risk": "R0", "description": "检查本机访问和穿透状态。" },
           { "name": "use-platform-domain", "risk": "R2", "description": "通过 personal-agent.cn 限时认证，持续检查直至取得平台域名并建立安全穿透。" },
           { "name": "remove-platform-domain", "risk": "R2", "description": "移除本机的平台域名与穿透绑定并确认状态回调；保留 Workspace 数据和平台登记。" },
-          { "name": "use-custom-domain", "risk": "R2", "description": "只提交并批准自定义域名，为全部 Space 生成主域名与子域名映射及单密钥 WSS Relay 检测契约。" },
+          { "name": "use-custom-domain", "risk": "R2", "description": "展示当前 GitHub Release 的 Relay 安装命令，再提交自定义域名和服务器首次安装显示的连接密钥，为全部 Space 生成主域名与子域名映射及 WSS Relay 检测契约。" },
           { "name": "verify-custom-domain", "risk": "R0", "description": "检查 DNS、TLS、加密转发和最终 HTTPS 内容证据，全部通过后生效。" },
           { "name": "remove-custom-domain", "risk": "R2", "description": "移除本机自定义域名绑定并保留 Site、Workspace 和本机能力。" },
           { "name": "tunnel-status", "risk": "R0", "description": "读取脱敏穿透健康状态。" }

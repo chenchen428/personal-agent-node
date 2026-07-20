@@ -493,6 +493,55 @@ export class BridgeStore {
     return row ? this.summarizeSessionRow(row) : null;
   }
 
+  getMobileSessionDetail(id, { messageLimit = 80 } = {}) {
+    const row = this.getSessionRow(id);
+    if (!row) return null;
+    const safeLimit = Math.min(Math.max(Number(messageLimit) || 80, 20), 100);
+    const rawLimit = safeLimit * 4;
+    const messageRows = this.db.prepare(`
+      SELECT * FROM events
+      WHERE session_id = ?
+        AND kind IN ('session.user_message', 'session.assistant_message', 'session.reasoning', 'session.error')
+      ORDER BY seq DESC
+      LIMIT ?
+    `).all(id, rawLimit).reverse();
+    const messageEvents = messageRows.map(rowToEvent);
+    const messages = coalesceMessages(messageEvents.map(eventToMessage).filter(Boolean)).slice(-safeLimit);
+    const minimumSequence = Number(messageEvents[0]?.seq || 0);
+    const latestPlanRow = this.db.prepare(`
+      SELECT * FROM events
+      WHERE session_id = ?
+        AND json_extract(payload_json, '$.metadata.eventType') = 'turn/plan/updated'
+      ORDER BY seq DESC
+      LIMIT 1
+    `).get(id);
+    const deliveryRows = minimumSequence ? this.db.prepare(`
+      SELECT * FROM events
+      WHERE session_id = ?
+        AND seq >= ?
+        AND json_extract(payload_json, '$.metadata.eventType') = 'wechat/final-reply-part'
+      ORDER BY seq ASC
+      LIMIT 200
+    `).all(id, minimumSequence) : [];
+    const auxiliaryEvents = [latestPlanRow, ...deliveryRows].filter(Boolean).map(rowToEvent);
+    const latestSequence = Number(this.db.prepare("SELECT COALESCE(MAX(seq), 0) AS seq FROM events WHERE session_id = ?").get(id)?.seq || 0);
+    const visibleEventCount = Number(this.db.prepare(`
+      SELECT COUNT(*) AS count FROM events
+      WHERE session_id = ?
+        AND kind IN ('session.user_message', 'session.assistant_message', 'session.reasoning', 'session.error')
+    `).get(id)?.count || 0);
+    return {
+      ...this.summarizeSessionRow(row),
+      messages,
+      events: auxiliaryEvents,
+      pagination: {
+        hasEarlier: visibleEventCount > messages.length,
+        latestSequence,
+        messageLimit: safeLimit,
+      },
+    };
+  }
+
   getSessionRecord(id) {
     const row = this.getSessionRow(id);
     if (!row) return null;
@@ -670,17 +719,17 @@ export class BridgeStore {
       WHERE role = 'main'
         AND (
           channel IS NULL
-          OR channel NOT IN ('wechat', 'wechat-personal', 'desktop')
+          OR channel NOT IN ('wechat', 'wechat-personal', 'dingtalk', 'desktop')
           OR sender_id IS NULL
           OR TRIM(sender_id) = ''
         )
     `).run();
-    this.db.prepare("DELETE FROM channel_sessions WHERE key NOT LIKE 'wechat:%' AND key NOT LIKE 'wechat-personal:%'").run();
+    this.db.prepare("DELETE FROM channel_sessions WHERE key NOT LIKE 'wechat:%' AND key NOT LIKE 'wechat-personal:%' AND key NOT LIKE 'dingtalk:%'").run();
 
     const duplicates = this.db.prepare(`
       SELECT channel, sender_id
       FROM sessions
-      WHERE role = 'main' AND channel IN ('wechat', 'wechat-personal')
+      WHERE role = 'main' AND channel IN ('wechat', 'wechat-personal', 'dingtalk')
       GROUP BY channel, sender_id
       HAVING COUNT(*) > 1
     `).all();
@@ -704,7 +753,7 @@ export class BridgeStore {
 
     for (const main of this.db.prepare(`
       SELECT id, channel, sender_id FROM sessions
-      WHERE role = 'main' AND channel IN ('wechat', 'wechat-personal')
+      WHERE role = 'main' AND channel IN ('wechat', 'wechat-personal', 'dingtalk')
     `).all()) {
       this.db.prepare("INSERT OR REPLACE INTO channel_sessions (key, session_id, updated_at) VALUES (?, ?, ?)")
         .run(`${main.channel}:${main.sender_id}`, main.id, new Date().toISOString());
@@ -722,7 +771,7 @@ export class BridgeStore {
     this.db.prepare(`
       DELETE FROM channel_sessions
       WHERE session_id NOT IN (
-        SELECT id FROM sessions WHERE role = 'main' AND channel IN ('wechat', 'wechat-personal')
+        SELECT id FROM sessions WHERE role = 'main' AND channel IN ('wechat', 'wechat-personal', 'dingtalk')
       )
     `).run();
     this.db.exec(`
@@ -734,6 +783,11 @@ export class BridgeStore {
       CREATE UNIQUE INDEX IF NOT EXISTS idx_sessions_wechat_personal_main_sender
       ON sessions(sender_id)
       WHERE role = 'main' AND channel = 'wechat-personal'
+    `);
+    this.db.exec(`
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_sessions_dingtalk_main_sender
+      ON sessions(sender_id)
+      WHERE role = 'main' AND channel = 'dingtalk'
     `);
     this.db.exec(`
       CREATE UNIQUE INDEX IF NOT EXISTS idx_sessions_desktop_main
@@ -2802,7 +2856,7 @@ function fromJson(value, fallback) {
 }
 
 function isMainConversationChannel(channel) {
-  return channel === "wechat" || channel === "wechat-personal";
+  return channel === "wechat" || channel === "wechat-personal" || channel === "dingtalk";
 }
 
 function quoteIdentifier(value) {

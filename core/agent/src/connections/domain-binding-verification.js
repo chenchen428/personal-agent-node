@@ -233,7 +233,7 @@ export class DomainBindingVerification {
 }
 
 function stepDefinitions(kind, binding = "platform") {
-  if (binding === "custom") return [["server", "启动转发服务"], ["dns", "配置自定义域名"], ["verify", "验证并生效"]].map(([id, label]) => ({ id, label, detail: "" }));
+  if (binding === "custom") return [["server", "准备公网服务器"], ["dns", "配置自定义域名"], ["verify", "验证并生效"]].map(([id, label]) => ({ id, label, detail: "" }));
   return (kind === "mail"
     ? [["authorize", "确认平台授权"], ["allocate", "分配收件地址"], ["send", "发送验证邮件"], ["receive", "等待本机收件"], ["commit", "提交绑定状态"]]
     : [["authorize", "确认平台授权"], ["allocate", "分配域名与穿透"], ["publish", "发布验证 Page"], ["request", "请求公网链接"], ["commit", "提交绑定状态"]])

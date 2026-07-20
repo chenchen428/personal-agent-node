@@ -146,14 +146,14 @@ function MobileDrawer({ section, activeAppId, close, overview, apps, spaces }: {
       <MobileSpaceSelector snapshot={spaces} />
       <nav className="drawer-nav">
         <span className="drawer-nav-label">工作区</span>
-        <Link href="/app/mobile" aria-current={section === "activity" ? "page" : undefined}><Activity className="mobile-nav-icon" aria-hidden="true" /><span>最近动态</span><small /></Link>
-        <Link href="/app/mobile/workers" aria-current={section === "workers" ? "page" : undefined}><ListTodo className="mobile-nav-icon" aria-hidden="true" /><span>任务</span><small>{counts.workers}</small></Link>
-        <Link href="/app/mobile/pages" aria-current={section === "pages" ? "page" : undefined}><PanelsTopLeft className="mobile-nav-icon" aria-hidden="true" /><span>发布页</span><small>{counts.pages}</small></Link>
+        <Link href="/app/mobile" prefetch onClick={close} aria-current={section === "activity" ? "page" : undefined}><Activity className="mobile-nav-icon" aria-hidden="true" /><span>最近动态</span><small /></Link>
+        <Link href="/app/mobile/workers" prefetch onClick={close} aria-current={section === "workers" ? "page" : undefined}><ListTodo className="mobile-nav-icon" aria-hidden="true" /><span>任务</span><small>{counts.workers}</small></Link>
+        <Link href="/app/mobile/pages" prefetch onClick={close} aria-current={section === "pages" ? "page" : undefined}><PanelsTopLeft className="mobile-nav-icon" aria-hidden="true" /><span>发布页</span><small>{counts.pages}</small></Link>
         <span className="drawer-nav-label">自定义应用</span>
-        <Link href="/app/mobile/apps" aria-current={section === "apps" && !activeAppId ? "page" : undefined}><Blocks className="mobile-nav-icon" aria-hidden="true" /><span>全部应用</span><small>{apps.length || ""}</small></Link>
-        {apps.slice(0, 1).map((app) => <Link href={app.mobileRoute || app.route} aria-current={activeAppId === app.id ? "page" : undefined} key={app.id}><Newspaper className="mobile-nav-icon" aria-hidden="true" /><span>{app.name}</span><small /></Link>)}
+        <Link href="/app/mobile/apps" prefetch onClick={close} aria-current={section === "apps" && !activeAppId ? "page" : undefined}><Blocks className="mobile-nav-icon" aria-hidden="true" /><span>全部应用</span><small>{apps.length || ""}</small></Link>
+        {apps.slice(0, 1).map((app) => <Link href={app.mobileRoute || app.route} prefetch onClick={close} aria-current={activeAppId === app.id ? "page" : undefined} key={app.id}><Newspaper className="mobile-nav-icon" aria-hidden="true" /><span>{app.name}</span><small /></Link>)}
         <span className="drawer-nav-label">系统</span>
-        <Link href="/app/mobile/about" aria-current={section === "about" ? "page" : undefined}><Info className="mobile-nav-icon" aria-hidden="true" /><span>关于</span><small /></Link>
+        <Link href="/app/mobile/about" prefetch onClick={close} aria-current={section === "about" ? "page" : undefined}><Info className="mobile-nav-icon" aria-hidden="true" /><span>关于</span><small /></Link>
       </nav>
       <div className="drawer-foot mobile-drawer-runtime"><i className="mobile-runtime-dot" /><div><strong>PA 正常运行</strong><span>{overview?.counts.work || 0} 项任务 · 最近发布 {overview?.counts.pages || 0} 个页面</span></div></div>
     </aside>

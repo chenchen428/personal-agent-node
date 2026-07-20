@@ -11,17 +11,22 @@ const KINDS = new Set(["mail", "sites"]);
 const RELAY_TOKEN_ENV = "PERSONAL_AGENT_CUSTOM_DOMAIN_TOKEN";
 
 export type CustomDomainKind = "mail" | "sites";
-export type CustomDomainInput = { kind: CustomDomainKind; domain: string };
+export type CustomDomainInput = { kind: CustomDomainKind; domain: string; relayToken: string };
 
 export function normalizeCustomDomainInput(input: Record<string, unknown> = {}): CustomDomainInput {
   const kind = String(input.kind || "") as CustomDomainKind;
   if (!KINDS.has(kind)) throw customDomainError("CUSTOM_DOMAIN_KIND_INVALID", "仅支持本地邮箱和 Sites 自定义域名");
-  return { kind, domain: normalizeDomain(input.domain) };
+  const relayToken = String(input.relayToken || "").trim();
+  if (relayToken && !validRelayToken(relayToken)) throw customDomainError("CUSTOM_DOMAIN_RELAY_TOKEN_INVALID", "请粘贴服务器安装后显示的有效连接密钥");
+  return { kind, domain: normalizeDomain(input.domain), relayToken };
 }
 
 export function customDomainInputFingerprint(input: Record<string, unknown> = {}) {
   const normalized = normalizeCustomDomainInput(input);
-  return `${normalized.kind}:${normalized.domain}`;
+  const credentialFingerprint = normalized.relayToken
+    ? crypto.createHash("sha256").update(normalized.relayToken).digest("hex")
+    : "reuse";
+  return `${normalized.kind}:${normalized.domain}:${credentialFingerprint}`;
 }
 
 export function readCustomDomainBindings({ dataRoot, env = process.env }: { dataRoot?: string; env?: NodeJS.ProcessEnv } = {}) {
@@ -49,7 +54,8 @@ export async function startCustomDomainForwarder({
   const ownerConfig = configForSpace(env, requestedConfig.installationDataRoot, owner);
   const current = readBindingDocument(installationBindingPath(requestedConfig.installationDataRoot));
   const existingToken = String(ownerConfig.env?.[RELAY_TOKEN_ENV] || "").trim();
-  const relayToken = /^[A-Za-z0-9_-]{43,128}$/.test(existingToken) ? existingToken : crypto.randomBytes(32).toString("base64url");
+  const relayToken = normalized.relayToken || (validRelayToken(existingToken) ? existingToken : "");
+  if (!relayToken) throw customDomainError("CUSTOM_DOMAIN_RELAY_TOKEN_REQUIRED", "请先在公网服务器安装 Relay，再把服务器显示的连接密钥粘贴到客户端");
   const credentialPath = path.join(ownerConfig.dataRoot, "secrets", "custom-domain", "relay-token");
   fs.mkdirSync(path.dirname(credentialPath), { recursive: true, mode: 0o700 });
   fs.writeFileSync(credentialPath, `${relayToken}\n`, { mode: 0o600 });
@@ -235,5 +241,7 @@ function normalizeDomain(value: unknown) {
   if (domain.split(".").some((label) => !/^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/.test(label))) throw customDomainError("CUSTOM_DOMAIN_INVALID", "请输入有效的自定义域名");
   return domain;
 }
+
+function validRelayToken(value: string) { return /^[A-Za-z0-9_-]{43,128}$/.test(value); }
 
 function customDomainError(code: string, message: string) { return Object.assign(new Error(message), { code }); }

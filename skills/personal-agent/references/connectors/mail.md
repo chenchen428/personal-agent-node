@@ -22,6 +22,6 @@
 | `history` | R0 | 查看脱敏处理历史。 |
 | `use-platform-domain` | R2 | 通过 personal-agent.cn 限时认证，持续检查直至取得平台邮箱地址并建立受控转发。 |
 | `remove-platform-domain` | R2 | 移除本机的平台邮箱与域名绑定并确认状态回调；保留 Workspace 数据和平台登记。 |
-| `use-custom-domain` | R2 | 只提交并批准域名，生成本机密钥与检测契约；邮件服务器、转发和 DNS 由用户按引导准备。 |
+| `use-custom-domain` | R2 | 复制当前 GitHub Release 的 Relay 安装命令，再提交域名和服务器首次安装显示的连接密钥；客户端保存明文，服务器只保存摘要；邮件服务器、转发和 DNS 由用户按引导准备。 |
 | `verify-custom-domain` | R0 | 检查 MX、加密转发和真实本地收件证据，全部通过后生效。 |
 | `remove-custom-domain` | R2 | 移除本机自定义邮箱绑定并保留邮件、Workspace 和本机能力。 |

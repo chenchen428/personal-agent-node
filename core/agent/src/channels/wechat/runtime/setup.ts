@@ -42,6 +42,7 @@ export type StoredAccount = {
   baseUrl: string;
   accountId: string;
   userId?: string;
+  spaceId?: string;
   savedAt: string;
 };
 
