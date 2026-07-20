@@ -9,7 +9,7 @@ test("public test sender submits only the assigned recipient and returns correla
       requests.push({ url: String(url), options });
       return requests.length === 1
         ? Response.json({ id: "019f7498-da77-7000-a123-456789abcdef", token: "private-result-token", status: "Queued" }, { status: 202 })
-        : Response.json({ id: "019f7498-da77-7000-a123-456789abcdef", status: "Accepted", smtpCode: 250 }, { status: 200 });
+        : Response.json({ id: "019f7498-da77-7000-a123-456789abcdef", status: "Delivered", outcome: "Delivered", smtpCode: 250 }, { status: 200 });
     },
     resolveMxImpl: async () => [{ exchange: "mx.example.com", priority: 10 }],
     sleep: async () => {},

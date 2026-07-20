@@ -104,7 +104,8 @@ server {
 NGINX
 
 systemctl daemon-reload
-systemctl enable --now personal-agent-self-hosted-relay.service
+systemctl enable personal-agent-self-hosted-relay.service
+systemctl restart personal-agent-self-hosted-relay.service
 nginx -t
 systemctl reload nginx
 curl --fail --silent --show-error --max-time 5 -H "Host: $DOMAIN" http://127.0.0.1:8090/__personal_agent_relay/health >/dev/null

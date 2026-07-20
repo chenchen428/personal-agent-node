@@ -5,7 +5,8 @@ const TEST_EMAIL_SENDER_DOMAIN = "sendtest.joltmx.com";
 const REQUEST_TIMEOUT_MS = 15_000;
 const DELIVERY_TIMEOUT_MS = 45_000;
 const DELIVERY_POLL_INTERVAL_MS = 1_000;
-const TERMINAL_STATUSES = new Set(["Accepted", "Deferred", "Rejected"]);
+const TERMINAL_STATUSES = new Set(["Accepted", "Delivered", "Deferred", "Rejected", "Failed"]);
+const ACCEPTED_STATUSES = new Set(["Accepted", "Delivered"]);
 
 export class PublicTestMailSender {
   constructor({ fetchImpl = fetch, resolveMxImpl = resolveMx, now = () => Date.now(), sleep = (milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds)) } = {}) {
@@ -41,7 +42,7 @@ export class PublicTestMailSender {
     }
     const result = TERMINAL_STATUSES.has(payload.status) ? payload : await this.waitForSmtpResult(requestId, token);
     if (result.status === "Deferred") throw senderError("PUBLIC_TEST_MAIL_DEFERRED", "公网发件服务暂未能连接平台邮箱，请检查 MX 和收件服务后重试。", 503);
-    if (result.status !== "Accepted") throw senderError("PUBLIC_TEST_MAIL_REJECTED", "平台邮箱的公网收件服务器拒绝了测试邮件。", 409);
+    if (!ACCEPTED_STATUSES.has(result.status)) throw senderError("PUBLIC_TEST_MAIL_REJECTED", "平台邮箱的公网收件服务器拒绝了测试邮件。", 409);
     return {
       accepted: true,
       provider: "TestEmailSender",

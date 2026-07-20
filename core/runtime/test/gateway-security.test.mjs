@@ -5,7 +5,7 @@ import os from "node:os";
 import path from "node:path";
 import test from "node:test";
 import { initializeSite, resolveNodeConfig } from "../src/config.ts";
-import { authorizeRoute, createPrivateSiteGateway, resolveRelayMailIngestTarget, resolveRelaySpaceProxyTarget } from "../src/gateway.ts";
+import { authorizeRoute, createPrivateSiteGateway, resolveRelaySpaceProxyTarget } from "../src/gateway.ts";
 import { setDefaultPersonalApp } from "../src/apps.ts";
 
 test("Relay Space routing resolves a running subdomain target without granting loopback auth", (t) => {
