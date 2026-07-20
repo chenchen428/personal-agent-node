@@ -36,6 +36,7 @@ test("starting a custom-domain binding prepares one protected Relay key and proj
     input: { kind: "sites", domain: "agent.example.net", relayToken },
   });
   assert.equal(result.tunnel.protocol, "pa-reverse-ws-v1");
+  assert.equal(result.tunnel.endpoint, "wss://agent.example.net/v1/connect");
   assert.equal(result.tunnel.routePolicy, "gateway");
   assert.equal(result.relay.serverPreparationRequired, true);
   assert.deepEqual(result.spaceRoutes.map((route) => route.domain), ["agent.example.net", "work.agent.example.net"]);
