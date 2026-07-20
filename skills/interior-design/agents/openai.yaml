@@ -1,4 +1,4 @@
 interface:
   display_name: "装修设计与 3D 户型"
-  short_description: "从户型证据生成可手动浏览的 3D 装修概念图与交付页"
+  short_description: "把户型证据变成可校准、可分层查看的 3D 装修概念模型与交付页"
   default_prompt: "Use $interior-design to turn my floor plan and style references into a calibrated concept model and a manually explorable renovation delivery Page."

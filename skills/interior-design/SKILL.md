@@ -1,6 +1,6 @@
 ---
 name: interior-design
-description: Turn floor plans and home references into calibrated concept interior designs, managed still renders, and manually explorable Three.js Pages. Use for 装修设计、室内设计、户型图、2D 转 3D、3D 户型、空间布局、家具软装、材质方案、平面鸟瞰、房间近景、可旋转家居网页，或需要基于户型图生成装修设计交付页时。
+description: Turn floor plans and home references into calibrated concept interior designs, managed still renders, and manually explorable Three.js Pages. Use for 装修方案、室内设计、户型图、2D 转 3D、3D 户型、复式住宅、挑空、楼梯、连廊、材料方案、户型动画、平面鸟瞰、房间近景、可旋转网页，或需要基于户型图生成装修设计交付页时。
 ---
 
 # Interior Design
@@ -21,7 +21,7 @@ Turn floor-plan evidence into a traceable concept model and a finished, manually
 
    `node skills/interior-design/scripts/cli.mjs page --input <normalized.json> --output <page-dir>`
 
-7. Verify the finished whole-home view, OrbitControls rotation/pan/zoom, three view modes, room entry and reset, desktop layout, mobile landscape layout, portrait guidance, keyboard focus, non-empty canvas, and WebGL projection fallback. Do not add auto tours, timelines, entrance animation, or an editor.
+7. Verify the whole-home view, OrbitControls rotation/pan/zoom, camera and level modes, room entry and reset, day/evening light, desktop layout, mobile layout, portrait guidance, keyboard focus, non-empty canvas, reduced-motion behavior, reveal-frame change when enabled, and WebGL projection fallback. The optional model reveal must stop on user interaction; do not add auto tours, timelines, playback controls, or an editor.
 8. Publish only with `pa-cli pages publish`. Use the returned `pageId`, `url`, or `linkNotice`; never guess a hostname or expose a loopback path.
 
 ## Safety Boundary
@@ -35,7 +35,7 @@ Turn floor-plan evidence into a traceable concept model and a finished, manually
 ## Resources
 
 - [references/template-framework.md](references/template-framework.md): required Page framework and high-freedom design boundary.
-- [references/model-schema.md](references/model-schema.md): model fields, normalization, validation, and calibration.
+- [references/model-schema.md](references/model-schema.md): model fields, vertical-space extensions, normalization, validation, and calibration.
 - [references/design-rules.md](references/design-rules.md): still-image and interactive viewer acceptance.
 - [references/delivery.md](references/delivery.md): managed objects, Pages, native attachments, and governance.
 - `scripts/cli.mjs`: deterministic `validate`, `normalize`, and `page` commands.

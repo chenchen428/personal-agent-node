@@ -8,13 +8,15 @@ import { normalizeTaskCreate, normalizeTaskPatch } from "../src/server/task-cont
 
 const personalAgentHome = path.resolve(process.env.PERSONAL_AGENT_HOME || path.join(os.homedir(), ".personal-agent"));
 const siteDataRoot = path.resolve(process.env.PRIVATE_SITE_DATA_ROOT || path.join(personalAgentHome, "workspace"));
-loadServiceEnv(process.env.OPEN_AGENT_BRIDGE_ENV_FILE || path.join(siteDataRoot, "secrets", "applications", "site.env"));
+const serviceEnvFile = process.env.OPEN_AGENT_BRIDGE_ENV_FILE || path.join(siteDataRoot, "secrets", "applications", "site.env");
+const serviceEnvIsAuthoritative = Boolean(process.env.OPEN_AGENT_BRIDGE_ENV_FILE);
+loadServiceEnv(serviceEnvFile, { overwrite: serviceEnvIsAuthoritative ? new Set(["OPEN_AGENT_BRIDGE_API_TOKEN"]) : new Set() });
 
 const args = parseArgs(process.argv.slice(2));
 const command = args._[0] || "help";
 const subcommand = args._[1] || "";
 const apiBase = (process.env.OPEN_AGENT_BRIDGE_API_BASE || `http://127.0.0.1:${process.env.OPEN_AGENT_BRIDGE_PORT || "8788"}`).replace(/\/+$/, "");
-const token = process.env.OPEN_AGENT_BRIDGE_API_TOKEN || "";
+let token = process.env.OPEN_AGENT_BRIDGE_API_TOKEN || "";
 
 try {
   if (command === "mail" && subcommand === "ingest") {
@@ -455,7 +457,13 @@ try {
 }
 
 async function get(pathname) {
-  const response = await fetch(`${apiBase}${pathname}`, { headers: headers() });
+  let response = await fetch(`${apiBase}${pathname}`, { headers: headers() });
+  if (response.status === 401 && serviceEnvIsAuthoritative) {
+    await new Promise((resolve) => setTimeout(resolve, 120));
+    loadServiceEnv(serviceEnvFile, { overwrite: new Set(["OPEN_AGENT_BRIDGE_API_TOKEN"]) });
+    token = process.env.OPEN_AGENT_BRIDGE_API_TOKEN || "";
+    response = await fetch(`${apiBase}${pathname}`, { headers: headers() });
+  }
   return readResponse(response);
 }
 
@@ -781,7 +789,7 @@ function readResourceExclusions(filePath) {
   return files;
 }
 
-function loadServiceEnv(filePath) {
+function loadServiceEnv(filePath, { overwrite = new Set() } = {}) {
   if (!filePath || !fs.existsSync(filePath)) return;
   const content = fs.readFileSync(filePath, "utf8");
   for (const line of content.split(/\r?\n/)) {
@@ -792,7 +800,7 @@ function loadServiceEnv(filePath) {
     const key = trimmed.slice(0, separator).trim();
     let value = trimmed.slice(separator + 1).trim();
     if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) value = value.slice(1, -1);
-    if (key && process.env[key] === undefined) process.env[key] = value;
+    if (key && (process.env[key] === undefined || overwrite.has(key))) process.env[key] = value;
   }
 }
 

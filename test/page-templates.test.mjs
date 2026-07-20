@@ -44,8 +44,9 @@ test("space browsing defaults to the whole home and enters a room by moving the 
   assert.match(canvas, /\[roomId, view\]/);
   assert.match(scene, /interiorRooms\.find\(\(entry\) => entry\.id === roomId\)/);
   assert.match(scene, /room \? Math\.max\(room\.width, room\.depth\) : interiorBounds\.span/);
-  assert.match(skillClient, /runtime\.update\(view, roomId\)/);
+  assert.match(skillClient, /runtime\.update\(view, roomId, displayMode\)/);
   assert.match(skillClient, /const room = model\.rooms\.find\(\(entry\) => entry\.id === roomId\)/);
+  assert.match(skillClient, /setDisplayMode\(built\.records, mode\)/);
 });
 
 test("authenticated route registry covers template list and details", () => {

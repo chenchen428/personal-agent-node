@@ -32,7 +32,8 @@ GitHub 私有根仓库克隆到当前 Agent Workspace 的 `projects/personal-age
 
 ## Interior design and managed images
 
-- `$interior-design` recognizes renovation concepts, floor plans, 2D-to-3D requests, material schemes, floor-plan animation, and rotatable Page requests.
+- `$interior-design` recognizes renovation concepts, floor plans, 2D-to-3D requests, duplex and double-height layouts, material schemes, floor-plan animation, and rotatable Page requests.
 - Without CAD/BIM or a reliable known dimension, its geometry is explicitly a calibrated concept model rather than survey, structural, code, or construction output.
-- The workflow produces normalized model JSON, a verified managed still image through `$visual-content`, and an optional self-contained Three.js Page published by the governed Pages operation.
+- The normalized model can express levels, elevations, double-height voids, partial upper slabs, stairs, bridges, and railings while remaining compatible with earlier single-level models. Its self-contained Three.js Page supports whole/lower/upper/cutaway views, day/evening lighting, and a reduced-motion-safe model reveal.
+- The workflow produces normalized model JSON, an optional verified managed still image through `$visual-content`, and a self-contained Three.js Page published by the governed Pages operation. A still image illustrates the validated model; it never decides structure or level geometry.
 - Ready image `obj_` IDs are selected by the main Agent in the unified final-reply attachment protocol so supported connectors can deliver native images. Workers only report candidate IDs.

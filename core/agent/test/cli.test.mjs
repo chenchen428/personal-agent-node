@@ -12,6 +12,38 @@ import { createPageThumbnailPng } from "./page-thumbnail-fixture.mjs";
 const execFileAsync = promisify(execFile);
 const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
+test("CLI prefers the current shim environment token and retries one read during update handoff", async (t) => {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), "pa-cli-auth-"));
+  const envFile = path.join(directory, "site.env");
+  fs.writeFileSync(envFile, "OPEN_AGENT_BRIDGE_API_TOKEN=handoff-old\n");
+  const authorization = [];
+  const server = http.createServer((request, response) => {
+    authorization.push(request.headers.authorization || "");
+    if (authorization.length === 1) {
+      fs.writeFileSync(envFile, "OPEN_AGENT_BRIDGE_API_TOKEN=handoff-current\n");
+      response.writeHead(401, { "content-type": "application/json" });
+      response.end(JSON.stringify({ ok: false, error: "Authentication required" }));
+      return;
+    }
+    response.writeHead(request.headers.authorization === "Bearer handoff-current" ? 200 : 401, { "content-type": "application/json" });
+    response.end(JSON.stringify({ ok: true, sessions: [] }));
+  });
+  await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
+  t.after(() => { server.close(); fs.rmSync(directory, { recursive: true, force: true }); });
+  const address = server.address();
+  const result = await execFileAsync(process.execPath, [path.join(projectRoot, "bin", "pa-cli.mjs"), "session", "list", "--json"], {
+    cwd: projectRoot,
+    env: {
+      ...process.env,
+      OPEN_AGENT_BRIDGE_API_BASE: `http://127.0.0.1:${address.port}`,
+      OPEN_AGENT_BRIDGE_API_TOKEN: "inherited-stale",
+      OPEN_AGENT_BRIDGE_ENV_FILE: envFile,
+    },
+  });
+  assert.deepEqual(JSON.parse(result.stdout), { sessions: [], nextCursor: "", hasMore: false });
+  assert.deepEqual(authorization, ["Bearer handoff-old", "Bearer handoff-current"]);
+});
+
 test("legacy Memory CLI fails closed and points to main-Agent Activity", async () => {
   await assert.rejects(
     execFileAsync(process.execPath, [path.join(projectRoot, "bin", "pa-cli.mjs"), "memory", "recall", "--json"], {

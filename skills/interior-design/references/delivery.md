@@ -13,5 +13,4 @@ Use `$visual-content` for raster generation and inspection, `$media-toolkit` for
 
 ## Page contract
 
-Publish the verified folder with `pa-cli pages publish --dir <folder> --title <title> --summary <summary> --access private --json`. Include desktop and mobile thumbnails when supported. Retain the stable returned `pageId`; return only its `url` or `linkNotice`, never a guessed hostname or localhost link.
-
+Publish the verified entry file with `pa-cli pages publish --file <folder>/index.html --folder <stable-name> --desktop-thumbnail <desktop.png> --mobile-thumbnail <mobile.png> --title <title> --summary <summary> --private --overwrite --json`. Include concise alt text for both thumbnails. Retain the stable returned `pageId`; return only its `url` or `linkNotice`, never a guessed hostname or localhost link.
