@@ -2,7 +2,12 @@
 
 Personal Agent does not bundle an SMTP or IMAP server. A user-managed local MTA receives and validates mail, then pipes one complete RFC 5322 message to `pa-cli mail ingest`. The command follows the active immutable Node release, archives the EML under `PRIVATE_SITE_DATA_ROOT/mail`, and submits a token-authenticated event to the loopback Agent service.
 
-The mailbox service belongs to the user's own Node. The user may keep it LAN-only or expose SMTP/IMAP with a separately reviewed protocol-aware tunnel or relay. Managed Personal Agent Cloud and HTTP path routing do not receive mail bodies, attachments, mailbox credentials, queues or DKIM private keys.
+The mailbox service belongs to the user. The user may keep it LAN-only or run a
+public MTA on the same server as the self-hosted Relay. The tracked
+`install-self-hosted-mail.sh` shape uses an exact recipient allowlist and a
+loopback-only HTTP handoff into the authenticated WSS Relay; it does not expose a
+public HTTP mail-import API. Managed Personal Agent Cloud does not receive mail
+bodies, attachments, mailbox credentials, queues or DKIM private keys.
 
 ## Boundary
 

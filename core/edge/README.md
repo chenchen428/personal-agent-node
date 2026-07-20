@@ -12,6 +12,14 @@ a random bearer key (only its SHA-256 digest is stored on the server), reuses th
 customer-machine administrator rights, or platform quota. The low-level Edge
 registry and WireGuard tooling below remain for explicit legacy migration.
 
+For custom-domain mail, a user-managed Postfix instance may use
+`install-self-hosted-mail.sh`. It accepts only the exact configured recipients
+and posts raw RFC 5322 messages to a loopback-only Relay endpoint. The Relay
+routes mail by recipient domain to the corresponding Space and the local Agent
+archives it through its existing authenticated import API. Nginx returns 404 for
+the internal ingest path; SMTP queues and policy remain owned by Postfix, and no
+SMTP/IMAP server is included in Node.
+
 The `sites.json` file registers the complete Site for the owner's apex domain. The
 renderer expands the shared distribution in registry/site-distribution.json;
 operators do not configure ad hoc sub-sites.

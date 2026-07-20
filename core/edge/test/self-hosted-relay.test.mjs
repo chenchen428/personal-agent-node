@@ -9,6 +9,17 @@ import test from "node:test";
 import { createSelfHostedRelay } from "../src/self-hosted-relay.ts";
 import { ReverseTunnelConnector } from "../../runtime/src/reverse-tunnel.ts";
 
+test("self-hosted installers restart upgraded Relay code and keep mail ingress private", () => {
+  const relayInstaller = fs.readFileSync(new URL("../../../infra/edge/install-self-hosted-relay.sh", import.meta.url), "utf8");
+  const mailInstaller = fs.readFileSync(new URL("../../../infra/edge/install-self-hosted-mail.sh", import.meta.url), "utf8");
+  assert.match(relayInstaller, /systemctl restart personal-agent-self-hosted-relay\.service/);
+  assert.match(relayInstaller, /location = \/__personal_agent_relay\/mail-ingest[\s\S]*return 404;/);
+  assert.match(mailInstaller, /virtual_mailbox_maps = lmdb:/);
+  assert.match(mailInstaller, /__personal_agent_relay\/mail-ingest/);
+  assert.match(mailInstaller, /smtpd_sasl_auth_enable = no/);
+  assert.doesNotMatch(mailInstaller, /dovecot|imap/i);
+});
+
 test("self-hosted Relay authenticates one Node key and forwards HTTP to its loopback gateway", async (t) => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "pa-self-hosted-relay-"));
   const token = crypto.randomBytes(32).toString("base64url");
