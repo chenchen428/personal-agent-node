@@ -26,6 +26,7 @@ test("Mobile V6.35 keeps every destination in a focused component", () => {
 });
 
 test("Mobile V6.35 implements the approved task and navigation interactions", () => {
+  const desktopEntry = read("core/app/src/app/app/page.tsx");
   const shell = read("core/app/src/components/mobile-current/shell.tsx");
   const workers = read("core/app/src/components/mobile-current/workers.tsx");
   const activity = read("core/app/src/components/mobile-current/activity.tsx");
@@ -33,6 +34,8 @@ test("Mobile V6.35 implements the approved task and navigation interactions", ()
   const apps = read("core/app/src/components/mobile-current/apps.tsx");
   const about = read("core/app/src/components/mobile-current/about.tsx");
   const tokenUsage = read("core/app/src/components/mobile-current/token-usage.tsx");
+  assert.match(desktopEntry, /export const dynamic = "force-dynamic"/);
+  assert.match(desktopEntry, /redirect\("\/app\/mobile"\)/);
   assert.match(shell, /打开侧边菜单/);
   assert.match(shell, /工作区/);
   assert.match(shell, /自定义应用/);
