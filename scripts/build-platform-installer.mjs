@@ -6,6 +6,7 @@ import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { verifyOpenCliRuntime } from './lib/opencli-runtime.mjs';
+import { overlaySharpNativeRuntime } from './lib/platform-native-dependencies.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const args = parseArgs(process.argv.slice(2));
@@ -32,9 +33,11 @@ try {
   fs.mkdirSync(path.join(payloadRoot, 'node'), { recursive: true });
   const payloadRelease = path.join(payloadRoot, 'release');
   fs.cpSync(releaseRoot, payloadRelease, { recursive: true, preserveTimestamps: true });
+  const nativeRuntime = overlaySharpNativeRuntime({ workspaceRoot: root, releaseRoot: payloadRelease, platform, architecture });
   fs.copyFileSync(nodeRuntime, path.join(payloadRoot, 'node', platform === 'win32' ? 'node.exe' : 'node'));
   fs.copyFileSync(launcherBinary, path.join(payloadRelease, platform === 'win32' ? 'personal-agent.exe' : 'personal-agent'));
   fs.copyFileSync(uiLauncherBinary, path.join(payloadRelease, platform === 'win32' ? 'personal-agent-ui.exe' : 'personal-agent-ui'));
+  verifySharpNativeRuntime(payloadRelease);
   signPlatformPayload(payloadRelease);
   if (args.candidate) writeCandidateSecurityMetadata(payloadRelease);
   finalizePlatformRelease(payloadRelease);
@@ -46,7 +49,7 @@ try {
   const updater = packageUpdater({ platform, architecture, tag, setupBinary, output });
   const asset = packageAsset({ platform, architecture, tag, setupBinary, output, temporary });
   const digest = sha256(asset);
-  process.stdout.write(`${JSON.stringify({ ok: true, tag, platform, architecture, target, asset, updater, sha256: digest, updaterSha256: sha256(updater) }, null, 2)}\n`);
+  process.stdout.write(`${JSON.stringify({ ok: true, tag, platform, architecture, target, nativeRuntime, asset, updater, sha256: digest, updaterSha256: sha256(updater) }, null, 2)}\n`);
 } finally {
   fs.rmSync(temporary, { recursive: true, force: true });
 }
@@ -61,6 +64,12 @@ function verifyInputs() {
   if (!fs.statSync(nodeRuntime).isFile()) throw new Error('Bundled Node runtime is not a file');
   const openCliRuntime = verifyOpenCliRuntime({ releaseRoot });
   if (manifest.browserExecutors?.opencli?.entrypoint !== openCliRuntime.descriptor.entrypoint) throw new Error('Bundled OpenCLI runtime is not declared by the release manifest');
+}
+
+function verifySharpNativeRuntime(payloadRelease) {
+  const sharpRoot = path.join(payloadRelease, 'node_modules', 'sharp');
+  const probe = `const sharp=require(${JSON.stringify(sharpRoot)});sharp({create:{width:1,height:1,channels:4,background:{r:0,g:0,b:0,alpha:0}}}).png().toBuffer().then((value)=>{if(!Buffer.isBuffer(value)||value.length===0)process.exit(1)}).catch((error)=>{console.error(error);process.exit(1)})`;
+  run(nodeRuntime, ['-e', probe]);
 }
 
 function buildGo(name, packagePath, outputFile, target, options = {}) {

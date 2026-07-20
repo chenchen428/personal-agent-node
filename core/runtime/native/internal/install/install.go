@@ -560,11 +560,16 @@ func existingWorkspaceDomain(dataRoot string) string {
 	if err != nil {
 		return ""
 	}
+	legacyDomains := map[string]struct{}{}
 	for _, entry := range entries {
 		if !entry.IsDir() {
 			continue
 		}
 		spaceRoot := filepath.Join(dataRoot, "spaces", entry.Name())
+		domain := siteDomain(filepath.Join(spaceRoot, "config", "site.json"))
+		if domain != "" {
+			legacyDomains[domain] = struct{}{}
+		}
 		data, readErr := os.ReadFile(filepath.Join(spaceRoot, "space.json"))
 		if readErr != nil {
 			continue
@@ -575,7 +580,12 @@ func existingWorkspaceDomain(dataRoot string) string {
 		if json.Unmarshal(data, &space) != nil || space.Kind != "personal" {
 			continue
 		}
-		return siteDomain(filepath.Join(spaceRoot, "config", "site.json"))
+		return domain
+	}
+	if len(legacyDomains) == 1 {
+		for domain := range legacyDomains {
+			return domain
+		}
 	}
 	return ""
 }

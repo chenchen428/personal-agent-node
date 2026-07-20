@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -448,6 +449,44 @@ func TestInstallPreservesPersonalSpaceDomainWhenWorkspaceUsesSpaceLayout(t *test
 	}
 	if got := existingWorkspaceDomain(dataRoot); got != "owner.personal-agent.cn" {
 		t.Fatalf("existing personal Space domain=%q", got)
+	}
+}
+
+func TestInstallPreservesSingleLegacySpaceDomainBeforeKindMigration(t *testing.T) {
+	root := t.TempDir()
+	dataRoot := filepath.Join(root, "workspace")
+	spaceRoot := filepath.Join(dataRoot, "spaces", "sp_legacy")
+	if err := os.MkdirAll(filepath.Join(spaceRoot, "config"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(spaceRoot, "space.json"), []byte(`{"spaceId":"sp_legacy"}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(spaceRoot, "config", "site.json"), []byte(`{"asciiDomain":"legacy.example"}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if got := existingWorkspaceDomain(dataRoot); got != "legacy.example" {
+		t.Fatalf("legacy single-Space domain=%q", got)
+	}
+}
+
+func TestInstallDoesNotGuessBetweenMultipleLegacySpaceDomains(t *testing.T) {
+	root := t.TempDir()
+	dataRoot := filepath.Join(root, "workspace")
+	for index, domain := range []string{"one.example", "two.example"} {
+		spaceRoot := filepath.Join(dataRoot, "spaces", fmt.Sprintf("sp_legacy_%d", index))
+		if err := os.MkdirAll(filepath.Join(spaceRoot, "config"), 0o700); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(spaceRoot, "space.json"), []byte(fmt.Sprintf(`{"spaceId":"sp_legacy_%d"}`, index)), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(spaceRoot, "config", "site.json"), []byte(fmt.Sprintf(`{"asciiDomain":%q}`, domain)), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if got := existingWorkspaceDomain(dataRoot); got != "" {
+		t.Fatalf("ambiguous legacy domain=%q", got)
 	}
 }
 
