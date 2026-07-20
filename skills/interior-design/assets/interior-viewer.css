@@ -1,6 +1,6 @@
 :root{--paper:#f5f4ef;--panel:#eff0ec;--ink:#242925;--line:#d3d6cf;--moss:#315f4a;--terra:#9b5b42;--muted:#687169;font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;color:var(--ink);background:var(--paper)}
 *{box-sizing:border-box}
-html,body,#app{width:100%;height:100%;margin:0;overflow:hidden}
+html,body,#app,#viewer-shell{width:100%;height:100%;margin:0;overflow:hidden}
 body{overscroll-behavior:none}
 button,select{font:inherit}
 button{touch-action:manipulation}
@@ -37,7 +37,17 @@ button:focus-visible,select:focus-visible{outline:3px solid var(--terra);outline
 #fallback[hidden]{display:none}
 #fallback strong{font-size:10px}
 #fallback span{color:var(--muted);font-size:9px;line-height:1.45}
-.orientation-hint{display:none}
+.orientation-gate{position:fixed;z-index:1000;inset:0;display:grid;place-items:center;padding:max(22px,env(safe-area-inset-top)) max(18px,env(safe-area-inset-right)) max(22px,env(safe-area-inset-bottom)) max(18px,env(safe-area-inset-left));background:rgba(31,35,31,.86)}
+.orientation-gate[hidden]{display:none}
+.orientation-dialog{width:min(100%,410px);border:1px solid #9da49d;padding:28px;background:#f8f7f3;color:var(--ink);box-shadow:0 24px 64px rgba(0,0,0,.28)}
+.orientation-icon{width:60px;height:60px;fill:none;stroke:var(--moss);stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.orientation-kicker{margin:18px 0 8px;color:var(--moss);font:700 10px ui-monospace,monospace;letter-spacing:.12em;text-transform:uppercase}
+.orientation-dialog h1{margin:0;font:500 24px/1.25 Georgia,"Times New Roman",serif}
+.orientation-dialog>p:not(.orientation-kicker){margin:12px 0 0;color:var(--muted);font-size:13px;line-height:1.65}
+.orientation-status{min-height:22px}
+.orientation-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:22px}
+.orientation-actions button{min-height:48px;border:1px solid var(--ink);padding:0 14px;background:var(--ink);color:#fff;font-size:12px;font-weight:650}
+.orientation-actions .secondary{background:transparent;color:var(--ink)}
 @media(max-width:900px),(orientation:landscape) and (max-height:620px){
   .top{height:60px;grid-template-columns:auto minmax(120px,.65fr) minmax(220px,1fr) auto;gap:10px;padding:8px max(10px,env(safe-area-inset-right)) 8px max(10px,env(safe-area-inset-left))}
   .mark{width:44px;height:44px}
@@ -60,7 +70,7 @@ button:focus-visible,select:focus-visible{outline:3px solid var(--terra);outline
   .status{display:none}
   .mobile-room{grid-column:1/-1}
   .stage{height:calc(100% - 108px)}
-  .orientation-hint{position:fixed;z-index:5;top:max(116px,calc(env(safe-area-inset-top) + 116px));left:50%;display:block;transform:translateX(-50%);margin:0;padding:8px 11px;background:rgba(36,41,37,.88);color:#fff;font-size:9px;white-space:nowrap;pointer-events:none}
+  .portrait-allowed .level-tools{max-width:calc(100% - 20px)}
 }
 @media(max-width:520px){
   .identity{display:none}

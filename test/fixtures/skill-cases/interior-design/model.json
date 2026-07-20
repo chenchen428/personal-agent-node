@@ -17,16 +17,24 @@
     { "id": "lower", "name": "Lower level", "elevation": 0, "height": 3 },
     { "id": "upper", "name": "Upper level", "elevation": 3, "height": 3 }
   ],
+  "assertions": {
+    "singleDoubleHeightRoomId": "living",
+    "doubleHeightM": 6,
+    "maxStandardLowerHeight": 3.2,
+    "requireUpperSlabExcludesVoid": true,
+    "upperCoverageRoomIds": ["bedroom"],
+    "requireStairConnectsLevels": true
+  },
   "rooms": [
     { "id": "living", "name": "Double-height living", "levelId": "lower", "polygon": [[0,0],[4,0],[4,6],[0,6]], "height": 6, "material": "warm-oak" },
     { "id": "bedroom", "name": "Lower bedroom", "levelId": "lower", "polygon": [[4,0],[7,0],[7,6],[4,6]], "height": 3, "material": "warm-oak" },
     { "id": "library", "name": "Upper library", "levelId": "upper", "elevation": 3, "polygon": [[4,0],[7,0],[7,6],[4,6]], "height": 3, "material": "warm-oak" }
   ],
   "walls": [
-    { "id": "south", "levelId": "lower", "from": [0,0], "to": [7,0], "height": 6, "thickness": 0.16, "sectionHidden": true },
-    { "id": "east", "levelId": "lower", "from": [7,0], "to": [7,6], "height": 6, "thickness": 0.16 },
-    { "id": "north", "levelId": "lower", "from": [7,6], "to": [0,6], "height": 6, "thickness": 0.16 },
-    { "id": "west", "levelId": "lower", "from": [0,6], "to": [0,0], "height": 6, "thickness": 0.16, "sectionHidden": true },
+    { "id": "south", "levelId": "lower", "from": [0,0], "to": [7,0], "height": 3, "thickness": 0.16, "sectionHidden": true },
+    { "id": "east", "levelId": "lower", "from": [7,0], "to": [7,6], "height": 3, "thickness": 0.16 },
+    { "id": "north", "levelId": "lower", "from": [7,6], "to": [0,6], "height": 3, "thickness": 0.16 },
+    { "id": "west", "levelId": "lower", "from": [0,6], "to": [0,0], "height": 3, "thickness": 0.16, "sectionHidden": true },
     { "id": "partition", "levelId": "lower", "from": [4,0], "to": [4,6], "height": 3, "thickness": 0.12 },
     { "id": "upper-east", "levelId": "upper", "elevation": 3, "from": [7,0], "to": [7,6], "height": 3, "thickness": 0.12 }
   ],
@@ -43,7 +51,7 @@
     { "id": "upper-slab", "name": "Upper floor", "kind": "floor", "levelId": "upper", "polygon": [[4,0],[7,0],[7,6],[4,6]], "elevation": 3, "thickness": 0.2, "material": "warm-oak" }
   ],
   "voids": [
-    { "id": "living-void", "name": "6 m living void", "polygon": [[0,0],[4,0],[4,6],[0,6]], "bottomElevation": 0, "height": 6 }
+    { "id": "living-void", "name": "6 m living void", "roomId": "living", "polygon": [[0,0],[4,0],[4,6],[0,6]], "bottomElevation": 0, "height": 6 }
   ],
   "stairs": [
     { "id": "main-stair", "name": "Main stair", "fromLevelId": "lower", "toLevelId": "upper", "start": [4.4,0.7], "end": [6.4,4.4], "width": 0.95, "steps": 17, "rise": 3, "material": "oak-dark" }

@@ -57,7 +57,8 @@ export function validateModel(model) {
     finiteRange(material.roughness, 0, 1, `material ${material.id}: roughness`, errors);
     if (material.opacity !== undefined) finiteRange(material.opacity, 0, 1, `material ${material.id}: opacity`, errors);
   }
-  validateVerticalElements(model, { errors, levelIds, materialIds });
+  validateVerticalElements(model, { errors, levelIds, materialIds, roomIds });
+  validateConceptAssertions(model, errors);
   if (!['day', 'evening'].includes(model.lighting?.mode)) errors.push('lighting.mode is invalid');
   finiteRange(model.lighting?.ambient, 0, 3, 'lighting.ambient', errors);
   if (typeof model.lighting?.shadows !== 'boolean') errors.push('lighting.shadows must be boolean');
@@ -100,6 +101,8 @@ export function normalizeModel(input) {
   for (const voidItem of model.voids || []) { voidItem.polygon = voidItem.polygon.map(map); voidItem.bottomElevation = vertical(voidItem.bottomElevation); voidItem.height = vertical(voidItem.height); }
   for (const stair of model.stairs || []) { stair.start = map(stair.start); stair.end = map(stair.end); stair.width = vertical(stair.width); stair.rise = vertical(stair.rise); }
   for (const railing of model.railings || []) { railing.points = railing.points.map(map); railing.elevation = vertical(railing.elevation); railing.height = vertical(railing.height); }
+  if (model.assertions?.doubleHeightM !== undefined) model.assertions.doubleHeightM = vertical(model.assertions.doubleHeightM);
+  if (model.assertions?.maxStandardLowerHeight !== undefined) model.assertions.maxStandardLowerHeight = vertical(model.assertions.maxStandardLowerHeight);
   model.project.scale.normalizedToMetres = true;
   model.project.scale.metresPerUnit = 1;
   const normalizedPoints = coordinatePoints.map(map);
@@ -126,7 +129,7 @@ function validateLevels(levels, errors) {
   return levelIds;
 }
 
-function validateVerticalElements(model, { errors, levelIds, materialIds }) {
+function validateVerticalElements(model, { errors, levelIds, materialIds, roomIds }) {
   for (const name of ['slabs', 'voids', 'stairs', 'railings']) if (model[name] !== undefined && !Array.isArray(model[name])) errors.push(`${name} must be an array when present`);
   ids(model.slabs || [], 'slabs', errors); ids(model.voids || [], 'voids', errors); ids(model.stairs || [], 'stairs', errors); ids(model.railings || [], 'railings', errors);
   for (const slab of model.slabs || []) {
@@ -141,6 +144,7 @@ function validateVerticalElements(model, { errors, levelIds, materialIds }) {
     validatePolygon(voidItem.polygon, `void ${voidItem.id}: polygon`, errors);
     if (!Number.isFinite(voidItem.bottomElevation)) errors.push(`void ${voidItem.id}: bottomElevation must be finite`);
     finitePositive(voidItem.height, `void ${voidItem.id}: height`, errors);
+    if (voidItem.roomId !== undefined && !roomIds.has(voidItem.roomId)) errors.push(`void ${voidItem.id}: roomId does not resolve`);
   }
   for (const stair of model.stairs || []) {
     if (!levelIds.has(stair.fromLevelId) || !levelIds.has(stair.toLevelId)) errors.push(`stair ${stair.id}: level reference does not resolve`);
@@ -157,6 +161,43 @@ function validateVerticalElements(model, { errors, levelIds, materialIds }) {
     finitePositive(railing.height, `railing ${railing.id}: height`, errors);
     if (!materialIds.has(railing.material)) errors.push(`railing ${railing.id}: material does not resolve`);
   }
+}
+
+function validateConceptAssertions(model, errors) {
+  const rules = model.assertions;
+  if (rules === undefined) return;
+  if (!rules || typeof rules !== 'object' || Array.isArray(rules)) { errors.push('assertions must be an object when present'); return; }
+  const targetId = rules.singleDoubleHeightRoomId;
+  const lowerRooms = model.rooms.filter((room) => effectiveLevelId(room) === 'lower');
+  const target = lowerRooms.find((room) => room.id === targetId);
+  const voids = model.voids || [];
+  if (!targetId || !target) errors.push('assertions.singleDoubleHeightRoomId must resolve to a lower room');
+  if (voids.length !== 1) errors.push('assertions require exactly one void');
+  const voidItem = voids[0];
+  if (voidItem && target) {
+    if (voidItem.roomId !== targetId) errors.push(`void ${voidItem.id}: roomId must equal ${targetId}`);
+    if (!voidItem.polygon.every((point) => pointInPolygon(point, target.polygon, true))) errors.push(`void ${voidItem.id}: polygon must stay inside room ${targetId}`);
+    const requiredHeight = rules.doubleHeightM;
+    if (Number.isFinite(requiredHeight) && Math.abs(voidItem.height - requiredHeight) > 0.01) errors.push(`void ${voidItem.id}: height must equal assertions.doubleHeightM`);
+    for (const room of lowerRooms) {
+      if (room.id !== targetId && polygonsOverlapArea(voidItem.polygon, room.polygon)) errors.push(`void ${voidItem.id}: overlaps non-target room ${room.id}`);
+    }
+    if (rules.requireUpperSlabExcludesVoid && (model.slabs || []).some((slab) => slab.levelId === 'upper' && polygonsOverlapArea(slab.polygon, voidItem.polygon))) {
+      errors.push(`upper slab overlaps void ${voidItem.id}`);
+    }
+  }
+  if (Number.isFinite(rules.maxStandardLowerHeight)) {
+    for (const room of lowerRooms) if (room.id !== targetId && room.height >= rules.maxStandardLowerHeight) errors.push(`room ${room.id}: non-target lower height must be below ${rules.maxStandardLowerHeight}`);
+  }
+  if (Array.isArray(rules.upperCoverageRoomIds)) {
+    const upperSlabs = (model.slabs || []).filter((slab) => slab.levelId === 'upper');
+    for (const roomId of rules.upperCoverageRoomIds) {
+      const room = lowerRooms.find((item) => item.id === roomId);
+      if (!room) { errors.push(`assertions.upperCoverageRoomIds: ${roomId} does not resolve to a lower room`); continue; }
+      if (!room.polygon.every((point) => upperSlabs.some((slab) => pointInPolygon(point, slab.polygon, true)))) errors.push(`room ${roomId}: is not covered by upper slabs`);
+    }
+  }
+  if (rules.requireStairConnectsLevels && !(model.stairs || []).some((stair) => stair.fromLevelId === 'lower' && stair.toLevelId === 'upper')) errors.push('assertions require a stair connecting lower and upper');
 }
 
 function collectPlanPoints(model) {
@@ -191,5 +232,30 @@ function finiteRange(value, min, max, label, errors) { if (!Number.isFinite(valu
 function positive(value) { return Number.isFinite(value) && value > 0; }
 function point2(point) { return Array.isArray(point) && point.length === 2 && point.every(Number.isFinite); }
 function polygonArea(points) { return points.reduce((sum, [x, z], index) => { const [nx, nz] = points[(index + 1) % points.length]; return sum + x * nz - nx * z; }, 0) / 2; }
+function pointInPolygon(point, polygon, inclusive = false) {
+  const boundary = polygon.some((next, index) => pointOnSegment(point, next, polygon[(index + 1) % polygon.length]));
+  if (boundary) return inclusive;
+  let inside = false;
+  for (let index = 0, previous = polygon.length - 1; index < polygon.length; previous = index++) {
+    const [xi, zi] = polygon[index]; const [xj, zj] = polygon[previous];
+    if ((zi > point[1]) !== (zj > point[1]) && point[0] < ((xj - xi) * (point[1] - zi)) / (zj - zi) + xi) inside = !inside;
+  }
+  return inside;
+}
+function pointOnSegment(point, from, to) {
+  const cross = (point[0] - from[0]) * (to[1] - from[1]) - (point[1] - from[1]) * (to[0] - from[0]);
+  return Math.abs(cross) < 1e-8 && point[0] >= Math.min(from[0], to[0]) - 1e-8 && point[0] <= Math.max(from[0], to[0]) + 1e-8 && point[1] >= Math.min(from[1], to[1]) - 1e-8 && point[1] <= Math.max(from[1], to[1]) + 1e-8;
+}
+function polygonsOverlapArea(first, second) {
+  for (let a = 0; a < first.length; a += 1) for (let b = 0; b < second.length; b += 1) {
+    const p1 = first[a]; const p2 = first[(a + 1) % first.length]; const q1 = second[b]; const q2 = second[(b + 1) % second.length];
+    const c1 = cross(p1, p2, q1); const c2 = cross(p1, p2, q2); const c3 = cross(q1, q2, p1); const c4 = cross(q1, q2, p2);
+    if (c1 * c2 < -1e-10 && c3 * c4 < -1e-10) return true;
+  }
+  const centroid = (polygon) => polygon.reduce((sum, point) => [sum[0] + point[0] / polygon.length, sum[1] + point[1] / polygon.length], [0, 0]);
+  const edgeMidpoints = (polygon) => polygon.map((point, index) => { const next = polygon[(index + 1) % polygon.length]; return [(point[0] + next[0]) / 2, (point[1] + next[1]) / 2]; });
+  return first.some((point) => pointInPolygon(point, second)) || second.some((point) => pointInPolygon(point, first)) || edgeMidpoints(first).some((point) => pointInPolygon(point, second)) || edgeMidpoints(second).some((point) => pointInPolygon(point, first)) || pointInPolygon(centroid(first), second) || pointInPolygon(centroid(second), first);
+}
+function cross(from, to, point) { return (to[0] - from[0]) * (point[1] - from[1]) - (to[1] - from[1]) * (point[0] - from[0]); }
 function bounds(points) { const xs = points.map((point) => point[0]); const zs = points.map((point) => point[1]); return { minX: Math.min(...xs), minZ: Math.min(...zs), maxX: Math.max(...xs), maxZ: Math.max(...zs) }; }
 function round(value) { return Math.round(value * 1000) / 1000; }

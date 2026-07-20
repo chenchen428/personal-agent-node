@@ -20,7 +20,7 @@ Generated from the UI/UX Pro Max built-in priority rules because the host has no
 
 - Desktop: 68 px header, 210 px independently scrolling room index, remaining area is uninterrupted canvas; level tools top-left, camera/light tools bottom-right.
 - Mobile landscape: 60 px header with room selector, full canvas, horizontally arranged level tools at top and camera tools across bottom.
-- Mobile portrait: 108 px two-row header and non-blocking landscape hint; all controls remain usable.
+- Mobile portrait: an accessible orientation dialog precedes the canvas and asks for landscape. It listens to portrait media, resize, and orientation changes, disappears automatically in landscape, and can be dismissed for a session through “仍以竖屏查看”. The dialog traps focus, supports Escape, uses a line SVG device icon, and never assumes orientation lock succeeds.
 
 ## Motion and performance
 

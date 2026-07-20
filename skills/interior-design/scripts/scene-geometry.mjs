@@ -14,6 +14,10 @@ export function buildInteriorModel(model, scene) {
     floor.position.y = elevation(model, room) + 0.018;
     floor.receiveShadow = true;
     add(floor, { kind: 'room', levelId: levelId(room), roomId: room.id });
+    const center = polygonCenter(room.polygon);
+    const label = labelSprite(room.name, { width: Math.min(2.4, Math.max(1.15, room.name.length * 0.22)), height: 0.34, color: '#315f4a', font: 30 });
+    label.position.set(center[0], elevation(model, room) + 0.11, center[1]);
+    add(label, { kind: 'label', levelId: levelId(room), roomId: room.id });
   }
   for (const slab of model.slabs || []) {
     const geometry = new THREE.ExtrudeGeometry(shape(slab.polygon), { depth: slab.thickness, bevelEnabled: false });
@@ -44,6 +48,7 @@ export function setDisplayMode(records, mode) {
   for (const record of records) {
     const lower = record.levelId === 'lower' || record.levelId === 'all' || record.kind === 'vertical';
     const upper = record.levelId === 'upper' || record.levelId === 'all' || record.kind === 'vertical';
+    if (record.kind === 'label') { record.object.visible = mode === record.levelId; continue; }
     if (mode === 'free') record.object.visible = true;
     else if (mode === 'lower') record.object.visible = lower && !record.sectionHidden;
     else if (mode === 'upper') record.object.visible = upper && !record.sectionHidden;
@@ -137,10 +142,11 @@ function makeHeightMarker(voidItem) {
   return group;
 }
 
-function labelSprite(text) {
+function labelSprite(text, { width = 2.8, height = 0.7, color = '#9b5b42', font = 42 } = {}) {
   const canvas = document.createElement('canvas'); canvas.width = 512; canvas.height = 128;
   const context = canvas.getContext('2d'); context.fillStyle = 'rgba(249,248,244,.94)'; context.fillRect(0, 0, 512, 128);
-  context.fillStyle = '#9b5b42'; context.font = '600 42px system-ui'; context.textAlign = 'center'; context.textBaseline = 'middle'; context.fillText(text, 256, 64);
+  context.fillStyle = color; context.font = `600 ${font}px system-ui`; context.textAlign = 'center'; context.textBaseline = 'middle'; context.fillText(text, 256, 64);
   const material = new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(canvas), transparent: true, depthTest: false });
-  const sprite = new THREE.Sprite(material); sprite.scale.set(2.8, 0.7, 1); return sprite;
+  const sprite = new THREE.Sprite(material); sprite.scale.set(width, height, 1); return sprite;
 }
+function polygonCenter(polygon) { return polygon.reduce((sum, point) => [sum[0] + point[0] / polygon.length, sum[1] + point[1] / polygon.length], [0, 0]); }
