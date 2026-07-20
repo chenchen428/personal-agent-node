@@ -43,7 +43,7 @@ test("Mobile V6.35 implements the approved task and navigation interactions", ()
   assert.match(workers, /\/api\/mobile\/tasks/);
   assert.match(workers, /filter !== "all"/);
   assert.match(workers, /setFilter\("all"\)/);
-  assert.match(workers, /\/api\/chat\/sessions\/\$\{encodeURIComponent\(sessionId\)\}/);
+  assert.match(workers, /\/api\/mobile\/tasks\/\$\{encodeURIComponent\(sessionId\)\}\?messageLimit=80/);
   assert.match(workers, /TaskLoading/);
   assert.match(workers, /mobile-task-loading-message user/);
   assert.match(workers, /mobile-task-loading-message agent/);
@@ -68,6 +68,8 @@ test("Mobile V6.35 implements the approved task and navigation interactions", ()
   assert.match(pages, /setFilter\("all"\)/);
   assert.match(apps, /你的常用工具/);
   assert.match(apps, /手机与桌面共享应用/);
+  assert.match(apps, /<Link/);
+  assert.doesNotMatch(apps, /<a className="mobile-app-card/);
   assert.ok(about.indexOf("<MobileTokenUsageSection />") > about.indexOf("mobile-about-email"));
   assert.ok(about.indexOf("<MobileTokenUsageSection />") < about.indexOf("mobile-about-skills"));
   assert.match(tokenUsage, /TokenUsageHeatmap/);

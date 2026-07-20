@@ -38,6 +38,39 @@
       "defaultConnected": false
     },
     {
+      "id": "dingtalk",
+      "name": "钉钉",
+      "accessMode": "account",
+      "category": "沟通",
+      "icon": "message",
+      "summary": "通过官方 Stream 模式远程联系主 Agent",
+      "description": "连接钉钉企业内部应用机器人后，可从单聊或群聊继续主 Agent 对话并接收文字结果。Client ID 和 Client Secret 仅保存在当前 Space，本连接不参与初始化完成条件。",
+      "capabilities": ["继续主 Agent 对话", "接收钉钉文字消息", "回复文字与任务进展", "Stream 长连接与自动恢复"],
+      "runtime": [
+        { "label": "连接方式", "value": "钉钉官方 Stream SDK" },
+        { "label": "消息能力", "value": "文字收发" },
+        { "label": "凭据保存", "value": "当前 Space 本机密钥目录" },
+        { "label": "初始化", "value": "非必选" }
+      ],
+      "skillDescription": "使用企业内部应用机器人的 Client ID 和 Client Secret 建立钉钉官方 Stream 连接。先读取脱敏状态；配置和清空只允许从本机控制台发起。每个应用只能绑定一个 Space，不输出凭据、Access Token 或会话 Webhook。",
+      "skillReference": "skills/personal-agent/references/connectors/dingtalk.md",
+      "cli": {
+        "command": "pa-cli connection dingtalk",
+        "description": "读取钉钉 Stream 连接的脱敏状态；凭据配置与清空在本机连接页面完成。",
+        "operations": [
+          { "name": "status", "risk": "R0", "description": "读取脱敏连接状态、最近连接时间和最近收信时间。" }
+        ]
+      },
+      "primaryAction": "配置",
+      "setupRequired": false,
+      "defaultConnected": false,
+      "origin": {
+        "repository": "https://github.com/open-dingtalk/dingtalk-stream-sdk-nodejs",
+        "version": "2.1.4",
+        "license": "MIT"
+      }
+    },
+    {
       "id": "wechat-personal",
       "platforms": ["win32"],
       "name": "个人微信",

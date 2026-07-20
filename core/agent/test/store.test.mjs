@@ -247,6 +247,33 @@ test("paginates and searches chat sessions with a stable cursor", () => {
   }
 });
 
+test("mobile task detail bounds history while preserving the latest plan", () => {
+  const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), "pa-store-mobile-detail-"));
+  const store = new BridgeStore({ dataDir, consoleBaseUrl: "https://agent.example.test" });
+  try {
+    const session = store.createSession({ role: "worker", title: "Long task", workspaceRoot: dataDir });
+    store.appendEvent(session.id, "session.status", {
+      metadata: { eventType: "turn/plan/updated", plan: [{ step: "Keep latest plan", status: "inProgress" }] },
+    });
+    for (let index = 0; index < 320; index += 1) {
+      store.appendEvent(session.id, index % 2 ? "session.tool_result" : "session.tool_use", { content: `internal-${index}` });
+      store.appendEvent(session.id, index % 3 ? "session.assistant_message" : "session.user_message", { content: `visible-${index}` });
+    }
+
+    const detail = store.getMobileSessionDetail(session.id, { messageLimit: 80 });
+    assert.equal(detail.messages.length, 80);
+    assert.equal(detail.messages.at(-1).content, "visible-319");
+    assert.equal(detail.messages.some((message) => message.content.startsWith("internal-")), false);
+    assert.equal(detail.events.length, 1);
+    assert.equal(detail.events[0].payload.metadata.plan[0].step, "Keep latest plan");
+    assert.equal(detail.pagination.hasEarlier, true);
+    assert.ok(JSON.stringify(detail).length < JSON.stringify(store.getSession(session.id)).length / 3);
+  } finally {
+    store.close();
+    fs.rmSync(dataDir, { recursive: true, force: true });
+  }
+});
+
 test("coalesces streaming assistant deltas by persisted message id", () => {
   const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), "oab-store-"));
   const store = new BridgeStore({ dataDir, consoleBaseUrl: "https://agent.example.test" });

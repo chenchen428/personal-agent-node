@@ -1,12 +1,13 @@
 {
   "schemaVersion": 1,
   "id": "wechat-conversation-channel",
-  "workflow": "WeChat conversation channel",
+  "workflow": "Remote conversation channels",
   "cloudIndependent": true,
-  "given": "A local WeChat channel identity, health adapter, and Agent session store",
-  "when": "Messages, health degradation, and a bounded login verification code are received",
+  "given": "A local remote-channel identity, health adapter, and Agent session store",
+  "when": "WeChat or DingTalk messages, health degradation, and a bounded login verification code are received",
   "acceptance": [
     "Every connection that persists configuration shows Clear Configuration after setup and returns to Configure only after its endpoint has removed the saved connection state; browser-only read connectors do not claim to own or clear browser account state",
+    "DingTalk uses the pinned official Stream SDK for text conversations; validates credentials before storing them mode 0600 under the current Space, binds one internal app to one Space, acknowledges and deduplicates callbacks before Agent work, replies only through the source conversation's trusted DingTalk webhook, exposes no secret, token or webhook in status, and releases ownership on clear while preserving conversation history",
     "Clearing WeChat claw or personal WeChat releases its installation-level account owner so another isolated Space can configure the identity, while preserving local conversation history",
     "WeChat claw and personal WeChat account identities are each owned by exactly one isolated Space per installation; conflicting Spaces fail closed for status, polling, callbacks and sends",
     "Clearing a configured personal WeChat connection removes its local endpoint, secret, account binding, access policy, connectivity test and pending plans, releases the installation-level account owner, preserves chat history, and restores the Configure action",

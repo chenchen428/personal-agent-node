@@ -203,6 +203,7 @@ export class WeChatConnector {
       baseUrl: status.baseurl || session.baseUrl,
       accountId: status.ilink_bot_id,
       userId: status.ilink_user_id,
+      ...(this.ownership?.spaceId ? { spaceId: this.ownership.spaceId } : {}),
       savedAt: new Date().toISOString(),
     };
     this.ownership?.store.replace("wechat-claw", [account.accountId, account.userId], this.ownership.spaceId);
@@ -310,7 +311,11 @@ export class WeChatConnector {
 
   private credentialOwnershipError(account: StoredAccount) {
     try {
+      if (account.spaceId && this.ownership?.spaceId && account.spaceId !== this.ownership.spaceId) {
+        throw Object.assign(new Error("该微信连接已被另一个隔离空间占用，不能在当前 Space 共同引用"), { code: "WECHAT_SPACE_CONFLICT", statusCode: 409 });
+      }
       this.ownership?.store.assertOrClaim("wechat-claw", [account.accountId, account.userId], this.ownership.spaceId);
+      if (!account.spaceId && this.ownership?.spaceId) saveCredentials({ ...account, spaceId: this.ownership.spaceId });
       return "";
     } catch (error) {
       return error instanceof Error ? error.message : String(error);

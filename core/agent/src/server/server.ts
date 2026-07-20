@@ -37,6 +37,7 @@ import { NotionCliConnection } from "../connections/notion-cli.js";
 import { OpenCliRunner } from "../connections/opencli/runner.js";
 import { WeChatQianxunConnector } from "../connections/wechat-qianxun/connector.ts";
 import { InstallationConnectionOwnership } from "../connections/connection-ownership.ts";
+import { DingTalkConnector } from "../connections/dingtalk/connector.ts";
 import { BridgeStore } from "../store/store.js";
 import { AgentBridgeBroker } from "../broker/agent-bridge-broker.js";
 import { readWorkspaceSkillCatalog } from "../skills/catalog.js";
@@ -151,6 +152,7 @@ const connectionOwnership = new InstallationConnectionOwnership({ installationDa
 const ownership = { store: connectionOwnership, spaceId: config.spaceId };
 const wechat = new WeChatConnector(logger, ownership);
 const wechatQianxun = new WeChatQianxunConnector({ dataRoot: config.siteDataRoot, ownership });
+const dingtalk = new DingTalkConnector({ dataRoot: config.siteDataRoot, logger, ownership });
 const xiaohongshu = new XiaohongshuChannel({
   baseUrl: config.xiaohongshuBaseUrl,
   logger,
@@ -166,11 +168,15 @@ const channelLoginCoordinator = {
     return await cloudBinding.consumeWechatMessage(message) || await xiaohongshuLogin.consumeWechatMessage(message);
   },
 };
-const orchestrator = new SessionOrchestrator({ store, hub, channels: { wechat, "wechat-personal": wechatQianxun }, managedFiles, activityStore, channelLoginCoordinator });
+const orchestrator = new SessionOrchestrator({ store, hub, channels: { wechat, "wechat-personal": wechatQianxun, dingtalk }, managedFiles, activityStore, channelLoginCoordinator });
 const scheduledTasks = new ScheduledTaskRunner({ store, broker: agentBridgeBroker, channels: { wechat }, logger });
 wechat.attach(orchestrator);
 wechatQianxun.attach((message) => orchestrator.handleChannelMessage("wechat-personal", message));
-if (config.channelPollEnabled) wechat.start();
+dingtalk.attach((message) => orchestrator.handleChannelMessage("dingtalk", message));
+if (config.channelPollEnabled) {
+  wechat.start();
+  dingtalk.start();
+}
 if (config.schedulerEnabled) scheduledTasks.start();
 
 const server = http.createServer(async (request, response) => {
@@ -241,6 +247,7 @@ for (const signal of ["SIGINT", "SIGTERM"]) {
     xiaohongshuLogin.stop();
     orchestrator.stop();
     wechat.stop();
+    dingtalk.stop();
     server.close(() => {
       wechatQianxun.close();
       managedFileCatalog.close();
@@ -423,6 +430,16 @@ async function handleRequest(request: http.IncomingMessage, response: http.Serve
 
   if (url.pathname === "/api/mobile/tasks" && request.method === "GET") {
     sendNodeApiResult(response, 200, buildMobileTasks(url));
+    return;
+  }
+
+  const mobileTaskMatch = /^\/api\/mobile\/tasks\/([^/]+)$/.exec(url.pathname);
+  if (mobileTaskMatch && request.method === "GET") {
+    const session = store.getMobileSessionDetail(decodeURIComponent(mobileTaskMatch[1]), {
+      messageLimit: Number(url.searchParams.get("messageLimit") || 80),
+    });
+    if (!session) sendNodeApiError(response, 404, "TASK_NOT_FOUND", "Task not found");
+    else sendNodeApiResult(response, 200, { session: buildConversationAttachmentDeliveryView(session) });
     return;
   }
 
@@ -791,6 +808,7 @@ async function handleRequest(request: http.IncomingMessage, response: http.Serve
           ...(wechatStatus.reason ? { error: wechatStatus.reason } : {}),
           details: { configured: wechatStatus.configured },
         },
+        dingtalk: dingtalk.catalogStatus(),
         xiaohongshu: xiaohongshuStatus,
         twitter: twitterStatus,
         notion: notion.catalogStatus(),
@@ -822,6 +840,8 @@ async function handleRequest(request: http.IncomingMessage, response: http.Serve
       };
     } else if (id === "wechat-personal") {
       dynamicStatus = personalWechatCatalogStatus(await wechatQianxun.status({ probe: true }), wechatQianxun.accessPolicy(), wechatQianxun.connectivityTestStatus());
+    } else if (id === "dingtalk") {
+      dynamicStatus = dingtalk.status();
     } else if (id === "mail") dynamicStatus = { ...mailScanner.status(), ...platformConnectionStatuses().mail };
     else if (id === "sites") dynamicStatus = platformConnectionStatuses().sites;
     const merged = inspectConnection(id, { registry: connectionRegistry, statuses: { [id]: dynamicStatus } });
@@ -847,6 +867,17 @@ async function handleRequest(request: http.IncomingMessage, response: http.Serve
   }
   if (url.pathname === "/api/connections/notion/login/start" && request.method === "POST") {
     sendChannelJson(response, 200, { ok: true, ...(await notion.startLogin()) });
+    return;
+  }
+  if (url.pathname === "/api/connections/dingtalk/configuration" && request.method === "POST") {
+    if (!isTrustedLocalConsoleRequest(request)) { sendJson(response, 403, { ok: false, error: "钉钉配置只能从本机保存" }); return; }
+    const status = await dingtalk.configure(await readJsonBody(request, 16 * 1024));
+    sendChannelJson(response, 200, { ok: true, connection: inspectConnection("dingtalk", { registry: connectionRegistry, statuses: { dingtalk: status } }) });
+    return;
+  }
+  if (url.pathname === "/api/connections/dingtalk/configuration" && request.method === "DELETE") {
+    if (!isTrustedLocalConsoleRequest(request)) { sendJson(response, 403, { ok: false, error: "钉钉配置只能从本机清空" }); return; }
+    sendChannelJson(response, 200, { ok: true, result: dingtalk.clearConfiguration() });
     return;
   }
   if (url.pathname === "/api/connections/xiaohongshu/open" && request.method === "POST") {

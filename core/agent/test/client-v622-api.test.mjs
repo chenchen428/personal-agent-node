@@ -82,6 +82,9 @@ test("V6.22 read-only client API is local, searchable and self-contained", async
   const connections = await get(port, token, "/api/connections");
   assert.ok(Date.now() - connectionsStartedAt < 1_000, "connections must not wait for browser or network probes");
   assert.equal(Array.isArray(connections.connections), true);
+  assert.equal(connections.connections.some((connection) => connection.id === "dingtalk"), true);
+  assert.equal((await get(port, token, "/api/connections/dingtalk/status")).connection.state, "needs_setup");
+  assert.equal(await status(port, token, "/api/mobile/tasks/missing-task"), 404);
 
   const personalWechatSetup = await get(port, token, "/api/connections/wechat-personal/setup");
   assert.equal(personalWechatSetup.setup.qianxunDocsUrl, "https://daenmax.github.io/qxpro-doc/doc/start/");

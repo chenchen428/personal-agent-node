@@ -3,6 +3,7 @@
 Connection-specific instructions live in one reference file per connector. The authenticated Connections page reads and displays those files directly. Dynamic status comes from the runtime and never changes the declared capability surface.
 
 - [微信 claw](connectors/wechat.md)：连接后可从微信远程联系主 Agent
+- [钉钉](connectors/dingtalk.md)：通过官方 Stream 模式远程联系主 Agent
 - [个人微信](connectors/wechat-personal.md)：通过本机千寻 Pro 连接个人微信账号
 - [小红书](connectors/xiaohongshu.md)：通过浏览器安全搜索和阅读小红书
 - [Twitter / X](connectors/twitter.md)：通过浏览器搜索和阅读 Twitter / X

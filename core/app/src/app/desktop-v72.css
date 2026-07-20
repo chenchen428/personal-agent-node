@@ -467,6 +467,17 @@
 .desktop-v72 .domain-unbind-effects small { margin-top: 3px; color: var(--pa-muted); font-size: 8px; }
 .desktop-v72 .domain-unbind-dialog > footer { display: flex; justify-content: flex-end; gap: 8px; margin-top: 20px; }
 .desktop-v72 .connection-auth-action { display: grid; justify-items: end; gap: 7px; }
+.desktop-v72 .dingtalk-connection-flow { display: contents; }
+.desktop-v72 .dingtalk-connection-flow > .connection-operation-sop { grid-column: 1 / -1; container-type: inline-size; }
+.desktop-v72 .dingtalk-credential-form { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 10px; }
+.desktop-v72 .dingtalk-credential-form > div { display: grid; gap: 5px; }
+.desktop-v72 .dingtalk-credential-form label { color: var(--pa-muted); font-size: 8px; font-weight: 650; }
+.desktop-v72 .dingtalk-credential-form input { min-width: 0; height: 31px; border: 1px solid var(--pa-border); border-radius: 7px; padding: 0 9px; background: #fff; color: var(--pa-ink); font: 9px var(--pa-mono); }
+.desktop-v72 .dingtalk-credential-form footer { grid-column: 1 / -1; display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.desktop-v72 .dingtalk-credential-form footer a { display: inline-flex; align-items: center; gap: 4px; color: var(--pa-link); font-size: 8px; font-weight: 650; }
+.desktop-v72 .dingtalk-credential-form footer a svg { width: 11px; height: 11px; }
+.desktop-v72 .dingtalk-credential-form > p { grid-column: 1 / -1; margin: 0; color: var(--pa-danger); font-size: 8px; }
+@container (max-width: 520px) { .desktop-v72 .dingtalk-credential-form { grid-template-columns: 1fr; } .desktop-v72 .dingtalk-credential-form footer, .desktop-v72 .dingtalk-credential-form > p { grid-column: 1; } }
 .desktop-v72 .personal-wechat-flow { display: contents; }
 .desktop-v72 .personal-wechat-flow > .connection-operation-sop { grid-column: 1 / -1; container-type: inline-size; }
 .desktop-v72 .personal-wechat-history-entry { display: grid; grid-template-columns: 32px minmax(0,1fr) auto; align-items: center; gap: 10px; margin-top: 14px; border-radius: 10px; padding: 10px 11px; background: var(--pa-subtle); }

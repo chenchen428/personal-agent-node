@@ -16,6 +16,7 @@ test("connection UI separates OpenCLI browser reads from QR and account authoriz
   const unbindDialog = read("core/app/src/components/desktop-v627/domain-unbind-dialog.tsx");
   const clearDialog = read("core/app/src/components/desktop-v627/connection-clear-dialog.tsx");
   const wechatAction = read("core/app/src/components/desktop-v627/wechat-claw-action.tsx");
+  const dingtalkAction = read("core/app/src/components/desktop-v627/dingtalk-action.tsx");
   const domainRuntime = read("core/agent/src/connections/domain-binding-verification.js");
   const sitePublication = read("core/agent/src/connections/verification-site-publication.js");
   const publicMailSender = read("core/agent/src/connections/mail/public-test-sender.js");
@@ -105,6 +106,13 @@ test("connection UI separates OpenCLI browser reads from QR and account authoriz
   assert.equal(twitterConnection.skillName, "social-browser-read");
   assert.match(wechatRuntime, /LOGIN_SESSION_TIMEOUT_MS = 2 \* 60 \* 1000/);
   assert.match(wechatRuntime, /status === "scaned" \? "scanned"/);
+  assert.match(actions, /DingTalkAction/);
+  assert.match(dingtalkAction, /\/api\/connections\/dingtalk\/configuration/);
+  assert.match(dingtalkAction, /Client Secret/);
+  assert.match(dingtalkAction, /ConnectionOperationSop/);
+  assert.match(dingtalkAction, /建立 Stream 连接/);
+  assert.match(dingtalkAction, /清空配置/);
+  assert.doesNotMatch(dingtalkAction, /console\.log|setMessage\(clientSecret\)/);
   assert.match(xiaohongshuRuntime, /SESSION_TTL_MS = 2 \* 60 \* 1000/);
 });
 

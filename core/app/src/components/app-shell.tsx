@@ -12,10 +12,10 @@ import { ManagedConnectionsBootstrap } from "@/components/managed-connections-bo
 
 type PersonalApp = { id: string; name: string; route: string; desktopRoute?: string; compatible: boolean };
 
-export function AppShell({ children }: { children: ReactNode }) {
+export function AppShell({ children, initialMobileHint = false }: { children: ReactNode; initialMobileHint?: boolean }) {
   const pathname = usePathname();
   const [apps, setApps] = useState<PersonalApp[]>([]);
-  const mobile = pathname.startsWith("/app/mobile");
+  const mobile = pathname.startsWith("/app/mobile") || (initialMobileHint && pathname === "/app");
 
   useEffect(() => {
     let active = true;

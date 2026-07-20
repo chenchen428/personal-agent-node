@@ -183,7 +183,7 @@ try {
     const connection = catalog.find((item) => item.id === connectionId);
     if (!connection) throw new Error(`Unknown connection: ${connectionId}`);
     print(connection);
-  } else if (command === "connection" && ["wechat", "wechat-personal", "xiaohongshu", "twitter", "notion", "mail", "sites"].includes(subcommand)) {
+  } else if (command === "connection" && ["wechat", "dingtalk", "wechat-personal", "xiaohongshu", "twitter", "notion", "mail", "sites"].includes(subcommand)) {
     const connectionId = subcommand;
     const operation = String(args._[2] || "status").trim();
     if (connectionId === "wechat" && operation === "qianxun") print(await qianxunConnectionCommand(args));
@@ -701,7 +701,7 @@ function help() {
   pa-cli cron delete --id <task-id>
   pa-cli cron run --id <task-id> [--json]
   pa-cli connection list [--json]
-  pa-cli connection inspect <wechat|wechat-personal|xiaohongshu|twitter|notion|mail|sites> [--json]
+  pa-cli connection inspect <wechat|dingtalk|wechat-personal|xiaohongshu|twitter|notion|mail|sites> [--json]
   pa-cli connection <id> status [--json]
   pa-cli connection wechat connect [--json]
   pa-cli connection wechat send-file --file <path> [--title <name>] [--recipient <wechat-id>]
