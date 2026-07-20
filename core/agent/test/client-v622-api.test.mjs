@@ -9,6 +9,7 @@ import { initializeInstallation } from "../../runtime/src/space-registry.ts";
 
 const agentRoot = path.resolve(import.meta.dirname, "..");
 const workspaceRoot = path.resolve(agentRoot, "..", "..");
+const packageVersion = JSON.parse(fs.readFileSync(path.join(workspaceRoot, "package.json"), "utf8")).version;
 
 test("V6.22 read-only client API is local, searchable and self-contained", async (t) => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "personal-agent-client-v622-"));
@@ -88,7 +89,7 @@ test("V6.22 read-only client API is local, searchable and self-contained", async
     assert.equal(connection.state, "degraded");
     assert.equal(connection.statusLabel, "未生效");
     assert.equal(connection.tone, "warning");
-    assert.match(connection.details.customRelayInstallerUrl, /github\.com\/chenchen428\/personal-agent-node\/releases\/download\/v0\.2\.0-beta\.22\/personal-agent-relay-install\.sh$/);
+    assert.equal(connection.details.customRelayInstallerUrl, `https://github.com/chenchen428/personal-agent-node/releases/download/v${packageVersion}/personal-agent-relay-install.sh`);
   }
   assert.equal((await get(port, token, "/api/connections/dingtalk/status")).connection.state, "needs_setup");
   assert.equal(await status(port, token, "/api/mobile/tasks/missing-task"), 404);
