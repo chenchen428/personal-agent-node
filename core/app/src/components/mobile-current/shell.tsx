@@ -3,12 +3,12 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Activity, Blocks, Check, ChevronDown, Info, Layers3, ListTodo, Menu, Newspaper, PanelsTopLeft, X } from "lucide-react";
-import { useEffect, useRef, useState, type MutableRefObject, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useLayoutEffect, useRef, useState, type MutableRefObject, type ReactNode, type RefObject } from "react";
 import { buildSpaceNavigationUrl, waitForSpaceRuntime } from "@/lib/space-navigation";
 import { safeHost, useRememberedScroll, useRemote } from "./data";
 import type { FilterOption, MobileSection, Overview, PersonalApp } from "./types";
 
-type ShellFilter = {
+export type ShellFilter = {
   label: string;
   description: string;
   value: string;
@@ -18,6 +18,71 @@ type ShellFilter = {
 
 type MobileSpace = { id: string; displayName: string; kind: "personal" | "user"; state: string; desiredState: "running" | "stopped"; localUrl: string; managedHost: string | null };
 type MobileSpaces = { currentSpaceId: string | null; spaces: MobileSpace[] };
+type ShellConfig = {
+  mode: "list" | "detail";
+  section: MobileSection;
+  activeAppId?: string;
+  title: string;
+  note: string;
+  query?: string;
+  setQuery?: (value: string) => void;
+  searchLabel?: string;
+  searchPlaceholder?: string;
+  filter?: ShellFilter;
+  screenClassName?: string;
+  phoneClassName?: string;
+};
+
+const defaultConfig: ShellConfig = { mode: "list", section: "activity", title: "最近动态", note: "正在连接本机" };
+const MobileShellContext = createContext<((config: ShellConfig) => void) | null>(null);
+
+export function MobileAppShell({ children }: { children: ReactNode }) {
+  const [config, setConfig] = useState<ShellConfig>(defaultConfig);
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchDraft, setSearchDraft] = useState("");
+  const composingSearch = useRef(false);
+  const pathname = usePathname();
+  const overview = useRemote<Overview>("/api/node/v1/client/overview");
+  const apps = useRemote<{ apps: PersonalApp[] }>("/api/system/apps");
+  const spaces = useRemote<MobileSpaces>("/api/system/spaces");
+
+  useEffect(() => { setDrawerOpen(false); setSearchOpen(false); }, [pathname]);
+  useEffect(() => { if (!composingSearch.current) setSearchDraft(config.query || ""); }, [config.query]);
+  const list = config.mode === "list";
+  return <MobileShellContext.Provider value={setConfig}><div className="mobile-current"><div className="mobile-stage"><div className={`phone${drawerOpen ? " menu-open" : ""}${config.phoneClassName ? ` ${config.phoneClassName}` : ""}`} id="mobile-phone">
+    {list ? <MobileHeader
+      title={config.title}
+      note={config.note}
+      drawerOpen={drawerOpen}
+      openDrawer={() => setDrawerOpen(true)}
+      searchOpen={searchOpen}
+      openSearch={config.setQuery ? () => { setSearchDraft(config.query || ""); setSearchOpen(true); } : undefined}
+      searchLabel={config.searchLabel}
+      hasActiveConditions={Boolean(config.query) || Boolean(config.filter && config.filter.value !== "all")}
+    /> : null}
+    {list && config.setQuery ? <SearchPanel
+      open={searchOpen}
+      label={config.searchLabel}
+      placeholder={config.searchPlaceholder}
+      value={searchDraft}
+      composing={composingSearch}
+      onChange={(value) => { setSearchDraft(value); if (!composingSearch.current) config.setQuery?.(value); }}
+      onCommit={(value) => { setSearchDraft(value); config.setQuery?.(value); }}
+      onDone={() => setSearchOpen(false)}
+      filter={config.filter}
+    /> : null}
+    {children}
+    {list ? <MobileDrawer
+      section={config.section}
+      activeAppId={config.activeAppId}
+      close={() => setDrawerOpen(false)}
+      overview={overview.value}
+      apps={(apps.value?.apps || []).filter((app) => app.compatible && app.route)}
+      spaces={spaces.value}
+    /> : null}
+  </div></div></div></MobileShellContext.Provider>;
+}
 
 export function MobileListShell({ section, activeAppId, title, note, children, query, setQuery, searchLabel, searchPlaceholder, filter, screenClassName }: {
   section: MobileSection;
@@ -32,51 +97,13 @@ export function MobileListShell({ section, activeAppId, title, note, children, q
   filter?: ShellFilter;
   screenClassName?: string;
 }) {
-  const [drawerOpen, setDrawerOpen] = useState(false);
-  const [searchOpen, setSearchOpen] = useState(Boolean(query));
-  const [searchDraft, setSearchDraft] = useState(query || "");
-  const composingSearch = useRef(false);
-  const pathname = usePathname();
-  const overview = useRemote<Overview>("/api/node/v1/client/overview");
-  const apps = useRemote<{ apps: PersonalApp[] }>("/api/system/apps");
-  const spaces = useRemote<MobileSpaces>("/api/system/spaces");
-
+  const setShellConfig = useContext(MobileShellContext);
+  const filterSignature = filter?.options.map((option) => `${option.value}:${option.count}`).join("|") || "";
   useRememberedScroll(section);
-  useEffect(() => { setDrawerOpen(false); }, [pathname]);
-  useEffect(() => { if (!composingSearch.current) setSearchDraft(query || ""); }, [query]);
-
-  return <div className="mobile-current"><div className="mobile-stage"><div className={`phone${drawerOpen ? " menu-open" : ""}`} id="mobile-phone">
-    <MobileHeader
-      title={title}
-      note={note}
-      drawerOpen={drawerOpen}
-      openDrawer={() => setDrawerOpen(true)}
-      searchOpen={searchOpen}
-      openSearch={setQuery ? () => { setSearchDraft(query || ""); setSearchOpen(true); } : undefined}
-      searchLabel={searchLabel}
-      hasActiveConditions={Boolean(query) || Boolean(filter && filter.value !== "all")}
-    />
-    {setQuery ? <SearchPanel
-      open={searchOpen}
-      label={searchLabel}
-      placeholder={searchPlaceholder}
-      value={searchDraft}
-      composing={composingSearch}
-      onChange={(value) => { setSearchDraft(value); if (!composingSearch.current) setQuery(value); }}
-      onCommit={(value) => { setSearchDraft(value); setQuery(value); }}
-      onDone={() => setSearchOpen(false)}
-      filter={filter}
-    /> : null}
-    <main className={`mobile-screen${screenClassName ? ` ${screenClassName}` : ""}`} data-mobile-scroll>{children}</main>
-    <MobileDrawer
-      section={section}
-      activeAppId={activeAppId}
-      close={() => setDrawerOpen(false)}
-      overview={overview.value}
-      apps={(apps.value?.apps || []).filter((app) => app.compatible && app.route)}
-      spaces={spaces.value}
-    />
-  </div></div></div>;
+  useLayoutEffect(() => {
+    setShellConfig?.({ mode: "list", section, activeAppId, title, note, query, setQuery, searchLabel, searchPlaceholder, filter, screenClassName });
+  }, [activeAppId, filter?.setValue, filter?.value, filterSignature, note, query, screenClassName, searchLabel, searchPlaceholder, section, setQuery, setShellConfig, title]);
+  return <main className={`mobile-screen${screenClassName ? ` ${screenClassName}` : ""}`} data-mobile-scroll>{children}</main>;
 }
 
 function MobileHeader({ title, note, drawerOpen, openDrawer, searchOpen, openSearch, searchLabel, hasActiveConditions }: {
@@ -184,8 +211,28 @@ function MobileSpaceSelector({ snapshot }: { snapshot: MobileSpaces | null }) {
   </section>;
 }
 
-export function DetailShell({ returnHref, returnLabel, trailing, children }: { returnHref: string; returnLabel: string; trailing?: string; children: ReactNode }) {
-  return <div className="mobile-current"><div className="mobile-stage"><div className="phone content-detail-phone"><main className="content-detail-screen"><div className="content-detail-bar"><Link href={returnHref}>‹ {returnLabel}</Link><span>{trailing}</span></div><div className="content-detail-scroll">{children}</div></main></div></div></div>;
+export function DetailShell({ returnHref, returnLabel, title, trailing, children, section = "activity", task = false, scrollRef, onInteract }: {
+  returnHref: string;
+  returnLabel: string;
+  title?: string;
+  trailing?: string;
+  children: ReactNode;
+  section?: MobileSection;
+  task?: boolean;
+  scrollRef?: RefObject<HTMLDivElement | null>;
+  onInteract?: () => void;
+}) {
+  const setShellConfig = useContext(MobileShellContext);
+  useLayoutEffect(() => {
+    setShellConfig?.({ mode: "detail", section, title: title || returnLabel, note: "", phoneClassName: `content-detail-phone${task ? " task-conversation-phone" : ""}` });
+  }, [returnLabel, section, setShellConfig, task, title]);
+  return <main className="content-detail-screen">
+    <div className={task ? "task-conversation-bar" : "content-detail-bar"}>
+      <Link href={returnHref} aria-label={`返回${returnLabel}`}>{task ? <BackIcon /> : `‹ ${returnLabel}`}</Link>
+      {task ? <strong>{title || "任务详情"}</strong> : null}<span>{trailing}</span>
+    </div>
+    <div className="content-detail-scroll" ref={scrollRef} onWheel={onInteract} onTouchMove={onInteract} onPointerDown={onInteract}>{children}</div>
+  </main>;
 }
 
 export function SearchIcon() { return <svg className="mobile-ui-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5" /><path d="m16 16 4 4" /></svg>; }

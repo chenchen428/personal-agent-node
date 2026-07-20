@@ -1,7 +1,7 @@
-import "@fontsource/cormorant-garamond/400.css";
-import "@fontsource/cormorant-garamond/500.css";
-import "@fontsource/inter/400.css";
-import "@fontsource/inter/500.css";
+import "@fontsource/cormorant-garamond/latin-400.css";
+import "@fontsource/cormorant-garamond/latin-500.css";
+import "@fontsource/inter/latin-400.css";
+import "@fontsource/inter/latin-500.css";
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import "./globals.css";

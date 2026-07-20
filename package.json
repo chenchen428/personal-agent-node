@@ -16,6 +16,7 @@
     "app:build": "next build core/app",
     "app:start": "HOSTNAME=127.0.0.1 PORT=8791 node core/app/.next/standalone/core/app/server.js",
     "app:typecheck": "tsc -p core/app/tsconfig.json --noEmit",
+    "test:e2e": "playwright test --config playwright.config.ts",
     "frontend:guard": "node scripts/frontend-architecture-guard.mjs",
     "core:typecheck": "tsc -p tsconfig.core.json && tsc -p tsconfig.contracts.json",
     "doctor": "node scripts/workspace-doctor.mjs",
@@ -65,6 +66,7 @@
     "zod": "^3.25.76"
   },
   "devDependencies": {
+    "@playwright/test": "^1.61.1",
     "@tailwindcss/postcss": "^4.3.2",
     "@tauri-apps/cli": "2.11.4",
     "@types/node": "^22.0.0",

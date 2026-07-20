@@ -9,13 +9,20 @@ import { SpaceSwitcher } from "@/components/space-switcher";
 import { UpdateNavItem } from "@/components/update-nav-item";
 import { fetchJson } from "@/lib/client-json";
 import { ManagedConnectionsBootstrap } from "@/components/managed-connections-bootstrap";
+import { MobileAppShell } from "@/components/mobile-current/shell";
 
 type PersonalApp = { id: string; name: string; route: string; desktopRoute?: string; compatible: boolean };
 
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const [apps, setApps] = useState<PersonalApp[]>([]);
-  const mobile = pathname.startsWith("/app/mobile");
+  const [resolvedSurface, setResolvedSurface] = useState<"mobile" | "desktop" | "unknown">(pathname.startsWith("/app/mobile") ? "mobile" : pathname === "/app" ? "unknown" : "desktop");
+  const mobile = pathname.startsWith("/app/mobile") || (pathname === "/app" && resolvedSurface === "mobile");
+
+  useEffect(() => {
+    if (pathname !== "/app") return;
+    setResolvedSurface(window.matchMedia("(max-width: 767px)").matches ? "mobile" : "desktop");
+  }, [pathname]);
 
   useEffect(() => {
     let active = true;
@@ -26,7 +33,8 @@ export function AppShell({ children }: { children: ReactNode }) {
   }, []);
 
   useCloseProtection(mobile);
-  if (mobile) return children;
+  if (mobile) return <MobileAppShell>{children}</MobileAppShell>;
+  if (resolvedSurface === "unknown") return <main className="surface-boot" aria-label="正在识别显示方式" aria-busy="true"><span className="surface-boot-mark">PA</span><i /></main>;
   return <><ManagedConnectionsBootstrap enabled /><DesktopShell pathname={pathname} apps={apps}>{children}</DesktopShell></>;
 }
 

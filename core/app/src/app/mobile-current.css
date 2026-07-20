@@ -93,10 +93,10 @@
 }
 .mobile-header { flex: 0 0 auto; }
 .mobile-header { height: 62px; position: relative; z-index: 18; display: grid; grid-template-columns: 42px minmax(0,1fr) 42px; align-items: center; border-bottom: 1px solid #eeeae4; padding: 0 12px; background: rgba(255,255,255,.96); }
-.mobile-header > #menu-open { width: 38px; height: 38px; border: 0; border-radius: 10px; background: transparent; color: var(--pa-muted); font-size: 18px; }
+.mobile-header > #menu-open { width: 44px; height: 44px; border: 0; border-radius: 10px; background: transparent; color: var(--pa-muted); font-size: 18px; }
 .mobile-header-spacer { width: 38px; height: 38px; }
-.mobile-header-actions { height: 38px; position: absolute; top: 50%; right: 12px; display: flex; align-items: center; justify-content: flex-end; gap: 8px; transform: translateY(-50%); }
-.mobile-header-actions [data-list-search-open] { width: 38px; height: 38px; display: grid; position: relative; place-items: center; border: 0; padding: 0; background: transparent; color: #77736d; }
+.mobile-header-actions { height: 44px; position: absolute; top: 50%; right: 9px; display: flex; align-items: center; justify-content: flex-end; gap: 8px; transform: translateY(-50%); }
+.mobile-header-actions [data-list-search-open] { width: 44px; height: 44px; display: grid; position: relative; place-items: center; border: 0; padding: 0; background: transparent; color: #77736d; }
 .mobile-header-actions [data-list-search-open].has-active-conditions::after { width: 6px; height: 6px; position: absolute; top: 6px; right: 5px; border: 1px solid #fff; border-radius: 50%; background: var(--pa-coral); content: ""; }
 .mobile-header-actions [data-list-search-open]:focus-visible { outline: 2px solid rgba(207,113,78,.28); outline-offset: 1px; }
 .mobile-title { width: 154px; min-width: 0; position: absolute; left: 50%; transform: translateX(-50%); text-align: center; pointer-events: none; }
@@ -1201,3 +1201,7 @@
   html { scroll-behavior: auto; }
 }
 @keyframes mobile-token-usage-spin { to { transform: rotate(360deg); } }
+.mobile-task-message-window { content-visibility: auto; contain-intrinsic-size: 96px; }
+.task-load-earlier { min-height: 44px; align-self: center; border: 1px solid var(--hairline); border-radius: 999px; padding: 0 18px; background: var(--canvas); color: var(--body); font-size: 13px; cursor: pointer; }
+.task-load-earlier:disabled { cursor: wait; opacity: .62; }
+.mobile-task-state > button { min-height: 44px; border: 1px solid var(--hairline); border-radius: 8px; padding: 0 18px; background: var(--canvas); color: var(--ink); cursor: pointer; }

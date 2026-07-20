@@ -28,6 +28,7 @@ test("Mobile V6.35 keeps every destination in a focused component", () => {
 test("Mobile V6.35 implements the approved task and navigation interactions", () => {
   const shell = read("core/app/src/components/mobile-current/shell.tsx");
   const workers = read("core/app/src/components/mobile-current/workers.tsx");
+  const taskDetail = read("core/app/src/components/mobile-current/use-task-detail.ts");
   const activity = read("core/app/src/components/mobile-current/activity.tsx");
   const pages = read("core/app/src/components/mobile-current/pages.tsx");
   const apps = read("core/app/src/components/mobile-current/apps.tsx");
@@ -43,14 +44,18 @@ test("Mobile V6.35 implements the approved task and navigation interactions", ()
   assert.match(workers, /\/api\/mobile\/tasks/);
   assert.match(workers, /filter !== "all"/);
   assert.match(workers, /setFilter\("all"\)/);
-  assert.match(workers, /\/api\/chat\/sessions\/\$\{encodeURIComponent\(sessionId\)\}/);
+  assert.match(taskDetail, /\/api\/node\/v1\/client\/tasks\/\$\{encodeURIComponent\(sessionId\)\}/);
+  assert.match(taskDetail, /beforeSeq=/);
+  assert.match(taskDetail, /afterSeq=/);
+  assert.match(taskDetail, /AbortController/);
+  assert.match(taskDetail, /const cache = new Map/);
   assert.match(workers, /TaskLoading/);
   assert.match(workers, /mobile-task-loading-message user/);
   assert.match(workers, /mobile-task-loading-message agent/);
   assert.match(workers, /mobile-task-loading-plan-header/);
   assert.match(workers, /aria-hidden="true"/);
   assert.match(workers, /TaskUnavailable/);
-  assert.match(workers, /messages\.length \|\| plan\.length/);
+  assert.match(workers, /visibleMessages\.length \|\| plan\.length/);
   assert.match(workers, /mobile-task-message/);
   assert.match(workers, /mobile-task-plan/);
   assert.match(workers, /mobile-task-runtime/);
@@ -63,6 +68,7 @@ test("Mobile V6.35 implements the approved task and navigation interactions", ()
   assert.match(activity, /\/api\/mobile\/tasks\?limit=20&status=running/);
   assert.match(activity, /另有 \$\{parallelTasks\.length\} 项并行工作/);
   assert.match(activity, /parallelTasks\.length \? <>/);
+  assert.match(activity, /!initialLoading && !query && runningTasks\.length/);
   assert.match(pages, /<OrderedPageGrid/);
   assert.match(pages, /filter !== "all"/);
   assert.match(pages, /setFilter\("all"\)/);

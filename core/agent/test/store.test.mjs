@@ -7,6 +7,38 @@ import { DatabaseSync } from "node:sqlite";
 import { mapMessage } from "../src/agent/app-server-mapper.ts";
 import { BridgeStore } from "../src/store/store.js";
 
+test("paginates task messages with stable cursors while excluding tool deltas", () => {
+  const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), "pa-task-detail-page-"));
+  const store = new BridgeStore({ dataDir, consoleBaseUrl: "https://agent.example.test" });
+  try {
+    const session = store.createSession({ taskDescription: "large task", workspaceRoot: dataDir });
+    for (let index = 1; index <= 75; index += 1) {
+      store.appendEvent(session.id, index % 3 === 0 ? "session.tool_result" : "session.assistant_message", {
+        content: index === 74 ? "x".repeat(20_000) : `message-${index}`,
+        persistedMessageId: `message-${index}`,
+        metadata: index === 70 ? { attachments: [{ objectId: "obj_test", name: "result.txt", kind: "file" }] } : {},
+      });
+    }
+
+    const latest = store.listMessagesPage(session.id, { limit: 10 });
+    assert.equal(latest.items.length, 10);
+    assert.equal(latest.items.every((item) => item.role !== "tool"), true);
+    assert.equal(latest.items.every((item, index, rows) => index === 0 || item.sequence > rows[index - 1].sequence), true);
+    assert.equal(latest.hasMoreBefore, true);
+    const earlier = store.listMessagesPage(session.id, { beforeSeq: latest.nextBeforeSeq, limit: 10 });
+    assert.equal(earlier.items.at(-1).sequence < latest.items[0].sequence, true);
+    assert.equal(new Set([...earlier.items, ...latest.items].map((item) => item.id)).size, 20);
+    assert.equal(latest.items.find((item) => item.id === "message-74")?.truncated, true);
+
+    const artifacts = store.listSessionArtifactsPage(session.id, { limit: 10 });
+    assert.equal(artifacts.items[0].objectId, "obj_test");
+    assert.equal(artifacts.items[0].eventSeq, 70);
+  } finally {
+    store.close();
+    fs.rmSync(dataDir, { recursive: true, force: true });
+  }
+});
+
 test("creates parent and worker sessions with events", () => {
   const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), "oab-store-"));
   const store = new BridgeStore({ dataDir, consoleBaseUrl: "https://agent.example.test" });

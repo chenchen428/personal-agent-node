@@ -40,6 +40,12 @@
   --sans: "Inter", "PingFang SC", "Noto Sans CJK SC", sans-serif;
   --mono: "JetBrains Mono", "SFMono-Regular", Consolas, monospace;
 }
+.surface-boot { position: fixed; z-index: 1000; inset: 0; min-height: 100dvh; display: grid; place-items: center; align-content: center; gap: 18px; margin: 0; background: var(--canvas); color: var(--ink); }
+.surface-boot-mark { display: grid; width: 48px; height: 48px; place-items: center; border-radius: 50%; background: var(--surface-dark); color: var(--on-dark); font: 500 14px/1 var(--sans); letter-spacing: .08em; }
+.surface-boot i { width: 64px; height: 2px; overflow: hidden; border-radius: 999px; background: var(--hairline); }
+.surface-boot i::after { display: block; width: 36%; height: 100%; border-radius: inherit; background: var(--coral); content: ""; animation: surface-boot 1s ease-in-out infinite alternate; }
+@keyframes surface-boot { to { transform: translateX(178%); } }
+@media (prefers-reduced-motion: reduce) { .surface-boot i::after { animation: none; transform: translateX(90%); } }
 @layer base {
   * { box-sizing: border-box; }
   html { background: var(--canvas); color: var(--ink); }

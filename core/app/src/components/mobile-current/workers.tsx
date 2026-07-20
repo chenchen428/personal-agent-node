@@ -4,26 +4,28 @@ import Link from "next/link";
 import { AlertCircle, Bot, ChevronRight, Inbox } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { elapsedSeconds, fetchJson, firstCharacter, formatDateTime, formatDetailedElapsed, formatTaskDuration, isRunning, latestPlan, relativeTaskTime, relativeTime, richText, statusLabel, useClock, useRememberedQuery, useSourcePage } from "./data";
-import { BackIcon, InlineError, LoadSentinel, MobileListShell, SearchStatus } from "./shell";
+import { DetailShell, InlineError, LoadSentinel, MobileListShell, SearchStatus } from "./shell";
 import { MobileContentSkeleton } from "./skeletons";
 import type { ChatAttachment, FilterOption, Message, MobileTaskResult, PlanStep, Session } from "./types";
+import { useTaskDetail } from "./use-task-detail";
 
 export function MobileWorkers({ sessionId = "", conversations = false }: { sessionId?: string; conversations?: boolean }) {
-  const from = useSourcePage("workers");
+  if (sessionId) return <MobileTaskDetailRoute sessionId={sessionId} />;
+  return <MobileWorkersList conversations={conversations} />;
+}
+
+function MobileWorkersList({ conversations }: { conversations: boolean }) {
   const [query, setQuery] = useRememberedQuery("workers");
   const [filter, setFilter] = useState("all");
   const [sessions, setSessions] = useState<Session[]>([]);
   const [taskCounts, setTaskCounts] = useState({ all: 0, running: 0, completed: 0, interrupted: 0 });
-  const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
   const load = useCallback(async (background = false) => {
     if (!background) setLoading(true);
     try {
-      if (sessionId) {
-        setSession((await fetchJson<{ session: Session }>(`/api/chat/sessions/${encodeURIComponent(sessionId)}`)).session);
-      } else if (conversations) {
+      if (conversations) {
         const result = await fetchJson<{ sessions: Session[] }>(`/api/chat/sessions?limit=50${query ? `&query=${encodeURIComponent(query)}` : ""}`);
         setSessions((result.sessions || []).filter((item) => item.role !== "worker"));
       } else {
@@ -37,26 +39,20 @@ export function MobileWorkers({ sessionId = "", conversations = false }: { sessi
     } finally {
       if (!background) setLoading(false);
     }
-  }, [conversations, filter, query, sessionId]);
+  }, [conversations, filter, query]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => void load(), query ? 260 : 0);
     return () => window.clearTimeout(timer);
   }, [load, query]);
-  useEffect(() => {
-    if (!session || !isRunning(session.status)) return;
-    const timer = window.setInterval(() => void load(true), 2500);
-    return () => window.clearInterval(timer);
-  }, [load, session]);
-  const hasRunningTask = !sessionId && !conversations && sessions.some((item) => isRunning(item.status));
+  const hasRunningTask = !conversations && sessions.some((item) => isRunning(item.status));
   useEffect(() => {
     if (!hasRunningTask) return;
     const timer = window.setInterval(() => void load(true), 2500);
     return () => window.clearInterval(timer);
   }, [hasRunningTask, load]);
 
-  if (sessionId) return <TaskDetail session={session} loading={loading} error={error} returnHref={from === "activity" ? "/app/mobile" : "/app/mobile/workers"} returnLabel={from === "activity" ? "最近动态" : "任务"} />;
-  if (conversations) return <TaskDetail session={sessions[0] || null} loading={loading} error={error} returnHref="/app/mobile" returnLabel="最近动态" />;
+  if (conversations) return <TaskDetail session={sessions[0] || null} messages={sessions[0]?.messages || []} loading={loading} error={error} returnHref="/app/mobile" returnLabel="最近动态" />;
 
   const options: FilterOption[] = [
     { value: "all", label: "全部", count: taskCounts.all },
@@ -94,13 +90,41 @@ function TaskEmpty({ hasConditions }: { hasConditions: boolean }) {
   return <div className="mobile-task-empty"><Bot aria-hidden="true" /><strong>{hasConditions ? "没有找到任务" : "还没有任务"}</strong><span>{hasConditions ? "调整搜索词或状态后再试。" : "PA 开始工作后会显示在这里。"}</span></div>;
 }
 
-function TaskDetail({ session, loading, error, returnHref, returnLabel }: { session: Session | null; loading: boolean; error: string; returnHref: string; returnLabel: string }) {
+function MobileTaskDetailRoute({ sessionId }: { sessionId: string }) {
+  const from = useSourcePage("workers");
+  const detail = useTaskDetail(sessionId);
+  return <TaskDetail
+    session={detail.session}
+    messages={detail.messages}
+    loading={detail.loading}
+    loadingEarlier={detail.loadingEarlier}
+    hasEarlier={detail.hasEarlier}
+    error={detail.error}
+    loadEarlier={detail.loadEarlier}
+    retry={detail.refresh}
+    returnHref={from === "activity" ? "/app/mobile" : "/app/mobile/workers"}
+    returnLabel={from === "activity" ? "最近动态" : "任务"}
+  />;
+}
+
+function TaskDetail({ session, messages, loading, loadingEarlier = false, hasEarlier = false, error, loadEarlier, retry, returnHref, returnLabel }: {
+  session: Session | null;
+  messages: Message[];
+  loading: boolean;
+  loadingEarlier?: boolean;
+  hasEarlier?: boolean;
+  error: string;
+  loadEarlier?: () => Promise<void>;
+  retry?: () => Promise<unknown>;
+  returnHref: string;
+  returnLabel: string;
+}) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const lastUserScroll = useRef(0);
-  const previousCount = useRef(0);
+  const previousLastId = useRef("");
   const [newUpdate, setNewUpdate] = useState(false);
   const now = useClock(1000);
-  const count = session?.messages?.length || 0;
+  const lastMessageId = messages.at(-1)?.id || "";
   const scrollLatest = useCallback((smooth = true) => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: smooth ? "smooth" : "auto" });
     setNewUpdate(false);
@@ -108,8 +132,8 @@ function TaskDetail({ session, loading, error, returnHref, returnLabel }: { sess
 
   useEffect(() => {
     if (!session) return;
-    if (!previousCount.current) window.requestAnimationFrame(() => scrollLatest(false));
-    else if (count > previousCount.current) {
+    if (!previousLastId.current) window.requestAnimationFrame(() => scrollLatest(false));
+    else if (lastMessageId && lastMessageId !== previousLastId.current) {
       if (Date.now() - lastUserScroll.current >= 3000) scrollLatest();
       else {
         setNewUpdate(true);
@@ -117,24 +141,36 @@ function TaskDetail({ session, loading, error, returnHref, returnLabel }: { sess
         return () => window.clearTimeout(timer);
       }
     }
-    previousCount.current = count;
-  }, [count, scrollLatest, session]);
+    previousLastId.current = lastMessageId;
+  }, [lastMessageId, scrollLatest, session]);
 
-  const plan = session ? latestPlan(session) : [];
-  const messages = (session?.messages || []).filter((message) => ["user", "assistant", "agent", "error"].includes(message.role) && (message.content?.trim() || message.metadata?.attachments?.length));
+  const plan = session ? latestPlan({ ...session, messages }) : [];
+  const visibleMessages = messages.filter((message) => ["user", "assistant", "agent", "error"].includes(message.role) && (message.content?.trim() || message.metadata?.attachments?.length));
   const running = session ? isRunning(session.status) : false;
-  return <div className="mobile-current"><div className="mobile-stage"><div className="phone content-detail-phone task-conversation-phone">
-    <main className="content-detail-screen">
-      <div className="task-conversation-bar"><Link href={returnHref} aria-label={`返回${returnLabel}`}><BackIcon /></Link><strong>{session?.title || "任务详情"}</strong><span>{session ? taskStatusLabel(session.status) : ""}</span></div>
-      <div className="content-detail-scroll" ref={scrollRef} onWheel={() => { lastUserScroll.current = Date.now(); }} onTouchMove={() => { lastUserScroll.current = Date.now(); }} onPointerDown={() => { lastUserScroll.current = Date.now(); }}>
-        {error ? <TaskUnavailable error /> : session && (messages.length || plan.length) ? <section className="mobile-task-conversation">
-          <div className="mobile-task-thread" aria-live="polite">{messages.map((message, index) => <div key={message.id}><TaskMessage message={message} userName={session.senderName || "你"} />{index === 1 && plan.length ? <TaskPlan steps={plan} /> : null}</div>)}{plan.length && messages.length < 2 ? <TaskPlan steps={plan} /> : null}
+  return <DetailShell
+    returnHref={returnHref}
+    returnLabel={returnLabel}
+    title={session?.title || "任务详情"}
+    trailing={session ? taskStatusLabel(session.status) : ""}
+    section="workers"
+    task
+    scrollRef={scrollRef}
+    onInteract={() => { lastUserScroll.current = Date.now(); }}
+  >
+        {error && !session ? <TaskUnavailable error retry={retry} /> : session && (visibleMessages.length || plan.length) ? <section className="mobile-task-conversation">
+          <div className="mobile-task-thread" aria-live="polite">
+          {hasEarlier ? <button className="task-load-earlier" type="button" disabled={loadingEarlier} onClick={async () => {
+            const element = scrollRef.current;
+            const previousHeight = element?.scrollHeight || 0;
+            await loadEarlier?.();
+            window.requestAnimationFrame(() => { if (element) element.scrollTop += element.scrollHeight - previousHeight; });
+          }}>{loadingEarlier ? "正在读取更早消息…" : "查看更早消息"}</button> : null}
+          {error ? <InlineError message={error} /> : null}
+          {visibleMessages.map((message, index) => <div className="mobile-task-message-window" key={message.id}><TaskMessage message={message} userName={session.senderName || "你"} />{index === 1 && plan.length ? <TaskPlan steps={plan} /> : null}</div>)}{plan.length && visibleMessages.length < 2 ? <TaskPlan steps={plan} /> : null}
           {newUpdate ? <button className="task-new-update" type="button" onClick={() => scrollLatest()}>有新进展 <span aria-hidden="true">↓</span></button> : null}
           <div className={`mobile-task-runtime${running ? " processing" : ""}`} role={running ? "status" : undefined}>{running ? <><i aria-hidden="true" /><strong>正在处理</strong><span>· {taskRuntimeLabel(session, now)}</span></> : <span>{taskRuntimeLabel(session, now)}</span>}</div></div>
         </section> : loading ? <TaskLoading /> : <TaskUnavailable />}
-      </div>
-    </main>
-  </div></div></div>;
+  </DetailShell>;
 }
 
 function taskStatusLabel(status: string) { return status === "idle" ? "已完成" : statusLabel(status); }
@@ -184,4 +220,4 @@ function TaskLoading() { return <div className="mobile-task-state loading" role=
   <div className="mobile-task-loading-label"><i aria-hidden="true" /><span>正在读取任务进展</span></div>
 </div>; }
 
-function TaskUnavailable({ error = false }: { error?: boolean }) { const Icon = error ? AlertCircle : Inbox; return <div className={`mobile-task-state ${error ? "error" : "empty"}`} role="status"><Icon aria-hidden="true" /><strong>{error ? "暂时无法读取任务" : "还没有可展示的进展"}</strong><p>{error ? "连接恢复后重新打开本页即可继续查看。" : "任务产生可见回复后，会按时间顺序显示在这里。"}</p></div>; }
+function TaskUnavailable({ error = false, retry }: { error?: boolean; retry?: () => Promise<unknown> }) { const Icon = error ? AlertCircle : Inbox; return <div className={`mobile-task-state ${error ? "error" : "empty"}`} role="status"><Icon aria-hidden="true" /><strong>{error ? "暂时无法读取任务" : "还没有可展示的进展"}</strong><p>{error ? "连接恢复后可在这里重试，已显示的内容不会丢失。" : "任务产生可见回复后，会按时间顺序显示在这里。"}</p>{error && retry ? <button type="button" onClick={() => void retry()}>重新读取</button> : null}</div>; }

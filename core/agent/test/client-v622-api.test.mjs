@@ -29,6 +29,7 @@ test("V6.22 read-only client API is local, searchable and self-contained", async
       PERSONAL_AGENT_AUTH_PASSWORD: "client-v622-local-password",
       PERSONAL_AGENT_AUTH_COOKIE_SECRET: "client-v622-cookie-secret-for-tests",
       OPEN_AGENT_BRIDGE_DATA_DIR: path.join(root, "bridge"),
+      OPEN_AGENT_BRIDGE_WORKSPACE_ROOT: workspaceRoot,
       OPEN_AGENT_BRIDGE_AGENT_DATA_DIR: path.join(root, "agent-data"),
       OPEN_AGENT_BRIDGE_AGENT_DATA_DATABASE: path.join(root, "agent-data", "agent-data.sqlite"),
       OPEN_AGENT_BRIDGE_PRIVATE_PUBLICATIONS_DIR: path.join(root, "private-publications"),
@@ -66,6 +67,16 @@ test("V6.22 read-only client API is local, searchable and self-contained", async
   assert.equal(conversationSessions.totalSessions, 1);
   assert.equal(conversationSessions.sessions[0].id, conversation.session.id);
   assert.equal(conversationSessions.sessions.some((session) => session.role === "worker"), false);
+
+  const taskDetail = await get(port, token, `/api/node/v1/client/tasks/${encodeURIComponent(conversation.session.id)}`);
+  assert.equal(taskDetail.result.contractVersion, "personal-agent/task-detail-v1");
+  assert.equal(taskDetail.result.task.id, conversation.session.id);
+  assert.deepEqual(taskDetail.result.messages.items, []);
+  assert.equal(taskDetail.result.task.events, undefined);
+  const taskMessages = await get(port, token, `/api/node/v1/client/tasks/${encodeURIComponent(conversation.session.id)}/messages?limit=30`);
+  assert.deepEqual(taskMessages.result.items, []);
+  const legacyTaskDetail = await get(port, token, `/api/sessions/${encodeURIComponent(conversation.session.id)}`);
+  assert.equal(Array.isArray(legacyTaskDetail.session.events), true);
 
   const overviewStartedAt = Date.now();
   const overview = await get(port, token, "/api/node/v1/client/overview");

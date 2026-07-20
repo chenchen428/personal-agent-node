@@ -25,7 +25,9 @@ async function proxy(request: NextRequest, context: { params: Promise<{ path: st
     const upstreamResponse = await fetch(target, { method: request.method, headers, body, redirect: "manual", cache: "no-store" });
     const responseHeaders = new Headers(upstreamResponse.headers);
     for (const name of hopByHopHeaders) responseHeaders.delete(name);
-    responseHeaders.set("cache-control", "private, no-store");
+    responseHeaders.set("cache-control", isCacheablePrivateMedia(path, responseHeaders)
+      ? "private, max-age=300, stale-while-revalidate=60"
+      : "private, no-store");
     return new Response(upstreamResponse.body, { status: upstreamResponse.status, headers: responseHeaders });
   } catch (cause) {
     console.error("[personal-agent-bff] loopback upstream failed", {
@@ -39,6 +41,12 @@ async function proxy(request: NextRequest, context: { params: Promise<{ path: st
       message: upstream.target === "control" ? "本机控制服务尚未就绪" : "本机 Agent 服务尚未就绪",
     } }, { status: 503 });
   }
+}
+
+function isCacheablePrivateMedia(path: string[], headers: Headers) {
+  if (!String(headers.get("content-type") || "").toLowerCase().startsWith("image/")) return false;
+  if (path[0] === "chat" && path[1] === "attachments" && path.length === 3) return true;
+  return path[0] === "mobile" && path[1] === "activity" && path[3] === "attachments" && path.length === 5;
 }
 
 function resolveUpstream(path: string[]): { target: "control" | "agent"; path: string[] } {
