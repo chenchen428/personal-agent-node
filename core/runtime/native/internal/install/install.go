@@ -553,12 +553,9 @@ func normalizeOptions(opts Options) (Options, error) {
 }
 
 func existingWorkspaceDomain(dataRoot string) string {
-	if domain := siteDomain(filepath.Join(dataRoot, "config", "site.json")); domain != "" {
-		return domain
-	}
 	entries, err := os.ReadDir(filepath.Join(dataRoot, "spaces"))
 	if err != nil {
-		return ""
+		return siteDomain(filepath.Join(dataRoot, "config", "site.json"))
 	}
 	legacyDomains := map[string]struct{}{}
 	for _, entry := range entries {
@@ -587,7 +584,7 @@ func existingWorkspaceDomain(dataRoot string) string {
 			return domain
 		}
 	}
-	return ""
+	return siteDomain(filepath.Join(dataRoot, "config", "site.json"))
 }
 
 func siteDomain(file string) string {

@@ -452,6 +452,30 @@ func TestInstallPreservesPersonalSpaceDomainWhenWorkspaceUsesSpaceLayout(t *test
 	}
 }
 
+func TestInstallPrefersPersonalSpaceDomainOverLegacyWorkspaceDomain(t *testing.T) {
+	root := t.TempDir()
+	dataRoot := filepath.Join(root, "workspace")
+	personalRoot := filepath.Join(dataRoot, "spaces", "sp_personaltest")
+	if err := os.MkdirAll(filepath.Join(dataRoot, "config"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(filepath.Join(personalRoot, "config"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dataRoot, "config", "site.json"), []byte(`{"asciiDomain":"legacy-owner.example"}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(personalRoot, "space.json"), []byte(`{"kind":"personal"}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(personalRoot, "config", "site.json"), []byte(`{"asciiDomain":"owner.personal-agent.cn"}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if got := existingWorkspaceDomain(dataRoot); got != "owner.personal-agent.cn" {
+		t.Fatalf("existing personal Space domain=%q", got)
+	}
+}
+
 func TestInstallPreservesSingleLegacySpaceDomainBeforeKindMigration(t *testing.T) {
 	root := t.TempDir()
 	dataRoot := filepath.Join(root, "workspace")
