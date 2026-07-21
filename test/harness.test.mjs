@@ -92,6 +92,12 @@ test('seeded Node home links only to current path-based application routes', () 
   for (const legacy of ['/admin', '/agent', '/mail', '/files']) assert.doesNotMatch(source, new RegExp(`href="${legacy}"`));
 });
 
+test('restore apply validates against the active Site distribution contract', () => {
+  const source = fs.readFileSync(path.join(root, 'core/runtime/bin/private-site.mjs'), 'utf8');
+  assert.match(source, /expectedDistributionVersion:\s*config\.site\.distributionVersion/);
+  assert.doesNotMatch(source, /expectedDistributionVersion:\s*packageMetadata\.version/);
+});
+
 test('Phase 0 behavior baseline registry and cases are complete', () => {
   const result = run(process.execPath, ['scripts/verify-behavior-baselines.mjs']);
   assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`);
