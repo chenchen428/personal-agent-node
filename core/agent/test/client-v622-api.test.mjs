@@ -43,6 +43,7 @@ test("V6.22 read-only client API is local, searchable and self-contained", async
       OPEN_AGENT_BRIDGE_CHANNEL_POLL: "0",
       OPEN_AGENT_BRIDGE_SCHEDULER: "0",
       OPEN_AGENT_BRIDGE_ALLOW_LOCAL_ONLY_MANAGED_FILES: "1",
+      PERSONAL_AGENT_VERSION: `v${packageVersion}`,
     },
     stdio: ["ignore", "pipe", "pipe"],
   });

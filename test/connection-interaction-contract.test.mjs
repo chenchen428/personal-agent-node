@@ -52,6 +52,8 @@ test("connection UI separates OpenCLI browser reads from QR and account authoriz
   assert.match(customDomainSop, /type="password"/);
   assert.match(customDomainSop, /relayToken/);
   assert.match(customDomainSop, /personal-agent-relay-install\.sh/);
+  assert.match(customDomainSop, /正在读取当前版本的 Relay 安装命令/);
+  assert.doesNotMatch(customDomainSop, /当前安装版本未提供 Relay 安装脚本/);
   assert.match(customDomainSop, /navigator\.clipboard\.writeText/);
   assert.match(customDomainSop, /复制命令/);
   assert.match(customDomainSop, /配置自定义域名/);
