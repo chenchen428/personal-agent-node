@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect, useState, type FormEvent } from "react";
-import { Button, SettingRow } from "../desktop-v72/primitives";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { SettingRow } from "../desktop-v72/primitives";
 import { errorMessage, fetchJson, useJson } from "./shared";
 
 type TokenLimit = {
@@ -57,20 +59,18 @@ export function DailyTokenLimitSetting() {
     description={description}
     control={<form className="settings-token-limit" onSubmit={save}>
       <label className="sr-only" htmlFor="daily-token-limit">每日 Token 限额（M）</label>
-      <input
+      <Input
         id="daily-token-limit"
-        type="number"
-        min="0"
-        max="1000000"
-        step="0.001"
+        type="text"
         inputMode="decimal"
         required
         value={input}
         disabled={saving}
+        className="w-28 text-right"
         onChange={(event) => { setInput(event.target.value); setFeedback(""); }}
       />
       <span aria-hidden="true">M</span>
-      <Button type="submit" disabled={saving}>{saving ? "保存中…" : "保存"}</Button>
+      <Button type="submit" variant="outline" disabled={saving}>{saving ? "保存中…" : "保存"}</Button>
     </form>}
   />;
 }

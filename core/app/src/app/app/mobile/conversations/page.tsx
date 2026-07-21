@@ -1,2 +1,2 @@
-import { MobileWorkers } from "@/components/mobile-current";
-export default function MobileConversationsPage() { return <MobileWorkers conversations />; }
+import { MobileConversationReader } from "@/components/mobile-conversation-reader";
+export default function MobileConversationsPage() { return <MobileConversationReader />; }

@@ -4,7 +4,7 @@ import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 import { generatePage } from '../skills/interior-design/scripts/generate-page.mjs';
-import { normalizeModel, validateModel } from '../skills/interior-design/scripts/model.mjs';
+import { auditModel, normalizeModel, validateModel } from '../skills/interior-design/scripts/model.mjs';
 
 const root = path.resolve(import.meta.dirname, '..');
 const fixture = JSON.parse(fs.readFileSync(path.join(root, 'test/fixtures/skill-cases/interior-design/model.json'), 'utf8'));
@@ -29,6 +29,27 @@ test('normalizes coordinates and recomputes room area', () => {
   assert.equal(normalized.project.scale.metresPerUnit, 1);
   assert.equal(normalized.project.areaM2, 168);
   assert.equal(normalized.project.bounds.minX, 0);
+});
+
+test('passes a recorded spatial and lifestyle walkthrough', () => {
+  const report = auditModel(fixture);
+  assert.equal(report.ok, true);
+  assert.deepEqual(report.findings, []);
+  assert.equal(report.qualityReview.status, 'passed');
+});
+
+test('blocks furniture overlap, door obstruction, and missing review evidence', () => {
+  const overlap = structuredClone(fixture);
+  overlap.furniture[1].position = overlap.furniture[0].position;
+  assert.ok(auditModel(overlap).findings.some((item) => item.code === 'furniture-overlap'));
+
+  const blockedDoor = structuredClone(fixture);
+  blockedDoor.furniture[1].position = [1.25, 0.35];
+  assert.ok(auditModel(blockedDoor).findings.some((item) => item.code === 'door-clearance-blocked'));
+
+  const unreviewed = structuredClone(fixture);
+  delete unreviewed.qualityReview;
+  assert.ok(auditModel(unreviewed).findings.some((item) => item.code === 'quality-review-missing'));
 });
 
 test('generates the self-contained static renovation delivery template', () => {

@@ -68,14 +68,14 @@ export function MobileListShell({ section, activeAppId, title, note, children, q
       filter={filter}
     /> : null}
     <main className={`mobile-screen${screenClassName ? ` ${screenClassName}` : ""}`} data-mobile-scroll>{children}</main>
-    <MobileDrawer
+    {drawerOpen ? <MobileDrawer
       section={section}
       activeAppId={activeAppId}
       close={() => setDrawerOpen(false)}
       overview={overview.value}
       apps={(apps.value?.apps || []).filter((app) => app.compatible && app.route)}
       spaces={spaces.value}
-    />
+    /> : null}
   </div></div></div>;
 }
 

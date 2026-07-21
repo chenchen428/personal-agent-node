@@ -35,7 +35,7 @@ export function DingTalkAction({ connection, refresh }: { connection: Connection
     if (result.connection.state === "error") return { state: "failed", message: result.connection.statusLabel };
     return { state: "pending" };
   }, []);
-  const complete = useCallback(() => { setSyncing(false); setFailed(false); setMessage("钉钉 Stream 已连接，可以从钉钉发送文字消息。"); }, []);
+  const complete = useCallback(() => { setSyncing(false); setFailed(false); setMessage("钉钉 Stream 已连接，可以收发文字、图片和文件。"); }, []);
   const fail = useCallback((reason: string) => { setSyncing(false); setFailed(true); setMessage(reason); }, []);
   const remaining = useConnectionStatusSync({ active: syncing, complete: connected, probe, refresh, onComplete: complete, onFailure: fail });
 

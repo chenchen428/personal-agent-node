@@ -14,6 +14,7 @@ export class BridgeStore {
     this.externalAccess = externalAccess || (() => ({ ready: true, reason: "ready", origin: new URL(this.consoleBaseUrl).origin }));
     this.stateFile = path.join(this.dataDir, "state.json");
     this.databasePath = databasePath || path.join(this.dataDir, "state.sqlite");
+    this.taskDisplayCursorSecret = crypto.randomBytes(32);
     fs.mkdirSync(this.dataDir, { recursive: true });
     this.db = new DatabaseSync(this.databasePath);
     this.init();
@@ -58,6 +59,31 @@ export class BridgeStore {
         UNIQUE(session_id, seq)
       );
       CREATE INDEX IF NOT EXISTS idx_events_session_seq ON events(session_id, seq);
+
+      CREATE TABLE IF NOT EXISTS task_display_events (
+        id TEXT PRIMARY KEY,
+        session_id TEXT NOT NULL,
+        display_seq INTEGER NOT NULL,
+        source_event_id TEXT,
+        kind TEXT NOT NULL,
+        role TEXT NOT NULL,
+        content TEXT NOT NULL,
+        metadata_json TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        FOREIGN KEY(session_id) REFERENCES sessions(id) ON DELETE CASCADE,
+        UNIQUE(session_id, display_seq),
+        UNIQUE(session_id, source_event_id)
+      );
+      CREATE INDEX IF NOT EXISTS idx_task_display_events_session_seq
+        ON task_display_events(session_id, display_seq);
+
+      CREATE TABLE IF NOT EXISTS task_display_state (
+        session_id TEXT PRIMARY KEY,
+        latest_plan_json TEXT NOT NULL,
+        last_display_seq INTEGER NOT NULL,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY(session_id) REFERENCES sessions(id) ON DELETE CASCADE
+      );
 
       CREATE TABLE IF NOT EXISTS token_usage (
         session_id TEXT NOT NULL,
@@ -494,52 +520,245 @@ export class BridgeStore {
   }
 
   getMobileSessionDetail(id, { messageLimit = 80 } = {}) {
-    const row = this.getSessionRow(id);
-    if (!row) return null;
-    const safeLimit = Math.min(Math.max(Number(messageLimit) || 80, 20), 100);
-    const rawLimit = safeLimit * 4;
-    const messageRows = this.db.prepare(`
-      SELECT * FROM events
-      WHERE session_id = ?
-        AND kind IN ('session.user_message', 'session.assistant_message', 'session.reasoning', 'session.error')
-      ORDER BY seq DESC
-      LIMIT ?
-    `).all(id, rawLimit).reverse();
-    const messageEvents = messageRows.map(rowToEvent);
-    const messages = coalesceMessages(messageEvents.map(eventToMessage).filter(Boolean)).slice(-safeLimit);
-    const minimumSequence = Number(messageEvents[0]?.seq || 0);
-    const latestPlanRow = this.db.prepare(`
-      SELECT * FROM events
-      WHERE session_id = ?
-        AND json_extract(payload_json, '$.metadata.eventType') = 'turn/plan/updated'
-      ORDER BY seq DESC
-      LIMIT 1
-    `).get(id);
-    const deliveryRows = minimumSequence ? this.db.prepare(`
-      SELECT * FROM events
-      WHERE session_id = ?
-        AND seq >= ?
-        AND json_extract(payload_json, '$.metadata.eventType') = 'wechat/final-reply-part'
-      ORDER BY seq ASC
-      LIMIT 200
-    `).all(id, minimumSequence) : [];
-    const auxiliaryEvents = [latestPlanRow, ...deliveryRows].filter(Boolean).map(rowToEvent);
-    const latestSequence = Number(this.db.prepare("SELECT COALESCE(MAX(seq), 0) AS seq FROM events WHERE session_id = ?").get(id)?.seq || 0);
-    const visibleEventCount = Number(this.db.prepare(`
-      SELECT COUNT(*) AS count FROM events
-      WHERE session_id = ?
-        AND kind IN ('session.user_message', 'session.assistant_message', 'session.reasoning', 'session.error')
-    `).get(id)?.count || 0);
+    const page = this.listTaskDisplayEvents(id, { limit: messageLimit });
+    if (!page) return null;
+    const planEvent = page.latestPlan.steps.length ? [{
+      id: `task-display-plan:${id}`,
+      kind: "session.status",
+      createdAt: page.latestPlan.updatedAt,
+      payload: { metadata: { eventType: "turn/plan/updated", plan: page.latestPlan.steps } },
+    }] : [];
     return {
-      ...this.summarizeSessionRow(row),
-      messages,
-      events: auxiliaryEvents,
+      ...page.task,
+      messages: page.items.map(taskDisplayEventToMessage),
+      events: planEvent,
       pagination: {
-        hasEarlier: visibleEventCount > messages.length,
-        latestSequence,
-        messageLimit: safeLimit,
+        hasEarlier: page.hasEarlier,
+        earlierCursor: page.beforeCursor,
+        messageLimit: page.limit,
       },
     };
+  }
+
+  appendTaskDisplayEvent(sessionId, input = {}) {
+    const sessionRow = this.assertWorkerSessionRow(sessionId);
+    if (!sessionRow) return null;
+    const normalized = normalizeTaskDisplayEvent(input);
+    if (!normalized) return null;
+    const now = normalized.createdAt || new Date().toISOString();
+    let row;
+    this.db.exec("BEGIN IMMEDIATE");
+    try {
+      this.db.prepare(`
+        INSERT OR IGNORE INTO task_display_state
+          (session_id, latest_plan_json, last_display_seq, updated_at)
+        VALUES (?, ?, 0, ?)
+      `).run(sessionId, toJson({ steps: [], updatedAt: "" }), now);
+      if (normalized.sourceEventId) {
+        row = this.db.prepare(`
+          SELECT * FROM task_display_events
+          WHERE session_id = ? AND source_event_id = ?
+        `).get(sessionId, normalized.sourceEventId);
+      }
+      if (!row) {
+        const state = this.db.prepare(`
+          SELECT last_display_seq FROM task_display_state WHERE session_id = ?
+        `).get(sessionId);
+        const displaySeq = Number(state?.last_display_seq || 0) + 1;
+        const id = `td_evt_${crypto.randomBytes(8).toString("hex")}`;
+        this.db.prepare(`
+          INSERT INTO task_display_events
+            (id, session_id, display_seq, source_event_id, kind, role, content, metadata_json, created_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `).run(
+          id,
+          sessionId,
+          displaySeq,
+          normalized.sourceEventId || null,
+          normalized.kind,
+          normalized.role,
+          normalized.content,
+          toJson(normalized.metadata),
+          now,
+        );
+        this.db.prepare(`
+          UPDATE task_display_state
+          SET last_display_seq = ?, updated_at = ?
+          WHERE session_id = ?
+        `).run(displaySeq, now, sessionId);
+        row = this.db.prepare("SELECT * FROM task_display_events WHERE id = ?").get(id);
+      }
+      this.db.exec("COMMIT");
+    } catch (error) {
+      this.db.exec("ROLLBACK");
+      throw error;
+    }
+    return row ? rowToTaskDisplayEvent(row) : null;
+  }
+
+  updateTaskDisplayPlan(sessionId, plan, { createdAt } = {}) {
+    const sessionRow = this.assertWorkerSessionRow(sessionId);
+    if (!sessionRow) return null;
+    const now = createdAt || new Date().toISOString();
+    const latestPlan = { steps: normalizeTaskDisplayPlan(plan), updatedAt: now };
+    this.db.prepare(`
+      INSERT INTO task_display_state
+        (session_id, latest_plan_json, last_display_seq, updated_at)
+      VALUES (?, ?, 0, ?)
+      ON CONFLICT(session_id) DO UPDATE SET
+        latest_plan_json = excluded.latest_plan_json,
+        updated_at = excluded.updated_at
+    `).run(sessionId, toJson(latestPlan), now);
+    return latestPlan;
+  }
+
+  projectTaskDisplayEvent(event) {
+    const sessionId = String(event?.sessionId || "");
+    const sessionRow = sessionId ? this.getSessionRow(sessionId) : null;
+    if (!sessionRow || sessionRow.role !== "worker") return null;
+    const metadata = event?.payload?.metadata || {};
+    if (metadata.eventType === "turn/plan/updated") {
+      const latestPlan = this.updateTaskDisplayPlan(sessionId, metadata.plan, { createdAt: event.createdAt });
+      return latestPlan ? { type: "plan", taskId: sessionId, latestPlan } : null;
+    }
+    if (event.kind === "session.assistant_message") {
+      if (metadata.streamState && metadata.streamState !== "completed") return null;
+      const content = sanitizeTaskDisplayAssistantContent(event.payload?.content);
+      if (isTaskDisplayInternalContent(content)) return null;
+      const item = this.appendTaskDisplayEvent(sessionId, {
+        sourceEventId: `assistant:${event.payload?.persistedMessageId || event.id}`,
+        kind: "message",
+        role: "assistant",
+        content,
+        metadata: {
+          attachments: metadata.attachments,
+          itemType: event.payload?.itemType,
+          deliveryKey: metadata.finalReply?.idempotencyKey,
+        },
+        createdAt: event.createdAt,
+      });
+      return item ? { type: "event", taskId: sessionId, item } : null;
+    }
+    if (event.kind === "session.error" && metadata.willRetry !== true) {
+      const item = this.appendTaskDisplayEvent(sessionId, {
+        sourceEventId: `error:${event.id}`,
+        kind: "error",
+        role: "error",
+        content: "任务暂未完成，请稍后重试。",
+        createdAt: event.createdAt,
+      });
+      return item ? { type: "event", taskId: sessionId, item } : null;
+    }
+    return null;
+  }
+
+  updateTaskDisplayAttachmentDelivery(sessionId, { idempotencyKey, objectId, state } = {}) {
+    const sessionRow = this.getSessionRow(sessionId);
+    if (!sessionRow || sessionRow.role !== "worker") return null;
+    const safeKey = String(idempotencyKey || "").trim();
+    const safeObjectId = String(objectId || "").trim();
+    const safeState = new Set(["pending", "sending", "sent", "failed"]).has(state) ? state : "";
+    if (!safeKey || !/^obj_[a-f0-9]{24}$/.test(safeObjectId) || !safeState) return null;
+    const rows = this.db.prepare(`
+      SELECT id, metadata_json FROM task_display_events
+      WHERE session_id = ? AND metadata_json LIKE ?
+      ORDER BY display_seq DESC
+      LIMIT 50
+    `).all(sessionId, `%${safeObjectId}%`);
+    for (const row of rows) {
+      const metadata = fromJson(row.metadata_json, {});
+      if (metadata._deliveryKey !== safeKey || !Array.isArray(metadata.attachments)) continue;
+      let changed = false;
+      const attachments = metadata.attachments.map((attachment) => {
+        if (attachment.objectId !== safeObjectId) return attachment;
+        changed = attachment.deliveryState !== safeState;
+        return { ...attachment, deliveryState: safeState };
+      });
+      if (!changed) {
+        const existing = this.db.prepare("SELECT * FROM task_display_events WHERE id = ?").get(row.id);
+        return existing ? rowToTaskDisplayEvent(existing) : null;
+      }
+      this.db.prepare("UPDATE task_display_events SET metadata_json = ? WHERE id = ?")
+        .run(toJson({ ...metadata, attachments }), row.id);
+      const updated = this.db.prepare("SELECT * FROM task_display_events WHERE id = ?").get(row.id);
+      return updated ? rowToTaskDisplayEvent(updated) : null;
+    }
+    return null;
+  }
+
+  listTaskDisplayEvents(sessionId, { limit = 20, before = "" } = {}) {
+    const sessionRow = this.getSessionRow(sessionId);
+    if (!sessionRow || sessionRow.role !== "worker") return null;
+    const safeLimit = Math.min(Math.max(Number(limit) || 20, 10), 50);
+    const beforeSequence = before
+      ? decodeTaskDisplayCursor(before, sessionId, this.taskDisplayCursorSecret)
+      : null;
+    const rows = beforeSequence
+      ? this.db.prepare(`
+        SELECT * FROM task_display_events
+        WHERE session_id = ? AND display_seq < ?
+        ORDER BY display_seq DESC
+        LIMIT ?
+      `).all(sessionId, beforeSequence, safeLimit + 1)
+      : this.db.prepare(`
+        SELECT * FROM task_display_events
+        WHERE session_id = ?
+        ORDER BY display_seq DESC
+        LIMIT ?
+      `).all(sessionId, safeLimit + 1);
+    const hasEarlier = rows.length > safeLimit;
+    const pageRows = (hasEarlier ? rows.slice(0, safeLimit) : rows).reverse();
+    const stateRow = this.db.prepare(`
+      SELECT latest_plan_json FROM task_display_state WHERE session_id = ?
+    `).get(sessionId);
+    const latestPlan = normalizeTaskDisplayPlanSnapshot(fromJson(stateRow?.latest_plan_json, {}));
+    const oldest = pageRows[0];
+    return {
+      task: this.summarizeMobileTaskRow(sessionRow),
+      items: pageRows.map(rowToTaskDisplayEvent),
+      beforeCursor: hasEarlier && oldest
+        ? encodeTaskDisplayCursor(sessionId, Number(oldest.display_seq), this.taskDisplayCursorSecret)
+        : "",
+      hasEarlier,
+      latestPlan,
+      limit: safeLimit,
+    };
+  }
+
+  assertWorkerSessionRow(sessionId) {
+    const row = this.getSessionRow(sessionId);
+    if (!row) return null;
+    if (row.role !== "worker") {
+      throw taskDisplayError("TASK_DISPLAY_WORKER_REQUIRED", "task display events require a Worker session", 403);
+    }
+    return row;
+  }
+
+  summarizeMobileTaskRow(row) {
+    const session = rowToSession(row);
+    return {
+      id: session.id,
+      role: session.role,
+      channel: session.channel,
+      senderName: session.senderName,
+      title: session.title,
+      taskDescription: session.taskDescription,
+      summary: session.summary,
+      status: session.status,
+      createdAt: session.createdAt,
+      updatedAt: session.updatedAt,
+      metadata: {
+        ...(session.metadata?.workerRecoveryAttempt ? { workerRecoveryAttempt: session.metadata.workerRecoveryAttempt } : {}),
+        ...(session.metadata?.workerRecoveryStartedAt ? { workerRecoveryStartedAt: session.metadata.workerRecoveryStartedAt } : {}),
+      },
+      path: this.sessionPath(session.id),
+      ...this.sessionAccess(session.id, session.role),
+    };
+  }
+
+  getMobileTaskSummary(id) {
+    const row = this.getSessionRow(id);
+    return row?.role === "worker" ? this.summarizeMobileTaskRow(row) : null;
   }
 
   getSessionRecord(id) {
@@ -2841,6 +3060,171 @@ function rowToScheduledTask(row) {
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
+}
+
+function rowToTaskDisplayEvent(row) {
+  const metadata = fromJson(row.metadata_json, {});
+  delete metadata._deliveryKey;
+  return {
+    displayEventId: row.id,
+    taskId: row.session_id,
+    sequence: Number(row.display_seq || 0),
+    kind: row.kind,
+    role: row.role,
+    content: row.content || "",
+    metadata,
+    createdAt: row.created_at,
+  };
+}
+
+function taskDisplayEventToMessage(event) {
+  return {
+    id: event.displayEventId,
+    role: event.role,
+    content: event.content,
+    createdAt: event.createdAt,
+    metadata: event.metadata,
+  };
+}
+
+function normalizeTaskDisplayEvent(input) {
+  const kind = String(input?.kind || "").trim();
+  const role = String(input?.role || "").trim();
+  if (!new Set(["requirement", "message", "error"]).has(kind)) {
+    throw taskDisplayError("TASK_DISPLAY_KIND_INVALID", "task display event kind is invalid", 400);
+  }
+  if (!new Set(["user", "assistant", "error"]).has(role)) {
+    throw taskDisplayError("TASK_DISPLAY_ROLE_INVALID", "task display event role is invalid", 400);
+  }
+  const expectedRole = kind === "requirement" ? "user" : kind === "error" ? "error" : "assistant";
+  if (role !== expectedRole) {
+    throw taskDisplayError("TASK_DISPLAY_ROLE_MISMATCH", "task display event role does not match its kind", 400);
+  }
+  const content = String(input?.content || "").trim().slice(0, 40_000);
+  const metadata = normalizeTaskDisplayMetadata(input?.metadata);
+  if (!content && !metadata.attachments?.length) return null;
+  const sourceEventId = String(input?.sourceEventId || "").trim().slice(0, 300);
+  return { kind, role, content, metadata, sourceEventId, createdAt: input?.createdAt || "" };
+}
+
+function normalizeTaskDisplayMetadata(metadata) {
+  const value = metadata && typeof metadata === "object" && !Array.isArray(metadata) ? metadata : {};
+  const attachments = Array.isArray(value.attachments)
+    ? value.attachments.slice(0, 10).map(normalizeTaskDisplayAttachment).filter(Boolean)
+    : [];
+  const itemType = String(value.itemType || "").trim();
+  const deliveryKey = String(value.deliveryKey || "").trim();
+  return {
+    ...(attachments.length ? { attachments } : {}),
+    ...(itemType === "plan" ? { itemType } : {}),
+    ...(/^[A-Za-z0-9][A-Za-z0-9._:-]{0,159}$/.test(deliveryKey) ? { _deliveryKey: deliveryKey } : {}),
+  };
+}
+
+function normalizeTaskDisplayAttachment(value) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  const objectId = String(value.objectId || "").trim();
+  if (!/^obj_[a-f0-9]{24}$/.test(objectId)) return null;
+  const kind = value.kind === "image" ? "image" : value.kind === "file" ? "file" : "";
+  if (!kind) return null;
+  const text = (field, maximum) => String(value[field] || "").trim().slice(0, maximum);
+  const integer = (field) => {
+    const number = Number(value[field] || 0);
+    return Number.isSafeInteger(number) && number > 0 ? number : undefined;
+  };
+  const previewUrl = safeTaskDisplayAttachmentUrl(value.previewUrl, objectId, false);
+  const downloadUrl = safeTaskDisplayAttachmentUrl(value.downloadUrl, objectId, true);
+  const deliveryState = new Set(["pending", "sending", "sent", "failed"]).has(value.deliveryState)
+    ? value.deliveryState
+    : "pending";
+  return {
+    objectId,
+    kind,
+    name: text("name", 300) || (kind === "image" ? "image" : "attachment"),
+    ...(text("mimeType", 120) ? { mimeType: text("mimeType", 120) } : {}),
+    ...(integer("sizeBytes") ? { sizeBytes: integer("sizeBytes") } : {}),
+    ...(integer("width") ? { width: integer("width") } : {}),
+    ...(integer("height") ? { height: integer("height") } : {}),
+    ...(text("alt", 500) ? { alt: text("alt", 500) } : {}),
+    ...(text("caption", 1_000) ? { caption: text("caption", 1_000) } : {}),
+    ...(previewUrl ? { previewUrl } : {}),
+    ...(downloadUrl ? { downloadUrl } : {}),
+    deliveryState,
+  };
+}
+
+function safeTaskDisplayAttachmentUrl(value, objectId, download) {
+  const expected = `/api/chat/attachments/${encodeURIComponent(objectId)}${download ? "?download=1" : ""}`;
+  return String(value || "") === expected ? expected : "";
+}
+
+function normalizeTaskDisplayPlan(plan) {
+  if (!Array.isArray(plan)) return [];
+  return plan.slice(0, 100).map((item) => {
+    const step = String(item?.step || "").trim().slice(0, 1_000);
+    const compactStatus = String(item?.status || "").toLowerCase().replace(/[^a-z]/g, "");
+    const status = compactStatus === "completed" || compactStatus === "done"
+      ? "completed"
+      : compactStatus === "inprogress" || compactStatus === "running" || compactStatus === "active"
+        ? "inProgress"
+        : "pending";
+    return step ? { step, status } : null;
+  }).filter(Boolean);
+}
+
+function normalizeTaskDisplayPlanSnapshot(value) {
+  const steps = normalizeTaskDisplayPlan(value?.steps);
+  const updatedAt = String(value?.updatedAt || "");
+  return { steps, updatedAt };
+}
+
+function isTaskDisplayInternalContent(content) {
+  const value = String(content || "").trim();
+  return !value
+    || /^\[(?:worker-hook|worker-recovery|activity-hook):/i.test(value)
+    || /<\/?personal-agent-(?:activity|reply|artifacts)>/i.test(value);
+}
+
+function sanitizeTaskDisplayAssistantContent(content) {
+  let artifactSummary = "";
+  const visible = String(content || "").slice(0, 100_000).replace(
+    /<personal-agent-artifacts>([\s\S]*?)<\/personal-agent-artifacts>/gi,
+    (_match, json) => {
+      try {
+        artifactSummary ||= String(JSON.parse(json)?.summary || "").trim().slice(0, 4_000);
+      } catch {}
+      return "";
+    },
+  ).trim();
+  return visible || artifactSummary;
+}
+
+function encodeTaskDisplayCursor(sessionId, beforeSequence, secret) {
+  const payload = Buffer.from(JSON.stringify({ v: 1, task: sessionId, before: beforeSequence })).toString("base64url");
+  const signature = crypto.createHmac("sha256", secret).update(payload).digest("base64url");
+  return `${payload}.${signature}`;
+}
+
+function decodeTaskDisplayCursor(cursor, expectedSessionId, secret) {
+  try {
+    const [payload, signature, extra] = String(cursor || "").split(".");
+    if (!payload || !signature || extra) throw new Error("invalid cursor shape");
+    const expected = crypto.createHmac("sha256", secret).update(payload).digest();
+    const actual = Buffer.from(signature, "base64url");
+    if (actual.length !== expected.length || !crypto.timingSafeEqual(actual, expected)) throw new Error("invalid cursor signature");
+    const decoded = JSON.parse(Buffer.from(payload, "base64url").toString("utf8"));
+    const before = Number(decoded?.before);
+    if (decoded?.v !== 1 || decoded?.task !== expectedSessionId || !Number.isSafeInteger(before) || before <= 0) {
+      throw new Error("invalid cursor payload");
+    }
+    return before;
+  } catch {
+    throw taskDisplayError("TASK_DISPLAY_CURSOR_INVALID", "task display cursor is invalid", 400);
+  }
+}
+
+function taskDisplayError(code, message, statusCode) {
+  return Object.assign(new Error(message), { code, statusCode });
 }
 
 function toJson(value) {

@@ -3,7 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
-import { buildConnectionCatalog, readConnectionRegistry, resolveConnectionRegistryPath } from "../src/connections/catalog.js";
+import { buildConnectionCatalog, connectionPlatformSupport, readConnectionRegistry, resolveConnectionRegistryPath } from "../src/connections/catalog.js";
 
 const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../..");
 
@@ -19,13 +19,16 @@ test("connection catalog is the shared UI, Skill, and CLI contract", () => {
   assert.equal(catalog.find((item) => item.id === "wechat").name, "微信 claw");
   assert.equal(catalog.find((item) => item.id === "dingtalk").origin.version, "2.1.4");
   assert.equal(catalog.find((item) => item.id === "wechat-personal").accessMode, "local");
+  assert.deepEqual(catalog.find((item) => item.id === "wechat-personal").platforms, ["win32"]);
   assert.equal(catalog.find((item) => item.id === "mail").defaultConnected, true);
   assert.equal(catalog.find((item) => item.id === "sites").defaultConnected, true);
   assert.equal(catalog.find((item) => item.id === "notion").cli.command, "ntn");
   assert.equal(catalog.find((item) => item.id === "xiaohongshu").accessMode, "browser");
+  assert.deepEqual(catalog.find((item) => item.id === "xiaohongshu").platforms, ["win32", "darwin"]);
   assert.equal(catalog.find((item) => item.id === "xiaohongshu").skill.name, "social-browser-read");
   assert.equal(catalog.find((item) => item.id === "xiaohongshu").setup.customExtensionRequired, false);
   assert.equal(catalog.find((item) => item.id === "twitter").accessMode, "browser");
+  assert.deepEqual(catalog.find((item) => item.id === "twitter").platforms, ["win32", "darwin"]);
   assert.equal(catalog.find((item) => item.id === "xiaohongshu").capabilities.includes("搜索笔记"), true);
   assert.equal(catalog.find((item) => item.id === "xiaohongshu").capabilities.includes("internal_runtime_capability"), false);
 
@@ -38,11 +41,18 @@ test("connection catalog is the shared UI, Skill, and CLI contract", () => {
   }
 });
 
-test("personal WeChat is only included on Windows", () => {
+test("platform-specific connections are included only on supported systems", () => {
   const registry = readConnectionRegistry();
-  assert.equal(buildConnectionCatalog({ registry, platform: "win32" }).some((item) => item.id === "wechat-personal"), true);
-  assert.equal(buildConnectionCatalog({ registry, platform: "darwin" }).some((item) => item.id === "wechat-personal"), false);
-  assert.equal(buildConnectionCatalog({ registry, platform: "linux" }).some((item) => item.id === "wechat-personal"), false);
+  const ids = (platform) => buildConnectionCatalog({ registry, platform }).map((item) => item.id);
+  assert.equal(ids("win32").includes("wechat-personal"), true);
+  assert.equal(ids("darwin").includes("wechat-personal"), false);
+  assert.equal(ids("linux").includes("wechat-personal"), false);
+  assert.equal(ids("win32").includes("xiaohongshu"), true);
+  assert.equal(ids("darwin").includes("xiaohongshu"), true);
+  assert.equal(ids("linux").includes("xiaohongshu"), false);
+  assert.equal(ids("linux").includes("twitter"), false);
+  assert.deepEqual(connectionPlatformSupport("wechat-personal", { registry, platform: "linux" }), { known: true, supported: false, name: "个人微信", platforms: ["win32"] });
+  assert.deepEqual(connectionPlatformSupport("xiaohongshu", { registry, platform: "darwin" }), { known: true, supported: true, name: "小红书", platforms: ["win32", "darwin"] });
 });
 
 test("connection registry resolves from source and bundled agent layouts", () => {

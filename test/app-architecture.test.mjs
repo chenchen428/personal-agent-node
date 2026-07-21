@@ -5,7 +5,7 @@ import test from "node:test";
 
 const root = path.resolve(import.meta.dirname, "..");
 
-test("Next.js owns the approved V6.35 mobile client and V7.3 desktop workspace", () => {
+test("Next.js owns the approved V6.39 mobile client and V7.3 desktop workspace", () => {
   const shell = read("core/app/src/components/app-shell.tsx");
   const navigation = read("core/app/src/components/navigation.ts");
   const desktopNavigationSource = `${navigation}\n${shell}`;
@@ -23,6 +23,8 @@ test("Next.js owns the approved V6.35 mobile client and V7.3 desktop workspace",
   const connectionViewSwitch = read("core/app/src/components/desktop-v627/connection-view-switch.tsx");
   const connectionActionsClient = read("core/app/src/components/desktop-v627/connection-action-row.tsx");
   const skillsClient = read("core/app/src/components/desktop-v627/skills-page.tsx");
+  const memoryClient = read("core/app/src/components/desktop-v627/memory-page.tsx");
+  const settingsLayout = read("core/app/src/components/desktop-v72/settings-layout.tsx");
   const updateClient = read("core/app/src/components/desktop-v627/update-page.tsx");
   const dataClient = read("core/app/src/components/desktop-v627/data-page.tsx");
   const dataEmptyState = read("core/app/src/components/desktop-v627/data-empty-state.tsx");
@@ -40,6 +42,9 @@ test("Next.js owns the approved V6.35 mobile client and V7.3 desktop workspace",
     "mobile-current/activity.tsx",
     "mobile-current/pages.tsx",
     "mobile-current/workers.tsx",
+    "mobile-current/mobile-task-detail.tsx",
+    "mobile-current/task-display-presentation.tsx",
+    "mobile-current/use-task-display-history.ts",
     "mobile-current/apps.tsx",
     "mobile-current/personal-app.tsx",
     "mobile-current/about.tsx",
@@ -75,7 +80,7 @@ test("Next.js owns the approved V6.35 mobile client and V7.3 desktop workspace",
   assert.match(shell, /__personal-agent\/close/);
   assert.match(shell, /仍有工作正在进行/);
   assert.match(shell, /\["start", "running"\]/);
-  assert.match(shell, /系统设置/);
+  assert.match(shell, /空间设置/);
   assert.match(shell, /本机工作区/);
   assert.match(shell, /\/api\/system\/apps/);
   assert.match(dataClient, /\/api\/app\/data\/schema\?counts=0&preview=1/);
@@ -88,7 +93,14 @@ test("Next.js owns the approved V6.35 mobile client and V7.3 desktop workspace",
   assert.match(dataClient, /illustrated:\s*true/);
   assert.match(dataEmptyState, /IllustratedEmptyState/);
   assert.match(read("core/app/src/components/desktop-v72/loading-state.tsx"), /role="status"/);
-  assert.doesNotMatch(read("core/app/src/components/desktop-v72/settings-layout.tsx"), /Token统计/);
+  assert.doesNotMatch(settingsLayout, /Token统计/);
+  assert.match(settingsLayout, /通用/);
+  assert.match(settingsLayout, /\/app\/settings\/memory/);
+  assert.match(memoryClient, /\/api\/memories\?status=/);
+  assert.match(memoryClient, /搜索记忆内容/);
+  assert.match(memoryClient, /按热度排序/);
+  assert.doesNotMatch(memoryClient, /编辑|停用|新增记忆|删除/);
+  assert.match(skillsClient, /SettingsCollectionLayout/);
   assert.match(navigation, /统计目录/);
   assert.match(tokenUsageHook, /\/api\/token-usage\?range=/);
   assert.match(mobileClient, /MobileTokenUsageSection/);
@@ -212,8 +224,8 @@ test("Next.js owns the approved V6.35 mobile client and V7.3 desktop workspace",
   assert.match(workersClient, /MarkdownContent/);
   assert.match(css, /\.desktop-v72 \.v72-markdown/);
   assert.doesNotMatch(desktopNavigationSource, /\/app\/automations/);
-  assert.match(skillsClient, /skill-filter-bar/);
-  assert.match(skillsClient, /skill-library-layout/);
+  assert.match(skillsClient, /SettingsCollectionLayout/);
+  assert.match(skillsClient, /搜索技能/);
   assert.doesNotMatch(updateClient, /rollback-plan|RotateCcw|恢复 \{/);
   assert.match(desktopComponents, /PageDetail/);
   assert.match(desktopComponents, /runtime-page-full/);
@@ -320,11 +332,14 @@ test("Next.js owns the approved V6.35 mobile client and V7.3 desktop workspace",
   assert.match(mobileClient, /有新进展/);
   assert.match(mobileClient, /hasRunningTask/);
   assert.match(mobileClient, /重启后已继续处理/);
-  assert.match(mobileClient, /session && \(messages\.length \|\| plan\.length\)/);
-  assert.match(mobileClient, /\/api\/mobile\/tasks\/\$\{encodeURIComponent\(sessionId\)\}\?messageLimit=80/);
+  assert.match(mobileClient, /\/display-events\?/);
+  assert.match(mobileClient, /data-task-display-scroll="tail"/);
+  assert.match(mobileClient, /element\.scrollTop = element\.scrollHeight/);
+  assert.match(mobileClient, /drawerOpen \? <MobileDrawer/);
+  assert.doesNotMatch(mobileClient, /messageLimit=80/);
   assert.doesNotMatch(mobileClient.match(/const navItems:[\s\S]*?\];/)?.[0] || "", /conversations/);
-  for (const responsibility of ["activity", "pages", "workers", "apps", "personal-app", "about", "wechat-status", "mail", "shell", "token-usage", "data", "types"]) {
-    const file = path.join(root, "core/app/src/components/mobile-current", `${responsibility}.${responsibility === "types" ? "ts" : "tsx"}`);
+  for (const responsibility of ["activity.tsx", "pages.tsx", "workers.tsx", "mobile-task-detail.tsx", "task-display-presentation.tsx", "use-task-display-history.ts", "apps.tsx", "personal-app.tsx", "about.tsx", "wechat-status.tsx", "mail.tsx", "shell.tsx", "token-usage.tsx", "data.tsx", "types.ts"]) {
+    const file = path.join(root, "core/app/src/components/mobile-current", responsibility);
     assert.equal(fs.existsSync(file), true, responsibility);
     assert.ok(fs.readFileSync(file, "utf8").split(/\r?\n/).length <= 300, `${responsibility} exceeds 300 lines`);
   }
@@ -337,7 +352,7 @@ test("all finalized client routes have independently buildable Next pages", () =
   const pages = [
     "app/page.tsx", "app/conversations/page.tsx", "app/workers/page.tsx", "app/workers/schedules/page.tsx", "app/schedules/page.tsx", "app/automations/page.tsx", "app/mail/page.tsx",
     "app/pages/page.tsx", "app/pages/[pageId]/page.tsx", "app/data/page.tsx", "app/apps/page.tsx", "app/apps/[appId]/page.tsx",
-    "app/connections/page.tsx", "app/connections/wechat-personal/page.tsx", "app/channels/page.tsx", "app/skills/page.tsx", "app/statistics/token-usage/page.tsx", "app/setup/page.tsx", "app/runtime/page.tsx", "app/settings/page.tsx", "app/update/page.tsx",
+    "app/connections/page.tsx", "app/connections/wechat-personal/page.tsx", "app/channels/page.tsx", "app/skills/page.tsx", "app/statistics/token-usage/page.tsx", "app/setup/page.tsx", "app/runtime/page.tsx", "app/settings/page.tsx", "app/settings/memory/page.tsx", "app/update/page.tsx",
     "app/mobile/page.tsx", "app/mobile/pages/page.tsx", "app/mobile/pages/[pageId]/page.tsx",
     "app/mobile/workers/page.tsx", "app/mobile/workers/[sessionId]/page.tsx",
     "app/mobile/conversations/page.tsx", "app/mobile/conversations/[sessionId]/page.tsx",
@@ -377,9 +392,9 @@ test("gateway routes the approved client to Next and its read-only data to the l
   assert.deepEqual(routeRegistry.routes.find((route) => route.pattern === "/api/token-usage"), { pattern: "/api/token-usage", access: "authenticated", capability: "agent" });
   assert.deepEqual(routes.find((route) => route.key === "api-connections"), { key: "api-connections", prefix: "/api/connections", access: "authenticated", kind: "proxy", targetKey: "agent", upstreamPath: "/api/connections" });
   assert.equal(routes.find((route) => route.key === "home").access, "authenticated");
-  assert.equal(routes.find((route) => route.key === "app-settings").access, "local-admin");
-  assert.equal(routes.find((route) => route.key === "api-system-setup-actions").access, "local-admin");
-  assert.deepEqual(routes.find((route) => route.key === "api-system-update"), { key: "api-system-update", prefix: "/api/system/update", access: "local-admin", kind: "proxy", targetKey: "console", upstreamPath: "/api/update" });
+  assert.equal(routes.find((route) => route.key === "app-settings").access, "authenticated");
+  assert.equal(routes.find((route) => route.key === "api-system-setup-actions").access, "authenticated");
+  assert.deepEqual(routes.find((route) => route.key === "api-system-update"), { key: "api-system-update", prefix: "/api/system/update", access: "authenticated", kind: "proxy", targetKey: "console", upstreamPath: "/api/update" });
   assert.deepEqual(routes.find((route) => route.key === "public-pages"), { key: "public-pages", prefix: "/public", access: "public", kind: "proxy", targetKey: "agent", upstreamPath: "/pages" });
   assert.deepEqual(routes.find((route) => route.key === "private-publications"), { key: "private-publications", prefix: "/publications", access: "authenticated", kind: "proxy", targetKey: "agent", upstreamPath: "/publications" });
   assert.match(nextBff, /path\[0\] === "system"/);

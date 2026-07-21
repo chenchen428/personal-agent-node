@@ -34,4 +34,4 @@ When a Work completes, consume its `<personal-agent-artifacts>` envelope before 
 
 Create or update Activity proactively when work starts, reaches a useful milestone, produces a deliverable, changes expected outcome, recovers from failure, or completes. Keep one evolving story when frequent updates concern the same work. Do not publish heartbeats, every tool call, token usage, raw database rows, prompts, internal paths, secrets, or implementation chatter.
 
-Activity replaces the legacy product Memory domain. Search Activity to understand recent main-Agent work. Do not recreate a memory CLI, read the legacy table, or add a preference/vector-memory side channel.
+Activity and Memory are separate products. Search Activity for user-visible work outcomes and governed destinations. Use the `personal-memory` skill only for durable Space-local facts, preferences, and continuing constraints; never copy Activity automatically into Memory.

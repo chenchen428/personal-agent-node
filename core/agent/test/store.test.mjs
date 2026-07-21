@@ -247,28 +247,125 @@ test("paginates and searches chat sessions with a stable cursor", () => {
   }
 });
 
-test("mobile task detail bounds history while preserving the latest plan", () => {
+test("mobile task display ledger opens at the tail and paginates earlier events with task-bound cursors", () => {
   const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), "pa-store-mobile-detail-"));
   const store = new BridgeStore({ dataDir, consoleBaseUrl: "https://agent.example.test" });
   try {
     const session = store.createSession({ role: "worker", title: "Long task", workspaceRoot: dataDir });
-    store.appendEvent(session.id, "session.status", {
-      metadata: { eventType: "turn/plan/updated", plan: [{ step: "Keep latest plan", status: "inProgress" }] },
-    });
-    for (let index = 0; index < 320; index += 1) {
-      store.appendEvent(session.id, index % 2 ? "session.tool_result" : "session.tool_use", { content: `internal-${index}` });
-      store.appendEvent(session.id, index % 3 ? "session.assistant_message" : "session.user_message", { content: `visible-${index}` });
+    const other = store.createSession({ role: "worker", title: "Other task", workspaceRoot: dataDir });
+    store.updateTaskDisplayPlan(session.id, [{ step: "Keep latest plan", status: "in_progress" }], { createdAt: "2026-07-20T08:00:00.000Z" });
+    for (let index = 1; index <= 65; index += 1) {
+      store.appendTaskDisplayEvent(session.id, {
+        sourceEventId: `visible-${index}`,
+        kind: index === 1 ? "requirement" : "message",
+        role: index === 1 ? "user" : "assistant",
+        content: `visible-${index}`,
+        createdAt: `2026-07-20T08:${String(index).padStart(2, "0")}:00.000Z`,
+      });
     }
 
-    const detail = store.getMobileSessionDetail(session.id, { messageLimit: 80 });
-    assert.equal(detail.messages.length, 80);
-    assert.equal(detail.messages.at(-1).content, "visible-319");
-    assert.equal(detail.messages.some((message) => message.content.startsWith("internal-")), false);
-    assert.equal(detail.events.length, 1);
+    const first = store.listTaskDisplayEvents(session.id, { limit: 20 });
+    assert.deepEqual(first.items.map((item) => item.sequence), Array.from({ length: 20 }, (_, index) => index + 46));
+    assert.equal(first.items.at(-1).content, "visible-65");
+    assert.equal(first.hasEarlier, true);
+    assert.ok(first.beforeCursor);
+    assert.deepEqual(first.latestPlan.steps, [{ step: "Keep latest plan", status: "inProgress" }]);
+    assert.equal("workspaceRoot" in first.task, false);
+    assert.equal("cliSessionId" in first.task, false);
+
+    const second = store.listTaskDisplayEvents(session.id, { limit: 20, before: first.beforeCursor });
+    const third = store.listTaskDisplayEvents(session.id, { limit: 20, before: second.beforeCursor });
+    const fourth = store.listTaskDisplayEvents(session.id, { limit: 20, before: third.beforeCursor });
+    const sequences = [...fourth.items, ...third.items, ...second.items, ...first.items].map((item) => item.sequence);
+    assert.deepEqual(sequences, Array.from({ length: 65 }, (_, index) => index + 1));
+    assert.equal(new Set(sequences).size, sequences.length);
+    assert.equal(fourth.hasEarlier, false);
+    assert.equal(fourth.beforeCursor, "");
+
+    assert.throws(() => store.listTaskDisplayEvents(other.id, { before: first.beforeCursor }), /cursor is invalid/);
+    assert.throws(() => store.listTaskDisplayEvents(session.id, { before: `${first.beforeCursor}x` }), /cursor is invalid/);
+    const detail = store.getMobileSessionDetail(session.id, { messageLimit: 20 });
+    assert.equal(detail.messages.length, 20);
+    assert.equal(detail.messages.at(-1).content, "visible-65");
     assert.equal(detail.events[0].payload.metadata.plan[0].step, "Keep latest plan");
-    assert.equal(detail.pagination.hasEarlier, true);
-    assert.ok(JSON.stringify(detail).length < JSON.stringify(store.getSession(session.id)).length / 3);
   } finally {
+    store.close();
+    fs.rmSync(dataDir, { recursive: true, force: true });
+  }
+});
+
+test("task display projection stores only completed visible worker content and remains independent of raw history volume", () => {
+  const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), "pa-store-display-projection-"));
+  const store = new BridgeStore({ dataDir, consoleBaseUrl: "https://agent.example.test" });
+  try {
+    const worker = store.createSession({ role: "worker", title: "Projection", workspaceRoot: dataDir });
+    const main = store.getOrCreateDesktopMainSession({ workspaceRoot: dataDir });
+    const project = (kind, content, metadata = {}, id = `raw-${Math.random()}`) => store.projectTaskDisplayEvent({
+      id,
+      sessionId: worker.id,
+      kind,
+      createdAt: "2026-07-20T10:00:00.000Z",
+      payload: { content, metadata },
+    });
+
+    assert.equal(project("session.tool_result", "secret command output"), null);
+    assert.equal(project("session.reasoning", "private reasoning"), null);
+    assert.equal(project("session.assistant_message", "partial", { streamState: "streaming" }), null);
+    assert.equal(project("session.assistant_message", "[worker-hook:internal] hidden", { streamState: "completed" }), null);
+    assert.equal(project("session.error", "retry transport detail", { willRetry: true }), null);
+    const completed = project("session.assistant_message", "visible answer", { streamState: "completed" }, "completed-1");
+    assert.equal(completed.item.content, "visible answer");
+    const duplicate = project("session.assistant_message", "visible answer", { streamState: "completed" }, "completed-1");
+    assert.equal(duplicate.item.displayEventId, completed.item.displayEventId);
+    const artifactReply = project("session.assistant_message", '<personal-agent-artifacts>{"schemaVersion":1,"summary":"safe summary","artifacts":[]}</personal-agent-artifacts>\n\nVisible conclusion', { streamState: "completed" }, "completed-2");
+    assert.equal(artifactReply.item.content, "Visible conclusion");
+    const artifactOnly = project("session.assistant_message", '<personal-agent-artifacts>{"schemaVersion":1,"summary":"summary fallback","artifacts":[]}</personal-agent-artifacts>', { streamState: "completed" }, "completed-3");
+    assert.equal(artifactOnly.item.content, "summary fallback");
+    const objectId = "obj_0123456789abcdef01234567";
+    const withAttachment = project("session.assistant_message", "attachment reply", {
+      streamState: "completed",
+      finalReply: { idempotencyKey: "delivery-key" },
+      attachments: [{ objectId, kind: "file", name: "result.pdf", previewUrl: `/api/chat/attachments/${objectId}`, downloadUrl: `/api/chat/attachments/${objectId}?download=1`, deliveryState: "pending" }],
+    }, "completed-4");
+    assert.equal(withAttachment.item.metadata._deliveryKey, undefined);
+    const delivered = store.updateTaskDisplayAttachmentDelivery(worker.id, { idempotencyKey: "delivery-key", objectId, state: "sent" });
+    assert.equal(delivered.metadata.attachments[0].deliveryState, "sent");
+    assert.equal(delivered.metadata._deliveryKey, undefined);
+    const plan = project("session.status", "raw plan rendering", {
+      eventType: "turn/plan/updated",
+      plan: [{ step: "Only latest", status: "inProgress" }],
+    }, "plan-1");
+    assert.deepEqual(plan.latestPlan.steps, [{ step: "Only latest", status: "inProgress" }]);
+    assert.equal(store.projectTaskDisplayEvent({ id: "main-1", sessionId: main.id, kind: "session.assistant_message", payload: { content: "main" } }), null);
+    assert.throws(() => store.appendTaskDisplayEvent(main.id, { kind: "message", role: "assistant", content: "forbidden" }), /Worker session/);
+
+    const insertRaw = store.db.prepare("INSERT INTO events (id, session_id, seq, kind, payload_json, created_at) VALUES (?, ?, ?, ?, ?, ?)");
+    store.db.exec("BEGIN");
+    for (let index = 1; index <= 10_000; index += 1) {
+      insertRaw.run(`stress-raw-${index}`, worker.id, index, "session.tool_result", JSON.stringify({ content: `internal-${index}` }), "2026-07-20T10:00:00.000Z");
+    }
+    store.db.exec("COMMIT");
+    for (let index = 2; index <= 600; index += 1) {
+      store.appendTaskDisplayEvent(worker.id, {
+        sourceEventId: `display-${index}`,
+        kind: "message",
+        role: "assistant",
+        content: `display-${index}`,
+      });
+    }
+
+    const startedAt = performance.now();
+    const page = store.listTaskDisplayEvents(worker.id, { limit: 20 });
+    const elapsed = performance.now() - startedAt;
+    assert.equal(page.items.length, 20);
+    assert.equal(page.items.at(-1).content, "display-600");
+    assert.equal(page.items.some((item) => item.content.startsWith("internal-")), false);
+    assert.ok(JSON.stringify(page).length < 20_000);
+    assert.ok(elapsed < 250, `display query took ${elapsed.toFixed(1)}ms`);
+    const queryPlan = store.db.prepare("EXPLAIN QUERY PLAN SELECT * FROM task_display_events WHERE session_id = ? ORDER BY display_seq DESC LIMIT 21").all(worker.id);
+    assert.match(queryPlan.map((row) => row.detail).join("\n"), /idx_task_display_events_session_seq/);
+  } finally {
+    try { store.db.exec("ROLLBACK"); } catch {}
     store.close();
     fs.rmSync(dataDir, { recursive: true, force: true });
   }
@@ -400,7 +497,7 @@ test("prunes month-old execution history while retaining the main session", () =
   }
 });
 
-test("archives the legacy Memory table without exposing an active Memory store", () => {
+test("archives the legacy Memory table separately from the Space-isolated product Memory store", () => {
   const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), "oab-store-legacy-memory-"));
   const databasePath = path.join(dataDir, "state.sqlite");
   const legacy = new DatabaseSync(databasePath);

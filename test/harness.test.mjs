@@ -57,11 +57,12 @@ test('customer Harness classifies and ships portable creation skills', () => {
   }
   const build = fs.readFileSync(path.join(root, 'scripts/build-private-site-node-dist.mjs'), 'utf8');
   assert.match(build, /\["skills", "workspace\/skills"\]/);
+  assert.match(build, /copyDirectory\(publicRoot, path\.join\(outputRoot, "core", "app", "public"\)\)/);
 });
 
 test('customer Harness carries the portable Node acceptance standard', () => {
   const standard = fs.readFileSync(path.join(root, 'skills/personal-agent/references/acceptance.md'), 'utf8');
-  for (const requirement of ['Node Core Gate', 'Optional Managed Cloud Integration', 'local-admin', 'ten minutes', 'previous-release rollback', 'public GitHub Release asset', '"route": "/app/chat"', '"uniquePrompt": true', '"realAgentRuntime": true', '"sameSessionAgentReply": true', '"wechatRequired": false', 'connections.wechat', 'optional evidence', 'Stable Go launchers', 'Setup Center']) assert.match(standard, new RegExp(requirement));
+  for (const requirement of ['Node Core Gate', 'Optional Managed Cloud Integration', 'public whitelist', 'ten minutes', 'previous-release rollback', 'public GitHub Release asset', '"route": "/app/chat"', '"uniquePrompt": true', '"realAgentRuntime": true', '"sameSessionAgentReply": true', '"wechatRequired": false', 'connections.wechat', 'optional evidence', 'Stable Go launchers', 'Setup Center']) assert.match(standard, new RegExp(requirement));
   assert.equal(fs.existsSync(path.join(root, 'test/fixtures/skill-cases/personal-agent-acceptance/case.json')), true);
   const expected = JSON.parse(fs.readFileSync(path.join(root, 'test/fixtures/skill-cases/personal-agent-acceptance/expected.json'), 'utf8'));
   assert.deepEqual(Object.keys(expected.node.webConversation), [
@@ -224,15 +225,16 @@ test('public GitHub release keeps customer downloads concise and CI evidence sep
   fs.mkdirSync(source);
   const assets = [
     'personal-agent-relay-install.sh',
+    'personal-agent-node-install.sh',
     `personal-agent-node-${tag}-windows-x64-installer.exe`,
     `personal-agent-node-${tag}-windows-x64-updater.exe`,
     `personal-agent-node-${tag}-macos-x64.pkg`,
     `personal-agent-node-${tag}-macos-x64-updater`,
     `personal-agent-node-${tag}-macos-arm64.pkg`,
     `personal-agent-node-${tag}-macos-arm64-updater`,
-    `personal-agent-node-${tag}-linux-x64.tar.zst`,
+    `personal-agent-node-${tag}-linux-x64.tar.gz`,
     `personal-agent-node-${tag}-linux-x64-updater`,
-    `personal-agent-node-${tag}-linux-arm64.tar.zst`,
+    `personal-agent-node-${tag}-linux-arm64.tar.gz`,
     `personal-agent-node-${tag}-linux-arm64-updater`,
   ];
   try {

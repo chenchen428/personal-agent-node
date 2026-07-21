@@ -28,6 +28,7 @@ test("connection UI separates OpenCLI browser reads from QR and account authoriz
   const xiaohongshu = read("core/agent/src/channels/xiaohongshu/opencli-provider.js");
   const twitter = read("core/agent/src/channels/twitter/opencli-provider.js");
   const xiaohongshuRuntime = read("core/agent/src/channels/xiaohongshu/channel.js");
+  const server = read("core/agent/src/server/server.ts");
   const registry = JSON.parse(read("registry/connections.json"));
   const xiaohongshuConnection = registry.connections.find((connection) => connection.id === "xiaohongshu");
   const twitterConnection = registry.connections.find((connection) => connection.id === "twitter");
@@ -112,8 +113,13 @@ test("connection UI separates OpenCLI browser reads from QR and account authoriz
   assert.doesNotMatch(twitter, /authStatus|startLogin|pollLogin|qrImage/);
   assert.equal(xiaohongshuConnection.accessMode, "browser");
   assert.equal(twitterConnection.accessMode, "browser");
+  assert.deepEqual(xiaohongshuConnection.platforms, ["win32", "darwin"]);
+  assert.deepEqual(twitterConnection.platforms, ["win32", "darwin"]);
   assert.equal(xiaohongshuConnection.skillName, "social-browser-read");
   assert.equal(twitterConnection.skillName, "social-browser-read");
+  assert.match(server, /CONNECTION_PLATFORM_UNSUPPORTED/);
+  assert.match(server, /if \(openCliBrowserSupported\) void Promise\.all/);
+  assert.match(server, /if \(personalWechatSupported\) wechatQianxun\.attach/);
   assert.match(wechatRuntime, /LOGIN_SESSION_TIMEOUT_MS = 2 \* 60 \* 1000/);
   assert.match(wechatRuntime, /status === "scaned" \? "scanned"/);
   assert.match(actions, /DingTalkAction/);
@@ -121,6 +127,7 @@ test("connection UI separates OpenCLI browser reads from QR and account authoriz
   assert.match(dingtalkAction, /Client Secret/);
   assert.match(dingtalkAction, /ConnectionOperationSop/);
   assert.match(dingtalkAction, /建立 Stream 连接/);
+  assert.match(dingtalkAction, /收发文字、图片和文件/);
   assert.match(dingtalkAction, /清空配置/);
   assert.doesNotMatch(dingtalkAction, /console\.log|setMessage\(clientSecret\)/);
   assert.match(xiaohongshuRuntime, /SESSION_TTL_MS = 2 \* 60 \* 1000/);
@@ -142,6 +149,8 @@ test("personal WeChat is independent from WeChat claw and configures a Qianxun-b
   assert.equal(claw.name, "微信 claw");
   assert.equal(claw.capabilities.some((capability) => capability.includes("千寻")), false);
   assert.equal(personal.name, "个人微信");
+  assert.deepEqual(personal.platforms, ["win32"]);
+  assert.match(personal.description, /仅支持 Windows/);
   assert.match(personal.description, /不下载、不启动也不分发千寻 Pro 二进制/);
   assert.match(action, /wechat-personal\/detect/);
   assert.match(action, /wechat-personal\/setup/);

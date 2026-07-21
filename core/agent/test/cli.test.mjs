@@ -12,19 +12,39 @@ import { createPageThumbnailPng } from "./page-thumbnail-fixture.mjs";
 const execFileAsync = promisify(execFile);
 const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
-test("legacy Memory CLI fails closed and points to main-Agent Activity", async () => {
-  await assert.rejects(
-    execFileAsync(process.execPath, [path.join(projectRoot, "bin", "pa-cli.mjs"), "memory", "recall", "--json"], {
-      cwd: projectRoot,
-      env: { ...process.env },
-    }),
-    (error) => {
-      assert.equal(error.code, 1);
-      assert.match(error.stderr, /legacy Memory domain has been removed/);
-      assert.match(error.stderr, /pa-cli activity/);
-      return true;
-    },
-  );
+test("Memory CLI uses the ephemeral main-turn capability and content-only contract", async (t) => {
+  let received = null;
+  const server = http.createServer(async (request, response) => {
+    const chunks = [];
+    for await (const chunk of request) chunks.push(chunk);
+    received = {
+      method: request.method,
+      url: request.url,
+      capability: request.headers["x-personal-agent-memory-capability"],
+      body: JSON.parse(Buffer.concat(chunks).toString("utf8")),
+    };
+    response.writeHead(200, { "content-type": "application/json" });
+    response.end(JSON.stringify({ ok: true, result: { action: "create", data: { id: "mem_1", content: "用户偏好先给结论。", revision: 1 } } }));
+  });
+  await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
+  t.after(() => server.close());
+  const address = server.address();
+  const result = await execFileAsync(process.execPath, [
+    path.join(projectRoot, "bin", "pa-cli.mjs"), "memory", "create",
+    "--content", "用户偏好先给结论。",
+    "--capability", "ephemeral-memory-capability",
+    "--json",
+  ], {
+    cwd: projectRoot,
+    env: { ...process.env, OPEN_AGENT_BRIDGE_API_BASE: `http://127.0.0.1:${address.port}` },
+  });
+  assert.deepEqual(received, {
+    method: "POST",
+    url: "/api/internal/memory-agent",
+    capability: "ephemeral-memory-capability",
+    body: { action: "create", memoryId: "", input: { content: "用户偏好先给结论。" } },
+  });
+  assert.equal(JSON.parse(result.stdout).data.content, "用户偏好先给结论。");
 });
 
 test("cron CLI creates and verifies a governed scheduled task", async (t) => {

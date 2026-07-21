@@ -6,6 +6,7 @@
   "given": "Deterministic legacy managed and current OpenCLI social providers with mocked external responses",
   "when": "Browser executor status, fixed-site opening, historical login, and read-only content inputs are exercised",
   "acceptance": [
+    "Connections that depend on OpenCLI browser control are available only on Windows and macOS; Linux omits them from the catalog, performs no background probe, and rejects their API and CLI surfaces",
     "Historical account login is coordinated without leaking verification codes",
     "Read-only search results are normalized",
     "Invalid legacy login and QR input is rejected",

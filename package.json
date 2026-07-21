@@ -1,6 +1,6 @@
 {
   "name": "personal-agent-node",
-  "version": "0.2.0-beta.27",
+  "version": "0.2.0-beta.28",
   "private": true,
   "license": "Apache-2.0",
   "type": "module",
@@ -30,7 +30,7 @@
     "desktop:test": "cargo test --locked --manifest-path core/desktop/src-tauri/Cargo.toml",
     "desktop:build": "node scripts/build-desktop-shell.mjs",
     "native:test": "cd core/runtime/native && go test ./...",
-    "check": "node --check scripts/build-desktop-shell.mjs && node --check scripts/build-platform-installer.mjs && node --check scripts/build-self-hosted-relay-installer.mjs && node --check scripts/assemble-public-release-assets.mjs && node --check scripts/fetch-node-runtime.mjs && node --check scripts/lib/zip-member.mjs && node --check core/runtime/bin/personal-agent.mjs && node --check core/runtime/bin/private-site.mjs && node --check core/agent/bin/pa-cli.mjs && npm run core:typecheck && npm run app:typecheck",
+    "check": "node --check scripts/build-desktop-shell.mjs && node --check scripts/build-platform-installer.mjs && node --check scripts/build-linux-install-script.mjs && node --check scripts/build-self-hosted-relay-installer.mjs && node --check scripts/assemble-public-release-assets.mjs && node --check scripts/fetch-node-runtime.mjs && node --check scripts/lib/zip-member.mjs && node --check core/runtime/bin/personal-agent.mjs && node --check core/runtime/bin/private-site.mjs && node --check core/agent/bin/pa-cli.mjs && npm run core:typecheck && npm run app:typecheck",
     "test": "npm run desktop:test && npm run native:test && npm run harness:test && npm run test:runtime && npm run test:edge && npm run test:agent",
     "test:runtime": "tsx --test core/runtime/test/*.test.mjs",
     "test:agent": "tsx --test --test-concurrency=4 core/agent/test/*.test.mjs",

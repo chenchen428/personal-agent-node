@@ -13,6 +13,7 @@
     "Child tasks require an Agent-generated title of at most 20 characters and description of at most 100 characters, and both fields remain updateable through the Personal Agent CLI",
     "Child task execution preserves the complete latest visible parent request and all delegated prompt text, including content split by nested shell quotes",
     "Internal worker hook inputs never appear in user conversation history",
+    "Mobile task detail reads only the Space-local display-event ledger: it opens on the latest 20 visible events at the absolute bottom, pages earlier events with a task-bound opaque cursor while preserving the reading anchor, follows sanitized live updates only when pinned to the tail, and never scans or falls back to raw Codex execution history",
     "The desktop conversation merges complete desktop and WeChat main-session history chronologically and labels each user message with its source",
     "Desktop and mobile conversation readers preserve structured final-reply image and file attachments with safe same-origin preview/download actions, image dimensions and alt text, file names and sizes, and pending, sent, failed, or ambiguous delivery state",
     "Canonical Task, Page and private-file records keep same-origin relative paths; task CLI results expose a complete Managed Mobile HTTPS url when available or an empty url with linkNotice when unavailable, and no caller concatenates a domain with internalUrl; drive paths, absolute filesystem paths, file URLs and loopback URLs never enter a remote reply",
@@ -28,6 +29,8 @@
     "Search and update are owner-local and revision-safe",
     "Existing-result retrieval searches Activity before session history, never creates a child task merely to find a result, and falls back across safe local indexes before exposing internal authentication mechanics",
     "The daily Token limit defaults to 0 (unlimited), uses M units, and replies without starting the Agent when today's usage has reached a configured positive limit",
-    "The legacy Memory product surface is unavailable"
+    "Every real main-Agent user turn recalls at most twelve relevant active memories from the current Space before execution, counts only actually injected records once per session-turn-memory tuple, and never gives the capability to Workers",
+    "Memory stores content plus system metadata only, supports main-Agent create, revision-safe update and permanent delete through pa-cli, reactivates forgotten records on update, and exposes only authenticated read-only UI routes",
+    "Memory heat combines 90-day recency and logarithmic hit frequency, active records are ordered by heat, and records become forgotten after one year without creation, update, or hit"
   ]
 }

@@ -34,7 +34,7 @@ export function readConnectionRegistry(registryPath = defaultRegistryPath) {
 }
 
 export function buildConnectionCatalog({ registry = readConnectionRegistry(), statuses = {}, registryPath = defaultRegistryPath, platform = process.platform } = {}) {
-  return registry.connections.filter((definition) => !definition.platforms || definition.platforms.includes(platform)).map((definition) => {
+  return registry.connections.filter((definition) => supportsDefinitionPlatform(definition, platform)).map((definition) => {
     const dynamic = statuses[definition.id] || {};
     const state = String(dynamic.state || (definition.defaultConnected ? "connected" : "needs_setup"));
     return {
@@ -57,6 +57,16 @@ export function buildConnectionCatalog({ registry = readConnectionRegistry(), st
   });
 }
 
+export function connectionPlatformSupport(id, { registry = readConnectionRegistry(), platform = process.platform } = {}) {
+  const definition = registry.connections.find((connection) => connection.id === id);
+  return {
+    known: Boolean(definition),
+    supported: Boolean(definition && supportsDefinitionPlatform(definition, platform)),
+    name: String(definition?.name || id),
+    platforms: Array.isArray(definition?.platforms) ? [...definition.platforms] : ["win32", "darwin", "linux"],
+  };
+}
+
 function readConnectorDocument(reference, registryPath) {
   const releaseRoot = path.dirname(path.dirname(path.resolve(registryPath)));
   const connectorRoot = path.resolve(releaseRoot, "skills", "personal-agent", "references", "connectors");
@@ -74,6 +84,10 @@ function mergeRuntime(declared = [], dynamic = []) {
   const values = new Map(declared.map((item) => [item.label, item]));
   for (const item of dynamic || []) values.set(item.label, item);
   return [...values.values()];
+}
+
+function supportsDefinitionPlatform(definition, platform) {
+  return !definition.platforms || definition.platforms.includes(platform);
 }
 
 function defaultStatusLabel(state) {

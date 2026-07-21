@@ -21,10 +21,11 @@
     { "pattern": "/app/files/*", "access": "authenticated", "capability": "files" },
     { "pattern": "/app/skills", "access": "authenticated", "capability": "skills" },
     { "pattern": "/app/token-usage", "access": "authenticated", "capability": "agent" },
-    { "pattern": "/app/setup/bootstrap", "access": "local-bootstrap", "capability": "runtime" },
-    { "pattern": "/app/settings", "access": "local-admin", "capability": "runtime" },
-    { "pattern": "/app/setup", "access": "local-admin", "capability": "runtime" },
-    { "pattern": "/app/update", "access": "local-admin", "capability": "runtime" },
+    { "pattern": "/app/setup/bootstrap", "access": "authenticated", "capability": "runtime" },
+    { "pattern": "/app/settings", "access": "authenticated", "capability": "runtime" },
+    { "pattern": "/app/settings/memory", "access": "authenticated", "capability": "memory" },
+    { "pattern": "/app/setup", "access": "authenticated", "capability": "runtime" },
+    { "pattern": "/app/update", "access": "authenticated", "capability": "runtime" },
     { "pattern": "/app/*", "access": "authenticated", "capability": "console" },
     { "pattern": "/api/app/schedules/*", "access": "authenticated", "capability": "agent" },
     { "pattern": "/api/app/*", "access": "authenticated", "capability": "console" },
@@ -38,9 +39,11 @@
     { "pattern": "/api/managed-platforms/*", "access": "authenticated", "capability": "managed-platforms" },
     { "pattern": "/api/publications/*", "access": "authenticated", "capability": "publications" },
     { "pattern": "/api/skills", "access": "authenticated", "capability": "skills" },
-    { "pattern": "/api/system/*", "access": "local-admin", "capability": "runtime" },
-    { "pattern": "/api/extensions/*", "access": "local-admin", "capability": "extensions" },
-    { "pattern": "/api/plugins/*", "access": "local-admin", "capability": "extensions" },
-    { "pattern": "/internal/*", "access": "internal", "capability": "runtime" }
+    { "pattern": "/api/memories", "access": "authenticated", "capability": "memory" },
+    { "pattern": "/api/memories/*", "access": "authenticated", "capability": "memory" },
+    { "pattern": "/api/system/*", "access": "authenticated", "capability": "runtime" },
+    { "pattern": "/api/extensions/*", "access": "authenticated", "capability": "extensions" },
+    { "pattern": "/api/plugins/*", "access": "authenticated", "capability": "extensions" },
+    { "pattern": "/internal/*", "access": "authenticated", "capability": "runtime" }
   ]
 }

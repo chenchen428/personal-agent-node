@@ -46,7 +46,7 @@ export function validateReverseTunnelContract(value) {
   const heartbeatSeconds = boundedInteger(value.heartbeatSeconds, 5, 120, "heartbeatSeconds");
   const maxFrameBytes = boundedInteger(value.maxFrameBytes, 16 * 1024, 1024 * 1024, "maxFrameBytes");
   const generation = boundedInteger(value.generation, 1, Number.MAX_SAFE_INTEGER, "generation");
-  const routePolicy = value.routePolicy === "gateway" ? "gateway" : "mobile-readonly";
+  const routePolicy = value.routePolicy === "mobile-readonly" ? "mobile-readonly" : "gateway";
   return { protocol: REVERSE_TUNNEL_PROTOCOL, endpoint: endpoint.toString(), heartbeatSeconds, maxFrameBytes, generation, routePolicy };
 }
 
@@ -533,14 +533,14 @@ export function normalizeTunnelPath(value) {
   return `${url.pathname}${url.search}`;
 }
 
-export function resolveTunnelRequestPath(requestPath, routePolicy = "mobile-readonly") {
+export function resolveTunnelRequestPath(requestPath, routePolicy = "gateway") {
   const normalized = normalizeTunnelPath(requestPath);
   const url = new URL(normalized, "http://127.0.0.1");
   if (routePolicy !== "gateway" && (url.pathname === "/" || url.pathname === "/app")) url.pathname = "/app/mobile";
   return `${url.pathname}${url.search}`;
 }
 
-export function isTunnelRouteAllowed(_distribution, requestPath, kind = "http", method = "GET", routePolicy = "mobile-readonly") {
+export function isTunnelRouteAllowed(_distribution, requestPath, kind = "http", method = "GET", routePolicy = "gateway") {
   if (routePolicy === "gateway") {
     try { resolveTunnelRequestPath(requestPath, routePolicy); }
     catch { return false; }

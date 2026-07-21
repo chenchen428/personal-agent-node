@@ -34,15 +34,17 @@ Connectivity and model providers are independent. Disconnecting Cloud must not d
 
 ## Install a release
 
-Beta users download one complete package for their operating system. No preinstalled Node.js, npm, development Agent, or source checkout is required. The current release is `v0.2.0-beta.27`:
+Beta users download one complete package for their operating system. No preinstalled Node.js, npm, development Agent, or source checkout is required. The current release is `v0.2.0-beta.28`:
 
-- Windows x86-64: `personal-agent-node-v0.2.0-beta.27-windows-x64-installer.exe`
-- macOS Apple Silicon: `personal-agent-node-v0.2.0-beta.27-macos-arm64.pkg`
-- macOS Intel: `personal-agent-node-v0.2.0-beta.27-macos-x64.pkg`
-- Linux x86-64 / ARM64: the matching `personal-agent-node-v0.2.0-beta.27-linux-*.tar.zst`
+- Windows x86-64: `personal-agent-node-v0.2.0-beta.28-windows-x64-installer.exe`
+- macOS Apple Silicon: `personal-agent-node-v0.2.0-beta.28-macos-arm64.pkg`
+- macOS Intel: `personal-agent-node-v0.2.0-beta.28-macos-x64.pkg`
+- Linux x86-64 / ARM64: the matching `personal-agent-node-v0.2.0-beta.28-linux-*.tar.gz`
 - Custom-domain public server: `personal-agent-relay-install.sh` (the client shows the version-bound command)
 
-The installer verifies the complete immutable release and bundled Node.js `22.23.1`, retains rollback-safe `current` / `previous` pointers, and opens the local Setup Center directly in the lightweight Tauri 2 desktop shell. Direct desktop access never requires login. The shell reuses the system WebView, starts the local runtime when opened, stops it when closed, and bundles neither Chromium nor a second Node.js runtime. The access password is used only by mobile and public-domain access; it can be reset from desktop System Settings and doing so signs out other devices. Browser and CLI recovery remain available while the client is running.
+Starting with a new Release that carries `personal-agent-node-install.sh`, Linux uses a headless `.tar.gz` package, runs continuously as a systemd user service, and ships no Tauri, WebKit, or desktop entry. Replace `<release-tag>` with that Release tag for a one-line install: `curl -fsSL https://github.com/chenchen428/personal-agent-node/releases/download/<release-tag>/personal-agent-node-install.sh | bash`. Use an SSH port forward to open `http://127.0.0.1:8843/app/setup` from your own computer.
+
+The installer verifies the complete immutable release and bundled Node.js `22.23.1` and retains rollback-safe `current` / `previous` pointers. Windows and macOS open Setup Center in the lightweight Tauri 2 shell. Browser and CLI recovery remain available.
 
 Installation has one home: `~/.personal-agent/core` is the replaceable product runtime, while `~/.personal-agent/workspace` holds the user-owned Harness, plugins, files, and data. Uninstall removes Core and preserves Workspace by default.
 

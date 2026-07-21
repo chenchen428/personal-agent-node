@@ -13,7 +13,7 @@ export function privateStorageConfigured() {
   return true;
 }
 
-export async function uploadPrivateAttachment({ filePath, relativePath, contentType }) {
+export async function uploadPrivateAttachment({ filePath, relativePath, contentType, source = "wechat" }) {
   const target = resolvePrivatePath(relativePath);
   if (path.resolve(filePath) !== target) {
     fs.mkdirSync(path.dirname(target), { recursive: true, mode: 0o700 });
@@ -26,7 +26,7 @@ export async function uploadPrivateAttachment({ filePath, relativePath, contentT
   if (managedFileCatalog) {
     let object = managedFileCatalog.upsertObject({
       visibility: "private",
-      source: "wechat",
+      source: normalizeSource(source),
       bucket: "local-disk",
       region: "local",
       objectKey: normalizeRelative(relativePath),
@@ -43,6 +43,11 @@ export async function uploadPrivateAttachment({ filePath, relativePath, contentT
     objectId = object.id;
   }
   return { uploaded: true, stored: true, storage: "local-disk", objectKey: normalizeRelative(relativePath), objectId, sha256, sizeBytes };
+}
+
+function normalizeSource(value) {
+  const source = String(value || "wechat").trim().toLowerCase();
+  return /^[a-z0-9][a-z0-9._-]{0,63}$/.test(source) ? source : "remote-channel";
 }
 
 export function signPrivateAttachmentUrl(relativePath, expiresSeconds = 3600) {

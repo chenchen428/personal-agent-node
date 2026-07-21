@@ -6,8 +6,8 @@ import test from "node:test";
 const root = path.resolve(import.meta.dirname, "..");
 const read = (relative) => fs.readFileSync(path.join(root, relative), "utf8");
 
-test("Mobile V6.35 keeps every destination in a focused component", () => {
-  const components = ["activity", "pages", "page-masonry", "workers", "apps", "personal-app", "about", "mail", "shell", "skeletons", "wechat-status", "token-usage"];
+test("Mobile V6.39 keeps every destination and task-history responsibility in a focused component", () => {
+  const components = ["activity", "pages", "page-masonry", "workers", "mobile-task-detail", "task-display-presentation", "apps", "personal-app", "about", "mail", "shell", "skeletons", "wechat-status", "token-usage"];
   for (const component of components) {
     const source = read(`core/app/src/components/mobile-current/${component}.tsx`);
     assert.ok(source.split(/\r?\n/).length <= 300, `${component} exceeds 300 lines`);
@@ -25,11 +25,14 @@ test("Mobile V6.35 keeps every destination in a focused component", () => {
   ]) assert.equal(fs.existsSync(path.join(root, "core/app/src/app", route)), true, route);
 });
 
-test("Mobile V6.35 implements the approved task and navigation interactions", () => {
+test("Mobile V6.39 implements lazy navigation and tail-first task history", () => {
   const desktopEntry = read("core/app/src/app/app/page.tsx");
   const mobileProxy = read("core/app/src/proxy.ts");
   const shell = read("core/app/src/components/mobile-current/shell.tsx");
   const workers = read("core/app/src/components/mobile-current/workers.tsx");
+  const detail = read("core/app/src/components/mobile-current/mobile-task-detail.tsx");
+  const presentation = read("core/app/src/components/mobile-current/task-display-presentation.tsx");
+  const history = read("core/app/src/components/mobile-current/use-task-display-history.ts");
   const activity = read("core/app/src/components/mobile-current/activity.tsx");
   const pages = read("core/app/src/components/mobile-current/pages.tsx");
   const apps = read("core/app/src/components/mobile-current/apps.tsx");
@@ -47,21 +50,32 @@ test("Mobile V6.35 implements the approved task and navigation interactions", ()
   assert.match(shell, />完成</);
   assert.doesNotMatch(shell, /function FilterSheet|filter-sheet-layer/);
   assert.match(shell, /onCompositionStart/);
+  assert.match(shell, /drawerOpen \? <MobileDrawer/);
   assert.match(workers, /\/api\/mobile\/tasks/);
   assert.match(workers, /filter !== "all"/);
   assert.match(workers, /setFilter\("all"\)/);
-  assert.match(workers, /\/api\/mobile\/tasks\/\$\{encodeURIComponent\(sessionId\)\}\?messageLimit=80/);
-  assert.match(workers, /TaskLoading/);
-  assert.match(workers, /mobile-task-loading-message user/);
-  assert.match(workers, /mobile-task-loading-message agent/);
-  assert.match(workers, /mobile-task-loading-plan-header/);
-  assert.match(workers, /aria-hidden="true"/);
-  assert.match(workers, /TaskUnavailable/);
-  assert.match(workers, /messages\.length \|\| plan\.length/);
-  assert.match(workers, /mobile-task-message/);
-  assert.match(workers, /mobile-task-plan/);
-  assert.match(workers, /mobile-task-runtime/);
-  assert.match(workers, /正在处理/);
+  assert.match(workers, /<MobileTaskDetail/);
+  assert.match(history, /\/display-events\?/);
+  assert.match(history, /new URLSearchParams\(\{ limit: String\(PAGE_SIZE\) \}\)/);
+  assert.match(history, /params\.set\("before", before\)/);
+  assert.match(history, /useLayoutEffect/);
+  assert.match(history, /pendingInitialPositionRef/);
+  assert.match(history, /element\.scrollTop = element\.scrollHeight/);
+  assert.match(history, /previous\.top \+ Math\.max\(0, element\.scrollHeight - previous\.height\)/);
+  assert.match(history, /element\.scrollTop <= TOP_LOAD_THRESHOLD/);
+  assert.match(history, /task\.display\.delta/);
+  assert.match(history, /\/api\/chat\/ws/);
+  assert.doesNotMatch(history, /messageLimit=80/);
+  assert.match(detail, /data-task-display-scroll="tail"/);
+  assert.match(detail, /TaskLoading/);
+  assert.match(detail, /TaskUnavailable/);
+  assert.match(detail, /mobile-task-runtime/);
+  assert.match(detail, /正在处理/);
+  assert.match(presentation, /mobile-task-loading-message user/);
+  assert.match(presentation, /mobile-task-loading-message agent/);
+  assert.match(presentation, /mobile-task-loading-plan-header/);
+  assert.match(presentation, /mobile-task-message/);
+  assert.match(presentation, /mobile-task-plan/);
   assert.match(workers, /load\(true\)/);
   assert.match(workers, /if \(!background\) setError/);
   assert.match(workers, /if \(!background\) setLoading/);
@@ -94,20 +108,20 @@ test("Mobile Activity renders target-derived representative media", () => {
 });
 
 test("Mobile task detail keeps long-form conversation typography readable", () => {
-  const workers = read("core/app/src/components/mobile-current/workers.tsx");
+  const presentation = read("core/app/src/components/mobile-current/task-display-presentation.tsx");
   const types = read("core/app/src/components/mobile-current/types.ts");
   const css = read("core/app/src/app/mobile-current.css");
   assert.match(css, /\.mobile-task-message-body \{[^}]*font: 400 14px\/1\.75 var\(--pa-sans\)/);
   assert.match(css, /\.mobile-task-message-body \{[^}]*color: #4b4843/);
   assert.match(css, /\.mobile-task-plan li \{[^}]*font-weight: 400/);
   assert.match(types, /attachments\?: ChatAttachment\[\]/);
-  assert.match(workers, /message\.metadata\?\.attachments\?\.length/);
-  assert.match(workers, /TaskMessageAttachments/);
-  assert.match(workers, /attachment\.previewUrl/);
-  assert.match(workers, /attachment\.deliveryState/);
-  assert.match(workers, /attachment\.downloadUrl/);
-  assert.match(workers, /mobile-task-file/);
-  assert.match(workers, /formatMobileAttachmentBytes/);
+  assert.match(presentation, /item\.metadata\?\.attachments/);
+  assert.match(presentation, /TaskMessageAttachments/);
+  assert.match(presentation, /attachment\.previewUrl/);
+  assert.match(presentation, /attachment\.deliveryState/);
+  assert.match(presentation, /attachment\.downloadUrl/);
+  assert.match(presentation, /mobile-task-file/);
+  assert.match(presentation, /formatAttachmentBytes/);
   assert.match(css, /\.mobile-task-message-attachments img/);
   assert.match(css, /\.mobile-task-message-attachments \.mobile-task-file/);
 });

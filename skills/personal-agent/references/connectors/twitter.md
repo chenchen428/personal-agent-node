@@ -1,5 +1,7 @@
 # Twitter / X
 
+此连接依赖 OpenCLI 操作本机浏览器，仅支持 Windows 和 macOS。Linux 不展示该连接，相关 API 与 CLI 操作也会拒绝执行。
+
 先用 status 检查内置 OpenCLI、浏览器桥接和 Twitter / X 只读 Provider，不检查账号登录状态，也不创建平台授权。OpenCLI 运行时随 Personal Agent 安装和升级，用户无需安装 CLI。需要用户处理页面时用 open 打开固定 X 首页；只允许 search 和 read，不得调用 OpenCLI 的写命令、任意浏览器脚本或 Cookie 工具。遇到未登录、2FA、风控或限频时停止并请用户直接在浏览器处理。
 
 ## 能做什么

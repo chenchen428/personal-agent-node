@@ -53,7 +53,7 @@ export function dailyTokenLimitError(limit: DailyTokenLimit, usedTokens: number)
   const usedMillions = Math.max(Number(usedTokens) || 0, 0) / TOKENS_PER_MILLION;
   return {
     code: "DAILY_TOKEN_LIMIT_EXCEEDED",
-    message: `今日 Token 用量已达到每日限额 ${formatMillions(limit.dailyLimitMillions)} M（当前 ${formatMillions(usedMillions)} M），暂时无法发起新的对话。限额将在明天 00:00（Asia/Shanghai）重置；也可以在系统设置中调高限额，或设为 0 取消限制。`,
+    message: `今日 Token 用量已达到每日限额 ${formatMillions(limit.dailyLimitMillions)} M（当前 ${formatMillions(usedMillions)} M），暂时无法发起新的对话。限额将在明天 00:00（Asia/Shanghai）重置；也可以在空间设置中调高限额，或设为 0 取消限制。`,
   };
 }
 

@@ -5,6 +5,7 @@
   "prompt": "Turn a synthetic two-room floor-plan reference into a normalized concept model, a managed isometric still-image plan, and a self-contained manually explorable Three.js Page based on the built-in renovation delivery template; do not add an automatic tour or claim survey or BIM precision.",
   "commands": [
     "node skills/interior-design/scripts/cli.mjs validate --input test/fixtures/skill-cases/interior-design/model.json --json",
+    "node skills/interior-design/scripts/cli.mjs audit --input test/fixtures/skill-cases/interior-design/model.json --json",
     "node skills/interior-design/scripts/cli.mjs page --input test/fixtures/skill-cases/interior-design/model.json --output .local/interior-design-case/page --json"
   ],
   "artifacts": [

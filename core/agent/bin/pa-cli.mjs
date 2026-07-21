@@ -35,7 +35,7 @@ try {
     });
     print({ ok: true, sha256: result.sha256, queuedForIntervalScan: result.queuedForIntervalScan === true });
   } else if (command === "memory") {
-    throw new Error("The legacy Memory domain has been removed; the verified main Agent must use pa-cli activity");
+    print(await memoryCommand(subcommand));
   } else if (command === "automation") {
     throw new Error("The standalone automation product has been removed; use pa-cli cron for task-based automation");
   } else if (command === "session" && (subcommand === "list" || subcommand === "search")) {
@@ -501,6 +501,58 @@ async function readResponse(response) {
   return data;
 }
 
+async function memoryCommand(action) {
+  const supported = new Set(["list", "search", "show", "stats", "recall", "create", "update", "delete"]);
+  if (!supported.has(action)) throw new Error("memory action must be list, search, show, stats, recall, create, update, or delete");
+  const memoryId = String(args.id || args.memory || args._[2] || "").trim();
+  const input = {};
+  if (action === "list" || action === "search") {
+    if (args.query || args.q) input.query = args.query || args.q;
+    if (args.status) input.status = args.status;
+    if (args.limit !== undefined) input.limit = requiredInteger(args.limit, "--limit", { minimum: 1 });
+  }
+  if (action === "recall") {
+    input.query = args.query || args.q || "";
+    input.limit = args.limit === undefined ? 12 : requiredInteger(args.limit, "--limit", { minimum: 1, maximum: 12 });
+    input.turnId = String(args["turn-id"] || `cli-${Date.now()}-${Math.random().toString(16).slice(2)}`);
+  }
+  if (action === "create" || action === "update") {
+    input.content = readMemoryContent(args);
+  }
+  if (action === "update" || action === "delete") {
+    if (!memoryId) throw new Error("--id is required");
+    input.expectedRevision = requiredInteger(args["expected-revision"], "--expected-revision", { minimum: 1 });
+  }
+  if (action === "show" && !memoryId) throw new Error("--id is required");
+  const capability = String(args.capability || "").trim();
+  if (!capability) throw new Error("--capability is required and must come from the current main Agent turn");
+  const response = await fetch(`${apiBase}/api/internal/memory-agent`, {
+    method: "POST",
+    headers: {
+      ...headers(),
+      "content-type": "application/json",
+      "x-personal-agent-memory-capability": capability,
+    },
+    body: JSON.stringify({ action, memoryId, input }),
+  });
+  return (await readResponse(response)).result;
+}
+
+function readMemoryContent(parsed) {
+  const file = parsed["content-file"];
+  const content = file ? fs.readFileSync(resolveRegularFile(file, "--content-file"), "utf8") : String(parsed.content || "");
+  if (!content.trim()) throw new Error("--content or --content-file is required");
+  return content;
+}
+
+function requiredInteger(value, name, { minimum = 0, maximum = Number.MAX_SAFE_INTEGER } = {}) {
+  const number = Number(value);
+  if (!Number.isInteger(number) || number < minimum || number > maximum) {
+    throw new Error(`${name} must be an integer from ${minimum} to ${maximum}`);
+  }
+  return number;
+}
+
 function headers() {
   return token ? { authorization: `Bearer ${token}` } : {};
 }
@@ -679,6 +731,14 @@ async function personalWechatConnectionCommand(parsed) {
 
 function help() {
   console.log(`Usage:
+  pa-cli memory list [--status active|forgotten] [--query <text>] [--limit <n>] --capability <ephemeral> [--json]
+  pa-cli memory search --query <text> [--status active|forgotten] --capability <ephemeral> [--json]
+  pa-cli memory show --id <memory-id> --capability <ephemeral> [--json]
+  pa-cli memory stats --capability <ephemeral> [--json]
+  pa-cli memory recall --query <text> [--limit 12] --capability <ephemeral> [--json]
+  pa-cli memory create (--content <text>|--content-file <utf8-file>) --capability <ephemeral> [--json]
+  pa-cli memory update --id <memory-id> (--content <text>|--content-file <utf8-file>) --expected-revision <n> --capability <ephemeral> [--json]
+  pa-cli memory delete --id <memory-id> --expected-revision <n> --capability <ephemeral> [--json]
   pa-cli session start (--task "..."|--task-file <utf8-file>) [--parent <session> --title "..." --description "..."] [--workspace <path>] [--json]
   pa-cli session update --session <id> [--title "..."] [--description "..."] [--json]
   pa-cli session list [--query "..."] [--limit <n>] [--cursor <cursor>] [--all] [--json]

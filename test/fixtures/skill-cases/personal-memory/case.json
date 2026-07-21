@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "skill": "personal-memory",
+  "title": "Space-local main-Agent memory lifecycle",
+  "prompt": "In the canonical main Agent turn, inspect current-Space memory, create a durable preference, update it with the returned revision, and permanently delete it only after explicit user intent and a unique match. Reject Workers and cross-Space access.",
+  "commands": [
+    "pa-cli memory search --query \"回复偏好\" --status active --capability <ephemeral-main-turn-capability> --json",
+    "pa-cli memory create --content \"用户偏好简洁直接的中文回复。\" --capability <ephemeral-main-turn-capability> --json",
+    "pa-cli memory update --id <memory-id> --content \"用户偏好简洁、直接且先给结论的中文回复。\" --expected-revision <revision> --capability <ephemeral-main-turn-capability> --json",
+    "pa-cli memory delete --id <memory-id> --expected-revision <revision> --capability <ephemeral-main-turn-capability> --json"
+  ],
+  "artifacts": [{ "path": "expected.json", "label": "Memory isolation, heat and forgetting contract" }]
+}

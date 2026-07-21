@@ -2,7 +2,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { normalizeModel, validateModel } from './model.mjs';
+import { auditModel, normalizeModel, validateModel } from './model.mjs';
 import { generatePage } from './generate-page.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -24,15 +24,22 @@ try {
     if (nextErrors.length) throw new Error(nextErrors.join('\n'));
     writeJson(required(options.output, '--output'), model);
     emit({ ok: true, output: path.resolve(options.output), areaM2: model.project.areaM2, rooms: model.rooms.length });
+  } else if (command === 'audit') {
+    const model = read(required(options.input, '--input'));
+    const report = auditModel(model);
+    emit(report);
+    if (!report.ok) process.exitCode = 1;
   } else if (command === 'page') {
     const model = read(required(options.input, '--input'));
     const errors = validateModel(model);
     if (errors.length) throw new Error(errors.join('\n'));
+    const report = auditModel(model);
+    if (!report.ok) throw new Error(report.findings.map((item) => `${item.code}: ${item.message}`).join('\n'));
     const output = path.resolve(required(options.output, '--output'));
     const index = generatePage({ model, output, skillRoot: root });
     emit({ ok: true, output, index });
   } else {
-    console.log('Usage: interior <validate|normalize|page> --input <model.json> [--output <path>] [--json]');
+    console.log('Usage: interior <validate|normalize|audit|page> --input <model.json> [--output <path>] [--json]');
   }
 } catch (error) {
   if (options.json) emit({ ok: false, error: error.message });
@@ -45,4 +52,3 @@ function required(value, flag) { if (!value) throw new Error(`${flag} is require
 function read(file) { return JSON.parse(fs.readFileSync(path.resolve(file), 'utf8')); }
 function writeJson(file, value) { const target = path.resolve(file); fs.mkdirSync(path.dirname(target), { recursive: true }); fs.writeFileSync(target, `${JSON.stringify(value, null, 2)}\n`); }
 function emit(value) { process.stdout.write(`${JSON.stringify(value, null, 2)}\n`); }
-

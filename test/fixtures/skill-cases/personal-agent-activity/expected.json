@@ -14,5 +14,6 @@
     "managedAttachmentsOnly": true
   },
   "artifactInformationConsumedByMainAgent": true,
-  "memoryDomainActive": false
+  "memoryDomainActive": true,
+  "memoryDomainSeparate": true
 }
