@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "capability": "memory",
+  "operator": "verified-main-agent",
+  "workerAllowed": false,
+  "spaceIsolated": true,
+  "contentOnly": true,
+  "statuses": ["active", "forgotten"],
+  "automaticRecallLimit": 12,
+  "hitIdempotency": ["spaceId", "sessionId", "turnId", "memoryId"],
+  "forgetAfterDays": 365,
+  "updateReactivates": true,
+  "permanentDeleteRequiresExplicitIntentAndUniqueTarget": true,
+  "uiReadOnly": true
+}

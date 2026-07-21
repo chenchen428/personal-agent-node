@@ -9,6 +9,7 @@ import { SpaceSwitcher } from "@/components/space-switcher";
 import { UpdateNavItem } from "@/components/update-nav-item";
 import { fetchJson } from "@/lib/client-json";
 import { ManagedConnectionsBootstrap } from "@/components/managed-connections-bootstrap";
+import { DesktopHeaderBreadcrumb } from "@/components/desktop-header-breadcrumb";
 
 type PersonalApp = { id: string; name: string; route: string; desktopRoute?: string; compatible: boolean };
 
@@ -36,13 +37,10 @@ function DesktopShell({ pathname, apps, children }: { pathname: string; apps: Pe
   const active = (href: string) => href === "/app" ? pathname === href : pathname === href || pathname.startsWith(`${href}/`);
   const appActive = (app: PersonalApp) => active(app.desktopRoute || app.route);
   const currentApp = apps.find(appActive);
-  const current = active("/app/connections/wechat-personal") ? "连接 · 个人微信"
-    : active("/app/workers/schedules") ? "任务 · 自动化"
-    : active("/app/pages/templates") ? "发布页 · 模板"
-    : active("/app/update") ? "软件更新"
+  const current = active("/app/update") ? "软件更新"
       : active("/app/statistics/token-usage") ? "Token 统计"
         : active("/app/skills") ? "技能"
-          : active("/app/settings") ? "系统设置"
+          : active("/app/settings") ? "空间设置"
             : currentApp?.name || desktopNavigation.find((item) => active(item.href))?.label || (active("/app/apps") ? "全部应用" : "Personal Agent");
 
   useEffect(() => {
@@ -77,7 +75,7 @@ function DesktopShell({ pathname, apps, children }: { pathname: string; apps: Pe
       </div>
     </aside>
     <main className="v72-main-shell main-shell shell-card">
-      <header className="v72-topbar topbar"><div className="topbar-start"><SpaceSwitcher /></div><strong className="topbar-title">{current}</strong><div className="v72-machine machine-state topbar-end"><i className="status-dot success" /><span>{machineName}</span></div></header>
+      <header className="v72-topbar topbar"><div className="topbar-start"><SpaceSwitcher /></div><DesktopHeaderBreadcrumb pathname={pathname} currentLabel={current} currentAppName={currentApp?.name} /><div className="v72-machine machine-state topbar-end"><i className="status-dot success" /><span>{machineName}</span></div></header>
       <div className="v72-page-scroll page-scroll">{children}</div>
     </main>
   </div>;

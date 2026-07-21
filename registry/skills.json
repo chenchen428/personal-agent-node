@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "version": 7,
-  "updatedAt": "2026-07-19",
+  "version": 8,
+  "updatedAt": "2026-07-21",
   "categories": [
     {
       "id": "research-knowledge",
@@ -496,6 +496,35 @@
       ]
     },
     {
+      "name": "personal-memory",
+      "directory": "skills/personal-memory",
+      "category": "research-knowledge",
+      "maturity": "beta",
+      "risks": [
+        "local-write"
+      ],
+      "security": {
+        "network": "none",
+        "dataClass": "private",
+        "outboundData": "none",
+        "externalWrite": false,
+        "requiresAuthorization": false,
+        "untrustedContent": true
+      },
+      "origin": {
+        "kind": "workspace",
+        "license": "Apache-2.0"
+      },
+      "cli": [],
+      "examples": [
+        "test/fixtures/skill-cases/personal-memory/case.json"
+      ],
+      "caseRequired": true,
+      "related": [
+        "personal-agent"
+      ]
+    },
+    {
       "name": "personal-agent",
       "directory": "skills/personal-agent",
       "category": "publishing-automation",
@@ -541,7 +570,8 @@
         "guizang-social-card-skill",
         "guizang-ppt-skill",
         "travel-guidebook",
-        "social-browser-read"
+        "social-browser-read",
+        "personal-memory"
       ]
     }
   ],
@@ -601,7 +631,7 @@
       "owner": "interior-design",
       "kind": "skill-script",
       "entrypoint": "skills/interior-design/scripts/cli.mjs",
-      "command": "node skills/interior-design/scripts/cli.mjs <validate|normalize|page>",
+      "command": "node skills/interior-design/scripts/cli.mjs <validate|normalize|audit|page>",
       "workspaceCommand": "node scripts/skill-tree.mjs interior <validate|normalize|page>",
       "description": "Validate and normalize concept floor-plan models and render self-contained, manually explorable Three.js Pages from the built-in renovation delivery template."
     },

@@ -20,8 +20,9 @@ For `v0.1.0-beta.24`, the primary customer assets are:
 - `personal-agent-node-v0.1.0-beta.24-windows-x64-installer.exe`
 - `personal-agent-node-v0.1.0-beta.24-macos-x64.pkg`
 - `personal-agent-node-v0.1.0-beta.24-macos-arm64.pkg`
-- `personal-agent-node-v0.1.0-beta.24-linux-x64.tar.zst`
-- `personal-agent-node-v0.1.0-beta.24-linux-arm64.tar.zst`
+- `personal-agent-node-v0.1.0-beta.24-linux-x64.tar.gz`
+- `personal-agent-node-v0.1.0-beta.24-linux-arm64.tar.gz`
+- `personal-agent-node-install.sh` (version-bound headless Linux one-line installer)
 
 The matching `-updater` files are machine-consumed by the client update flow. A normal user chooses only the installer for their operating system. `SHA256SUMS` is the single human-visible verification file; detailed supply-chain evidence remains available from the release workflow run and GitHub provenance attestation.
 

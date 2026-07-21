@@ -98,7 +98,7 @@ function assertHostTarget() {
   if (platform !== process.platform || architecture !== process.arch) {
     throw new Error(`Desktop shell must build on its native target: host=${process.platform}-${process.arch} target=${platform}-${architecture}`);
   }
-  if (!['win32', 'darwin', 'linux'].includes(platform) || !['x64', 'arm64'].includes(architecture)) {
+  if (!['win32', 'darwin'].includes(platform) || !['x64', 'arm64'].includes(architecture)) {
     throw new Error(`Unsupported desktop target: ${platform}-${architecture}`);
   }
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { SettingRow } from "../desktop-v72/primitives";
 import { errorMessage, fetchJson, useJson } from "./shared";
 
@@ -16,5 +17,13 @@ export function AuthorizationModeSetting() {
     catch (cause) { setError(errorMessage(cause)); }
     finally { setSaving(false); }
   };
-  return <SettingRow title="授权模式" description={error || value?.description || "默认无需授权，Agent 可直接执行本机操作"} control={<select className="settings-select" aria-label="授权模式" disabled={saving} value={value?.mode || "bypass"} onChange={(event) => void update(event.target.value as Authorization["mode"])}><option value="bypass">无需授权</option><option value="confirm">操作前确认</option></select>} />;
+  return <SettingRow title="授权模式" description={error || value?.description || "默认无需授权，Agent 可直接执行本机操作"} control={
+    <Select disabled={saving} value={value?.mode || "bypass"} onValueChange={(mode) => void update(mode as Authorization["mode"])}>
+      <SelectTrigger className="w-[180px]" aria-label="授权模式"><SelectValue /></SelectTrigger>
+      <SelectContent>
+        <SelectItem value="bypass">无需授权</SelectItem>
+        <SelectItem value="confirm">操作前确认</SelectItem>
+      </SelectContent>
+    </Select>
+  } />;
 }

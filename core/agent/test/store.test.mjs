@@ -497,7 +497,7 @@ test("prunes month-old execution history while retaining the main session", () =
   }
 });
 
-test("archives the legacy Memory table without exposing an active Memory store", () => {
+test("archives the legacy Memory table separately from the Space-isolated product Memory store", () => {
   const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), "oab-store-legacy-memory-"));
   const databasePath = path.join(dataDir, "state.sqlite");
   const legacy = new DatabaseSync(databasePath);

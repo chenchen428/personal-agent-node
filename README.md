@@ -39,10 +39,12 @@ Beta 用户只需要下载对应系统的完整安装包，不需要预装 Node.
 - Windows x86-64：`personal-agent-node-v0.2.0-beta.27-windows-x64-installer.exe`
 - macOS Apple Silicon：`personal-agent-node-v0.2.0-beta.27-macos-arm64.pkg`
 - macOS Intel：`personal-agent-node-v0.2.0-beta.27-macos-x64.pkg`
-- Linux x86-64 / ARM64：对应的 `personal-agent-node-v0.2.0-beta.27-linux-*.tar.zst`
+- Linux x86-64 / ARM64：当前 `v0.2.0-beta.27` 资产为对应的 `personal-agent-node-v0.2.0-beta.27-linux-*.tar.zst`
 - 自定义域名公网服务器：`personal-agent-relay-install.sh`（由客户端展示当前版本固定命令）
 
-安装器会验证完整发行版和内置 Node.js `22.23.1`，保留可回滚的 `current` / `previous`，然后在 Tauri 2 轻量桌面壳中直接打开本机 Setup Center。桌面壳复用系统 WebView，本机访问永远无需登录；打开客户端时启动本机服务，关闭时停止服务和手机入口，不内置 Chromium 或第二份 Node.js。访问密码只用于手机和公网入口，可在桌面端“系统设置”中直接重置，重置后其他设备需要重新登录。客户端运行期间仍可使用浏览器和 CLI 恢复入口。用户在这里分别查看：
+从携带 `personal-agent-node-install.sh` 的新版 Release 开始，Linux 发行版改为 `.tar.gz` 纯 headless 包，由 systemd user service 常驻，不携带 Tauri、WebKit 或桌面入口。将 `<release-tag>` 替换成目标版本后可一行安装：`curl -fsSL https://github.com/chenchen428/personal-agent-node/releases/download/<release-tag>/personal-agent-node-install.sh | bash`。首次设置通过 SSH 端口转发访问 `http://127.0.0.1:8843/app/setup`。
+
+安装器会验证完整发行版和内置 Node.js `22.23.1`，并保留可回滚的 `current` / `previous`。Windows 和 macOS 通过 Tauri 2 轻量桌面壳打开本机 Setup Center。访问密码只用于手机和公网入口，浏览器和 CLI 始终保留恢复入口。用户在这里分别查看：
 
 安装后只有一个根目录：Windows 安装器会先让用户选择位置，程序解包、`core/` 与 `workspace/` 都保存在该目录下；macOS 等平台默认使用 `~/.personal-agent`。`core/` 是可升级和回滚的产品运行时，`workspace/` 是用户拥有的 Harness、插件、文件和数据；卸载默认只移除 Core。
 

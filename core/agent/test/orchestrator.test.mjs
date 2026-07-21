@@ -6,6 +6,7 @@ import test from "node:test";
 import sharp from "sharp";
 import { config } from "../src/config.js";
 import { ActivityStore } from "../src/activity/store.js";
+import { MemoryStore } from "../src/memory/store.js";
 import { dailyTokenLimitSettings } from "../src/agent/daily-token-limit.ts";
 import { buildAgentPath, isLocalConversationSession, progressFatigueDelay, progressTimerInterval, SessionOrchestrator } from "../src/server/orchestrator.js";
 
@@ -70,7 +71,7 @@ test("daily Token limit keeps the desktop message and replies without starting t
     assert.equal(runnerCalls, 0);
     assert.equal(messages.some((message) => message.role === "user" && message.content === "blocked desktop message"), true);
     const reply = messages.find((message) => message.role === "error" && message.metadata?.code === "DAILY_TOKEN_LIMIT_EXCEEDED");
-    assert.match(reply?.content || "", /系统设置/);
+    assert.match(reply?.content || "", /空间设置/);
     assert.equal(reply?.metadata?.dailyLimitMillions, 1);
   } finally {
     orchestrator.stop();
@@ -105,7 +106,7 @@ test("daily Token limit automatically replies on WeChat without starting the Age
     });
     await waitFor(() => sent.some((item) => item.text.includes("DAILY") || item.text.includes("Token")));
     assert.equal(runnerCalls, 0);
-    assert.equal(sent.some((item) => item.text.includes("系统设置")), true);
+    assert.equal(sent.some((item) => item.text.includes("空间设置")), true);
   } finally {
     orchestrator.stop();
     store.close();
@@ -174,6 +175,94 @@ test("main-Agent PATH prefers the stable CLI from the active installation", () =
   assert.equal(entries[0], cliBin);
   assert.equal(entries[1], path.join(installRoot, "bin"));
   assert.equal(entries.at(-1), inherited);
+});
+
+test("recalls current-Space Memory before each real main-Agent user turn only", async () => {
+  const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), "oab-orchestrator-memory-"));
+  const store = new BridgeStore({ dataDir, consoleBaseUrl: "https://agent.example.test" });
+  const main = store.getOrCreateDesktopMainSession({ workspaceRoot: dataDir });
+  const memoryStore = new MemoryStore({
+    databasePath: store.databasePath,
+    spaceId: "space-memory",
+    sessionResolver: (sessionId) => store.getSessionRecord(sessionId),
+  });
+  const memory = memoryStore.create({ sessionId: main.id }, { content: "用户偏好每次回复先给结论。" });
+  const calls = [];
+  const orchestrator = new SessionOrchestrator({
+    store,
+    memoryStore,
+    hub: { broadcast: () => {} },
+    channels: {},
+    progressTimerEnabled: false,
+    runner: {
+      runAppServerCommand: async (input) => { calls.push(input); return { ok: true }; },
+      stopAppServerCommand: () => false,
+    },
+  });
+  try {
+    await orchestrator.runTurn(main.id, "请按我的回复偏好回答", { developerInstructions: "main" });
+    assert.match(calls[0].appServerDeveloperInstructions, /personal-agent-memory:recall/);
+    assert.match(calls[0].appServerDeveloperInstructions, /先给结论/);
+    assert.match(calls[0].appServerDeveloperInstructions, /pa-cli memory list\|search\|show\|stats\|create\|update\|delete/);
+    assert.equal(memoryStore.getForReader(memory.id).hitCount, 1);
+    await orchestrator.runTurn(main.id, "[internal]", { developerInstructions: "main", internalInput: true });
+    assert.doesNotMatch(calls[1].appServerDeveloperInstructions, /personal-agent-memory:recall/);
+    assert.equal(memoryStore.getForReader(memory.id).hitCount, 1);
+  } finally {
+    orchestrator.stop();
+    memoryStore.close();
+    store.close();
+    fs.rmSync(dataDir, { recursive: true, force: true });
+  }
+});
+
+test("issues an expiring Memory CLI capability only to the active main-Agent turn", async () => {
+  const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), "oab-orchestrator-memory-cli-"));
+  const store = new BridgeStore({ dataDir, consoleBaseUrl: "https://agent.example.test" });
+  const main = store.getOrCreateDesktopMainSession({ workspaceRoot: dataDir });
+  const memoryStore = new MemoryStore({
+    databasePath: store.databasePath,
+    spaceId: "space-memory-cli",
+    sessionResolver: (sessionId) => store.getSessionRecord(sessionId),
+  });
+  let issuedCapability = "";
+  let orchestrator;
+  orchestrator = new SessionOrchestrator({
+    store,
+    memoryStore,
+    hub: { broadcast: () => {} },
+    channels: {},
+    progressTimerEnabled: false,
+    runner: {
+      runAppServerCommand: async (input) => {
+        issuedCapability = /临时能力值 ([A-Za-z0-9_-]+)/.exec(input.appServerDeveloperInstructions)?.[1] || "";
+        assert.ok(issuedCapability);
+        const created = orchestrator.executeMemoryCli(issuedCapability, { action: "create", input: { content: "用户偏好结论优先。" } });
+        assert.equal(created.data.content, "用户偏好结论优先。");
+        await input.onSessionEvent({
+          sessionId: input.sessionId,
+          kind: "session.tool_use",
+          payload: { content: `pa-cli memory create --capability ${issuedCapability}` },
+        });
+        return { ok: true };
+      },
+      stopAppServerCommand: () => false,
+    },
+  });
+  try {
+    await orchestrator.runTurn(main.id, "记住我的偏好", { developerInstructions: "main" });
+    assert.equal(memoryStore.listForReader({ status: "active" }).items.length, 1);
+    assert.equal(store.getSession(main.id).messages.some((message) => JSON.stringify(message).includes(issuedCapability)), false);
+    assert.throws(
+      () => orchestrator.executeMemoryCli(issuedCapability, { action: "list", input: {} }),
+      (error) => error.code === "MEMORY_CAPABILITY_INVALID",
+    );
+  } finally {
+    orchestrator.stop();
+    memoryStore.close();
+    store.close();
+    fs.rmSync(dataDir, { recursive: true, force: true });
+  }
 });
 
 test("executes main-Agent Activity controls, strips them from history, and follows up on searches", async () => {

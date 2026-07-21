@@ -45,13 +45,22 @@ test("stores single-machine sessions, commands, and runner deltas in sqlite", as
     broker.handleRunnerMessage({
       type: "session.delta",
       sessionId: session.id,
+      kind: "session.user_message",
+      payload: { content: "start", source: "agent-bridge-appserver" },
+    });
+    broker.handleRunnerMessage({
+      type: "session.delta",
+      sessionId: session.id,
       kind: "session.assistant_message",
       payload: { content: "done", cliSessionId: "thread-1" },
     });
 
     const hydrated = store.getSession(session.id);
     assert.equal(hydrated.cliSessionId, "thread-1");
-    assert.equal(hydrated.messages.some((message) => message.content === "start"), true);
+    const userMessages = hydrated.messages.filter((message) => message.role === "user");
+    assert.equal(userMessages.length, 1);
+    assert.equal(userMessages[0].content, "start");
+    assert.equal(userMessages[0].source, "agent-bridge-ui");
     assert.equal(hydrated.messages.some((message) => message.content === "done"), true);
     assert.equal(broadcasts.some((event) => event.type === "session.delta"), true);
     assert.deepEqual(store.listTaskDisplayEvents(session.id, { limit: 20 }).items.map((item) => item.content), ["inspect billing diff", "done"]);

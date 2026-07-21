@@ -22,13 +22,21 @@ Use `schemaVersion: 1` and metres on a right-handed floor plane: `x` increases e
   "furniture": [{ "id": "sofa", "kind": "sofa", "name": "Sofa", "roomId": "living", "position": [2.5,1.5], "size": [2.2,0.9,0.75], "rotation": 0, "material": "warm-white" }],
   "materials": [{ "id": "warm-oak", "name": "Warm oak", "color": "#c9a77b", "roughness": 0.72 }],
   "lighting": { "mode": "day", "ambient": 1.1, "shadows": true },
-  "camera": { "initial": "isometric" }
+  "camera": { "initial": "isometric" },
+  "qualityReview": {
+    "status": "passed",
+    "checks": { "furnitureCollision": true, "doorClearance": true, "circulation": true, "useClearance": true, "lifestyleFit": true, "labelLayout": true, "desktopAndMobile": true },
+    "requirementTrace": ["user requirement"],
+    "findings": []
+  }
 }
 ```
 
 Polygons need at least three non-collinear points. IDs are unique per collection. Every furniture `roomId` and opening `wallId` must resolve. Dimensions are finite and positive; colors use six-digit hex. `camera.initial` is `isometric`, `top`, or `interior`.
 
 Older models may contain `camera.segments`. Validation keeps them compatible, but the finished viewer ignores staged animation data.
+
+`qualityReview` is required before Page generation. Every check must be `true`, `status` must be `passed`, `requirementTrace` must contain the user needs verified in the layout, and unresolved blocking findings are forbidden. The CLI also derives geometry findings; self-declared pass fields never override deterministic collisions or blocked doors.
 
 ## Calibration
 

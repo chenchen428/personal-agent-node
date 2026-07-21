@@ -26,8 +26,8 @@ try {
   buildGo('personal-agent-setup', './cmd/personal-agent-setup', setupBinary, target);
   const launcherBinary = path.join(temporary, platform === 'win32' ? 'personal-agent.exe' : 'personal-agent');
   buildGo('personal-agent', './cmd/personal-agent', launcherBinary, target);
-  const uiLauncherBinary = path.join(temporary, platform === 'win32' ? 'personal-agent-ui.exe' : 'personal-agent-ui');
-  buildGo('personal-agent-ui', './cmd/personal-agent-ui', uiLauncherBinary, target, { gui: true });
+  const uiLauncherBinary = platform === 'linux' ? '' : path.join(temporary, platform === 'win32' ? 'personal-agent-ui.exe' : 'personal-agent-ui');
+  if (uiLauncherBinary) buildGo('personal-agent-ui', './cmd/personal-agent-ui', uiLauncherBinary, target, { gui: true });
 
   const payloadRoot = path.join(temporary, 'payload');
   fs.mkdirSync(path.join(payloadRoot, 'node'), { recursive: true });
@@ -36,7 +36,7 @@ try {
   const nativeRuntime = overlaySharpNativeRuntime({ workspaceRoot: root, releaseRoot: payloadRelease, platform, architecture });
   fs.copyFileSync(nodeRuntime, path.join(payloadRoot, 'node', platform === 'win32' ? 'node.exe' : 'node'));
   fs.copyFileSync(launcherBinary, path.join(payloadRelease, platform === 'win32' ? 'personal-agent.exe' : 'personal-agent'));
-  fs.copyFileSync(uiLauncherBinary, path.join(payloadRelease, platform === 'win32' ? 'personal-agent-ui.exe' : 'personal-agent-ui'));
+  if (uiLauncherBinary) fs.copyFileSync(uiLauncherBinary, path.join(payloadRelease, platform === 'win32' ? 'personal-agent-ui.exe' : 'personal-agent-ui'));
   verifySharpNativeRuntime(payloadRelease);
   signPlatformPayload(payloadRelease);
   if (args.candidate) writeCandidateSecurityMetadata(payloadRelease);
@@ -58,9 +58,13 @@ function verifyInputs() {
   const manifest = JSON.parse(fs.readFileSync(path.join(releaseRoot, 'release-manifest.json'), 'utf8'));
   const dirtyAllowed = process.env.PERSONAL_AGENT_ALLOW_DIRTY_RELEASE === '1';
   if (manifest.releaseId !== tag.replace(/^v/, '') || (manifest.dirty === true && !dirtyAllowed)) throw new Error('Platform installer requires the exact clean tagged release payload');
-  if (manifest.desktopShell?.framework !== 'tauri' || manifest.desktopShell?.platform !== `${platform}-${architecture}`) throw new Error('Platform installer requires the matching Tauri desktop overlay');
-  const desktopEntrypoint = path.join(releaseRoot, ...String(manifest.desktopShell.entrypoint || '').split('/'));
-  if (!manifest.desktopShell.entrypoint || !fs.existsSync(desktopEntrypoint)) throw new Error('Tauri desktop entrypoint is missing');
+  if (platform === 'linux') {
+    if (manifest.desktopShell) throw new Error('Linux releases must be headless and must not contain a desktop shell');
+  } else {
+    if (manifest.desktopShell?.framework !== 'tauri' || manifest.desktopShell?.platform !== `${platform}-${architecture}`) throw new Error('Platform installer requires the matching Tauri desktop overlay');
+    const desktopEntrypoint = path.join(releaseRoot, ...String(manifest.desktopShell.entrypoint || '').split('/'));
+    if (!manifest.desktopShell.entrypoint || !fs.existsSync(desktopEntrypoint)) throw new Error('Tauri desktop entrypoint is missing');
+  }
   if (!fs.statSync(nodeRuntime).isFile()) throw new Error('Bundled Node runtime is not a file');
   const openCliRuntime = verifyOpenCliRuntime({ releaseRoot });
   if (manifest.browserExecutors?.opencli?.entrypoint !== openCliRuntime.descriptor.entrypoint) throw new Error('Bundled OpenCLI runtime is not declared by the release manifest');
@@ -108,7 +112,11 @@ function signPlatformPayload(payloadRelease) {
 function finalizePlatformRelease(payloadRelease) {
   const manifestPath = path.join(payloadRelease, 'release-manifest.json');
   const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
-  manifest.desktopShell.stableLauncher = platform === 'win32' ? 'personal-agent-ui.exe' : 'personal-agent-ui';
+  if (platform === 'linux') {
+    manifest.linux = { mode: 'headless', service: 'systemd-user', setupPath: '/app/setup' };
+  } else {
+    manifest.desktopShell.stableLauncher = platform === 'win32' ? 'personal-agent-ui.exe' : 'personal-agent-ui';
+  }
   fs.writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
   const entries = listFiles(payloadRelease)
     .map((file) => path.relative(payloadRelease, file).replaceAll('\\', '/'))
@@ -170,11 +178,16 @@ function packageAsset({ platform, architecture, tag, setupBinary, output, tempor
     fs.mkdirSync(stage);
     fs.copyFileSync(setupBinary, path.join(stage, 'personal-agent-setup'));
     fs.chmodSync(path.join(stage, 'personal-agent-setup'), 0o755);
-    fs.writeFileSync(path.join(stage, 'README.txt'), 'Run ./personal-agent-setup on this computer. The installer opens the local Setup Center.\n');
-    const tarFile = path.join(temporary, `${path.basename(stage)}.tar`);
-    run('tar', ['-cf', tarFile, '-C', temporary, path.basename(stage)]);
-    const target = path.join(output, `${path.basename(stage)}.tar.zst`);
-    run('zstd', ['-q', '-f', '-19', tarFile, '-o', target]);
+    fs.writeFileSync(path.join(stage, 'README.txt'), [
+      'Personal Agent Node for headless Linux',
+      '',
+      'Run: ./personal-agent-setup install --no-open',
+      'The service is installed as a systemd user service and listens on 127.0.0.1:8843.',
+      'Use an SSH port forward to open /app/setup from your own computer.',
+      '',
+    ].join('\n'));
+    const target = path.join(output, `${path.basename(stage)}.tar.gz`);
+    run('tar', ['-czf', target, '-C', temporary, path.basename(stage)]);
     return target;
   }
   if (platform === 'darwin') {

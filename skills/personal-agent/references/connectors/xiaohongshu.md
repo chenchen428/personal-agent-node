@@ -1,5 +1,7 @@
 # 小红书
 
+此连接依赖 OpenCLI 操作本机浏览器，仅支持 Windows 和 macOS。Linux 不展示该连接，相关 API 与 CLI 操作也会拒绝执行。
+
 先用 status 检查内置 OpenCLI、浏览器桥接和小红书只读 Provider，不检查账号登录状态，也不创建平台授权。OpenCLI 运行时随 Personal Agent 安装和升级，用户无需安装 CLI。需要用户处理页面时用 open 打开固定站点；只允许 search 和 read，不得调用任意 OpenCLI 命令、浏览器脚本或 Cookie 工具。遇到未登录、验证码、风控或限频时停止并请用户直接在浏览器处理。旧 channel 扫码接口仅为历史兼容，不属于本连接器。
 
 ## 能做什么

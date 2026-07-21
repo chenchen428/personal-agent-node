@@ -15,15 +15,29 @@ Set `TAG=v0.2.0-beta.27` and open the matching [GitHub Release](https://github.c
 The same Release also publishes `personal-agent-relay-install.sh`. The desktop
 shows its exact version-bound command when the user selects a custom domain.
 
-On Windows, run the installer and choose the Personal Agent folder; both `core/` and the data-owning `workspace/`, including installation staging, will stay under that selected folder. On macOS, open the package. On Linux, unpack the matching archive with the desktop archive manager or `tar --zstd`, then run `./personal-agent-setup` from the extracted directory.
+On Windows, run the installer and choose the Personal Agent folder; both `core/` and the data-owning `workspace/`, including installation staging, will stay under that selected folder. On macOS, open the package.
 
-Each package contains the Go setup executable, stable CLI and desktop launchers, the exact Node.js `22.23.1` runtime, the platform Tauri 2 shell, and the immutable application payload. Setup verifies embedded checksums, stages the release, initializes the Workspace, switches `current` while retaining `previous`, installs the desktop entry, and opens the local Setup Center directly in the shell. Direct loopback desktop access requires no login; tunneled mobile and public-domain access still requires the access password. The shell uses the system WebView, starts the bundled runtime without a terminal, and stops it when the client closes. Windows uses the folder selected during installation; other platforms default to `~/.personal-agent`. Product releases live under `core/`, while Harness, plugins, files, databases, mail and other user-owned state live under `workspace/`.
+Starting with a new Release that carries `personal-agent-node-install.sh`, Linux is headless, requires systemd, and uses `.tar.gz` packages. Replace `<release-tag>` with that Release tag and install it in one line as a non-root user:
+
+```bash
+curl -fsSL https://github.com/chenchen428/personal-agent-node/releases/download/<release-tag>/personal-agent-node-install.sh | bash
+```
+
+The script detects x86-64 or ARM64, downloads the matching `.tar.gz`, verifies it against the release `SHA256SUMS`, enables user-service lingering, and runs the embedded setup without opening a desktop application or browser.
+
+Each new package contains the Go setup executable, stable CLI launcher, exact Node.js `22.23.1` runtime, and immutable application payload. Windows and macOS also include the platform Tauri 2 shell. New Linux releases include no desktop shell, WebView dependency, or desktop entry; setup installs `private-site-node.service` as a systemd user service. Setup verifies embedded checksums, stages the release, initializes the Workspace, and switches `current` while retaining `previous`. Windows uses the folder selected during installation; other platforms default to `~/.personal-agent`. Product releases live under `core/`, while Harness, plugins, files, databases, mail and other user-owned state live under `workspace/`.
 
 Release assets include `RELEASE-SECURITY.json`, `SHA256SUMS`, Sigstore bundles, provenance, and an SBOM. Beta/RC packages may defer paid Windows and Apple native signing and can therefore trigger an operating-system approval warning; the security metadata records that fact explicitly. Stable releases require Authenticode plus Apple Developer ID/notarization and fail closed when either is absent.
 
 ## Finish setup in the browser
 
-The Personal Agent desktop window opens `/app/setup` automatically. If the shell cannot start, the browser recovery command below opens the same route. Work through the cards in order:
+On Windows and macOS, the Personal Agent desktop window opens `/app/setup` automatically. On a Linux server, keep the service loopback-only and forward it over SSH from your own computer:
+
+```bash
+ssh -N -L 8843:127.0.0.1:8843 <user>@<server>
+```
+
+Then open `http://127.0.0.1:8843/app/setup` locally. Work through the cards in order:
 
 1. Set your own local access password. Only a salted scrypt verifier is retained; the install-time migration password is removed.
 2. Install or sign in to Codex when requested, retry the app-server handshake, and complete one real authenticated `/app/chat` reply.

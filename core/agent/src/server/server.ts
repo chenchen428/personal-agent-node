@@ -27,7 +27,7 @@ import { FINAL_REPLY_MAX_IMAGE_BYTES } from "../final-reply/control.js";
 import { AgentDataStore } from "../data/agent-data.js";
 import { ingestRawEmail, MAX_MAIL_BYTES } from "../connections/mail/mail-ingest.js";
 import { parseMailForDisplay, readMailAttachment } from "../connections/mail/mail-reader.js";
-import { buildConnectionCatalog, inspectConnection, readConnectionRegistry } from "../connections/catalog.js";
+import { buildConnectionCatalog, connectionPlatformSupport, inspectConnection, readConnectionRegistry } from "../connections/catalog.js";
 import { buildSitesConnectionStatus } from "../connections/sites-status.js";
 import { MailConnectionScanner } from "../connections/mail/scanner.js";
 import { MailTaskDispatcher, mailTaskFromEvent } from "../connections/mail/task-dispatcher.js";
@@ -53,6 +53,7 @@ import { ReleaseNotesStore } from "../release-notes/store.js";
 import { AppHistoryStore } from "../apps/history-store.js";
 import { ActivityStore } from "../activity/store.js";
 import { buildActivityTargetPreview } from "../activity/presentation.js";
+import { MemoryStore } from "../memory/store.js";
 import { authorizationSettings, readAuthorizationMode, withAuthorizationCliFlag, writeAuthorizationMode } from "../agent/authorization-mode.ts";
 import { readDailyTokenLimit, writeDailyTokenLimit } from "../agent/daily-token-limit.ts";
 import { readCodexRuntimeSettings, writeCodexRuntimeSettings } from "../agent/codex-runtime-settings.ts";
@@ -85,6 +86,12 @@ const activityStore = new ActivityStore({
   databasePath: store.databasePath,
   sessionResolver: (sessionId) => store.getSessionRecord(sessionId),
   attachmentResolver: (objectId) => managedFiles.stat(objectId),
+});
+const memoryStore = new MemoryStore({
+  dataDir: config.dataDir,
+  databasePath: store.databasePath,
+  spaceId: config.spaceId || config.spaceSlug || "personal",
+  sessionResolver: (sessionId) => store.getSessionRecord(sessionId),
 });
 configureOnlinePagesStorage({ catalog: managedFileCatalog, remote: managedStorage });
 configurePrivateManagedFiles({ catalog: managedFileCatalog });
@@ -121,6 +128,8 @@ const mailTasks = new MailTaskDispatcher({
   mailProtection: config.mailProtection,
 });
 const connectionRegistry = readConnectionRegistry();
+const personalWechatSupported = connectionPlatformSupport("wechat-personal", { registry: connectionRegistry }).supported;
+const openCliBrowserSupported = connectionPlatformSupport("xiaohongshu", { registry: connectionRegistry }).supported;
 const notion = new NotionCliConnection();
 const publicTestMailSender = new PublicTestMailSender();
 let domainBindingVerification: DomainBindingVerification;
@@ -152,7 +161,13 @@ const connectionOwnership = new InstallationConnectionOwnership({ installationDa
 const ownership = { store: connectionOwnership, spaceId: config.spaceId };
 const wechat = new WeChatConnector(logger, ownership);
 const wechatQianxun = new WeChatQianxunConnector({ dataRoot: config.siteDataRoot, ownership });
-const dingtalk = new DingTalkConnector({ dataRoot: config.siteDataRoot, logger, ownership });
+const dingtalk = new DingTalkConnector({
+  dataRoot: config.siteDataRoot,
+  inboundAttachmentsDir: config.inboundAttachmentsDir,
+  registerAttachment: (input) => uploadPrivateAttachment(input),
+  logger,
+  ownership,
+});
 const xiaohongshu = new XiaohongshuChannel({
   baseUrl: config.xiaohongshuBaseUrl,
   logger,
@@ -168,10 +183,10 @@ const channelLoginCoordinator = {
     return await cloudBinding.consumeWechatMessage(message) || await xiaohongshuLogin.consumeWechatMessage(message);
   },
 };
-const orchestrator = new SessionOrchestrator({ store, hub, channels: { wechat, "wechat-personal": wechatQianxun, dingtalk }, managedFiles, activityStore, channelLoginCoordinator });
+const orchestrator = new SessionOrchestrator({ store, hub, channels: { wechat, "wechat-personal": wechatQianxun, dingtalk }, managedFiles, activityStore, memoryStore, channelLoginCoordinator });
 const scheduledTasks = new ScheduledTaskRunner({ store, broker: agentBridgeBroker, channels: { wechat }, logger });
 wechat.attach(orchestrator);
-wechatQianxun.attach((message) => orchestrator.handleChannelMessage("wechat-personal", message));
+if (personalWechatSupported) wechatQianxun.attach((message) => orchestrator.handleChannelMessage("wechat-personal", message));
 dingtalk.attach((message) => orchestrator.handleChannelMessage("dingtalk", message));
 if (config.channelPollEnabled) {
   wechat.start();
@@ -253,6 +268,7 @@ for (const signal of ["SIGINT", "SIGTERM"]) {
       managedFileCatalog.close();
       agentData.close();
       activityStore.close();
+      memoryStore.close();
       store.close();
       process.exit(0);
     });
@@ -268,6 +284,19 @@ async function handleRequest(request: http.IncomingMessage, response: http.Serve
   if (url.pathname === "/health") {
     sendJson(response, 200, { ok: true, service: "open-agent-bridge" }, request.method === "HEAD");
     return;
+  }
+
+  const restrictedConnectionId = platformRestrictedConnectionId(url.pathname);
+  if (restrictedConnectionId) {
+    const support = connectionPlatformSupport(restrictedConnectionId, { registry: connectionRegistry });
+    if (!support.supported) {
+      sendJson(response, 404, {
+        ok: false,
+        code: "CONNECTION_PLATFORM_UNSUPPORTED",
+        error: `${support.name} 当前仅支持 ${formatSupportedPlatforms(support.platforms)}。`,
+      }, request.method === "HEAD");
+      return;
+    }
   }
 
   if (await personalAuth.handle(request, response, url)) {
@@ -286,6 +315,17 @@ async function handleRequest(request: http.IncomingMessage, response: http.Serve
     }
     const capability = String(request.headers["x-personal-agent-activity-capability"] || "");
     const result = orchestrator.executeActivityCli(capability, await readJsonBody(request, 64 * 1024));
+    sendJson(response, 200, { ok: true, result });
+    return;
+  }
+
+  if (url.pathname === "/api/internal/memory-agent" && request.method === "POST") {
+    if (!isTrustedLocalRequest(request)) {
+      sendJson(response, 403, { ok: false, error: "Memory Agent access requires loopback" });
+      return;
+    }
+    const capability = String(request.headers["x-personal-agent-memory-capability"] || "");
+    const result = orchestrator.executeMemoryCli(capability, await readJsonBody(request, 64 * 1024));
     sendJson(response, 200, { ok: true, result });
     return;
   }
@@ -338,6 +378,7 @@ async function handleRequest(request: http.IncomingMessage, response: http.Serve
         mail: { messages: { list: true, inspect: true } },
         data: { schema: true, query: true, distinct: true, rawSql: false },
         pages: { list: true, publish: true },
+        memory: { list: true, search: true, inspect: true, spaceIsolated: true, readOnlyUi: true },
         apps: { history: { list: true, append: true, rawSql: false } },
         client: { overview: true, activity: true, pages: true, runtime: true, readOnly: true },
       },
@@ -715,7 +756,28 @@ async function handleRequest(request: http.IncomingMessage, response: http.Serve
   }
 
   if (url.pathname === "/api/skills" && (request.method === "GET" || request.method === "HEAD")) {
-    sendJson(response, 200, { ok: true, ...readWorkspaceSkillCatalog(config.workspaceRoot) }, request.method === "HEAD");
+    sendJson(response, 200, { ok: true, ...readWorkspaceSkillCatalog(config.workspaceRoot), space: currentMemorySpace() }, request.method === "HEAD");
+    return;
+  }
+
+  if (url.pathname === "/api/memories" && (request.method === "GET" || request.method === "HEAD")) {
+    const result = memoryStore.listForReader({
+      query: url.searchParams.get("query") || "",
+      status: url.searchParams.get("status") || "active",
+      limit: Number(url.searchParams.get("limit") || 200),
+    });
+    sendJson(response, 200, { ok: true, ...result, space: currentMemorySpace() }, request.method === "HEAD");
+    return;
+  }
+
+  const memoryMatch = /^\/api\/memories\/([^/]+)$/.exec(url.pathname);
+  if (memoryMatch && (request.method === "GET" || request.method === "HEAD")) {
+    const memory = memoryStore.getForReader(decodeURIComponent(memoryMatch[1]));
+    if (!memory) {
+      sendJson(response, 404, { ok: false, error: "Memory was not found in the current Space" }, request.method === "HEAD");
+      return;
+    }
+    sendJson(response, 200, { ok: true, memory, space: currentMemorySpace() }, request.method === "HEAD");
     return;
   }
 
@@ -810,15 +872,17 @@ async function handleRequest(request: http.IncomingMessage, response: http.Serve
 
   if (url.pathname === "/api/connections" && request.method === "GET") {
     const wechatStatus = wechat.catalogStatus();
-    const personalWechatStatus = await wechatQianxun.status({ probe: false });
+    const personalWechatStatus = personalWechatSupported
+      ? personalWechatCatalogStatus(await wechatQianxun.status({ probe: false }), wechatQianxun.accessPolicy(), wechatQianxun.connectivityTestStatus())
+      : {};
     const platform = platformConnectionStatuses();
-    const xiaohongshuStatus = xiaohongshuBrowser.catalogStatus();
-    const twitterStatus = twitter.catalogStatus();
-    void Promise.all([xiaohongshuBrowser.status(), twitter.status()]);
+    const xiaohongshuStatus = openCliBrowserSupported ? xiaohongshuBrowser.catalogStatus() : {};
+    const twitterStatus = openCliBrowserSupported ? twitter.catalogStatus() : {};
+    if (openCliBrowserSupported) void Promise.all([xiaohongshuBrowser.status(), twitter.status()]);
     const connections = buildConnectionCatalog({
       registry: connectionRegistry,
       statuses: {
-        "wechat-personal": personalWechatCatalogStatus(personalWechatStatus, wechatQianxun.accessPolicy(), wechatQianxun.connectivityTestStatus()),
+        "wechat-personal": personalWechatStatus,
         wechat: {
           state: wechatStatus.loginState === "space-conflict" ? "error" : wechatStatus.connected ? "connected" : "needs_setup",
           statusLabel: wechatStatus.loginState === "space-conflict" ? "已被其他 Space 占用" : wechatStatus.connected ? "已连接" : "待连接",
@@ -1855,6 +1919,21 @@ function personalWechatCallbackUrl() {
   return `http://127.0.0.1:8843${callbackPath}/${encodeURIComponent(config.spaceSlug)}`;
 }
 
+function platformRestrictedConnectionId(pathname: string) {
+  if (pathname.startsWith("/api/connections/wechat-personal/")
+    || pathname.startsWith("/api/connections/wechat/qianxun/")
+    || pathname.startsWith("/api/internal/channels/wechat-personal/callback")
+    || pathname.startsWith("/api/internal/channels/wechat/qianxun/callback")) return "wechat-personal";
+  if (pathname.startsWith("/api/connections/xiaohongshu/")) return "xiaohongshu";
+  if (pathname.startsWith("/api/connections/twitter/")) return "twitter";
+  return "";
+}
+
+function formatSupportedPlatforms(platforms: string[]) {
+  const labels: Record<string, string> = { win32: "Windows", darwin: "macOS", linux: "Linux" };
+  return platforms.map((platform) => labels[platform] || platform).join(" / ");
+}
+
 function platformConnectionStatuses() {
   const services = managedServiceReadiness({ dataRoot: config.siteDataRoot });
   const external = config.externalAccess();
@@ -1984,6 +2063,15 @@ async function buildClientActivity(url: URL) {
     total: result.total,
     query: rawQuery,
     nextCursor: result.nextCursor,
+  };
+}
+
+function currentMemorySpace() {
+  const space = config.spaceId ? getSpace(config.installationDataRoot, config.spaceId) : null;
+  return {
+    id: config.spaceId || config.spaceSlug || "personal",
+    slug: space?.slug || config.spaceSlug || "personal",
+    displayName: space?.displayName || (config.spaceKind === "personal" ? "个人隔离空间" : config.spaceSlug || "当前空间"),
   };
 }
 

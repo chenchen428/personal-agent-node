@@ -228,6 +228,10 @@ export class AgentBridgeBroker {
       return;
     }
     if (message.type === "session.delta") {
+      // Broker actions persist user input before delivery so queued and offline
+      // sessions can show it immediately. Codex app-server emits that same input
+      // back as a userMessage item; storing the echo would create a second bubble.
+      if (message.kind === "session.user_message" && message.payload?.source === "agent-bridge-appserver") return;
       const event = this.store.appendEvent(message.sessionId, message.kind, {
         ...(message.payload || {}),
         metadata: message.payload?.metadata || {},

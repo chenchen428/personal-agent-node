@@ -44,5 +44,22 @@
       { "id": "lateral", "label": "Lateral move", "durationMs": 2500, "kind": "lateral" },
       { "id": "detail", "label": "Living detail", "durationMs": 2500, "kind": "detail", "targetRoomId": "living" }
     ]
+  },
+  "qualityReview": {
+    "status": "passed",
+    "checks": {
+      "furnitureCollision": true,
+      "doorClearance": true,
+      "circulation": true,
+      "useClearance": true,
+      "lifestyleFit": true,
+      "labelLayout": true,
+      "desktopAndMobile": true
+    },
+    "requirementTrace": [
+      "Keep a continuous path from the entry to the living room and bedroom.",
+      "Keep doors, seating, dining use, and bed access unobstructed."
+    ],
+    "findings": []
   }
 }

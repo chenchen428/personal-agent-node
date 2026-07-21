@@ -79,6 +79,59 @@ export function normalizeModel(input) {
   return model;
 }
 
+export function auditModel(model) {
+  const errors = validateModel(model);
+  if (errors.length) return { ok: false, errors, findings: [] };
+
+  const findings = [];
+  const review = model.qualityReview;
+  if (!review || review.status !== 'passed') {
+    findings.push(finding('quality-review-missing', 'Quality walkthrough must be recorded with status passed.'));
+  } else {
+    const requiredChecks = ['furnitureCollision', 'doorClearance', 'circulation', 'useClearance', 'lifestyleFit', 'labelLayout', 'desktopAndMobile'];
+    for (const name of requiredChecks) {
+      if (review.checks?.[name] !== true) findings.push(finding(`quality-check-${name}`, `Quality walkthrough check ${name} must pass.`));
+    }
+    if (!Array.isArray(review.requirementTrace) || review.requirementTrace.length === 0) {
+      findings.push(finding('requirement-trace-missing', 'At least one user requirement must be traced into the design.'));
+    }
+    for (const item of review.findings || []) {
+      if (item?.severity === 'blocking' && item.resolved !== true) {
+        findings.push(finding('unresolved-review-finding', item.message || 'A blocking walkthrough finding is unresolved.', { sourceId: item.id }));
+      }
+    }
+  }
+
+  const footprints = model.furniture.map(footprint);
+  for (let index = 0; index < footprints.length; index += 1) {
+    const current = footprints[index];
+    const room = model.rooms.find((item) => item.id === current.item.roomId);
+    if (room && !corners(current).every((point) => pointInPolygon(point, room.polygon))) {
+      findings.push(finding('furniture-outside-room', `${current.item.name || current.item.id} extends outside ${room.name || room.id}.`, { furnitureIds: [current.item.id], roomId: room.id }));
+    }
+    for (let next = index + 1; next < footprints.length; next += 1) {
+      const other = footprints[next];
+      if (current.item.roomId === other.item.roomId && overlaps(current, other) && !collisionExempt(current.item) && !collisionExempt(other.item)) {
+        findings.push(finding('furniture-overlap', `${current.item.name || current.item.id} overlaps ${other.item.name || other.item.id}.`, { furnitureIds: [current.item.id, other.item.id], roomId: current.item.roomId }));
+      }
+    }
+  }
+
+  for (const opening of model.openings.filter((item) => item.kind === 'door')) {
+    const wall = model.walls.find((item) => item.id === opening.wallId);
+    if (!wall) continue;
+    const center = interpolate(wall.from, wall.to, opening.offset);
+    const clearance = { minX: center[0] - 0.55, maxX: center[0] + 0.55, minZ: center[1] - 0.55, maxZ: center[1] + 0.55 };
+    for (const item of footprints) {
+      if (overlaps(clearance, item) && !collisionExempt(item.item)) {
+        findings.push(finding('door-clearance-blocked', `${item.item.name || item.item.id} blocks the operating area of door ${opening.id}.`, { furnitureIds: [item.item.id], openingId: opening.id }));
+      }
+    }
+  }
+
+  return { ok: findings.length === 0, errors: [], findings, qualityReview: review || null };
+}
+
 function ids(items, label, errors) {
   const set = new Set();
   for (const item of items) {
@@ -95,3 +148,22 @@ function point2(point) { return Array.isArray(point) && point.length === 2 && po
 function polygonArea(points) { return points.reduce((sum, [x, z], index) => { const [nx, nz] = points[(index + 1) % points.length]; return sum + x * nz - nx * z; }, 0) / 2; }
 function bounds(points) { const xs = points.map((p) => p[0]); const zs = points.map((p) => p[1]); return { minX: Math.min(...xs), minZ: Math.min(...zs), maxX: Math.max(...xs), maxZ: Math.max(...zs) }; }
 function round(value) { return Math.round(value * 1000) / 1000; }
+function finding(code, message, context = {}) { return { severity: 'blocking', code, message, ...context }; }
+function interpolate([ax, az], [bx, bz], amount) { return [ax + (bx - ax) * amount, az + (bz - az) * amount]; }
+function footprint(item) {
+  const angle = item.rotation * Math.PI / 180;
+  const halfX = Math.abs(Math.cos(angle)) * item.size[0] / 2 + Math.abs(Math.sin(angle)) * item.size[1] / 2;
+  const halfZ = Math.abs(Math.sin(angle)) * item.size[0] / 2 + Math.abs(Math.cos(angle)) * item.size[1] / 2;
+  return { item, minX: item.position[0] - halfX, maxX: item.position[0] + halfX, minZ: item.position[1] - halfZ, maxZ: item.position[1] + halfZ };
+}
+function corners(box) { return [[box.minX, box.minZ], [box.maxX, box.minZ], [box.maxX, box.maxZ], [box.minX, box.maxZ]]; }
+function overlaps(a, b) { return a.minX < b.maxX && a.maxX > b.minX && a.minZ < b.maxZ && a.maxZ > b.minZ; }
+function collisionExempt(item) { return item.clearanceExempt === true || /rug|carpet|地毯/i.test(item.kind || ''); }
+function pointInPolygon([x, z], polygon) {
+  let inside = false;
+  for (let index = 0, previous = polygon.length - 1; index < polygon.length; previous = index++) {
+    const [xi, zi] = polygon[index], [xj, zj] = polygon[previous];
+    if (((zi > z) !== (zj > z)) && x < (xj - xi) * (z - zi) / (zj - zi) + xi) inside = !inside;
+  }
+  return inside || polygon.some(([px, pz]) => Math.abs(px - x) < 1e-9 && Math.abs(pz - z) < 1e-9);
+}

@@ -185,7 +185,7 @@ test('release packaging delegates customer installation to self-contained Go pla
   assert.match(platformBuilder, /nodeRuntime/);
 });
 
-test('pre-release candidate stays digest-bound and reuses the native desktop handoff', () => {
+test('pre-release candidate stays digest-bound and uses the platform-native update handoff', () => {
   const root = new URL('..', import.meta.url);
   const platformBuilder = fs.readFileSync(new URL('scripts/build-platform-installer.mjs', root), 'utf8');
   const candidateExecutor = fs.readFileSync(new URL('core/runtime/native/cmd/personal-agent-setup/candidate.go', root), 'utf8');
@@ -200,6 +200,8 @@ test('pre-release candidate stays digest-bound and reuses the native desktop han
   assert.match(candidateExecutor, /registered-product-development/);
   assert.match(candidateExecutor, /exact-candidate-digest/);
   assert.match(candidateExecutor, /--apply-update/);
+  assert.match(candidateExecutor, /headless-updater/);
+  assert.match(setupExecutor, /runtime\.GOOS != "linux"/);
   assert.match(candidateExecutor, /candidateOperationPath/);
   assert.match(setupExecutor, /workspace", "installation", "updates/);
   assert.doesNotMatch(candidateExecutor, /https?:\/\//);

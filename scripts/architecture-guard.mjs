@@ -65,7 +65,11 @@ checks.push({ name: 'capabilities have registered owners', ok: capabilities.capa
 checks.push({ name: 'route policy defaults to deny', ok: routes.defaultPolicy === 'deny' });
 checks.push({ name: 'route patterns are unique', ok: new Set(routes.routes.map((entry) => entry.pattern)).size === routes.routes.length });
 checks.push({ name: 'routes reference capabilities', ok: routes.routes.every((entry) => capabilityIds.has(entry.capability)) });
-checks.push({ name: 'local administration routes are explicit', ok: ['/api/system/*', '/api/extensions/*'].every((pattern) => routes.routes.some((entry) => entry.pattern === pattern && entry.access === 'local-admin')) });
+checks.push({
+  name: 'sensitive Console routes use authenticated gateway access',
+  ok: ['/app/settings', '/app/setup', '/app/update', '/api/system/*', '/api/extensions/*', '/api/plugins/*']
+    .every((pattern) => routes.routes.some((entry) => entry.pattern === pattern && entry.access === 'authenticated')),
+});
 checks.push({ name: 'distribution is path-only and deny-by-default', ok: distribution.routing?.defaultMode === 'path' && distribution.routing?.defaultPolicy === 'deny' && (distribution.domain?.legacyHosts || []).length === 0 });
 checks.push({ name: 'distribution exposes only unified private routes', ok: distribution.routing.paths.every((entry) => !['/admin', '/agent', '/api/agent', '/api/files'].some((legacy) => entry.prefix === legacy || entry.prefix.startsWith(`${legacy}/`))) });
 checks.push({ name: 'unified console is mounted', ok: distribution.routing.paths.some((entry) => entry.prefix === '/app' && entry.access === 'authenticated') });

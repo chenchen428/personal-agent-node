@@ -29,6 +29,8 @@
     "Search and update are owner-local and revision-safe",
     "Existing-result retrieval searches Activity before session history, never creates a child task merely to find a result, and falls back across safe local indexes before exposing internal authentication mechanics",
     "The daily Token limit defaults to 0 (unlimited), uses M units, and replies without starting the Agent when today's usage has reached a configured positive limit",
-    "The legacy Memory product surface is unavailable"
+    "Every real main-Agent user turn recalls at most twelve relevant active memories from the current Space before execution, counts only actually injected records once per session-turn-memory tuple, and never gives the capability to Workers",
+    "Memory stores content plus system metadata only, supports main-Agent create, revision-safe update and permanent delete through pa-cli, reactivates forgotten records on update, and exposes only authenticated read-only UI routes",
+    "Memory heat combines 90-day recency and logarithmic hit frequency, active records are ordered by heat, and records become forgotten after one year without creation, update, or hit"
   ]
 }
