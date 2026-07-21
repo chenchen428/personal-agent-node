@@ -27,7 +27,7 @@ export function CustomDomainSop({ connection, refresh, onExit }: { connection: C
   const relayInstallerUrl = connection.details?.customRelayInstallerUrl || "";
   const relayInstallCommand = relayInstallerUrl
     ? `curl -fL '${relayInstallerUrl}' -o /tmp/personal-agent-relay-install.sh && sudo bash /tmp/personal-agent-relay-install.sh '${commandDomain}'`
-    : "当前安装版本未提供 Relay 安装脚本";
+    : "正在读取当前版本的 Relay 安装命令，请稍后刷新重试";
   const activeStep = phase === "configure" ? relayTokenReady || credentialPrepared ? 1 : 0 : 2;
 
   const startAndVerify = async () => {

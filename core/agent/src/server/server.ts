@@ -1901,7 +1901,11 @@ function platformConnectionStatuses() {
 }
 
 function selfHostedRelayInstallerUrl() {
-  const version = String(process.env.PERSONAL_AGENT_VERSION || readJsonFile(path.join(config.workspaceRoot, "package.json"))?.version || "").trim();
+  const rawVersion = String(process.env.PERSONAL_AGENT_VERSION
+    || readJsonFile(path.join(config.workspaceRoot, "package.json"))?.version
+    || readJsonFile(path.join(path.dirname(config.installationDataRoot), "core", "installation.json"))?.activeReleaseId
+    || "").trim();
+  const version = rawVersion.replace(/^v/i, "");
   if (!/^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/.test(version)) return "";
   return `https://github.com/chenchen428/personal-agent-node/releases/download/v${encodeURIComponent(version)}/personal-agent-relay-install.sh`;
 }
