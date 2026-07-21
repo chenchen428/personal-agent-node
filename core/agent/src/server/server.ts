@@ -1903,7 +1903,8 @@ function platformConnectionStatuses() {
 function selfHostedRelayInstallerUrl() {
   const rawVersion = String(process.env.PERSONAL_AGENT_VERSION
     || readJsonFile(path.join(config.workspaceRoot, "package.json"))?.version
-    || readJsonFile(path.join(path.dirname(config.installationDataRoot), "core", "installation.json"))?.activeReleaseId
+    || readJsonFile(path.join(process.env.PRIVATE_SITE_INSTALL_ROOT || "", "installation.json"))?.activeReleaseId
+    || readJsonFile(path.join(config.rootDir, "..", "package.json"))?.version
     || "").trim();
   const version = rawVersion.replace(/^v/i, "");
   if (!/^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/.test(version)) return "";

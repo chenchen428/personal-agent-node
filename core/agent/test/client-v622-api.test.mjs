@@ -16,7 +16,10 @@ test("V6.22 read-only client API is local, searchable and self-contained", async
   const port = await freePort();
   const token = "client-v622-test-token";
   const installationRoot = path.join(root, "workspace");
+  const installRoot = path.join(root, "core");
   const { personal } = initializeInstallation({ dataRoot: installationRoot });
+  fs.mkdirSync(installRoot, { recursive: true });
+  fs.writeFileSync(path.join(installRoot, "installation.json"), JSON.stringify({ schemaVersion: 2, activeReleaseId: `v${packageVersion}` }));
   const uploadsDir = path.join(root, "uploads");
   fs.mkdirSync(path.join(uploadsDir, "relative-page"), { recursive: true });
   fs.writeFileSync(path.join(uploadsDir, "relative-page", "index.html"), "<h1>Relative page</h1>");
@@ -35,6 +38,7 @@ test("V6.22 read-only client API is local, searchable and self-contained", async
       OPEN_AGENT_BRIDGE_PRIVATE_PUBLICATIONS_DIR: path.join(root, "private-publications"),
       OPEN_AGENT_BRIDGE_UPLOADS_DIR: uploadsDir,
       OPEN_AGENT_BRIDGE_MAIL_DATA_DIR: path.join(root, "mail"),
+      PRIVATE_SITE_INSTALL_ROOT: installRoot,
       PRIVATE_SITE_DATA_ROOT: installationRoot,
       PERSONAL_AGENT_SPACE_ID: personal.id,
       PERSONAL_AGENT_SPACE_ROOT: personal.root,
@@ -43,7 +47,7 @@ test("V6.22 read-only client API is local, searchable and self-contained", async
       OPEN_AGENT_BRIDGE_CHANNEL_POLL: "0",
       OPEN_AGENT_BRIDGE_SCHEDULER: "0",
       OPEN_AGENT_BRIDGE_ALLOW_LOCAL_ONLY_MANAGED_FILES: "1",
-      PERSONAL_AGENT_VERSION: `v${packageVersion}`,
+      PERSONAL_AGENT_VERSION: "",
     },
     stdio: ["ignore", "pipe", "pipe"],
   });
