@@ -16,10 +16,9 @@ test("V6.22 read-only client API is local, searchable and self-contained", async
   const port = await freePort();
   const token = "client-v622-test-token";
   const installationRoot = path.join(root, "workspace");
-  const installRoot = path.join(root, "core");
+  const configuredWorkspaceRoot = path.join(root, "agent-workspace-without-package");
   const { personal } = initializeInstallation({ dataRoot: installationRoot });
-  fs.mkdirSync(installRoot, { recursive: true });
-  fs.writeFileSync(path.join(installRoot, "installation.json"), JSON.stringify({ schemaVersion: 2, activeReleaseId: `v${packageVersion}` }));
+  fs.mkdirSync(configuredWorkspaceRoot, { recursive: true });
   const uploadsDir = path.join(root, "uploads");
   fs.mkdirSync(path.join(uploadsDir, "relative-page"), { recursive: true });
   fs.writeFileSync(path.join(uploadsDir, "relative-page", "index.html"), "<h1>Relative page</h1>");
@@ -33,12 +32,13 @@ test("V6.22 read-only client API is local, searchable and self-contained", async
       PERSONAL_AGENT_AUTH_PASSWORD: "client-v622-local-password",
       PERSONAL_AGENT_AUTH_COOKIE_SECRET: "client-v622-cookie-secret-for-tests",
       OPEN_AGENT_BRIDGE_DATA_DIR: path.join(root, "bridge"),
+      OPEN_AGENT_BRIDGE_WORKSPACE_ROOT: configuredWorkspaceRoot,
       OPEN_AGENT_BRIDGE_AGENT_DATA_DIR: path.join(root, "agent-data"),
       OPEN_AGENT_BRIDGE_AGENT_DATA_DATABASE: path.join(root, "agent-data", "agent-data.sqlite"),
       OPEN_AGENT_BRIDGE_PRIVATE_PUBLICATIONS_DIR: path.join(root, "private-publications"),
       OPEN_AGENT_BRIDGE_UPLOADS_DIR: uploadsDir,
       OPEN_AGENT_BRIDGE_MAIL_DATA_DIR: path.join(root, "mail"),
-      PRIVATE_SITE_INSTALL_ROOT: installRoot,
+      PRIVATE_SITE_INSTALL_ROOT: "",
       PRIVATE_SITE_DATA_ROOT: installationRoot,
       PERSONAL_AGENT_SPACE_ID: personal.id,
       PERSONAL_AGENT_SPACE_ROOT: personal.root,
@@ -79,7 +79,7 @@ test("V6.22 read-only client API is local, searchable and self-contained", async
   assert.equal(overview.result.machine.state, "running");
   assert.equal(overview.result.machine.mobileAccess, "unavailable");
   assert.equal(overview.result.machine.mobileAddress, "");
-  assert.equal(overview.result.machine.workspaceRoot, workspaceRoot);
+  assert.equal(overview.result.machine.workspaceRoot, configuredWorkspaceRoot);
   assert.equal(typeof overview.result.counts.pages, "number");
   assert.equal(typeof overview.result.counts.runningWork, "number");
   assert.equal(Array.isArray(overview.result.recent), true);

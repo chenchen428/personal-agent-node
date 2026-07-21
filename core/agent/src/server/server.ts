@@ -1904,11 +1904,24 @@ function selfHostedRelayInstallerUrl() {
   const rawVersion = String(process.env.PERSONAL_AGENT_VERSION
     || readJsonFile(path.join(config.workspaceRoot, "package.json"))?.version
     || readJsonFile(path.join(process.env.PRIVATE_SITE_INSTALL_ROOT || "", "installation.json"))?.activeReleaseId
-    || readJsonFile(path.join(config.rootDir, "..", "package.json"))?.version
+    || readJsonFile(path.join(process.env.PERSONAL_AGENT_HOME || "", "core", "installation.json"))?.activeReleaseId
+    || nearestPackageVersion(config.rootDir)
     || "").trim();
   const version = rawVersion.replace(/^v/i, "");
   if (!/^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/.test(version)) return "";
   return `https://github.com/chenchen428/personal-agent-node/releases/download/v${encodeURIComponent(version)}/personal-agent-relay-install.sh`;
+}
+
+function nearestPackageVersion(start: string) {
+  let current = path.resolve(start || ".");
+  for (let index = 0; index < 8; index += 1) {
+    const value = readJsonFile(path.join(current, "package.json"))?.version;
+    if (value) return value;
+    const parent = path.dirname(current);
+    if (parent === current) break;
+    current = parent;
+  }
+  return "";
 }
 
 function withRelayInstaller(connection: any, installerUrl: string) {
