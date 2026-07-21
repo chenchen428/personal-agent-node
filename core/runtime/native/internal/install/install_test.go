@@ -474,6 +474,18 @@ func TestInstallPrefersPersonalSpaceDomainOverLegacyWorkspaceDomain(t *testing.T
 	if got := existingWorkspaceDomain(dataRoot); got != "owner.personal-agent.cn" {
 		t.Fatalf("existing personal Space domain=%q", got)
 	}
+	installRoot := filepath.Join(root, "install")
+	nodeRuntime := filepath.Join(root, "node")
+	if err := os.WriteFile(nodeRuntime, []byte("bundled-node"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	runner := &fakeRunner{}
+	if _, err := Install(context.Background(), Options{ReleaseRoot: fixtureRelease(t, "release-space-domain-conflict"), NodeRuntime: nodeRuntime, InstallRoot: installRoot, DataRoot: dataRoot, SkipService: true, NoOpen: true, Platform: "darwin"}, runner); err != nil {
+		t.Fatal(err)
+	}
+	if len(runner.calls) == 0 || !strings.Contains(runner.calls[0], "init --domain owner.personal-agent.cn") {
+		t.Fatalf("personal Space domain was not passed to preactivation: %v", runner.calls)
+	}
 }
 
 func TestInstallPreservesSingleLegacySpaceDomainBeforeKindMigration(t *testing.T) {
