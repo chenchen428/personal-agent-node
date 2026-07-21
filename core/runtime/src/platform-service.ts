@@ -67,7 +67,7 @@ export function renderLaunchdService(config, { cliPath, nodePath = process.execP
 `;
 }
 
-export function renderSystemdUserService(config, { cliPath, nodePath = process.execPath } = {}) {
+export function renderSystemdUserService(config, { cliPath, nodePath = process.execPath, workingDirectory = workspaceRoot } = {}) {
   return `[Unit]
 Description=Private Site Node for ${config.domain}
 After=network-online.target
@@ -75,7 +75,7 @@ Wants=network-online.target
 
 [Service]
 Type=simple
-WorkingDirectory=${systemd(workspaceRoot)}
+WorkingDirectory=${systemdPath(workingDirectory)}
 Environment=PRIVATE_SITE_DATA_ROOT=${systemd(config.installationDataRoot)}
 ExecStart=${systemd(nodePath)} ${systemd(cliPath)} start
 ExecStop=${systemd(nodePath)} ${systemd(cliPath)} stop
@@ -89,6 +89,14 @@ WantedBy=default.target
 
 function systemd(value) {
   return `"${String(value).replaceAll("\\", "/").replaceAll('"', '\\"')}"`;
+}
+
+function systemdPath(value) {
+  return [...Buffer.from(String(value).replaceAll("\\", "/"), "utf8")]
+    .map((byte) => /[A-Za-z0-9/_.-]/.test(String.fromCharCode(byte))
+      ? String.fromCharCode(byte)
+      : `\\x${byte.toString(16).padStart(2, "0")}`)
+    .join("");
 }
 
 function xml(value) {
