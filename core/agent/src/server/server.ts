@@ -202,10 +202,13 @@ const server = http.createServer(async (request, response) => {
     const statusCode = error instanceof ChannelInputError
       ? 400
       : Number((error as { statusCode?: number } | null)?.statusCode || 500);
-    const payload = { ok: false, error: error instanceof Error ? error.message : String(error) };
+    const payload = {
+      ok: false,
+      code: String((error as { code?: string } | null)?.code || "REQUEST_FAILED"),
+      error: error instanceof Error ? error.message : String(error),
+    };
     if (String(request.url || "").startsWith("/api/node/v1")) {
-      const code = String((error as { code?: string } | null)?.code || "REQUEST_FAILED");
-      sendNodeApiError(response, statusCode, code, payload.error, request.method === "HEAD");
+      sendNodeApiError(response, statusCode, payload.code, payload.error, request.method === "HEAD");
     }
     else if (String(request.url || "").startsWith("/api/channels")) sendChannelJson(response, statusCode, payload);
     else sendJson(response, statusCode, payload, request.method === "HEAD");

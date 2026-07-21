@@ -9,11 +9,10 @@ const TLS_CERT_ERROR_CODES = new Set([
 ]);
 
 let insecureAgent: Agent | null = null;
-let proxyAgent: EnvHttpProxyAgent | null = null;
-let insecureProxyAgent: EnvHttpProxyAgent | null = null;
+const proxyAgents = new Map<string, EnvHttpProxyAgent>();
 
 export async function wechatFetch(input: string | URL, init: RequestInit = {}): Promise<Response> {
-  const proxyConfig = getProxyConfig();
+  const proxyConfig = resolveWechatProxyConfig(input);
   if (allowInsecureWechatTls()) {
     return await fetch(input, withDispatcher(init, getWechatDispatcher({ insecure: true, proxyConfig })));
   }
@@ -51,12 +50,13 @@ function getWechatDispatcher(params: {
   proxyConfig: ProxyConfig;
 }): Agent | EnvHttpProxyAgent {
   if (hasProxyConfig(params.proxyConfig)) {
-    if (params.insecure) {
-      insecureProxyAgent ||= createProxyAgent(params.proxyConfig, true);
-      return insecureProxyAgent;
+    const key = JSON.stringify([params.proxyConfig, params.insecure]);
+    let agent = proxyAgents.get(key);
+    if (!agent) {
+      agent = createProxyAgent(params.proxyConfig, params.insecure);
+      proxyAgents.set(key, agent);
     }
-    proxyAgent ||= createProxyAgent(params.proxyConfig, false);
-    return proxyAgent;
+    return agent;
   }
 
   insecureAgent ||= new Agent({ connect: { rejectUnauthorized: false } });
@@ -80,13 +80,39 @@ function createProxyAgent(proxyConfig: ProxyConfig, insecure: boolean): EnvHttpP
   });
 }
 
-function getProxyConfig(env: NodeJS.ProcessEnv = process.env): ProxyConfig {
+export function resolveWechatProxyConfig(input: string | URL, env: NodeJS.ProcessEnv = process.env): ProxyConfig {
+  const url = input instanceof URL ? input : new URL(input);
+  const dedicatedAllProxy = getEnvValue(env, "WECHAT_ILINK_ALL_PROXY", "wechat_ilink_all_proxy");
+  const dedicatedHttpProxy = getEnvValue(env, "WECHAT_ILINK_HTTP_PROXY", "wechat_ilink_http_proxy") || dedicatedAllProxy;
+  const dedicatedHttpsProxy = getEnvValue(env, "WECHAT_ILINK_HTTPS_PROXY", "wechat_ilink_https_proxy") || dedicatedAllProxy;
+  const dedicatedProxyConfigured = Boolean(dedicatedHttpProxy || dedicatedHttpsProxy);
+  const useSystemProxy = env.WECHAT_ILINK_USE_SYSTEM_PROXY === "1";
+
+  // Model/API egress proxies are commonly restricted to their own providers.
+  // Keep the official iLink connection direct unless an operator explicitly
+  // opts into the system proxy or supplies a dedicated WeChat proxy.
+  if (isOfficialWechatIlinkUrl(url) && !dedicatedProxyConfigured && !useSystemProxy) {
+    return { httpProxy: "", httpsProxy: "", noProxy: "" };
+  }
+
+  if (dedicatedProxyConfigured) {
+    return {
+      httpProxy: dedicatedHttpProxy,
+      httpsProxy: dedicatedHttpsProxy,
+      noProxy: getEnvValue(env, "WECHAT_ILINK_NO_PROXY", "wechat_ilink_no_proxy") || "127.0.0.1,localhost,::1",
+    };
+  }
+
   const allProxy = getEnvValue(env, "ALL_PROXY", "all_proxy");
   return {
     httpProxy: getEnvValue(env, "HTTP_PROXY", "http_proxy") || allProxy,
     httpsProxy: getEnvValue(env, "HTTPS_PROXY", "https_proxy") || allProxy,
     noProxy: getEnvValue(env, "NO_PROXY", "no_proxy") || "127.0.0.1,localhost,::1",
   };
+}
+
+function isOfficialWechatIlinkUrl(url: URL): boolean {
+  return url.protocol === "https:" && url.hostname.toLowerCase() === "ilinkai.weixin.qq.com";
 }
 
 function hasProxyConfig(proxyConfig: ProxyConfig): boolean {

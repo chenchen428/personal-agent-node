@@ -21,7 +21,7 @@ import {
   loadExistingCredentials,
   type StoredAccount,
 } from "./runtime/setup.ts";
-import { wechatFetch } from "./runtime/wechat-fetch.ts";
+import { fetchWechatQrCode, pollWechatQrStatus } from "./runtime/wechat-login-api.ts";
 import type { InstallationConnectionOwnership } from "../../connections/connection-ownership.ts";
 
 type Logger = {
@@ -158,7 +158,7 @@ export class WeChatConnector {
   async startLogin() {
     pruneLoginSessions();
     const baseUrl = DEFAULT_BASE_URL;
-    const qr = await fetchQRCode(baseUrl);
+    const qr = await fetchWechatQrCode({ baseUrl, botType: BOT_TYPE });
     const id = crypto.randomUUID();
     const session: LoginSession = {
       id,
@@ -187,7 +187,7 @@ export class WeChatConnector {
     pruneLoginSessions();
     const session = loginSessions.get(sessionId);
     if (!session) return { status: "missing", connected: false };
-    const status = await pollQRStatus(session.baseUrl, session.qrcode);
+    const status = await pollWechatQrStatus({ baseUrl: session.baseUrl, qrcode: session.qrcode });
     if (status.status !== "confirmed") {
       return {
         status: status.status === "scaned" ? "scanned" : status.status || "wait",
@@ -321,59 +321,6 @@ export class WeChatConnector {
       return error instanceof Error ? error.message : String(error);
     }
   }
-}
-
-async function fetchQRCode(baseUrl: string): Promise<{ qrcode: string; qrcode_img_content: string }> {
-  const base = baseUrl.endsWith("/") ? baseUrl : `${baseUrl}/`;
-  const url = `${base}ilink/bot/get_bot_qrcode?bot_type=${encodeURIComponent(BOT_TYPE)}`;
-  const res = await wechatFetch(url);
-  if (!res.ok) throw new Error(await formatWechatHttpError("QR fetch failed", res));
-  const data = await res.json() as { qrcode?: string; qrcode_img_content?: string };
-  if (!data.qrcode || !data.qrcode_img_content) {
-    throw new Error("QR fetch failed: response did not include qrcode fields.");
-  }
-  return data as { qrcode: string; qrcode_img_content: string };
-}
-
-async function pollQRStatus(baseUrl: string, qrcode: string): Promise<{
-  status: "wait" | "scaned" | "confirmed" | "expired";
-  bot_token?: string;
-  ilink_bot_id?: string;
-  baseurl?: string;
-  ilink_user_id?: string;
-}> {
-  const base = baseUrl.endsWith("/") ? baseUrl : `${baseUrl}/`;
-  const url = `${base}ilink/bot/get_qrcode_status?qrcode=${encodeURIComponent(qrcode)}`;
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 35000);
-  try {
-    const res = await wechatFetch(url, {
-      headers: { "iLink-App-ClientVersion": "1" },
-      signal: controller.signal,
-    });
-    if (!res.ok) throw new Error(await formatWechatHttpError("QR status failed", res));
-    return await res.json() as {
-      status: "wait" | "scaned" | "confirmed" | "expired";
-      bot_token?: string;
-      ilink_bot_id?: string;
-      baseurl?: string;
-      ilink_user_id?: string;
-    };
-  } catch (error) {
-    if (error instanceof Error && error.name === "AbortError") return { status: "wait" };
-    throw error;
-  } finally {
-    clearTimeout(timer);
-  }
-}
-
-async function formatWechatHttpError(prefix: string, res: Response) {
-  const text = (await res.text().catch(() => "")).trim();
-  const snippet = text.replace(/\s+/g, " ").slice(0, 420);
-  if (/不在安全策略默认允许的范围内|not allowed by the default security policy/i.test(text)) {
-    return `${prefix}: ${res.status}. 当前网络拦截了微信 iLink 服务，请在云壳防护记录中给 ilinkai.weixin.qq.com 加白，或切换到允许访问该域名的网络。原始响应：${snippet}`;
-  }
-  return snippet ? `${prefix}: ${res.status}. ${snippet}` : `${prefix}: ${res.status}`;
 }
 
 function saveCredentials(account: StoredAccount) {

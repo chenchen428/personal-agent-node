@@ -22,20 +22,8 @@ import {
 } from "./channel-config.ts";
 import { isWechatSyncSessionTimeout } from "./wechat-transport.ts";
 import { wechatFetch } from "./wechat-fetch.ts";
+import { fetchWechatQrCode, pollWechatQrStatus } from "./wechat-login-api.ts";
 import { isDirectWechatSetup } from "./entrypoint-guard.ts";
-
-interface QRCodeResponse {
-  qrcode: string;
-  qrcode_img_content: string;
-}
-
-interface QRStatusResponse {
-  status: "wait" | "scaned" | "confirmed" | "expired";
-  bot_token?: string;
-  ilink_bot_id?: string;
-  baseurl?: string;
-  ilink_user_id?: string;
-}
 
 export type StoredAccount = {
   token: string;
@@ -151,40 +139,6 @@ export async function getStoredCredentialsInvalidReason(
   return null;
 }
 
-async function fetchQRCode(baseUrl: string): Promise<QRCodeResponse> {
-  const base = baseUrl.endsWith("/") ? baseUrl : `${baseUrl}/`;
-  const url = `${base}ilink/bot/get_bot_qrcode?bot_type=${BOT_TYPE}`;
-  const res = await wechatFetch(url);
-  if (!res.ok) throw new Error(await formatWechatHttpError("QR fetch failed", res));
-  return (await res.json()) as QRCodeResponse;
-}
-
-async function pollQRStatus(
-  baseUrl: string,
-  qrcode: string,
-): Promise<QRStatusResponse> {
-  const base = baseUrl.endsWith("/") ? baseUrl : `${baseUrl}/`;
-  const url = `${base}ilink/bot/get_qrcode_status?qrcode=${encodeURIComponent(qrcode)}`;
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 35_000);
-
-  try {
-    const res = await wechatFetch(url, {
-      headers: { "iLink-App-ClientVersion": "1" },
-      signal: controller.signal,
-    });
-    clearTimeout(timer);
-    if (!res.ok) throw new Error(await formatWechatHttpError("QR status failed", res));
-    return (await res.json()) as QRStatusResponse;
-  } catch (err) {
-    clearTimeout(timer);
-    if (err instanceof Error && err.name === "AbortError") {
-      return { status: "wait" };
-    }
-    throw err;
-  }
-}
-
 async function formatWechatHttpError(prefix: string, res: Response, alreadyReadText?: string): Promise<string> {
   const text = (alreadyReadText ?? await res.text().catch(() => "")).trim();
   const snippet = text.replace(/\s+/g, " ").slice(0, 420);
@@ -271,7 +225,7 @@ export async function runWechatLogin(
   const pollIntervalMs = options.pollIntervalMs ?? 1_000;
 
   log("Fetching WeChat login QR code...\n");
-  const qrResp = await fetchQRCode(baseUrl);
+  const qrResp = await fetchWechatQrCode({ baseUrl, botType: BOT_TYPE });
   await printQRCode(qrResp.qrcode_img_content, write);
 
   log("Scan the QR code above with WeChat, then confirm the login on your phone.\n");
@@ -280,7 +234,7 @@ export async function runWechatLogin(
   let scannedPrinted = false;
 
   while (Date.now() < deadline) {
-    const status = await pollQRStatus(baseUrl, qrResp.qrcode);
+    const status = await pollWechatQrStatus({ baseUrl, qrcode: qrResp.qrcode });
 
     switch (status.status) {
       case "wait":

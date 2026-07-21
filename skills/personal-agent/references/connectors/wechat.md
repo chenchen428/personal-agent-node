@@ -17,6 +17,8 @@
 
 已配置时，桌面端显示“清空配置”。清空会删除当前隔离空间的微信登录凭据、同步游标和上下文缓存，并释放安装级账号独占绑定；本机对话记录和用户文件保留。清空后恢复到“配置”入口。
 
+官方 `ilinkai.weixin.qq.com` 默认直连，不继承可能仅允许模型服务的通用 `HTTP_PROXY` / `HTTPS_PROXY`。确需代理时，优先配置 `WECHAT_ILINK_HTTP_PROXY`、`WECHAT_ILINK_HTTPS_PROXY` 与 `WECHAT_ILINK_NO_PROXY`；只有明确设置 `WECHAT_ILINK_USE_SYSTEM_PROXY=1` 时才继承通用代理。二维码请求有固定超时、有限重试和响应校验，界面只显示可行动且脱敏的失败原因。
+
 | 操作 | 风险 | 说明 |
 | --- | --- | --- |
 | `status` | R0 | 读取脱敏连接状态。 |
