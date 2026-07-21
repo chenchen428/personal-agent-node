@@ -221,7 +221,7 @@ func Install(ctx context.Context, opts Options, runner Runner) (result Result, r
 			return result, fmt.Errorf("remove legacy background service launcher: %w", err)
 		}
 	}
-	if manifest.DesktopShell != nil {
+	if manifest.DesktopShell != nil && !resolved.SkipDesktopEntry {
 		if err := installDesktopEntry(resolved, runner, envFor(resolved)); err != nil {
 			return result, fmt.Errorf("install desktop entry: %w", err)
 		}
@@ -553,12 +553,9 @@ func normalizeOptions(opts Options) (Options, error) {
 }
 
 func existingWorkspaceDomain(dataRoot string) string {
-	if domain := siteDomain(filepath.Join(dataRoot, "config", "site.json")); domain != "" {
-		return domain
-	}
 	entries, err := os.ReadDir(filepath.Join(dataRoot, "spaces"))
 	if err != nil {
-		return ""
+		return siteDomain(filepath.Join(dataRoot, "config", "site.json"))
 	}
 	legacyDomains := map[string]struct{}{}
 	for _, entry := range entries {
@@ -587,7 +584,7 @@ func existingWorkspaceDomain(dataRoot string) string {
 			return domain
 		}
 	}
-	return ""
+	return siteDomain(filepath.Join(dataRoot, "config", "site.json"))
 }
 
 func siteDomain(file string) string {

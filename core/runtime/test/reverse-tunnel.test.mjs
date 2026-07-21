@@ -8,12 +8,14 @@ import { EventEmitter } from "node:events";
 import { WebSocketServer } from "ws";
 
 import {
+  loadReverseTunnelConfig,
   normalizeTunnelPath,
   isTunnelRouteAllowed,
   parseTunnelMessage,
   ReverseTunnelConnector,
   resolveTunnelRequestPath,
   sanitizeRequestHeaders,
+  selfHostedTunnelContract,
   validateReverseTunnelContract,
 } from "../src/reverse-tunnel.ts";
 
@@ -30,6 +32,57 @@ test("reverse tunnel contract accepts WSS and loopback WS without credentials or
   assert.throws(() => validateReverseTunnelContract({ ...contract, endpoint: "ws://relay.example.site/v1/connect" }), /must use WSS/);
   assert.throws(() => validateReverseTunnelContract({ ...contract, endpoint: "wss://relay.example.site/v1/connect?token=secret" }), /cannot contain/);
   assert.doesNotThrow(() => validateReverseTunnelContract({ ...contract, endpoint: "ws://127.0.0.1:9010/v1/connect" }));
+});
+
+test("self-hosted Relay uses the apex endpoint and upgrades legacy connect subdomains in memory", (t) => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "personal-agent-self-hosted-endpoint-"));
+  t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+  const binding = {
+    kind: "sites",
+    baseDomain: "agent.example.net",
+    domain: "agent.example.net",
+    tunnel: {
+      protocol: "pa-reverse-ws-v1",
+      endpoint: "wss://connect.agent.example.net/v1/connect",
+      heartbeatSeconds: 20,
+      maxFrameBytes: 131072,
+      generation: 1,
+      routePolicy: "gateway",
+      credentialEnv: "PERSONAL_AGENT_CUSTOM_DOMAIN_TOKEN",
+    },
+  };
+  fs.writeFileSync(path.join(root, "custom-domain-bindings.json"), JSON.stringify({ schemaVersion: 1, sites: binding }));
+  assert.equal(selfHostedTunnelContract(binding).endpoint, "wss://agent.example.net/v1/connect");
+  assert.equal(loadReverseTunnelConfig({
+    site: { connectionMode: "self-hosted-edge" },
+    configDir: root,
+    env: { PERSONAL_AGENT_CUSTOM_DOMAIN_TOKEN: "a".repeat(43) },
+  }).endpoint, "wss://agent.example.net/v1/connect");
+});
+
+test("unexpected non-authentication broker responses terminate the handshake and schedule a retry", async (t) => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "personal-agent-reverse-http-error-"));
+  class RejectingWebSocket extends EventEmitter {
+    static OPEN = 1;
+    constructor() {
+      super();
+      this.readyState = 0;
+      queueMicrotask(() => this.emit("unexpected-response", {}, { statusCode: 403, resume() {} }));
+    }
+    terminate() { this.readyState = 3; this.emit("close", 1006, Buffer.alloc(0)); }
+    close() { this.terminate(); }
+  }
+  const connector = new ReverseTunnelConnector({
+    config: testConfig(root, 8790),
+    tunnel: tunnelAtFake(),
+    WebSocketImpl: RejectingWebSocket,
+    logger: silentLogger,
+    random: () => 0,
+  }).start();
+  t.after(() => { connector.stop(); fs.rmSync(root, { recursive: true, force: true }); });
+  await waitFor(() => readState(root)?.state === "degraded");
+  assert.equal(readState(root).cause, "broker_http_403");
+  assert.equal(connector.reconnectAttempt, 1);
 });
 
 test("reverse tunnel protocol rejects unsafe paths, headers, oversized frames, and invalid sequences", () => {

@@ -24,6 +24,10 @@ The Relay terminates public HTTP/TLS through Nginx, accepts one outbound Node co
 does not require WireGuard, a fixed private address, local administrator rights
 on the Node, or a platform quota.
 
+The outbound connector uses `wss://<domain>/v1/connect` on the same apex domain
+as the public entry. This avoids a second connector-only DNS dependency; existing
+`wss://connect.<domain>/v1/connect` bindings are upgraded in memory when loaded.
+
 Repeated installation preserves the existing key digest. Use the explicit
 `--rotate-token` third argument only when the client key will be replaced at the
 same time. Fresh install and rotation require an interactive terminal so the

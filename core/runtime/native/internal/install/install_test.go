@@ -452,6 +452,63 @@ func TestInstallPreservesPersonalSpaceDomainWhenWorkspaceUsesSpaceLayout(t *test
 	}
 }
 
+func TestInstallPrefersPersonalSpaceDomainOverLegacyWorkspaceDomain(t *testing.T) {
+	root := t.TempDir()
+	dataRoot := filepath.Join(root, "workspace")
+	personalRoot := filepath.Join(dataRoot, "spaces", "sp_personaltest")
+	if err := os.MkdirAll(filepath.Join(dataRoot, "config"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(filepath.Join(personalRoot, "config"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dataRoot, "config", "site.json"), []byte(`{"asciiDomain":"legacy-owner.example"}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(personalRoot, "space.json"), []byte(`{"kind":"personal"}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(personalRoot, "config", "site.json"), []byte(`{"asciiDomain":"owner.personal-agent.cn"}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if got := existingWorkspaceDomain(dataRoot); got != "owner.personal-agent.cn" {
+		t.Fatalf("existing personal Space domain=%q", got)
+	}
+	installRoot := filepath.Join(root, "install")
+	nodeRuntime := filepath.Join(root, "node")
+	if err := os.WriteFile(nodeRuntime, []byte("bundled-node"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	runner := &fakeRunner{}
+	if _, err := Install(context.Background(), Options{ReleaseRoot: fixtureRelease(t, "release-space-domain-conflict"), NodeRuntime: nodeRuntime, InstallRoot: installRoot, DataRoot: dataRoot, SkipService: true, NoOpen: true, Platform: "darwin"}, runner); err != nil {
+		t.Fatal(err)
+	}
+	if len(runner.calls) == 0 || !strings.Contains(runner.calls[0], "init --domain owner.personal-agent.cn") {
+		t.Fatalf("personal Space domain was not passed to preactivation: %v", runner.calls)
+	}
+}
+
+func TestInstallHonorsSkipDesktopEntryForDesktopRelease(t *testing.T) {
+	root := t.TempDir()
+	nodeRuntime := filepath.Join(root, "node")
+	if err := os.WriteFile(nodeRuntime, []byte("bundled-node"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := Install(context.Background(), Options{
+		ReleaseRoot:      desktopFixtureRelease(t, "release-skip-desktop-entry"),
+		NodeRuntime:      nodeRuntime,
+		InstallRoot:      filepath.Join(root, "install"),
+		DataRoot:         filepath.Join(root, "workspace"),
+		Domain:           "owner.example",
+		SkipService:      true,
+		SkipDesktopEntry: true,
+		NoOpen:           true,
+		Platform:         "darwin",
+	}, &fakeRunner{}); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestInstallPreservesSingleLegacySpaceDomainBeforeKindMigration(t *testing.T) {
 	root := t.TempDir()
 	dataRoot := filepath.Join(root, "workspace")

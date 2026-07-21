@@ -113,7 +113,7 @@ export async function startCustomDomainForwarder({
     },
     tunnel: {
       protocol: "pa-reverse-ws-v1",
-      endpoint: `wss://connect.${normalized.domain}/v1/connect`,
+      endpoint: `wss://${normalized.domain}/v1/connect`,
       heartbeatSeconds: 20,
       maxFrameBytes: 128 * 1024,
       generation: 1,

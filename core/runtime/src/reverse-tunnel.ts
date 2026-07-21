@@ -20,7 +20,7 @@ export function loadReverseTunnelConfig(config) {
     const bindings = readJson(path.join(config.configDir, "custom-domain-bindings.json"));
     const binding = bindings?.sites || bindings?.mail;
     if (!binding?.tunnel) throw tunnelError("TUNNEL_CONFIG_MISSING", "Self-hosted Relay configuration is missing");
-    const tunnel = validateReverseTunnelContract(binding.tunnel);
+    const tunnel = selfHostedTunnelContract(binding);
     const credentialEnv = String(binding.tunnel.credentialEnv || "PERSONAL_AGENT_CUSTOM_DOMAIN_TOKEN");
     const token = String(config.env?.[credentialEnv] || "").trim();
     if (token.length < 32 || token.length > 2048) throw tunnelError("TUNNEL_TOKEN_MISSING", "Self-hosted Relay credential is missing");
@@ -48,6 +48,16 @@ export function validateReverseTunnelContract(value) {
   const generation = boundedInteger(value.generation, 1, Number.MAX_SAFE_INTEGER, "generation");
   const routePolicy = value.routePolicy === "gateway" ? "gateway" : "mobile-readonly";
   return { protocol: REVERSE_TUNNEL_PROTOCOL, endpoint: endpoint.toString(), heartbeatSeconds, maxFrameBytes, generation, routePolicy };
+}
+
+export function selfHostedTunnelContract(binding) {
+  const tunnel = validateReverseTunnelContract(binding?.tunnel);
+  const domain = String(binding?.baseDomain || binding?.domain || "").trim().toLowerCase();
+  const endpoint = new URL(tunnel.endpoint);
+  if (/^[a-z0-9.-]{4,253}$/.test(domain) && endpoint.hostname === `connect.${domain}` && endpoint.pathname === "/v1/connect" && !endpoint.port) {
+    return { ...tunnel, endpoint: `wss://${domain}/v1/connect` };
+  }
+  return tunnel;
 }
 
 export class ReverseTunnelConnector {
@@ -107,10 +117,14 @@ export class ReverseTunnelConnector {
     socket.on("unexpected-response", (_request, response) => {
       if (socket !== this.socket) return;
       response?.resume?.();
-      if (Number(response?.statusCode) === 401) {
+      const status = Number(response?.statusCode);
+      if (status === 401) {
         this.disconnectCause = "credential_rejected";
         void this.recoverCredential("broker_401");
+        return;
       }
+      this.disconnectCause = Number.isInteger(status) && status >= 400 && status <= 599 ? `broker_http_${status}` : "broker_http_unexpected";
+      try { socket.terminate?.(); } catch {}
     });
     socket.on("open", () => {
       this.lastServerActivity = Date.now();
