@@ -450,14 +450,13 @@ async function restoreApplyCommand() {
   const config = resolveNodeConfig();
   const target = path.resolve(args.target);
   if (target === config.dataRoot) throw new Error("restore-apply cannot overwrite the active Site data root");
-  const packageMetadata = JSON.parse(fs.readFileSync(path.join(workspaceRoot, "package.json"), "utf8"));
   const { restoreEncryptedBackup } = await import("../src/backup.ts");
   const result = await restoreEncryptedBackup({
     archivePath: args.archive,
     keyFile: args.keyFile,
     targetDataRoot: target,
     replacement: args.replacement === true,
-    expectedDistributionVersion: packageMetadata.version,
+    expectedDistributionVersion: config.site.distributionVersion,
   });
   process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
 }
