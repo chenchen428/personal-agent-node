@@ -221,7 +221,7 @@ func Install(ctx context.Context, opts Options, runner Runner) (result Result, r
 			return result, fmt.Errorf("remove legacy background service launcher: %w", err)
 		}
 	}
-	if manifest.DesktopShell != nil {
+	if manifest.DesktopShell != nil && !resolved.SkipDesktopEntry {
 		if err := installDesktopEntry(resolved, runner, envFor(resolved)); err != nil {
 			return result, fmt.Errorf("install desktop entry: %w", err)
 		}

@@ -488,6 +488,27 @@ func TestInstallPrefersPersonalSpaceDomainOverLegacyWorkspaceDomain(t *testing.T
 	}
 }
 
+func TestInstallHonorsSkipDesktopEntryForDesktopRelease(t *testing.T) {
+	root := t.TempDir()
+	nodeRuntime := filepath.Join(root, "node")
+	if err := os.WriteFile(nodeRuntime, []byte("bundled-node"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := Install(context.Background(), Options{
+		ReleaseRoot:      desktopFixtureRelease(t, "release-skip-desktop-entry"),
+		NodeRuntime:      nodeRuntime,
+		InstallRoot:      filepath.Join(root, "install"),
+		DataRoot:         filepath.Join(root, "workspace"),
+		Domain:           "owner.example",
+		SkipService:      true,
+		SkipDesktopEntry: true,
+		NoOpen:           true,
+		Platform:         "darwin",
+	}, &fakeRunner{}); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestInstallPreservesSingleLegacySpaceDomainBeforeKindMigration(t *testing.T) {
 	root := t.TempDir()
 	dataRoot := filepath.Join(root, "workspace")
