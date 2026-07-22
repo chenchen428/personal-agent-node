@@ -1,6 +1,14 @@
+"use client";
+
 import { Monitor, Smartphone } from "lucide-react";
+import dynamic from "next/dynamic";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { InteriorTemplatePreview } from "./interior-template-preview";
+import { TemplatePreviewLoading } from "./template-preview-loading";
+
+const InteriorTemplatePreview = dynamic(
+  () => import("./interior-template-preview").then((module) => module.InteriorTemplatePreview),
+  { loading: () => <TemplatePreviewLoading />, ssr: false },
+);
 
 export type TemplatePreviewDevice = "web" | "mobile";
 

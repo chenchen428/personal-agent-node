@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowDownRight, Check, FileImage, Sparkles } from "lucide-react";
+import { ArrowUpRight, Check, FileImage, Sparkles } from "lucide-react";
 import { useState } from "react";
 import { Badge, PageHeader, PageSurface } from "@/components/desktop-v72/primitives";
 import type { PageTemplate } from "./catalog";
@@ -13,7 +13,7 @@ export function PageTemplateDetailPage({ template }: { template: PageTemplate })
     <PageHeader
       title={template.name}
       description={template.summary}
-      actions={<div className="template-detail-actions"><Badge tone="success">已内置</Badge><a className="button primary" href="#template-preview">打开示例<ArrowDownRight aria-hidden="true" /></a></div>}
+      actions={<div className="template-detail-actions"><Badge tone="success">已内置</Badge><a className="button primary" href={`/template-pages/${template.id}`} rel="noreferrer" target="_blank">打开示例<ArrowUpRight aria-hidden="true" /></a></div>}
     />
 
     <TemplateDevicePreview device={device} onChange={setDevice} />
