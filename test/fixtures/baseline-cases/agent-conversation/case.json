@@ -11,6 +11,7 @@
     "In-progress Worker tasks resume after a service restart, surface live recovery status, and report completion through the main Agent",
     "A Work reports verified artifact information in its final chat reply while the generic completion event remains domain-neutral, and the main Agent uses that information to author Activity",
     "Child tasks require an Agent-generated title of at most 20 characters and description of at most 100 characters, and both fields remain updateable through the Personal Agent CLI",
+    "Matched Page-template creation requests are deterministically delegated before the main Agent can execute the work, while task-status questions read only the current main session's children and never create or resume a task",
     "Child task execution preserves the complete latest visible parent request and all delegated prompt text, including content split by nested shell quotes",
     "Internal worker hook inputs never appear in user conversation history",
     "Mobile task detail reads only the Space-local display-event ledger: it opens on the latest 20 visible events at the absolute bottom, pages earlier events with a task-bound opaque cursor while preserving the reading anchor, follows sanitized live updates only when pinned to the tail, and never scans or falls back to raw Codex execution history",

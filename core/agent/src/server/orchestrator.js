@@ -11,6 +11,7 @@ import { containsFinalReplyControl, isStreamingFinalReplyControl, processFinalRe
 import { buildMemoryRecallContext, executeMemoryCommand } from "../memory/control.js";
 import { buildPrivateAttachmentPreviewUrl, relativeAttachmentPath, storedAttachmentDisplayName } from "../private-files/attachments.js";
 import { prepareRemoteChannelText } from "./managed-links.js";
+import { buildPageTemplateTask, formatTaskStatusReply, isTaskStatusRequest, matchPageTemplateRequest } from "./main-turn-routing.js";
 import { normalizeTaskCreate, normalizeTaskPatch } from "./task-contract.js";
 
 const PROGRESS_EVENT_KINDS = [
@@ -257,7 +258,7 @@ export class SessionOrchestrator {
     return session;
   }
 
-  async startWorkerSession(input) {
+  startWorkerSession(input) {
     const session = this.createWorkerSession(input);
     const task = buildWorkerTaskInput({
       store: this.store,
@@ -564,6 +565,8 @@ export class SessionOrchestrator {
       if (options.notifyWechat) this.maybeNotifyWechat(sessionId, event);
       return { sessionId, blocked: true, code: quotaBlock.code };
     }
+    const routed = this.routeMainTurn(session, content, options);
+    if (routed) return routed;
     if (this.running.has(sessionId)) {
       if (options.steerIfRunning && typeof this.runner.steerActiveTurn === "function") {
         try {
@@ -858,6 +861,67 @@ export class SessionOrchestrator {
         });
       }
     }
+  }
+
+  routeMainTurn(session, content, options = {}) {
+    if (session.role !== "main" || options.internalInput === true) return null;
+    const userContent = String(options.displayContent || content || "").trim();
+    if (!userContent) return null;
+
+    if (isTaskStatusRequest(userContent)) {
+      this.persistDirectUserMessage(session, userContent, options);
+      const children = this.store.listSessionsPage({
+        includeArchived: true,
+        parentSessionId: session.id,
+        limit: 50,
+        hydrate: false,
+      }).sessions;
+      const selected = /(?:刚才|那个|这个|上个)/u.test(userContent) ? children.slice(0, 1) : children;
+      const event = this.completeDirectMainTurn(session, formatTaskStatusReply(selected), options, "task/status-reported");
+      return { sessionId: session.id, routed: "task-status", event };
+    }
+
+    const template = matchPageTemplateRequest(userContent);
+    if (!template) return null;
+    this.persistDirectUserMessage(session, userContent, options);
+    const worker = this.startWorkerSession({
+      parentSessionId: session.id,
+      title: String(template.name || "Page 交付").replace(/模板$/u, "").slice(0, 20),
+      description: `使用 ${template.name} 和 ${template.skill} 技能处理用户 Page 请求`.slice(0, 100),
+      task: buildPageTemplateTask({ request: content, template }),
+      workspaceRoot: session.workspaceRoot || config.workspaceRoot,
+      createdBy: `orchestrator:page-template:${template.id}`,
+    });
+    const link = worker.url || worker.linkNotice;
+    const reply = `已开始处理“${worker.title}”，当前状态：处理中。${link ? ` ${link}` : ""}`;
+    const event = this.completeDirectMainTurn(session, reply, options, "page-template/auto-delegated", {
+      childSessionId: worker.id,
+      templateId: template.id,
+      skill: template.skill,
+    });
+    return { sessionId: session.id, routed: "page-template", worker, event };
+  }
+
+  persistDirectUserMessage(session, content, options) {
+    if (options.userMessagePersisted === true) return null;
+    return this.appendAndBroadcast(session.id, "session.user_message", {
+      content,
+      source: options.messageMetadata?.channel || session.channel || "desktop",
+      metadata: options.messageMetadata || {},
+    });
+  }
+
+  completeDirectMainTurn(session, content, options, eventType, metadata = {}) {
+    const event = this.appendAndBroadcast(session.id, "session.assistant_message", {
+      content,
+      source: "personal-agent-orchestrator",
+      metadata: { streamState: "completed", eventType, ...metadata },
+    });
+    if (isLocalConversationSession(session)) {
+      recordWebConversationAcceptance(this.siteDataRoot, new Date(this.now()));
+    }
+    if (options.notifyWechat) this.maybeNotifyWechat(session.id, event);
+    return event;
   }
 
   dailyTokenQuotaBlock(session, options = {}) {
