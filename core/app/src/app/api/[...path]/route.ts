@@ -1,4 +1,5 @@
 import type { NextRequest } from "next/server";
+import { isLocalDesktopSpaceManagementRequest } from "@/lib/request-device";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -11,6 +12,9 @@ const hopByHopHeaders = new Set([
 
 async function proxy(request: NextRequest, context: { params: Promise<{ path: string[] }> }) {
   const { path } = await context.params;
+  if (isSpaceManagementPath(path) && !isLocalDesktopSpaceManagementRequest(request.headers)) {
+    return Response.json({ ok: false, error: { code: "DESKTOP_LOCAL_ONLY", message: "隔离空间管理仅支持本机桌面端" } }, { status: 403 });
+  }
   const upstream = resolveUpstream(path);
   const upstreamOrigin = upstream.target === "control"
     ? process.env.PERSONAL_AGENT_CONTROL_URL || "http://127.0.0.1:8792"
@@ -39,6 +43,11 @@ async function proxy(request: NextRequest, context: { params: Promise<{ path: st
       message: upstream.target === "control" ? "本机控制服务尚未就绪" : "本机 Agent 服务尚未就绪",
     } }, { status: 503 });
   }
+}
+
+function isSpaceManagementPath(path: string[]) {
+  const normalized = path[0] === "system" ? path.slice(1) : path;
+  return normalized.length === 1 && normalized[0] === "spaces";
 }
 
 function resolveUpstream(path: string[]): { target: "control" | "agent"; path: string[] } {

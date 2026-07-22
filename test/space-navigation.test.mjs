@@ -15,7 +15,7 @@ test("space navigation waits for an already requested runtime before navigating"
   const states = ["stopped", "degraded", "running"];
   const ready = await waitForSpaceRuntime(target, {
     fetchImpl: async (url, init) => {
-      calls.push({ url, method: init?.method || "GET" });
+      calls.push({ url, method: init?.method || "GET", headers: init?.headers });
       const state = states.shift();
       return jsonResponse({ spaces: [{ ...target, state }] });
     },
@@ -27,13 +27,14 @@ test("space navigation waits for an already requested runtime before navigating"
   assert.equal(ready.state, "running");
   assert.equal(calls.length, 3);
   assert.equal(calls.every((call) => call.method === "GET"), true);
+  assert.equal(calls.every((call) => call.headers["x-personal-agent-surface"] === "desktop"), true);
 });
 
 test("space navigation starts a stopped runtime exactly once", async () => {
   const calls = [];
   const ready = await waitForSpaceRuntime({ ...target, desiredState: "stopped" }, {
     fetchImpl: async (url, init) => {
-      calls.push({ url, method: init?.method || "GET", body: init?.body });
+      calls.push({ url, method: init?.method || "GET", body: init?.body, headers: init?.headers });
       if (init?.method === "POST") return jsonResponse({ ok: true });
       return jsonResponse({ spaces: [{ ...target, state: "running" }] });
     },
@@ -43,6 +44,7 @@ test("space navigation starts a stopped runtime exactly once", async () => {
   assert.equal(ready.state, "running");
   assert.deepEqual(calls.map((call) => call.method), ["POST", "GET"]);
   assert.deepEqual(JSON.parse(calls[0].body), { action: "start", spaceId: target.id });
+  assert.equal(calls.every((call) => call.headers["x-personal-agent-surface"] === "desktop"), true);
 });
 
 test("space navigation remains on the current page when startup times out", async () => {

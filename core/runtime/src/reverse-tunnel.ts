@@ -541,15 +541,14 @@ export function resolveTunnelRequestPath(requestPath, routePolicy = "gateway") {
 }
 
 export function isTunnelRouteAllowed(_distribution, requestPath, kind = "http", method = "GET", routePolicy = "gateway") {
+  let pathname;
+  try { pathname = new URL(resolveTunnelRequestPath(requestPath, routePolicy), "http://127.0.0.1").pathname; }
+  catch { return false; }
+  if (pathname === "/api/system/spaces" || pathname === "/api/spaces") return false;
   if (routePolicy === "gateway") {
-    try { resolveTunnelRequestPath(requestPath, routePolicy); }
-    catch { return false; }
     return ["http", "websocket"].includes(String(kind));
   }
   if (kind !== "http") return false;
-  let pathname;
-  try { pathname = new URL(resolveTunnelRequestPath(requestPath), "http://127.0.0.1").pathname; }
-  catch { return false; }
   const normalizedMethod = String(method || "GET").toUpperCase();
   if (pathname === "/login" || pathname === "/logout") return ["GET", "HEAD", "POST"].includes(normalizedMethod);
   if (!["GET", "HEAD"].includes(normalizedMethod)) return false;
@@ -563,7 +562,6 @@ const MOBILE_TUNNEL_EXACT_PATHS = new Set([
   "/api/node/v1/client/overview",
   "/api/node/v1/client/runtime",
   "/api/system/apps",
-  "/api/system/spaces",
   "/api/system/mail/status",
   "/api/skills",
   "/api/channels",

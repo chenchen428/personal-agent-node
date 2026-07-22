@@ -1876,6 +1876,7 @@ async function buildClientOverview() {
   const recent = await buildClientActivity(new URL("http://local/api/node/v1/client/activity?limit=5"));
   const externalAccess = config.externalAccess();
   return {
+    space: currentMemorySpace(),
     machine: {
       id: config.instanceId,
       state: "running",

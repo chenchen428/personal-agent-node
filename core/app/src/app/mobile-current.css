@@ -383,21 +383,11 @@
 .drawer-user strong { font-size: 10px; font-weight: 500; }
 .drawer-user span { margin-top: 3px; color: #8f9295; font-size: 8px; overflow-wrap: anywhere; }
 .mobile-space-selector { margin: -8px 0 8px; overflow: hidden; border: 1px solid #44474a; border-radius: 10px; background: #343639; }
-.mobile-space-selector > button { width: 100%; min-height: 54px; display: grid; grid-template-columns: 24px minmax(0,1fr) 16px; align-items: center; gap: 8px; border: 0; padding: 8px 10px; background: transparent; color: #e9e7e2; text-align: left; }
-.mobile-space-selector > button > svg { width: 14px; color: #9a9c9e; }
-.mobile-space-selector > button > svg:last-child { transition: transform .15s ease; }
-.mobile-space-selector.is-open > button > svg:last-child { transform: rotate(180deg); }
+.mobile-space-current { width: 100%; min-height: 54px; display: grid; grid-template-columns: 24px minmax(0,1fr); align-items: center; gap: 8px; padding: 8px 10px; color: #e9e7e2; text-align: left; }
+.mobile-space-current > svg { width: 14px; color: #9a9c9e; }
 .mobile-space-selector small,.mobile-space-selector strong { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .mobile-space-selector small { color: #85888b; font-size: 7px; font-weight: 400; }
 .mobile-space-selector strong { margin-top: 2px; font-size: 10px; font-weight: 500; }
-.mobile-space-selector > div { border-top: 1px solid #44474a; padding: 5px; }
-.mobile-space-selector > div > button { width: 100%; min-height: 45px; display: grid; grid-template-columns: minmax(0,1fr) 16px; align-items: center; gap: 7px; border: 0; border-radius: 8px; padding: 7px 8px; background: transparent; color: #c7c8c6; text-align: left; }
-.mobile-space-selector > div > button[aria-pressed="true"] { background: #45474a; color: #fff; }
-.mobile-space-selector > div > button:disabled { cursor: wait; opacity: .58; }
-.mobile-space-selector > div > button[aria-busy="true"] { background: #45474a; opacity: 1; }
-.mobile-space-selector > div > button svg { width: 13px; color: #79aa88; }
-.mobile-space-selector > div > p { margin: 5px 7px 7px; color: #777a7d; font-size: 7px; line-height: 1.5; }
-.mobile-space-selector > div > .mobile-space-switch-error { color: #f08f7e; }
 .drawer-nav { display: grid; gap: 5px; }
 .drawer-nav-label { margin: 13px 12px 3px; color: #717478; font: 7px var(--pa-mono); letter-spacing: .12em; }
 .drawer-nav a { min-height: 47px; display: grid; grid-template-columns: 24px minmax(0,1fr) auto; align-items: center; gap: 8px; border-radius: 9px; padding: 0 12px; color: #aeb0b2; font-size: 11px; text-align: left; text-decoration: none; }

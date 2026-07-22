@@ -9,6 +9,7 @@
 @import "./desktop-v627-data.css";
 @import "./desktop-v633-conversation.css";
 @import "./desktop-v72.css";
+@import "./page-template-parity.css";
 
 :root {
   color-scheme: light;

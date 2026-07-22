@@ -98,8 +98,9 @@ test("reverse tunnel protocol rejects unsafe paths, headers, oversized frames, a
   assert.equal(isTunnelRouteAllowed(distribution, "/public/report", "http"), true);
   assert.equal(isTunnelRouteAllowed(distribution, "/api/chat/ws", "websocket"), true);
   assert.equal(isTunnelRouteAllowed(distribution, "/api/system/setup", "http"), true);
-  assert.equal(isTunnelRouteAllowed(distribution, "/api/system/spaces", "http"), true);
-  assert.equal(isTunnelRouteAllowed(distribution, "/api/system/spaces", "http", "POST"), true);
+  assert.equal(isTunnelRouteAllowed(distribution, "/api/system/spaces", "http"), false);
+  assert.equal(isTunnelRouteAllowed(distribution, "/api/system/spaces", "http", "POST"), false);
+  assert.equal(isTunnelRouteAllowed(distribution, "/api/spaces", "http", "POST"), false);
   assert.equal(isTunnelRouteAllowed(distribution, "/api/mobile/activity", "http"), true);
   assert.equal(isTunnelRouteAllowed(distribution, "/apps/future-app/", "http"), true);
   assert.equal(isTunnelRouteAllowed(distribution, "/app/conversations", "http"), true);
@@ -185,8 +186,9 @@ test("connector forwards HTTP streams only to the fixed loopback gateway and nev
 
   peer.send(JSON.stringify({ v: 1, type: "request.start", id: "stream-spaces-0001", kind: "http", method: "GET", path: "/api/system/spaces", headers: {} }));
   peer.send(JSON.stringify({ v: 1, type: "request.end", id: "stream-spaces-0001" }));
-  await waitFor(() => messages.some((message) => message.type === "response.end" && message.id === "stream-spaces-0001"));
-  assert.equal(requests.at(-1).url, "/api/system/spaces");
+  await waitFor(() => messages.some((message) => message.type === "response.error" && message.id === "stream-spaces-0001"));
+  assert.equal(messages.find((message) => message.type === "response.error" && message.id === "stream-spaces-0001").code, "REMOTE_ROUTE_DENIED");
+  assert.notEqual(requests.at(-1).url, "/api/system/spaces");
 });
 
 test("connector delegates tunneled WebSockets to the authenticated local gateway", async (t) => {

@@ -50,6 +50,11 @@ export function createPrivateSiteGateway(options = {}) {
         sendText(response, 400, "Unsafe request path\n", request.method === "HEAD");
         return;
       }
+      const url = new URL(request.url || "/", `http://${host || "localhost"}`);
+      if (isSpaceManagementPath(url.pathname) && !isDirectLoopbackConsoleRequest(request)) {
+        sendText(response, 403, "Space management is available only from the local desktop\n", request.method === "HEAD");
+        return;
+      }
       const spaceProxy = resolveRelaySpaceProxyTarget(request, config);
       if (spaceProxy?.statusCode) {
         sendText(response, spaceProxy.statusCode, `${spaceProxy.message}\n`, request.method === "HEAD");
@@ -60,7 +65,6 @@ export function createPrivateSiteGateway(options = {}) {
         proxy.web(request, response, { target: spaceProxy.target });
         return;
       }
-      const url = new URL(request.url || "/", `http://${host || "localhost"}`);
       const mailIngest = resolveRelayMailIngestTarget(request, url, config);
       if (mailIngest) {
         if (mailIngest.statusCode) {
@@ -228,6 +232,10 @@ export function isDirectLoopbackConsoleRequest(request) {
   const host = normalizeRequestHost(request.headers.host);
   return isLoopbackAddress(request.socket.remoteAddress)
     && ["127.0.0.1", "localhost", "::1"].includes(host);
+}
+
+function isSpaceManagementPath(pathname) {
+  return pathname === "/api/system/spaces" || pathname === "/api/spaces";
 }
 
 export function resolvePersonalWechatCallbackTarget(request, url, config, resolver = null) {

@@ -127,6 +127,7 @@ test("path gateway authenticates non-whitelisted paths before normal route resol
   try {
     const home = await request({ port, host: "example.site", path: "/" });
     assert.equal(home.status, 302);
+    assert.equal((await request({ port, host: "example.site", path: "/api/system/spaces", headers: { cookie: "session=ok" } })).status, 403);
 
     assert.equal((await request({ port, host: "unknown.site", path: "/" })).status, 404);
     for (const legacy of ["/admin", "/agent", "/agentx", "/api/agent", "/api/files"]) {
