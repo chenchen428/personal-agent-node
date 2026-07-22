@@ -452,26 +452,34 @@ export class SessionOrchestrator {
       allowCreateThread: false,
       internalInput: true,
       developerInstructions: buildMainAgentInstructions(main),
-    }).catch((hookError) => {
-      const fallback = `${success ? "任务已完成" : "任务未完成"}：${truncateTitle(worker.title)}。${worker.url || worker.linkNotice}`;
-      this.appendAndBroadcast(main.id, "session.status", {
-        content: `Worker 完成汇总失败：${hookError.message}`,
-        level: "error",
-        metadata: { eventType: "worker/hook/summary-failed", workerSessionId: worker.id },
-      });
-      this.appendAndBroadcast(main.id, "session.assistant_message", {
-        content: fallback,
-        metadata: {
-          streamState: "completed",
-          eventType: "worker/hook/summary-fallback",
-          workerSessionId: worker.id,
-          success: Boolean(success),
-        },
-      });
-      if (isWechatMainChannel(main.channel) && main.senderId) {
-        void this.enqueueWechatText(main.id, main.senderId, fallback);
+    }).then((summaryResult) => {
+      if (summaryResult?.success === false || summaryResult?.status === "failed") {
+        this.reportWorkerSummaryFailure({ main, worker, success, error: new Error("Agent completion returned failed") });
       }
+    }, (hookError) => {
+      this.reportWorkerSummaryFailure({ main, worker, success, error: hookError });
     });
+  }
+
+  reportWorkerSummaryFailure({ main, worker, success, error }) {
+    const fallback = `${success ? "任务已完成" : "任务未完成"}：${truncateTitle(worker.title)}。${worker.url || worker.linkNotice}`;
+    this.appendAndBroadcast(main.id, "session.status", {
+      content: `Worker 完成汇总失败：${error?.message || "unknown error"}`,
+      level: "error",
+      metadata: { eventType: "worker/hook/summary-failed", workerSessionId: worker.id },
+    });
+    this.appendAndBroadcast(main.id, "session.assistant_message", {
+      content: fallback,
+      metadata: {
+        streamState: "completed",
+        eventType: "worker/hook/summary-fallback",
+        workerSessionId: worker.id,
+        success: Boolean(success),
+      },
+    });
+    if (isWechatMainChannel(main.channel) && main.senderId) {
+      void this.enqueueWechatText(main.id, main.senderId, fallback);
+    }
   }
 
   findMainAncestor(session) {
