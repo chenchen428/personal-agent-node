@@ -21,7 +21,7 @@ export function PageTemplateDetailPage({ template }: { template: PageTemplate })
     <section className="template-detail-overview" aria-label="模板说明">
       <article>
         <h2>从户型图到 SketchUp 式完整家装鸟瞰</h2>
-        <p>读取用户给出的户型图和持续迭代的需求，生成可核对、可触控查看，并经过生活可用性走查的完整空间方案。</p>
+        <p>先归纳用户持续迭代的需求与原始户型图，再使用墙体、门窗、定制柜、家具与软装组件构建 SketchUp 式整屋模型，并保留户型调整依据。</p>
         <ul>{template.fixedFramework.slice(0, 6).map((item) => <li key={item}><Check aria-hidden="true" />{item}</li>)}</ul>
       </article>
       <aside>
