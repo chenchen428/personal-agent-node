@@ -19,12 +19,16 @@ test("Pages registers one focused built-in renovation template", () => {
 
 test("template list stays a compact static card while detail owns interaction", () => {
   const list = read("core/app/src/components/page-templates/page-templates-page.tsx");
+  const routeLoading = read("core/app/src/app/app/pages/templates/[templateId]/loading.tsx");
   const artwork = read("core/app/src/components/page-templates/template-card-artwork.tsx");
   const detail = read("core/app/src/components/page-templates/page-template-detail-page.tsx");
   const devicePreview = read("core/app/src/components/page-templates/template-device-preview.tsx");
   const preview = read("core/app/src/components/page-templates/interior-template-preview.tsx");
   const parityStyles = read("core/app/src/app/page-template-parity.css");
   assert.match(list, /TemplateCardArtwork/);
+  assert.match(list, /href=\{`\/app\/pages\/templates\/\$\{template\.id\}`\} prefetch/);
+  assert.match(routeLoading, /LoadingState label="正在打开模板"/);
+  assert.match(routeLoading, /PageSurface/);
   assert.doesNotMatch(list, /PAGES · TEMPLATE/);
   assert.doesNotMatch(`${list}\n${detail}`, /<Breadcrumb/);
   assert.doesNotMatch(`${list}\n${artwork}`, /iframe|WebGLRenderer|InteriorTemplateCanvas/);

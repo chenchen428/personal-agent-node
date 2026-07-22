@@ -13,7 +13,7 @@ export function PageTemplatesPage() {
         <div className="page-template-card-meta"><span>已内置</span><small>{template.category}</small></div>
         <h2>{template.name}</h2><p>{template.summary}</p>
         <ul><li><Box aria-hidden="true" />SketchUp 式完整 SU 设计稿</li><li><Smartphone aria-hidden="true" />桌面与移动横屏独立体验</li><li><Sparkles aria-hidden="true" />户型图、需求与质量走查一体交付</li></ul>
-        <Button asChild className="page-template-detail-action"><Link href={`/app/pages/templates/${template.id}`}>查看模板<ArrowUpRight aria-hidden="true" /></Link></Button>
+        <Button asChild className="page-template-detail-action"><Link href={`/app/pages/templates/${template.id}`} prefetch>查看模板<ArrowUpRight aria-hidden="true" /></Link></Button>
       </div>
     </article>)}</div>
   </main>;

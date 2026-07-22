@@ -169,6 +169,9 @@ test('GitHub release chain is version-gated and publishes verifiable artifacts',
   const bad = run(process.execPath, ['scripts/release-check.mjs', '--tag', 'v999.0.0', '--allow-dirty']);
   assert.notEqual(bad.status, 0);
   const workflow = fs.readFileSync(path.join(root, '.github/workflows/release.yml'), 'utf8');
+  assert.match(workflow, /platform:\s*\n\s*needs: prepare/);
+  assert.match(workflow, /publish:\s*\n\s*needs: \[verify, platform\]/);
+  assert.match(workflow, /actions\/cache@v4/);
   for (const requirement of [
     'NODE_VERSION: 22.23.1',
     'windows-2025',
