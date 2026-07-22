@@ -114,6 +114,97 @@ test("daily Token limit automatically replies on WeChat without starting the Age
   }
 });
 
+test("deterministically delegates a matched Page template before the main Agent runs", async () => {
+  const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), "oab-orchestrator-page-routing-"));
+  const store = new BridgeStore({ dataDir, consoleBaseUrl: "https://agent.example.test" });
+  const main = store.getOrCreateDesktopMainSession({ workspaceRoot: dataDir });
+  const calls = [];
+  let releaseWorker;
+  const workerGate = new Promise((resolve) => { releaseWorker = resolve; });
+  const orchestrator = new SessionOrchestrator({
+    store,
+    hub: { broadcast: () => {} },
+    channels: {},
+    progressTimerEnabled: false,
+    runner: {
+      runAppServerCommand: async (input) => {
+        calls.push(input);
+        if (calls.length === 1) await workerGate;
+        return { ok: true };
+      },
+      stopAppServerCommand: () => false,
+    },
+  });
+  try {
+    const request = "请立即开始制作一套90平方米二手房的可交互装修设计交付 Page，不要用示例户型替代。";
+    await orchestrator.resumeSession(main.id, request, {
+      displayContent: request,
+      messageMetadata: { channel: "desktop", clientMessageId: "page-routing-1" },
+    });
+    await waitFor(() => calls.length === 1);
+
+    const children = store.listSessionsPage({ parentSessionId: main.id, limit: 20 }).sessions;
+    assert.equal(children.length, 1);
+    assert.equal(calls[0].sessionId, children[0].id);
+    assert.match(calls[0].stdin, /interior-design-delivery/);
+    assert.match(calls[0].stdin, /interior-design/);
+    assert.match(calls[0].stdin, /fixedFramework/);
+    assert.match(calls[0].stdin, /agentInstructions/);
+    assert.match(calls[0].stdin, /90平方米二手房/);
+
+    const messages = store.getSession(main.id).messages;
+    assert.equal(messages.filter((message) => message.role === "user" && message.content === request).length, 1);
+    assert.match(messages.findLast((message) => message.role === "assistant")?.content || "", /已开始处理.*处理中/);
+  } finally {
+    releaseWorker?.();
+    await waitFor(() => !orchestrator.running.size);
+    orchestrator.stop();
+    store.close();
+    fs.rmSync(dataDir, { recursive: true, force: true });
+  }
+});
+
+test("reports parent-scoped task status without starting or duplicating a task", async () => {
+  const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), "oab-orchestrator-task-status-routing-"));
+  const store = new BridgeStore({ dataDir, consoleBaseUrl: "https://agent.example.test" });
+  const main = store.getOrCreateDesktopMainSession({ workspaceRoot: dataDir });
+  const child = store.createSession({
+    role: "worker",
+    parentSessionId: main.id,
+    title: "装修设计交付页",
+    taskDescription: "使用内置模板制作装修设计交付页",
+    workspaceRoot: dataDir,
+  });
+  store.updateSession(child.id, { status: "running" });
+  let runnerCalls = 0;
+  const orchestrator = new SessionOrchestrator({
+    store,
+    hub: { broadcast: () => {} },
+    channels: {},
+    progressTimerEnabled: false,
+    runner: {
+      runAppServerCommand: async () => { runnerCalls += 1; },
+      stopAppServerCommand: () => false,
+    },
+  });
+  try {
+    const before = store.countSessions({ parentSessionId: main.id });
+    await orchestrator.resumeSession(main.id, "现在做到哪一步了？请只返回刚才那个任务的当前状态。", {
+      displayContent: "现在做到哪一步了？请只返回刚才那个任务的当前状态。",
+      messageMetadata: { channel: "desktop", clientMessageId: "task-status-1" },
+    });
+    assert.equal(runnerCalls, 0);
+    assert.equal(store.countSessions({ parentSessionId: main.id }), before);
+    const reply = store.getSession(main.id).messages.findLast((message) => message.role === "assistant");
+    assert.match(reply?.content || "", /装修设计交付页”当前状态：处理中/);
+    assert.doesNotMatch(reply?.content || "", /worker|子任务/i);
+  } finally {
+    orchestrator.stop();
+    store.close();
+    fs.rmSync(dataDir, { recursive: true, force: true });
+  }
+});
+
 test("routes personal WeChat through the main Agent and replies with the personal connector", async () => {
   const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), "oab-orchestrator-personal-wechat-"));
   const store = new BridgeStore({ dataDir, consoleBaseUrl: "https://agent.example.test" });
