@@ -176,16 +176,17 @@ test('setup status exposes separate readiness dimensions and remains read-only',
   }
 });
 
-test('every planned command leaf remains unavailable by default and with preview opt-in', () => {
+test('every planned command leaf remains unavailable by default and with preview opt-in', async () => {
   const help = JSON.parse(runOk(['help', '--all', '--json']).stdout);
   const planned = help.result.commandGroups.planned.flatMap((entry) => expandCommandName(entry.name));
   assert.ok(planned.length > 0);
-  for (const command of planned) {
-    for (const optIn of [[], ['--preview']]) {
-      const result = run([...command.split(' '), ...optIn, '--json']);
+  const cases = planned.flatMap((command) => [[], ['--preview']].map((optIn) => ({ command, optIn })));
+  for (let index = 0; index < cases.length; index += 8) {
+    await Promise.all(cases.slice(index, index + 8).map(async ({ command, optIn }) => {
+      const result = await runAsync([...command.split(' '), ...optIn, '--json'], '');
       assert.equal(result.status, 7, `${command} ${optIn.join(' ')}`);
       assert.equal(JSON.parse(result.stderr).error.code, 'CAPABILITY_UNAVAILABLE', `${command} ${optIn.join(' ')}`);
-    }
+    }));
   }
 });
 

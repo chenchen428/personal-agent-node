@@ -12,7 +12,8 @@ env:
   GO_VERSION: 1.24.x
 
 jobs:
-  source:
+  prepare:
+    name: Prepare immutable release payload
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
@@ -22,19 +23,8 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
-      - uses: actions/setup-go@v5
-        with:
-          go-version: ${{ env.GO_VERSION }}
-          cache-dependency-path: core/runtime/native/go.mod
-      - uses: dtolnay/rust-toolchain@stable
-      - name: Install Linux desktop test dependencies
-        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev
       - run: npm ci
       - run: node scripts/release-check.mjs --tag "${GITHUB_REF_NAME}"
-      - run: npm run doctor
-      - run: npm run guard
-      - run: npm test
-      - run: npm run check
       - run: node scripts/release-package.mjs --tag "${GITHUB_REF_NAME}" --stage dist/release-payload --output dist/source-release
       - run: node scripts/build-self-hosted-relay-installer.mjs --tag "${GITHUB_REF_NAME}" --output dist/relay-release
       - uses: actions/upload-artifact@v4
@@ -57,8 +47,43 @@ jobs:
           if-no-files-found: error
           retention-days: 7
 
+  verify:
+    name: Verify release source
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache-dependency-path: core/runtime/native/go.mod
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Restore Rust test cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            core/desktop/src-tauri/target
+          key: cargo-test-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('core/desktop/src-tauri/Cargo.lock') }}
+          restore-keys: |
+            cargo-test-${{ runner.os }}-${{ runner.arch }}-
+      - name: Install Linux desktop test dependencies
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev
+      - run: npm ci
+      - run: node scripts/release-check.mjs --tag "${GITHUB_REF_NAME}"
+      - run: npm run doctor
+      - run: npm run guard
+      - run: npm test
+      - run: npm run check
+
   platform:
-    needs: source
+    needs: prepare
     strategy:
       fail-fast: false
       matrix:
@@ -96,6 +121,17 @@ jobs:
           cache-dependency-path: core/runtime/native/go.mod
       - uses: dtolnay/rust-toolchain@stable
         if: matrix.platform != 'linux'
+      - name: Restore Rust release cache
+        if: matrix.platform != 'linux'
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            core/desktop/src-tauri/target
+          key: cargo-release-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('core/desktop/src-tauri/Cargo.lock') }}
+          restore-keys: |
+            cargo-release-${{ runner.os }}-${{ runner.arch }}-
       - run: npm ci
       - uses: actions/download-artifact@v4
         with:
@@ -168,7 +204,7 @@ jobs:
           retention-days: 7
 
   publish:
-    needs: platform
+    needs: [verify, platform]
     runs-on: ubuntu-24.04
     permissions:
       contents: write
