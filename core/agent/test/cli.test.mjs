@@ -145,6 +145,41 @@ test("session CLI requires concise child-task metadata and supports updates", as
   );
 });
 
+test("session list scopes status reads to one parent session", async (t) => {
+  let receivedUrl = "";
+  const server = http.createServer(async (request, response) => {
+    receivedUrl = request.url || "";
+    response.writeHead(200, { "content-type": "application/json" });
+    response.end(JSON.stringify({
+      ok: true,
+      sessions: [{
+        id: "task-current",
+        role: "worker",
+        parentSessionId: "main-current",
+        status: "running",
+        title: "制作装修交付页",
+        taskDescription: "使用装修模板制作交付页",
+      }],
+      nextCursor: "",
+      hasMore: false,
+    }));
+  });
+  await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
+  t.after(() => server.close());
+  const address = server.address();
+  const { stdout } = await execFileAsync(process.execPath, [
+    path.join(projectRoot, "bin", "pa-cli.mjs"),
+    "session", "list", "--parent", "main-current", "--all", "--json",
+  ], {
+    cwd: projectRoot,
+    env: { ...process.env, OPEN_AGENT_BRIDGE_API_BASE: `http://127.0.0.1:${address.port}` },
+  });
+  const url = new URL(receivedUrl, "http://127.0.0.1");
+  assert.equal(url.pathname, "/api/sessions");
+  assert.equal(url.searchParams.get("parent"), "main-current");
+  assert.equal(JSON.parse(stdout).sessions[0].status, "running");
+});
+
 test("session CLI preserves the unavailable-domain notice instead of inventing a task URL", async (t) => {
   const server = http.createServer(async (request, response) => {
     for await (const _chunk of request) {}
@@ -339,6 +374,34 @@ test("confirmed channel login delegates QR delivery and monitoring to the bridge
   assert.equal(requests.length, 1);
   assert.deepEqual(requests[0].body, {});
   assert.doesNotMatch(stdout, /qrImage|base64/);
+});
+
+test("pages template CLI lists match metadata and inspects the full contract", async () => {
+  const cli = path.join(projectRoot, "bin", "pa-cli.mjs");
+  const listed = await execFileAsync(process.execPath, [cli, "pages", "templates", "list", "--json"], {
+    cwd: projectRoot,
+    env: { ...process.env },
+  });
+  const list = JSON.parse(listed.stdout);
+  assert.equal(list.schemaVersion, 1);
+  assert.deepEqual(list.templates.map((template) => template.id), ["interior-design-delivery"]);
+  assert.equal(list.templates[0].skill, "interior-design");
+  assert.match(list.templates[0].useWhen, /户型/);
+
+  const inspected = await execFileAsync(process.execPath, [
+    cli, "pages", "templates", "inspect", "--id", "interior-design-delivery", "--json",
+  ], { cwd: projectRoot, env: { ...process.env } });
+  const template = JSON.parse(inspected.stdout);
+  assert.equal(template.id, "interior-design-delivery");
+  assert.ok(template.fixedFramework.includes("3D / 平面视角"));
+  assert.ok(template.agentInstructions.some((item) => item.includes("interior-design")));
+
+  await assert.rejects(execFileAsync(process.execPath, [
+    cli, "pages", "templates", "inspect", "--id", "missing", "--json",
+  ], { cwd: projectRoot, env: { ...process.env } }), (error) => {
+    assert.match(error.stderr, /Unknown Page template/);
+    return true;
+  });
 });
 
 test("pages publish sends HTML and both device screenshots as one Page contract", async (t) => {

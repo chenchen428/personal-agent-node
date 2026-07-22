@@ -1,6 +1,6 @@
 # Tasks
 
-Use tasks when the main Agent delegates real work that needs files, commands, research, deployment, or continued execution. Do not create a task for greetings, confirmations, simple answers, or clarification questions.
+Use tasks for real work that needs files, multi-step commands, research plus delivery, Page creation, deployment, cross-module changes, multiple deliverables, or continued execution. These requests must be delegated to at least one child task instead of being executed inside the main-Agent turn. Do not create a task for greetings, confirmations, simple answers, clarification questions, one quick atomic action, schedule management, existing-result retrieval, or task-status questions.
 
 ## Create
 
@@ -43,6 +43,17 @@ pa-cli session status --session <task-id> --json
 Provide at least one changed field. The same 20/100-character limits apply. Updating metadata does not steer, resume, cancel, or rerun task execution.
 
 ## Report
+
+When the user asks for progress or status, the main Agent does not create or resume a task. Query only children of the current main session:
+
+```bash
+pa-cli session list --parent <main-session-id> --all --json
+pa-cli session status --session <task-id> --json
+```
+
+Use `session status` only when the user identifies a particular task or the list result needs its full context. Report every matching task by its user-facing title and current state: `start` and `running` are in progress, `idle` is completed, and `paused` is incomplete or needs attention. If no child matches, say so directly. Never infer progress from elapsed time or create a replacement task while answering status.
+
+The first reply after `session start` explicitly says the task has started and is in progress. Progress hooks explicitly say it is still in progress. Completion hooks begin with an explicit completed or incomplete state before summarizing the result.
 
 `pa-cli session start`, `session status`, and session listings use the same link contract as Online Pages:
 

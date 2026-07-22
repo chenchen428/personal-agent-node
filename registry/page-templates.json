@@ -8,6 +8,16 @@
       "skill": "interior-design",
       "status": "built-in",
       "summary": "以 SketchUp 式建筑模型语言组织户型、空间关系和完整家居组件，交付可自由查看的 SU 设计稿。",
+      "useWhen": "用户要求根据户型图、室内空间或居住需求制作装修设计、户型改造、家居布局或可交互装修交付页时使用。",
+      "matchTerms": [
+        "装修设计",
+        "室内设计",
+        "户型改造",
+        "家居布局",
+        "平面图",
+        "SketchUp",
+        "SU 设计稿"
+      ],
       "desktop": true,
       "mobileLandscape": true,
       "fixedFramework": [
@@ -28,6 +38,12 @@
         "阳台、栏杆与生活区构件",
         "家具、柜体和生活物件",
         "细节标注内容"
+      ],
+      "agentInstructions": [
+        "先调用并遵循 interior-design 技能，再开始生成页面。",
+        "保留 fixedFramework 的全部交付结构，只根据用户材料和需求调整 agentFreedom 范围内的内容。",
+        "把模板 ID、关联技能、用户原始材料、约束和验收标准完整写入子任务执行说明。",
+        "没有用户户型图或关键尺寸时先明确缺失材料，不得把示例户型冒充用户方案。"
       ]
     }
   ]

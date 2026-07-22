@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
 import test from "node:test";
+import { inspectPageTemplate, listPageTemplates, readPageTemplateRegistry } from "../core/agent/src/online-pages/template-catalog.js";
 
 const root = path.resolve(import.meta.dirname, "..");
 const read = (relative) => fs.readFileSync(path.join(root, relative), "utf8");
@@ -14,7 +15,23 @@ test("Pages registers one focused built-in renovation template", () => {
   assert.equal(registry.templates[0].skill, "interior-design");
   assert.equal(registry.templates[0].mobileLandscape, true);
   assert.match(registry.templates[0].summary, /SketchUp 式建筑模型语言/);
+  assert.match(registry.templates[0].useWhen, /户型改造/);
+  assert.ok(registry.templates[0].matchTerms.includes("装修设计"));
+  assert.ok(registry.templates[0].agentInstructions.some((item) => item.includes("interior-design")));
   assert.ok(registry.templates[0].fixedFramework.some((item) => item.includes("SketchUp 式低多边形建筑表达")));
+});
+
+test("Agent template catalog lists match metadata and inspects the full execution contract", () => {
+  const registry = readPageTemplateRegistry();
+  const templates = listPageTemplates({ registry });
+  assert.deepEqual(templates.map((template) => template.id), ["interior-design-delivery"]);
+  assert.equal(templates[0].skill, "interior-design");
+  assert.match(templates[0].useWhen, /装修设计/);
+  assert.ok(templates[0].matchTerms.includes("SketchUp"));
+  const template = inspectPageTemplate("interior-design-delivery", { registry });
+  assert.ok(template.fixedFramework.length >= 8);
+  assert.ok(template.agentInstructions.some((item) => item.includes("子任务")));
+  assert.equal(inspectPageTemplate("missing-template", { registry }), null);
 });
 
 test("template list stays a compact static card while detail owns interaction", () => {
