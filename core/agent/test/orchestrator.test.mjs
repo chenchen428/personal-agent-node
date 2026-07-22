@@ -1423,6 +1423,51 @@ test("shows a deterministic task status when the main-Agent completion summary f
   store.close();
 });
 
+test("shows a deterministic task status when the app-server reports a failed completion", async () => {
+  const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), "oab-orchestrator-worker-summary-result-fallback-"));
+  const store = new BridgeStore({ dataDir, consoleBaseUrl: "https://agent.example.test" });
+  const main = store.getOrCreateDesktopMainSession({ workspaceRoot: dataDir });
+  const orchestrator = new SessionOrchestrator({
+    store,
+    hub: { broadcast: () => {} },
+    channels: {},
+    progressTimerEnabled: false,
+    runner: {
+      runAppServerCommand: async (config) => {
+        if (config.sessionId === main.id) return { status: "failed", success: false };
+        await config.onSessionEvent({
+          sessionId: config.sessionId,
+          kind: "session.error",
+          payload: { content: "usage limit reached", level: "error" },
+        });
+        await config.onSessionEvent({
+          sessionId: config.sessionId,
+          kind: "session.complete",
+          payload: { content: "failed", status: "failed", success: false },
+        });
+        return { status: "failed", success: false };
+      },
+      stopAppServerCommand: () => false,
+    },
+  });
+
+  const worker = await orchestrator.startWorkerSession({
+    parentSessionId: main.id,
+    title: "生成装修设计交付页",
+    description: "按装修模板生成交付页",
+    task: "生成页面",
+  });
+  await waitFor(() => store.getSession(main.id).messages.some((message) => message.metadata?.eventType === "worker/hook/summary-fallback"));
+  const fallback = store.getSession(main.id).messages.find((message) => message.metadata?.eventType === "worker/hook/summary-fallback");
+  assert.match(fallback.content, /^任务未完成：生成装修设计交付页。https:\/\/agent\.example\.test\/app\/mobile\/workers\//);
+  assert.equal(fallback.metadata.workerSessionId, worker.id);
+  assert.equal(fallback.metadata.success, false);
+  assert.equal(store.getSessionRecord(worker.id).status, "paused");
+
+  orchestrator.stop();
+  store.close();
+});
+
 test("worker completion hook returns the result to the main agent for a concise WeChat summary", async () => {
   const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), "oab-orchestrator-worker-hook-"));
   const store = new BridgeStore({ dataDir, consoleBaseUrl: "https://agent.example.test" });
