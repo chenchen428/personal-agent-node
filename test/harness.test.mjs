@@ -171,7 +171,8 @@ test('GitHub release chain is version-gated and publishes verifiable artifacts',
   const workflow = fs.readFileSync(path.join(root, '.github/workflows/release.yml'), 'utf8');
   assert.match(workflow, /platform:\s*\n\s*needs: prepare/);
   assert.match(workflow, /publish:\s*\n\s*needs: \[verify, platform\]/);
-  assert.match(workflow, /actions\/cache@v4/);
+  assert.match(workflow, /actions\/cache@v6/);
+  assert.match(workflow, /cargo-test-\$\{\{ runner\.os \}\}-\$\{\{ runner\.arch \}\}-\$\{\{ hashFiles\('core\/desktop\/src-tauri\/Cargo\.lock'\) \}\}/);
   for (const requirement of [
     'NODE_VERSION: 22.23.1',
     'windows-2025',
@@ -221,6 +222,18 @@ test('GitHub release chain is version-gated and publishes verifiable artifacts',
   } finally {
     fs.rmSync(metadataRoot, { recursive: true, force: true });
   }
+});
+
+test('GitHub CI runs independent platform suites in parallel', () => {
+  const workflow = fs.readFileSync(path.join(root, '.github/workflows/ci.yml'), 'utf8');
+  assert.match(workflow, /suite: \[desktop, native, node\]/);
+  assert.match(workflow, /npm run desktop:test/);
+  assert.match(workflow, /npm run native:test/);
+  assert.match(workflow, /npm run harness:test && npm run test:runtime && npm run test:edge && npm run test:agent/);
+  assert.match(workflow, /actions\/checkout@v7/);
+  assert.match(workflow, /actions\/setup-node@v7/);
+  assert.match(workflow, /actions\/setup-go@v7/);
+  assert.match(workflow, /actions\/cache@v6/);
 });
 
 test('public GitHub release keeps customer downloads concise and CI evidence separate', () => {
