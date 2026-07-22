@@ -4,6 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import qrcodeTerminal from "qrcode-terminal";
 import { ingestRawEmail, MAX_MAIL_BYTES } from "../src/connections/mail/mail-ingest.js";
+import { inspectPageTemplate, listPageTemplates } from "../src/online-pages/template-catalog.js";
 import { normalizeTaskCreate, normalizeTaskPatch } from "../src/server/task-contract.js";
 
 const personalAgentHome = path.resolve(process.env.PERSONAL_AGENT_HOME || path.join(os.homedir(), ".personal-agent"));
@@ -41,7 +42,7 @@ try {
   } else if (command === "session" && (subcommand === "list" || subcommand === "search")) {
     const query = args.query || args.q || (subcommand === "search" ? args._.slice(2).join(" ") : "");
     if (subcommand === "search" && !query) throw new Error("--query is required");
-    print(await listSessions({ query }));
+    print(await listSessions({ query, parentSessionId: args.parent || "" }));
   } else if (command === "session" && subcommand === "start") {
     const task = readTaskArgument({
       inline: args.task || args.t,
@@ -384,6 +385,19 @@ try {
       excludeRelativePaths,
       execute: args.execute === true,
     }));
+  } else if (command === "pages" && subcommand === "templates") {
+    const action = String(args._[2] || "list").trim();
+    if (action === "list") {
+      print({ schemaVersion: 1, templates: listPageTemplates() });
+    } else if (action === "inspect") {
+      const templateId = String(args.id || args.template || args._[3] || "").trim();
+      if (!templateId) throw new Error("--id is required");
+      const template = inspectPageTemplate(templateId);
+      if (!template) throw new Error(`Unknown Page template: ${templateId}`);
+      print(template);
+    } else {
+      throw new Error("pages templates action must be list or inspect");
+    }
   } else if (command === "pages" && subcommand === "publish") {
     const file = args.file || args.f;
     const desktopThumbnailFile = args["desktop-thumbnail"];
@@ -579,7 +593,7 @@ function delay(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-async function listSessions({ query = "" } = {}) {
+async function listSessions({ query = "", parentSessionId = "" } = {}) {
   const limit = Math.min(Math.max(Number.parseInt(args.limit || "20", 10) || 20, 1), 50);
   let cursor = args.cursor || "";
   const sessions = [];
@@ -587,6 +601,7 @@ async function listSessions({ query = "" } = {}) {
   do {
     const params = new URLSearchParams({ limit: String(limit), summary: "1" });
     if (query) params.set("query", query);
+    if (parentSessionId) params.set("parent", parentSessionId);
     if (cursor) params.set("cursor", cursor);
     if (args.archived) params.set("archived", "1");
     const page = await get(`/api/sessions?${params}`);
@@ -741,7 +756,7 @@ function help() {
   pa-cli memory delete --id <memory-id> --expected-revision <n> --capability <ephemeral> [--json]
   pa-cli session start (--task "..."|--task-file <utf8-file>) [--parent <session> --title "..." --description "..."] [--workspace <path>] [--json]
   pa-cli session update --session <id> [--title "..."] [--description "..."] [--json]
-  pa-cli session list [--query "..."] [--limit <n>] [--cursor <cursor>] [--all] [--json]
+  pa-cli session list [--query "..."] [--parent <main-session>] [--limit <n>] [--cursor <cursor>] [--all] [--json]
   pa-cli session search --query "..." [--all] [--json]
   pa-cli session input --session <id> --text "..." [--notify-wechat]
   pa-cli session resume --session <id> (--task "..."|--task-file <utf8-file>)
@@ -821,6 +836,8 @@ function help() {
   pa-cli file gc [--dry-run] [--execute] [--json]
   pa-cli file verify-storage [--execute] [--json]
   pa-cli file reconcile --root <allowlisted-dir> --source <source> --visibility public|private [--prefix <path>] [--exclude-manifest <json>] [--execute] [--json]
+  pa-cli pages templates list [--json]
+  pa-cli pages templates inspect --id <template-id> [--json]
   pa-cli pages publish --file <index.html> --folder <stable-name> --desktop-thumbnail <desktop.png> --mobile-thumbnail <mobile.png> [--title <text>] [--summary <text>] [--desktop-thumbnail-alt <text>] [--mobile-thumbnail-alt <text>] [--private] [--overwrite] [--json]
   pa-cli pages upload --file <asset.css|asset.js|image> [--folder <name>] [--private] [--json]`);
 }

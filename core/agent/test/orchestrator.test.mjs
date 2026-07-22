@@ -753,7 +753,7 @@ test("acknowledges WeChat immediately and queues the completed reply behind the 
   }]);
   assert.equal(calls[0].stdin, "你好，在吗");
   assert.doesNotMatch(calls[0].stdin, /pa-cli session start/);
-  assert.match(calls[0].appServerDeveloperInstructions, /简单问答.*直接自然地回答/);
+  assert.match(calls[0].appServerDeveloperInstructions, /简单问答.*直接处理/);
   assert.match(calls[0].appServerDeveloperInstructions, /不要轮询/);
   assert.match(calls[0].appServerDeveloperInstructions, /1 至 3 句话/);
   assert.match(calls[0].appServerDeveloperInstructions, /pa-cli cron create\|update\|delete\|run/);
@@ -761,6 +761,13 @@ test("acknowledges WeChat immediately and queues the completed reply behind the 
   assert.match(calls[0].appServerDeveloperInstructions, /search main-Agent Activity first/);
   assert.match(calls[0].appServerDeveloperInstructions, /Do not create a child task merely to retrieve an existing result/);
   assert.match(calls[0].appServerDeveloperInstructions, /silently try the other registered local indexes/);
+  assert.match(calls[0].appServerDeveloperInstructions, /凡是需要读写文件.*都必须进入任务调度/);
+  assert.match(calls[0].appServerDeveloperInstructions, /主 Agent 不得自己执行这些实质步骤/);
+  assert.match(calls[0].appServerDeveloperInstructions, /询问任务、进度、完成情况.*禁止创建或续接任务/);
+  assert.match(calls[0].appServerDeveloperInstructions, new RegExp(`pa-cli session list --parent ${session.id} --all --json`));
+  assert.match(calls[0].appServerDeveloperInstructions, /pa-cli pages templates list --json/);
+  assert.match(calls[0].appServerDeveloperInstructions, /interior-design-delivery/);
+  assert.match(calls[0].appServerDeveloperInstructions, /回复开头必须明确说‘任务已完成’或‘任务未完成’/);
   assert.doesNotMatch(calls[0].appServerDeveloperInstructions, /你好，在吗/);
   await waitFor(() => !orchestrator.running.has(session.id));
   assert.equal(orchestrator.running.has(session.id), false);
@@ -1281,6 +1288,45 @@ test("moves a worker to an interrupted terminal state when execution fails", asy
   await waitFor(() => orchestrator.running.size === 0 && store.getSessionRecord(worker.id).status === "paused");
   assert.equal(store.getSessionRecord(worker.id).status, "paused");
   assert.equal(store.getSession(worker.id).events.some((event) => event.payload?.metadata?.eventType === "worker/turn/terminal-fallback"), true);
+
+  orchestrator.stop();
+  store.close();
+});
+
+test("shows a deterministic task status when the main-Agent completion summary fails", async () => {
+  const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), "oab-orchestrator-worker-summary-fallback-"));
+  const store = new BridgeStore({ dataDir, consoleBaseUrl: "https://agent.example.test" });
+  const main = store.getOrCreateDesktopMainSession({ workspaceRoot: dataDir });
+  const orchestrator = new SessionOrchestrator({
+    store,
+    hub: { broadcast: () => {} },
+    channels: {},
+    progressTimerEnabled: false,
+    runner: {
+      runAppServerCommand: async (config) => {
+        if (config.sessionId === main.id) throw new Error("summary unavailable");
+        await config.onSessionEvent({
+          sessionId: config.sessionId,
+          kind: "session.assistant_message",
+          payload: { content: "已完成模板检查。", metadata: { streamState: "completed" } },
+        });
+        return { ok: true };
+      },
+      stopAppServerCommand: () => false,
+    },
+  });
+
+  const worker = await orchestrator.startWorkerSession({
+    parentSessionId: main.id,
+    title: "检查装修模板",
+    description: "检查装修设计交付页模板契约",
+    task: "检查模板",
+  });
+  await waitFor(() => store.getSession(main.id).messages.some((message) => message.metadata?.eventType === "worker/hook/summary-fallback"));
+  const fallback = store.getSession(main.id).messages.find((message) => message.metadata?.eventType === "worker/hook/summary-fallback");
+  assert.match(fallback.content, /^任务已完成：检查装修模板。https:\/\/agent\.example\.test\/app\/mobile\/workers\//);
+  assert.equal(fallback.metadata.workerSessionId, worker.id);
+  assert.equal(store.getSessionRecord(worker.id).status, "idle");
 
   orchestrator.stop();
   store.close();

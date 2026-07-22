@@ -1,5 +1,9 @@
 {
   "schemaVersion": 1,
+  "templateSelection": {
+    "requiredBeforeGeneration": true,
+    "matchingTemplateAndSkillPassedToChildTask": true
+  },
   "pageLinks": {
     "internalUrlIsRelative": true,
     "cliUrlUsesManagedDomain": true,

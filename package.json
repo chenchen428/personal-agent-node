@@ -1,6 +1,6 @@
 {
   "name": "personal-agent-node",
-  "version": "0.2.0-beta.37",
+  "version": "0.2.0-beta.38",
   "private": true,
   "license": "Apache-2.0",
   "type": "module",
@@ -59,7 +59,7 @@
     "qrcode-terminal": "^0.12.0",
     "react": "19.2.7",
     "react-dom": "19.2.7",
-    "sharp": "0.34.5",
+    "sharp": "0.35.3",
     "tailwind-merge": "^3.6.0",
     "three": "^0.179.1",
     "tsx": "^4.20.6",
@@ -79,7 +79,9 @@
     "typescript": "5.9.3"
   },
   "overrides": {
-    "postcss": "8.5.19"
+    "fast-uri": "3.1.4",
+    "postcss": "8.5.19",
+    "sharp": "$sharp"
   },
   "engines": {
     "node": ">=22 <24"

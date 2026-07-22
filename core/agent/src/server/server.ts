@@ -1578,17 +1578,22 @@ async function handleRequest(request: http.IncomingMessage, response: http.Serve
 
   if (url.pathname === "/api/sessions" && request.method === "GET") {
     const query = url.searchParams.get("query") || "";
+    const parentSessionId = url.searchParams.get("parent") || "";
     const page = store.listSessionsPage({
       includeArchived: url.searchParams.get("archived") === "1",
       limit: Number(url.searchParams.get("limit") || config.sessionPageSize),
       cursor: url.searchParams.get("cursor") || "",
       query,
+      parentSessionId,
       hydrate: false,
     });
     sendJson(response, 200, {
       ok: true,
       ...page,
-      totalSessions: store.countSessions(),
+      totalSessions: store.countSessions({
+        includeArchived: url.searchParams.get("archived") === "1",
+        parentSessionId,
+      }),
       html: renderConsoleSessionsFragment(page.sessions, { empty: !page.sessions.length, search: Boolean(query) }),
     });
     return;

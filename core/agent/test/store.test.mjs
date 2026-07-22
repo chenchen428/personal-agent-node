@@ -226,6 +226,7 @@ test("paginates and searches chat sessions with a stable cursor", () => {
     for (let index = 0; index < 3; index += 1) {
       store.createSession({
         id: `session-${index}`,
+        parentSessionId: index === 1 ? "main-b" : "main-a",
         title: index === 1 ? "Needle conversation" : `Conversation ${index}`,
         workspaceRoot: dataDir,
         createdAt: `2026-07-10T0${index}:00:00.000Z`,
@@ -242,6 +243,9 @@ test("paginates and searches chat sessions with a stable cursor", () => {
     const search = store.listSessionsPage({ query: "Needle", limit: 20 });
     assert.deepEqual(search.sessions.map((session) => session.id), ["session-1"]);
     assert.equal(search.hasMore, false);
+    const children = store.listSessionsPage({ parentSessionId: "main-a", limit: 20 });
+    assert.deepEqual(children.sessions.map((session) => session.id), ["session-2", "session-0"]);
+    assert.equal(store.countSessions({ parentSessionId: "main-a" }), 2);
   } finally {
     store.close();
   }

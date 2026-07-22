@@ -470,12 +470,17 @@ export class BridgeStore {
     `).all().map((row) => this.getSessionRecord(row.id)).filter(Boolean);
   }
 
-  listSessionsPage({ includeArchived = false, limit = 20, cursor = "", query = "", hydrate = true } = {}) {
+  listSessionsPage({ includeArchived = false, limit = 20, cursor = "", query = "", parentSessionId = "", hydrate = true } = {}) {
     const pageSize = Math.min(Math.max(Number(limit) || 20, 1), 50);
     const search = String(query || "").trim().slice(0, 200);
     const where = [];
     const params = [];
     if (!includeArchived) where.push("status != 'archived'");
+    const parentId = String(parentSessionId || "").trim();
+    if (parentId) {
+      where.push("parent_session_id = ?");
+      params.push(parentId);
+    }
     if (search) {
       const pattern = `%${escapeSqlLike(search)}%`;
       where.push("(title LIKE ? ESCAPE '\\' OR workspace_root LIKE ? ESCAPE '\\' OR status LIKE ? ESCAPE '\\' OR metadata_json LIKE ? ESCAPE '\\')");
@@ -502,11 +507,17 @@ export class BridgeStore {
     };
   }
 
-  countSessions({ includeArchived = false } = {}) {
-    const sql = includeArchived
-      ? "SELECT COUNT(*) AS count FROM sessions"
-      : "SELECT COUNT(*) AS count FROM sessions WHERE status != 'archived'";
-    return Number(this.db.prepare(sql).get()?.count || 0);
+  countSessions({ includeArchived = false, parentSessionId = "" } = {}) {
+    const where = [];
+    const params = [];
+    if (!includeArchived) where.push("status != 'archived'");
+    const parentId = String(parentSessionId || "").trim();
+    if (parentId) {
+      where.push("parent_session_id = ?");
+      params.push(parentId);
+    }
+    const sql = `SELECT COUNT(*) AS count FROM sessions${where.length ? ` WHERE ${where.join(" AND ")}` : ""}`;
+    return Number(this.db.prepare(sql).get(...params)?.count || 0);
   }
 
   getSession(id) {

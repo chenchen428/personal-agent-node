@@ -2,6 +2,19 @@
 
 Online Pages are complete HTML deliverables published by the Agent. The Pages gallery is an index of those deliverables, not a live renderer or a second content schema.
 
+## Template Selection
+
+Template selection is mandatory before creating or redoing a Page:
+
+```bash
+pa-cli pages templates list --json
+pa-cli pages templates inspect --id <matching-template-id> --json
+```
+
+Compare the user's intent with each template's `useWhen` and `matchTerms`. When a template matches, use it and its linked `skill`; preserve every `fixedFramework` item and follow `agentInstructions`, while adapting only the `agentFreedom` areas to the user's materials. Put the selected template ID, linked Skill, full template contract, original user materials, constraints, and acceptance criteria in the child-task execution prompt. Do not merely copy a template's visual style or use its example content as user data.
+
+Interior design, renovation, floor-plan remodeling, home layout, SketchUp, and SU design Page requests must select `interior-design-delivery` and invoke the `interior-design` Skill. If the user has not supplied a floor plan or key measurements, identify the missing evidence before generation; never present the example floor plan as the user's design. Use the generic Page workflow only when no registered template semantically matches.
+
 ## Publish Contract
 
 1. Finish the HTML and all supporting CSS, JavaScript, fonts, and images before publishing.
