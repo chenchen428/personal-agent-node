@@ -27,7 +27,7 @@ test("initializes one stable Site identity and fixed path routes", () => {
     assert.equal(first.config.site.siteId, second.config.site.siteId);
     const config = resolveNodeConfig({ PRIVATE_SITE_DATA_ROOT: dataRoot });
     const routes = buildRoutes(config);
-    for (const prefix of ["/", "/login", "/logout", "/_next/static", "/assets", "/public", "/app", "/app/chat", "/app/connections", "/app/channels", "/app/files", "/app/mail", "/app/data", "/app/schedules", "/app/pages", "/app/releases", "/app/skills", "/app/settings", "/app/setup", "/app/update", "/api/app", "/api/chat", "/api/connections", "/api/channels", "/api/managed-platforms", "/api/publications", "/api/system/setup/actions", "/api/system", "/api/extensions", "/pages", "/resources", "/blog", "/docs"]) {
+    for (const prefix of ["/", "/login", "/logout", "/_next/static", "/assets", "/public", "/template-pages", "/app", "/app/chat", "/app/connections", "/app/channels", "/app/files", "/app/mail", "/app/data", "/app/schedules", "/app/pages", "/app/releases", "/app/skills", "/app/settings", "/app/setup", "/app/update", "/api/app", "/api/chat", "/api/connections", "/api/channels", "/api/managed-platforms", "/api/publications", "/api/system/setup/actions", "/api/system", "/api/extensions", "/pages", "/resources", "/blog", "/docs"]) {
       assert.ok(routes.has(prefix), prefix);
     }
     assert.deepEqual(
@@ -45,6 +45,10 @@ test("initializes one stable Site identity and fixed path routes", () => {
     assert.deepEqual(
       Object.fromEntries(Object.entries(routes.get("/app/pages")).filter(([key]) => ["access", "targetKey", "upstreamPath"].includes(key))),
       { access: "authenticated", targetKey: "console", upstreamPath: "/app/pages" },
+    );
+    assert.deepEqual(
+      Object.fromEntries(Object.entries(routes.get("/template-pages")).filter(([key]) => ["access", "targetKey", "upstreamPath"].includes(key))),
+      { access: "authenticated", targetKey: "console", upstreamPath: "/template-pages" },
     );
     assert.deepEqual(
       Object.fromEntries(Object.entries(routes.get("/app/connections")).filter(([key]) => ["access", "targetKey", "upstreamPath"].includes(key))),

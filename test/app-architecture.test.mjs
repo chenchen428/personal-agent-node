@@ -384,6 +384,7 @@ test("gateway routes the approved client to Next and its read-only data to the l
   const routes = distribution.routing.paths;
   assert.equal(routes.find((route) => route.key === "app").targetKey, "console");
   assert.equal(routes.find((route) => route.key === "app-pages").targetKey, "console");
+  assert.deepEqual(routes.find((route) => route.key === "template-pages"), { key: "template-pages", prefix: "/template-pages", access: "authenticated", kind: "proxy", targetKey: "console", upstreamPath: "/template-pages" });
   assert.equal(routes.find((route) => route.key === "app-connections").targetKey, "console");
   assert.deepEqual(routes.find((route) => route.key === "app-schedules"), { key: "app-schedules", prefix: "/app/schedules", access: "authenticated", kind: "proxy", targetKey: "console", upstreamPath: "/app/schedules" });
   assert.equal(routes.find((route) => route.key === "api-node-v1").targetKey, "agent");

@@ -8,6 +8,7 @@
     { "pattern": "/docs/*", "access": "public", "capability": "publications" },
     { "pattern": "/resources/*", "access": "public", "capability": "publications" },
     { "pattern": "/publications/*", "access": "authenticated", "capability": "publications" },
+    { "pattern": "/template-pages/*", "access": "authenticated", "capability": "publications" },
     { "pattern": "/_next/static/*", "access": "public", "capability": "console" },
     { "pattern": "/apps/*", "access": "authenticated", "capability": "apps" },
     { "pattern": "/app/connections", "access": "authenticated", "capability": "connections" },

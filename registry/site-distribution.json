@@ -13,6 +13,7 @@
       { "key": "public-page-assets", "prefix": "/public/uploads", "access": "public", "kind": "proxy", "targetKey": "agent", "upstreamPath": "/uploads" },
       { "key": "public-pages", "prefix": "/public", "access": "public", "kind": "proxy", "targetKey": "agent", "upstreamPath": "/pages" },
       { "key": "private-publications", "prefix": "/publications", "access": "authenticated", "kind": "proxy", "targetKey": "agent", "upstreamPath": "/publications" },
+      { "key": "template-pages", "prefix": "/template-pages", "access": "authenticated", "kind": "proxy", "targetKey": "console", "upstreamPath": "/template-pages" },
       { "key": "personal-apps", "prefix": "/apps", "access": "authenticated", "kind": "personal-app" },
       { "key": "app-chat", "prefix": "/app/chat", "access": "authenticated", "kind": "proxy", "targetKey": "console", "upstreamPath": "/app/chat" },
       { "key": "app-connections", "prefix": "/app/connections", "access": "authenticated", "kind": "proxy", "targetKey": "console", "upstreamPath": "/app/connections" },
