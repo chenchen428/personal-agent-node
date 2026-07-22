@@ -84,6 +84,7 @@ test('customer Harness carries the portable Node acceptance standard', () => {
   assert.match(artifactVerifier, /realAgentRuntimeRequired: true/);
   assert.match(artifactVerifier, /sameSessionReplyRequired: true/);
   assert.match(artifactVerifier, /wechatRequired: false/);
+  assert.match(artifactVerifier, /"x-personal-agent-surface": "desktop"/);
 });
 
 test('seeded Node home links only to current path-based application routes', () => {
