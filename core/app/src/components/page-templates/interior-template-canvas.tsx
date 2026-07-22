@@ -3,10 +3,12 @@
 import { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
-import { cameraPose, createInteriorScene, disposeInteriorScene, type InteriorView } from "./interior-template-scene";
+import { interiorLabels } from "./interior-template-model";
+import { cameraPose, createInteriorScene, disposeInteriorScene, projectLabel, type InteriorView } from "./interior-template-scene";
 
-export function InteriorTemplateCanvas({ view, level, resetKey }: { view: InteriorView; labels: boolean; level: "level-1" | "level-2"; resetKey: number }) {
+export function InteriorTemplateCanvas({ view, labels, resetKey }: { view: InteriorView; labels: boolean; resetKey: number }) {
   const hostRef = useRef<HTMLDivElement>(null);
+  const labelLayerRef = useRef<HTMLDivElement>(null);
   const [fallback, setFallback] = useState(false);
   const [phase, setPhase] = useState<"loading" | "ready">("loading");
 
@@ -14,7 +16,7 @@ export function InteriorTemplateCanvas({ view, level, resetKey }: { view: Interi
     const host = hostRef.current;
     if (!host) return;
     const canvas = document.createElement("canvas");
-    canvas.setAttribute("aria-label", "可旋转、平移和缩放的装修设计 3D 户型");
+    canvas.setAttribute("aria-label", "可旋转、平移和缩放的装修设计 SU 户型");
     host.replaceChildren(canvas);
     setPhase("loading");
     let renderer: THREE.WebGLRenderer;
@@ -24,28 +26,43 @@ export function InteriorTemplateCanvas({ view, level, resetKey }: { view: Interi
       setFallback(true);
       return;
     }
+
     setFallback(false);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.05;
-    const scene = createInteriorScene(level);
-    const camera = new THREE.PerspectiveCamera(34, 1, 0.05, 100);
-    const pose = cameraPose(view, "");
+    renderer.toneMappingExposure = 1;
+    const scene = createInteriorScene();
+    const camera = new THREE.PerspectiveCamera(36, 1, 0.1, 120);
+    const pose = cameraPose(view);
     camera.position.copy(pose.position);
+    camera.lookAt(pose.target);
     const controls = new OrbitControls(camera, canvas);
     controls.target.copy(pose.target);
     controls.enableDamping = false;
     controls.enablePan = true;
     controls.enableRotate = view !== "top";
-    controls.screenSpacePanning = true;
-    controls.maxPolarAngle = Math.PI * 0.49;
-    controls.minDistance = 4;
-    controls.maxDistance = 42;
+    controls.enableZoom = true;
+    controls.maxPolarAngle = Math.PI / 2.05;
+    controls.minDistance = 8;
+    controls.maxDistance = 48;
     controls.update();
-    const render = () => { renderer.render(scene, camera); };
+
+    const updateLabels = () => {
+      const nodes = labelLayerRef.current?.querySelectorAll<HTMLElement>("[data-label-index]");
+      if (!nodes) return;
+      nodes.forEach((node, index) => {
+        const point = projectLabel(interiorLabels[index].position, camera, host.clientWidth, host.clientHeight);
+        node.hidden = !labels || !point.visible;
+        node.style.transform = `translate3d(${point.x}px,${point.y}px,0) translate(-50%,-50%)`;
+      });
+    };
+    const render = () => {
+      renderer.render(scene, camera);
+      updateLabels();
+    };
     controls.addEventListener("change", render);
     const resize = () => {
       const width = Math.max(1, host.clientWidth);
@@ -67,9 +84,14 @@ export function InteriorTemplateCanvas({ view, level, resetKey }: { view: Interi
       renderer.dispose();
       canvas.remove();
     };
-  }, [level, resetKey, view]);
+  }, [labels, resetKey, view]);
 
-  return <div className="interior-template-canvas"><div className="interior-canvas-runtime" ref={hostRef} />{phase === "loading" && !fallback ? <LoadingProjection /> : null}{fallback ? <ProjectionFallback /> : null}</div>;
+  return <div className="interior-template-canvas">
+    <div className="interior-canvas-runtime" ref={hostRef} />
+    <div className="interior-canvas-labels" aria-label="SU 设计稿细节标注" ref={labelLayerRef}>{interiorLabels.map((item, index) => <span className={item.tone === "dark" ? "is-dark" : undefined} data-label-index={index} key={item.label}>{item.label}</span>)}</div>
+    {phase === "loading" && !fallback ? <LoadingProjection /> : null}
+    {fallback ? <ProjectionFallback /> : null}
+  </div>;
 }
 
 function LoadingProjection() {

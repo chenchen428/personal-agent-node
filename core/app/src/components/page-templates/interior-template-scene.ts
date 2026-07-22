@@ -1,81 +1,49 @@
 import * as THREE from "three";
-import { interiorBounds, interiorFurniture, interiorRooms, type InteriorFurniture } from "./interior-template-model";
+import { createInteriorFurniture } from "./interior-template-furniture";
+import { interiorBounds, interiorObjects, interiorOpenings, interiorPalette, interiorRooms, interiorWalls, type InteriorOpening, type Point3 } from "./interior-template-model";
+import { createBox } from "./interior-template-three";
 
-export type InteriorView = "iso" | "top" | "walk";
+export type InteriorView = "iso" | "top";
 
-export function createInteriorScene(level: "level-1" | "level-2" = "level-1") {
+export function createInteriorScene() {
   const scene = new THREE.Scene();
-  scene.background = new THREE.Color("#f5f4ef");
-  scene.fog = new THREE.Fog("#f5f4ef", 26, 48);
-  const home = new THREE.Group();
-  home.position.set(-interiorBounds.centerX, 0, -interiorBounds.centerZ);
-  scene.add(home);
+  scene.background = new THREE.Color(interiorPalette.background);
 
-  const base = new THREE.Mesh(
-    new THREE.BoxGeometry(17.2, 0.22, 10.7),
-    new THREE.MeshStandardMaterial({ color: "#b9bbb8", roughness: 0.92 })
-  );
-  base.position.set(interiorBounds.centerX, -0.13, interiorBounds.centerZ);
-  base.receiveShadow = true;
-  addOutline(base);
-  home.add(base);
+  scene.add(createBox([27, 0.12, 21], "#d9dcda", [0, -0.24, 0], 1));
+  for (const room of interiorRooms) scene.add(createBox(
+    [room.size[0], 0.24, room.size[1]],
+    room.tiled ? interiorPalette.floorAlt : interiorPalette.floor,
+    [room.center[0], -0.13, room.center[2]],
+    0.9
+  ));
+  for (const wall of interiorWalls) scene.add(createBox(wall.size, interiorPalette.wall, wall.position, 0.82));
+  for (const opening of interiorOpenings) scene.add(opening.kind === "window" ? createWindow(opening) : createDoor(opening));
+  addDecksAndRailings(scene);
+  for (const item of interiorObjects) scene.add(createInteriorFurniture(item));
 
-  if (level === "level-1") for (const room of interiorRooms) {
-    const floor = new THREE.Mesh(
-      new THREE.BoxGeometry(room.width - 0.08, 0.08, room.depth - 0.08),
-      new THREE.MeshStandardMaterial({ color: room.floor, roughness: 0.82 })
-    );
-    floor.position.set(room.x, 0, room.z);
-    floor.receiveShadow = true;
-    home.add(floor);
-    addRoomWalls(home, room.id, room.x, room.z, room.width, room.depth);
-  }
-  if (level === "level-1") {
-    for (const item of interiorFurniture) home.add(createFurniture(item));
-    addOpenings(home);
-    addBalcony(home);
-  } else addLoft(home);
-
-  const hemisphere = new THREE.HemisphereLight(0xffffff, 0xa7aaa4, 2.15);
-  const sun = new THREE.DirectionalLight(0xfff4de, 3.7);
-  sun.position.set(-8, 18, 12);
+  scene.add(new THREE.AmbientLight(0xffffff, 1.75));
+  const sun = new THREE.DirectionalLight(0xfffaf0, 2.35);
+  sun.position.set(10, 18, 8);
   sun.castShadow = true;
+  sun.shadow.bias = -0.0004;
+  sun.shadow.normalBias = 0.04;
+  sun.shadow.radius = 4;
   sun.shadow.mapSize.set(2048, 2048);
-  sun.shadow.camera.left = sun.shadow.camera.bottom = -18;
-  sun.shadow.camera.right = sun.shadow.camera.top = 18;
-  scene.add(hemisphere, sun);
+  sun.shadow.camera.left = sun.shadow.camera.bottom = -24;
+  sun.shadow.camera.right = sun.shadow.camera.top = 24;
+  sun.shadow.camera.near = 1;
+  sun.shadow.camera.far = 65;
+  scene.add(sun);
+  const fill = new THREE.DirectionalLight(0xd9e8ee, 0.65);
+  fill.position.set(-10, 8, -6);
+  scene.add(fill);
   return scene;
 }
 
-function addLoft(home: THREE.Group) {
-  const levelPlate = new THREE.Mesh(new THREE.BoxGeometry(8.6, .12, 6.8), new THREE.MeshStandardMaterial({ color: "#dadbd7", roughness: 1 }));
-  levelPlate.position.set(5.6, 2.86, 5.9); addOutline(levelPlate); home.add(levelPlate);
-  const slab = new THREE.Mesh(new THREE.BoxGeometry(3.6, .22, 3.1), new THREE.MeshStandardMaterial({ color: "#b9a17e", roughness: .86 }));
-  slab.position.set(3.2, 3.05, 5.85); addOutline(slab); home.add(slab);
-  const wallMaterial = new THREE.MeshStandardMaterial({ color: "#f2f0ea", roughness: .94 });
-  for (const [x, z, width, depth] of [[1.45, 5.85, .13, 3.1], [3.2, 4.35, 3.6, .13]] as Array<[number, number, number, number]>) {
-    const wall = new THREE.Mesh(new THREE.BoxGeometry(width, 2.35, depth), wallMaterial.clone());
-    wall.position.set(x, 4.22, z); addOutline(wall); home.add(wall);
-  }
-  const desk = new THREE.Mesh(new THREE.BoxGeometry(1.65, .72, .7), new THREE.MeshStandardMaterial({ color: "#a9845b", roughness: .78 }));
-  desk.position.set(3.2, 3.5, 5.45); addOutline(desk); home.add(desk);
-  const rail = new THREE.Mesh(new THREE.BoxGeometry(3.45, 1.05, .08), new THREE.MeshStandardMaterial({ color: "#353c38", roughness: .7 }));
-  rail.position.set(3.2, 3.58, 7.34); addOutline(rail); home.add(rail);
-  const voidFrame = new THREE.Mesh(new THREE.BoxGeometry(4.45, .08, 5.8), new THREE.MeshBasicMaterial({ color: "#59605b", wireframe: true }));
-  voidFrame.position.set(7.1, 3.02, 5.85); home.add(voidFrame);
-}
-
-export function cameraPose(view: InteriorView, roomId: string) {
-  const room = interiorRooms.find((entry) => entry.id === roomId);
-  const target = new THREE.Vector3(
-    room ? room.x - interiorBounds.centerX : 0,
-    room ? 0.65 : 0.35,
-    room ? room.z - interiorBounds.centerZ : 0
-  );
-  const span = room ? Math.max(room.width, room.depth) : interiorBounds.span;
-  if (view === "top") return { target, position: target.clone().add(new THREE.Vector3(0.01, span * 1.3, 0.01)) };
-  if (view === "walk") return { target: target.clone().setY(0.95), position: target.clone().add(new THREE.Vector3(0, 1.55, Math.max(2.5, span * 0.62))) };
-  return { target, position: target.clone().add(new THREE.Vector3(span * 0.8, span * 0.72, span * 0.8)) };
+export function cameraPose(view: InteriorView) {
+  const target = new THREE.Vector3(...interiorBounds.center);
+  if (view === "top") return { target, position: target.clone().add(new THREE.Vector3(0.01, 29, 0.01)) };
+  return { target, position: target.clone().add(new THREE.Vector3(17, 20, 20)) };
 }
 
 export function disposeInteriorScene(scene: THREE.Scene) {
@@ -87,97 +55,73 @@ export function disposeInteriorScene(scene: THREE.Scene) {
   });
 }
 
-function addRoomWalls(home: THREE.Group, roomId: string, x: number, z: number, width: number, depth: number) {
-  const material = new THREE.MeshStandardMaterial({ color: "#f3f1eb", roughness: 0.94 });
-  const specs: Array<[number, number, number, number]> = roomId === "living-extension" ? [] : [
-    [x, z - depth / 2, width, 0.13],
-    [x - width / 2, z, 0.13, depth]
-  ];
-  for (const [wallX, wallZ, wallWidth, wallDepth] of specs) {
-    const wall = new THREE.Mesh(new THREE.BoxGeometry(wallWidth, 2.25, wallDepth), material.clone());
-    wall.position.set(wallX, 1.12, wallZ);
-    wall.castShadow = wall.receiveShadow = true;
-    addOutline(wall);
-    home.add(wall);
-  }
-}
-
-function createFurniture(item: InteriorFurniture) {
+function createDoor(opening: InteriorOpening) {
   const group = new THREE.Group();
-  const material = new THREE.MeshStandardMaterial({ color: item.color, roughness: 0.75 });
-  if (item.kind === "plant") {
-    const pot = new THREE.Mesh(new THREE.CylinderGeometry(item.width * 0.28, item.width * 0.36, item.height * 0.35, 18), new THREE.MeshStandardMaterial({ color: "#9c7655", roughness: 0.9 }));
-    const crown = new THREE.Mesh(new THREE.SphereGeometry(item.width * 0.58, 16, 12), material);
-    pot.position.y = item.height * 0.18;
-    crown.position.y = item.height * 0.72;
-    group.add(pot, crown);
-  } else {
-    const baseHeight = ["sofa", "bed"].includes(item.kind) ? item.height * 0.5 : item.height;
-    const base = new THREE.Mesh(new THREE.BoxGeometry(item.width, baseHeight, item.depth), material);
-    base.position.y = baseHeight / 2;
-    base.castShadow = base.receiveShadow = true;
-    addOutline(base);
-    group.add(base);
-    if (item.kind === "sofa") addBack(group, item, material, item.depth * 0.4);
-    if (item.kind === "chair") addBack(group, item, material, item.depth * 0.36);
-    if (item.kind === "bed") {
-      const pillow = new THREE.Mesh(new THREE.BoxGeometry(item.width * 0.72, 0.12, item.depth * 0.23), new THREE.MeshStandardMaterial({ color: "#ded8cc", roughness: 0.95 }));
-      pillow.position.set(0, baseHeight + 0.08, -item.depth * 0.28);
-      group.add(pillow);
-    }
-  }
-  group.position.set(item.x, 0.08, item.z);
-  group.rotation.y = item.rotation || 0;
+  group.position.set(...opening.position);
+  group.rotation.y = opening.rotation;
+  const dark = opening.kind === "entry" ? "#383b39" : "#8f8172";
+  group.add(createBox([opening.width, 2.08, 0.1], dark));
+  group.add(createBox([opening.width + 0.14, 0.08, 0.16], "#4b4e4c", [0, 1.1, 0]));
+  group.add(createBox([0.08, 2.2, 0.16], "#4b4e4c", [-opening.width / 2 - 0.04, 0, 0]));
+  group.add(createBox([0.08, 2.2, 0.16], "#4b4e4c", [opening.width / 2 + 0.04, 0, 0]));
+  const knob = new THREE.Mesh(new THREE.SphereGeometry(0.045, 10, 8), new THREE.MeshStandardMaterial({ color: "#b79a62", metalness: 0.6, roughness: 0.3 }));
+  knob.position.set(opening.width * 0.34, 0.03, 0.08);
+  group.add(knob);
   return group;
 }
 
-function addBack(group: THREE.Group, item: InteriorFurniture, material: THREE.Material, z: number) {
-  const back = new THREE.Mesh(new THREE.BoxGeometry(item.width, item.height * 0.55, item.depth * 0.16), material.clone());
-  back.position.set(0, item.height * 0.72, z);
-  back.castShadow = true;
-  addOutline(back);
-  group.add(back);
+function createWindow(opening: InteriorOpening) {
+  const group = new THREE.Group();
+  group.position.set(...opening.position);
+  group.rotation.y = opening.rotation;
+  group.add(createBox([opening.width, 2.05, 0.08], "#4b4f4d"));
+  const glass = new THREE.Mesh(
+    new THREE.BoxGeometry(opening.width - 0.12, 1.9, 0.03),
+    new THREE.MeshPhysicalMaterial({ color: "#cbd5d4", opacity: 0.42, roughness: 0.18, transparent: true })
+  );
+  glass.position.z = 0.05;
+  group.add(glass);
+  const panes = Math.max(2, Math.round(opening.width / 1.2));
+  for (let index = 1; index < panes; index += 1) group.add(createBox(
+    [0.055, 2.02, 0.1],
+    "#4b4f4d",
+    [-opening.width / 2 + (index * opening.width) / panes, 0, 0.08]
+  ));
+  return group;
 }
 
-function addOpenings(home: THREE.Group) {
-  const doorMaterial = new THREE.MeshStandardMaterial({ color: "#8d6a48", roughness: 0.82 });
-  const frameMaterial = new THREE.MeshStandardMaterial({ color: "#343b37", roughness: 0.68 });
-  const glassMaterial = new THREE.MeshPhysicalMaterial({ color: "#cddbd5", transparent: true, opacity: 0.38, roughness: 0.18 });
-  const doors: Array<[number, number, number]> = [[0.35, 4.9, Math.PI / 2], [5.2, 3.9, 0], [11.4, 3.9, 0], [4.9, 8.35, 0]];
-  for (const [x, z, rotation] of doors) {
-    const frame = new THREE.Mesh(new THREE.BoxGeometry(1.15, 2.2, 0.16), frameMaterial.clone());
-    frame.position.set(x, 1.1, z);
-    frame.rotation.y = rotation;
-    addOutline(frame);
-    const leaf = new THREE.Mesh(new THREE.BoxGeometry(0.98, 1.98, 0.08), doorMaterial.clone());
-    leaf.position.set(0, -0.08, 0.1);
-    addOutline(leaf);
-    frame.add(leaf);
-    home.add(frame);
-  }
-  for (const x of [4.9, 6.5, 8.1, 9.7]) {
-    const window = new THREE.Mesh(new THREE.BoxGeometry(1.35, 1.55, 0.08), glassMaterial.clone());
-    window.position.set(x, 1.15, 9.69);
-    addOutline(window);
-    home.add(window);
-  }
+function addDecksAndRailings(scene: THREE.Scene) {
+  const decks: Array<{ position: Point3; size: Point3 }> = [
+    { position: [-0.8, -0.02, -5.95], size: [2.8, 0.12, 1.2] },
+    { position: [3.95, -0.02, -5.95], size: [3, 0.12, 1.2] },
+    { position: [-0.1, -0.02, 5.95], size: [5.7, 0.12, 1.7] },
+    { position: [-4.65, -0.02, 6.05], size: [2.35, 0.12, 0.65] },
+    { position: [4.35, -0.02, 6.25], size: [2.9, 0.12, 0.65] },
+  ];
+  for (const deck of decks) scene.add(createBox(deck.size, "#b8aa93", deck.position));
+  scene.add(createRailing([-0.8, 0, -6.54], 2.8));
+  scene.add(createRailing([3.95, 0, -6.54], 3));
+  scene.add(createRailing([-0.1, 0, 6.8], 5.7));
 }
 
-function addBalcony(home: THREE.Group) {
-  const material = new THREE.MeshStandardMaterial({ color: "#303834", roughness: 0.7 });
-  const top = new THREE.Mesh(new THREE.BoxGeometry(7.7, 0.08, 0.09), material);
-  top.position.set(7.3, 1.05, 9.65);
-  addOutline(top);
-  home.add(top);
-  for (const x of [3.55, 5.45, 7.35, 9.25, 11.1]) {
-    const post = new THREE.Mesh(new THREE.BoxGeometry(0.07, 1.05, 0.08), material.clone());
-    post.position.set(x, .52, 9.65);
-    addOutline(post);
-    home.add(post);
-  }
+function createRailing(position: Point3, width: number) {
+  const group = new THREE.Group();
+  group.position.set(...position);
+  group.add(createBox([width, 0.08, 0.08], "#4b4f4d", [0, 0.92, 0]));
+  const count = Math.max(3, Math.round(width / 1.2));
+  for (let index = 0; index <= count; index += 1) group.add(createBox(
+    [0.07, 0.96, 0.07],
+    "#4b4f4d",
+    [-width / 2 + (index * width) / count, 0.48, 0]
+  ));
+  return group;
 }
 
-function addOutline(mesh: THREE.Mesh) {
-  const edges = new THREE.EdgesGeometry(mesh.geometry, 24);
-  mesh.add(new THREE.LineSegments(edges, new THREE.LineBasicMaterial({ color: "#59605b", transparent: true, opacity: .72 })));
+export function projectLabel(position: Point3, camera: THREE.Camera, width: number, height: number) {
+  const projected = new THREE.Vector3(...position).project(camera);
+  return {
+    visible: projected.z > -1 && projected.z < 1,
+    x: (projected.x * 0.5 + 0.5) * width,
+    y: (-projected.y * 0.5 + 0.5) * height,
+  };
 }
