@@ -27,20 +27,20 @@ jobs:
       - run: node scripts/release-check.mjs --tag "${GITHUB_REF_NAME}"
       - run: node scripts/release-package.mjs --tag "${GITHUB_REF_NAME}" --stage dist/release-payload --output dist/source-release
       - run: node scripts/build-self-hosted-relay-installer.mjs --tag "${GITHUB_REF_NAME}" --output dist/relay-release
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: immutable-node-payload
           path: dist/release-payload
           if-no-files-found: error
           include-hidden-files: true
           retention-days: 7
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: source-release-metadata
           path: dist/source-release
           if-no-files-found: error
           retention-days: 7
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: relay-release-assets
           path: dist/relay-release
@@ -121,21 +121,8 @@ jobs:
           cache-dependency-path: core/runtime/native/go.mod
       - uses: dtolnay/rust-toolchain@stable
         if: matrix.platform != 'linux'
-      - name: Restore Rust release cache
-        if: matrix.platform != 'linux'
-        uses: actions/cache@v6
-        with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-            core/desktop/src-tauri/target
-          key: cargo-release-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('core/desktop/src-tauri/Cargo.lock') }}
-          restore-keys: |
-            cargo-test-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('core/desktop/src-tauri/Cargo.lock') }}
-            cargo-release-${{ runner.os }}-${{ runner.arch }}-
-            cargo-test-${{ runner.os }}-${{ runner.arch }}-
       - run: npm ci
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: immutable-node-payload
           path: dist/release-payload
@@ -198,7 +185,7 @@ jobs:
           signing_args=()
           if [[ "$REQUIRE_NATIVE_SIGNING" == "true" ]]; then signing_args+=(--require-signing); fi
           node scripts/build-platform-installer.mjs --tag "$GITHUB_REF_NAME" --release-root dist/release-payload --node-runtime "${RUNNER_TEMP}/node-runtime${{ matrix.platform == 'win32' && '.exe' || '' }}" --output dist/platform --platform "${{ matrix.platform }}" --arch "${{ matrix.arch }}" "${signing_args[@]}"
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: platform-${{ matrix.asset }}
           path: dist/platform/*
@@ -217,16 +204,16 @@ jobs:
       - uses: actions/setup-node@v7
         with:
           node-version: ${{ env.NODE_VERSION }}
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           pattern: platform-*
           path: dist/release
           merge-multiple: true
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: source-release-metadata
           path: dist/source-release
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: relay-release-assets
           path: dist/release
@@ -253,7 +240,7 @@ jobs:
       - uses: actions/attest-build-provenance@v2
         with:
           subject-path: dist/public-release/*
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: release-evidence
           path: dist/release-evidence
@@ -274,14 +261,14 @@ jobs:
     steps:
       - name: Create scoped private-workspace token
         id: cloud-token
-        uses: actions/create-github-app-token@v2
+        uses: actions/create-github-app-token@v3
         with:
           app-id: ${{ secrets.CLOUD_SYNC_GITHUB_APP_ID }}
           private-key: ${{ secrets.CLOUD_SYNC_GITHUB_APP_PRIVATE_KEY }}
           owner: chenchen428
           repositories: personal-agent
       - name: Dispatch and await Cloud download synchronization
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         with:
           github-token: ${{ steps.cloud-token.outputs.token }}
           script: |

@@ -172,6 +172,9 @@ test('GitHub release chain is version-gated and publishes verifiable artifacts',
   assert.match(workflow, /platform:\s*\n\s*needs: prepare/);
   assert.match(workflow, /publish:\s*\n\s*needs: \[verify, platform\]/);
   assert.match(workflow, /actions\/cache@v6/);
+  assert.match(workflow, /actions\/upload-artifact@v7/);
+  assert.match(workflow, /actions\/download-artifact@v8/);
+  assert.doesNotMatch(workflow, /Restore Rust release cache/);
   assert.match(workflow, /cargo-test-\$\{\{ runner\.os \}\}-\$\{\{ runner\.arch \}\}-\$\{\{ hashFiles\('core\/desktop\/src-tauri\/Cargo\.lock'\) \}\}/);
   for (const requirement of [
     'NODE_VERSION: 22.23.1',

@@ -10,7 +10,7 @@ test('Node release waits for the private Cloud download synchronization gate', (
   assert.match(workflow, /sync-cloud-download:/);
   assert.match(workflow, /needs: publish/);
   assert.match(workflow, /timeout-minutes: 18/);
-  assert.match(workflow, /actions\/create-github-app-token@v2/);
+  assert.match(workflow, /actions\/create-github-app-token@v3/);
   assert.match(workflow, /CLOUD_SYNC_GITHUB_APP_ID/);
   assert.match(workflow, /repositories: personal-agent/);
   assert.match(workflow, /event_type: 'node-release-published'/);
