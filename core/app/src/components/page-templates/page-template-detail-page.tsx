@@ -1,21 +1,38 @@
 "use client";
 
-import { Check, Monitor, ShieldCheck, Smartphone, Sparkles } from "lucide-react";
+import { ArrowDownRight, Check, FileImage, Sparkles } from "lucide-react";
 import { useState } from "react";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Badge, PageHeader, PageSurface } from "@/components/desktop-v72/primitives";
 import type { PageTemplate } from "./catalog";
-import { InteriorTemplatePreview } from "./interior-template-preview";
+import { TemplateDevicePreview, type TemplatePreviewDevice } from "./template-device-preview";
 
 export function PageTemplateDetailPage({ template }: { template: PageTemplate }) {
-  const [device, setDevice] = useState<"web" | "mobile">("web");
-  return <main className="page-template-detail">
-    <header className="template-detail-heading"><div><span>{template.category}</span><h1>{template.name}</h1><p>{template.summary}</p></div><span className="template-built-in"><i />已内置</span></header>
-    <div className="template-detail-facts"><span><b>交付内容</b>SU 设计稿 · 户型图 · 用户需求</span><span><b>移动端</b>横屏触控布局</span><span><b>质量门槛</b>动线与生活可用性走查</span></div>
-    <section className="template-live-preview"><header><div><b>交互示例</b><span>{device === "mobile" ? "移动横屏 · 触控布局" : "桌面 · 完整交付"}</span></div><Tabs value={device} onValueChange={(value) => setDevice(value as "web" | "mobile")}><TabsList className="template-device-switch" aria-label="切换模板预览设备"><TabsTrigger value="web"><Monitor aria-hidden="true" />Web</TabsTrigger><TabsTrigger value="mobile"><Smartphone aria-hidden="true" />移动端</TabsTrigger></TabsList></Tabs></header><InteriorTemplatePreview device={device} /></section>
-    <section className="template-detail-information">
-      <article><span>关联技能</span><h2><Sparkles aria-hidden="true" />{template.skill}</h2><p>读取用户给出的户型图和持续迭代的需求，生成可核对的 SketchUp 式空间方案。</p></article>
-      <article><span>固定交付框架</span><ul>{template.fixedFramework.map((item) => <li key={item}><Check aria-hidden="true" />{item}</li>)}</ul></article>
-      <article><span>交付前走查</span><h2><ShieldCheck aria-hidden="true" />生活可用性</h2><p>检查门窗开启、柜体阻挡、通行净宽、家具重叠、生活动线与移动端标注，发现阻塞项必须修复后才能交付。</p></article>
+  const [device, setDevice] = useState<TemplatePreviewDevice>("web");
+
+  return <PageSurface className="page-template-detail" width="wide">
+    <PageHeader
+      title={template.name}
+      description={template.summary}
+      actions={<div className="template-detail-actions"><Badge tone="success">已内置</Badge><a className="button primary" href="#template-preview">打开示例<ArrowDownRight aria-hidden="true" /></a></div>}
+    />
+
+    <TemplateDevicePreview device={device} onChange={setDevice} />
+
+    <section className="template-detail-overview" aria-label="模板说明">
+      <article>
+        <h2>从户型图到 SketchUp 式完整家装鸟瞰</h2>
+        <p>读取用户给出的户型图和持续迭代的需求，生成可核对、可触控查看，并经过生活可用性走查的完整空间方案。</p>
+        <ul>{template.fixedFramework.slice(0, 6).map((item) => <li key={item}><Check aria-hidden="true" />{item}</li>)}</ul>
+      </article>
+      <aside>
+        <div className="template-source-rule"><FileImage aria-hidden="true" /><span><strong>户型图与方案并列查看</strong><small>原始图、调整标注、SU 设计稿和用户需求保持在同一份交付里。</small></span></div>
+        <dl>
+          <div><dt>关联技能</dt><dd>{template.skill}</dd></div>
+          <div><dt>适配设备</dt><dd>Web · 移动横屏</dd></div>
+          <div><dt>交互方式</dt><dd>桌面精细控制 · 移动触控查看</dd></div>
+        </dl>
+        <div className="template-agent-freedom"><span><Sparkles aria-hidden="true" />Agent 可调整</span><p>{template.agentFreedom.slice(0, 3).join(" · ")}</p></div>
+      </aside>
     </section>
-  </main>;
+  </PageSurface>;
 }

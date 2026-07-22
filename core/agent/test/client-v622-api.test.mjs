@@ -81,6 +81,8 @@ test("V6.22 read-only client API is local, searchable and self-contained", async
   assert.equal(overview.result.machine.mobileAccess, "unavailable");
   assert.equal(overview.result.machine.mobileAddress, "");
   assert.equal(overview.result.machine.workspaceRoot, configuredWorkspaceRoot);
+  assert.equal(overview.result.space.id, personal.id);
+  assert.equal(overview.result.space.displayName, "个人隔离空间");
   assert.equal(typeof overview.result.counts.pages, "number");
   assert.equal(typeof overview.result.counts.runningWork, "number");
   assert.equal(Array.isArray(overview.result.recent), true);

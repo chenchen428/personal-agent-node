@@ -2,9 +2,8 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Activity, Blocks, Check, ChevronDown, Info, Layers3, ListTodo, Menu, Newspaper, PanelsTopLeft, X } from "lucide-react";
+import { Activity, Blocks, Info, Layers3, ListTodo, Menu, Newspaper, PanelsTopLeft, X } from "lucide-react";
 import { useEffect, useRef, useState, type MutableRefObject, type ReactNode } from "react";
-import { buildSpaceNavigationUrl, waitForSpaceRuntime } from "@/lib/space-navigation";
 import { safeHost, useRememberedScroll, useRemote } from "./data";
 import type { FilterOption, MobileSection, Overview, PersonalApp } from "./types";
 
@@ -15,9 +14,6 @@ type ShellFilter = {
   setValue: (value: string) => void;
   options: FilterOption[];
 };
-
-type MobileSpace = { id: string; displayName: string; kind: "personal" | "user"; state: string; desiredState: "running" | "stopped"; localUrl: string; managedHost: string | null };
-type MobileSpaces = { currentSpaceId: string | null; spaces: MobileSpace[] };
 
 export function MobileListShell({ section, activeAppId, title, note, children, query, setQuery, searchLabel, searchPlaceholder, filter, screenClassName }: {
   section: MobileSection;
@@ -39,7 +35,6 @@ export function MobileListShell({ section, activeAppId, title, note, children, q
   const pathname = usePathname();
   const overview = useRemote<Overview>("/api/node/v1/client/overview");
   const apps = useRemote<{ apps: PersonalApp[] }>("/api/system/apps");
-  const spaces = useRemote<MobileSpaces>("/api/system/spaces");
 
   useRememberedScroll(section);
   useEffect(() => { setDrawerOpen(false); }, [pathname]);
@@ -74,7 +69,6 @@ export function MobileListShell({ section, activeAppId, title, note, children, q
       close={() => setDrawerOpen(false)}
       overview={overview.value}
       apps={(apps.value?.apps || []).filter((app) => app.compatible && app.route)}
-      spaces={spaces.value}
     /> : null}
   </div></div></div>;
 }
@@ -135,7 +129,7 @@ function SearchPanel({ open, label, placeholder, value, composing, onChange, onC
   </section>;
 }
 
-function MobileDrawer({ section, activeAppId, close, overview, apps, spaces }: { section: MobileSection; activeAppId?: string; close: () => void; overview: Overview | null; apps: PersonalApp[]; spaces: MobileSpaces | null }) {
+function MobileDrawer({ section, activeAppId, close, overview, apps }: { section: MobileSection; activeAppId?: string; close: () => void; overview: Overview | null; apps: PersonalApp[] }) {
   const address = overview?.machine.mobileAddress ? safeHost(overview.machine.mobileAddress) : "安全连接到你的电脑";
   const counts: Record<string, number | string> = { activity: "", pages: overview?.counts.pages ?? "", workers: overview?.counts.work ?? "" };
   return <>
@@ -143,7 +137,7 @@ function MobileDrawer({ section, activeAppId, close, overview, apps, spaces }: {
     <aside className="mobile-drawer" aria-label="移动端侧边菜单">
       <div className="drawer-head"><strong>PA · 个人智能体</strong><button type="button" aria-label="关闭侧边菜单" onClick={close}><X aria-hidden="true" /></button></div>
       <div className="drawer-user"><span className="drawer-avatar">PA</span><div><strong>你的 PA</strong><span>{address}</span></div></div>
-      <MobileSpaceSelector snapshot={spaces} />
+      <MobileSpaceContext space={overview?.space} />
       <nav className="drawer-nav">
         <span className="drawer-nav-label">工作区</span>
         <Link href="/app/mobile" prefetch onClick={close} aria-current={section === "activity" ? "page" : undefined}><Activity className="mobile-nav-icon" aria-hidden="true" /><span>最近动态</span><small /></Link>
@@ -160,27 +154,10 @@ function MobileDrawer({ section, activeAppId, close, overview, apps, spaces }: {
   </>;
 }
 
-function MobileSpaceSelector({ snapshot }: { snapshot: MobileSpaces | null }) {
-  const [open, setOpen] = useState(false);
-  const [switchingSpaceId, setSwitchingSpaceId] = useState("");
-  const [switchError, setSwitchError] = useState("");
-  const current = snapshot?.spaces.find((space) => space.id === snapshot.currentSpaceId) || snapshot?.spaces[0];
-  if (!current) return null;
-  const switchTo = async (space: MobileSpace) => {
-    if (space.id === current.id) return setOpen(false);
-    setSwitchingSpaceId(space.id);
-    setSwitchError("");
-    try {
-      const ready = await waitForSpaceRuntime(space);
-      window.location.assign(buildSpaceNavigationUrl(ready, window.location.href));
-    } catch (cause) {
-      setSwitchError(cause instanceof Error ? cause.message : "隔离空间暂时无法启动，请重试");
-      setSwitchingSpaceId("");
-    }
-  };
-  return <section className={`mobile-space-selector${open ? " is-open" : ""}`}>
-    <button type="button" aria-expanded={open} onClick={() => setOpen((value) => !value)}><Layers3 aria-hidden="true" /><span><small>当前隔离空间</small><strong>{current.displayName}</strong></span><ChevronDown aria-hidden="true" /></button>
-    {open ? <div>{snapshot?.spaces.map((space) => <button type="button" aria-pressed={space.id === current.id} aria-busy={switchingSpaceId === space.id} disabled={Boolean(switchingSpaceId)} onClick={() => void switchTo(space)} key={space.id}><span><strong>{space.displayName}</strong><small>{switchingSpaceId === space.id ? "正在启动并切换…" : space.managedHost || "仅本机"}</small></span>{space.id === current.id ? <Check aria-hidden="true" /> : null}</button>)}{switchError ? <p className="mobile-space-switch-error" role="alert">{switchError}</p> : null}<p>移动端只切换现有隔离空间；新建请使用桌面端。</p></div> : null}
+function MobileSpaceContext({ space }: { space?: Overview["space"] }) {
+  if (!space) return null;
+  return <section className="mobile-space-selector" aria-label="当前隔离空间">
+    <div className="mobile-space-current"><Layers3 aria-hidden="true" /><span><small>当前隔离空间</small><strong>{space.displayName}</strong></span></div>
   </section>;
 }
 

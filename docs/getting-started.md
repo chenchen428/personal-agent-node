@@ -2,15 +2,15 @@
 
 ## Install an immutable release
 
-Set `TAG=v0.2.0-beta.31` and open the matching [GitHub Release](https://github.com/chenchen428/personal-agent-node/releases/tag/v0.2.0-beta.31). A customer machine does not need Node.js, npm, Git, a source checkout, or a development Agent.
+Set `TAG=v0.2.0-beta.32` and open the matching [GitHub Release](https://github.com/chenchen428/personal-agent-node/releases/tag/v0.2.0-beta.32). A customer machine does not need Node.js, npm, Git, a source checkout, or a development Agent.
 
 | Computer | Asset |
 | --- | --- |
-| Windows x86-64 | `personal-agent-node-v0.2.0-beta.31-windows-x64-installer.exe` |
-| macOS Apple Silicon | `personal-agent-node-v0.2.0-beta.31-macos-arm64.pkg` |
-| macOS Intel | `personal-agent-node-v0.2.0-beta.31-macos-x64.pkg` |
-| Linux x86-64 | `personal-agent-node-v0.2.0-beta.31-linux-x64.tar.gz` |
-| Linux ARM64 | `personal-agent-node-v0.2.0-beta.31-linux-arm64.tar.gz` |
+| Windows x86-64 | `personal-agent-node-v0.2.0-beta.32-windows-x64-installer.exe` |
+| macOS Apple Silicon | `personal-agent-node-v0.2.0-beta.32-macos-arm64.pkg` |
+| macOS Intel | `personal-agent-node-v0.2.0-beta.32-macos-x64.pkg` |
+| Linux x86-64 | `personal-agent-node-v0.2.0-beta.32-linux-x64.tar.gz` |
+| Linux ARM64 | `personal-agent-node-v0.2.0-beta.32-linux-arm64.tar.gz` |
 
 The same Release also publishes `personal-agent-relay-install.sh`. The desktop
 shows its exact version-bound command when the user selects a custom domain.

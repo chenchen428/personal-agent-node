@@ -29,14 +29,14 @@ export async function waitForSpaceRuntime(
   if (target.desiredState !== "running") {
     await readJsonResponse(await fetchImpl("/api/system/spaces", {
       method: "POST",
-      headers: { "content-type": "application/json" },
+      headers: { "content-type": "application/json", "x-personal-agent-surface": "desktop" },
       body: JSON.stringify({ action: "start", spaceId: target.id }),
     }));
   }
 
   const attempts = Math.max(1, Math.ceil(timeoutMs / pollIntervalMs));
   for (let attempt = 0; attempt <= attempts; attempt += 1) {
-    const snapshot = await readJsonResponse<SpacesSnapshot>(await fetchImpl("/api/system/spaces", { cache: "no-store" }));
+    const snapshot = await readJsonResponse<SpacesSnapshot>(await fetchImpl("/api/system/spaces", { cache: "no-store", headers: { "x-personal-agent-surface": "desktop" } }));
     const current = snapshot.spaces.find((space) => space.id === target.id);
     if (!current) throw new Error("隔离空间不存在");
     if (current.state === "running") return current;

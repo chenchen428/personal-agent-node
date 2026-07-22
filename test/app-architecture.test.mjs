@@ -105,6 +105,10 @@ test("Next.js owns the approved V6.39 mobile client and V7.3 desktop workspace",
   assert.match(tokenUsageHook, /\/api\/token-usage\?range=/);
   assert.match(mobileClient, /MobileTokenUsageSection/);
   assert.match(mobileClient, /TokenUsageHeatmap/);
+  assert.match(mobileClient, /MobileSpaceContext/);
+  assert.doesNotMatch(mobileClient, /MobileSpaceSelector|waitForSpaceRuntime|buildSpaceNavigationUrl|\/api\/system\/spaces/);
+  assert.match(spaceSwitcher, /isLoopbackHostname/);
+  assert.match(spaceSwitcher, /x-personal-agent-surface/);
   assert.match(overview, /sec-ch-ua-mobile/);
   assert.match(overview, /redirect\("\/app\/mobile"\)/);
   assert.match(read("core/app/src/app/app/loading.tsx"), /isMobileRequest/);
@@ -401,6 +405,8 @@ test("gateway routes the approved client to Next and its read-only data to the l
   assert.match(nextBff, /"authorization"/);
   assert.match(nextBff, /"data-export"/);
   assert.match(nextBff, /"spaces"/);
+  assert.match(nextBff, /isLocalDesktopSpaceManagementRequest/);
+  assert.match(nextBff, /DESKTOP_LOCAL_ONLY/);
   assert.match(nextBff, /"expect"/);
   assert.match(nextBff, /PERSONAL_AGENT_CONTROL_URL/);
   assert.match(nextBff, /OPEN_AGENT_BRIDGE_INTERNAL_URL/);
