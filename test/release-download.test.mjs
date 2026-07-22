@@ -217,3 +217,11 @@ test('public installation documentation pins the workspace release version', () 
     assert.doesNotMatch(document, /installer\.mjs|Copyable one-click Agent prompt|复制给本机 Agent/, relative);
   }
 });
+
+test('release check rejects desktop version drift before packaging', () => {
+  const root = new URL('..', import.meta.url);
+  const releaseCheck = fs.readFileSync(new URL('scripts/release-check.mjs', root), 'utf8');
+  assert.match(releaseCheck, /core\/desktop\/src-tauri\/Cargo\.toml/);
+  assert.match(releaseCheck, /core\/desktop\/src-tauri\/tauri\.conf\.json/);
+  assert.match(releaseCheck, /Desktop version mismatch/);
+});
