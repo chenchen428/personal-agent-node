@@ -28,11 +28,12 @@ fs.mkdirSync(releaseOpsRoot, { recursive: true });
 const lock = acquireLock(lockPath);
 let previousRoot = pointerTarget(path.join(installRoot, "current"));
 let installed = false;
+let domain = "";
 
 try {
   requireCleanWorktree();
   const previousManifest = readManifest(previousRoot);
-  const domain = args.domain || installedDomain(previousRoot) || "personal-agent.local";
+  domain = args.domain || installedDomain(previousRoot) || "personal-agent.local";
   const profile = args.profile || previousManifest?.profile || "universal";
   const build = runJson(process.execPath, [path.join(root, "scripts", "build-private-site-node-dist.mjs"), "--profile", profile], { timeout: 30 * 60_000 });
   const releaseRoot = path.resolve(build.outputRoot);

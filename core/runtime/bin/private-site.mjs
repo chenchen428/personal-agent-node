@@ -258,7 +258,7 @@ async function verifyCommand() {
   checks.push(await httpCheck(config, config.domain, "/__private-site/health", [200]));
   for (const entry of config.distribution.domain.standardHosts) {
     const host = entry.prefix ? `${entry.prefix}.${config.domain}` : config.domain;
-    const expected = entry.access === "private" ? [200, 302] : [200];
+    const expected = ["private", "authenticated"].includes(entry.access) ? [200, 302] : [200];
     const probePath = entry.key === "pages" ? "/health"
       : entry.key === "resources" ? "/README.md"
         : entry.key === "docs" ? "/interview.html"

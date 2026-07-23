@@ -423,7 +423,11 @@ test("gateway routes the approved client to Next and its read-only data to the l
   assert.deepEqual(routes.find((route) => route.key === "api-token-usage"), { key: "api-token-usage", prefix: "/api/token-usage", access: "authenticated", kind: "proxy", targetKey: "agent", upstreamPath: "/api/token-usage" });
   assert.deepEqual(routeRegistry.routes.find((route) => route.pattern === "/api/token-usage"), { pattern: "/api/token-usage", access: "authenticated", capability: "agent" });
   assert.deepEqual(routes.find((route) => route.key === "api-connections"), { key: "api-connections", prefix: "/api/connections", access: "authenticated", kind: "proxy", targetKey: "agent", upstreamPath: "/api/connections" });
-  assert.equal(routes.find((route) => route.key === "home").access, "authenticated");
+  const homeRoute = routes.find((route) => route.key === "home");
+  const homeHost = distribution.domain.standardHosts.find((host) => host.key === "home");
+  assert.equal(homeRoute.access, "authenticated");
+  assert.equal(homeHost.access, homeRoute.access);
+  assert.equal(homeHost.kind, homeRoute.kind);
   assert.equal(routes.find((route) => route.key === "app-settings").access, "authenticated");
   assert.equal(routes.find((route) => route.key === "api-system-setup-actions").access, "authenticated");
   assert.deepEqual(routes.find((route) => route.key === "api-system-update"), { key: "api-system-update", prefix: "/api/system/update", access: "authenticated", kind: "proxy", targetKey: "console", upstreamPath: "/api/update" });
