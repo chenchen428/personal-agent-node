@@ -38,7 +38,7 @@ try {
   const verified = runJson(process.execPath, [path.join(root, "scripts", "verify-private-site-node-dist.mjs"), releaseRoot], { timeout: 10 * 60_000 });
 
   stopPlatformService(previousRoot);
-  const installation = runJson(process.execPath, [path.join(root, "scripts", "install-private-site-node-release.mjs"), releaseRoot, "--home", homeRoot, "--install-root", installRoot, "--data-root", dataRoot]);
+  const installation = runJson(process.execPath, [releaseInstaller(releaseRoot), releaseRoot, "--home", homeRoot, "--install-root", installRoot, "--data-root", dataRoot]);
   installed = true;
   const activeRoot = pointerTarget(path.join(installRoot, "current"));
   const activeCli = nodeCli(activeRoot);
@@ -69,7 +69,7 @@ try {
   if (installed && previousRoot && fs.existsSync(previousRoot)) {
     try {
       stopPlatformService(pointerTarget(path.join(installRoot, "current")));
-      runJson(process.execPath, [path.join(root, "scripts", "install-private-site-node-release.mjs"), previousRoot, "--home", homeRoot, "--install-root", installRoot, "--data-root", dataRoot]);
+      runJson(process.execPath, [releaseInstaller(previousRoot), previousRoot, "--home", homeRoot, "--install-root", installRoot, "--data-root", dataRoot]);
       const rollbackCli = nodeCli(pointerTarget(path.join(installRoot, "current")));
       runJson(process.execPath, [rollbackCli, "prepare"], { env: environment, timeout: 20 * 60_000 });
       activatePlatformService(runJson(process.execPath, [rollbackCli, "service-prepare"], { env: environment }));
@@ -189,6 +189,10 @@ function pointerTarget(pointer) {
 
 function nodeCli(releaseRoot) {
   return path.join(releaseRoot, "core", "runtime", "bin", "private-site.mjs");
+}
+
+function releaseInstaller(releaseRoot) {
+  return path.join(releaseRoot, "scripts", "install-private-site-node-release.mjs");
 }
 
 function sleep(milliseconds) {

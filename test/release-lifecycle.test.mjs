@@ -107,6 +107,13 @@ test('release installation does not materialize repository Agent compatibility l
   assert.doesNotMatch(installer, /materializeHarnessLinks|verifyHarnessLinks/);
 });
 
+test('local deployment installs and rolls back with the bundled release installer', () => {
+  const deployment = fs.readFileSync(path.join(root, 'scripts', 'deploy-private-site-node.mjs'), 'utf8');
+  assert.match(deployment, /releaseInstaller\(releaseRoot\)/);
+  assert.match(deployment, /releaseInstaller\(previousRoot\)/);
+  assert.doesNotMatch(deployment, /path\.join\(root,\s*["']scripts["'],\s*["']install-private-site-node-release\.mjs["']\)/);
+});
+
 test('fresh release installation points to the local Setup Center with optional WeChat guidance', () => {
   const installer = fs.readFileSync(path.join(root, 'scripts', 'install-private-site-node-release.mjs'), 'utf8');
   const githubInstaller = fs.readFileSync(path.join(root, 'scripts', 'install-from-github-release.mjs'), 'utf8');
