@@ -9,6 +9,15 @@ export type PageTemplate = {
   summary: string;
   desktop: boolean;
   mobileLandscape: boolean;
+  implementation: {
+    version: number;
+    generator: string;
+    artifactMarker: string;
+  };
+  acceptance: {
+    visualOwner: "user";
+    agentBrowserReview: false;
+  };
   fixedFramework: string[];
   agentFreedom: string[];
 };

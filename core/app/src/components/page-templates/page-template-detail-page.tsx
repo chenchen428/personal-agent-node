@@ -28,8 +28,9 @@ export function PageTemplateDetailPage({ template }: { template: PageTemplate })
         <div className="template-source-rule"><FileImage aria-hidden="true" /><span><strong>户型图与方案并列查看</strong><small>原始图、调整标注、SU 设计稿和用户需求保持在同一份交付里。</small></span></div>
         <dl>
           <div><dt>关联技能</dt><dd>{template.skill}</dd></div>
+          <div><dt>模板实现</dt><dd>v{template.implementation.version} · 同源生成</dd></div>
           <div><dt>适配设备</dt><dd>Web · 移动横屏</dd></div>
-          <div><dt>交互方式</dt><dd>桌面精细控制 · 移动触控查看</dd></div>
+          <div><dt>验收方式</dt><dd>确定性检查 · 用户视觉验收</dd></div>
         </dl>
         <div className="template-agent-freedom"><span><Sparkles aria-hidden="true" />Agent 可调整</span><p>{template.agentFreedom.slice(0, 3).join(" · ")}</p></div>
       </aside>

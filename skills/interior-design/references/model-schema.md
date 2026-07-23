@@ -25,7 +25,7 @@ Use `schemaVersion: 1` and metres on a right-handed floor plane: `x` increases e
   "camera": { "initial": "isometric" },
   "qualityReview": {
     "status": "passed",
-    "checks": { "furnitureCollision": true, "doorClearance": true, "circulation": true, "useClearance": true, "lifestyleFit": true, "labelLayout": true, "desktopAndMobile": true },
+    "checks": { "furnitureCollision": true, "doorClearance": true, "circulation": true, "useClearance": true, "lifestyleFit": true, "labelLayout": true, "templateContract": true, "responsiveContract": true },
     "requirementTrace": ["user requirement"],
     "findings": []
   }
@@ -36,7 +36,7 @@ Polygons need at least three non-collinear points. IDs are unique per collection
 
 Older models may contain `camera.segments`. Validation keeps them compatible, but the finished viewer ignores staged animation data.
 
-`qualityReview` is required before Page generation. Every check must be `true`, `status` must be `passed`, `requirementTrace` must contain the user needs verified in the layout, and unresolved blocking findings are forbidden. The CLI also derives geometry findings; self-declared pass fields never override deterministic collisions or blocked doors.
+`qualityReview` is required before Page generation. Every check must be `true`, `status` must be `passed`, `requirementTrace` must contain the user needs verified in the layout, and unresolved blocking findings are forbidden. `templateContract` and `responsiveContract` describe static generator contracts, not browser or visual acceptance. The CLI also derives geometry findings; self-declared pass fields never override deterministic collisions or blocked doors.
 
 ## Calibration
 

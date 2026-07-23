@@ -23,7 +23,10 @@ document.querySelectorAll('[data-room]').forEach((button) => button.addEventList
 document.querySelector('#room-select').addEventListener('change', (event) => apply(currentView, event.target.value));
 document.querySelectorAll('[data-view]').forEach((button) => button.addEventListener('click', () => apply(button.dataset.view, currentRoom)));
 document.querySelector('#reset').addEventListener('click', () => apply('iso', ''));
+document.querySelectorAll('[data-presentation]').forEach((button) => button.addEventListener('click', () => applyPresentation(button.dataset.presentation)));
+document.querySelectorAll('[data-plan-mode]').forEach((button) => button.addEventListener('click', () => applyPlanMode(button.dataset.planMode)));
 apply(initialView, '');
+applyPresentation('model');
 
 function apply(view, roomId) {
   currentView = view;
@@ -32,6 +35,19 @@ function apply(view, roomId) {
   document.querySelectorAll('[data-room]').forEach((button) => button.classList.toggle('active', (button.dataset.room || '') === roomId));
   document.querySelector('#room-select').value = roomId;
   runtime.update(view, roomId);
+}
+
+function applyPresentation(name) {
+  document.querySelectorAll('[data-presentation-panel]').forEach((panel) => { panel.hidden = panel.dataset.presentationPanel !== name; });
+  document.querySelectorAll('[data-presentation]').forEach((button) => button.classList.toggle('active', button.dataset.presentation === name));
+  if (name === 'model') runtime.update(currentView, currentRoom);
+}
+
+function applyPlanMode(mode) {
+  const panel = document.querySelector('.plan-panel');
+  if (!panel) return;
+  panel.dataset.planMode = mode;
+  panel.querySelectorAll('[data-plan-mode]').forEach((button) => button.classList.toggle('active', button.dataset.planMode === mode));
 }
 
 function startWebGL(canvas) {

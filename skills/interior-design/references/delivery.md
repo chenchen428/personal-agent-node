@@ -13,5 +13,4 @@ Use `$visual-content` for raster generation and inspection, `$media-toolkit` for
 
 ## Page contract
 
-Publish the verified folder with `pa-cli pages publish --dir <folder> --title <title> --summary <summary> --access private --json`. Include desktop and mobile thumbnails when supported. Retain the stable returned `pageId`; return only its `url` or `linkNotice`, never a guessed hostname or localhost link.
-
+Generate with the registered `interior-design-delivery` command, pass the redacted user floor plan through `--source-plan`, and require its deterministic template verification result. Publish `index.html` with `pa-cli pages publish --file <page-dir>/index.html --folder <stable-folder> --template interior-design-delivery --title <title> --summary <summary> --private --json`. The publish CLI creates distinct device gallery previews when explicit thumbnails are omitted, so the Agent must not open a browser or take screenshots. Retain the stable returned `pageId`; return only its `url` or `linkNotice`, never a guessed hostname or localhost link. Mark visual and interaction review as pending user acceptance.

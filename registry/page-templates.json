@@ -7,6 +7,15 @@
       "category": "装修设计",
       "skill": "interior-design",
       "status": "built-in",
+      "implementation": {
+        "version": 1,
+        "generator": "node skills/interior-design/scripts/cli.mjs page --template interior-design-delivery --source-plan <redacted-user-floor-plan>",
+        "artifactMarker": "personal-agent-page-template"
+      },
+      "acceptance": {
+        "visualOwner": "user",
+        "agentBrowserReview": false
+      },
       "summary": "以 SketchUp 式建筑模型语言组织户型、空间关系和完整家居组件，交付可自由查看的 SU 设计稿。",
       "useWhen": "用户要求根据户型图、室内空间或居住需求制作装修设计、户型改造、家居布局或可交互装修交付页时使用。",
       "matchTerms": [
@@ -41,9 +50,11 @@
       ],
       "agentInstructions": [
         "先调用并遵循 interior-design 技能，再开始生成页面。",
+        "必须使用 implementation.generator 生成页面，并确认产物携带 implementation.artifactMarker、模板 ID 与版本；不得另写一套相似页面冒充模板产物。",
         "保留 fixedFramework 的全部交付结构，只根据用户材料和需求调整 agentFreedom 范围内的内容。",
         "把模板 ID、关联技能、用户原始材料、约束和验收标准完整写入子任务执行说明。",
-        "没有用户户型图或关键尺寸时先明确缺失材料，不得把示例户型冒充用户方案。"
+        "没有用户户型图或关键尺寸时先明确缺失材料，不得把示例户型冒充用户方案。",
+        "只运行确定性的模型审计与模板契约校验；不得打开浏览器、自行截图走查或宣称视觉验收通过，视觉与交互验收交给用户。"
       ]
     }
   ]

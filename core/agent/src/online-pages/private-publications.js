@@ -38,7 +38,7 @@ export class PrivatePublicationStore {
     if (!/\.html?$/i.test(fileName)) throw new Error("pages publish requires an HTML entry file");
     const desktopThumbnail = decodePageThumbnail(input.desktopThumbnail, { variant: "desktop" });
     const mobileThumbnail = decodePageThumbnail(input.mobileThumbnail, { variant: "mobile" });
-    if (desktopThumbnail.buffer.equals(mobileThumbnail.buffer)) throw new Error("desktop and mobile Page thumbnails must be different screenshots");
+    if (desktopThumbnail.buffer.equals(mobileThumbnail.buffer)) throw new Error("desktop and mobile Page thumbnails must be distinct images");
     const properties = pageProperties(input, desktopThumbnail, mobileThumbnail);
     const desktopThumbnailAsset = this.upload({
       publicationId: input.publicationId,

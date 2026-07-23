@@ -126,7 +126,7 @@ export async function publishHtmlPage(input) {
   const folder = sanitizeFolder(input.folder);
   const desktopThumbnail = decodePageThumbnail(input.desktopThumbnail, { maxBytes: config.maxUploadBytes, variant: "desktop" });
   const mobileThumbnail = decodePageThumbnail(input.mobileThumbnail, { maxBytes: config.maxUploadBytes, variant: "mobile" });
-  if (desktopThumbnail.buffer.equals(mobileThumbnail.buffer)) throw new Error("desktop and mobile Page thumbnails must be different screenshots");
+  if (desktopThumbnail.buffer.equals(mobileThumbnail.buffer)) throw new Error("desktop and mobile Page thumbnails must be distinct images");
   const properties = pageProperties(input, desktopThumbnail, mobileThumbnail);
   const desktopThumbnailAsset = await uploadStaticAsset({
     fileName: desktopThumbnail.fileName,

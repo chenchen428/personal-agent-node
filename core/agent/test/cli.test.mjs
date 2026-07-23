@@ -404,7 +404,7 @@ test("pages template CLI lists match metadata and inspects the full contract", a
   });
 });
 
-test("pages publish sends HTML and both device screenshots as one Page contract", async (t) => {
+test("pages publish sends HTML and explicit device thumbnails as one Page contract", async (t) => {
   const working = fs.mkdtempSync(path.join(os.tmpdir(), "pa-cli-pages-"));
   fs.writeFileSync(path.join(working, "index.html"), "<h1>CLI Page</h1>");
   fs.writeFileSync(path.join(working, "desktop.png"), createPageThumbnailPng());
@@ -465,10 +465,11 @@ test("pages publish sends HTML and both device screenshots as one Page contract"
 test("pages publish returns an explicit notice when no managed domain is accessible", async (t) => {
   const working = fs.mkdtempSync(path.join(os.tmpdir(), "pa-cli-pages-no-domain-"));
   fs.writeFileSync(path.join(working, "index.html"), "<h1>CLI Page</h1>");
-  fs.writeFileSync(path.join(working, "desktop.png"), createPageThumbnailPng());
-  fs.writeFileSync(path.join(working, "mobile.png"), createPageThumbnailPng(750, 1200));
+  let received = null;
   const server = http.createServer(async (request, response) => {
-    for await (const _chunk of request) {}
+    const chunks = [];
+    for await (const chunk of request) chunks.push(chunk);
+    received = JSON.parse(Buffer.concat(chunks).toString("utf8"));
     response.writeHead(200, { "content-type": "application/json" });
     response.end(JSON.stringify({
       ok: true,
@@ -488,8 +489,9 @@ test("pages publish returns an explicit notice when no managed domain is accessi
     "pages", "publish",
     "--file", "index.html",
     "--folder", "cli-page",
-    "--desktop-thumbnail", "desktop.png",
-    "--mobile-thumbnail", "mobile.png",
+    "--template", "interior-design-delivery",
+    "--title", "无需浏览器验收的页面",
+    "--summary", "CLI 自动生成桌面和移动端画廊预览。",
     "--json",
   ], {
     cwd: working,
@@ -501,6 +503,11 @@ test("pages publish returns an explicit notice when no managed domain is accessi
     internalUrl: "/public/uploads/cli-page/index.html",
     linkNotice: "暂未配置可访问的域名链接，无法直接访问页面",
   });
+  const desktop = Buffer.from(received.desktopThumbnail.content, "base64");
+  const mobile = Buffer.from(received.mobileThumbnail.content, "base64");
+  assert.ok(desktop.subarray(1, 4).equals(Buffer.from("PNG")));
+  assert.ok(mobile.subarray(1, 4).equals(Buffer.from("PNG")));
+  assert.equal(desktop.equals(mobile), false);
 });
 
 test("pages upload rejects HTML so it cannot bypass thumbnail generation", async () => {

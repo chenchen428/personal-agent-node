@@ -88,7 +88,7 @@ export function auditModel(model) {
   if (!review || review.status !== 'passed') {
     findings.push(finding('quality-review-missing', 'Quality walkthrough must be recorded with status passed.'));
   } else {
-    const requiredChecks = ['furnitureCollision', 'doorClearance', 'circulation', 'useClearance', 'lifestyleFit', 'labelLayout', 'desktopAndMobile'];
+    const requiredChecks = ['furnitureCollision', 'doorClearance', 'circulation', 'useClearance', 'lifestyleFit', 'labelLayout', 'templateContract', 'responsiveContract'];
     for (const name of requiredChecks) {
       if (review.checks?.[name] !== true) findings.push(finding(`quality-check-${name}`, `Quality walkthrough check ${name} must pass.`));
     }

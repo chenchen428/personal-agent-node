@@ -6,8 +6,10 @@ import { InteriorTemplateCanvas } from "./interior-template-canvas";
 import { InteriorTemplatePlan } from "./interior-template-plan";
 import { InteriorTemplateRequirements } from "./interior-template-requirements";
 import type { InteriorView } from "./interior-template-scene";
+import { findPageTemplate } from "./catalog";
 
 type Presentation = "model" | "plan" | "requirements";
+const template = findPageTemplate("interior-design-delivery");
 
 export function InteriorTemplatePreview({ device }: { device: "web" | "mobile" }) {
   const [presentation, setPresentation] = useState<Presentation>("model");
@@ -16,7 +18,12 @@ export function InteriorTemplatePreview({ device }: { device: "web" | "mobile" }
   const [resetKey, setResetKey] = useState(0);
   const reset = () => { setView("iso"); setResetKey((value) => value + 1); };
 
-  return <section className={`interior-template-preview device-${device}`} aria-label="装修设计交付页实时预览">
+  return <section
+    className={`interior-template-preview device-${device}`}
+    aria-label="装修设计交付页实时预览"
+    data-template-id={template?.id}
+    data-template-version={template?.implementation.version}
+  >
     <div className="interior-template-shell">
       <header className="interior-template-header">
         <span className="interior-template-brand"><span className="interior-template-mark">PA</span><b>Pages</b></span>

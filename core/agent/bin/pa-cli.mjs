@@ -4,6 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import qrcodeTerminal from "qrcode-terminal";
 import { ingestRawEmail, MAX_MAIL_BYTES } from "../src/connections/mail/mail-ingest.js";
+import { createGeneratedPageThumbnails } from "../src/online-pages/generated-page-thumbnails.js";
 import { inspectPageTemplate, listPageTemplates } from "../src/online-pages/template-catalog.js";
 import { normalizeTaskCreate, normalizeTaskPatch } from "../src/server/task-contract.js";
 
@@ -404,20 +405,34 @@ try {
     const mobileThumbnailFile = args["mobile-thumbnail"];
     const folder = args.folder;
     if (!file) throw new Error("--file is required");
-    if (!desktopThumbnailFile || !mobileThumbnailFile) {
-      throw new Error("HTML publishing requires --desktop-thumbnail <png> and --mobile-thumbnail <png>");
+    if (Boolean(desktopThumbnailFile) !== Boolean(mobileThumbnailFile)) {
+      throw new Error("provide both --desktop-thumbnail <png> and --mobile-thumbnail <png>, or omit both");
     }
     if (!folder) throw new Error("HTML publishing requires --folder <stable-name>");
     const resolved = path.resolve(file);
-    const resolvedDesktopThumbnail = path.resolve(desktopThumbnailFile);
-    const resolvedMobileThumbnail = path.resolve(mobileThumbnailFile);
     if (!/\.html?$/i.test(resolved)) throw new Error("pages publish requires an HTML file");
-    if (!/\.png$/i.test(resolvedDesktopThumbnail) || !/\.png$/i.test(resolvedMobileThumbnail)) {
-      throw new Error("pages publish requires PNG desktop and mobile thumbnails");
-    }
     const content = fs.readFileSync(resolved);
-    const desktopThumbnail = fs.readFileSync(resolvedDesktopThumbnail);
-    const mobileThumbnail = fs.readFileSync(resolvedMobileThumbnail);
+    const title = args.title || path.basename(resolved, path.extname(resolved));
+    const summary = args.summary || "";
+    let desktopThumbnail;
+    let mobileThumbnail;
+    if (desktopThumbnailFile && mobileThumbnailFile) {
+      const resolvedDesktopThumbnail = path.resolve(desktopThumbnailFile);
+      const resolvedMobileThumbnail = path.resolve(mobileThumbnailFile);
+      if (!/\.png$/i.test(resolvedDesktopThumbnail) || !/\.png$/i.test(resolvedMobileThumbnail)) {
+        throw new Error("pages publish requires PNG desktop and mobile thumbnails");
+      }
+      desktopThumbnail = fs.readFileSync(resolvedDesktopThumbnail);
+      mobileThumbnail = fs.readFileSync(resolvedMobileThumbnail);
+    } else {
+      const generated = await createGeneratedPageThumbnails({
+        title,
+        summary,
+        templateId: args.template || "",
+      });
+      desktopThumbnail = generated.desktop;
+      mobileThumbnail = generated.mobile;
+    }
     const result = await post(args.private ? "/api/publications/publish" : "/api/pages/publish", {
       fileName: args.name || path.basename(resolved),
       content: content.toString("base64"),
@@ -426,8 +441,8 @@ try {
       publicationId: folder,
       mimeType: args.mime || "text/html; charset=utf-8",
       overwrite: Boolean(args.overwrite),
-      title: args.title || path.basename(resolved, path.extname(resolved)),
-      summary: args.summary || "",
+      title,
+      summary,
       desktopThumbnail: {
         fileName: args["desktop-thumbnail-name"] || "page-thumbnail-desktop.png",
         content: desktopThumbnail.toString("base64"),
@@ -838,7 +853,7 @@ function help() {
   pa-cli file reconcile --root <allowlisted-dir> --source <source> --visibility public|private [--prefix <path>] [--exclude-manifest <json>] [--execute] [--json]
   pa-cli pages templates list [--json]
   pa-cli pages templates inspect --id <template-id> [--json]
-  pa-cli pages publish --file <index.html> --folder <stable-name> --desktop-thumbnail <desktop.png> --mobile-thumbnail <mobile.png> [--title <text>] [--summary <text>] [--desktop-thumbnail-alt <text>] [--mobile-thumbnail-alt <text>] [--private] [--overwrite] [--json]
+  pa-cli pages publish --file <index.html> --folder <stable-name> [--template <template-id>] [--desktop-thumbnail <desktop.png> --mobile-thumbnail <mobile.png>] [--title <text>] [--summary <text>] [--desktop-thumbnail-alt <text>] [--mobile-thumbnail-alt <text>] [--private] [--overwrite] [--json]
   pa-cli pages upload --file <asset.css|asset.js|image> [--folder <name>] [--private] [--json]`);
 }
 

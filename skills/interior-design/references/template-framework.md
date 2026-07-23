@@ -1,6 +1,10 @@
 # 装修设计交付页模板框架
 
-以 Personal Agent Pages 内置的“装修设计交付页模板”为实现参照。模板只固定高质量交付所必需的框架，不固定设计答案。
+Personal Agent Pages 内置的“装修设计交付页模板”是实际生成契约，不只是视觉参考。必须使用注册表指定的生成器：
+
+`node skills/interior-design/scripts/cli.mjs page --template interior-design-delivery --source-plan <redacted-user-floor-plan> --input <normalized.json> --output <page-dir> --json`
+
+生成结果必须携带 `personal-agent-page-template` artifact marker、模板 ID 和实现版本，并生成 `template.json`。模板只固定高质量交付所必需的框架，不固定设计答案。
 
 ## 固定框架
 
@@ -12,6 +16,8 @@
 - 竖屏时给出非阻断的横屏建议，仍允许继续查看。
 - 不包含用户编辑器。用户通过自然语言让 Agent 修改模型与页面。
 - WebGL 不可用时展示同一模型的可拖拽 3D 投影降级，不退化为空白或静态平面图。
+- `SU 设计稿`、`户型图`、`用户需求` 三个交付区块和模板配置页保持同源；不得另写一套只有相似配色或标题的页面。
+- `户型图` 区块的“原始图”必须来自 `--source-plan` 指定的用户原图脱敏副本；“调整标注”来自当前归一化模型。不得使用模板示例图、测试图或模型推导图冒充用户原始图。
 
 ## Agent 自由发挥
 
@@ -24,3 +30,7 @@
 - 适合当前户型的默认镜头与房间近景距离。
 
 这些细节不得硬编码成示例户型。只有交互框架、设备适配、概念精度说明和安全边界是稳定约束。
+
+## 验收边界
+
+生成器负责确定性校验模板标识、固定区块、模型完整性、本地资源和响应式代码契约。Agent 不打开浏览器、不截图、不做视觉 click-through，也不声明页面“看起来正确”。视觉和交互结果由用户打开发布页后验收。

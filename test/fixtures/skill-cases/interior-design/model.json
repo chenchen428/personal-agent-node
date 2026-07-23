@@ -54,7 +54,8 @@
       "useClearance": true,
       "lifestyleFit": true,
       "labelLayout": true,
-      "desktopAndMobile": true
+      "templateContract": true,
+      "responsiveContract": true
     },
     "requirementTrace": [
       "Keep a continuous path from the entry to the living room and bedroom.",

@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { auditModel, normalizeModel, validateModel } from './model.mjs';
-import { generatePage } from './generate-page.mjs';
+import { generatePage, loadInteriorTemplateContract, loadSourcePlanAsset, verifyGeneratedPageHtml } from './generate-page.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const [command = 'help', ...argv] = process.argv.slice(2);
@@ -30,16 +30,21 @@ try {
     emit(report);
     if (!report.ok) process.exitCode = 1;
   } else if (command === 'page') {
+    const template = loadInteriorTemplateContract(root);
+    const requestedTemplate = options.template || template.id;
+    if (requestedTemplate !== template.id) throw new Error(`--template must be ${template.id}`);
     const model = read(required(options.input, '--input'));
     const errors = validateModel(model);
     if (errors.length) throw new Error(errors.join('\n'));
     const report = auditModel(model);
     if (!report.ok) throw new Error(report.findings.map((item) => `${item.code}: ${item.message}`).join('\n'));
     const output = path.resolve(required(options.output, '--output'));
-    const index = generatePage({ model, output, skillRoot: root });
-    emit({ ok: true, output, index });
+    const sourcePlan = loadSourcePlanAsset(required(options['source-plan'], '--source-plan'));
+    const index = generatePage({ model, output, skillRoot: root, sourcePlan, template });
+    const templateVerification = verifyGeneratedPageHtml(fs.readFileSync(index, 'utf8'), template);
+    emit({ ok: true, output, index, template: templateVerification });
   } else {
-    console.log('Usage: interior <validate|normalize|audit|page> --input <model.json> [--output <path>] [--json]');
+    console.log('Usage: interior <validate|normalize|audit|page> --input <model.json> [--output <path>] [--template interior-design-delivery] [--source-plan <redacted-image>] [--json]');
   }
 } catch (error) {
   if (options.json) emit({ ok: false, error: error.message });
