@@ -13,7 +13,7 @@ export function privateStorageConfigured() {
   return true;
 }
 
-export async function uploadPrivateAttachment({ filePath, relativePath, contentType, source = "wechat" }) {
+export async function uploadPrivateAttachment({ filePath, relativePath, contentType, source = "wechat", originalName = "" }) {
   const target = resolvePrivatePath(relativePath);
   if (path.resolve(filePath) !== target) {
     fs.mkdirSync(path.dirname(target), { recursive: true, mode: 0o700 });
@@ -31,7 +31,7 @@ export async function uploadPrivateAttachment({ filePath, relativePath, contentT
       region: "local",
       objectKey: normalizeRelative(relativePath),
       relativePath: normalizeRelative(relativePath),
-      originalName: path.basename(target),
+      originalName: String(originalName || path.basename(target)),
       contentType: String(contentType || "application/octet-stream"),
       sizeBytes,
       sha256,

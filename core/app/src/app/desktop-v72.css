@@ -118,8 +118,6 @@
 .v72-search input:focus { box-shadow: 0 0 0 2px rgba(38,38,37,.15); }
 .v72-list-label { padding: 15px 14px 7px; color: var(--v72-muted); font-size: 10px; font-weight: 600; }
 .v72-list-controls { min-height: 38px; display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 14px 4px; color: var(--v72-muted); font-size: 10px; font-weight: 600; }
-.v72-list-controls select { height: 26px; max-width: 92px; border: 1px solid var(--v72-border); border-radius: 7px; outline: 0; background: var(--v72-canvas); color: var(--v72-ink); padding: 0 22px 0 8px; font: inherit; cursor: pointer; }
-.v72-list-controls select:focus-visible { box-shadow: 0 0 0 2px rgba(38,38,37,.15); }
 .v72-select-row { width: calc(100% - 14px); display: flex; gap: 10px; margin: 1px 7px; padding: 11px 9px; border: 0; border-radius: 11px; background: transparent; color: inherit; text-align: left; cursor: pointer; }
 .v72-select-row:hover { background: var(--v72-hover); }
 .v72-select-row.selected { background: var(--v72-selected); }
@@ -278,6 +276,11 @@
 .desktop-v72 .button.ghost { border-color: transparent; background: transparent; }
 .desktop-v72 .button.danger { border-color: var(--pa-danger-soft); color: var(--pa-danger); }
 .desktop-v72 .button svg { width: 15px; height: 15px; }
+.desktop-v72 .icon-button { width: 30px; height: 30px; min-width: 30px; display: inline-grid; flex: 0 0 30px; place-items: center; border: 0; border-radius: 8px; padding: 0; background: transparent; color: var(--pa-muted); cursor: pointer; }
+.desktop-v72 .icon-button:hover { background: var(--pa-subtle); color: var(--pa-body); }
+.desktop-v72 .icon-button:disabled { cursor: default; opacity: .45; }
+.desktop-v72 .icon-button > svg { width: 15px; height: 15px; flex: 0 0 15px; stroke-width: 1.8; }
+.desktop-v72 .icon-button > svg.spin { animation: v72-spin 1s linear infinite; }
 .desktop-v72 .button:disabled { cursor: not-allowed; opacity: .48; transform: none; }
 .desktop-v72 .badge { min-height: 22px; display: inline-flex; align-items: center; gap: 5px; width: max-content; padding: 0 8px; border-radius: 999px; background: var(--pa-subtle); color: var(--pa-muted); font-size: 10px; font-weight: 600; white-space: nowrap; }
 .desktop-v72 .badge.success { background: var(--pa-success-soft); color: var(--pa-success); }
@@ -789,6 +792,14 @@
 .desktop-v72 .avatar { display: grid; width: 28px; height: 28px; flex: 0 0 28px; place-items: center; border-radius: 9px; background: var(--pa-primary); color: #fff; font-size: 10px; font-weight: 700; }
 .desktop-v72 .avatar.user { order: 2; background: #eaeeef; color: #52636a; }
 .desktop-v72 .message-body { max-width: 640px; min-width: 0; }
+.desktop-v72 .message-content { min-width: 0; max-width: 640px; display: grid; gap: 8px; justify-items: start; }
+.desktop-v72 .message.user .message-content { max-width: 520px; justify-items: end; }
+.desktop-v72 .message-attachments { display: flex; flex-wrap: wrap; gap: 8px; margin: 0; }
+.desktop-v72 .message.user .message-attachments { justify-content: flex-end; }
+.desktop-v72 .message-image { display: block; width: 56px; height: 56px; overflow: hidden; border: 1px solid var(--pa-border); border-radius: 9px; background: var(--pa-subtle); }
+.desktop-v72 .message-image img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.desktop-v72 .message-image > span { display: none; }
+.desktop-v72 .message-file { max-width: 280px; }
 .desktop-v72 .message-body p { margin: 0 0 10px; line-height: 1.75; white-space: pre-wrap; overflow-wrap: anywhere; }
 .desktop-v72 .v72-markdown { min-width: 0; overflow-wrap: anywhere; }
 .desktop-v72 .v72-markdown > :first-child { margin-top: 0; }
@@ -853,10 +864,12 @@
 .desktop-v72 .composer-tools { min-width: 0; display: flex; align-items: center; gap: 3px; }
 .desktop-v72 .composer-tools svg { width: 15px; fill: none; stroke: currentColor; stroke-width: 1.7; }
 .desktop-v72 .composer-feedback { overflow: hidden; color: var(--pa-muted); font-size: 9px; text-overflow: ellipsis; white-space: nowrap; }
-.desktop-v72 .composer-selected-attachments { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 4px; }
+.desktop-v72 .composer-selected-attachments { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 8px; margin: 0 4px 9px; }
+.desktop-v72 .composer-selected-image { position: relative; width: 56px; height: 56px; flex: 0 0 56px; }
+.desktop-v72 .composer-selected-image > a { display: block; width: 100%; height: 100%; }
+.desktop-v72 .composer-selected-image img { display: block; width: 100%; height: 100%; border: 1px solid var(--pa-border); border-radius: 9px; object-fit: cover; background: var(--pa-subtle); }
+.desktop-v72 .composer-selected-image button { position: absolute; top: -6px; right: -6px; display: grid; width: 18px; height: 18px; place-items: center; border: 1px solid #fff; border-radius: 50%; padding: 0; background: var(--pa-body); color: #fff; font-size: 12px; line-height: 1; cursor: pointer; }
 .desktop-v72 .composer-selected-file { min-width: 0; max-width: 240px; display: flex; align-items: center; gap: 8px; border-radius: 9px; padding: 6px 9px; background: var(--pa-subtle); color: var(--pa-body); font-size: 10px; }
-.desktop-v72 .composer-selected-file.image { padding: 4px 7px 4px 4px; }
-.desktop-v72 .composer-selected-file img { width: 38px; height: 38px; flex: 0 0 auto; border-radius: 7px; object-fit: cover; background: var(--pa-border); }
 .desktop-v72 .composer-selected-file > span:not(.composer-file-mark) { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .desktop-v72 .composer-file-mark { display: grid; width: 30px; height: 30px; flex: 0 0 auto; place-items: center; border-radius: 6px; background: #fff; color: var(--pa-muted); font-size: 8px; font-weight: 600; }
 .desktop-v72 .composer-selected-file button { flex: 0 0 auto; border: 0; background: transparent; color: var(--pa-muted); cursor: pointer; }

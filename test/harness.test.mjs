@@ -14,6 +14,15 @@ function run(command, args) { return spawnSync(command, args, { cwd: root, encod
 
 test('customer Harness contains architecture registries and Agent guidance', () => {
   for (const file of ['AGENTS.md', 'docs/adr/0001-node-product-boundary-freeze.md', 'registry/projects.json', 'registry/skills.json', 'registry/behavior-baselines.json', 'registry/capabilities.json', 'registry/routes.json', 'registry/extensions.json', 'registry/commands.json', 'registry/product-development.json', 'schemas/personal-agent/product-development.schema.json', 'workflows/project-iteration.md', 'workflows/skill-iteration.md', 'workflows/product-development.md', 'skills/personal-product-development/references/product-development.md']) assert.equal(fs.existsSync(path.join(root, file)), true, file);
+  const developerGuide = fs.readFileSync(path.join(root, 'AGENTS.md'), 'utf8');
+  const customerGuide = fs.readFileSync(path.join(root, 'workspace/AGENTS.md'), 'utf8');
+  for (const guide of [developerGuide, customerGuide]) {
+    assert.match(guide, /main Agent.*user|主 Agent.*用户/is);
+    assert.match(guide, /Proactively delegate substantive work|主动.*实质/is);
+    assert.match(guide, /independent.*Workers|独立.*Workers/is);
+    assert.match(guide, /must not duplicate|do not[\s\S]*duplicate|不要.*重复/is);
+    assert.match(guide, /progress.*final|进度.*最终/is);
+  }
 });
 
 test('installed product development is autonomous, private-root-only, and never targets current', () => {

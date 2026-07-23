@@ -11,6 +11,7 @@ import { fileURLToPath } from "node:url";
 import {
   buildInboundAttachmentDisplayName,
   buildPrivateAttachmentPreviewUrl,
+  buildPrivateAttachmentUrls,
   decodePrivateAttachmentPath,
   privateFilePreviewKind,
 } from "../src/private-files/attachments.js";
@@ -48,6 +49,11 @@ test("builds readable attachment names and authenticated preview URLs", () => {
     consoleBaseUrl: "https://agent.example.test/",
   }), "/app/files/view/wechat/user-a/2026-07-10/%E5%AE%B6%E5%BA%AD%E6%B8%85%E5%8D%95.xlsx");
   assert.equal(buildPrivateAttachmentPreviewUrl({ rootDir, filePath: "/private/other/file", consoleBaseUrl: "https://agent.example.test" }), "");
+  assert.deepEqual(buildPrivateAttachmentUrls("desktop/main/家庭清单.xlsx"), {
+    previewUrl: "/app/files/raw/desktop/main/%E5%AE%B6%E5%BA%AD%E6%B8%85%E5%8D%95.xlsx",
+    viewUrl: "/app/files/view/desktop/main/%E5%AE%B6%E5%BA%AD%E6%B8%85%E5%8D%95.xlsx",
+    downloadUrl: "/app/files/raw/desktop/main/%E5%AE%B6%E5%BA%AD%E6%B8%85%E5%8D%95.xlsx?download=1",
+  });
   assert.throws(() => decodePrivateAttachmentPath("wechat/%2E%2E/secret"), /invalid private file path/);
   assert.equal(privateFilePreviewKind("text/html"), "text");
   assert.equal(privateFilePreviewKind("image/svg+xml"), "download");
@@ -117,6 +123,29 @@ test("private preview is authenticated, range-aware, and covered by the Nginx ga
   assert.equal(raw.headers.get("content-range"), "bytes 0-6/15");
   assert.equal(await raw.text(), "private");
 
+  const desktopUpload = await fetch(`${baseUrl}/api/desktop/conversation/attachments`, {
+    method: "POST",
+    headers: { ...headers, "content-type": "application/json" },
+    body: JSON.stringify({
+      attachments: [{
+        name: "粘贴图片.png",
+        mimeType: "image/png",
+        content: Buffer.from("desktop-image").toString("base64"),
+      }],
+    }),
+  });
+  assert.equal(desktopUpload.status, 201);
+  const uploadedAttachment = (await desktopUpload.json()).attachments[0];
+  assert.match(uploadedAttachment.objectId, /^obj_[a-f0-9]{24}$/);
+  assert.equal(uploadedAttachment.name, "粘贴图片.png");
+  assert.match(uploadedAttachment.relativePath, /^desktop\/[^/]+\//);
+  assert.match(uploadedAttachment.previewUrl, /^\/app\/files\/raw\//);
+  assert.match(uploadedAttachment.viewUrl, /^\/app\/files\/view\//);
+  assert.equal(fs.existsSync(path.join(filesDir, uploadedAttachment.relativePath)), true);
+  const uploadedRaw = await fetch(`${baseUrl}${uploadedAttachment.previewUrl.replace(/^\/app\/files/, "/private-files")}`, { headers });
+  assert.equal(uploadedRaw.status, 200);
+  assert.equal(await uploadedRaw.text(), "desktop-image");
+
   const batchUnauthenticated = await fetch(`${baseUrl}/private-files/batches/${batch.id}`, { redirect: "manual" });
   assert.equal(batchUnauthenticated.status, 302);
   const batchPreview = await fetch(`${baseUrl}/private-files/batches/${batch.id}`, { headers });
@@ -154,11 +183,13 @@ test("private attachments remain searchable as ready local copies", async () => 
       filePath,
       relativePath: "wechat/user-test/inbound.txt",
       contentType: "text/plain",
+      originalName: "用户文件.txt",
     });
 
     assert.equal(result.uploaded, true);
     const stored = catalog.get(result.objectId);
     assert.equal(stored.status, "ready");
+    assert.equal(stored.originalName, "用户文件.txt");
     assert.equal(stored.localCopies[0].tier, "hot");
     assert.equal(stored.localCopies[0].localPath, path.join(directory, "wechat", "user-test", "inbound.txt"));
   } finally {

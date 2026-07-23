@@ -854,6 +854,10 @@ test("acknowledges WeChat immediately and queues the completed reply behind the 
   assert.match(calls[0].appServerDeveloperInstructions, /silently try the other registered local indexes/);
   assert.match(calls[0].appServerDeveloperInstructions, /凡是需要读写文件.*都必须进入任务调度/);
   assert.match(calls[0].appServerDeveloperInstructions, /主 Agent 不得自己执行这些实质步骤/);
+  assert.match(calls[0].appServerDeveloperInstructions, /首要职责是面向用户沟通/);
+  assert.match(calls[0].appServerDeveloperInstructions, /彼此独立推进的实质分支应分别创建子任务/);
+  assert.match(calls[0].appServerDeveloperInstructions, /不要在主 Agent 中重复执行已经委派的工作/);
+  assert.match(calls[0].appServerDeveloperInstructions, /负责收集这些状态、向用户汇总有意义的进展/);
   assert.match(calls[0].appServerDeveloperInstructions, /询问任务、进度、完成情况.*禁止创建或续接任务/);
   assert.match(calls[0].appServerDeveloperInstructions, new RegExp(`pa-cli session list --parent ${session.id} --all --json`));
   assert.match(calls[0].appServerDeveloperInstructions, /pa-cli pages templates list --json/);

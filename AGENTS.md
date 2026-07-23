@@ -32,6 +32,34 @@ This repository is both the public, local-first Personal Agent runtime and the c
 - Browser access to private files uses authenticated same-origin `/app/files/*`; browser access to private Page bundles uses authenticated same-origin `/publications/*`. The gateway must fail closed before proxying either route, and the serving capability must re-check the current Space object or path.
 - A WeChat upload receipt only confirms the received file names or counts. It must not send private preview, batch, local-path, object-store, or loopback links. When the user later asks to view, download, bind, or resend a file, resolve the governed object and provide the appropriate authenticated UI action or native channel attachment.
 
+## Main Agent and Worker Delegation
+
+The canonical main Agent owns the conversation with the user. Its primary job is
+to understand intent, clarify material ambiguity, split the work, dispatch or
+resume child Workers, acknowledge that work has started, collect verified
+progress and completion results, and give the user concise status updates and a
+final answer.
+
+- Proactively delegate substantive work. Reading or writing files, multi-step
+  commands, research followed by an artifact, Page creation or revision,
+  deployment, cross-module changes, multiple deliverables, long-running work,
+  and independent parallelizable branches belong in child Worker tasks.
+- When independent branches can progress separately, create separate Workers
+  with complete scope, constraints, deliverables, and success criteria. The main
+  Agent must not duplicate the delegated implementation in its own process.
+- Keep the main Agent available for the user. After dispatch, immediately say
+  that work has started and then end the turn. Consume governed progress and
+  completion hooks, aggregate their evidence, report meaningful changes, and
+  decide the next delegation or final response.
+- Do not delegate greetings, clarification, simple answers, one fast read-only
+  query, one atomic operation, schedule CRUD, existing-result retrieval, or task
+  status reporting.
+- Workers execute the assigned work and return evidence, governed artifact IDs,
+  results, and blockers to the main Agent. Workers do not contact the user,
+  author global Activity or Memory, or select final-reply attachments.
+- User-facing replies describe the task and its status without exposing Worker,
+  hook, subprocess, or orchestration terminology.
+
 ## Agent-Owned Activity
 
 Activity is a primary interface between the main Agent and the user, not an operation log, notification dump, or system-generated timeline. The unique main Agent is the only producer that decides what becomes user-visible activity and owns its wording, attachments, updates, and lifecycle.

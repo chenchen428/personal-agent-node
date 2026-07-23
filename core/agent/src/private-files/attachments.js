@@ -31,7 +31,21 @@ export function buildInboundAttachmentDisplayName({ kind, fileName, createdAt, u
 export function buildPrivateAttachmentPreviewUrl({ rootDir, filePath }) {
   const relativePath = relativeAttachmentPath(rootDir, filePath);
   if (!relativePath) return "";
-  return `/app/files/view/${encodeRelativePath(relativePath)}`;
+  return buildPrivateAttachmentUrls(relativePath).viewUrl;
+}
+
+export function buildPrivateAttachmentUrls(relativePath) {
+  const normalized = String(relativePath || "").replace(/\\/g, "/").replace(/^\/+/, "");
+  if (!normalized || normalized.split("/").some((segment) => !segment || segment === "." || segment === "..")) {
+    return { previewUrl: "", viewUrl: "", downloadUrl: "" };
+  }
+  const encoded = encodeRelativePath(normalized);
+  const rawUrl = `/app/files/raw/${encoded}`;
+  return {
+    previewUrl: rawUrl,
+    viewUrl: `/app/files/view/${encoded}`,
+    downloadUrl: `${rawUrl}?download=1`,
+  };
 }
 
 export function relativeAttachmentPath(rootDir, filePath) {

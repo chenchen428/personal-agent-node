@@ -3,14 +3,20 @@ export const MAX_ATTACHMENT_BYTES = 5 * 1024 * 1024;
 export const MAX_TOTAL_ATTACHMENT_BYTES = 10 * 1024 * 1024;
 
 export type PendingAttachment = {
+  objectId: string;
   name: string;
   mimeType: string;
   sizeBytes: number;
-  content: string;
+  kind: "image" | "file";
+  relativePath: string;
+  previewUrl: string;
+  viewUrl: string;
+  downloadUrl: string;
 };
 
 type AttachmentSource = "picker" | "clipboard";
 type FileDescriptor = Pick<File, "name" | "size" | "type">;
+export type PreparedAttachment = Pick<PendingAttachment, "name" | "mimeType" | "sizeBytes"> & { content: string };
 
 export function clipboardImageFiles(clipboard: Pick<DataTransfer, "items">) {
   return Array.from(clipboard.items)
@@ -43,7 +49,7 @@ export async function prepareAttachments(
   existing: PendingAttachment[],
   files: File[],
   source: AttachmentSource,
-) {
+): Promise<PreparedAttachment[]> {
   validateAttachmentBatch(existing, files);
   const now = new Date();
   return Promise.all(files.map(async (file, index) => ({

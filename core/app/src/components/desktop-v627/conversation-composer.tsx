@@ -18,6 +18,7 @@ export function ConversationComposer({ initialMessage = "", sending, waiting, er
   const {
     attachments,
     attachmentError,
+    uploading,
     fileRef,
     selectFiles,
     pasteImages,
@@ -28,7 +29,7 @@ export function ConversationComposer({ initialMessage = "", sending, waiting, er
   const submit = async (event: FormEvent) => {
     event.preventDefault();
     const content = message.trim();
-    if ((!content && !attachments.length) || sending || waiting) return;
+    if ((!content && !attachments.length) || sending || waiting || uploading) return;
     try {
       await onSend(content || `请处理附件：${attachments.map((attachment) => attachment.name).join("、")}`, attachments);
       setMessage("");
@@ -46,6 +47,7 @@ export function ConversationComposer({ initialMessage = "", sending, waiting, er
   };
 
   return <form className="composer-wrap" onSubmit={submit}><div className="composer">
+    <ConversationAttachmentList attachments={attachments} onRemove={removeAttachment} />
     <label className="sr-only" htmlFor="desktop-chat-input">发消息给 PA</label>
     <textarea
       id="desktop-chat-input"
@@ -62,18 +64,17 @@ export function ConversationComposer({ initialMessage = "", sending, waiting, er
       onKeyDown={handleKeyDown}
       onPaste={pasteImages}
     />
-    <ConversationAttachmentList attachments={attachments} onRemove={removeAttachment} />
     <footer className="composer-actions"><div className="composer-tools">
       <button className="icon-button" type="button" onClick={() => fileRef.current?.click()} aria-label="添加附件" title="添加附件">
         <AttachmentIcon />
       </button>
-      <span className="composer-feedback">{attachmentError || error || (waiting ? "PA 正在处理，回复会自动出现" : "")}</span></div>
-      <button className="send-button" type="submit" disabled={sending || waiting || (!message.trim() && !attachments.length)} aria-label="发送消息">
+      <span className="composer-feedback">{attachmentError || error || (uploading ? "正在上传附件…" : waiting ? "PA 正在处理，回复会自动出现" : "")}</span></div>
+      <button className="send-button" type="submit" disabled={sending || waiting || uploading || (!message.trim() && !attachments.length)} aria-label="发送消息">
         <SendIcon />
       </button>
     </footer>
     <input ref={fileRef} type="file" multiple hidden onChange={selectFiles} />
-    <span className="composer-send-status" role="status">{sending ? "正在发送" : waiting ? "PA 正在处理" : ""}</span>
+    <span className="composer-send-status" role="status">{uploading ? "正在上传附件" : sending ? "正在发送" : waiting ? "PA 正在处理" : ""}</span>
   </div></form>;
 }
 

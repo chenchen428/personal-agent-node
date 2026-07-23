@@ -128,13 +128,15 @@ export function ConversationPage() {
         channel: "desktop",
         sourceLabel: "来自桌面",
         attachments: attachments.map((attachment) => {
-          const image = attachment.mimeType.startsWith("image/");
           return {
+            objectId: attachment.objectId,
             name: attachment.name,
             mimeType: attachment.mimeType,
             sizeBytes: attachment.sizeBytes,
-            kind: image ? "image" as const : "file" as const,
-            previewUrl: image ? `data:${attachment.mimeType};base64,${attachment.content}` : undefined,
+            kind: attachment.kind,
+            previewUrl: attachment.previewUrl,
+            viewUrl: attachment.viewUrl,
+            downloadUrl: attachment.downloadUrl,
             deliveryState: "sending" as const,
           };
         }),
@@ -156,7 +158,7 @@ export function ConversationPage() {
         body: JSON.stringify({
           content,
           clientMessageId,
-          attachments,
+          attachments: attachments.map(({ objectId }) => ({ objectId })),
         }),
       });
       void loadLatest({ follow: true });

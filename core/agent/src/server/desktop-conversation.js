@@ -1,3 +1,5 @@
+import { buildPrivateAttachmentUrls } from "../private-files/attachments.js";
+
 const VISIBLE_ROLES = new Set(["user", "assistant", "error"]);
 const ACTIVE_STATUSES = new Set(["start", "running"]);
 
@@ -125,6 +127,7 @@ function hasExplicitWechatSource(message) {
 
 function withConversationSource(message, session) {
   const channel = normalizeChannel(message.metadata?.channel || message.source || session.channel);
+  const attachments = normalizeDesktopAttachments(message.metadata?.attachments);
   return {
     ...message,
     sessionId: message.sessionId || session.id,
@@ -132,8 +135,18 @@ function withConversationSource(message, session) {
       ...(message.metadata || {}),
       channel,
       sourceLabel: sourceLabel(channel),
+      ...(attachments ? { attachments } : {}),
     },
   };
+}
+
+function normalizeDesktopAttachments(attachments) {
+  if (!Array.isArray(attachments) || !attachments.length) return null;
+  return attachments.map((attachment) => {
+    const relativePath = String(attachment?.relativePath || "").replace(/\\/g, "/").replace(/^\/+/, "");
+    if (!relativePath.startsWith("desktop/")) return attachment;
+    return { ...attachment, ...buildPrivateAttachmentUrls(relativePath) };
+  });
 }
 
 function normalizeChannel(value) {
