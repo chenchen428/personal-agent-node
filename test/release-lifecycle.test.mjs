@@ -111,6 +111,8 @@ test('local deployment installs and rolls back with the bundled release installe
   const deployment = fs.readFileSync(path.join(root, 'scripts', 'deploy-private-site-node.mjs'), 'utf8');
   assert.match(deployment, /releaseInstaller\(releaseRoot\)/);
   assert.match(deployment, /releaseInstaller\(previousRoot\)/);
+  assert.match(deployment, /args\.domain \|\| installedDomain\(previousRoot\)/);
+  assert.match(deployment, /"--domain", domain/);
   assert.doesNotMatch(deployment, /path\.join\(root,\s*["']scripts["'],\s*["']install-private-site-node-release\.mjs["']\)/);
 });
 

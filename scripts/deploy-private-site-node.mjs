@@ -8,7 +8,7 @@ import { fileURLToPath } from "node:url";
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const args = parseArgs(process.argv.slice(2));
 if (args.help) {
-  process.stdout.write("Usage: node scripts/deploy-private-site-node.mjs [--profile <name>] [--install-root <path>] [--data-root <path>]\n");
+  process.stdout.write("Usage: node scripts/deploy-private-site-node.mjs [--profile <name>] [--install-root <path>] [--data-root <path>] [--domain <domain>]\n");
   process.exit(0);
 }
 
@@ -32,13 +32,14 @@ let installed = false;
 try {
   requireCleanWorktree();
   const previousManifest = readManifest(previousRoot);
+  const domain = args.domain || installedDomain(previousRoot) || "personal-agent.local";
   const profile = args.profile || previousManifest?.profile || "universal";
   const build = runJson(process.execPath, [path.join(root, "scripts", "build-private-site-node-dist.mjs"), "--profile", profile], { timeout: 30 * 60_000 });
   const releaseRoot = path.resolve(build.outputRoot);
   const verified = runJson(process.execPath, [path.join(root, "scripts", "verify-private-site-node-dist.mjs"), releaseRoot], { timeout: 10 * 60_000 });
 
   stopPlatformService(previousRoot);
-  const installation = runJson(process.execPath, [releaseInstaller(releaseRoot), releaseRoot, "--home", homeRoot, "--install-root", installRoot, "--data-root", dataRoot]);
+  const installation = runJson(process.execPath, [releaseInstaller(releaseRoot), releaseRoot, "--home", homeRoot, "--install-root", installRoot, "--data-root", dataRoot, "--domain", domain]);
   installed = true;
   const activeRoot = pointerTarget(path.join(installRoot, "current"));
   const activeCli = nodeCli(activeRoot);
@@ -69,7 +70,7 @@ try {
   if (installed && previousRoot && fs.existsSync(previousRoot)) {
     try {
       stopPlatformService(pointerTarget(path.join(installRoot, "current")));
-      runJson(process.execPath, [releaseInstaller(previousRoot), previousRoot, "--home", homeRoot, "--install-root", installRoot, "--data-root", dataRoot]);
+      runJson(process.execPath, [releaseInstaller(previousRoot), previousRoot, "--home", homeRoot, "--install-root", installRoot, "--data-root", dataRoot, "--domain", domain]);
       const rollbackCli = nodeCli(pointerTarget(path.join(installRoot, "current")));
       runJson(process.execPath, [rollbackCli, "prepare"], { env: environment, timeout: 20 * 60_000 });
       activatePlatformService(runJson(process.execPath, [rollbackCli, "service-prepare"], { env: environment }));
@@ -195,6 +196,12 @@ function releaseInstaller(releaseRoot) {
   return path.join(releaseRoot, "scripts", "install-private-site-node-release.mjs");
 }
 
+function installedDomain(releaseRoot) {
+  if (!releaseRoot || !fs.existsSync(nodeCli(releaseRoot))) return "";
+  const status = runJson(process.execPath, [nodeCli(releaseRoot), "status", "--json"], { env: environment });
+  return String(status.site?.asciiDomain || status.site?.displayDomain || "").trim();
+}
+
 function sleep(milliseconds) {
   Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, milliseconds);
 }
@@ -207,6 +214,7 @@ function parseArgs(argv) {
     else if (argv[index] === "--home") parsed.home = argv[++index];
     else if (argv[index] === "--install-root") parsed.installRoot = argv[++index];
     else if (argv[index] === "--data-root") parsed.dataRoot = argv[++index];
+    else if (argv[index] === "--domain") parsed.domain = argv[++index];
     else throw new Error(`Unknown option: ${argv[index]}`);
   }
   return parsed;
