@@ -30,9 +30,9 @@ export function TaskLifecycleStatus({ session }: { session: Session }) {
   }
 
   const interrupted = session.status === "paused";
-  return <section className={`v72-task-lifecycle ${interrupted ? "interrupted" : "completed"}`} aria-label={interrupted ? "任务已中断" : "任务已完成"}>
+  return <section className={`v72-task-lifecycle ${interrupted ? "interrupted" : "completed"}`} aria-label={interrupted ? "任务已暂停" : "任务已完成"}>
     {interrupted ? <AlertCircle aria-hidden="true" /> : <Check aria-hidden="true" />}
-    <div><strong>{interrupted ? "任务已中断" : "任务已完成"} · 用时 {duration}</strong><span>{lastUpdate}；当前任务不会继续保持运行状态。</span></div>
+    <div><strong>{interrupted ? "任务已暂停" : "任务已完成"} · 用时 {duration}</strong><span>{interrupted ? `${lastUpdate}；可点击上方“恢复任务”从暂停处继续。` : `${lastUpdate}；当前任务已经结束。`}</span></div>
   </section>;
 }
 

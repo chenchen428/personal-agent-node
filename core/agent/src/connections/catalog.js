@@ -69,7 +69,7 @@ export function connectionPlatformSupport(id, { registry = readConnectionRegistr
 
 function readConnectorDocument(reference, registryPath) {
   const releaseRoot = path.dirname(path.dirname(path.resolve(registryPath)));
-  const connectorRoot = path.resolve(releaseRoot, "skills", "personal-agent", "references", "connectors");
+  const connectorRoot = path.resolve(releaseRoot, "skills", "personal-connections", "references", "connectors");
   const target = path.resolve(releaseRoot, reference);
   if (target !== connectorRoot && !target.startsWith(`${connectorRoot}${path.sep}`)) throw new Error("connection skill reference escapes connector directory");
   if (!fs.statSync(target, { throwIfNoEntry: false })?.isFile()) throw new Error(`connection skill reference is missing: ${reference}`);

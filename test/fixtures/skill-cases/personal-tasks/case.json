@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "skill": "personal-tasks",
+  "title": "主 Agent 创建和更新精简子任务元数据",
+  "prompt": "为真实工作创建子任务。标题和描述必须由主 Agent 生成，分别不超过 20 和 100 个字；执行提示与展示描述分离，并能通过公开 CLI 更新标题或描述。任务链接只使用 CLI 返回的 Managed Mobile url；没有可用公网域名时返回 linkNotice，不拼接 internalUrl。Work 在最终聊天回复中用产物信息信封反馈稳定任务引用和已验证产物，通用完成事件不携带领域字段。",
+  "commands": [
+    "pa-cli session start --parent <main-session> --title \"整理发布页\" --description \"完成介绍页制作、发布和可访问性验证\" --task \"完成页面并返回验证地址\" --json",
+    "pa-cli session update --session <task-id> --title \"发布个人介绍页\" --description \"制作并发布个人介绍页，返回最终地址\" --json",
+    "pa-cli session status --session <task-id> --json",
+    "pa-cli session resume --session <task-id> --task \"继续完成原任务；先检查已有进展和暂停原因，再从未完成处继续。\"",
+    "pa-cli session start --parent <main-session> --title \"完整任务\" --description \"保留原始用户要求\" --task-file <utf8-task-file> --json"
+  ],
+  "artifacts": [{ "path": "expected.json", "label": "Task metadata contract expectation" }]
+}

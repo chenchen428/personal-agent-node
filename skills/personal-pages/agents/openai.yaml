@@ -1,0 +1,4 @@
+interface:
+  display_name: "Personal Agent 发布页"
+  short_description: "选择独立模板契约并生成、发布和验证桌面及移动端 Page。"
+  default_prompt: "使用 $personal-pages 选择模板并创建或发布一个 Personal Agent Page。"

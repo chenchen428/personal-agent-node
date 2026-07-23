@@ -72,6 +72,9 @@ test('workspace CLI delegates only to skill-owned portable entrypoints', () => {
   assert.equal(result.status, 0, result.stderr);
   const output = JSON.parse(result.stdout);
   assert.equal(output.skills.length, catalog.skills.length);
-  assert.equal(output.skills.some((skill) => skill.name === 'personal-agent'), true);
+  assert.equal(output.skills.some((skill) => skill.name === 'personal-agent'), false);
+  for (const name of ['personal-runtime', 'personal-tasks', 'personal-pages', 'personal-files', 'personal-data']) {
+    assert.equal(output.skills.some((skill) => skill.name === name), true, name);
+  }
   assert.equal(output.skills.some((skill) => skill.name === 'open-agent-bridge'), false);
 });

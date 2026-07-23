@@ -25,7 +25,8 @@ export function MemoryPage() {
   const url = useMemo(() => `/api/memories?status=${status}&query=${encodeURIComponent(query)}&limit=200`, [query, status]);
   const { value, loading, error, refresh } = useJson<MemoryResponse>(url);
   const items = value?.items || [];
-  const selected = items.find((item) => item.id === selectedId) || items[0];
+  const activeId = items.some((item) => item.id === selectedId) ? selectedId : items[0]?.id || "";
+  const selected = items.find((item) => item.id === activeId);
   const spaceName = value?.space.displayName || "当前空间";
 
   useEffect(() => {
@@ -42,7 +43,7 @@ export function MemoryPage() {
       time: memory.status === "active" ? `热度 ${memory.heat}` : formatShortDate(memory.forgetAt),
       leading: memory.status === "active" ? <Flame /> : <Brain />,
     }))}
-    selectedId={selected?.id || ""}
+    selectedId={activeId}
     onSelect={setSelectedId}
     search={{ value: query, placeholder: "搜索记忆内容…", onChange: setQuery }}
     listLabel={`${spaceName} · ${status === "active" ? "按热度排序" : "按遗忘时间排序"}`}

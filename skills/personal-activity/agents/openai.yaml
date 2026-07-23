@@ -1,0 +1,4 @@
+interface:
+  display_name: "Personal Agent 动态"
+  short_description: "由主 Agent 查询和维护当前空间中有用户价值的工作动态。"
+  default_prompt: "使用 $personal-activity 查询或维护当前空间的用户动态。"

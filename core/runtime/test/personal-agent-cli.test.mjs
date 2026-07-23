@@ -210,18 +210,19 @@ test('preview commands require explicit opt-in and warn on success', () => {
 
 test('skill commands use the public registry fields and succeed for a real skill', () => {
   const list = JSON.parse(runOk(['skill', 'list', '--json']).stdout);
-  const personalAgent = list.result.skills.find((entry) => entry.name === 'personal-agent');
-  assert.ok(personalAgent);
-  assert.equal(personalAgent.directory, 'skills/personal-agent');
-  assert.ok(Array.isArray(personalAgent.risks));
-  assert.equal(Object.hasOwn(personalAgent, 'id'), false);
+  const personalRuntime = list.result.skills.find((entry) => entry.name === 'personal-runtime');
+  assert.ok(personalRuntime);
+  assert.equal(personalRuntime.directory, 'skills/personal-runtime');
+  assert.ok(Array.isArray(personalRuntime.risks));
+  assert.equal(Object.hasOwn(personalRuntime, 'id'), false);
+  assert.equal(list.result.skills.some((entry) => entry.name === 'personal-agent'), false);
 
-  const inspect = JSON.parse(runOk(['skill', 'inspect', 'personal-agent', '--json']).stdout);
-  assert.equal(inspect.result.skill.name, 'personal-agent');
-  assert.equal(inspect.result.skill.directory, 'skills/personal-agent');
+  const inspect = JSON.parse(runOk(['skill', 'inspect', 'personal-runtime', '--json']).stdout);
+  assert.equal(inspect.result.skill.name, 'personal-runtime');
+  assert.equal(inspect.result.skill.directory, 'skills/personal-runtime');
 
-  const verify = JSON.parse(runOk(['skill', 'verify', 'personal-agent', '--json']).stdout);
-  assert.equal(verify.result.skillName, 'personal-agent');
+  const verify = JSON.parse(runOk(['skill', 'verify', 'personal-runtime', '--json']).stdout);
+  assert.equal(verify.result.skillName, 'personal-runtime');
   assert.equal(verify.result.verified, true);
 });
 

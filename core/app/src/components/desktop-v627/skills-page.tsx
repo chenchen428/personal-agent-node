@@ -25,7 +25,8 @@ export function SkillsPage() {
     const normalized = query.trim().toLocaleLowerCase("zh-CN");
     return skills.filter((skill) => !normalized || `${skill.name} ${skill.description} ${skill.category}`.toLocaleLowerCase("zh-CN").includes(normalized));
   }, [query, skills]);
-  const selected = filtered.find((skill) => skill.name === selectedName) || filtered[0];
+  const activeName = filtered.some((skill) => skill.name === selectedName) ? selectedName : filtered[0]?.name || "";
+  const selected = filtered.find((skill) => skill.name === activeName);
   const spaceName = value?.space?.displayName || "当前空间";
 
   useEffect(() => {
@@ -40,7 +41,7 @@ export function SkillsPage() {
       summary: `${categoryLabel(categories, skill.category)} · ${skill.description}`,
       leading: <Sparkles />,
     }))}
-    selectedId={selected?.name || ""}
+    selectedId={activeName}
     onSelect={setSelectedName}
     search={{ value: query, placeholder: "搜索技能…", onChange: setQuery }}
     listLabel={`${spaceName} · 当前可用`}

@@ -9,8 +9,14 @@ const read = (relative) => fs.readFileSync(path.join(root, relative), "utf8");
 
 test("Pages registers one focused built-in renovation template", () => {
   const registry = JSON.parse(read("registry/page-templates.json"));
+  const pageSkill = read("skills/personal-pages/SKILL.md");
   assert.equal(registry.schemaVersion, 1);
   assert.equal(registry.templates.length, 1);
+  for (const template of registry.templates) {
+    const reference = `skills/personal-pages/references/templates/${template.id}.md`;
+    assert.equal(fs.existsSync(path.join(root, reference)), true, reference);
+    assert.match(pageSkill, new RegExp(`${template.id}\\.md`));
+  }
   assert.equal(registry.templates[0].id, "interior-design-delivery");
   assert.equal(registry.templates[0].skill, "interior-design");
   assert.equal(registry.templates[0].mobileLandscape, true);

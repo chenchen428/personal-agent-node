@@ -45,21 +45,24 @@ export function ConnectionsPage() {
       document.removeEventListener("visibilitychange", refreshWhenVisible);
     };
   }, [refresh]);
-  const selected = filtered.find((item) => item.id === selectedId) || filtered.find((item) => item.id === requested) || filtered[0];
+  const activeId = filtered.some((item) => item.id === selectedId)
+    ? selectedId
+    : filtered.find((item) => item.id === requested)?.id || filtered[0]?.id || "";
+  const selected = filtered.find((item) => item.id === activeId);
   const select = (id: string) => {
     setSelectedId(id);
     router.replace(`/app/connections?connection=${encodeURIComponent(id)}`, { scroll: false });
   };
 
   return <main className="page flush"><div className="split-view">
-    <aside className="split-list" aria-busy={loading}><div className="split-toolbar connection-toolbar"><div className="split-toolbar-title"><h1>连接</h1><ConnectionViewSwitch value={view} effectiveCount={effectiveCount} loading={initialLoading} onChange={setView} /></div><SearchField value={query} disabled={initialLoading} onChange={(event) => setQuery(event.target.value)} placeholder="搜索连接或能力…" aria-label="搜索连接或能力" /><nav aria-label="连接分类"><button className={category === "全部" ? "active" : ""} disabled={initialLoading} onClick={() => setCategory("全部")} type="button">全部</button>{categories.map((item) => <button className={category === item ? "active" : ""} onClick={() => setCategory(item)} type="button" key={item}>{item}</button>)}</nav></div><div className="list-section-label">{initialLoading ? "正在加载连接…" : <>{view === "effective" ? "已生效" : category === "全部" ? "全部连接" : category} · {filtered.length}</>}</div>{initialLoading ? <LoadingState label="正在加载连接" compact /> : filtered.length ? filtered.map((connection) => <ConnectionRow connection={connection} selected={connection.id === selected?.id} onSelect={select} key={connection.id} />) : <div className="connection-list-empty"><SearchX /><strong>{view === "effective" ? "暂无已生效连接" : "没有匹配的连接"}</strong><span>{view === "effective" ? "切换到全部查看并完成连接配置" : "调整搜索词或切换分类"}</span></div>}</aside>
+    <aside className="split-list" aria-busy={loading}><div className="split-toolbar connection-toolbar"><div className="split-toolbar-title"><h1>连接</h1><ConnectionViewSwitch value={view} effectiveCount={effectiveCount} loading={initialLoading} onChange={setView} /></div><SearchField value={query} disabled={initialLoading} onChange={(event) => setQuery(event.target.value)} placeholder="搜索连接或能力…" aria-label="搜索连接或能力" /><nav aria-label="连接分类"><button className={category === "全部" ? "active" : ""} disabled={initialLoading} onClick={() => setCategory("全部")} type="button">全部</button>{categories.map((item) => <button className={category === item ? "active" : ""} onClick={() => setCategory(item)} type="button" key={item}>{item}</button>)}</nav></div><div className="list-section-label">{initialLoading ? "正在加载连接…" : <>{view === "effective" ? "已生效" : category === "全部" ? "全部连接" : category} · {filtered.length}</>}</div>{initialLoading ? <LoadingState label="正在加载连接" compact /> : filtered.length ? filtered.map((connection) => <ConnectionRow connection={connection} selected={connection.id === activeId} onSelect={select} key={connection.id} />) : <div className="connection-list-empty"><SearchX /><strong>{view === "effective" ? "暂无已生效连接" : "没有匹配的连接"}</strong><span>{view === "effective" ? "切换到全部查看并完成连接配置" : "调整搜索词或切换分类"}</span></div>}</aside>
     <section className="split-detail" aria-busy={loading}>{initialLoading ? <LoadingState label="正在加载连接" /> : selected ? <ConnectionDetail connection={selected} refresh={refresh} key={selected.id} /> : <div className="empty-state">{view === "effective" ? "暂无已生效连接" : "没有匹配的连接"}</div>}</section>
   </div></main>;
 }
 
 function ConnectionRow({ connection, selected, onSelect }: { connection: Connection; selected: boolean; onSelect: (id: string) => void }) {
   const Icon = icons[connection.icon as keyof typeof icons] || Globe2;
-  return <button className={`select-row tone-${connection.tone}${selected ? " selected" : ""}`} type="button" onClick={() => onSelect(connection.id)}><span className="row-icon"><Icon /></span><span className="select-row-body"><span className="select-row-line"><strong>{connection.name}</strong><time>{connection.statusLabel}</time></span><p>{connection.category} · {accessModeLabel(connection.accessMode)} · {connection.summary}</p></span></button>;
+  return <button className={`select-row tone-${connection.tone}${selected ? " selected" : ""}`} type="button" aria-pressed={selected} onClick={() => onSelect(connection.id)}><span className="row-icon"><Icon /></span><span className="select-row-body"><span className="select-row-line"><strong>{connection.name}</strong><time>{connection.statusLabel}</time></span><p>{connection.category} · {accessModeLabel(connection.accessMode)} · {connection.summary}</p></span></button>;
 }
 
 function ConnectionDetail({ connection, refresh }: { connection: Connection; refresh: () => Promise<void> }) {

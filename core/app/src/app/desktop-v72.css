@@ -117,6 +117,9 @@
 .v72-search input { width: 100%; height: 31px; padding: 0 10px 0 31px; border: 0; border-radius: 9px; outline: 0; background: #efefed; color: var(--v72-ink); }
 .v72-search input:focus { box-shadow: 0 0 0 2px rgba(38,38,37,.15); }
 .v72-list-label { padding: 15px 14px 7px; color: var(--v72-muted); font-size: 10px; font-weight: 600; }
+.v72-list-controls { min-height: 38px; display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 14px 4px; color: var(--v72-muted); font-size: 10px; font-weight: 600; }
+.v72-list-controls select { height: 26px; max-width: 92px; border: 1px solid var(--v72-border); border-radius: 7px; outline: 0; background: var(--v72-canvas); color: var(--v72-ink); padding: 0 22px 0 8px; font: inherit; cursor: pointer; }
+.v72-list-controls select:focus-visible { box-shadow: 0 0 0 2px rgba(38,38,37,.15); }
 .v72-select-row { width: calc(100% - 14px); display: flex; gap: 10px; margin: 1px 7px; padding: 11px 9px; border: 0; border-radius: 11px; background: transparent; color: inherit; text-align: left; cursor: pointer; }
 .v72-select-row:hover { background: var(--v72-hover); }
 .v72-select-row.selected { background: var(--v72-selected); }
@@ -221,6 +224,12 @@
 .v72-task-head > div > span { color: var(--v72-muted); font-size: 9px; letter-spacing: .08em; text-transform: uppercase; }
 .v72-task-head h1 { overflow: hidden; margin: 5px 0 0; font-size: 20px; letter-spacing: -.025em; text-overflow: ellipsis; white-space: nowrap; }
 .v72-task-head p { display: -webkit-box; overflow: hidden; margin: 5px 0 0; color: var(--v72-muted); font-size: 10px; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+.v72-task-head-actions { display: flex; align-items: center; gap: 8px; }
+.v72-task-resume { min-height: 30px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; border: 1px solid var(--v72-border); border-radius: 8px; background: var(--v72-canvas); color: var(--v72-ink); padding: 0 10px; font: inherit; font-size: 10px; font-weight: 650; cursor: pointer; }
+.v72-task-resume:hover:not(:disabled) { background: var(--v72-hover); }
+.v72-task-resume:focus-visible { outline: 2px solid rgba(38,38,37,.22); outline-offset: 2px; }
+.v72-task-resume:disabled { cursor: wait; opacity: .62; }
+.v72-task-resume svg { width: 13px; height: 13px; }
 .v72-task-scroll { min-height: 0; flex: 1; overflow-y: auto; }
 .v72-task-thread { width: min(680px, calc(100% - 48px)); margin: 0 auto; padding: 30px 0 54px; }
 .v72-task-message { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 25px; }

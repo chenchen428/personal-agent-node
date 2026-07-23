@@ -1,0 +1,4 @@
+interface:
+  display_name: "Personal Agent 任务"
+  short_description: "创建、查询、更新并恢复 Personal Agent 的单一子任务。"
+  default_prompt: "使用 $personal-tasks 创建、检查、更新或恢复指定任务。"

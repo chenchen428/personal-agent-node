@@ -33,7 +33,7 @@ export function SettingsCollectionLayout({
     <div className="settings-collection-columns">
       <section className="settings-collection-list" aria-label={`${title}列表`}>
         <header><strong>{listLabel}</strong><span>{rows.length} 项</span></header>
-        <div className="settings-collection-scroll">{rows.map((row) => <button className={row.id === selectedId ? "selected" : ""} type="button" onClick={() => onSelect(row.id)} key={row.id}>
+        <div className="settings-collection-scroll">{rows.map((row) => <button className={row.id === selectedId ? "selected" : ""} type="button" aria-pressed={row.id === selectedId} onClick={() => onSelect(row.id)} key={row.id}>
           <span className="settings-collection-leading">{row.leading}</span>
           <span className="settings-collection-copy"><strong>{row.title}</strong><small>{row.summary}</small></span>
           {row.time ? <time>{row.time}</time> : null}

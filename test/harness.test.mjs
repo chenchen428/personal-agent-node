@@ -13,7 +13,7 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 function run(command, args) { return spawnSync(command, args, { cwd: root, encoding: 'utf8' }); }
 
 test('customer Harness contains architecture registries and Agent guidance', () => {
-  for (const file of ['AGENTS.md', 'docs/adr/0001-node-product-boundary-freeze.md', 'registry/projects.json', 'registry/skills.json', 'registry/behavior-baselines.json', 'registry/capabilities.json', 'registry/routes.json', 'registry/extensions.json', 'registry/commands.json', 'registry/product-development.json', 'schemas/personal-agent/product-development.schema.json', 'workflows/project-iteration.md', 'workflows/skill-iteration.md', 'workflows/product-development.md', 'skills/personal-agent/references/product-development.md']) assert.equal(fs.existsSync(path.join(root, file)), true, file);
+  for (const file of ['AGENTS.md', 'docs/adr/0001-node-product-boundary-freeze.md', 'registry/projects.json', 'registry/skills.json', 'registry/behavior-baselines.json', 'registry/capabilities.json', 'registry/routes.json', 'registry/extensions.json', 'registry/commands.json', 'registry/product-development.json', 'schemas/personal-agent/product-development.schema.json', 'workflows/project-iteration.md', 'workflows/skill-iteration.md', 'workflows/product-development.md', 'skills/personal-product-development/references/product-development.md']) assert.equal(fs.existsSync(path.join(root, file)), true, file);
 });
 
 test('installed product development is autonomous, private-root-only, and never targets current', () => {
@@ -61,10 +61,10 @@ test('customer Harness classifies and ships portable creation skills', () => {
 });
 
 test('customer Harness carries the portable Node acceptance standard', () => {
-  const standard = fs.readFileSync(path.join(root, 'skills/personal-agent/references/acceptance.md'), 'utf8');
+  const standard = fs.readFileSync(path.join(root, 'skills/personal-acceptance/references/acceptance.md'), 'utf8');
   for (const requirement of ['Node Core Gate', 'Optional Managed Cloud Integration', 'public whitelist', 'ten minutes', 'previous-release rollback', 'public GitHub Release asset', '"route": "/app/chat"', '"uniquePrompt": true', '"realAgentRuntime": true', '"sameSessionAgentReply": true', '"wechatRequired": false', 'connections.wechat', 'optional evidence', 'Stable Go launchers', 'Setup Center']) assert.match(standard, new RegExp(requirement));
-  assert.equal(fs.existsSync(path.join(root, 'test/fixtures/skill-cases/personal-agent-acceptance/case.json')), true);
-  const expected = JSON.parse(fs.readFileSync(path.join(root, 'test/fixtures/skill-cases/personal-agent-acceptance/expected.json'), 'utf8'));
+  assert.equal(fs.existsSync(path.join(root, 'test/fixtures/skill-cases/personal-acceptance/case.json')), true);
+  const expected = JSON.parse(fs.readFileSync(path.join(root, 'test/fixtures/skill-cases/personal-acceptance/expected.json'), 'utf8'));
   assert.deepEqual(Object.keys(expected.node.webConversation), [
     'releaseAssetRuntime',
     'route',

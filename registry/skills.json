@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "version": 8,
-  "updatedAt": "2026-07-21",
+  "version": 9,
+  "updatedAt": "2026-07-23",
   "categories": [
     {
       "id": "research-knowledge",
@@ -148,7 +148,7 @@
       "related": [
         "deep-research",
         "knowledge-capture",
-        "personal-agent"
+        "personal-connections"
       ]
     },
     {
@@ -184,7 +184,7 @@
         "knowledge-capture",
         "visual-content",
         "travel-guidebook",
-        "personal-agent"
+        "personal-pages"
       ]
     },
     {
@@ -427,7 +427,7 @@
         "home-renovation",
         "visual-content",
         "media-toolkit",
-        "personal-agent",
+        "personal-pages",
         "frontend-design",
         "ui-ux-pro-max"
       ]
@@ -500,79 +500,182 @@
       "directory": "skills/personal-memory",
       "category": "research-knowledge",
       "maturity": "beta",
-      "risks": [
-        "local-write"
-      ],
-      "security": {
-        "network": "none",
-        "dataClass": "private",
-        "outboundData": "none",
-        "externalWrite": false,
-        "requiresAuthorization": false,
-        "untrustedContent": true
-      },
-      "origin": {
-        "kind": "workspace",
-        "license": "Apache-2.0"
-      },
-      "cli": [],
-      "examples": [
-        "test/fixtures/skill-cases/personal-memory/case.json"
-      ],
+      "risks": ["local-write"],
+      "security": {"network":"none","dataClass":"private","outboundData":"none","externalWrite":false,"requiresAuthorization":false,"untrustedContent":true},
+      "origin": {"kind":"workspace","license":"Apache-2.0"},
+      "cli": ["pa-cli-memory"],
+      "examples": ["test/fixtures/skill-cases/personal-memory/case.json"],
       "caseRequired": true,
-      "related": [
-        "personal-agent"
-      ]
+      "related": ["personal-activity"]
     },
     {
-      "name": "personal-agent",
-      "directory": "skills/personal-agent",
+      "name": "personal-runtime",
+      "directory": "skills/personal-runtime",
       "category": "publishing-automation",
       "maturity": "beta",
-      "risks": [
-        "credentials",
-        "external-write"
-      ],
-      "security": {
-        "network": "write",
-        "dataClass": "private",
-        "outboundData": "content",
-        "externalWrite": true,
-        "requiresAuthorization": true,
-        "requiresFinalConfirmation": true,
-        "untrustedContent": true
-      },
-      "origin": {
-        "kind": "workspace",
-        "license": "Apache-2.0"
-      },
-      "cli": [
-        "personal-agent"
-      ],
-      "examples": [
-        "test/fixtures/skill-cases/personal-agent-local/case.json",
-        "test/fixtures/skill-cases/personal-agent-managed/case.json",
-        "test/fixtures/skill-cases/personal-agent-content/case.json",
-        "test/fixtures/skill-cases/personal-agent-lifecycle/case.json",
-        "test/fixtures/skill-cases/personal-agent-mail/case.json",
-        "test/fixtures/skill-cases/personal-agent-activity/case.json",
-        "test/fixtures/skill-cases/personal-agent-tasks/case.json",
-        "test/fixtures/skill-cases/personal-agent-schedules/case.json",
-        "test/fixtures/skill-cases/personal-agent-pages/case.json",
-        "test/fixtures/skill-cases/personal-agent-bug-report/case.json",
-        "test/fixtures/skill-cases/personal-agent-acceptance/case.json"
-      ],
+      "risks": [],
+      "security": {"network":"none","dataClass":"private","outboundData":"none","externalWrite":false,"requiresAuthorization":false,"untrustedContent":true},
+      "origin": {"kind":"workspace","license":"Apache-2.0"},
+      "cli": ["personal-agent"],
+      "examples": ["test/fixtures/skill-cases/personal-runtime/case.json"],
       "caseRequired": true,
-      "related": [
-        "content-workbench",
-        "visual-content",
-        "media-toolkit",
-        "guizang-social-card-skill",
-        "guizang-ppt-skill",
-        "travel-guidebook",
-        "social-browser-read",
-        "personal-memory"
-      ]
+      "related": ["personal-connectivity","personal-updates","personal-acceptance"]
+    },
+    {
+      "name": "personal-connectivity",
+      "directory": "skills/personal-connectivity",
+      "category": "publishing-automation",
+      "maturity": "beta",
+      "risks": ["credentials","external-write"],
+      "security": {"network":"write","dataClass":"private","outboundData":"query","externalWrite":true,"requiresAuthorization":true,"requiresFinalConfirmation":true,"untrustedContent":true},
+      "origin": {"kind":"workspace","license":"Apache-2.0"},
+      "cli": ["personal-agent-cloud"],
+      "examples": ["test/fixtures/skill-cases/personal-connectivity/case.json"],
+      "caseRequired": true,
+      "related": ["personal-runtime","personal-connections"]
+    },
+    {
+      "name": "personal-connections",
+      "directory": "skills/personal-connections",
+      "category": "publishing-automation",
+      "maturity": "beta",
+      "risks": ["credentials","browser-session","external-write"],
+      "security": {"network":"write","dataClass":"private","outboundData":"content","externalWrite":true,"requiresAuthorization":true,"requiresFinalConfirmation":true,"untrustedContent":true},
+      "origin": {"kind":"workspace","license":"Apache-2.0"},
+      "cli": ["pa-cli-connection"],
+      "examples": ["test/fixtures/skill-cases/personal-connections/case.json"],
+      "caseRequired": true,
+      "related": ["social-browser-read","personal-connectivity","personal-files"]
+    },
+    {
+      "name": "personal-activity",
+      "directory": "skills/personal-activity",
+      "category": "publishing-automation",
+      "maturity": "beta",
+      "risks": ["local-write"],
+      "security": {"network":"none","dataClass":"private","outboundData":"none","externalWrite":false,"requiresAuthorization":false,"untrustedContent":true},
+      "origin": {"kind":"workspace","license":"Apache-2.0"},
+      "cli": ["personal-agent-activity"],
+      "examples": ["test/fixtures/skill-cases/personal-activity/case.json"],
+      "caseRequired": true,
+      "related": ["personal-tasks","personal-pages","personal-files","personal-memory"]
+    },
+    {
+      "name": "personal-tasks",
+      "directory": "skills/personal-tasks",
+      "category": "publishing-automation",
+      "maturity": "beta",
+      "risks": ["local-write"],
+      "security": {"network":"none","dataClass":"private","outboundData":"none","externalWrite":false,"requiresAuthorization":false,"untrustedContent":true},
+      "origin": {"kind":"workspace","license":"Apache-2.0"},
+      "cli": ["pa-cli-session"],
+      "examples": ["test/fixtures/skill-cases/personal-tasks/case.json"],
+      "caseRequired": true,
+      "related": ["personal-activity","personal-pages","personal-product-development"]
+    },
+    {
+      "name": "personal-schedules",
+      "directory": "skills/personal-schedules",
+      "category": "publishing-automation",
+      "maturity": "beta",
+      "risks": ["local-write"],
+      "security": {"network":"none","dataClass":"private","outboundData":"none","externalWrite":false,"requiresAuthorization":false,"untrustedContent":true},
+      "origin": {"kind":"workspace","license":"Apache-2.0"},
+      "cli": ["pa-cli-cron"],
+      "examples": ["test/fixtures/skill-cases/personal-schedules/case.json"],
+      "caseRequired": true,
+      "related": ["personal-tasks"]
+    },
+    {
+      "name": "personal-pages",
+      "directory": "skills/personal-pages",
+      "category": "publishing-automation",
+      "maturity": "beta",
+      "risks": ["local-write","external-write"],
+      "security": {"network":"write","dataClass":"mixed","outboundData":"content","externalWrite":true,"requiresAuthorization":true,"requiresFinalConfirmation":true,"untrustedContent":true},
+      "origin": {"kind":"workspace","license":"Apache-2.0"},
+      "cli": ["pa-cli-pages"],
+      "examples": ["test/fixtures/skill-cases/personal-pages/case.json"],
+      "caseRequired": true,
+      "related": ["personal-tasks","personal-activity","personal-files","interior-design","content-workbench","visual-content"]
+    },
+    {
+      "name": "personal-files",
+      "directory": "skills/personal-files",
+      "category": "research-knowledge",
+      "maturity": "beta",
+      "risks": ["local-write"],
+      "security": {"network":"none","dataClass":"private","outboundData":"none","externalWrite":false,"requiresAuthorization":false,"untrustedContent":true},
+      "origin": {"kind":"workspace","license":"Apache-2.0"},
+      "cli": ["pa-cli-file"],
+      "examples": ["test/fixtures/skill-cases/personal-files/case.json"],
+      "caseRequired": true,
+      "related": ["personal-activity","personal-pages","personal-connections"]
+    },
+    {
+      "name": "personal-data",
+      "directory": "skills/personal-data",
+      "category": "research-knowledge",
+      "maturity": "beta",
+      "risks": ["local-write"],
+      "security": {"network":"none","dataClass":"private","outboundData":"none","externalWrite":false,"requiresAuthorization":false,"untrustedContent":true},
+      "origin": {"kind":"workspace","license":"Apache-2.0"},
+      "cli": ["pa-cli-data"],
+      "examples": ["test/fixtures/skill-cases/personal-data/case.json"],
+      "caseRequired": true,
+      "related": ["personal-activity","personal-files"]
+    },
+    {
+      "name": "personal-updates",
+      "directory": "skills/personal-updates",
+      "category": "publishing-automation",
+      "maturity": "beta",
+      "risks": ["network-read","local-write"],
+      "security": {"network":"read","dataClass":"private","outboundData":"query","externalWrite":false,"requiresAuthorization":true,"untrustedContent":true},
+      "origin": {"kind":"workspace","license":"Apache-2.0"},
+      "cli": ["personal-agent-update"],
+      "examples": ["test/fixtures/skill-cases/personal-updates/case.json"],
+      "caseRequired": true,
+      "related": ["personal-runtime","personal-product-development","personal-acceptance"]
+    },
+    {
+      "name": "personal-product-development",
+      "directory": "skills/personal-product-development",
+      "category": "product-engineering",
+      "maturity": "beta",
+      "risks": ["network-read","local-write","credentials"],
+      "security": {"network":"read","dataClass":"private","outboundData":"query","externalWrite":false,"requiresAuthorization":true,"untrustedContent":true},
+      "origin": {"kind":"workspace","license":"Apache-2.0"},
+      "cli": ["personal-agent-development"],
+      "examples": ["test/fixtures/skill-cases/personal-product-development/case.json"],
+      "caseRequired": true,
+      "related": ["personal-tasks","personal-updates","personal-acceptance"]
+    },
+    {
+      "name": "personal-bug-report",
+      "directory": "skills/personal-bug-report",
+      "category": "product-engineering",
+      "maturity": "beta",
+      "risks": ["external-write"],
+      "security": {"network":"write","dataClass":"mixed","outboundData":"content","externalWrite":true,"requiresAuthorization":true,"requiresFinalConfirmation":true,"untrustedContent":true},
+      "origin": {"kind":"workspace","license":"Apache-2.0"},
+      "cli": [],
+      "examples": ["test/fixtures/skill-cases/personal-bug-report/case.json"],
+      "caseRequired": true,
+      "related": ["personal-runtime"]
+    },
+    {
+      "name": "personal-acceptance",
+      "directory": "skills/personal-acceptance",
+      "category": "product-engineering",
+      "maturity": "beta",
+      "risks": ["network-read","local-write"],
+      "security": {"network":"read","dataClass":"private","outboundData":"query","externalWrite":false,"requiresAuthorization":true,"untrustedContent":true},
+      "origin": {"kind":"workspace","license":"Apache-2.0"},
+      "cli": [],
+      "examples": ["test/fixtures/skill-cases/personal-acceptance/case.json"],
+      "caseRequired": true,
+      "related": ["personal-runtime","personal-connectivity","personal-updates"]
     }
   ],
   "cliCapabilities": [
@@ -638,11 +741,110 @@
     {
       "name": "personal-agent",
       "category": "publishing-automation",
-      "owner": "personal-agent",
+      "owner": "personal-runtime",
       "kind": "external-cli",
-      "entrypoint": "skills/personal-agent/SKILL.md",
+      "entrypoint": "skills/personal-runtime/SKILL.md",
       "command": "personal-agent --help --json",
       "description": "Target stable CLI for local-first Personal Agent operations; registry/commands.json currently marks implementation status."
+    },
+    {
+      "name": "personal-agent-cloud",
+      "category": "publishing-automation",
+      "owner": "personal-connectivity",
+      "kind": "external-cli",
+      "entrypoint": "skills/personal-connectivity/SKILL.md",
+      "command": "personal-agent cloud --help --json",
+      "description": "Authorize and inspect optional Managed Cloud connectivity."
+    },
+    {
+      "name": "pa-cli-connection",
+      "category": "publishing-automation",
+      "owner": "personal-connections",
+      "kind": "external-cli",
+      "entrypoint": "skills/personal-connections/SKILL.md",
+      "command": "pa-cli connection list --json",
+      "description": "Inspect and operate registered Personal Agent connections."
+    },
+    {
+      "name": "personal-agent-activity",
+      "category": "publishing-automation",
+      "owner": "personal-activity",
+      "kind": "external-cli",
+      "entrypoint": "skills/personal-activity/SKILL.md",
+      "command": "personal-agent activity list --capability <ephemeral> --json",
+      "description": "Maintain main-Agent-owned user Activity."
+    },
+    {
+      "name": "pa-cli-session",
+      "category": "publishing-automation",
+      "owner": "personal-tasks",
+      "kind": "external-cli",
+      "entrypoint": "skills/personal-tasks/SKILL.md",
+      "command": "pa-cli session list --json",
+      "description": "Create, inspect, update, and resume child tasks."
+    },
+    {
+      "name": "pa-cli-cron",
+      "category": "publishing-automation",
+      "owner": "personal-schedules",
+      "kind": "external-cli",
+      "entrypoint": "skills/personal-schedules/SKILL.md",
+      "command": "pa-cli cron list --json",
+      "description": "Manage scheduled Personal Agent tasks."
+    },
+    {
+      "name": "pa-cli-pages",
+      "category": "publishing-automation",
+      "owner": "personal-pages",
+      "kind": "external-cli",
+      "entrypoint": "skills/personal-pages/SKILL.md",
+      "command": "pa-cli pages templates list --json",
+      "description": "Select Page templates and publish governed Pages."
+    },
+    {
+      "name": "pa-cli-file",
+      "category": "research-knowledge",
+      "owner": "personal-files",
+      "kind": "external-cli",
+      "entrypoint": "skills/personal-files/SKILL.md",
+      "command": "pa-cli file search --json",
+      "description": "Inspect and maintain current-Space managed files."
+    },
+    {
+      "name": "pa-cli-data",
+      "category": "research-knowledge",
+      "owner": "personal-data",
+      "kind": "external-cli",
+      "entrypoint": "skills/personal-data/SKILL.md",
+      "command": "pa-cli data status --json",
+      "description": "Inspect and query governed current-Space data."
+    },
+    {
+      "name": "personal-agent-update",
+      "category": "publishing-automation",
+      "owner": "personal-updates",
+      "kind": "external-cli",
+      "entrypoint": "skills/personal-updates/SKILL.md",
+      "command": "personal-agent update status --json",
+      "description": "Check, apply, verify, and roll back client updates."
+    },
+    {
+      "name": "personal-agent-development",
+      "category": "product-engineering",
+      "owner": "personal-product-development",
+      "kind": "external-cli",
+      "entrypoint": "skills/personal-product-development/SKILL.md",
+      "command": "personal-agent development status --json",
+      "description": "Enter the registered private product-development checkout."
+    },
+    {
+      "name": "pa-cli-memory",
+      "category": "research-knowledge",
+      "owner": "personal-memory",
+      "kind": "external-cli",
+      "entrypoint": "skills/personal-memory/SKILL.md",
+      "command": "pa-cli memory list --capability <ephemeral> --json",
+      "description": "Maintain current-Space durable memory."
     },
     {
       "name": "cases",
@@ -792,7 +994,7 @@
           "targets": [
             "content-workbench",
             "visual-content",
-            "personal-agent"
+            "personal-pages"
           ],
           "reason": "Retain content preparation and preview ideas; publish and share only through Open Agent Bridge Pages."
         },
@@ -802,7 +1004,7 @@
           "targets": [
             "content-workbench",
             "visual-content",
-            "personal-agent"
+            "personal-pages"
           ],
           "reason": "Retain content preparation and preview ideas; direct account automation is outside the workspace publishing path."
         },
@@ -812,7 +1014,7 @@
           "targets": [
             "content-workbench",
             "visual-content",
-            "personal-agent"
+            "personal-pages"
           ],
           "reason": "Retain content preparation and preview ideas; direct account automation is outside the workspace publishing path."
         },

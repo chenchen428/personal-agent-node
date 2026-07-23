@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 1,
+  "skill": "personal-connectivity",
+  "title": "连接模式选择与安全授权",
+  "prompt": "分别说明 local-only、Managed Cloud 和自建 Edge 流程。保持 local-only 完整可用；Managed Cloud 仅在用户明确选择后通过浏览器设备授权连接，资源登录不得在命令行接收或输出长期凭据。",
+  "commands": [
+    "personal-agent cloud connect --json",
+    "personal-agent cloud login --json",
+    "personal-agent cloud resources --json"
+  ],
+  "artifacts": [{ "path": "expected.json", "label": "Connectivity and recovery expectation" }]
+}

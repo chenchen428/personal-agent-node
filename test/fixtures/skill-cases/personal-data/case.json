@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "skill": "personal-data",
+  "title": "受管数据结构检查与查询",
+  "prompt": "先检查当前 Space 数据状态和结构，再用受管 structured query 完成有界查询。不得直接打开数据库或读取其他 Space；恢复快照必须有用户明确目标和精确批准。",
+  "commands": [
+    "pa-cli data status --json",
+    "pa-cli data schema --object <table> --json",
+    "pa-cli data query --object <table> --field <column> --operator <op> --value <value> --json",
+    "pa-cli data snapshots --json"
+  ],
+  "artifacts": [{ "path": "expected.json", "label": "Governed-data expectation" }]
+}

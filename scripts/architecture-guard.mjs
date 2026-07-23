@@ -43,7 +43,7 @@ checks.push({
     && exists('schemas/personal-agent/product-development.schema.json')
     && exists('core/runtime/src/product-development.ts')
     && exists('workflows/product-development.md')
-    && exists('skills/personal-agent/references/product-development.md'),
+    && exists('skills/personal-product-development/references/product-development.md'),
 });
 checks.push({ name: 'plugin schema and SDK are versioned', ok: exists('core/plugins/schema/personal-agent.plugin.schema.json') && exists('core/plugins/sdk/manifest.ts') });
 checks.push({ name: 'application logic is TypeScript', ok: !containsExtension(['core/runtime/src', 'core/control', 'core/plugins'], '.mjs') && ['core/runtime/src/config.ts', 'core/runtime/src/supervisor.ts', 'core/control/server.ts', 'core/plugins/runtime/store.ts', 'core/agent/src/agent/app-server-runner.ts', 'core/edge/src/edge.ts'].every(exists) });
@@ -96,7 +96,17 @@ checks.push({
 checks.push({ name: 'commands reference capabilities', ok: commands.commands.every((entry) => capabilityIds.has(entry.capability)) });
 checks.push({ name: 'commands declare R0-R3 risk', ok: commands.commands.every((entry) => /^R[0-3]$/.test(entry.risk)) });
 checks.push({ name: 'agent output contract is JSON', ok: commands.output?.agentFormat === 'json' && commands.output?.formats?.includes('json') });
-checks.push({ name: 'personal-agent skill', ok: exists('skills/personal-agent/SKILL.md') });
+const personalSkillNames = [
+  'personal-runtime', 'personal-connectivity', 'personal-connections', 'personal-activity',
+  'personal-tasks', 'personal-schedules', 'personal-pages', 'personal-files', 'personal-data',
+  'personal-updates', 'personal-product-development', 'personal-bug-report',
+  'personal-acceptance', 'personal-memory',
+];
+checks.push({
+  name: 'Personal Agent capabilities use focused skills',
+  ok: personalSkillNames.every((name) => exists(`skills/${name}/SKILL.md`))
+    && !exists('skills/personal-agent/SKILL.md'),
+});
 checks.push({ name: 'legacy bridge skill removed', ok: !exists('skills/open-agent-bridge/SKILL.md') });
 const cloudEnrollmentSource = fs.readFileSync(path.join(root, 'core/runtime/src/cloud-enrollment.ts'), 'utf8');
 checks.push({ name: 'legacy invitation onboarding removed', ok: !exists('core/runtime/src/onboarding-server.mjs') && !cloudEnrollmentSource.includes('enrollWithCloud(') && !cloudEnrollmentSource.includes('/activate') });

@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "skill": "personal-pages",
+  "title": "Renovation Page template selection, dual-device screenshots, and linked Activity",
+  "prompt": "Create a renovation design delivery Page. Select and inspect the registered Page template before delegating Page creation. Publish with separate desktop and mobile screenshots, keep internal links relative, use shareUrl only for explicit sharing, and create a Page Activity that targets the returned pageId.",
+  "commands": [
+    "pa-cli pages templates list --json",
+    "pa-cli pages templates inspect --id interior-design-delivery --json",
+    "pa-cli pages publish --file index.html --folder renovation-delivery --desktop-thumbnail page-thumbnail-desktop.png --mobile-thumbnail page-thumbnail-mobile.png --title \"Renovation delivery\" --summary \"Interactive renovation design delivery\" --desktop-thumbnail-alt \"Desktop renovation design preview\" --mobile-thumbnail-alt \"Mobile renovation design preview\" --overwrite --json",
+    "personal-agent activity upsert --capability <ephemeral> --type page --title \"Renovation design published\" --detail \"The renovation delivery Page is ready to open.\" --target-type page --target-id \"<pageId returned by pa-cli pages publish>\" --idempotency-key \"page:renovation-delivery:published\" --correlation-key \"page:renovation-delivery\" --json"
+  ],
+  "artifacts": [{ "path": "expected.json", "label": "Page screenshot and Activity target expectation" }]
+}

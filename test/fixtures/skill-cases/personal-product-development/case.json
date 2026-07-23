@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 1,
+  "skill": "personal-product-development",
+  "title": "注册产品仓库研发入口",
+  "prompt": "用户要求修改 Personal Agent 产品行为。先确保注册的私有根仓库和递归 Node 子模块可用，再把任务工作区设为返回的 checkoutPath；禁止编辑 core/current 或用 Personal App 替代产品源码修改。",
+  "commands": [
+    "personal-agent development status --json",
+    "personal-agent development ensure --json",
+    "pa-cli session start --workspace <checkoutPath> --task-file <utf8-task-file> --json"
+  ],
+  "artifacts": [{ "path": "expected.json", "label": "Product-development boundary expectation" }]
+}

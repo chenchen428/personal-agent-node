@@ -1,0 +1,4 @@
+interface:
+  display_name: "Personal Agent 运行状态"
+  short_description: "检查本机 Personal Agent 状态、能力、诊断与命令可用性。"
+  default_prompt: "使用 $personal-runtime 检查并解释本机 Personal Agent 运行状态。"

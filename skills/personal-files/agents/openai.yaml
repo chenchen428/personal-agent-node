@@ -1,0 +1,4 @@
+interface:
+  display_name: "Personal Agent 文件"
+  short_description: "查询、保留、校验和安全交付当前空间中的受管文件对象。"
+  default_prompt: "使用 $personal-files 查询、维护或交付当前空间中的受管文件。"

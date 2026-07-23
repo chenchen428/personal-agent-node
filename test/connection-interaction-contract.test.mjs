@@ -211,7 +211,7 @@ test("personal WeChat is independent from WeChat claw and configures a Qianxun-b
 
 test("Notion runtime uses the official headless login handoff and login poll", () => {
   const runtime = read("core/agent/src/connections/notion-cli.js");
-  const skill = read("skills/personal-agent/references/connectors/notion.md");
+  const skill = read("skills/personal-connections/references/connectors/notion.md");
   assert.match(runtime, /\["login", "--no-browser"\]/);
   assert.match(runtime, /\["login", "poll"\]/);
   assert.match(runtime, /\["logout"\]/);
@@ -223,7 +223,7 @@ test("Notion runtime uses the official headless login handoff and login poll", (
 
 test("domain connector skills describe completion callbacks for bind and remove", () => {
   for (const id of ["mail", "sites"]) {
-    const skill = read(`skills/personal-agent/references/connectors/${id}.md`);
+    const skill = read(`skills/personal-connections/references/connectors/${id}.md`);
     assert.match(skill, /持续检查/);
     assert.match(skill, /状态回调/);
     assert.match(skill, /use-custom-domain/);

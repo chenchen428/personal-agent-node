@@ -1,0 +1,4 @@
+interface:
+  display_name: "Personal Agent 连接"
+  short_description: "查询、配置并安全使用微信、钉钉、Notion、邮箱和站点连接。"
+  default_prompt: "使用 $personal-connections 检查或操作指定的 Personal Agent 连接。"

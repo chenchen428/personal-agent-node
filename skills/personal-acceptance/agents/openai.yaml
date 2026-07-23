@@ -1,0 +1,4 @@
+interface:
+  display_name: "Personal Agent 验收"
+  short_description: "按客户机证据标准验收 Node 安装、运行、升级、回滚与可选联调。"
+  default_prompt: "使用 $personal-acceptance 对当前 Personal Agent Node 交付执行验收。"

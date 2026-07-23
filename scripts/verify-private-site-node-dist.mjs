@@ -154,7 +154,7 @@ function verifyPreparation() {
     for (const relative of ["AGENTS.md", "skills", "workflows", "registry"]) {
       assert(fs.existsSync(path.join(personalRoot, "agent-workspace", relative)), `Prepared Agent workspace is missing: ${relative}`);
     }
-    for (const relative of ["registry/product-development.json", "workflows/product-development.md", "skills/personal-agent/references/product-development.md"]) {
+    for (const relative of ["registry/product-development.json", "workflows/product-development.md", "skills/personal-product-development/references/product-development.md"]) {
       assert(fs.existsSync(path.join(personalRoot, "agent-workspace", ...relative.split("/"))), `Prepared Agent workspace is missing product development contract: ${relative}`);
     }
     const appCompatibility = JSON.parse(fs.readFileSync(path.join(personalRoot, "config", "apps-compatibility.json"), "utf8"));

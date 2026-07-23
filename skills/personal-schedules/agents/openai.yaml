@@ -1,0 +1,4 @@
+interface:
+  display_name: "Personal Agent 定时任务"
+  short_description: "创建、修改、运行并验证提醒和周期性 Personal Agent 任务。"
+  default_prompt: "使用 $personal-schedules 创建或维护一个可验证的定时任务。"
