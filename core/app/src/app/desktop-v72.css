@@ -853,8 +853,13 @@
 .desktop-v72 .composer-tools { min-width: 0; display: flex; align-items: center; gap: 3px; }
 .desktop-v72 .composer-tools svg { width: 15px; fill: none; stroke: currentColor; stroke-width: 1.7; }
 .desktop-v72 .composer-feedback { overflow: hidden; color: var(--pa-muted); font-size: 9px; text-overflow: ellipsis; white-space: nowrap; }
-.desktop-v72 .composer-selected-file { width: max-content; max-width: 90%; display: flex; align-items: center; gap: 8px; border-radius: 8px; padding: 6px 9px; background: var(--pa-subtle); color: var(--pa-body); font-size: 10px; }
-.desktop-v72 .composer-selected-file button { border: 0; background: transparent; color: var(--pa-muted); }
+.desktop-v72 .composer-selected-attachments { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 4px; }
+.desktop-v72 .composer-selected-file { min-width: 0; max-width: 240px; display: flex; align-items: center; gap: 8px; border-radius: 9px; padding: 6px 9px; background: var(--pa-subtle); color: var(--pa-body); font-size: 10px; }
+.desktop-v72 .composer-selected-file.image { padding: 4px 7px 4px 4px; }
+.desktop-v72 .composer-selected-file img { width: 38px; height: 38px; flex: 0 0 auto; border-radius: 7px; object-fit: cover; background: var(--pa-border); }
+.desktop-v72 .composer-selected-file > span:not(.composer-file-mark) { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.desktop-v72 .composer-file-mark { display: grid; width: 30px; height: 30px; flex: 0 0 auto; place-items: center; border-radius: 6px; background: #fff; color: var(--pa-muted); font-size: 8px; font-weight: 600; }
+.desktop-v72 .composer-selected-file button { flex: 0 0 auto; border: 0; background: transparent; color: var(--pa-muted); cursor: pointer; }
 .desktop-v72 .composer-send-status { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0,0,0,0); }
 .desktop-v72 .send-button { display: grid; width: 30px; height: 30px; place-items: center; border: 0; border-radius: 50%; background: var(--pa-primary); color: #fff; cursor: pointer; }
 .desktop-v72 .send-button:disabled { opacity: .25; cursor: default; }

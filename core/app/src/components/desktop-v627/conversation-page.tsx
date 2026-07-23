@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { ConversationComposer, type PendingAttachment } from "./conversation-composer";
+import { ConversationComposer } from "./conversation-composer";
+import type { PendingAttachment } from "./conversation-attachments";
 import { ConversationMessageList } from "./conversation-message-list";
 import { errorMessage, fetchJson } from "./shared";
 import type { Message, Session } from "./types";
@@ -107,7 +108,7 @@ export function ConversationPage() {
     return () => window.clearInterval(timer);
   }, [loadLatest, session?.linkedTask?.status, session?.status, waiting]);
 
-  const send = async (content: string, attachment: PendingAttachment | null) => {
+  const send = async (content: string, attachments: PendingAttachment[]) => {
     const initialStatus = session?.status || "idle";
     const clientMessageId = newClientMessageId();
     pendingTurnRef.current = {
@@ -126,11 +127,17 @@ export function ConversationPage() {
         optimistic: true,
         channel: "desktop",
         sourceLabel: "来自桌面",
-        attachments: attachment ? [{
-          name: attachment.name,
-          mimeType: attachment.mimeType,
-          sizeBytes: attachment.sizeBytes,
-        }] : [],
+        attachments: attachments.map((attachment) => {
+          const image = attachment.mimeType.startsWith("image/");
+          return {
+            name: attachment.name,
+            mimeType: attachment.mimeType,
+            sizeBytes: attachment.sizeBytes,
+            kind: image ? "image" as const : "file" as const,
+            previewUrl: image ? `data:${attachment.mimeType};base64,${attachment.content}` : undefined,
+            deliveryState: "sending" as const,
+          };
+        }),
       },
     };
     setSession((previous) => ({
@@ -149,7 +156,7 @@ export function ConversationPage() {
         body: JSON.stringify({
           content,
           clientMessageId,
-          attachments: attachment ? [attachment] : [],
+          attachments,
         }),
       });
       void loadLatest({ follow: true });

@@ -69,6 +69,9 @@ test("Next.js owns the approved V6.39 mobile client and V7.3 desktop workspace",
     "conversation-message-list.tsx",
     "conversation-plan.tsx",
     "conversation-composer.tsx",
+    "conversation-attachment-list.tsx",
+    "conversation-attachments.ts",
+    "use-conversation-attachments.ts",
   ].map((file) => read(`core/app/src/components/desktop-v627/${file}`)).join("\n");
   const overview = `${read("core/app/src/app/app/page.tsx")}\n${read("core/app/src/lib/request-device.ts")}`;
   const mobile = read("core/app/src/app/app/mobile/page.tsx");
@@ -281,6 +284,16 @@ test("Next.js owns the approved V6.39 mobile client and V7.3 desktop workspace",
   assert.doesNotMatch(conversationClient, /planIndex = messages\.findIndex/);
   assert.match(conversationClient, /composer-wrap/);
   assert.match(conversationClient, /添加附件/);
+  assert.match(conversationClient, /onPaste=\{pasteImages\}/);
+  assert.match(conversationClient, /if \(!images\.length\) return;[\s\S]*event\.preventDefault\(\)/);
+  assert.match(conversationClient, /item\.type\.toLowerCase\(\)\.startsWith\("image\/"\)/);
+  assert.match(conversationClient, /MAX_ATTACHMENT_COUNT = 4/);
+  assert.match(conversationClient, /MAX_TOTAL_ATTACHMENT_BYTES = 10 \* 1024 \* 1024/);
+  assert.match(conversationClient, /data:\$\{attachment\.mimeType\};base64/);
+  assert.match(conversationClient, /attachments\.map\(\(attachment\) => \{/);
+  assert.match(agentServer, /at most 4 attachments are allowed/);
+  assert.match(agentServer, /mimeType\.toLowerCase\(\)\.startsWith\("image\/"\) \? "image" : "file"/);
+  assert.match(agentServer, /deliveryState: "sent"/);
   assert.match(css, /\.desktop-v72 \.message-thread/);
   assert.match(css, /\.desktop-v72 \.composer/);
   assert.match(css, /\.desktop-v72 \.message-processing/);

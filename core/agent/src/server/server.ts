@@ -2790,13 +2790,15 @@ async function persistDesktopAttachments(input: unknown, sessionId: string) {
   const output = [];
   for (const { entry, buffer } of decoded) {
     const name = sanitizeInboundAttachmentFileName(entry?.name, "desktop-file");
+    const mimeType = String(entry?.mimeType || "application/octet-stream").slice(0, 160);
     const storedName = `${new Date().toISOString().replace(/[:.]/g, "-")}-${randomUUID().slice(0, 8)}-${name}`;
     const filePath = path.join(targetDir, storedName);
     assertInside(config.inboundAttachmentsDir, filePath);
     await fs.promises.writeFile(filePath, buffer, { flag: "wx", mode: 0o600 });
     output.push({
       name,
-      mimeType: String(entry?.mimeType || "application/octet-stream").slice(0, 160),
+      kind: mimeType.toLowerCase().startsWith("image/") ? "image" : "file",
+      mimeType,
       sizeBytes: buffer.length,
       relativePath: relativeAttachmentPath(config.inboundAttachmentsDir, filePath),
       previewUrl: buildPrivateAttachmentPreviewUrl({
@@ -2804,6 +2806,7 @@ async function persistDesktopAttachments(input: unknown, sessionId: string) {
         filePath,
         consoleBaseUrl: config.consoleBaseUrl,
       }),
+      deliveryState: "sent",
       filePath,
     });
   }
