@@ -115,6 +115,8 @@ test('local deployment installs and rolls back with the bundled release installe
   assert.match(deployment, /"--domain", domain/);
   assert.match(deployment, /let domain = "";\s*\n\s*try \{/);
   assert.match(deployment, /releaseInstaller\(previousRoot\)[^\n]*"--domain", domain/);
+  assert.match(deployment, /buildDesktopOverlay\(releaseRoot\)/);
+  assert.match(deployment, /build-desktop-shell\.mjs/);
   assert.doesNotMatch(deployment, /path\.join\(root,\s*["']scripts["'],\s*["']install-private-site-node-release\.mjs["']\)/);
 });
 

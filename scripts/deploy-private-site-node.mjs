@@ -37,6 +37,7 @@ try {
   const profile = args.profile || previousManifest?.profile || "universal";
   const build = runJson(process.execPath, [path.join(root, "scripts", "build-private-site-node-dist.mjs"), "--profile", profile], { timeout: 30 * 60_000 });
   const releaseRoot = path.resolve(build.outputRoot);
+  const desktop = buildDesktopOverlay(releaseRoot);
   const verified = runJson(process.execPath, [path.join(root, "scripts", "verify-private-site-node-dist.mjs"), releaseRoot], { timeout: 10 * 60_000 });
 
   stopPlatformService(previousRoot);
@@ -61,6 +62,7 @@ try {
     profile,
     activeRoot,
     build: { files: build.files, retention: build.retention },
+    desktop,
     verified: verified.ok === true,
     installation,
     service: { platform: service.platform, serviceId: service.serviceId },
@@ -84,6 +86,28 @@ try {
 } finally {
   fs.closeSync(lock);
   fs.rmSync(lockPath, { force: true });
+}
+
+function buildDesktopOverlay(releaseRoot) {
+  if (!["darwin", "win32"].includes(process.platform)) return null;
+  const temporaryRoot = fs.mkdtempSync(path.join(os.tmpdir(), "personal-agent-desktop-"));
+  try {
+    const result = runJson(process.execPath, [
+      path.join(root, "scripts", "build-desktop-shell.mjs"),
+      "--output", path.join(temporaryRoot, "output"),
+      "--release-root", releaseRoot,
+    ], { timeout: 30 * 60_000 });
+    return {
+      platform: result.platform,
+      architecture: result.architecture,
+      version: result.version,
+      bytes: result.bytes,
+      compressedBytes: result.compressedBytes,
+      entrypoint: result.releaseOverlay?.entrypoint || "",
+    };
+  } finally {
+    fs.rmSync(temporaryRoot, { recursive: true, force: true });
+  }
 }
 
 function stopPlatformService(activeRoot) {
