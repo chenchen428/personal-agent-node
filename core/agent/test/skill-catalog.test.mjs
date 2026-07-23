@@ -66,3 +66,39 @@ test("reads the skills directory again when a skill is added", () => {
     fs.rmSync(root, { recursive: true, force: true });
   }
 });
+
+test("uses release metadata for skills discovered in an older mutable Workspace", () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "oab-skill-metadata-"));
+  const release = fs.mkdtempSync(path.join(os.tmpdir(), "oab-skill-release-"));
+  try {
+    fs.mkdirSync(path.join(root, "registry"), { recursive: true });
+    fs.mkdirSync(path.join(root, "skills", "split-skill"), { recursive: true });
+    fs.mkdirSync(path.join(release, "registry"), { recursive: true });
+    fs.writeFileSync(path.join(root, "registry", "skills.json"), JSON.stringify({
+      categories: [],
+      skills: [],
+    }));
+    fs.writeFileSync(path.join(release, "registry", "skills.json"), JSON.stringify({
+      categories: [{ id: "product", label: "Product", order: 10 }],
+      skills: [{
+        name: "split-skill",
+        directory: "skills/split-skill",
+        category: "product",
+        maturity: "stable",
+        risks: [],
+      }],
+    }));
+    fs.writeFileSync(
+      path.join(root, "skills", "split-skill", "SKILL.md"),
+      "---\nname: split-skill\ndescription: Split skill.\n---\n",
+    );
+
+    const catalog = readWorkspaceSkillCatalog(root, { metadataRoots: [release, root] });
+    assert.deepEqual(catalog.categories.map((category) => category.id), ["product"]);
+    assert.equal(catalog.skills[0].category, "product");
+    assert.equal(catalog.skills[0].maturity, "stable");
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+    fs.rmSync(release, { recursive: true, force: true });
+  }
+});

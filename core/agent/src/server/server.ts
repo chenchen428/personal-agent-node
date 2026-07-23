@@ -754,12 +754,16 @@ async function handleRequest(request: http.IncomingMessage, response: http.Serve
   }
 
   if (url.pathname === "/agent-skills" && (request.method === "GET" || request.method === "HEAD")) {
-    sendHtml(response, 200, renderSkillCatalogPage(readWorkspaceSkillCatalog(config.workspaceRoot)), request.method === "HEAD");
+    sendHtml(response, 200, renderSkillCatalogPage(readWorkspaceSkillCatalog(config.workspaceRoot, {
+      metadataRoots: [config.releaseRoot, config.workspaceRoot],
+    })), request.method === "HEAD");
     return;
   }
 
   if (url.pathname === "/api/skills" && (request.method === "GET" || request.method === "HEAD")) {
-    sendJson(response, 200, { ok: true, ...readWorkspaceSkillCatalog(config.workspaceRoot), space: currentMemorySpace() }, request.method === "HEAD");
+    sendJson(response, 200, { ok: true, ...readWorkspaceSkillCatalog(config.workspaceRoot, {
+      metadataRoots: [config.releaseRoot, config.workspaceRoot],
+    }), space: currentMemorySpace() }, request.method === "HEAD");
     return;
   }
 

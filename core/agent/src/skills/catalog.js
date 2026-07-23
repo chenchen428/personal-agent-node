@@ -1,11 +1,10 @@
 import fs from "node:fs";
 import path from "node:path";
 
-export function readWorkspaceSkillCatalog(workspaceRoot) {
+export function readWorkspaceSkillCatalog(workspaceRoot, { metadataRoots = [workspaceRoot] } = {}) {
   const root = path.resolve(workspaceRoot);
-  const registryPath = path.join(root, "registry", "skills.json");
-  const registry = JSON.parse(fs.readFileSync(registryPath, "utf8"));
-  const categories = [...(registry.categories || [])]
+  const registry = mergeSkillRegistries(metadataRoots);
+  const categories = [...registry.categories]
     .sort((left, right) => Number(left.order || 0) - Number(right.order || 0))
     .map((category) => ({
       id: String(category.id || ""),
@@ -49,6 +48,28 @@ export function readWorkspaceSkillCatalog(workspaceRoot) {
     return categoryDifference || left.name.localeCompare(right.name);
   });
   return { categories, skills };
+}
+
+function mergeSkillRegistries(metadataRoots) {
+  const categories = new Map();
+  const skillsByDirectory = new Map();
+  const skillsByName = new Map();
+  for (const root of [...new Set(metadataRoots.map((entry) => path.resolve(entry)))]) {
+    const registryPath = path.join(root, "registry", "skills.json");
+    if (!fs.existsSync(registryPath)) continue;
+    const registry = JSON.parse(fs.readFileSync(registryPath, "utf8"));
+    for (const category of Array.isArray(registry.categories) ? registry.categories : []) {
+      categories.set(String(category.id || ""), category);
+    }
+    for (const skill of Array.isArray(registry.skills) ? registry.skills : []) {
+      skillsByDirectory.set(String(skill.directory || ""), skill);
+      skillsByName.set(String(skill.name || ""), skill);
+    }
+  }
+  return {
+    categories: [...categories.values()],
+    skills: [...new Set([...skillsByDirectory.values(), ...skillsByName.values()])],
+  };
 }
 
 export function parseSkillFrontmatter(source) {
