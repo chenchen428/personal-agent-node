@@ -17,4 +17,4 @@ export type MailEvent = { id: string; title: string; sender: { address: string; 
 export type MailView = { events: MailEvent[]; total: number; selectedEvent: MailEvent | null; selectedRuns: { matched: boolean; reason: string }[]; content: { subject: string; body: string; from: { name: string; address: string }[]; to: { name: string; address: string }[]; attachments: { index: number; name: string; contentType: string; sizeBytes: number }[] } | null };
 export type Channel = { provider: string; label: string; state: string; statusLabel: string; description?: string };
 export type SkillCategory = { id: string; label: string; description?: string };
-export type Skill = { name: string; description: string; category: string; risks?: string[] };
+export type Skill = { name: string; description: string; directory: string; category: string; risks?: string[] };

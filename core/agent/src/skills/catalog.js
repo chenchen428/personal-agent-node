@@ -12,15 +12,18 @@ export function readWorkspaceSkillCatalog(workspaceRoot) {
       label: String(category.label || category.id || "未分类"),
       description: String(category.description || ""),
     }));
-  const categoryOrder = new Map(categories.map((category, index) => [category.id, index]));
-  const skills = (registry.skills || []).map((entry) => {
-    const directory = resolveInside(root, String(entry.directory || ""));
-    const frontmatter = parseSkillFrontmatter(fs.readFileSync(path.join(directory, "SKILL.md"), "utf8"));
+  const registrySkills = Array.isArray(registry.skills) ? registry.skills : [];
+  const registryByDirectory = new Map(registrySkills.map((entry) => [String(entry.directory || ""), entry]));
+  const registryByName = new Map(registrySkills.map((entry) => [String(entry.name || ""), entry]));
+  const skills = discoverSkillDirectories(root).map(({ directory, manifestPath }) => {
+    const frontmatter = parseSkillFrontmatter(fs.readFileSync(manifestPath, "utf8"));
+    const name = String(frontmatter.name || path.posix.basename(directory));
+    const entry = registryByDirectory.get(directory) || registryByName.get(name) || {};
     return {
-      name: String(entry.name || frontmatter.name || ""),
+      name,
       description: String(frontmatter.description || "暂无描述。"),
-      directory: String(entry.directory || ""),
-      category: String(entry.category || ""),
+      directory,
+      category: String(entry.category || "uncategorized"),
       maturity: String(entry.maturity || ""),
       risks: Array.isArray(entry.risks) ? entry.risks.map(String) : [],
       security: entry.security && typeof entry.security === "object" ? { ...entry.security } : {},
@@ -30,7 +33,17 @@ export function readWorkspaceSkillCatalog(workspaceRoot) {
       caseRequired: entry.caseRequired === true,
       related: Array.isArray(entry.related) ? entry.related.map(String) : [],
     };
-  }).sort((left, right) => {
+  });
+  assertUniqueSkillNames(skills);
+  if (skills.some((skill) => skill.category === "uncategorized")) {
+    categories.push({
+      id: "uncategorized",
+      label: "未分类",
+      description: "直接从当前 Workspace 的 skills 目录发现。",
+    });
+  }
+  const categoryOrder = new Map(categories.map((category, index) => [category.id, index]));
+  skills.sort((left, right) => {
     const categoryDifference = (categoryOrder.get(left.category) ?? Number.MAX_SAFE_INTEGER)
       - (categoryOrder.get(right.category) ?? Number.MAX_SAFE_INTEGER);
     return categoryDifference || left.name.localeCompare(right.name);
@@ -63,6 +76,27 @@ export function parseSkillFrontmatter(source) {
   return result;
 }
 
+function discoverSkillDirectories(root) {
+  const skillsRoot = path.join(root, "skills");
+  if (!fs.existsSync(skillsRoot)) return [];
+  return fs.readdirSync(skillsRoot, { withFileTypes: true })
+    .filter((entry) => entry.isDirectory() && !entry.name.startsWith("."))
+    .map((entry) => ({
+      directory: path.posix.join("skills", entry.name),
+      manifestPath: path.join(skillsRoot, entry.name, "SKILL.md"),
+    }))
+    .filter((entry) => fs.existsSync(entry.manifestPath) && fs.statSync(entry.manifestPath).isFile())
+    .sort((left, right) => left.directory.localeCompare(right.directory));
+}
+
+function assertUniqueSkillNames(skills) {
+  const names = new Set();
+  for (const skill of skills) {
+    if (names.has(skill.name)) throw new Error(`Duplicate skill name in skills directory: ${skill.name}`);
+    names.add(skill.name);
+  }
+}
+
 function parseFrontmatterScalar(value) {
   const text = String(value || "").trim();
   if (text.startsWith('"') && text.endsWith('"')) {
@@ -74,11 +108,4 @@ function parseFrontmatterScalar(value) {
   }
   if (text.startsWith("'") && text.endsWith("'")) return text.slice(1, -1).replaceAll("''", "'");
   return text;
-}
-
-function resolveInside(root, relativePath) {
-  const resolved = path.resolve(root, relativePath);
-  const relative = path.relative(root, resolved);
-  if (!relative || relative.startsWith("..") || path.isAbsolute(relative)) throw new Error(`Invalid skill directory: ${relativePath}`);
-  return resolved;
 }
