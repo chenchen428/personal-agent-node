@@ -109,6 +109,7 @@ test('release installation does not materialize repository Agent compatibility l
 
 test('local deployment installs and rolls back with the bundled release installer', () => {
   const deployment = fs.readFileSync(path.join(root, 'scripts', 'deploy-private-site-node.mjs'), 'utf8');
+  const desktopBuild = fs.readFileSync(path.join(root, 'scripts', 'build-desktop-shell.mjs'), 'utf8');
   assert.match(deployment, /releaseInstaller\(releaseRoot\)/);
   assert.match(deployment, /releaseInstaller\(previousRoot\)/);
   assert.match(deployment, /args\.domain \|\| installedDomain\(previousRoot\)/);
@@ -116,7 +117,11 @@ test('local deployment installs and rolls back with the bundled release installe
   assert.match(deployment, /let domain = "";\s*\n\s*try \{/);
   assert.match(deployment, /releaseInstaller\(previousRoot\)[^\n]*"--domain", domain/);
   assert.match(deployment, /buildDesktopOverlay\(releaseRoot\)/);
+  assert.match(deployment, /overlayLocalNodeRuntime\(releaseRoot\)/);
+  assert.match(deployment, /fs\.copyFileSync\(process\.execPath, target\)/);
   assert.match(deployment, /build-desktop-shell\.mjs/);
+  assert.match(desktopBuild, /codesign/);
+  assert.match(desktopBuild, /\['--force', '--deep', '--sign', '-', appPath\]/);
   assert.doesNotMatch(deployment, /path\.join\(root,\s*["']scripts["'],\s*["']install-private-site-node-release\.mjs["']\)/);
 });
 

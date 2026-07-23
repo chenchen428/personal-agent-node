@@ -37,6 +37,7 @@ try {
   const profile = args.profile || previousManifest?.profile || "universal";
   const build = runJson(process.execPath, [path.join(root, "scripts", "build-private-site-node-dist.mjs"), "--profile", profile], { timeout: 30 * 60_000 });
   const releaseRoot = path.resolve(build.outputRoot);
+  const localNodeRuntime = overlayLocalNodeRuntime(releaseRoot);
   const desktop = buildDesktopOverlay(releaseRoot);
   const verified = runJson(process.execPath, [path.join(root, "scripts", "verify-private-site-node-dist.mjs"), releaseRoot], { timeout: 10 * 60_000 });
 
@@ -62,6 +63,7 @@ try {
     profile,
     activeRoot,
     build: { files: build.files, retention: build.retention },
+    localNodeRuntime,
     desktop,
     verified: verified.ok === true,
     installation,
@@ -86,6 +88,21 @@ try {
 } finally {
   fs.closeSync(lock);
   fs.rmSync(lockPath, { force: true });
+}
+
+function overlayLocalNodeRuntime(releaseRoot) {
+  const runtimeRoot = path.join(releaseRoot, "runtime");
+  const target = path.join(runtimeRoot, process.platform === "win32" ? "node.exe" : "node");
+  fs.mkdirSync(runtimeRoot, { recursive: true });
+  fs.copyFileSync(process.execPath, target);
+  if (process.platform !== "win32") fs.chmodSync(target, 0o755);
+  return {
+    platform: process.platform,
+    architecture: process.arch,
+    version: process.version,
+    entrypoint: path.relative(releaseRoot, target).split(path.sep).join("/"),
+    bytes: fs.statSync(target).size,
+  };
 }
 
 function buildDesktopOverlay(releaseRoot) {
