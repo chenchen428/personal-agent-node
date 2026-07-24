@@ -24,7 +24,7 @@ Inspect the final image at delivery size for plan continuity, room adjacency, fu
 - Open every door, cabinet, drawer, and appliance in the mental walkthrough. Reject furniture that blocks a swing, access panel, operating area, or window.
 - Check furniture footprints against room boundaries and each other. Keep usable approach space beside beds, seats, dining chairs, wardrobes, kitchen worktops, laundry, and sanitary fixtures.
 - Trace every recorded user requirement to an observable model decision. If a requirement conflicts with structure evidence or safe circulation, surface the conflict instead of hiding it.
-- Run `cli.mjs audit` after every geometry or furniture change and once more after desktop/mobile Page review. Any blocking finding prevents delivery.
+- Run `cli.mjs audit` after every geometry or furniture change and once more before template generation. Any blocking finding prevents delivery.
 - Render widths, wall thicknesses, clearances, and furniture dimensions as architectural dimension lines with two end ticks and attached values, not as floating tags alone.
-- Keep the label visibility control available in mobile landscape and verify a readable mobile subset.
+- Keep the label visibility control in the mobile-landscape code contract. The user verifies its visual readability after publication.
 - For demolition, identify the exact room by adjacency and orientation on the user-supplied drawing and review the overlay on that room before delivery.

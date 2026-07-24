@@ -12,6 +12,9 @@ test("matches an actionable renovation Page request to the built-in template", (
   assert.match(task, /interior-design/);
   assert.match(task, /fixedFramework/);
   assert.match(task, /agentInstructions/);
+  assert.match(task, /personal-agent-page-template/);
+  assert.match(task, /agentBrowserReview/);
+  assert.match(task, /不要打开浏览器/);
   assert.match(task, /用户原始请求：\n制作装修设计 Page/);
 });
 

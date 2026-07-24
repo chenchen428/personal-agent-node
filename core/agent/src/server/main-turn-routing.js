@@ -39,6 +39,8 @@ export function buildPageTemplateTask({ request, template }) {
     fixedFramework: template.fixedFramework,
     agentFreedom: template.agentFreedom,
     agentInstructions: template.agentInstructions,
+    implementation: template.implementation,
+    acceptance: template.acceptance,
     desktop: Boolean(template.desktop),
     mobileLandscape: Boolean(template.mobileLandscape),
   };
@@ -50,8 +52,10 @@ export function buildPageTemplateTask({ request, template }) {
     JSON.stringify(contract, null, 2),
     "",
     `先调用并严格遵循 ${template.skill} 技能，再开始任何页面实现。`,
+    `必须使用模板指定生成器 ${template.implementation.generator}，并校验产物标识 ${template.implementation.artifactMarker}、模板 ID 与版本。`,
     "完整保留 fixedFramework，只在 agentFreedom 范围内根据用户材料调整内容。",
     "用户材料不足时先明确列出缺失项，不得用模板示例或虚构户型替代用户方案。",
+    "不要打开浏览器、自行截图走查或宣称视觉验收通过；只做确定性模型与模板契约校验，视觉和交互效果留给用户验收。",
     "完成后把当前状态、结论和真实产物返回主 Agent。",
   ].join("\n");
 }

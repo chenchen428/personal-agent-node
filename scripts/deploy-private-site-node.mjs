@@ -8,7 +8,7 @@ import { fileURLToPath } from "node:url";
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const args = parseArgs(process.argv.slice(2));
 if (args.help) {
-  process.stdout.write("Usage: node scripts/deploy-private-site-node.mjs [--profile <name>] [--install-root <path>] [--data-root <path>]\n");
+  process.stdout.write("Usage: node scripts/deploy-private-site-node.mjs [--profile <name>] [--install-root <path>] [--data-root <path>] [--domain <domain>]\n");
   process.exit(0);
 }
 
@@ -28,17 +28,21 @@ fs.mkdirSync(releaseOpsRoot, { recursive: true });
 const lock = acquireLock(lockPath);
 let previousRoot = pointerTarget(path.join(installRoot, "current"));
 let installed = false;
+let domain = "";
 
 try {
   requireCleanWorktree();
   const previousManifest = readManifest(previousRoot);
+  domain = args.domain || installedDomain(previousRoot) || "personal-agent.local";
   const profile = args.profile || previousManifest?.profile || "universal";
   const build = runJson(process.execPath, [path.join(root, "scripts", "build-private-site-node-dist.mjs"), "--profile", profile], { timeout: 30 * 60_000 });
   const releaseRoot = path.resolve(build.outputRoot);
+  const localNodeRuntime = overlayLocalNodeRuntime(releaseRoot);
+  const desktop = buildDesktopOverlay(releaseRoot);
   const verified = runJson(process.execPath, [path.join(root, "scripts", "verify-private-site-node-dist.mjs"), releaseRoot], { timeout: 10 * 60_000 });
 
   stopPlatformService(previousRoot);
-  const installation = runJson(process.execPath, [path.join(root, "scripts", "install-private-site-node-release.mjs"), releaseRoot, "--home", homeRoot, "--install-root", installRoot, "--data-root", dataRoot]);
+  const installation = runJson(process.execPath, [releaseInstaller(releaseRoot), releaseRoot, "--home", homeRoot, "--install-root", installRoot, "--data-root", dataRoot, "--domain", domain]);
   installed = true;
   const activeRoot = pointerTarget(path.join(installRoot, "current"));
   const activeCli = nodeCli(activeRoot);
@@ -59,6 +63,8 @@ try {
     profile,
     activeRoot,
     build: { files: build.files, retention: build.retention },
+    localNodeRuntime,
+    desktop,
     verified: verified.ok === true,
     installation,
     service: { platform: service.platform, serviceId: service.serviceId },
@@ -69,7 +75,7 @@ try {
   if (installed && previousRoot && fs.existsSync(previousRoot)) {
     try {
       stopPlatformService(pointerTarget(path.join(installRoot, "current")));
-      runJson(process.execPath, [path.join(root, "scripts", "install-private-site-node-release.mjs"), previousRoot, "--home", homeRoot, "--install-root", installRoot, "--data-root", dataRoot]);
+      runJson(process.execPath, [releaseInstaller(previousRoot), previousRoot, "--home", homeRoot, "--install-root", installRoot, "--data-root", dataRoot, "--domain", domain]);
       const rollbackCli = nodeCli(pointerTarget(path.join(installRoot, "current")));
       runJson(process.execPath, [rollbackCli, "prepare"], { env: environment, timeout: 20 * 60_000 });
       activatePlatformService(runJson(process.execPath, [rollbackCli, "service-prepare"], { env: environment }));
@@ -82,6 +88,43 @@ try {
 } finally {
   fs.closeSync(lock);
   fs.rmSync(lockPath, { force: true });
+}
+
+function overlayLocalNodeRuntime(releaseRoot) {
+  const runtimeRoot = path.join(releaseRoot, "runtime");
+  const target = path.join(runtimeRoot, process.platform === "win32" ? "node.exe" : "node");
+  fs.mkdirSync(runtimeRoot, { recursive: true });
+  fs.copyFileSync(process.execPath, target);
+  if (process.platform !== "win32") fs.chmodSync(target, 0o755);
+  return {
+    platform: process.platform,
+    architecture: process.arch,
+    version: process.version,
+    entrypoint: path.relative(releaseRoot, target).split(path.sep).join("/"),
+    bytes: fs.statSync(target).size,
+  };
+}
+
+function buildDesktopOverlay(releaseRoot) {
+  if (!["darwin", "win32"].includes(process.platform)) return null;
+  const temporaryRoot = fs.mkdtempSync(path.join(os.tmpdir(), "personal-agent-desktop-"));
+  try {
+    const result = runJson(process.execPath, [
+      path.join(root, "scripts", "build-desktop-shell.mjs"),
+      "--output", path.join(temporaryRoot, "output"),
+      "--release-root", releaseRoot,
+    ], { timeout: 30 * 60_000 });
+    return {
+      platform: result.platform,
+      architecture: result.architecture,
+      version: result.version,
+      bytes: result.bytes,
+      compressedBytes: result.compressedBytes,
+      entrypoint: result.releaseOverlay?.entrypoint || "",
+    };
+  } finally {
+    fs.rmSync(temporaryRoot, { recursive: true, force: true });
+  }
 }
 
 function stopPlatformService(activeRoot) {
@@ -191,6 +234,16 @@ function nodeCli(releaseRoot) {
   return path.join(releaseRoot, "core", "runtime", "bin", "private-site.mjs");
 }
 
+function releaseInstaller(releaseRoot) {
+  return path.join(releaseRoot, "scripts", "install-private-site-node-release.mjs");
+}
+
+function installedDomain(releaseRoot) {
+  if (!releaseRoot || !fs.existsSync(nodeCli(releaseRoot))) return "";
+  const status = runJson(process.execPath, [nodeCli(releaseRoot), "status", "--json"], { env: environment });
+  return String(status.site?.asciiDomain || status.site?.displayDomain || "").trim();
+}
+
 function sleep(milliseconds) {
   Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, milliseconds);
 }
@@ -203,6 +256,7 @@ function parseArgs(argv) {
     else if (argv[index] === "--home") parsed.home = argv[++index];
     else if (argv[index] === "--install-root") parsed.installRoot = argv[++index];
     else if (argv[index] === "--data-root") parsed.dataRoot = argv[++index];
+    else if (argv[index] === "--domain") parsed.domain = argv[++index];
     else throw new Error(`Unknown option: ${argv[index]}`);
   }
   return parsed;

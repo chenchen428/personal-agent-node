@@ -23,6 +23,10 @@ test("Pages registers one focused built-in renovation template", () => {
   assert.match(registry.templates[0].summary, /SketchUp 式建筑模型语言/);
   assert.match(registry.templates[0].useWhen, /户型改造/);
   assert.ok(registry.templates[0].matchTerms.includes("装修设计"));
+  assert.equal(registry.templates[0].implementation.version, 1);
+  assert.match(registry.templates[0].implementation.generator, /cli\.mjs page --template interior-design-delivery --source-plan/);
+  assert.equal(registry.templates[0].implementation.artifactMarker, "personal-agent-page-template");
+  assert.deepEqual(registry.templates[0].acceptance, { visualOwner: "user", agentBrowserReview: false });
   assert.ok(registry.templates[0].agentInstructions.some((item) => item.includes("interior-design")));
   assert.ok(registry.templates[0].fixedFramework.some((item) => item.includes("SketchUp 式低多边形建筑表达")));
 });
@@ -34,6 +38,8 @@ test("Agent template catalog lists match metadata and inspects the full executio
   assert.equal(templates[0].skill, "interior-design");
   assert.match(templates[0].useWhen, /装修设计/);
   assert.ok(templates[0].matchTerms.includes("SketchUp"));
+  assert.equal(templates[0].implementation.version, 1);
+  assert.equal(templates[0].acceptance.agentBrowserReview, false);
   const template = inspectPageTemplate("interior-design-delivery", { registry });
   assert.ok(template.fixedFramework.length >= 8);
   assert.ok(template.agentInstructions.some((item) => item.includes("子任务")));
@@ -86,6 +92,8 @@ test("template list stays a compact static card while detail owns interaction", 
   assert.match(preview, /SU 设计稿/);
   assert.match(preview, /户型图/);
   assert.match(preview, /用户需求/);
+  assert.match(preview, /data-template-id/);
+  assert.match(preview, /data-template-version/);
   assert.match(requirements, /interior-requirement-groups/);
   assert.match(requirements, /interior-requirement-history/);
   assert.doesNotMatch(`${detail}\n${preview}`, /滚轮或双指|全屏查看|浏览空间/);

@@ -15,18 +15,20 @@ Turn floor-plan evidence into a traceable concept model and a finished, manually
 
    `node skills/interior-design/scripts/cli.mjs normalize --input <model.json> --output <normalized.json>`
 
-4. Read [references/template-framework.md](references/template-framework.md). Preserve its delivery framework, then freely decide geometry, furniture, materials, lighting, room names, copy, and presentation details from the evidence and user intent.
+4. Read [references/template-framework.md](references/template-framework.md). Use the registered `interior-design-delivery` generator and preserve its delivery framework; do not independently create a similar-looking Page. Freely decide geometry, furniture, materials, lighting, room names, copy, and presentation details from the evidence and user intent.
 5. Read [references/quality-walkthrough.md](references/quality-walkthrough.md). Record `qualityReview`, then run the deterministic gate:
 
    `node skills/interior-design/scripts/cli.mjs audit --input <normalized.json> --json`
 
    Fix every blocking issue. Do not waive furniture overlap, blocked doors, out-of-room furniture, broken circulation, unusable clearances, or unmet lifestyle requirements for visual effect.
 6. When a still render helps the delivery, read [references/design-rules.md](references/design-rules.md), use `$visual-content` with runtime-native `imagegen`, inspect the result, and complete [references/delivery.md](references/delivery.md). A URL is not the default image delivery.
-7. Generate the Page:
+7. Generate and deterministically verify the registered Page template:
 
-   `node skills/interior-design/scripts/cli.mjs page --input <normalized.json> --output <page-dir>`
+   First create a redacted copy of the user-supplied floor plan inside the customer Workspace. Then run:
 
-8. Walk the finished Page again at desktop and mobile landscape widths. Verify the whole-home view, OrbitControls rotation/pan/zoom, three view modes, room entry and reset, portrait guidance, keyboard focus, non-empty canvas, WebGL projection fallback, label overlap, furniture/door conflicts, and continuous daily-use paths. Re-run `audit`; publishing requires `ok: true` and `qualityReview.status: passed`.
+   `node skills/interior-design/scripts/cli.mjs page --template interior-design-delivery --source-plan <redacted-user-floor-plan> --input <normalized.json> --output <page-dir> --json`
+
+8. Require the command result to report `templateId: interior-design-delivery`, the registered implementation version, artifact marker, and `visualAcceptance: user`. Do not open a browser, take screenshots, click through the generated Page, visually inspect desktop/mobile layouts, or claim that visual acceptance passed. The user owns visual and interaction acceptance after publication.
    For demolition, verify the exact room from the supplied plan by its adjacent rooms and orientation. Keep numeric dimension lines on the floor-plan annotation layer rather than the SU model, and keep space/component labels available in mobile landscape. For double-height or multi-level briefs, model every level explicitly, preserve the requested void, and audit stairs, guardrails, headroom, structure, and circulation before delivery.
 9. Publish only with `pa-cli pages publish`. Use the returned `pageId`, `url`, or `linkNotice`; never guess a hostname or expose a loopback path.
 
@@ -43,7 +45,7 @@ Turn floor-plan evidence into a traceable concept model and a finished, manually
 - [references/template-framework.md](references/template-framework.md): required Page framework and high-freedom design boundary.
 - [references/model-schema.md](references/model-schema.md): model fields, normalization, validation, and calibration.
 - [references/design-rules.md](references/design-rules.md): still-image and interactive viewer acceptance.
-- [references/quality-walkthrough.md](references/quality-walkthrough.md): mandatory spatial, circulation, lifestyle, label, and device review gate.
+- [references/quality-walkthrough.md](references/quality-walkthrough.md): mandatory spatial, circulation, lifestyle, label, and static template-contract gate.
 - [references/delivery.md](references/delivery.md): managed objects, Pages, native attachments, and governance.
 - `scripts/cli.mjs`: deterministic `validate`, `normalize`, and `page` commands.
 - `assets/interior-viewer.bundle`: governed local Three.js viewer used by generated Pages.

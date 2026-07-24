@@ -32,6 +32,7 @@ export const config = {
   spaceKind: String(process.env.PERSONAL_AGENT_SPACE_KIND || "").trim(),
   rootDir,
   projectDir,
+  releaseRoot: path.resolve(process.env.PRIVATE_SITE_RELEASE_ROOT || workspaceRoot),
   workspaceRoot: resolvedWorkspaceRoot,
   siteDataRoot,
   installationDataRoot,

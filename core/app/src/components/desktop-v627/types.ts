@@ -1,6 +1,6 @@
 export type ActivityItem = { id: string; kind: string; title: string; summary: string; status: string; source: string; updatedAt: string; href: string };
 export type Overview = { machine: { state: string; uptimeSeconds: number; workspaceRoot: string; mobileAddress: string; mobileAccess: string }; counts: { work: number; runningWork: number; mail: number; pages: number; connectedChannels: number }; recent: ActivityItem[] };
-export type ConversationAttachment = { objectId?: string; kind?: "image" | "file"; name: string; mimeType: string; sizeBytes: number; width?: number; height?: number; alt?: string; caption?: string; previewUrl?: string; downloadUrl?: string; deliveryState?: "pending" | "sending" | "sent" | "failed" | "ambiguous" };
+export type ConversationAttachment = { objectId?: string; kind?: "image" | "file"; name: string; mimeType: string; sizeBytes: number; width?: number; height?: number; alt?: string; caption?: string; previewUrl?: string; viewUrl?: string; downloadUrl?: string; deliveryState?: "pending" | "sending" | "sent" | "failed" | "ambiguous" };
 export type Message = { id: string; sessionId?: string; role: string; content: string; createdAt?: string; metadata?: { attachments?: ConversationAttachment[]; clientMessageId?: string; optimistic?: boolean; channel?: string; sourceLabel?: string; finalReply?: { schemaVersion: number; requestId: string; idempotencyKey: string } } };
 export type PlanStep = { step: string; status: "completed" | "in_progress" | "pending" };
 export type CurrentPlan = { sessionId: string; title: string; href: string; completed: number; steps: PlanStep[]; updatedAt?: string };
@@ -17,4 +17,4 @@ export type MailEvent = { id: string; title: string; sender: { address: string; 
 export type MailView = { events: MailEvent[]; total: number; selectedEvent: MailEvent | null; selectedRuns: { matched: boolean; reason: string }[]; content: { subject: string; body: string; from: { name: string; address: string }[]; to: { name: string; address: string }[]; attachments: { index: number; name: string; contentType: string; sizeBytes: number }[] } | null };
 export type Channel = { provider: string; label: string; state: string; statusLabel: string; description?: string };
 export type SkillCategory = { id: string; label: string; description?: string };
-export type Skill = { name: string; description: string; category: string; risks?: string[] };
+export type Skill = { name: string; description: string; directory: string; category: string; risks?: string[] };

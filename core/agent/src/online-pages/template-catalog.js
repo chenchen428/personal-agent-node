@@ -28,6 +28,15 @@ export function readPageTemplateRegistry(registryPath = defaultRegistryPath) {
     if (!template.name || !template.category || !template.skill || !template.summary || template.status !== "built-in") {
       throw new Error(`incomplete Page template contract: ${id}`);
     }
+    if (!Number.isInteger(template.implementation?.version)
+      || template.implementation.version < 1
+      || !String(template.implementation?.generator || "").trim()
+      || !String(template.implementation?.artifactMarker || "").trim()) {
+      throw new Error(`invalid Page template implementation: ${id}`);
+    }
+    if (template.acceptance?.visualOwner !== "user" || template.acceptance?.agentBrowserReview !== false) {
+      throw new Error(`invalid Page template acceptance owner: ${id}`);
+    }
     for (const field of ["matchTerms", "fixedFramework", "agentFreedom", "agentInstructions"]) {
       if (!Array.isArray(template[field]) || template[field].length === 0 || template[field].some((item) => !String(item || "").trim())) {
         throw new Error(`invalid Page template ${field}: ${id}`);
@@ -51,6 +60,8 @@ export function listPageTemplates({ registry = readPageTemplateRegistry() } = {}
     matchTerms: [...template.matchTerms],
     desktop: Boolean(template.desktop),
     mobileLandscape: Boolean(template.mobileLandscape),
+    implementation: { ...template.implementation },
+    acceptance: { ...template.acceptance },
   }));
 }
 

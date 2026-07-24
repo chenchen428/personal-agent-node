@@ -2,7 +2,16 @@
   "schemaVersion": 1,
   "templateSelection": {
     "requiredBeforeGeneration": true,
-    "matchingTemplateAndSkillPassedToChildTask": true
+    "matchingTemplateAndSkillPassedToChildTask": true,
+    "registeredGeneratorAndVersionRequired": true,
+    "redactedUserFloorPlanRequired": true,
+    "artifactMarkerVerified": true,
+    "agentBrowserAcceptanceDisabled": true,
+    "visualAcceptanceOwnedByUser": true
+  },
+  "galleryPreviews": {
+    "desktopAndMobileAreDistinct": true,
+    "cliCanGenerateWithoutBrowser": true
   },
   "pageLinks": {
     "internalUrlIsRelative": true,

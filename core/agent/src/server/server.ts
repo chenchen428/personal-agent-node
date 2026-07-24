@@ -47,8 +47,8 @@ import { buildConversationAttachmentDeliveryView, buildDesktopConversationView }
 import { SessionOrchestrator } from "./orchestrator.js";
 import { renderConsoleSessionsFragment, renderDashboard, renderDataPage, renderDataRowsFragment, renderMessagesFragment, renderNewSession, renderPagesIndex, renderPrivateFileBatch, renderPrivateFilePreview, renderReleaseNotesPage, renderSessionDetail, renderSkillCatalogPage } from "../web/pages.js";
 import { renderMailPage } from "../web/mail-page.js";
-import { buildPrivateAttachmentPreviewUrl, decodePrivateAttachmentPath, privateFilePreviewKind, relativeAttachmentPath, sanitizeInboundAttachmentFileName, storedAttachmentDisplayName } from "../private-files/attachments.js";
-import { configurePrivateManagedFiles, headPrivateAttachment, privateStorageConfigured, readPrivateAttachment, signPrivateAttachmentUrl, verifyPrivateStorageAccess } from "../private-files/local-store.js";
+import { buildPrivateAttachmentPreviewUrl, buildPrivateAttachmentUrls, decodePrivateAttachmentPath, privateFilePreviewKind, relativeAttachmentPath, sanitizeInboundAttachmentFileName, storedAttachmentDisplayName } from "../private-files/attachments.js";
+import { configurePrivateManagedFiles, headPrivateAttachment, privateStorageConfigured, readPrivateAttachment, signPrivateAttachmentUrl, uploadPrivateAttachment, verifyPrivateStorageAccess } from "../private-files/local-store.js";
 import { ReleaseNotesStore } from "../release-notes/store.js";
 import { AppHistoryStore } from "../apps/history-store.js";
 import { ActivityStore } from "../activity/store.js";
@@ -754,12 +754,16 @@ async function handleRequest(request: http.IncomingMessage, response: http.Serve
   }
 
   if (url.pathname === "/agent-skills" && (request.method === "GET" || request.method === "HEAD")) {
-    sendHtml(response, 200, renderSkillCatalogPage(readWorkspaceSkillCatalog(config.workspaceRoot)), request.method === "HEAD");
+    sendHtml(response, 200, renderSkillCatalogPage(readWorkspaceSkillCatalog(config.workspaceRoot, {
+      metadataRoots: [config.releaseRoot, config.workspaceRoot],
+    })), request.method === "HEAD");
     return;
   }
 
   if (url.pathname === "/api/skills" && (request.method === "GET" || request.method === "HEAD")) {
-    sendJson(response, 200, { ok: true, ...readWorkspaceSkillCatalog(config.workspaceRoot), space: currentMemorySpace() }, request.method === "HEAD");
+    sendJson(response, 200, { ok: true, ...readWorkspaceSkillCatalog(config.workspaceRoot, {
+      metadataRoots: [config.releaseRoot, config.workspaceRoot],
+    }), space: currentMemorySpace() }, request.method === "HEAD");
     return;
   }
 
@@ -1538,6 +1542,17 @@ async function handleRequest(request: http.IncomingMessage, response: http.Serve
     return;
   }
 
+  if (url.pathname === "/api/desktop/conversation/attachments" && request.method === "POST") {
+    const body = await readJsonBody(request, Math.ceil(config.maxUploadBytes * 1.5) + 1_048_576);
+    const main = store.getOrCreateDesktopMainSession({ workspaceRoot: config.workspaceRoot });
+    const attachments = await persistDesktopAttachments(body.attachments, main.id);
+    sendJson(response, 201, {
+      ok: true,
+      attachments: attachments.map(({ filePath: _filePath, ...attachment }) => attachment),
+    });
+    return;
+  }
+
   if (url.pathname === "/api/desktop/conversation/messages" && request.method === "POST") {
     const body = await readJsonBody(request, Math.ceil(config.maxUploadBytes * 1.5) + 1_048_576);
     const content = String(body.content || body.text || "").trim();
@@ -1550,7 +1565,7 @@ async function handleRequest(request: http.IncomingMessage, response: http.Serve
       && event.payload?.metadata?.eventType === "desktop/message-accepted"
       && event.payload?.metadata?.clientMessageId === clientMessageId);
     if (!duplicate) {
-      const attachments = await persistDesktopAttachments(body.attachments, main.id);
+      const attachments = await resolveDesktopAttachments(body.attachments, main.id);
       await orchestrator.resumeSession(main.id, desktopAgentContent(content, attachments), {
         displayContent: content,
         messageMetadata: {
@@ -2786,24 +2801,85 @@ async function persistDesktopAttachments(input: unknown, sessionId: string) {
   const output = [];
   for (const { entry, buffer } of decoded) {
     const name = sanitizeInboundAttachmentFileName(entry?.name, "desktop-file");
+    const mimeType = String(entry?.mimeType || "application/octet-stream").slice(0, 160);
     const storedName = `${new Date().toISOString().replace(/[:.]/g, "-")}-${randomUUID().slice(0, 8)}-${name}`;
     const filePath = path.join(targetDir, storedName);
     assertInside(config.inboundAttachmentsDir, filePath);
     await fs.promises.writeFile(filePath, buffer, { flag: "wx", mode: 0o600 });
+    const relativePath = relativeAttachmentPath(config.inboundAttachmentsDir, filePath);
+    const managed = await uploadPrivateAttachment({
+      filePath,
+      relativePath,
+      contentType: mimeType,
+      source: "desktop-chat",
+      originalName: name,
+    });
     output.push({
+      objectId: managed.objectId,
       name,
-      mimeType: String(entry?.mimeType || "application/octet-stream").slice(0, 160),
+      kind: mimeType.toLowerCase().startsWith("image/") ? "image" : "file",
+      mimeType,
       sizeBytes: buffer.length,
-      relativePath: relativeAttachmentPath(config.inboundAttachmentsDir, filePath),
-      previewUrl: buildPrivateAttachmentPreviewUrl({
-        rootDir: config.inboundAttachmentsDir,
-        filePath,
-        consoleBaseUrl: config.consoleBaseUrl,
-      }),
+      relativePath,
+      ...buildPrivateAttachmentUrls(relativePath),
+      deliveryState: "sent",
       filePath,
     });
   }
   return output;
+}
+
+async function resolveDesktopAttachments(input: unknown, sessionId: string) {
+  const entries = Array.isArray(input) ? input : [];
+  if (entries.some((entry) => String(entry?.content || "").trim())) {
+    return persistDesktopAttachments(entries, sessionId);
+  }
+  if (entries.length > 4) throw Object.assign(new Error("at most 4 attachments are allowed"), { statusCode: 400 });
+  const sessionPrefix = `desktop/${sessionId}/`;
+  let total = 0;
+  return entries.map((entry) => {
+    const objectId = String(entry?.objectId || "").trim();
+    if (!/^obj_[a-f0-9]{24}$/.test(objectId)) {
+      throw Object.assign(new Error("attachment objectId is required"), { statusCode: 400 });
+    }
+    let object;
+    try {
+      object = managedFiles.stat(objectId);
+    } catch (error: any) {
+      if (error?.code === "ENOENT") {
+        throw Object.assign(new Error("attachment is not available in this conversation"), { statusCode: 404 });
+      }
+      throw error;
+    }
+    const relativePath = String(object.relativePath || "").replace(/\\/g, "/").replace(/^\/+/, "");
+    const filePath = path.resolve(String(object.localPath || ""));
+    const expectedFilePath = path.resolve(config.inboundAttachmentsDir, relativePath);
+    const valid = object.visibility === "private"
+      && object.source === "desktop-chat"
+      && object.status === "ready"
+      && relativePath.startsWith(sessionPrefix)
+      && filePath === expectedFilePath
+      && filePath
+      && fs.existsSync(filePath);
+    if (!valid) throw Object.assign(new Error("attachment is not available in this conversation"), { statusCode: 404 });
+    assertInside(config.inboundAttachmentsDir, filePath);
+    total += Number(object.sizeBytes || 0);
+    if (total > config.maxUploadBytes) {
+      throw Object.assign(new Error(`attachments exceed ${config.maxUploadBytes} bytes`), { statusCode: 413 });
+    }
+    const mimeType = String(object.contentType || "application/octet-stream").slice(0, 160);
+    return {
+      objectId,
+      name: sanitizeInboundAttachmentFileName(object.originalName, "desktop-file"),
+      kind: mimeType.toLowerCase().startsWith("image/") ? "image" : "file",
+      mimeType,
+      sizeBytes: Number(object.sizeBytes || 0),
+      relativePath,
+      ...buildPrivateAttachmentUrls(relativePath),
+      deliveryState: "sent",
+      filePath,
+    };
+  });
 }
 
 function desktopAgentContent(content: string, attachments: Array<{ name: string; filePath: string }>) {

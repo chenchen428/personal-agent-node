@@ -64,7 +64,7 @@
     "apexEnv": "SITE_DOMAIN",
     "localSuffix": "local",
     "standardHosts": [
-      { "key": "home", "label": "Personal Agent", "prefix": "", "access": "public", "kind": "static", "source": "workspace/publications/blog" }
+      { "key": "home", "label": "Personal Agent", "prefix": "", "access": "authenticated", "kind": "proxy" }
     ],
     "legacyHosts": []
   },

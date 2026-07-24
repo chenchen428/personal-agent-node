@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="620" viewBox="0 0 900 620">
+  <rect width="900" height="620" fill="#f4f3ef"/>
+  <g fill="#ffffff" stroke="#4d544f" stroke-width="12">
+    <rect x="90" y="80" width="720" height="460"/>
+    <path d="M500 80v460"/>
+  </g>
+  <g fill="#3e4540" font-family="Arial, sans-serif" font-size="28" text-anchor="middle">
+    <text x="295" y="300">Living and dining</text>
+    <text x="655" y="300">Bedroom</text>
+  </g>
+  <g fill="#9b4f3c" font-family="Arial, sans-serif" font-size="18">
+    <text x="90" y="58">SYNTHETIC TEST FLOOR PLAN · NOT CUSTOMER DATA</text>
+  </g>
+</svg>

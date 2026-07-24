@@ -16,6 +16,7 @@ import { installExtension, listExtensions, removeExtension } from "../src/extens
 import { readBackupState, runScheduledBackup } from "../src/backup-scheduler.ts";
 import { bridgeCliStatus, prepareBridgeCliShims } from "../src/cli-shims.ts";
 import { ensureWorkspaceFiles } from "../src/workspace-files.ts";
+import { seedAgentWorkspace } from "../src/workspace-seed.ts";
 import { providerCatalog, providerStatus, setProvider } from "../src/providers.ts";
 import { writePersonalAppCompatibilityReport } from "../src/apps.ts";
 
@@ -77,7 +78,7 @@ async function appCompatibilityCommand() {
 
 async function prepareCommand() {
   const result = await prepareSpaceRuntime({ requirePackagedRelease: true });
-  process.stdout.write(`${JSON.stringify({ ok: true, prepared: true, dataRoot: result.config.dataRoot, databasePath: result.databasePath, bridgeCli: result.bridgeCli, mailMigration: result.mailMigration, workspaceFiles: result.workspaceFiles, personalApps: result.personalApps }, null, 2)}\n`);
+  process.stdout.write(`${JSON.stringify({ ok: true, prepared: true, dataRoot: result.config.dataRoot, databasePath: result.databasePath, bridgeCli: result.bridgeCli, mailMigration: result.mailMigration, workspaceFiles: result.workspaceFiles, workspaceSeed: result.workspaceSeed, personalApps: result.personalApps }, null, 2)}\n`);
 }
 
 async function prepareSpaceRuntime({ requirePackagedRelease = false } = {}) {
@@ -99,7 +100,7 @@ async function prepareSpaceRuntime({ requirePackagedRelease = false } = {}) {
   ensureNodeDirectories(config);
   const personalApps = writePersonalAppCompatibilityReport(config);
   const workspaceFiles = ensureWorkspaceFiles(config);
-  seedAgentWorkspace(config);
+  const workspaceSeed = seedAgentWorkspace(config, { releaseRoot: workspaceRoot });
   const xiaohongshuTarget = path.join(config.dataRoot, "runtime", "xiaohongshu", process.platform === "win32" ? "xiaohongshu-mcp.exe" : "xiaohongshu-mcp");
   const supportsLocalXiaohongshu = (process.platform === "win32" && process.arch === "x64") || (process.platform === "darwin" && process.arch === "arm64");
   if (supportsLocalXiaohongshu && config.env.PRIVATE_SITE_BUILD_XIAOHONGSHU === "1" && !fs.existsSync(xiaohongshuTarget)) {
@@ -111,7 +112,7 @@ async function prepareSpaceRuntime({ requirePackagedRelease = false } = {}) {
   const databasePath = path.join(config.dataRoot, "databases", "tools", "lmt-tools.sqlite");
   const migrationPath = path.join(toolsRoot, "prisma", "migrations", "0001_initial", "migration.sql");
   if (fs.existsSync(migrationPath)) run(process.execPath, [path.join(workspaceRoot, "scripts", "init-lmt-tools-database.mjs"), databasePath, migrationPath], workspaceRoot);
-  return { config, databasePath, bridgeCli, mailMigration, workspaceFiles, personalApps };
+  return { config, databasePath, bridgeCli, mailMigration, workspaceFiles, workspaceSeed, personalApps };
 }
 
 function seedPublications(config) {
@@ -152,36 +153,6 @@ function defaultTextPage(title, message) {
 
 function escapeHtml(value) {
   return String(value).replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;");
-}
-
-function seedAgentWorkspace(config) {
-  const seedRoot = path.join(workspaceRoot, "workspace");
-  const nodeGuide = fs.existsSync(path.join(seedRoot, "AGENTS.md")) ? path.join(seedRoot, "AGENTS.md") : path.join(workspaceRoot, "AGENTS.md");
-  copyMissing(nodeGuide, path.join(config.agentWorkspaceRoot, "AGENTS.md"));
-  for (const directory of ["skills", "workflows", "registry"]) {
-    const source = fs.existsSync(path.join(seedRoot, directory)) ? path.join(seedRoot, directory) : path.join(workspaceRoot, directory);
-    copyMissing(source, path.join(config.agentWorkspaceRoot, directory));
-  }
-  for (const script of ["skill-tree.mjs", "skill-guard.mjs"]) {
-    const source = fs.existsSync(path.join(seedRoot, "scripts", script)) ? path.join(seedRoot, "scripts", script) : path.join(workspaceRoot, "scripts", script);
-    copyMissing(source, path.join(config.agentWorkspaceRoot, "scripts", script));
-  }
-  for (const bridge of [".codex"]) {
-    createDirectoryPointer(path.join(config.agentWorkspaceRoot, "skills"), path.join(config.agentWorkspaceRoot, bridge, "skills"));
-  }
-}
-
-function copyMissing(source, target) {
-  if (fs.existsSync(target) || !fs.existsSync(source)) return;
-  fs.mkdirSync(path.dirname(target), { recursive: true });
-  fs.cpSync(source, target, { recursive: true, preserveTimestamps: true });
-}
-
-function createDirectoryPointer(target, linkPath) {
-  if (fs.existsSync(linkPath)) return;
-  fs.mkdirSync(path.dirname(linkPath), { recursive: true });
-  fs.mkdirSync(target, { recursive: true });
-  fs.symlinkSync(process.platform === "win32" ? target : path.relative(path.dirname(linkPath), target), linkPath, process.platform === "win32" ? "junction" : "dir");
 }
 
 function directoryHasEntries(directory) {
@@ -258,7 +229,7 @@ async function verifyCommand() {
   checks.push(await httpCheck(config, config.domain, "/__private-site/health", [200]));
   for (const entry of config.distribution.domain.standardHosts) {
     const host = entry.prefix ? `${entry.prefix}.${config.domain}` : config.domain;
-    const expected = entry.access === "private" ? [200, 302] : [200];
+    const expected = ["private", "authenticated"].includes(entry.access) ? [200, 302] : [200];
     const probePath = entry.key === "pages" ? "/health"
       : entry.key === "resources" ? "/README.md"
         : entry.key === "docs" ? "/interview.html"

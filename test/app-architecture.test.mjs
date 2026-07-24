@@ -20,6 +20,7 @@ test("Next.js owns the approved V6.39 mobile client and V7.3 desktop workspace",
   const scheduledTasksClient = read("core/app/src/components/desktop-v627/scheduled-tasks-page.tsx");
   const scheduledTaskDetail = read("core/app/src/components/desktop-v627/scheduled-task-detail.tsx");
   const taskViewNavigation = read("core/app/src/components/desktop-v627/task-module-view-navigation.tsx");
+  const taskStatusFilter = read("core/app/src/components/desktop-v627/task-status-filter.tsx");
   const overviewClient = read("core/app/src/components/desktop-v627/overview-page.tsx");
   const mobileAccessControl = read("core/app/src/components/desktop-v627/mobile-access-control.tsx");
   const connectionsClient = read("core/app/src/components/desktop-v627/connections-page.tsx");
@@ -69,7 +70,11 @@ test("Next.js owns the approved V6.39 mobile client and V7.3 desktop workspace",
     "conversation-message-list.tsx",
     "conversation-plan.tsx",
     "conversation-composer.tsx",
+    "conversation-attachment-list.tsx",
+    "conversation-attachments.ts",
+    "use-conversation-attachments.ts",
   ].map((file) => read(`core/app/src/components/desktop-v627/${file}`)).join("\n");
+  const conversationComposer = read("core/app/src/components/desktop-v627/conversation-composer.tsx");
   const overview = `${read("core/app/src/app/app/page.tsx")}\n${read("core/app/src/lib/request-device.ts")}`;
   const mobile = read("core/app/src/app/app/mobile/page.tsx");
   const legacyCss = read("core/app/src/app/desktop-v627-v4.css");
@@ -281,6 +286,45 @@ test("Next.js owns the approved V6.39 mobile client and V7.3 desktop workspace",
   assert.doesNotMatch(conversationClient, /planIndex = messages\.findIndex/);
   assert.match(conversationClient, /composer-wrap/);
   assert.match(conversationClient, /添加附件/);
+  assert.match(conversationClient, /onPaste=\{pasteImages\}/);
+  assert.match(conversationClient, /if \(!images\.length\) return;[\s\S]*event\.preventDefault\(\)/);
+  assert.match(conversationClient, /item\.type\.toLowerCase\(\)\.startsWith\("image\/"\)/);
+  assert.match(conversationClient, /MAX_ATTACHMENT_COUNT = 4/);
+  assert.match(conversationClient, /MAX_TOTAL_ATTACHMENT_BYTES = 10 \* 1024 \* 1024/);
+  assert.match(conversationClient, /\/api\/chat\/desktop\/conversation\/attachments/);
+  assert.match(conversationClient, /attachments: attachments\.map\(\(\{ objectId \}\) => \(\{ objectId \}\)\)/);
+  assert.match(conversationClient, /attachment\.viewUrl \|\| attachment\.previewUrl/);
+  assert.match(conversationClient, /正在上传附件/);
+  assert.ok(conversationComposer.indexOf("<ConversationAttachmentList") < conversationComposer.indexOf("<textarea"));
+  const clearDraftIndex = conversationComposer.indexOf('setMessage("");');
+  const awaitSendIndex = conversationComposer.indexOf("await sendRequest");
+  assert.notEqual(clearDraftIndex, -1);
+  assert.notEqual(awaitSendIndex, -1);
+  assert.ok(
+    clearDraftIndex < awaitSendIndex,
+    "the composer clears as soon as the optimistic send is accepted",
+  );
+  assert.match(conversationComposer, /setMessage\(\(current\) => current \|\| submittedMessage\)/);
+  assert.match(conversationComposer, /restoreAttachments\(submittedAttachments\)/);
+  assert.ok(conversationClient.indexOf("<MessageAttachments") < conversationClient.indexOf("<MarkdownContent"));
+  const selectedImageRule = css.match(/\.desktop-v72 \.composer-selected-image\s*\{[^}]*\}/)?.[0] || "";
+  assert.match(selectedImageRule, /width:\s*56px/);
+  assert.match(selectedImageRule, /height:\s*56px/);
+  assert.match(css, /\.desktop-v72 \.composer-selected-image img\s*\{[^}]*object-fit:\s*cover/);
+  const messageImageRule = css.match(/\.desktop-v72 \.message-image\s*\{[^}]*\}/)?.[0] || "";
+  assert.match(messageImageRule, /width:\s*56px/);
+  assert.match(messageImageRule, /height:\s*56px/);
+  assert.match(css, /\.desktop-v72 \.message-image img\s*\{[^}]*object-fit:\s*cover/);
+  const iconButtonSvgRule = css.match(/\.desktop-v72 \.icon-button > svg\s*\{[^}]*\}/)?.[0] || "";
+  assert.match(iconButtonSvgRule, /width:\s*15px/);
+  assert.match(iconButtonSvgRule, /height:\s*15px/);
+  assert.match(agentServer, /at most 4 attachments are allowed/);
+  assert.match(agentServer, /\/api\/desktop\/conversation\/attachments/);
+  assert.match(agentServer, /source: "desktop-chat"/);
+  assert.match(agentServer, /uploadPrivateAttachment/);
+  assert.match(agentServer, /resolveDesktopAttachments/);
+  assert.match(agentServer, /mimeType\.toLowerCase\(\)\.startsWith\("image\/"\) \? "image" : "file"/);
+  assert.match(agentServer, /deliveryState: "sent"/);
   assert.match(css, /\.desktop-v72 \.message-thread/);
   assert.match(css, /\.desktop-v72 \.composer/);
   assert.match(css, /\.desktop-v72 \.message-processing/);
@@ -291,6 +335,9 @@ test("Next.js owns the approved V6.39 mobile client and V7.3 desktop workspace",
   assert.doesNotMatch(conversationClient, /model|reasoning|sandbox|approval/i);
   assert.doesNotMatch(conversationClient, /\/api\/chat\/sessions/);
   assert.doesNotMatch(conversationClient, /createdBy|task:\s*content/);
+  assert.match(taskStatusFilter, /@\/components\/ui\/select/);
+  assert.match(taskStatusFilter, /<SelectTrigger/);
+  assert.doesNotMatch(taskStatusFilter, /<select|<option/);
   assert.match(desktopComponents, /本机可信/);
   assert.match(desktopComponents, /其他设备会话已失效/);
   assert.match(desktopComponents, /installation\.local-auth/);
@@ -423,7 +470,11 @@ test("gateway routes the approved client to Next and its read-only data to the l
   assert.deepEqual(routes.find((route) => route.key === "api-token-usage"), { key: "api-token-usage", prefix: "/api/token-usage", access: "authenticated", kind: "proxy", targetKey: "agent", upstreamPath: "/api/token-usage" });
   assert.deepEqual(routeRegistry.routes.find((route) => route.pattern === "/api/token-usage"), { pattern: "/api/token-usage", access: "authenticated", capability: "agent" });
   assert.deepEqual(routes.find((route) => route.key === "api-connections"), { key: "api-connections", prefix: "/api/connections", access: "authenticated", kind: "proxy", targetKey: "agent", upstreamPath: "/api/connections" });
-  assert.equal(routes.find((route) => route.key === "home").access, "authenticated");
+  const homeRoute = routes.find((route) => route.key === "home");
+  const homeHost = distribution.domain.standardHosts.find((host) => host.key === "home");
+  assert.equal(homeRoute.access, "authenticated");
+  assert.equal(homeHost.access, homeRoute.access);
+  assert.equal(homeHost.kind, homeRoute.kind);
   assert.equal(routes.find((route) => route.key === "app-settings").access, "authenticated");
   assert.equal(routes.find((route) => route.key === "api-system-setup-actions").access, "authenticated");
   assert.deepEqual(routes.find((route) => route.key === "api-system-update"), { key: "api-system-update", prefix: "/api/system/update", access: "authenticated", kind: "proxy", targetKey: "console", upstreamPath: "/api/update" });

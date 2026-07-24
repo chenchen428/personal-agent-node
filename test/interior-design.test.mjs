@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
-import { generatePage } from '../skills/interior-design/scripts/generate-page.mjs';
+import { generatePage, loadInteriorTemplateContract, loadSourcePlanAsset, verifyGeneratedPageHtml } from '../skills/interior-design/scripts/generate-page.mjs';
 import { auditModel, normalizeModel, validateModel } from '../skills/interior-design/scripts/model.mjs';
 
 const root = path.resolve(import.meta.dirname, '..');
@@ -52,17 +52,42 @@ test('blocks furniture overlap, door obstruction, and missing review evidence', 
   assert.ok(auditModel(unreviewed).findings.some((item) => item.code === 'quality-review-missing'));
 });
 
-test('generates the self-contained static renovation delivery template', () => {
+test('rejects executable or remote content in a supplied SVG floor plan', () => {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'interior-source-plan-'));
+  const source = path.join(directory, 'unsafe.svg');
+  fs.writeFileSync(source, '<svg xmlns="http://www.w3.org/2000/svg"><image href="https://example.test/private.png"/></svg>');
+  assert.throws(() => loadSourcePlanAsset(source), /must not contain executable or remote-reference markup/);
+});
+
+test('generates and verifies the registered self-contained renovation delivery template', () => {
   const output = fs.mkdtempSync(path.join(os.tmpdir(), 'interior-page-'));
-  const index = generatePage({ model: fixture, output, skillRoot: path.join(root, 'skills/interior-design') });
+  const skillRoot = path.join(root, 'skills/interior-design');
+  const template = loadInteriorTemplateContract(skillRoot);
+  const sourcePlan = loadSourcePlanAsset(path.join(root, 'test/fixtures/skill-cases/interior-design/source-plan.svg'));
+  const index = generatePage({ model: fixture, output, skillRoot, sourcePlan, template });
   const html = fs.readFileSync(index, 'utf8');
   assert.match(html, /OrbitControls/);
   assert.match(html, /id="room-select"/);
   assert.match(html, /整体方案 · 完整户型/);
-  assert.match(html, /3D 鸟瞰/);
+  assert.match(html, /SU 设计稿/);
+  assert.match(html, /户型图/);
+  assert.match(html, /用户需求/);
+  assert.match(html, /data-template-id="interior-design-delivery"/);
+  assert.match(html, /name="personal-agent-page-template" content="personal-agent-page-template"/);
+  assert.match(html, /class="plan-source-image"/);
+  assert.match(html, /data:image\/svg\+xml;base64/);
+  assert.match(html, /Content-Security-Policy/);
   assert.match(html, /3D 投影模式/);
   assert.match(html, /pointermove/);
   assert.doesNotMatch(html, /id="play"|id="replay"|class="timeline"|animateTimeline|cameraTour/);
   assert.doesNotMatch(html, /<(?:script|link|iframe)[^>]+(?:src|href)=["']https?:\/\//i);
+  assert.deepEqual(verifyGeneratedPageHtml(html, template), {
+    ok: true,
+    templateId: 'interior-design-delivery',
+    templateVersion: 1,
+    artifactMarker: 'personal-agent-page-template',
+    visualAcceptance: 'user',
+  });
+  assert.equal(JSON.parse(fs.readFileSync(path.join(output, 'template.json'), 'utf8')).implementation.version, 1);
   assert.ok(fs.statSync(index).size > 100_000);
 });
