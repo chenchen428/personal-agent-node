@@ -4,7 +4,7 @@ import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 
-import { initializeSite } from '../src/config.ts';
+import { initializeSite, setConnectionMode } from '../src/config.ts';
 import { inspectRemoteConnectivity, setupDiagnostics, setupStatus, writeWebConversationAcceptance } from '../src/setup.ts';
 
 test('setup status resolves a direct Space root and keeps WeChat optional after Agent readiness', async () => {
@@ -164,6 +164,82 @@ test('managed remote readiness requires a fresh reverse application tunnel inste
   } finally { fs.rmSync(dataRoot, { recursive: true, force: true }); }
 });
 
+test('managed Cloud recovery takes precedence over the stale reauthorization fault it is repairing', async () => {
+  const dataRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'personal-agent-setup-cloud-recovery-'));
+  try {
+    const initialized = initializeSite({ dataRoot, domain: 'personal-agent.local' });
+    const spaceRoot = initialized.config.dataRoot;
+    const actionStartedAt = '2026-07-15T12:00:00.000Z';
+    const faultAt = '2026-07-15T12:00:01.000Z';
+    const recoveryFinishedAt = '2026-07-15T12:00:02.000Z';
+    fs.writeFileSync(path.join(spaceRoot, 'config', 'cloud.json'), `${JSON.stringify({
+      schemaVersion: 2,
+      cloudUrl: 'https://personal-agent.cn',
+      managedHost: 'owner.personal-agent.cn',
+      siteId: 'site-1',
+      enrolledAt: faultAt,
+      tunnel: { protocol: 'pa-reverse-ws-v1', endpoint: 'wss://personal-agent.cn/v1/connect', heartbeatSeconds: 20, maxFrameBytes: 131072, generation: 1 },
+    })}\n`);
+    setConnectionMode(initialized.config, 'managed-cloud');
+    fs.mkdirSync(path.join(spaceRoot, 'runtime', 'setup'), { recursive: true });
+    fs.writeFileSync(path.join(spaceRoot, 'runtime', 'reverse-tunnel.json'), `${JSON.stringify({
+      schemaVersion: 1,
+      protocol: 'pa-reverse-ws-v1',
+      state: 'reauth_required',
+      updatedAt: faultAt,
+    })}\n`);
+    const actionPath = path.join(spaceRoot, 'runtime', 'setup', 'managed-cloud-action.json');
+    fs.writeFileSync(actionPath, `${JSON.stringify({
+      schemaVersion: 1,
+      state: 'running',
+      phase: 'enrollment',
+      authorizationUrl: 'https://personal-agent.cn/connect?code=PA-1234',
+      updatedAt: actionStartedAt,
+    })}\n`);
+
+    const readStatus = () => setupStatus({
+      dataRoot: spaceRoot,
+      installRoot: path.join(dataRoot, 'install'),
+      now: () => new Date(recoveryFinishedAt),
+      portProbe: async () => false,
+      codexProbe: async () => ({ installed: false, version: '', versionSupported: false, authenticated: false, handshake: false }),
+      remoteProbe: async () => ({ dns: false, tls: false, remoteApp: false }),
+    });
+
+    assert.deepEqual((await readStatus()).actions.managedCloud, {
+      state: 'running',
+      phase: 'enrollment',
+      authorizationUrl: 'https://personal-agent.cn/connect?code=PA-1234',
+    });
+
+    fs.writeFileSync(actionPath, `${JSON.stringify({
+      schemaVersion: 1,
+      state: 'failed',
+      phase: 'enrollment',
+      code: 'CLOUD_NETWORK_UNREACHABLE',
+      updatedAt: recoveryFinishedAt,
+    })}\n`);
+    assert.deepEqual((await readStatus()).actions.managedCloud, {
+      state: 'failed',
+      phase: 'enrollment',
+      code: 'CLOUD_NETWORK_UNREACHABLE',
+    });
+
+    fs.writeFileSync(actionPath, `${JSON.stringify({
+      schemaVersion: 1,
+      state: 'failed',
+      phase: 'enrollment',
+      code: 'STALE_FAILURE',
+      updatedAt: '2026-07-15T11:59:59.000Z',
+    })}\n`);
+    assert.deepEqual((await readStatus()).actions.managedCloud, {
+      state: 'failed',
+      phase: 'enrollment',
+      code: 'CLOUD_REAUTH_REQUIRED',
+    });
+  } finally { fs.rmSync(dataRoot, { recursive: true, force: true }); }
+});
+
 test('self-hosted readiness uses the selected custom domain and custom mail identity', async () => {
   const dataRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'personal-agent-setup-custom-domain-'));
   try {
@@ -177,6 +253,13 @@ test('self-hosted readiness uses the selected custom domain and custom mail iden
     })}\n`);
     fs.mkdirSync(path.join(spaceRoot, 'runtime', 'setup'), { recursive: true });
     fs.writeFileSync(path.join(spaceRoot, 'runtime', 'setup', 'connectivity.json'), `${JSON.stringify({ heartbeat: true, tunnel: true })}\n`);
+    fs.writeFileSync(path.join(spaceRoot, 'runtime', 'reverse-tunnel.json'), `${JSON.stringify({
+      schemaVersion: 1,
+      protocol: 'pa-reverse-ws-v1',
+      state: 'reauth_required',
+      setupAction: 'connectivity.custom-domain-start',
+      updatedAt: '2026-07-15T12:00:00.000Z',
+    })}\n`);
     let probedHost = '';
     const status = await setupStatus({
       dataRoot: spaceRoot,
@@ -192,6 +275,7 @@ test('self-hosted readiness uses the selected custom domain and custom mail iden
       value: 'agent@mail.example.com',
       binding: 'custom',
     });
+    assert.deepEqual(status.actions.managedCloud, { state: 'idle', phase: 'idle' });
   } finally { fs.rmSync(dataRoot, { recursive: true, force: true }); }
 });
 
