@@ -24,18 +24,26 @@ export function ConversationComposer({ initialMessage = "", sending, waiting, er
     pasteImages,
     removeAttachment,
     clearAttachments,
+    restoreAttachments,
   } = useConversationAttachments();
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
     const content = message.trim();
     if ((!content && !attachments.length) || sending || waiting || uploading) return;
+    const submittedMessage = message;
+    const submittedAttachments = attachments;
     try {
-      await onSend(content || `请处理附件：${attachments.map((attachment) => attachment.name).join("、")}`, attachments);
+      const sendRequest = onSend(
+        content || `请处理附件：${submittedAttachments.map((attachment) => attachment.name).join("、")}`,
+        submittedAttachments,
+      );
       setMessage("");
       clearAttachments();
+      await sendRequest;
     } catch {
-      // Parent state keeps the message and exposes the recoverable error.
+      setMessage((current) => current || submittedMessage);
+      restoreAttachments(submittedAttachments);
     }
   };
 
@@ -47,12 +55,13 @@ export function ConversationComposer({ initialMessage = "", sending, waiting, er
   };
 
   return <form className="composer-wrap" onSubmit={submit}><div className="composer">
-    <ConversationAttachmentList attachments={attachments} onRemove={removeAttachment} />
+    <ConversationAttachmentList attachments={attachments} disabled={sending} onRemove={removeAttachment} />
     <label className="sr-only" htmlFor="desktop-chat-input">发消息给 PA</label>
     <textarea
       id="desktop-chat-input"
       autoFocus
       rows={1}
+      readOnly={sending}
       maxLength={4000}
       placeholder="让 Personal Agent 做什么…"
       value={message}
@@ -65,7 +74,7 @@ export function ConversationComposer({ initialMessage = "", sending, waiting, er
       onPaste={pasteImages}
     />
     <footer className="composer-actions"><div className="composer-tools">
-      <button className="icon-button" type="button" onClick={() => fileRef.current?.click()} aria-label="添加附件" title="添加附件">
+      <button className="icon-button" type="button" disabled={sending} onClick={() => fileRef.current?.click()} aria-label="添加附件" title="添加附件">
         <AttachmentIcon />
       </button>
       <span className="composer-feedback">{attachmentError || error || (uploading ? "正在上传附件…" : waiting ? "PA 正在处理，回复会自动出现" : "")}</span></div>

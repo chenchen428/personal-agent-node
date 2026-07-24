@@ -296,6 +296,16 @@ test("Next.js owns the approved V6.39 mobile client and V7.3 desktop workspace",
   assert.match(conversationClient, /attachment\.viewUrl \|\| attachment\.previewUrl/);
   assert.match(conversationClient, /正在上传附件/);
   assert.ok(conversationComposer.indexOf("<ConversationAttachmentList") < conversationComposer.indexOf("<textarea"));
+  const clearDraftIndex = conversationComposer.indexOf('setMessage("");');
+  const awaitSendIndex = conversationComposer.indexOf("await sendRequest");
+  assert.notEqual(clearDraftIndex, -1);
+  assert.notEqual(awaitSendIndex, -1);
+  assert.ok(
+    clearDraftIndex < awaitSendIndex,
+    "the composer clears as soon as the optimistic send is accepted",
+  );
+  assert.match(conversationComposer, /setMessage\(\(current\) => current \|\| submittedMessage\)/);
+  assert.match(conversationComposer, /restoreAttachments\(submittedAttachments\)/);
   assert.ok(conversationClient.indexOf("<MessageAttachments") < conversationClient.indexOf("<MarkdownContent"));
   const selectedImageRule = css.match(/\.desktop-v72 \.composer-selected-image\s*\{[^}]*\}/)?.[0] || "";
   assert.match(selectedImageRule, /width:\s*56px/);

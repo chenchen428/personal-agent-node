@@ -78,6 +78,12 @@ export function useConversationAttachments() {
     setAttachmentError("");
   };
 
+  const restoreAttachments = (restored: PendingAttachment[]) => {
+    attachmentsRef.current = restored;
+    setAttachments(restored);
+    setAttachmentError("");
+  };
+
   return {
     attachments,
     attachmentError,
@@ -87,5 +93,6 @@ export function useConversationAttachments() {
     pasteImages,
     removeAttachment,
     clearAttachments,
+    restoreAttachments,
   };
 }
