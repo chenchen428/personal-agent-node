@@ -6,7 +6,6 @@ import useScene from '@pascal-app/core/store';
 import { Viewer, useViewer } from '@pascal-app/viewer';
 import { Sphere, Vector3 } from 'three';
 import { ArchitectureEnvelope } from './pascal-architecture.jsx';
-
 class ViewerBoundary extends Component {
   constructor(props) {
     super(props);
