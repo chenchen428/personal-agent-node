@@ -42,9 +42,9 @@ export function ProjectCamera({ payload }) {
         );
       } else {
         await api.setLookAt(
-          frame.centerX + frame.span * 1.05 * narrowViewportScale,
-          frame.span * 1.22 * narrowViewportScale,
-          frame.centerZ + frame.span * 1.05 * narrowViewportScale,
+          frame.centerX + frame.span * 1.12 * narrowViewportScale,
+          frame.span * 0.71 * narrowViewportScale,
+          frame.centerZ + frame.span * 1.12 * narrowViewportScale,
           frame.centerX,
           1.15,
           frame.centerZ,
@@ -55,8 +55,13 @@ export function ProjectCamera({ payload }) {
     };
     const reset = () => { void applyPose('perspective'); };
     void applyPose();
+    const settleTimers = [160, 520, 1_100, 1_900, 2_800]
+      .map((delay) => window.setTimeout(reset, delay));
     window.addEventListener('pascal-reset-camera', reset);
-    return () => window.removeEventListener('pascal-reset-camera', reset);
+    return () => {
+      settleTimers.forEach(window.clearTimeout);
+      window.removeEventListener('pascal-reset-camera', reset);
+    };
   }, [cameraMode, frame, invalidate, size.height, size.width]);
 
   return <CameraControls

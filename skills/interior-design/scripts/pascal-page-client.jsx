@@ -174,10 +174,20 @@ function PascalScene({ payload }) {
       sceneReadyKey={payload.sceneHash || payload.revision}
       sceneReadyMaxWaitMs={12_000}
       onSceneReadyChange={(ready) => {
-        if (ready) {
+        if (!ready) return;
+        const restoreCamera = () => {
           window.dispatchEvent(new CustomEvent('pascal-reset-camera'));
           window.dispatchEvent(new CustomEvent('pascal-viewer-warmup'));
-        }
+        };
+        restoreCamera();
+        requestAnimationFrame(() => {
+          restoreCamera();
+          requestAnimationFrame(restoreCamera);
+        });
+        window.setTimeout(restoreCamera, 180);
+        window.setTimeout(restoreCamera, 520);
+        window.setTimeout(restoreCamera, 1_100);
+        window.setTimeout(restoreCamera, 1_800);
       }}
     >
       <ViewerLifecycle />

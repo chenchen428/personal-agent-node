@@ -79,7 +79,8 @@ test("the committed example is the byte-stable output of the governed native v2 
   assert.match(html, /data-layout-profile="su-design-classic"/);
   assert.match(html, /pascal-viewer-warmup/);
   assert.match(html, /function restoreModelView\(\)\{call\('resetCamera'\);call\('warmup'\)\}/);
-  assert.match(html, /setTimeout\(restoreModelView,160\)/);
+  assert.match(html, /setTimeout\(restoreModelView,180\)/);
+  assert.match(html, /setTimeout\(restoreModelView,1100\)/);
   assert.doesNotMatch(html, /class="navigator"/);
   assert.ok(nodes.filter((node) => node.type === "zone").length >= 12);
   assert.ok(nodes.filter((node) => ["door", "window"].includes(node.type)).length >= 14);
@@ -122,9 +123,11 @@ test("template catalog and example route consume only the verified generated art
   assert.match(projectCamera, /camera=\{camera\}/);
   assert.match(projectCamera, /api\.setLookAt/);
   assert.match(projectCamera, /narrowViewportScale/);
-  assert.match(projectCamera, /frame\.span \* 1\.05/);
+  assert.match(projectCamera, /frame\.span \* 1\.12/);
+  assert.match(projectCamera, /frame\.span \* 0\.71/);
   assert.doesNotMatch(projectCamera, /api\.fitToSphere/);
   assert.match(projectCamera, /pascal-reset-camera/);
+  assert.match(projectCamera, /1_900, 2_800/);
   assert.match(viewerClient, /<ArchitectureEnvelope payload=\{payload\}/);
   assert.match(viewerClient, /<ViewerLifecycle \/>/);
   assert.match(viewerClient, /wallMode: 'down'/);
@@ -132,6 +135,7 @@ test("template catalog and example route consume only the verified generated art
   assert.match(viewerClient, /professional-mesh-ink/);
   assert.match(viewerClient, /disablePostFx/);
   assert.match(viewerClient, /shadows: true/);
+  assert.match(viewerClient, /setTimeout\(restoreCamera, 1_800\)/);
   assert.match(viewerLifecycle, /useFrame/);
   assert.match(viewerLifecycle, /pascal-viewer-warmup/);
   assert.match(viewerLifecycle, /fallback\.hidden = true/);
