@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
-import { generatePage, loadInteriorTemplateContract, loadSourcePlanAsset, verifyGeneratedPageHtml } from '../skills/interior-design/scripts/generate-page.mjs';
+import { generatePage, loadLegacyInteriorTemplateContract, loadSourcePlanAsset, verifyGeneratedPageHtml } from '../skills/interior-design/scripts/generate-page.mjs';
 import { auditModel, normalizeModel, validateModel } from '../skills/interior-design/scripts/model.mjs';
 
 const root = path.resolve(import.meta.dirname, '..');
@@ -62,7 +62,7 @@ test('rejects executable or remote content in a supplied SVG floor plan', () => 
 test('generates and verifies the registered self-contained renovation delivery template', () => {
   const output = fs.mkdtempSync(path.join(os.tmpdir(), 'interior-page-'));
   const skillRoot = path.join(root, 'skills/interior-design');
-  const template = loadInteriorTemplateContract(skillRoot);
+  const template = loadLegacyInteriorTemplateContract(skillRoot);
   const sourcePlan = loadSourcePlanAsset(path.join(root, 'test/fixtures/skill-cases/interior-design/source-plan.svg'));
   const index = generatePage({ model: fixture, output, skillRoot, sourcePlan, template });
   const html = fs.readFileSync(index, 'utf8');

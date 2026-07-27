@@ -20,15 +20,15 @@ test("Pages registers one focused built-in renovation template", () => {
   assert.equal(registry.templates[0].id, "interior-design-delivery");
   assert.equal(registry.templates[0].skill, "interior-design");
   assert.equal(registry.templates[0].mobileLandscape, true);
-  assert.match(registry.templates[0].summary, /SketchUp 式建筑模型语言/);
+  assert.match(registry.templates[0].summary, /Pascal 建筑场景/);
   assert.match(registry.templates[0].useWhen, /户型改造/);
   assert.ok(registry.templates[0].matchTerms.includes("装修设计"));
-  assert.equal(registry.templates[0].implementation.version, 1);
-  assert.match(registry.templates[0].implementation.generator, /cli\.mjs page --template interior-design-delivery --source-plan/);
+  assert.equal(registry.templates[0].implementation.version, 2);
+  assert.match(registry.templates[0].implementation.generator, /cli\.mjs page --template interior-design-delivery --project-dir/);
   assert.equal(registry.templates[0].implementation.artifactMarker, "personal-agent-page-template");
   assert.deepEqual(registry.templates[0].acceptance, { visualOwner: "user", agentBrowserReview: false });
   assert.ok(registry.templates[0].agentInstructions.some((item) => item.includes("interior-design")));
-  assert.ok(registry.templates[0].fixedFramework.some((item) => item.includes("SketchUp 式低多边形建筑表达")));
+  assert.ok(registry.templates[0].fixedFramework.some((item) => item.includes("Pascal 建筑场景")));
 });
 
 test("Agent template catalog lists match metadata and inspects the full execution contract", () => {
@@ -38,7 +38,7 @@ test("Agent template catalog lists match metadata and inspects the full executio
   assert.equal(templates[0].skill, "interior-design");
   assert.match(templates[0].useWhen, /装修设计/);
   assert.ok(templates[0].matchTerms.includes("SketchUp"));
-  assert.equal(templates[0].implementation.version, 1);
+  assert.equal(templates[0].implementation.version, 2);
   assert.equal(templates[0].acceptance.agentBrowserReview, false);
   const template = inspectPageTemplate("interior-design-delivery", { registry });
   assert.ok(template.fixedFramework.length >= 8);
@@ -72,7 +72,7 @@ test("template list stays a compact static card while detail owns interaction", 
   assert.match(devicePreview, /TemplatePreviewLoading/);
   assert.doesNotMatch(devicePreview, /import \{ InteriorTemplatePreview \}/);
   assert.match(artwork, /interior-design-su-cover-v8\.webp/);
-  assert.match(detail, /户型调整依据/);
+  assert.match(detail, /revision 的调整依据/);
   assert.match(detail, /PageHeader/);
   assert.match(detail, /template-detail-overview/);
   assert.match(detail, /target="_blank"/);
@@ -89,9 +89,10 @@ test("template list stays a compact static card while detail owns interaction", 
   assert.match(nextConfig, /interior-design-su-cover-v8\.webp/);
   assert.match(nextConfig, /public, max-age=31536000, immutable/);
   assert.doesNotMatch(detail, /template-detail-heading|template-detail-facts|template-live-preview|template-detail-information/);
-  assert.match(preview, /SU 设计稿/);
-  assert.match(preview, /户型图/);
-  assert.match(preview, /用户需求/);
+  assert.match(preview, /设计模型/);
+  assert.match(preview, /户型依据/);
+  assert.match(preview, />需求</);
+  assert.match(preview, />质量</);
   assert.match(preview, /data-template-id/);
   assert.match(preview, /data-template-version/);
   assert.match(requirements, /interior-requirement-groups/);
@@ -120,7 +121,7 @@ test("desktop header owns reusable drill-down breadcrumbs", () => {
   assert.match(header, /应用详情/);
 });
 
-test("delivery preview keeps source evidence, revision marks, touch gestures, and focused SU controls", () => {
+test("delivery preview keeps source evidence, revision marks, and professional Pascal controls", () => {
   const preview = read("core/app/src/components/page-templates/interior-template-preview.tsx");
   const plan = read("core/app/src/components/page-templates/interior-template-plan.tsx");
   const requirements = read("core/app/src/components/page-templates/interior-template-requirements.tsx");
@@ -139,7 +140,11 @@ test("delivery preview keeps source evidence, revision marks, touch gestures, an
   assert.match(plan, /pointers\.current/);
   assert.match(preview, /1 层/);
   assert.doesNotMatch(preview, /2 层|DropdownMenuTrigger/);
-  assert.match(preview, /SU DESIGN/);
+  assert.match(preview, /PASCAL PROFESSIONAL/);
+  assert.match(preview, /data-level-mode/);
+  assert.match(preview, /stacked/);
+  assert.match(preview, /exploded/);
+  assert.match(preview, /solo/);
   assert.match(preview, /连续大客厅/);
   assert.match(model, /原卧室并入公共区/);
   assert.match(model, /主卧套房/);

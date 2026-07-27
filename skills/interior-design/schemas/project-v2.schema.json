@@ -1,0 +1,496 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://personal-agent.local/schemas/interior-design/project-v2.schema.json",
+  "title": "Personal Agent professional interior-design project",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "projectId",
+    "spaceId",
+    "ownerId",
+    "title",
+    "status",
+    "designStage",
+    "revision",
+    "baseRevision",
+    "createdAt",
+    "updatedAt",
+    "evidence",
+    "brief",
+    "assumptions",
+    "unknowns",
+    "professionalVerifications",
+    "concepts",
+    "selectedConceptId",
+    "designIntent",
+    "decisions",
+    "scene",
+    "quality",
+    "publication",
+    "provenance"
+  ],
+  "properties": {
+    "schemaVersion": { "const": 2 },
+    "projectId": { "type": "string", "pattern": "^renovation_[a-z0-9][a-z0-9_-]{5,119}$" },
+    "spaceId": { "type": "string", "minLength": 1, "maxLength": 120 },
+    "ownerId": { "type": "string", "minLength": 1, "maxLength": 120 },
+    "title": { "type": "string", "minLength": 1, "maxLength": 160 },
+    "status": { "$ref": "#/$defs/status" },
+    "designStage": { "const": "concept" },
+    "revision": { "type": "integer", "minimum": 1 },
+    "baseRevision": { "type": "integer", "minimum": 0 },
+    "createdAt": { "type": "string", "format": "date-time" },
+    "updatedAt": { "type": "string", "format": "date-time" },
+    "evidence": {
+      "type": "array",
+      "maxItems": 100,
+      "items": { "$ref": "#/$defs/evidence" }
+    },
+    "brief": { "$ref": "#/$defs/brief" },
+    "assumptions": {
+      "type": "array",
+      "maxItems": 200,
+      "items": { "$ref": "#/$defs/assumption" }
+    },
+    "unknowns": {
+      "type": "array",
+      "maxItems": 200,
+      "items": { "$ref": "#/$defs/unknown" }
+    },
+    "professionalVerifications": {
+      "type": "array",
+      "maxItems": 200,
+      "items": { "$ref": "#/$defs/professionalVerification" }
+    },
+    "concepts": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 10,
+      "items": { "$ref": "#/$defs/concept" }
+    },
+    "selectedConceptId": { "$ref": "#/$defs/id" },
+    "designIntent": { "$ref": "#/$defs/designIntent" },
+    "decisions": {
+      "type": "array",
+      "maxItems": 500,
+      "items": { "$ref": "#/$defs/decision" }
+    },
+    "scene": { "$ref": "#/$defs/scene" },
+    "quality": { "$ref": "#/$defs/quality" },
+    "publication": { "type": "object" },
+    "provenance": { "$ref": "#/$defs/provenance" }
+  },
+  "$defs": {
+    "id": { "type": "string", "minLength": 1, "maxLength": 120 },
+    "sha256": { "type": ["string", "null"], "pattern": "^[a-f0-9]{64}$" },
+    "point2": {
+      "type": "array",
+      "prefixItems": [{ "type": "number" }, { "type": "number" }],
+      "minItems": 2,
+      "maxItems": 2
+    },
+    "polygon": {
+      "type": "array",
+      "minItems": 3,
+      "items": { "$ref": "#/$defs/point2" }
+    },
+    "status": {
+      "enum": [
+        "intake",
+        "evidence_classified",
+        "calibrated",
+        "brief_frozen",
+        "concept_options",
+        "selected_concept",
+        "scene_compiled",
+        "quality_gated",
+        "page_generated",
+        "published",
+        "user_visual_acceptance_pending",
+        "accepted",
+        "revised",
+        "blocked_missing_evidence",
+        "blocked_professional_verification",
+        "superseded",
+        "archived"
+      ]
+    },
+    "evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "evidenceId",
+        "classification",
+        "orientation",
+        "calibration",
+        "confidence",
+        "allowedUses",
+        "observations",
+        "inferences",
+        "redactionStatus",
+        "contentHash"
+      ],
+      "anyOf": [
+        { "required": ["managedObjectId"] },
+        { "required": ["relativePath"] }
+      ],
+      "properties": {
+        "evidenceId": { "$ref": "#/$defs/id" },
+        "managedObjectId": { "type": "string", "pattern": "^obj_[a-f0-9]{24}$" },
+        "relativePath": { "type": "string", "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$)).+$" },
+        "classification": { "enum": ["structure-reference", "style-reference", "edit-target", "site-photo", "measurement"] },
+        "orientation": { "type": "string", "minLength": 1, "maxLength": 120 },
+        "calibration": {
+          "type": "object",
+          "required": ["basis"],
+          "properties": {
+            "basis": { "enum": ["known-length", "multiple-lengths", "drawing-scale", "estimated", "unknown"] },
+            "segmentId": { "$ref": "#/$defs/id" },
+            "referenceId": { "$ref": "#/$defs/id" },
+            "knownLengthMetres": { "type": "number", "exclusiveMinimum": 0 },
+            "unit": { "enum": ["m", "cm", "mm"] },
+            "confidence": { "type": "number", "minimum": 0, "maximum": 1 },
+            "metresPerUnit": { "type": "number", "exclusiveMinimum": 0 }
+          },
+          "additionalProperties": true
+        },
+        "confidence": { "enum": ["verified", "specified", "estimated", "unknown"] },
+        "allowedUses": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1, "maxLength": 80 } },
+        "observations": { "type": "array", "items": { "type": "string", "maxLength": 2000 } },
+        "inferences": { "type": "array", "items": { "type": "string", "maxLength": 2000 } },
+        "redactionStatus": { "enum": ["not-required", "redacted", "private-only"] },
+        "contentHash": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "brief": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["household", "scope", "budget", "schedule", "requirements"],
+      "properties": {
+        "household": { "type": "array", "items": {} },
+        "scope": { "type": "array", "items": { "type": "string", "maxLength": 240 } },
+        "budget": {
+          "type": "object",
+          "required": ["currency", "totalMinor", "confidence"],
+          "properties": {
+            "currency": { "type": "string", "pattern": "^[A-Z]{3}$" },
+            "totalMinor": { "type": "integer", "minimum": 0 },
+            "confidence": { "enum": ["verified", "specified", "estimated", "unknown"] }
+          },
+          "additionalProperties": true
+        },
+        "schedule": {
+          "type": "object",
+          "required": ["confidence", "phases"],
+          "properties": {
+            "confidence": { "enum": ["verified", "specified", "estimated", "unknown"] },
+            "phases": { "type": "array", "items": { "$ref": "#/$defs/schedulePhase" } }
+          },
+          "additionalProperties": true
+        },
+        "requirements": {
+          "type": "array",
+          "maxItems": 500,
+          "items": { "$ref": "#/$defs/requirement" }
+        },
+        "qualityThresholds": {
+          "type": "object",
+          "properties": {
+            "minimumPassageWidthMetres": { "$ref": "#/$defs/qualityThreshold" }
+          },
+          "additionalProperties": false
+        }
+      }
+    },
+    "qualityThreshold": {
+      "type": "object",
+      "required": ["value", "source"],
+      "properties": {
+        "value": { "type": "number", "exclusiveMinimum": 0 },
+        "source": { "enum": ["user-requirement", "jurisdiction-rule", "product-concept-default", "comfort-guidance"] },
+        "reference": { "type": "string", "maxLength": 1000 }
+      },
+      "additionalProperties": false
+    },
+    "requirement": {
+      "type": "object",
+      "required": ["requirementId", "source", "priority", "status", "sceneNodeIds", "verification"],
+      "properties": {
+        "requirementId": { "$ref": "#/$defs/id" },
+        "source": { "type": "string", "minLength": 1, "maxLength": 1000 },
+        "summary": { "type": "string", "maxLength": 2000 },
+        "priority": { "enum": ["must", "should", "prefer", "avoid"] },
+        "status": { "enum": ["unresolved", "satisfied", "partially-satisfied", "blocked", "rejected-with-reason"] },
+        "sceneNodeIds": { "type": "array", "items": { "$ref": "#/$defs/id" } },
+        "verification": { "type": "object" },
+        "budgetItemIds": { "type": "array", "items": { "$ref": "#/$defs/id" } },
+        "phaseIds": { "type": "array", "items": { "$ref": "#/$defs/id" } },
+        "decisionIds": { "type": "array", "items": { "$ref": "#/$defs/id" } },
+        "rationale": { "type": "string", "maxLength": 2000 },
+        "alternative": { "type": "string", "maxLength": 2000 }
+      },
+      "additionalProperties": true
+    },
+    "schedulePhase": {
+      "type": "object",
+      "required": ["phaseId", "name"],
+      "properties": {
+        "phaseId": { "$ref": "#/$defs/id" },
+        "name": { "type": "string", "minLength": 1, "maxLength": 160 },
+        "status": { "enum": ["planned", "in-progress", "completed", "blocked"] },
+        "scopeIds": { "type": "array", "items": { "type": "string", "minLength": 1, "maxLength": 240 } },
+        "professionalVerificationIds": { "type": "array", "items": { "$ref": "#/$defs/id" } }
+      },
+      "additionalProperties": true
+    },
+    "budgetItem": {
+      "type": "object",
+      "required": ["budgetItemId", "category", "amountMinor", "confidence"],
+      "properties": {
+        "budgetItemId": { "$ref": "#/$defs/id" },
+        "category": { "type": "string", "minLength": 1, "maxLength": 160 },
+        "name": { "type": "string", "maxLength": 240 },
+        "amountMinor": { "type": "integer", "minimum": 0 },
+        "confidence": { "enum": ["verified", "specified", "estimated"] },
+        "scopeIds": { "type": "array", "items": { "type": "string", "minLength": 1, "maxLength": 240 } },
+        "phaseIds": { "type": "array", "items": { "$ref": "#/$defs/id" } }
+      },
+      "additionalProperties": true
+    },
+    "assumption": {
+      "type": "object",
+      "required": ["assumptionId", "summary"],
+      "properties": {
+        "assumptionId": { "$ref": "#/$defs/id" },
+        "summary": { "type": "string", "minLength": 1, "maxLength": 2000 },
+        "confidence": { "enum": ["verified", "specified", "estimated", "unknown"] }
+      },
+      "additionalProperties": true
+    },
+    "unknown": {
+      "type": "object",
+      "required": ["unknownId", "summary"],
+      "properties": {
+        "unknownId": { "$ref": "#/$defs/id" },
+        "summary": { "type": "string", "minLength": 1, "maxLength": 2000 }
+      },
+      "additionalProperties": true
+    },
+    "professionalVerification": {
+      "type": "object",
+      "required": ["verificationId", "category", "status", "summary"],
+      "properties": {
+        "verificationId": { "$ref": "#/$defs/id" },
+        "category": { "type": "string", "minLength": 1, "maxLength": 120 },
+        "status": { "enum": ["required", "pending", "verified", "not-applicable"] },
+        "summary": { "type": "string", "minLength": 1, "maxLength": 2000 },
+        "owner": { "type": "string", "maxLength": 240 },
+        "evidenceIds": { "type": "array", "items": { "$ref": "#/$defs/id" } }
+      },
+      "additionalProperties": true
+    },
+    "concept": {
+      "type": "object",
+      "required": ["conceptId", "name", "summary", "tradeoffs", "budgetItems", "levels"],
+      "properties": {
+        "conceptId": { "$ref": "#/$defs/id" },
+        "name": { "type": "string", "minLength": 1, "maxLength": 120 },
+        "summary": { "type": "string", "minLength": 1, "maxLength": 2000 },
+        "singleOptionReason": { "type": "string", "maxLength": 2000 },
+        "tradeoffs": { "type": "array", "items": { "type": "string", "maxLength": 1000 } },
+        "budgetItems": { "type": "array", "items": { "$ref": "#/$defs/budgetItem" } },
+        "levels": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 2,
+          "items": { "$ref": "#/$defs/level" }
+        }
+      },
+      "additionalProperties": true
+    },
+    "level": {
+      "type": "object",
+      "required": ["levelId", "name", "elevation", "height", "footprint", "rooms", "walls", "openings", "items", "stairs", "guardrails", "voids"],
+      "properties": {
+        "levelId": { "$ref": "#/$defs/id" },
+        "name": { "type": "string", "minLength": 1, "maxLength": 120 },
+        "elevation": { "type": "number" },
+        "height": { "type": "number", "exclusiveMinimum": 0 },
+        "footprint": { "$ref": "#/$defs/polygon" },
+        "rooms": { "type": "array", "maxItems": 30, "items": { "$ref": "#/$defs/room" } },
+        "walls": { "type": "array", "items": { "$ref": "#/$defs/wall" } },
+        "openings": { "type": "array", "items": { "$ref": "#/$defs/opening" } },
+        "items": { "type": "array", "items": { "$ref": "#/$defs/item" } },
+        "stairs": { "type": "array", "items": { "$ref": "#/$defs/stair" } },
+        "guardrails": { "type": "array", "items": { "$ref": "#/$defs/guardrail" } },
+        "voids": { "type": "array", "items": { "$ref": "#/$defs/void" } }
+      },
+      "additionalProperties": true
+    },
+    "room": {
+      "type": "object",
+      "required": ["roomId", "name", "kind", "polygon", "materialId"],
+      "properties": {
+        "roomId": { "$ref": "#/$defs/id" },
+        "name": { "type": "string", "minLength": 1, "maxLength": 120 },
+        "kind": { "type": "string", "minLength": 1, "maxLength": 120 },
+        "polygon": { "$ref": "#/$defs/polygon" },
+        "materialId": { "$ref": "#/$defs/id" },
+        "requiredAccess": { "type": "boolean" },
+        "evidenceIds": { "type": "array", "items": { "$ref": "#/$defs/id" } },
+        "requirementIds": { "type": "array", "items": { "$ref": "#/$defs/id" } }
+      },
+      "additionalProperties": true
+    },
+    "wall": {
+      "type": "object",
+      "required": ["wallId", "start", "end", "height", "thickness"],
+      "properties": {
+        "wallId": { "$ref": "#/$defs/id" },
+        "start": { "$ref": "#/$defs/point2" },
+        "end": { "$ref": "#/$defs/point2" },
+        "height": { "type": "number", "exclusiveMinimum": 0 },
+        "thickness": { "type": "number", "exclusiveMinimum": 0 },
+        "exteriorEdge": { "type": "integer", "minimum": -1 }
+      },
+      "additionalProperties": true
+    },
+    "opening": {
+      "type": "object",
+      "required": ["openingId", "type", "wallId", "position", "width", "height", "connectsRoomIds"],
+      "properties": {
+        "openingId": { "$ref": "#/$defs/id" },
+        "type": { "enum": ["door", "window"] },
+        "wallId": { "$ref": "#/$defs/id" },
+        "position": { "type": "number", "minimum": 0, "maximum": 1 },
+        "width": { "type": "number", "exclusiveMinimum": 0 },
+        "height": { "type": "number", "exclusiveMinimum": 0 },
+        "sillHeight": { "type": "number", "minimum": 0 },
+        "connectsRoomIds": { "type": "array", "items": { "$ref": "#/$defs/id" } },
+        "isEntry": { "type": "boolean" },
+        "hingesSide": { "enum": ["left", "right"] },
+        "swingDirection": { "enum": ["inward", "outward"] }
+      },
+      "additionalProperties": true
+    },
+    "item": {
+      "type": "object",
+      "required": ["itemId", "name", "kind", "roomId", "position", "size", "rotation"],
+      "properties": {
+        "itemId": { "$ref": "#/$defs/id" },
+        "name": { "type": "string", "minLength": 1, "maxLength": 160 },
+        "kind": { "type": "string", "minLength": 1, "maxLength": 120 },
+        "roomId": { "$ref": "#/$defs/id" },
+        "position": { "$ref": "#/$defs/point2" },
+        "size": {
+          "type": "array",
+          "prefixItems": [{ "type": "number", "exclusiveMinimum": 0 }, { "type": "number", "exclusiveMinimum": 0 }, { "type": "number", "exclusiveMinimum": 0 }],
+          "minItems": 3,
+          "maxItems": 3
+        },
+        "rotation": { "type": "number" },
+        "materialId": { "$ref": "#/$defs/id" },
+        "color": { "type": "string", "maxLength": 40 },
+        "clearanceExempt": { "type": "boolean" },
+        "requirementIds": { "type": "array", "items": { "$ref": "#/$defs/id" } }
+      },
+      "additionalProperties": true
+    },
+    "stair": {
+      "type": "object",
+      "required": ["stairId", "toLevelId", "position", "width", "runLength", "totalRise"],
+      "properties": {
+        "stairId": { "$ref": "#/$defs/id" },
+        "toLevelId": { "$ref": "#/$defs/id" },
+        "position": { "$ref": "#/$defs/point2" },
+        "width": { "type": "number", "exclusiveMinimum": 0 },
+        "runLength": { "type": "number", "exclusiveMinimum": 0 },
+        "totalRise": { "type": "number", "exclusiveMinimum": 0 },
+        "headroom": { "type": "number", "exclusiveMinimum": 0 }
+      },
+      "additionalProperties": true
+    },
+    "guardrail": {
+      "type": "object",
+      "required": ["guardrailId", "start", "end"],
+      "properties": {
+        "guardrailId": { "$ref": "#/$defs/id" },
+        "voidId": { "$ref": "#/$defs/id" },
+        "name": { "type": "string", "maxLength": 160 },
+        "start": { "$ref": "#/$defs/point2" },
+        "end": { "$ref": "#/$defs/point2" },
+        "height": { "type": "number", "exclusiveMinimum": 0 },
+        "thickness": { "type": "number", "exclusiveMinimum": 0 }
+      },
+      "additionalProperties": true
+    },
+    "void": {
+      "type": "object",
+      "required": ["voidId", "polygon"],
+      "properties": {
+        "voidId": { "$ref": "#/$defs/id" },
+        "polygon": { "$ref": "#/$defs/polygon" }
+      },
+      "additionalProperties": true
+    },
+    "designIntent": {
+      "type": "object",
+      "required": ["style", "materials", "lighting", "maintenance"],
+      "properties": {
+        "style": { "type": "array", "items": {} },
+        "materials": { "type": "array", "items": { "type": "object" } },
+        "lighting": { "type": "array", "items": {} },
+        "maintenance": { "type": "array", "items": {} }
+      },
+      "additionalProperties": true
+    },
+    "decision": {
+      "type": "object",
+      "required": ["decisionId", "summary", "rationale", "requirementIds"],
+      "properties": {
+        "decisionId": { "$ref": "#/$defs/id" },
+        "summary": { "type": "string", "minLength": 1, "maxLength": 2000 },
+        "rationale": { "type": "string", "minLength": 1, "maxLength": 4000 },
+        "requirementIds": { "type": "array", "items": { "$ref": "#/$defs/id" } },
+        "changes": { "type": "array", "items": { "type": "object" } }
+      },
+      "additionalProperties": true
+    },
+    "scene": {
+      "type": "object",
+      "required": ["format", "formatVersion", "path", "sha256"],
+      "properties": {
+        "format": { "const": "pascal" },
+        "formatVersion": { "type": "string", "minLength": 1 },
+        "path": { "const": "scene.json" },
+        "sha256": { "$ref": "#/$defs/sha256" },
+        "adapterVersion": { "type": "integer", "minimum": 1 }
+      },
+      "additionalProperties": true
+    },
+    "quality": {
+      "type": "object",
+      "required": ["auditPath", "sha256", "blockingCount", "warningCount"],
+      "properties": {
+        "auditPath": { "const": "derived/audit.json" },
+        "sha256": { "$ref": "#/$defs/sha256" },
+        "blockingCount": { "type": ["integer", "null"], "minimum": 0 },
+        "warningCount": { "type": ["integer", "null"], "minimum": 0 }
+      },
+      "additionalProperties": true
+    },
+    "provenance": {
+      "type": "object",
+      "required": ["interiorDesignEngine", "adapter", "adapterVersion", "pascalCoreVersion", "pascalMcpVersion"],
+      "properties": {
+        "interiorDesignEngine": { "const": "pascal-v2" },
+        "adapter": { "const": "personal-agent-pascal" },
+        "adapterVersion": { "type": "integer", "minimum": 1 },
+        "pascalCoreVersion": { "type": "string", "minLength": 1 },
+        "pascalMcpVersion": { "type": "string", "minLength": 1 }
+      },
+      "additionalProperties": true
+    }
+  }
+}

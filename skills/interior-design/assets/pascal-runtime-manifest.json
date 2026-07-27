@@ -1,0 +1,75 @@
+{
+  "schemaVersion": 1,
+  "adapterVersion": 1,
+  "nodeRuntime": "22",
+  "packages": {
+    "@pascal-app/core": {
+      "version": "0.9.2",
+      "license": "MIT",
+      "source": "https://github.com/pascalorg/editor"
+    },
+    "@pascal-app/viewer": {
+      "version": "0.9.2",
+      "license": "MIT",
+      "source": "https://github.com/pascalorg/editor"
+    },
+    "@pascal-app/mcp": {
+      "version": "0.3.2",
+      "license": "MIT",
+      "source": "https://github.com/pascalorg/editor"
+    },
+    "@modelcontextprotocol/sdk": {
+      "version": "1.29.0",
+      "license": "MIT",
+      "source": "https://github.com/modelcontextprotocol/typescript-sdk"
+    },
+    "react": {
+      "version": "19.2.7",
+      "license": "MIT",
+      "source": "https://github.com/facebook/react"
+    },
+    "react-dom": {
+      "version": "19.2.7",
+      "license": "MIT",
+      "source": "https://github.com/facebook/react"
+    },
+    "zod": {
+      "version": "3.25.76",
+      "license": "MIT",
+      "source": "https://github.com/colinhacks/zod"
+    },
+    "three": {
+      "version": "0.185.0",
+      "license": "MIT",
+      "source": "https://github.com/mrdoob/three.js"
+    },
+    "@react-three/fiber": {
+      "version": "9.5.0",
+      "license": "MIT",
+      "source": "https://github.com/pmndrs/react-three-fiber"
+    },
+    "@react-three/drei": {
+      "version": "10.7.7",
+      "license": "MIT",
+      "source": "https://github.com/pmndrs/drei"
+    }
+  },
+  "artifacts": {
+    "pascal-headless.bundle": {
+      "bytes": 1463801,
+      "sha256": "fc11c3c3ac75e100e926823ae0ef99dd561734de5bd73667a060377706400ae4",
+      "target": "node22-data-module"
+    },
+    "pascal-viewer.bundle": {
+      "bytes": 2562817,
+      "sha256": "37209be7ba39bbf31572d555d4bbd9f3518dc1a2c4c7740b6d26140e624de292",
+      "target": "browser-es2022"
+    }
+  },
+  "policies": {
+    "transport": "in-memory-only",
+    "bunRequired": false,
+    "remoteAssets": false,
+    "visionTools": false
+  }
+}

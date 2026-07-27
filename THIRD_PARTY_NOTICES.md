@@ -2,6 +2,28 @@
 
 The workspace skill tree includes adapted workflow ideas from the following MIT-licensed projects. Upstream repositories are audit inputs only; the workspace stores its own consolidated skills and CLI implementation.
 
+## Pascal professional interior runtime
+
+Personal Agent ships deterministic bundles built from the following exact MIT-licensed packages:
+
+- `@pascal-app/core` `0.9.2`
+- `@pascal-app/viewer` `0.9.2`
+- `@pascal-app/mcp` `0.3.2`
+
+Source: https://github.com/pascalorg/editor
+
+The browser bundle also contains the locked MIT-licensed runtime dependencies `three` `0.185.0`, `@react-three/fiber` `9.5.0`, and `@react-three/drei` `10.7.7`. Versions, policies, byte sizes, and artifact hashes are recorded in `skills/interior-design/assets/pascal-runtime-manifest.json`.
+
+MIT License
+
+Copyright (c) 2026 Pascal Group Inc.
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
 ## Deep-Research-skills
 
 Source: https://github.com/Weizhena/Deep-Research-skills

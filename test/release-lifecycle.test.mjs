@@ -105,6 +105,12 @@ test('Windows rematerializes bridge directories expanded by release copy', { ski
 test('release installation does not materialize repository Agent compatibility links', () => {
   const installer = fs.readFileSync(path.join(root, 'scripts', 'install-private-site-node-release.mjs'), 'utf8');
   assert.doesNotMatch(installer, /materializeHarnessLinks|verifyHarnessLinks/);
+  assert.doesNotMatch(installer, /from\s+["'][^"']+\.ts["']/, 'the release installer must run under plain Node without a TypeScript loader');
+  assert.match(
+    installer,
+    /installPersonalAgentCommand\(\{[\s\S]*?env:\s*preactivationEnvironment,[\s\S]*?\}\)/,
+    'isolated installs must place the personal-agent command under the selected install root',
+  );
 });
 
 test('local deployment installs and rolls back with the bundled release installer', () => {

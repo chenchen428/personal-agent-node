@@ -88,14 +88,14 @@ export function InteriorTemplateCanvas({ view, labels, resetKey }: { view: Inter
 
   return <div className="interior-template-canvas">
     <div className="interior-canvas-runtime" ref={hostRef} />
-    <div className="interior-canvas-labels" aria-label="SU 设计稿细节标注" ref={labelLayerRef}>{interiorLabels.map((item, index) => <span className={item.tone === "dark" ? "is-dark" : undefined} data-label-index={index} key={item.label}>{item.label}</span>)}</div>
+    <div className="interior-canvas-labels" aria-label="Pascal 设计模型细节标注" ref={labelLayerRef}>{interiorLabels.map((item, index) => <span className={item.tone === "dark" ? "is-dark" : undefined} data-label-index={index} key={item.label}>{item.label}</span>)}</div>
     {phase === "loading" && !fallback ? <LoadingProjection /> : null}
     {fallback ? <ProjectionFallback /> : null}
   </div>;
 }
 
 function LoadingProjection() {
-  return <div className="interior-loading-projection" role="status"><div className="loading-model"><i /><i /><i /><i /><i /></div><strong>正在构建 SU 设计稿</strong><span>空间结构 · 门窗构件 · 家具与动线</span></div>;
+  return <div className="interior-loading-projection" role="status"><div className="loading-model"><i /><i /><i /><i /><i /></div><strong>正在构建 Pascal 设计模型</strong><span>空间结构 · 门窗构件 · 家具与动线</span></div>;
 }
 
 function ProjectionFallback() {

@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "interiorDesignEngine": "pascal-v2",
+  "allowedEngines": [
+    "legacy-v1",
+    "pascal-v2-preview",
+    "pascal-v2"
+  ],
+  "creationPolicy": {
+    "legacy-v1": "legacy-only",
+    "pascal-v2-preview": "explicit-v2-projects",
+    "pascal-v2": "new-v2-projects"
+  },
+  "rollback": {
+    "target": "legacy-v1",
+    "preserveV2Projects": true,
+    "rebuildExistingArtifacts": false
+  }
+}

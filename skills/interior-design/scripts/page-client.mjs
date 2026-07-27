@@ -1,4 +1,4 @@
-import * as THREE from 'three';
+import * as THREE from 'three-legacy';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 
 const model = JSON.parse(document.querySelector('#model').textContent);

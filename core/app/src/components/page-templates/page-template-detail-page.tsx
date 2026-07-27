@@ -20,12 +20,12 @@ export function PageTemplateDetailPage({ template }: { template: PageTemplate })
 
     <section className="template-detail-overview" aria-label="模板说明">
       <article>
-        <h2>从户型图到 SketchUp 式完整家装鸟瞰</h2>
-        <p>先归纳用户持续迭代的需求与原始户型图，再使用墙体、门窗、定制柜、家具与软装组件构建 SketchUp 式整屋模型，并保留户型调整依据。</p>
+        <h2>从装修证据到可追溯的 Pascal 专业概念模型</h2>
+        <p>把脱敏户型依据、需求优先级、A/B 方案、真实门窗开洞、多层构件、质量审计和专业核验边界放进同一份离线交付，并保留每次 revision 的调整依据。</p>
         <ul>{template.fixedFramework.slice(0, 6).map((item) => <li key={item}><Check aria-hidden="true" />{item}</li>)}</ul>
       </article>
       <aside>
-        <div className="template-source-rule"><FileImage aria-hidden="true" /><span><strong>户型图与方案并列查看</strong><small>原始图、调整标注、SU 设计稿和用户需求保持在同一份交付里。</small></span></div>
+        <div className="template-source-rule"><FileImage aria-hidden="true" /><span><strong>证据、模型与审计并列查看</strong><small>原始图、调整标注、Pascal 设计模型、用户需求和质量边界保持在同一份交付里。</small></span></div>
         <dl>
           <div><dt>关联技能</dt><dd>{template.skill}</dd></div>
           <div><dt>模板实现</dt><dd>v{template.implementation.version} · 同源生成</dd></div>

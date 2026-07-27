@@ -20,6 +20,7 @@
 .template-device-frame .interior-view-toolbar .interior-toolbar-label+span{background:#252a27;color:#fff}
 .template-device-frame .interior-view-hint{position:absolute;z-index:4;right:28px;bottom:50px;color:#69716b;font-size:9px;letter-spacing:.08em;pointer-events:none}
 .interior-requirement-history time{margin-left:auto;color:#777e78}
+.interior-quality-view [data-tone="passed"]{border-top:3px solid #315f4a}.interior-quality-view [data-tone="warning"]{border-top:3px solid #a97724}.interior-view-toolbar button[data-level-mode]{background:#edf0eb;color:#315f4a}
 .template-device-preview .device-mobile .interior-view-toolbar{right:8px;left:auto;bottom:8px;transform:none}
 .template-device-preview .device-mobile .interior-toolbar-label,.template-device-preview .device-mobile .interior-view-hint{display:none}
 .template-device-preview .device-mobile .interior-canvas-labels>span{display:none;padding:3px 5px;font-size:7px}
