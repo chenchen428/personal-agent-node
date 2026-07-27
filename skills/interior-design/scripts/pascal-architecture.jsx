@@ -34,7 +34,7 @@ export function ArchitectureEnvelope({ payload }) {
   }, [architecture]);
   return <group name="personal-agent-architecture-envelope">
     <BoxShell
-      color="#adb2ae"
+      color="#e4e5e1"
       position={[architecture.center[0], -0.06, architecture.center[1]]}
       size={[architecture.size[0] + 5.4, 0.12, architecture.size[1] + 5.4]}
     />

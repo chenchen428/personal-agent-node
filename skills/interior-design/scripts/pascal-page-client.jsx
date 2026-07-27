@@ -174,7 +174,10 @@ function PascalScene({ payload }) {
       sceneReadyKey={payload.sceneHash || payload.revision}
       sceneReadyMaxWaitMs={12_000}
       onSceneReadyChange={(ready) => {
-        if (ready) window.dispatchEvent(new CustomEvent('pascal-viewer-warmup'));
+        if (ready) {
+          window.dispatchEvent(new CustomEvent('pascal-reset-camera'));
+          window.dispatchEvent(new CustomEvent('pascal-viewer-warmup'));
+        }
       }}
     >
       <ViewerLifecycle />
@@ -203,7 +206,7 @@ function start() {
       projectId: payload.projectId || null, renderContext: 'viewer',
       shading: 'rendered', shadingByContext: { ...state.shadingByContext, viewer: 'rendered' },
       colorPreset: 'clay', edges: 'off', shadows: true, sceneTheme: 'studio',
-      transparentBackground: false, unit: 'metric', unitExplicit: true, textures: false,
+      transparentBackground: true, unit: 'metric', unitExplicit: true, textures: false,
       levelMode: 'stacked', wallMode: 'down', cameraMode: 'perspective',
     }));
     window.PersonalAgentPascalViewer = {

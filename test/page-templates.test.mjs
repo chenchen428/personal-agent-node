@@ -70,7 +70,9 @@ test("the committed example is the byte-stable output of the governed native v2 
   assert.match(html, /data-engine="pascal-v2"/);
   assert.match(html, /id="pascal-scene"/);
   assert.match(html, /id="model-derived-plan"/);
-  assert.match(html, /data-presentation="review"/);
+  assert.match(html, /data-presentation-panel="review"/);
+  assert.doesNotMatch(html, /data-presentation="review"/);
+  assert.match(html, /<nav class="presentation-switch"[\s\S]*SU 设计稿[\s\S]*户型图[\s\S]*用户需求[\s\S]*<\/nav>/);
   assert.match(html, /pascal-room-label/);
   assert.match(html, /pascal-highlight/);
   assert.match(html, /professional-mesh-ink/);
@@ -117,7 +119,9 @@ test("template catalog and example route consume only the verified generated art
   assert.match(projectCamera, /<CameraControls/);
   assert.match(projectCamera, /camera=\{camera\}/);
   assert.match(projectCamera, /api\.setLookAt/);
-  assert.match(projectCamera, /api\.fitToSphere/);
+  assert.match(projectCamera, /narrowViewportScale/);
+  assert.match(projectCamera, /frame\.span \* 1\.05/);
+  assert.doesNotMatch(projectCamera, /api\.fitToSphere/);
   assert.match(projectCamera, /pascal-reset-camera/);
   assert.match(viewerClient, /<ArchitectureEnvelope payload=\{payload\}/);
   assert.match(viewerClient, /<ViewerLifecycle \/>/);

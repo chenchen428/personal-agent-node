@@ -6,8 +6,8 @@
   "visualAcceptance": "user",
   "files": {
     "index.html": {
-      "bytes": 2710408,
-      "sha256": "cd6e39f6e4a6a484afb097a7eec1551fea95c9e0b29dfeb00b590a84fee91480"
+      "bytes": 2711222,
+      "sha256": "20ea9015f7b86e0ad08aa173d86ce74dd1187a599fb5d32ae67af682e394297a"
     },
     "scene.json": {
       "bytes": 64341,
@@ -18,8 +18,8 @@
       "sha256": "f3e12e7e347bd3257d0a7f19bdb60e5a727b9c95a92252373b070161168dbaf5"
     },
     "template.json": {
-      "bytes": 4562,
-      "sha256": "4be0d95c40e9b1b7913149af12a6a7aa128b30ddbf334f394ab0f8c1abb3e08c"
+      "bytes": 4671,
+      "sha256": "9ce8e29ca3ac2d633468c8f148870e66815a5b73bdd4da3643577faf7dec7051"
     },
     "cover.svg": {
       "bytes": 23252,
