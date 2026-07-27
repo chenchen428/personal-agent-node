@@ -100,6 +100,7 @@ test("template catalog and example route consume only the verified generated art
   assert.match(runtimeBuild, /\['import\.meta\.url', 'document\.baseURI'\]/);
   assert.match(viewerClient, /function ProjectCamera/);
   assert.match(viewerClient, /<CameraControls/);
+  assert.match(viewerClient, /camera=\{camera\}/);
   assert.match(viewerClient, /api\.setLookAt/);
   assert.match(viewerClient, /api\.fitToBox/);
   const templateComponents = fs.readdirSync(path.join(root, "core/app/src/components/page-templates"));

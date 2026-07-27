@@ -152,6 +152,7 @@ function SceneLabels({ payload }) {
 
 function ProjectCamera({ payload }) {
   const controls = useRef(null);
+  const camera = useThree((state) => state.camera);
   const invalidate = useThree((state) => state.invalidate);
   const cameraMode = useViewer((state) => state.cameraMode);
   const frame = useMemo(() => {
@@ -205,9 +206,11 @@ function ProjectCamera({ payload }) {
       });
       invalidate();
     })();
-  }, [cameraMode, frame, invalidate]);
+  }, [camera, cameraMode, frame, invalidate]);
   return <CameraControls
+    camera={camera}
     dollyToCursor
+    key={cameraMode}
     makeDefault
     maxDistance={frame.span * 5}
     minDistance={Math.max(2, frame.span * 0.16)}
