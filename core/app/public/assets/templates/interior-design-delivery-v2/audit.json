@@ -26,7 +26,7 @@
       "message": "No delivery phases are allocated for the recorded renovation scope.",
       "nodeIds": [],
       "measurement": {
-        "scopeItems": 3,
+        "scopeItems": 5,
         "phases": 0,
         "confidence": "unknown"
       },
@@ -38,22 +38,22 @@
       "professionalVerification": false
     },
     {
-      "issueId": "issue_2bc4a2a9fa7a9a74",
+      "issueId": "issue_987e3efa649d1112",
       "ruleId": "circulation.narrowest-passage",
       "severity": "info",
       "message": "The narrowest modeled route on 首层 is reported for design review.",
       "nodeIds": [
-        "page-zone-0015"
+        "page-zone-0043"
       ],
       "measurement": {
-        "minimumWidthMetres": 0.8,
+        "minimumWidthMetres": 1.05,
         "location": [
-          2.25,
-          2.25
+          0,
+          7.25
         ],
         "gridMetres": 0.25,
-        "walkableCells": 466,
-        "walkableEdges": 822
+        "walkableCells": 2061,
+        "walkableEdges": 3804
       },
       "threshold": {
         "comfortReviewWidthMetres": 0.75

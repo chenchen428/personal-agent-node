@@ -21,6 +21,13 @@ const repositoryRoot = path.resolve(skillRoot, '..', '..');
 const exampleRoot = path.join(skillRoot, 'examples', 'professional-template');
 const targetRoot = path.join(repositoryRoot, 'core', 'app', 'public', 'assets', 'templates', 'interior-design-delivery-v2');
 const fixedTime = '2026-07-27T00:00:00.000Z';
+const TEMPLATE_QUALITY_FLOOR = Object.freeze({
+  rooms: 12,
+  furniture: 30,
+  openings: 14,
+  doors: 8,
+  windows: 6,
+});
 
 export async function buildTemplateExample({ check = false } = {}) {
   const temporaryRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'personal-agent-template-v2-'));
@@ -69,6 +76,7 @@ export async function buildTemplateExample({ check = false } = {}) {
       projectSha256: sha256(canonicalJson(readProject(projectDir, context).project)),
       sceneSha256: compiled.scene.sceneHash,
       auditSha256: compiled.project.quality.sha256,
+      qualityFloor: TEMPLATE_QUALITY_FLOOR,
     };
     manifest.files['index.html'] = fileRecord(path.join(output, 'index.html'));
     manifest.files['cover.svg'] = fileRecord(path.join(output, 'cover.svg'));
@@ -117,6 +125,28 @@ export function verifyTemplateExample(directory = targetRoot) {
   if (!html.includes('data-engine="pascal-v2"')
     || /data-engine="(?!pascal-v2)[^"]+"|<(?:script|link|iframe)[^>]+(?:src|href)=["']https?:\/\/|127\.0\.0\.1|localhost/i.test(html)) {
     throw new Error('built-in template example is not exclusively Pascal v2');
+  }
+  const scene = JSON.parse(fs.readFileSync(path.join(directory, 'scene.json'), 'utf8'));
+  const nodes = Object.values(scene.scene?.nodes || {});
+  const actual = {
+    rooms: nodes.filter((node) => node.type === 'zone').length,
+    furniture: Array.isArray(scene.furniture) ? scene.furniture.length : 0,
+    openings: nodes.filter((node) => ['door', 'window'].includes(node.type)).length,
+    doors: nodes.filter((node) => node.type === 'door').length,
+    windows: nodes.filter((node) => node.type === 'window').length,
+  };
+  const floor = manifest.source.qualityFloor || {};
+  for (const [key, minimum] of Object.entries(TEMPLATE_QUALITY_FLOOR)) {
+    if (floor[key] !== minimum || actual[key] < minimum) {
+      throw new Error(`built-in template professional quality floor failed: ${key} ${actual[key]} < ${minimum}`);
+    }
+  }
+  const cover = fs.readFileSync(path.join(directory, 'cover.svg'), 'utf8');
+  if (!cover.includes('模型派生轴测封面')
+    || !cover.includes('data-cover-item=')
+    || !html.includes('pascal-room-label')
+    || !html.includes('pascal-highlight')) {
+    throw new Error('built-in template lost its model-derived isometric cover, labels, or requirement highlighting');
   }
   return { files: Object.keys(manifest.files).sort(), manifest };
 }

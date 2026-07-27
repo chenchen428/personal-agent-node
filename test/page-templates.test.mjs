@@ -46,16 +46,33 @@ test("the committed example is the byte-stable output of the governed native v2 
     "page-v2-generate",
     "artifact-hash-verify",
   ]);
+  assert.deepEqual(manifest.source.qualityFloor, {
+    rooms: 12,
+    furniture: 30,
+    openings: 14,
+    doors: 8,
+    windows: 6,
+  });
   for (const [name, expected] of Object.entries(manifest.files)) {
     const value = fs.readFileSync(path.join(artifactRoot, name));
     assert.equal(value.length, expected.bytes, name);
     assert.equal(crypto.createHash("sha256").update(value).digest("hex"), expected.sha256, name);
   }
   const html = read("core/app/public/assets/templates/interior-design-delivery-v2/index.html");
+  const scene = JSON.parse(read("core/app/public/assets/templates/interior-design-delivery-v2/scene.json"));
+  const nodes = Object.values(scene.scene.nodes);
+  const cover = read("core/app/public/assets/templates/interior-design-delivery-v2/cover.svg");
   assert.match(html, /data-engine="pascal-v2"/);
   assert.match(html, /id="pascal-scene"/);
   assert.match(html, /id="model-derived-plan"/);
   assert.match(html, /data-presentation="review"/);
+  assert.match(html, /pascal-room-label/);
+  assert.match(html, /pascal-highlight/);
+  assert.ok(nodes.filter((node) => node.type === "zone").length >= 12);
+  assert.ok(nodes.filter((node) => ["door", "window"].includes(node.type)).length >= 14);
+  assert.ok(scene.furniture.length >= 30);
+  assert.match(cover, /模型派生轴测封面/);
+  assert.match(cover, /data-cover-item=/);
   assert.doesNotMatch(html, /data-engine="(?!pascal-v2)[^"]+"|localhost|127\.0\.0\.1|editor\.pascal\.app/);
 });
 
@@ -68,6 +85,7 @@ test("template catalog and example route consume only the verified generated art
   const exampleRoute = read("core/app/src/app/template-pages/[templateId]/page.tsx");
   const styles = read("core/app/src/app/page-templates.css");
   const nextConfig = read("core/app/next.config.ts");
+  const runtimeBuild = read("skills/interior-design/scripts/build-pascal-runtime.mjs");
   assert.match(list, /coverPath=\{template\.exampleArtifact\.coverPath\}/);
   assert.match(artwork, /src=\{coverPath\}/);
   assert.match(detail, /artifactPath=\{template\.exampleArtifact\.pagePath\}/);
@@ -78,6 +96,7 @@ test("template catalog and example route consume only the verified generated art
   assert.match(styles, /\.template-artifact-frame/);
   assert.match(nextConfig, /interior-design-delivery-v2/);
   assert.match(nextConfig, /max-age=300, must-revalidate/);
+  assert.match(runtimeBuild, /\['import\.meta\.url', 'document\.baseURI'\]/);
   const templateComponents = fs.readdirSync(path.join(root, "core/app/src/components/page-templates"));
   assert.equal(templateComponents.some((name) => name.startsWith("interior-template-")), false);
   assert.equal(templateComponents.includes("page-template-example-page.tsx"), false);

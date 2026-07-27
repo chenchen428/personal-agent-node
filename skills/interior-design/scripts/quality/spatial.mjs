@@ -20,6 +20,7 @@ import { issue } from './issues.mjs';
 
 const GRID = 0.25;
 const MINIMUM_PASSAGE_WIDTH = 0.75;
+const MAXIMUM_WALKABLE_EDGES = 20_000;
 
 export function auditSpatial(project, concept) {
   const findings = [];
@@ -267,11 +268,11 @@ function auditCirculation(project, level, concept) {
   const widest = widestPaths(start, walkable, localWidths);
   const walkableEdges = countWalkableEdges(walkable);
   const findings = [];
-  if (walkableEdges > 2_000) {
+  if (walkableEdges > MAXIMUM_WALKABLE_EDGES) {
     findings.push(issue(project, 'circulation.edge-capacity', 'blocking', `Level ${level.name} exceeds the supported circulation graph capacity.`, {
       levelIds: [level.levelId],
       measurement: { walkableCells: walkable.size, walkableEdges, gridMetres: GRID },
-      threshold: { maximumWalkableEdges: 2000 },
+      threshold: { maximumWalkableEdges: MAXIMUM_WALKABLE_EDGES },
       thresholdSource: 'product-concept-default',
       fix: 'Split the design into bounded zones or correct an unrealistic footprint before path analysis.',
     }));
@@ -460,7 +461,7 @@ function circulationWidth(point, level, itemBoxes) {
       if (opening.type !== 'door' || opening.wallId !== wall.wallId) return false;
       const center = opening.position * length;
       return along >= center - opening.width / 2 && along <= center + opening.width / 2
-        && perpendicular <= wall.thickness / 2 + GRID;
+        && perpendicular <= wall.thickness / 2 + Math.min(opening.width / 2, MINIMUM_PASSAGE_WIDTH);
     });
     if (door) {
       radius = Math.min(radius, door.width / 2);

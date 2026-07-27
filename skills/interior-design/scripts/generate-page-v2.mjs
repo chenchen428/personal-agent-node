@@ -225,18 +225,95 @@ export function renderProjectPlan(concept, svgId) {
 }
 
 export function renderProjectCoverSvg(concept) {
-  const plan = renderProjectPlan(concept, 'generated-template-cover-plan')
-    .replace('<svg ', '<svg xmlns="http://www.w3.org/2000/svg" ')
-    .replace('class="plan-svg"', 'class="plan-svg" width="1200" height="675"');
-  return `${plan.replace('>', `><style>
-    .level-frame{fill:#f3f1ea;stroke:#28312b;stroke-width:2}
-    .room{stroke:#f9f8f4;stroke-width:8}
-    .wall{stroke:#26302a;stroke-width:9;stroke-linecap:square}
-    .opening{stroke:#b45f43;stroke-width:13}
-    .furniture{fill:#fffaf1;stroke:#80664d;stroke-width:2}
-    text{fill:#26302a;font:600 16px Arial,sans-serif;text-anchor:middle}
-    .level-title{font-size:18px;letter-spacing:1px}
-  </style><rect width="920" height="580" fill="#dfe5de"/>`)}\n`;
+  const level = concept.levels[0];
+  const points = level.rooms.flatMap((room) => room.polygon);
+  const bounds = {
+    minX: Math.min(...points.map((point) => point[0])),
+    maxX: Math.max(...points.map((point) => point[0])),
+    minZ: Math.min(...points.map((point) => point[1])),
+    maxZ: Math.max(...points.map((point) => point[1])),
+  };
+  const center = [(bounds.minX + bounds.maxX) / 2, (bounds.minZ + bounds.maxZ) / 2];
+  const scale = Math.min(42, 830 / Math.max(1, bounds.maxX - bounds.minX + bounds.maxZ - bounds.minZ));
+  const project = ([x, z], y = 0) => [
+    624 + ((x - center[0]) - (z - center[1])) * scale,
+    360 + ((x - center[0]) + (z - center[1])) * scale * 0.43 - y * scale,
+  ];
+  const svgPoints = (entries) => entries.map(([x, y]) => `${x.toFixed(1)},${y.toFixed(1)}`).join(' ');
+  const roomColors = ['#d9c7aa', '#c9d4ca', '#d6d0c5', '#bcc8c0', '#e3d8c8'];
+  const floorMarkup = level.rooms.map((room, index) => {
+    const color = /bath|laundry|kitchen|balcony|卫生|厨房|阳台/i.test(`${room.kind} ${room.name}`)
+      ? '#aeb6b1'
+      : roomColors[index % roomColors.length];
+    return `<polygon points="${svgPoints(room.polygon.map((point) => project(point)))}" fill="${color}" stroke="#f4f1e9" stroke-width="3"/>`;
+  }).join('');
+  const wallMarkup = [...level.walls]
+    .sort((first, second) => (first.start[0] + first.start[1] + first.end[0] + first.end[1]) - (second.start[0] + second.start[1] + second.end[0] + second.end[1]))
+    .map((wall) => {
+      const wallHeight = wall.exteriorEdge >= 0 ? 1.25 : 1.05;
+      const baseStart = project(wall.start);
+      const baseEnd = project(wall.end);
+      const topEnd = project(wall.end, wallHeight);
+      const topStart = project(wall.start, wallHeight);
+      return `<polygon points="${svgPoints([baseStart, baseEnd, topEnd, topStart])}" fill="${wall.exteriorEdge >= 0 ? '#f6f3eb' : '#eae7df'}" stroke="#aeb1ab" stroke-width="1.5"/><line x1="${topStart[0].toFixed(1)}" y1="${topStart[1].toFixed(1)}" x2="${topEnd[0].toFixed(1)}" y2="${topEnd[1].toFixed(1)}" stroke="#ffffff" stroke-width="3"/>`;
+    }).join('');
+  const furnitureMarkup = [...level.items]
+    .sort((first, second) => first.position[0] + first.position[1] - second.position[0] - second.position[1])
+    .map((item) => renderIsometricFurniture(item, project, svgPoints))
+    .join('');
+  const labels = [
+    ['连续大客厅', 'living'],
+    ['六人餐厅', 'dining'],
+    ['保留次卧', 'bed-left'],
+    ['主卧套房', 'master'],
+    ['书房兼客卧', 'study'],
+  ].map(([label, roomId]) => {
+    const room = level.rooms.find((entry) => entry.roomId === roomId);
+    if (!room) return '';
+    const centroid = room.polygon.reduce((sum, point) => [sum[0] + point[0] / room.polygon.length, sum[1] + point[1] / room.polygon.length], [0, 0]);
+    const [x, y] = project(centroid, 1.72);
+    return `<g transform="translate(${x.toFixed(1)} ${y.toFixed(1)})"><rect x="-43" y="-12" width="86" height="23" rx="11.5" fill="#29332d" fill-opacity=".88"/><text y="4" fill="#fff" font-size="11" font-weight="700" text-anchor="middle">${escapeHtml(label)}</text></g>`;
+  }).join('');
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="675" viewBox="0 0 1200 675" role="img" aria-label="${escapeAttr(concept.name)} 的模型派生轴测封面">
+  <defs>
+    <linearGradient id="cover-background" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#e9ece8"/><stop offset="1" stop-color="#cbd2cd"/></linearGradient>
+    <filter id="cover-shadow" x="-20%" y="-30%" width="140%" height="170%"><feDropShadow dx="0" dy="16" stdDeviation="18" flood-color="#25322b" flood-opacity=".2"/></filter>
+  </defs>
+  <rect width="1200" height="675" fill="url(#cover-background)"/>
+  <ellipse cx="620" cy="506" rx="430" ry="112" fill="#4c5851" fill-opacity=".16"/>
+  <g filter="url(#cover-shadow)">${floorMarkup}${wallMarkup}${furnitureMarkup}</g>
+  ${labels}
+  <g transform="translate(48 48)">
+    <rect width="330" height="98" rx="16" fill="#f9f7f1" fill-opacity=".94" stroke="#ffffff"/>
+    <text x="22" y="28" fill="#68716b" font-family="Arial,sans-serif" font-size="10" font-weight="700" letter-spacing="2">PERSONAL AGENT · PASCAL V2</text>
+    <text x="22" y="57" fill="#27322c" font-family="Georgia,serif" font-size="23">${escapeHtml(concept.name)}</text>
+    <text x="22" y="80" fill="#727a74" font-family="Arial,sans-serif" font-size="11">${level.rooms.length} 个空间 · ${level.items.length} 件陈设 · ${level.openings.length} 个真实门窗开洞</text>
+  </g>
+  <g transform="translate(986 52)"><rect width="166" height="34" rx="17" fill="#29332d"/><circle cx="19" cy="17" r="4" fill="#8fc19d"/><text x="34" y="21" fill="#fff" font-family="Arial,sans-serif" font-size="11" font-weight="700">模型派生 · 非静态示意</text></g>
+</svg>\n`;
+}
+
+function renderIsometricFurniture(item, project, svgPoints) {
+  const [width, depth, height] = item.size;
+  const angle = (item.rotation || 0) * Math.PI / 180;
+  const rotate = ([x, z]) => [
+    item.position[0] + x * Math.cos(angle) - z * Math.sin(angle),
+    item.position[1] + x * Math.sin(angle) + z * Math.cos(angle),
+  ];
+  const base = [
+    rotate([-width / 2, -depth / 2]),
+    rotate([width / 2, -depth / 2]),
+    rotate([width / 2, depth / 2]),
+    rotate([-width / 2, depth / 2]),
+  ];
+  const visualHeight = Math.min(Math.max(height, 0.06), 1.55);
+  const bottom = base.map((point) => project(point));
+  const top = base.map((point) => project(point, visualHeight));
+  const color = escapeAttr(item.color || '#c8b79f');
+  const darker = /^#[0-9a-f]{6}$/i.test(color)
+    ? `#${[1, 3, 5].map((index) => Math.max(0, Math.round(Number.parseInt(color.slice(index, index + 2), 16) * 0.78)).toString(16).padStart(2, '0')).join('')}`
+    : '#6f756f';
+  return `<g data-cover-item="${escapeAttr(item.kind)}"><polygon points="${svgPoints([bottom[1], bottom[2], top[2], top[1]])}" fill="${darker}" opacity=".9"/><polygon points="${svgPoints([bottom[2], bottom[3], top[3], top[2]])}" fill="${darker}" opacity=".72"/><polygon points="${svgPoints(top)}" fill="${color}" stroke="#ffffff" stroke-opacity=".68" stroke-width="1.2"/></g>`;
 }
 
 function renderRequirements(project, mappings) {

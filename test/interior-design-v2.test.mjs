@@ -487,7 +487,56 @@ function makeHarness(name, { multiLevel = false, alternatives = true } = {}) {
 }
 
 function baseSeed() {
-  return structuredClone(nativeSeed);
+  const seed = structuredClone(nativeSeed);
+  const sourceConcept = seed.concepts.find((concept) => concept.conceptId === 'concept-storage-priority');
+  assert.ok(sourceConcept, 'the professional example must retain the compact regression fixture source');
+  const primaryConcept = structuredClone(sourceConcept);
+  primaryConcept.conceptId = 'concept-compact-primary';
+  primaryConcept.name = 'Compact primary test concept';
+  primaryConcept.summary = 'Stable two-room fixture used only by engine regression tests.';
+  primaryConcept.tradeoffs = ['This compact fixture isolates deterministic engine behavior from the shipping template.'];
+  const alternativeConcept = structuredClone(primaryConcept);
+  alternativeConcept.conceptId = 'concept-compact-alternative';
+  alternativeConcept.name = 'Compact alternative test concept';
+  seed.concepts = [primaryConcept, alternativeConcept];
+  seed.selectedConceptId = primaryConcept.conceptId;
+  seed.brief.requirements = [
+    {
+      requirementId: 'req-continuous-circulation',
+      source: 'Deterministic regression fixture',
+      summary: 'Keep a traceable route from the entry to both rooms.',
+      priority: 'must',
+      status: 'satisfied',
+      sceneNodeIds: ['entry', 'living', 'bed-door', 'bedroom'],
+      verification: { method: 'deterministic-spatial-audit', result: 'passed' },
+    },
+    {
+      requirementId: 'req-furniture-clearance',
+      source: 'Deterministic regression fixture',
+      summary: 'Keep the compact furniture layout collision free.',
+      priority: 'must',
+      status: 'satisfied',
+      sceneNodeIds: ['sofa', 'table', 'bed'],
+      verification: { method: 'deterministic-clearance-audit', result: 'passed' },
+    },
+  ];
+  for (const concept of seed.concepts) {
+    for (const level of concept.levels) {
+      for (const room of level.rooms) {
+        room.requirementIds = ['req-continuous-circulation'];
+      }
+      for (const item of level.items) {
+        item.requirementIds = ['req-furniture-clearance'];
+      }
+    }
+  }
+  seed.decisions = [{
+    decisionId: 'decision-select-compact-primary',
+    summary: 'Select the stable compact fixture for deterministic tests.',
+    rationale: 'The shipping professional template remains free to increase in spatial and furnishing detail.',
+    requirementIds: ['req-continuous-circulation', 'req-furniture-clearance'],
+  }];
+  return seed;
 }
 
 function makeDuplexConcept(source) {

@@ -61,6 +61,7 @@ await build({
   define: Object.fromEntries([
     [['process', 'env', 'NODE_ENV'].join('.'), '"production"'],
     [['process', 'env', 'NEXT_PUBLIC_ASSETS_CDN_URL'].join('.'), '"#offline-assets-disabled"'],
+    ['import.meta.url', 'document.baseURI'],
   ]),
   jsx: 'automatic',
 });

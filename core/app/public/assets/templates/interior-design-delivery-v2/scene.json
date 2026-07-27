@@ -2,14 +2,14 @@
   "schemaVersion": 1,
   "engine": "pascal-v2",
   "revision": 2,
-  "sceneHash": "344ceb388d3f28fa8ad819f7a7e36f007482e0d7925f9ec68c1d6b987124c73a",
+  "sceneHash": "f4e71c03c11691c11a33dd9d0a87b2082a9f0b328aac420855d961dc909efd9d",
   "scene": {
     "nodes": {
       "page-building-0002": {
         "object": "node",
         "id": "page-building-0002",
         "type": "building",
-        "name": "两居室专业装修概念方案",
+        "name": "C 户型 · 现代温润全屋改造",
         "parentId": "page-site-0001",
         "visible": true,
         "children": [
@@ -26,9 +26,9 @@
           0
         ]
       },
-      "page-ceiling-0011": {
+      "page-ceiling-0016": {
         "object": "node",
-        "id": "page-ceiling-0011",
+        "id": "page-ceiling-0016",
         "type": "ceiling",
         "parentId": "page-level-0003",
         "visible": true,
@@ -42,32 +42,32 @@
             0
           ],
           [
-            7,
+            12.4,
             0
           ],
           [
-            7,
-            6
+            12.4,
+            12.6
           ],
           [
             0,
-            6
+            12.6
           ]
         ],
         "holes": [],
         "holeMetadata": [],
-        "height": 2.8,
+        "height": 2.85,
         "autoFromWalls": false
       },
-      "page-door-0013": {
+      "page-door-0036": {
         "object": "node",
-        "id": "page-door-0013",
+        "id": "page-door-0036",
         "type": "door",
-        "parentId": "page-wall-0012",
+        "parentId": "page-wall-0035",
         "visible": true,
         "position": [
-          4.32,
-          1.05,
+          2.08,
+          1.1,
           0
         ],
         "rotation": [
@@ -75,9 +75,9 @@
           0,
           0
         ],
-        "wallId": "page-wall-0012",
-        "width": 0.85,
-        "height": 2.1,
+        "wallId": "page-wall-0035",
+        "width": 1.4,
+        "height": 2.2,
         "doorCategory": "interior",
         "doorType": "hinged",
         "leafCount": 1,
@@ -136,15 +136,15 @@
         "panicBarHeight": 1,
         "children": []
       },
-      "page-door-0005": {
+      "page-door-0030": {
         "object": "node",
-        "id": "page-door-0005",
+        "id": "page-door-0030",
         "type": "door",
-        "parentId": "page-wall-0004",
+        "parentId": "page-wall-0029",
         "visible": true,
         "position": [
-          1.26,
-          1.05,
+          2.176,
+          1.1,
           0
         ],
         "rotation": [
@@ -152,9 +152,625 @@
           0,
           0
         ],
-        "wallId": "page-wall-0004",
-        "width": 0.9,
-        "height": 2.1,
+        "wallId": "page-wall-0029",
+        "width": 1.5,
+        "height": 2.2,
+        "doorCategory": "interior",
+        "doorType": "hinged",
+        "leafCount": 1,
+        "operationState": 0,
+        "slideDirection": "left",
+        "trackStyle": "none",
+        "garagePanelCount": 4,
+        "openingKind": "door",
+        "openingShape": "rectangle",
+        "openingRadiusMode": "all",
+        "openingTopRadii": [
+          0.15,
+          0.15
+        ],
+        "cornerRadius": 0.15,
+        "archHeight": 0.45,
+        "openingRevealRadius": 0.025,
+        "frameThickness": 0.05,
+        "frameDepth": 0.07,
+        "threshold": true,
+        "thresholdHeight": 0.02,
+        "hingesSide": "right",
+        "swingDirection": "inward",
+        "swingAngle": 0,
+        "segments": [
+          {
+            "type": "panel",
+            "heightRatio": 0.4,
+            "columnRatios": [
+              1
+            ],
+            "dividerThickness": 0.03,
+            "panelDepth": 0.01,
+            "panelInset": 0.04
+          },
+          {
+            "type": "panel",
+            "heightRatio": 0.6,
+            "columnRatios": [
+              1
+            ],
+            "dividerThickness": 0.03,
+            "panelDepth": 0.01,
+            "panelInset": 0.04
+          }
+        ],
+        "handle": true,
+        "handleHeight": 1.05,
+        "handleSide": "right",
+        "contentPadding": [
+          0.04,
+          0.04
+        ],
+        "doorCloser": false,
+        "panicBar": false,
+        "panicBarHeight": 1,
+        "children": []
+      },
+      "page-door-0014": {
+        "object": "node",
+        "id": "page-door-0014",
+        "type": "door",
+        "parentId": "page-wall-0013",
+        "visible": true,
+        "position": [
+          5.418,
+          1.1,
+          0
+        ],
+        "rotation": [
+          0,
+          0,
+          0
+        ],
+        "wallId": "page-wall-0013",
+        "width": 1.05,
+        "height": 2.2,
+        "doorCategory": "interior",
+        "doorType": "hinged",
+        "leafCount": 1,
+        "operationState": 0,
+        "slideDirection": "left",
+        "trackStyle": "none",
+        "garagePanelCount": 4,
+        "openingKind": "door",
+        "openingShape": "rectangle",
+        "openingRadiusMode": "all",
+        "openingTopRadii": [
+          0.15,
+          0.15
+        ],
+        "cornerRadius": 0.15,
+        "archHeight": 0.45,
+        "openingRevealRadius": 0.025,
+        "frameThickness": 0.05,
+        "frameDepth": 0.07,
+        "threshold": true,
+        "thresholdHeight": 0.02,
+        "hingesSide": "right",
+        "swingDirection": "inward",
+        "swingAngle": 0,
+        "segments": [
+          {
+            "type": "panel",
+            "heightRatio": 0.4,
+            "columnRatios": [
+              1
+            ],
+            "dividerThickness": 0.03,
+            "panelDepth": 0.01,
+            "panelInset": 0.04
+          },
+          {
+            "type": "panel",
+            "heightRatio": 0.6,
+            "columnRatios": [
+              1
+            ],
+            "dividerThickness": 0.03,
+            "panelDepth": 0.01,
+            "panelInset": 0.04
+          }
+        ],
+        "handle": true,
+        "handleHeight": 1.05,
+        "handleSide": "right",
+        "contentPadding": [
+          0.04,
+          0.04
+        ],
+        "doorCloser": false,
+        "panicBar": false,
+        "panicBarHeight": 1,
+        "children": []
+      },
+      "page-door-0034": {
+        "object": "node",
+        "id": "page-door-0034",
+        "type": "door",
+        "parentId": "page-wall-0033",
+        "visible": true,
+        "position": [
+          1.4499999999999997,
+          1.1,
+          0
+        ],
+        "rotation": [
+          0,
+          0,
+          0
+        ],
+        "wallId": "page-wall-0033",
+        "width": 1.7,
+        "height": 2.2,
+        "doorCategory": "interior",
+        "doorType": "hinged",
+        "leafCount": 1,
+        "operationState": 0,
+        "slideDirection": "left",
+        "trackStyle": "none",
+        "garagePanelCount": 4,
+        "openingKind": "door",
+        "openingShape": "rectangle",
+        "openingRadiusMode": "all",
+        "openingTopRadii": [
+          0.15,
+          0.15
+        ],
+        "cornerRadius": 0.15,
+        "archHeight": 0.45,
+        "openingRevealRadius": 0.025,
+        "frameThickness": 0.05,
+        "frameDepth": 0.07,
+        "threshold": true,
+        "thresholdHeight": 0.02,
+        "hingesSide": "left",
+        "swingDirection": "inward",
+        "swingAngle": 0,
+        "segments": [
+          {
+            "type": "panel",
+            "heightRatio": 0.4,
+            "columnRatios": [
+              1
+            ],
+            "dividerThickness": 0.03,
+            "panelDepth": 0.01,
+            "panelInset": 0.04
+          },
+          {
+            "type": "panel",
+            "heightRatio": 0.6,
+            "columnRatios": [
+              1
+            ],
+            "dividerThickness": 0.03,
+            "panelDepth": 0.01,
+            "panelInset": 0.04
+          }
+        ],
+        "handle": true,
+        "handleHeight": 1.05,
+        "handleSide": "right",
+        "contentPadding": [
+          0.04,
+          0.04
+        ],
+        "doorCloser": false,
+        "panicBar": false,
+        "panicBarHeight": 1,
+        "children": []
+      },
+      "page-door-0032": {
+        "object": "node",
+        "id": "page-door-0032",
+        "type": "door",
+        "parentId": "page-wall-0031",
+        "visible": true,
+        "position": [
+          1.2000000000000002,
+          1.1,
+          0
+        ],
+        "rotation": [
+          0,
+          0,
+          0
+        ],
+        "wallId": "page-wall-0031",
+        "width": 1.7,
+        "height": 2.2,
+        "doorCategory": "interior",
+        "doorType": "hinged",
+        "leafCount": 1,
+        "operationState": 0,
+        "slideDirection": "left",
+        "trackStyle": "none",
+        "garagePanelCount": 4,
+        "openingKind": "door",
+        "openingShape": "rectangle",
+        "openingRadiusMode": "all",
+        "openingTopRadii": [
+          0.15,
+          0.15
+        ],
+        "cornerRadius": 0.15,
+        "archHeight": 0.45,
+        "openingRevealRadius": 0.025,
+        "frameThickness": 0.05,
+        "frameDepth": 0.07,
+        "threshold": true,
+        "thresholdHeight": 0.02,
+        "hingesSide": "right",
+        "swingDirection": "inward",
+        "swingAngle": 0,
+        "segments": [
+          {
+            "type": "panel",
+            "heightRatio": 0.4,
+            "columnRatios": [
+              1
+            ],
+            "dividerThickness": 0.03,
+            "panelDepth": 0.01,
+            "panelInset": 0.04
+          },
+          {
+            "type": "panel",
+            "heightRatio": 0.6,
+            "columnRatios": [
+              1
+            ],
+            "dividerThickness": 0.03,
+            "panelDepth": 0.01,
+            "panelInset": 0.04
+          }
+        ],
+        "handle": true,
+        "handleHeight": 1.05,
+        "handleSide": "right",
+        "contentPadding": [
+          0.04,
+          0.04
+        ],
+        "doorCloser": false,
+        "panicBar": false,
+        "panicBarHeight": 1,
+        "children": []
+      },
+      "page-door-0018": {
+        "object": "node",
+        "id": "page-door-0018",
+        "type": "door",
+        "parentId": "page-wall-0017",
+        "visible": true,
+        "position": [
+          2.304,
+          1.1,
+          0
+        ],
+        "rotation": [
+          0,
+          0,
+          0
+        ],
+        "wallId": "page-wall-0017",
+        "width": 1.5,
+        "height": 2.2,
+        "doorCategory": "interior",
+        "doorType": "hinged",
+        "leafCount": 1,
+        "operationState": 0,
+        "slideDirection": "left",
+        "trackStyle": "none",
+        "garagePanelCount": 4,
+        "openingKind": "door",
+        "openingShape": "rectangle",
+        "openingRadiusMode": "all",
+        "openingTopRadii": [
+          0.15,
+          0.15
+        ],
+        "cornerRadius": 0.15,
+        "archHeight": 0.45,
+        "openingRevealRadius": 0.025,
+        "frameThickness": 0.05,
+        "frameDepth": 0.07,
+        "threshold": true,
+        "thresholdHeight": 0.02,
+        "hingesSide": "left",
+        "swingDirection": "inward",
+        "swingAngle": 0,
+        "segments": [
+          {
+            "type": "panel",
+            "heightRatio": 0.4,
+            "columnRatios": [
+              1
+            ],
+            "dividerThickness": 0.03,
+            "panelDepth": 0.01,
+            "panelInset": 0.04
+          },
+          {
+            "type": "panel",
+            "heightRatio": 0.6,
+            "columnRatios": [
+              1
+            ],
+            "dividerThickness": 0.03,
+            "panelDepth": 0.01,
+            "panelInset": 0.04
+          }
+        ],
+        "handle": true,
+        "handleHeight": 1.05,
+        "handleSide": "right",
+        "contentPadding": [
+          0.04,
+          0.04
+        ],
+        "doorCloser": false,
+        "panicBar": false,
+        "panicBarHeight": 1,
+        "children": []
+      },
+      "page-door-0027": {
+        "object": "node",
+        "id": "page-door-0027",
+        "type": "door",
+        "parentId": "page-wall-0025",
+        "visible": true,
+        "position": [
+          3.108,
+          1.1,
+          0
+        ],
+        "rotation": [
+          0,
+          0,
+          0
+        ],
+        "wallId": "page-wall-0025",
+        "width": 0.82,
+        "height": 2.2,
+        "doorCategory": "interior",
+        "doorType": "hinged",
+        "leafCount": 1,
+        "operationState": 0,
+        "slideDirection": "left",
+        "trackStyle": "none",
+        "garagePanelCount": 4,
+        "openingKind": "door",
+        "openingShape": "rectangle",
+        "openingRadiusMode": "all",
+        "openingTopRadii": [
+          0.15,
+          0.15
+        ],
+        "cornerRadius": 0.15,
+        "archHeight": 0.45,
+        "openingRevealRadius": 0.025,
+        "frameThickness": 0.05,
+        "frameDepth": 0.07,
+        "threshold": true,
+        "thresholdHeight": 0.02,
+        "hingesSide": "right",
+        "swingDirection": "inward",
+        "swingAngle": 0,
+        "segments": [
+          {
+            "type": "panel",
+            "heightRatio": 0.4,
+            "columnRatios": [
+              1
+            ],
+            "dividerThickness": 0.03,
+            "panelDepth": 0.01,
+            "panelInset": 0.04
+          },
+          {
+            "type": "panel",
+            "heightRatio": 0.6,
+            "columnRatios": [
+              1
+            ],
+            "dividerThickness": 0.03,
+            "panelDepth": 0.01,
+            "panelInset": 0.04
+          }
+        ],
+        "handle": true,
+        "handleHeight": 1.05,
+        "handleSide": "right",
+        "contentPadding": [
+          0.04,
+          0.04
+        ],
+        "doorCloser": false,
+        "panicBar": false,
+        "panicBarHeight": 1,
+        "children": []
+      },
+      "page-door-0039": {
+        "object": "node",
+        "id": "page-door-0039",
+        "type": "door",
+        "parentId": "page-wall-0038",
+        "visible": true,
+        "position": [
+          1.1100000000000003,
+          1.1,
+          0
+        ],
+        "rotation": [
+          0,
+          0,
+          0
+        ],
+        "wallId": "page-wall-0038",
+        "width": 1.4,
+        "height": 2.2,
+        "doorCategory": "interior",
+        "doorType": "hinged",
+        "leafCount": 1,
+        "operationState": 0,
+        "slideDirection": "left",
+        "trackStyle": "none",
+        "garagePanelCount": 4,
+        "openingKind": "door",
+        "openingShape": "rectangle",
+        "openingRadiusMode": "all",
+        "openingTopRadii": [
+          0.15,
+          0.15
+        ],
+        "cornerRadius": 0.15,
+        "archHeight": 0.45,
+        "openingRevealRadius": 0.025,
+        "frameThickness": 0.05,
+        "frameDepth": 0.07,
+        "threshold": true,
+        "thresholdHeight": 0.02,
+        "hingesSide": "left",
+        "swingDirection": "inward",
+        "swingAngle": 0,
+        "segments": [
+          {
+            "type": "panel",
+            "heightRatio": 0.4,
+            "columnRatios": [
+              1
+            ],
+            "dividerThickness": 0.03,
+            "panelDepth": 0.01,
+            "panelInset": 0.04
+          },
+          {
+            "type": "panel",
+            "heightRatio": 0.6,
+            "columnRatios": [
+              1
+            ],
+            "dividerThickness": 0.03,
+            "panelDepth": 0.01,
+            "panelInset": 0.04
+          }
+        ],
+        "handle": true,
+        "handleHeight": 1.05,
+        "handleSide": "right",
+        "contentPadding": [
+          0.04,
+          0.04
+        ],
+        "doorCloser": false,
+        "panicBar": false,
+        "panicBarHeight": 1,
+        "children": []
+      },
+      "page-door-0026": {
+        "object": "node",
+        "id": "page-door-0026",
+        "type": "door",
+        "parentId": "page-wall-0025",
+        "visible": true,
+        "position": [
+          1.008,
+          1.1,
+          0
+        ],
+        "rotation": [
+          0,
+          0,
+          0
+        ],
+        "wallId": "page-wall-0025",
+        "width": 0.82,
+        "height": 2.2,
+        "doorCategory": "interior",
+        "doorType": "hinged",
+        "leafCount": 1,
+        "operationState": 0,
+        "slideDirection": "left",
+        "trackStyle": "none",
+        "garagePanelCount": 4,
+        "openingKind": "door",
+        "openingShape": "rectangle",
+        "openingRadiusMode": "all",
+        "openingTopRadii": [
+          0.15,
+          0.15
+        ],
+        "cornerRadius": 0.15,
+        "archHeight": 0.45,
+        "openingRevealRadius": 0.025,
+        "frameThickness": 0.05,
+        "frameDepth": 0.07,
+        "threshold": true,
+        "thresholdHeight": 0.02,
+        "hingesSide": "left",
+        "swingDirection": "inward",
+        "swingAngle": 0,
+        "segments": [
+          {
+            "type": "panel",
+            "heightRatio": 0.4,
+            "columnRatios": [
+              1
+            ],
+            "dividerThickness": 0.03,
+            "panelDepth": 0.01,
+            "panelInset": 0.04
+          },
+          {
+            "type": "panel",
+            "heightRatio": 0.6,
+            "columnRatios": [
+              1
+            ],
+            "dividerThickness": 0.03,
+            "panelDepth": 0.01,
+            "panelInset": 0.04
+          }
+        ],
+        "handle": true,
+        "handleHeight": 1.05,
+        "handleSide": "right",
+        "contentPadding": [
+          0.04,
+          0.04
+        ],
+        "doorCloser": false,
+        "panicBar": false,
+        "panicBarHeight": 1,
+        "children": []
+      },
+      "page-door-0023": {
+        "object": "node",
+        "id": "page-door-0023",
+        "type": "door",
+        "parentId": "page-wall-0022",
+        "visible": true,
+        "position": [
+          2.94,
+          1.1,
+          0
+        ],
+        "rotation": [
+          0,
+          0,
+          0
+        ],
+        "wallId": "page-wall-0022",
+        "width": 1.4,
+        "height": 2.2,
         "doorCategory": "interior",
         "doorType": "hinged",
         "leafCount": 1,
@@ -222,14 +838,41 @@
         "visible": true,
         "children": [
           "page-wall-0004",
-          "page-wall-0006",
-          "page-wall-0007",
           "page-wall-0009",
-          "page-slab-0010",
-          "page-ceiling-0011",
-          "page-wall-0012",
-          "page-zone-0014",
-          "page-zone-0015"
+          "page-wall-0010",
+          "page-wall-0013",
+          "page-slab-0015",
+          "page-ceiling-0016",
+          "page-wall-0017",
+          "page-wall-0019",
+          "page-wall-0020",
+          "page-wall-0021",
+          "page-wall-0022",
+          "page-wall-0024",
+          "page-wall-0025",
+          "page-wall-0028",
+          "page-wall-0029",
+          "page-wall-0031",
+          "page-wall-0033",
+          "page-wall-0035",
+          "page-wall-0037",
+          "page-wall-0038",
+          "page-wall-0040",
+          "page-wall-0041",
+          "page-zone-0043",
+          "page-zone-0044",
+          "page-zone-0045",
+          "page-zone-0046",
+          "page-zone-0047",
+          "page-zone-0048",
+          "page-zone-0049",
+          "page-zone-0050",
+          "page-zone-0051",
+          "page-zone-0052",
+          "page-zone-0053",
+          "page-zone-0054",
+          "page-zone-0055",
+          "page-zone-0056"
         ],
         "level": 0
       },
@@ -237,7 +880,7 @@
         "object": "node",
         "id": "page-site-0001",
         "type": "site",
-        "name": "两居室专业装修概念方案",
+        "name": "C 户型 · 现代温润全屋改造",
         "parentId": null,
         "visible": true,
         "polygon": {
@@ -265,9 +908,9 @@
           "page-building-0002"
         ]
       },
-      "page-slab-0010": {
+      "page-slab-0015": {
         "object": "node",
-        "id": "page-slab-0010",
+        "id": "page-slab-0015",
         "type": "slab",
         "parentId": "page-level-0003",
         "visible": true,
@@ -280,16 +923,16 @@
             0
           ],
           [
-            7,
+            12.4,
             0
           ],
           [
-            7,
-            6
+            12.4,
+            12.6
           ],
           [
             0,
-            6
+            12.6
           ]
         ],
         "holes": [],
@@ -298,103 +941,156 @@
         "autoFromWalls": false,
         "children": []
       },
-      "page-wall-0006": {
+      "page-wall-0041": {
         "object": "node",
-        "id": "page-wall-0006",
+        "id": "page-wall-0041",
         "type": "wall",
         "parentId": "page-level-0003",
         "visible": true,
-        "metadata": {
-          "role": "exterior",
-          "storyShell": true
-        },
+        "children": [
+          "page-window-0042"
+        ],
+        "thickness": 0.14,
+        "height": 2.85,
+        "start": [
+          3.2,
+          10.7
+        ],
+        "end": [
+          8.7,
+          10.7
+        ],
+        "frontSide": "unknown",
+        "backSide": "unknown"
+      },
+      "page-wall-0025": {
+        "object": "node",
+        "id": "page-wall-0025",
+        "type": "wall",
+        "parentId": "page-level-0003",
+        "visible": true,
+        "children": [
+          "page-door-0026",
+          "page-door-0027"
+        ],
+        "thickness": 0.14,
+        "height": 2.85,
+        "start": [
+          10.3,
+          4.2
+        ],
+        "end": [
+          10.3,
+          8.4
+        ],
+        "frontSide": "unknown",
+        "backSide": "unknown"
+      },
+      "page-wall-0028": {
+        "object": "node",
+        "id": "page-wall-0028",
+        "type": "wall",
+        "parentId": "page-level-0003",
+        "visible": true,
+        "children": [],
+        "thickness": 0.14,
+        "height": 2.85,
+        "start": [
+          10.3,
+          6.2
+        ],
+        "end": [
+          12.4,
+          6.2
+        ],
+        "frontSide": "unknown",
+        "backSide": "unknown"
+      },
+      "page-wall-0037": {
+        "object": "node",
+        "id": "page-wall-0037",
+        "type": "wall",
+        "parentId": "page-level-0003",
+        "visible": true,
         "children": [],
         "thickness": 0.16,
-        "height": 2.8,
+        "height": 2.85,
         "start": [
-          7,
-          0
+          3.2,
+          8.4
         ],
         "end": [
-          7,
-          6
+          3.2,
+          12.6
         ],
-        "frontSide": "exterior",
-        "backSide": "interior"
+        "frontSide": "unknown",
+        "backSide": "unknown"
       },
-      "page-wall-0007": {
+      "page-wall-0035": {
         "object": "node",
-        "id": "page-wall-0007",
+        "id": "page-wall-0035",
         "type": "wall",
         "parentId": "page-level-0003",
         "visible": true,
-        "metadata": {
-          "role": "exterior",
-          "storyShell": true
-        },
         "children": [
-          "page-window-0008"
+          "page-door-0036"
         ],
         "thickness": 0.16,
-        "height": 2.8,
+        "height": 2.85,
         "start": [
-          7,
-          6
+          0,
+          8.4
         ],
         "end": [
+          3.2,
+          8.4
+        ],
+        "frontSide": "unknown",
+        "backSide": "unknown"
+      },
+      "page-wall-0029": {
+        "object": "node",
+        "id": "page-wall-0029",
+        "type": "wall",
+        "parentId": "page-level-0003",
+        "visible": true,
+        "children": [
+          "page-door-0030"
+        ],
+        "thickness": 0.16,
+        "height": 2.85,
+        "start": [
           0,
           6
         ],
-        "frontSide": "exterior",
-        "backSide": "interior"
-      },
-      "page-wall-0012": {
-        "object": "node",
-        "id": "page-wall-0012",
-        "type": "wall",
-        "parentId": "page-level-0003",
-        "visible": true,
-        "children": [
-          "page-door-0013"
-        ],
-        "thickness": 0.12,
-        "height": 2.8,
-        "start": [
-          4,
-          0
-        ],
         "end": [
-          4,
+          3.2,
           6
         ],
         "frontSide": "unknown",
         "backSide": "unknown"
       },
-      "page-wall-0004": {
+      "page-wall-0033": {
         "object": "node",
-        "id": "page-wall-0004",
+        "id": "page-wall-0033",
         "type": "wall",
         "parentId": "page-level-0003",
         "visible": true,
-        "metadata": {
-          "role": "exterior",
-          "storyShell": true
-        },
         "children": [
-          "page-door-0005"
+          "page-door-0034"
         ],
-        "thickness": 0.16,
-        "height": 2.8,
+        "thickness": 0.14,
+        "height": 2.85,
         "start": [
-          0,
-          0
+          3.2,
+          6
         ],
         "end": [
-          7,
-          0
+          6.1,
+          6
         ],
-        "frontSide": "exterior",
-        "backSide": "interior"
+        "frontSide": "unknown",
+        "backSide": "unknown"
       },
       "page-wall-0009": {
         "object": "node",
@@ -407,11 +1103,93 @@
           "storyShell": true
         },
         "children": [],
-        "thickness": 0.16,
-        "height": 2.8,
+        "thickness": 0.22,
+        "height": 2.85,
+        "start": [
+          12.4,
+          0
+        ],
+        "end": [
+          12.4,
+          12.6
+        ],
+        "frontSide": "exterior",
+        "backSide": "interior"
+      },
+      "page-wall-0004": {
+        "object": "node",
+        "id": "page-wall-0004",
+        "type": "wall",
+        "parentId": "page-level-0003",
+        "visible": true,
+        "metadata": {
+          "role": "exterior",
+          "storyShell": true
+        },
+        "children": [
+          "page-window-0005",
+          "page-window-0006",
+          "page-window-0007",
+          "page-window-0008"
+        ],
+        "thickness": 0.22,
+        "height": 2.85,
         "start": [
           0,
-          6
+          0
+        ],
+        "end": [
+          12.4,
+          0
+        ],
+        "frontSide": "exterior",
+        "backSide": "interior"
+      },
+      "page-wall-0010": {
+        "object": "node",
+        "id": "page-wall-0010",
+        "type": "wall",
+        "parentId": "page-level-0003",
+        "visible": true,
+        "metadata": {
+          "role": "exterior",
+          "storyShell": true
+        },
+        "children": [
+          "page-window-0011",
+          "page-window-0012"
+        ],
+        "thickness": 0.22,
+        "height": 2.85,
+        "start": [
+          12.4,
+          12.6
+        ],
+        "end": [
+          0,
+          12.6
+        ],
+        "frontSide": "exterior",
+        "backSide": "interior"
+      },
+      "page-wall-0013": {
+        "object": "node",
+        "id": "page-wall-0013",
+        "type": "wall",
+        "parentId": "page-level-0003",
+        "visible": true,
+        "metadata": {
+          "role": "exterior",
+          "storyShell": true
+        },
+        "children": [
+          "page-door-0014"
+        ],
+        "thickness": 0.22,
+        "height": 2.85,
+        "start": [
+          0,
+          12.6
         ],
         "end": [
           0,
@@ -420,15 +1198,203 @@
         "frontSide": "exterior",
         "backSide": "interior"
       },
-      "page-window-0008": {
+      "page-wall-0021": {
         "object": "node",
-        "id": "page-window-0008",
+        "id": "page-wall-0021",
+        "type": "wall",
+        "parentId": "page-level-0003",
+        "visible": true,
+        "children": [],
+        "thickness": 0.14,
+        "height": 2.85,
+        "start": [
+          6.1,
+          1.2
+        ],
+        "end": [
+          6.1,
+          6
+        ],
+        "frontSide": "unknown",
+        "backSide": "unknown"
+      },
+      "page-wall-0031": {
+        "object": "node",
+        "id": "page-wall-0031",
+        "type": "wall",
+        "parentId": "page-level-0003",
+        "visible": true,
+        "children": [
+          "page-door-0032"
+        ],
+        "thickness": 0.16,
+        "height": 2.85,
+        "start": [
+          3.2,
+          6
+        ],
+        "end": [
+          3.2,
+          8.4
+        ],
+        "frontSide": "unknown",
+        "backSide": "unknown"
+      },
+      "page-wall-0017": {
+        "object": "node",
+        "id": "page-wall-0017",
+        "type": "wall",
+        "parentId": "page-level-0003",
+        "visible": true,
+        "children": [
+          "page-door-0018"
+        ],
+        "thickness": 0.16,
+        "height": 2.85,
+        "start": [
+          0,
+          2.4
+        ],
+        "end": [
+          3.2,
+          2.4
+        ],
+        "frontSide": "unknown",
+        "backSide": "unknown"
+      },
+      "page-wall-0038": {
+        "object": "node",
+        "id": "page-wall-0038",
+        "type": "wall",
+        "parentId": "page-level-0003",
+        "visible": true,
+        "children": [
+          "page-door-0039"
+        ],
+        "thickness": 0.16,
+        "height": 2.85,
+        "start": [
+          8.7,
+          8.4
+        ],
+        "end": [
+          12.4,
+          8.4
+        ],
+        "frontSide": "unknown",
+        "backSide": "unknown"
+      },
+      "page-wall-0040": {
+        "object": "node",
+        "id": "page-wall-0040",
+        "type": "wall",
+        "parentId": "page-level-0003",
+        "visible": true,
+        "children": [],
+        "thickness": 0.16,
+        "height": 2.85,
+        "start": [
+          8.7,
+          8.4
+        ],
+        "end": [
+          8.7,
+          12.6
+        ],
+        "frontSide": "unknown",
+        "backSide": "unknown"
+      },
+      "page-wall-0020": {
+        "object": "node",
+        "id": "page-wall-0020",
+        "type": "wall",
+        "parentId": "page-level-0003",
+        "visible": true,
+        "children": [],
+        "thickness": 0.14,
+        "height": 2.85,
+        "start": [
+          3.2,
+          1.2
+        ],
+        "end": [
+          9.3,
+          1.2
+        ],
+        "frontSide": "unknown",
+        "backSide": "unknown"
+      },
+      "page-wall-0024": {
+        "object": "node",
+        "id": "page-wall-0024",
+        "type": "wall",
+        "parentId": "page-level-0003",
+        "visible": true,
+        "children": [],
+        "thickness": 0.16,
+        "height": 2.85,
+        "start": [
+          9.3,
+          4.2
+        ],
+        "end": [
+          12.4,
+          4.2
+        ],
+        "frontSide": "unknown",
+        "backSide": "unknown"
+      },
+      "page-wall-0022": {
+        "object": "node",
+        "id": "page-wall-0022",
+        "type": "wall",
+        "parentId": "page-level-0003",
+        "visible": true,
+        "children": [
+          "page-door-0023"
+        ],
+        "thickness": 0.16,
+        "height": 2.85,
+        "start": [
+          9.3,
+          0
+        ],
+        "end": [
+          9.3,
+          4.2
+        ],
+        "frontSide": "unknown",
+        "backSide": "unknown"
+      },
+      "page-wall-0019": {
+        "object": "node",
+        "id": "page-wall-0019",
+        "type": "wall",
+        "parentId": "page-level-0003",
+        "visible": true,
+        "children": [],
+        "thickness": 0.16,
+        "height": 2.85,
+        "start": [
+          3.2,
+          0
+        ],
+        "end": [
+          3.2,
+          6
+        ],
+        "frontSide": "unknown",
+        "backSide": "unknown"
+      },
+      "page-window-0042": {
+        "object": "node",
+        "id": "page-window-0042",
         "type": "window",
-        "parentId": "page-wall-0007",
+        "parentId": "page-wall-0041",
         "visible": true,
         "position": [
-          3.5,
-          1.55,
+          2.7499999999999996,
+          1.2249999999999999,
           0
         ],
         "rotation": [
@@ -436,9 +1402,9 @@
           0,
           0
         ],
-        "wallId": "page-wall-0007",
-        "width": 1.8,
-        "height": 1.3,
+        "wallId": "page-wall-0041",
+        "width": 4.5,
+        "height": 2.15,
         "openingKind": "window",
         "windowType": "fixed",
         "operationState": 0,
@@ -471,11 +1437,351 @@
         "sillThickness": 0.03,
         "children": []
       },
-      "page-zone-0015": {
+      "page-window-0012": {
         "object": "node",
-        "id": "page-zone-0015",
+        "id": "page-window-0012",
+        "type": "window",
+        "parentId": "page-wall-0010",
+        "visible": true,
+        "position": [
+          10.788,
+          1.425,
+          0
+        ],
+        "rotation": [
+          0,
+          0,
+          0
+        ],
+        "wallId": "page-wall-0010",
+        "width": 2.25,
+        "height": 1.55,
+        "openingKind": "window",
+        "windowType": "fixed",
+        "operationState": 0,
+        "awningDirection": "up",
+        "casementStyle": "single",
+        "hingesSide": "left",
+        "openingShape": "rectangle",
+        "openingRadiusMode": "all",
+        "openingCornerRadii": [
+          0.15,
+          0.15,
+          0.15,
+          0.15
+        ],
+        "cornerRadius": 0.15,
+        "archHeight": 0.35,
+        "openingRevealRadius": 0.025,
+        "frameThickness": 0.05,
+        "frameDepth": 0.07,
+        "columnRatios": [
+          1
+        ],
+        "rowRatios": [
+          1
+        ],
+        "columnDividerThickness": 0.03,
+        "rowDividerThickness": 0.03,
+        "sill": true,
+        "sillDepth": 0.08,
+        "sillThickness": 0.03,
+        "children": []
+      },
+      "page-window-0005": {
+        "object": "node",
+        "id": "page-window-0005",
+        "type": "window",
+        "parentId": "page-wall-0004",
+        "visible": true,
+        "position": [
+          1.612,
+          1.5750000000000002,
+          0
+        ],
+        "rotation": [
+          0,
+          0,
+          0
+        ],
+        "wallId": "page-wall-0004",
+        "width": 2.15,
+        "height": 1.35,
+        "openingKind": "window",
+        "windowType": "fixed",
+        "operationState": 0,
+        "awningDirection": "up",
+        "casementStyle": "single",
+        "hingesSide": "left",
+        "openingShape": "rectangle",
+        "openingRadiusMode": "all",
+        "openingCornerRadii": [
+          0.15,
+          0.15,
+          0.15,
+          0.15
+        ],
+        "cornerRadius": 0.15,
+        "archHeight": 0.35,
+        "openingRevealRadius": 0.025,
+        "frameThickness": 0.05,
+        "frameDepth": 0.07,
+        "columnRatios": [
+          1
+        ],
+        "rowRatios": [
+          1
+        ],
+        "columnDividerThickness": 0.03,
+        "rowDividerThickness": 0.03,
+        "sill": true,
+        "sillDepth": 0.08,
+        "sillThickness": 0.03,
+        "children": []
+      },
+      "page-window-0006": {
+        "object": "node",
+        "id": "page-window-0006",
+        "type": "window",
+        "parentId": "page-wall-0004",
+        "visible": true,
+        "position": [
+          4.712000000000001,
+          1.5750000000000002,
+          0
+        ],
+        "rotation": [
+          0,
+          0,
+          0
+        ],
+        "wallId": "page-wall-0004",
+        "width": 2.2,
+        "height": 1.35,
+        "openingKind": "window",
+        "windowType": "fixed",
+        "operationState": 0,
+        "awningDirection": "up",
+        "casementStyle": "single",
+        "hingesSide": "left",
+        "openingShape": "rectangle",
+        "openingRadiusMode": "all",
+        "openingCornerRadii": [
+          0.15,
+          0.15,
+          0.15,
+          0.15
+        ],
+        "cornerRadius": 0.15,
+        "archHeight": 0.35,
+        "openingRevealRadius": 0.025,
+        "frameThickness": 0.05,
+        "frameDepth": 0.07,
+        "columnRatios": [
+          1
+        ],
+        "rowRatios": [
+          1
+        ],
+        "columnDividerThickness": 0.03,
+        "rowDividerThickness": 0.03,
+        "sill": true,
+        "sillDepth": 0.08,
+        "sillThickness": 0.03,
+        "children": []
+      },
+      "page-window-0011": {
+        "object": "node",
+        "id": "page-window-0011",
+        "type": "window",
+        "parentId": "page-wall-0010",
+        "visible": true,
+        "position": [
+          1.8599999999999999,
+          1.425,
+          0
+        ],
+        "rotation": [
+          0,
+          0,
+          0
+        ],
+        "wallId": "page-wall-0010",
+        "width": 2.6,
+        "height": 1.55,
+        "openingKind": "window",
+        "windowType": "fixed",
+        "operationState": 0,
+        "awningDirection": "up",
+        "casementStyle": "single",
+        "hingesSide": "left",
+        "openingShape": "rectangle",
+        "openingRadiusMode": "all",
+        "openingCornerRadii": [
+          0.15,
+          0.15,
+          0.15,
+          0.15
+        ],
+        "cornerRadius": 0.15,
+        "archHeight": 0.35,
+        "openingRevealRadius": 0.025,
+        "frameThickness": 0.05,
+        "frameDepth": 0.07,
+        "columnRatios": [
+          1
+        ],
+        "rowRatios": [
+          1
+        ],
+        "columnDividerThickness": 0.03,
+        "rowDividerThickness": 0.03,
+        "sill": true,
+        "sillDepth": 0.08,
+        "sillThickness": 0.03,
+        "children": []
+      },
+      "page-window-0008": {
+        "object": "node",
+        "id": "page-window-0008",
+        "type": "window",
+        "parentId": "page-wall-0004",
+        "visible": true,
+        "position": [
+          10.788,
+          1.5750000000000002,
+          0
+        ],
+        "rotation": [
+          0,
+          0,
+          0
+        ],
+        "wallId": "page-wall-0004",
+        "width": 2.35,
+        "height": 1.35,
+        "openingKind": "window",
+        "windowType": "fixed",
+        "operationState": 0,
+        "awningDirection": "up",
+        "casementStyle": "single",
+        "hingesSide": "left",
+        "openingShape": "rectangle",
+        "openingRadiusMode": "all",
+        "openingCornerRadii": [
+          0.15,
+          0.15,
+          0.15,
+          0.15
+        ],
+        "cornerRadius": 0.15,
+        "archHeight": 0.35,
+        "openingRevealRadius": 0.025,
+        "frameThickness": 0.05,
+        "frameDepth": 0.07,
+        "columnRatios": [
+          1
+        ],
+        "rowRatios": [
+          1
+        ],
+        "columnDividerThickness": 0.03,
+        "rowDividerThickness": 0.03,
+        "sill": true,
+        "sillDepth": 0.08,
+        "sillThickness": 0.03,
+        "children": []
+      },
+      "page-window-0007": {
+        "object": "node",
+        "id": "page-window-0007",
+        "type": "window",
+        "parentId": "page-wall-0004",
+        "visible": true,
+        "position": [
+          7.688,
+          1.5750000000000002,
+          0
+        ],
+        "rotation": [
+          0,
+          0,
+          0
+        ],
+        "wallId": "page-wall-0004",
+        "width": 2.4,
+        "height": 1.35,
+        "openingKind": "window",
+        "windowType": "fixed",
+        "operationState": 0,
+        "awningDirection": "up",
+        "casementStyle": "single",
+        "hingesSide": "left",
+        "openingShape": "rectangle",
+        "openingRadiusMode": "all",
+        "openingCornerRadii": [
+          0.15,
+          0.15,
+          0.15,
+          0.15
+        ],
+        "cornerRadius": 0.15,
+        "archHeight": 0.35,
+        "openingRevealRadius": 0.025,
+        "frameThickness": 0.05,
+        "frameDepth": 0.07,
+        "columnRatios": [
+          1
+        ],
+        "rowRatios": [
+          1
+        ],
+        "columnDividerThickness": 0.03,
+        "rowDividerThickness": 0.03,
+        "sill": true,
+        "sillDepth": 0.08,
+        "sillThickness": 0.03,
+        "children": []
+      },
+      "page-zone-0056": {
+        "object": "node",
+        "id": "page-zone-0056",
         "type": "zone",
-        "name": "卧室",
+        "name": "南向阳台",
+        "parentId": "page-level-0003",
+        "visible": true,
+        "metadata": {
+          "roomKind": "balcony",
+          "requiredAccess": false
+        },
+        "polygon": [
+          [
+            3.2,
+            10.7
+          ],
+          [
+            8.7,
+            10.7
+          ],
+          [
+            8.7,
+            12.6
+          ],
+          [
+            3.2,
+            12.6
+          ]
+        ],
+        "autoFromWalls": false,
+        "boundaryWallIds": [],
+        "color": "#3b82f6",
+        "children": []
+      },
+      "page-zone-0054": {
+        "object": "node",
+        "id": "page-zone-0054",
+        "type": "zone",
+        "name": "保留次卧",
         "parentId": "page-level-0003",
         "visible": true,
         "metadata": {
@@ -484,19 +1790,53 @@
         },
         "polygon": [
           [
-            4,
-            0
+            0,
+            8.4
           ],
           [
-            7,
-            0
+            3.2,
+            8.4
           ],
           [
-            7,
+            3.2,
+            12.6
+          ],
+          [
+            0,
+            12.6
+          ]
+        ],
+        "autoFromWalls": false,
+        "boundaryWallIds": [],
+        "color": "#3b82f6",
+        "children": []
+      },
+      "page-zone-0047": {
+        "object": "node",
+        "id": "page-zone-0047",
+        "type": "zone",
+        "name": "六人餐厅",
+        "parentId": "page-level-0003",
+        "visible": true,
+        "metadata": {
+          "roomKind": "dining",
+          "requiredAccess": true
+        },
+        "polygon": [
+          [
+            0,
+            2.4
+          ],
+          [
+            3.2,
+            2.4
+          ],
+          [
+            3.2,
             6
           ],
           [
-            4,
+            0,
             6
           ]
         ],
@@ -505,15 +1845,83 @@
         "color": "#3b82f6",
         "children": []
       },
-      "page-zone-0014": {
+      "page-zone-0049": {
         "object": "node",
-        "id": "page-zone-0014",
+        "id": "page-zone-0049",
         "type": "zone",
-        "name": "客餐厅",
+        "name": "家庭工作区",
         "parentId": "page-level-0003",
         "visible": true,
         "metadata": {
-          "roomKind": "living",
+          "roomKind": "family-work",
+          "requiredAccess": true
+        },
+        "polygon": [
+          [
+            6.1,
+            1.2
+          ],
+          [
+            9.3,
+            1.2
+          ],
+          [
+            9.3,
+            6
+          ],
+          [
+            6.1,
+            6
+          ]
+        ],
+        "autoFromWalls": false,
+        "boundaryWallIds": [],
+        "color": "#3b82f6",
+        "children": []
+      },
+      "page-zone-0052": {
+        "object": "node",
+        "id": "page-zone-0052",
+        "type": "zone",
+        "name": "玄关收纳",
+        "parentId": "page-level-0003",
+        "visible": true,
+        "metadata": {
+          "roomKind": "foyer",
+          "requiredAccess": true
+        },
+        "polygon": [
+          [
+            0,
+            6
+          ],
+          [
+            3.2,
+            6
+          ],
+          [
+            3.2,
+            8.4
+          ],
+          [
+            0,
+            8.4
+          ]
+        ],
+        "autoFromWalls": false,
+        "boundaryWallIds": [],
+        "color": "#3b82f6",
+        "children": []
+      },
+      "page-zone-0043": {
+        "object": "node",
+        "id": "page-zone-0043",
+        "type": "zone",
+        "name": "厨房 · L 型橱柜",
+        "parentId": "page-level-0003",
+        "visible": true,
+        "metadata": {
+          "roomKind": "kitchen",
           "requiredAccess": true
         },
         "polygon": [
@@ -522,16 +1930,296 @@
             0
           ],
           [
-            4,
+            3.2,
             0
           ],
           [
-            4,
-            6
+            3.2,
+            2.4
           ],
           [
             0,
+            2.4
+          ]
+        ],
+        "autoFromWalls": false,
+        "boundaryWallIds": [],
+        "color": "#3b82f6",
+        "children": []
+      },
+      "page-zone-0044": {
+        "object": "node",
+        "id": "page-zone-0044",
+        "type": "zone",
+        "name": "生活阳台一 · 洗烘",
+        "parentId": "page-level-0003",
+        "visible": true,
+        "metadata": {
+          "roomKind": "laundry",
+          "requiredAccess": false
+        },
+        "polygon": [
+          [
+            3.2,
+            0
+          ],
+          [
+            6.1,
+            0
+          ],
+          [
+            6.1,
+            1.2
+          ],
+          [
+            3.2,
+            1.2
+          ]
+        ],
+        "autoFromWalls": false,
+        "boundaryWallIds": [],
+        "color": "#3b82f6",
+        "children": []
+      },
+      "page-zone-0053": {
+        "object": "node",
+        "id": "page-zone-0053",
+        "type": "zone",
+        "name": "大客厅 · 连续公共区",
+        "parentId": "page-level-0003",
+        "visible": true,
+        "metadata": {
+          "roomKind": "living",
+          "requiredAccess": true
+        },
+        "polygon": [
+          [
+            3.2,
             6
+          ],
+          [
+            10.3,
+            6
+          ],
+          [
+            10.3,
+            8.4
+          ],
+          [
+            8.7,
+            8.4
+          ],
+          [
+            8.7,
+            10.7
+          ],
+          [
+            3.2,
+            10.7
+          ]
+        ],
+        "autoFromWalls": false,
+        "boundaryWallIds": [],
+        "color": "#3b82f6",
+        "children": []
+      },
+      "page-zone-0048": {
+        "object": "node",
+        "id": "page-zone-0048",
+        "type": "zone",
+        "name": "原卧室并入公共区",
+        "parentId": "page-level-0003",
+        "visible": true,
+        "metadata": {
+          "roomKind": "living-extension",
+          "requiredAccess": true
+        },
+        "polygon": [
+          [
+            3.2,
+            1.2
+          ],
+          [
+            6.1,
+            1.2
+          ],
+          [
+            6.1,
+            6
+          ],
+          [
+            3.2,
+            6
+          ]
+        ],
+        "autoFromWalls": false,
+        "boundaryWallIds": [],
+        "color": "#3b82f6",
+        "children": []
+      },
+      "page-zone-0055": {
+        "object": "node",
+        "id": "page-zone-0055",
+        "type": "zone",
+        "name": "主卧套房",
+        "parentId": "page-level-0003",
+        "visible": true,
+        "metadata": {
+          "roomKind": "bedroom",
+          "requiredAccess": true
+        },
+        "polygon": [
+          [
+            8.7,
+            8.4
+          ],
+          [
+            12.4,
+            8.4
+          ],
+          [
+            12.4,
+            12.6
+          ],
+          [
+            8.7,
+            12.6
+          ]
+        ],
+        "autoFromWalls": false,
+        "boundaryWallIds": [],
+        "color": "#3b82f6",
+        "children": []
+      },
+      "page-zone-0051": {
+        "object": "node",
+        "id": "page-zone-0051",
+        "type": "zone",
+        "name": "主卫",
+        "parentId": "page-level-0003",
+        "visible": true,
+        "metadata": {
+          "roomKind": "bathroom",
+          "requiredAccess": false
+        },
+        "polygon": [
+          [
+            10.3,
+            6.2
+          ],
+          [
+            12.4,
+            6.2
+          ],
+          [
+            12.4,
+            8.4
+          ],
+          [
+            10.3,
+            8.4
+          ]
+        ],
+        "autoFromWalls": false,
+        "boundaryWallIds": [],
+        "color": "#3b82f6",
+        "children": []
+      },
+      "page-zone-0050": {
+        "object": "node",
+        "id": "page-zone-0050",
+        "type": "zone",
+        "name": "公卫 · 干湿分区",
+        "parentId": "page-level-0003",
+        "visible": true,
+        "metadata": {
+          "roomKind": "bathroom",
+          "requiredAccess": false
+        },
+        "polygon": [
+          [
+            10.3,
+            4.2
+          ],
+          [
+            12.4,
+            4.2
+          ],
+          [
+            12.4,
+            6.2
+          ],
+          [
+            10.3,
+            6.2
+          ]
+        ],
+        "autoFromWalls": false,
+        "boundaryWallIds": [],
+        "color": "#3b82f6",
+        "children": []
+      },
+      "page-zone-0046": {
+        "object": "node",
+        "id": "page-zone-0046",
+        "type": "zone",
+        "name": "书房兼客卧",
+        "parentId": "page-level-0003",
+        "visible": true,
+        "metadata": {
+          "roomKind": "study",
+          "requiredAccess": true
+        },
+        "polygon": [
+          [
+            9.3,
+            0
+          ],
+          [
+            12.4,
+            0
+          ],
+          [
+            12.4,
+            4.2
+          ],
+          [
+            9.3,
+            4.2
+          ]
+        ],
+        "autoFromWalls": false,
+        "boundaryWallIds": [],
+        "color": "#3b82f6",
+        "children": []
+      },
+      "page-zone-0045": {
+        "object": "node",
+        "id": "page-zone-0045",
+        "type": "zone",
+        "name": "生活阳台二 · 家政",
+        "parentId": "page-level-0003",
+        "visible": true,
+        "metadata": {
+          "roomKind": "laundry",
+          "requiredAccess": false
+        },
+        "polygon": [
+          [
+            6.1,
+            0
+          ],
+          [
+            9.3,
+            0
+          ],
+          [
+            9.3,
+            1.2
+          ],
+          [
+            6.1,
+            1.2
           ]
         ],
         "autoFromWalls": false,
@@ -550,56 +2238,740 @@
     {
       "id": "page-item-0001",
       "levelId": "page-level-0003",
-      "name": "双人床",
-      "kind": "bed",
+      "name": "客厅单椅",
+      "kind": "chair",
       "position": [
-        5.55,
-        3
+        7.75,
+        7.35
       ],
       "size": [
-        1.8,
-        2,
-        0.62
+        0.82,
+        0.82,
+        0.88
       ],
-      "rotation": 0,
+      "rotation": -24,
       "elevation": 0,
-      "color": "#E9E6DE"
+      "color": "#47705B"
     },
     {
       "id": "page-item-0002",
       "levelId": "page-level-0003",
-      "name": "双人沙发",
-      "kind": "sofa",
+      "name": "阳台绿植",
+      "kind": "plant",
       "position": [
-        1.5,
-        3.2
+        7.8,
+        11.72
       ],
       "size": [
-        2.2,
-        0.9,
-        0.8
+        0.72,
+        0.72,
+        1.08
+      ],
+      "rotation": 0,
+      "elevation": 0,
+      "color": "#47705B"
+    },
+    {
+      "id": "page-item-0003",
+      "levelId": "page-level-0003",
+      "name": "阳台休闲椅",
+      "kind": "chair",
+      "position": [
+        4.25,
+        11.72
+      ],
+      "size": [
+        0.78,
+        0.78,
+        0.84
+      ],
+      "rotation": 15,
+      "elevation": 0,
+      "color": "#47705B"
+    },
+    {
+      "id": "page-item-0004",
+      "levelId": "page-level-0003",
+      "name": "阳台边几",
+      "kind": "table-round",
+      "position": [
+        5.38,
+        11.72
+      ],
+      "size": [
+        0.58,
+        0.58,
+        0.52
+      ],
+      "rotation": 0,
+      "elevation": 0,
+      "color": "#C6A87B"
+    },
+    {
+      "id": "page-item-0005",
+      "levelId": "page-level-0003",
+      "name": "次卧双人床",
+      "kind": "bed",
+      "position": [
+        1.55,
+        10.62
+      ],
+      "size": [
+        1.82,
+        2,
+        0.72
+      ],
+      "rotation": 0,
+      "elevation": 0,
+      "color": "#D9D2C8"
+    },
+    {
+      "id": "page-item-0006",
+      "levelId": "page-level-0003",
+      "name": "次卧床头柜",
+      "kind": "cabinet",
+      "position": [
+        0.38,
+        10.62
+      ],
+      "size": [
+        0.48,
+        0.48,
+        0.52
+      ],
+      "rotation": 0,
+      "elevation": 0,
+      "color": "#C6A87B"
+    },
+    {
+      "id": "page-item-0007",
+      "levelId": "page-level-0003",
+      "name": "次卧衣柜",
+      "kind": "cabinet",
+      "position": [
+        2.78,
+        9.46
+      ],
+      "size": [
+        0.56,
+        1.55,
+        2.15
+      ],
+      "rotation": 0,
+      "elevation": 0,
+      "color": "#80664D"
+    },
+    {
+      "id": "page-item-0008",
+      "levelId": "page-level-0003",
+      "name": "客厅茶几",
+      "kind": "coffee-table",
+      "position": [
+        6.1,
+        8.15
+      ],
+      "size": [
+        1.45,
+        0.68,
+        0.46
+      ],
+      "rotation": 0,
+      "elevation": 0,
+      "color": "#C6A87B"
+    },
+    {
+      "id": "page-item-0009",
+      "levelId": "page-level-0003",
+      "name": "餐边柜",
+      "kind": "cabinet",
+      "position": [
+        0.36,
+        3.15
+      ],
+      "size": [
+        0.48,
+        1.25,
+        1.05
+      ],
+      "rotation": 0,
+      "elevation": 0,
+      "color": "#80664D"
+    },
+    {
+      "id": "page-item-0010",
+      "levelId": "page-level-0003",
+      "name": "六人餐桌",
+      "kind": "dining-table",
+      "position": [
+        1.62,
+        4.15
+      ],
+      "size": [
+        1.95,
+        0.92,
+        0.76
+      ],
+      "rotation": 0,
+      "elevation": 0,
+      "color": "#C6A87B"
+    },
+    {
+      "id": "page-item-0011",
+      "levelId": "page-level-0003",
+      "name": "阅读单椅",
+      "kind": "chair",
+      "position": [
+        4.18,
+        3.45
+      ],
+      "size": [
+        0.82,
+        0.82,
+        0.88
+      ],
+      "rotation": -25,
+      "elevation": 0,
+      "color": "#47705B"
+    },
+    {
+      "id": "page-item-0012",
+      "levelId": "page-level-0003",
+      "name": "阅读区地毯",
+      "kind": "rug",
+      "position": [
+        4.65,
+        3.7
+      ],
+      "size": [
+        2.05,
+        2.05,
+        0.06
       ],
       "rotation": 0,
       "elevation": 0,
       "color": "#E9E6DE"
     },
     {
-      "id": "page-item-0003",
+      "id": "page-item-0013",
       "levelId": "page-level-0003",
-      "name": "圆形餐桌",
+      "name": "阅读边几",
       "kind": "table-round",
       "position": [
-        2.7,
-        1.3
+        5.35,
+        4.2
       ],
       "size": [
-        1.1,
-        1.1,
-        0.74
+        0.58,
+        0.58,
+        0.52
       ],
       "rotation": 0,
       "elevation": 0,
       "color": "#80664D"
+    },
+    {
+      "id": "page-item-0014",
+      "levelId": "page-level-0003",
+      "name": "家庭工作椅",
+      "kind": "chair",
+      "position": [
+        7.75,
+        3.05
+      ],
+      "size": [
+        0.62,
+        0.62,
+        0.86
+      ],
+      "rotation": 180,
+      "elevation": 0,
+      "color": "#47705B"
+    },
+    {
+      "id": "page-item-0015",
+      "levelId": "page-level-0003",
+      "name": "家庭工作台",
+      "kind": "desk",
+      "position": [
+        7.75,
+        2.1
+      ],
+      "size": [
+        1.75,
+        0.68,
+        0.76
+      ],
+      "rotation": 0,
+      "elevation": 0,
+      "color": "#C6A87B"
+    },
+    {
+      "id": "page-item-0016",
+      "levelId": "page-level-0003",
+      "name": "换鞋凳",
+      "kind": "bench",
+      "position": [
+        1.55,
+        7.78
+      ],
+      "size": [
+        1,
+        0.42,
+        0.48
+      ],
+      "rotation": 0,
+      "elevation": 0,
+      "color": "#D9D2C8"
+    },
+    {
+      "id": "page-item-0017",
+      "levelId": "page-level-0003",
+      "name": "玄关收纳柜",
+      "kind": "cabinet",
+      "position": [
+        0.42,
+        7.18
+      ],
+      "size": [
+        0.55,
+        1.65,
+        2.1
+      ],
+      "rotation": 0,
+      "elevation": 0,
+      "color": "#80664D"
+    },
+    {
+      "id": "page-item-0018",
+      "levelId": "page-level-0003",
+      "name": "嵌入式冰箱",
+      "kind": "appliance",
+      "position": [
+        2.7,
+        1.82
+      ],
+      "size": [
+        0.72,
+        0.66,
+        1.85
+      ],
+      "rotation": 0,
+      "elevation": 0,
+      "color": "#8F9591"
+    },
+    {
+      "id": "page-item-0019",
+      "levelId": "page-level-0003",
+      "name": "L 型橱柜主柜",
+      "kind": "cabinet",
+      "position": [
+        1.6,
+        0.55
+      ],
+      "size": [
+        2.4,
+        0.62,
+        0.92
+      ],
+      "rotation": 0,
+      "elevation": 0,
+      "color": "#E8E0D4"
+    },
+    {
+      "id": "page-item-0020",
+      "levelId": "page-level-0003",
+      "name": "L 型橱柜侧柜",
+      "kind": "cabinet",
+      "position": [
+        0.55,
+        1.45
+      ],
+      "size": [
+        0.62,
+        1.45,
+        1.2
+      ],
+      "rotation": 0,
+      "elevation": 0,
+      "color": "#C6A87B"
+    },
+    {
+      "id": "page-item-0021",
+      "levelId": "page-level-0003",
+      "name": "客厅落地灯",
+      "kind": "lamp",
+      "position": [
+        3.62,
+        9.75
+      ],
+      "size": [
+        0.4,
+        0.4,
+        1.65
+      ],
+      "rotation": 0,
+      "elevation": 0,
+      "color": "#80664D"
+    },
+    {
+      "id": "page-item-0022",
+      "levelId": "page-level-0003",
+      "name": "电视与低柜",
+      "kind": "media",
+      "position": [
+        9.9,
+        7.15
+      ],
+      "size": [
+        0.42,
+        2,
+        1.28
+      ],
+      "rotation": 0,
+      "elevation": 0,
+      "color": "#56645C"
+    },
+    {
+      "id": "page-item-0023",
+      "levelId": "page-level-0003",
+      "name": "客厅绿植",
+      "kind": "plant",
+      "position": [
+        8.15,
+        9.75
+      ],
+      "size": [
+        0.72,
+        0.72,
+        1.25
+      ],
+      "rotation": 0,
+      "elevation": 0,
+      "color": "#47705B"
+    },
+    {
+      "id": "page-item-0024",
+      "levelId": "page-level-0003",
+      "name": "客厅地毯",
+      "kind": "rug",
+      "position": [
+        5.72,
+        8.08
+      ],
+      "size": [
+        3.75,
+        2.2,
+        0.06
+      ],
+      "rotation": 0,
+      "elevation": 0,
+      "color": "#E9E6DE"
+    },
+    {
+      "id": "page-item-0025",
+      "levelId": "page-level-0003",
+      "name": "三人沙发",
+      "kind": "sofa",
+      "position": [
+        4.85,
+        7.2
+      ],
+      "size": [
+        2.75,
+        0.92,
+        0.86
+      ],
+      "rotation": 0,
+      "elevation": 0,
+      "color": "#D9D2C8"
+    },
+    {
+      "id": "page-item-0026",
+      "levelId": "page-level-0003",
+      "name": "主卧双人床",
+      "kind": "bed",
+      "position": [
+        10.55,
+        10.65
+      ],
+      "size": [
+        2.05,
+        2.05,
+        0.75
+      ],
+      "rotation": 0,
+      "elevation": 0,
+      "color": "#D9D2C8"
+    },
+    {
+      "id": "page-item-0027",
+      "levelId": "page-level-0003",
+      "name": "主卧地毯",
+      "kind": "rug",
+      "position": [
+        10.55,
+        10.65
+      ],
+      "size": [
+        3.05,
+        3,
+        0.05
+      ],
+      "rotation": 0,
+      "elevation": 0,
+      "color": "#E9E6DE"
+    },
+    {
+      "id": "page-item-0028",
+      "levelId": "page-level-0003",
+      "name": "主卧左床头柜",
+      "kind": "cabinet",
+      "position": [
+        9.25,
+        10.65
+      ],
+      "size": [
+        0.5,
+        0.5,
+        0.54
+      ],
+      "rotation": 0,
+      "elevation": 0,
+      "color": "#C6A87B"
+    },
+    {
+      "id": "page-item-0029",
+      "levelId": "page-level-0003",
+      "name": "主卧右床头柜",
+      "kind": "cabinet",
+      "position": [
+        11.82,
+        10.65
+      ],
+      "size": [
+        0.5,
+        0.5,
+        0.54
+      ],
+      "rotation": 0,
+      "elevation": 0,
+      "color": "#C6A87B"
+    },
+    {
+      "id": "page-item-0030",
+      "levelId": "page-level-0003",
+      "name": "主卫坐便器",
+      "kind": "toilet",
+      "position": [
+        11.55,
+        7.42
+      ],
+      "size": [
+        0.66,
+        0.82,
+        0.75
+      ],
+      "rotation": 180,
+      "elevation": 0,
+      "color": "#F1EFE9"
+    },
+    {
+      "id": "page-item-0031",
+      "levelId": "page-level-0003",
+      "name": "主卫台盆柜",
+      "kind": "sink",
+      "position": [
+        11.75,
+        6.62
+      ],
+      "size": [
+        0.95,
+        0.55,
+        0.86
+      ],
+      "rotation": 0,
+      "elevation": 0,
+      "color": "#C6A87B"
+    },
+    {
+      "id": "page-item-0032",
+      "levelId": "page-level-0003",
+      "name": "主卧整墙衣柜",
+      "kind": "cabinet",
+      "position": [
+        11.95,
+        9.35
+      ],
+      "size": [
+        0.48,
+        1.5,
+        2.15
+      ],
+      "rotation": 0,
+      "elevation": 0,
+      "color": "#80664D"
+    },
+    {
+      "id": "page-item-0033",
+      "levelId": "page-level-0003",
+      "name": "公卫坐便器",
+      "kind": "toilet",
+      "position": [
+        11.55,
+        5.35
+      ],
+      "size": [
+        0.66,
+        0.82,
+        0.75
+      ],
+      "rotation": 0,
+      "elevation": 0,
+      "color": "#F1EFE9"
+    },
+    {
+      "id": "page-item-0034",
+      "levelId": "page-level-0003",
+      "name": "公卫台盆柜",
+      "kind": "sink",
+      "position": [
+        11.75,
+        4.62
+      ],
+      "size": [
+        0.95,
+        0.55,
+        0.86
+      ],
+      "rotation": 0,
+      "elevation": 0,
+      "color": "#C6A87B"
+    },
+    {
+      "id": "page-item-0035",
+      "levelId": "page-level-0003",
+      "name": "工作椅",
+      "kind": "chair",
+      "position": [
+        10.85,
+        1.55
+      ],
+      "size": [
+        0.6,
+        0.6,
+        0.86
+      ],
+      "rotation": 180,
+      "elevation": 0,
+      "color": "#47705B"
+    },
+    {
+      "id": "page-item-0036",
+      "levelId": "page-level-0003",
+      "name": "双人工作桌",
+      "kind": "desk",
+      "position": [
+        10.85,
+        0.62
+      ],
+      "size": [
+        1.75,
+        0.68,
+        0.76
+      ],
+      "rotation": 0,
+      "elevation": 0,
+      "color": "#C6A87B"
+    },
+    {
+      "id": "page-item-0037",
+      "levelId": "page-level-0003",
+      "name": "折叠沙发床",
+      "kind": "sofa-bed",
+      "position": [
+        10.85,
+        3.45
+      ],
+      "size": [
+        2.05,
+        0.82,
+        0.82
+      ],
+      "rotation": 180,
+      "elevation": 0,
+      "color": "#D9D2C8"
+    },
+    {
+      "id": "page-item-0038",
+      "levelId": "page-level-0003",
+      "name": "家政水槽",
+      "kind": "sink",
+      "position": [
+        8.55,
+        0.46
+      ],
+      "size": [
+        0.85,
+        0.58,
+        0.86
+      ],
+      "rotation": 0,
+      "elevation": 0,
+      "color": "#A8A49A"
+    },
+    {
+      "id": "page-item-0039",
+      "levelId": "page-level-0003",
+      "name": "季节收纳柜",
+      "kind": "cabinet",
+      "position": [
+        7.15,
+        0.44
+      ],
+      "size": [
+        1.55,
+        0.56,
+        1.9
+      ],
+      "rotation": 0,
+      "elevation": 0,
+      "color": "#C6A87B"
+    },
+    {
+      "id": "page-item-0040",
+      "levelId": "page-level-0003",
+      "name": "洗烘塔",
+      "kind": "appliance",
+      "position": [
+        3.8,
+        0.52
+      ],
+      "size": [
+        0.72,
+        0.68,
+        1.9
+      ],
+      "rotation": 0,
+      "elevation": 0,
+      "color": "#E9E6DE"
+    },
+    {
+      "id": "page-item-0041",
+      "levelId": "page-level-0003",
+      "name": "家政高柜",
+      "kind": "cabinet",
+      "position": [
+        5.15,
+        0.45
+      ],
+      "size": [
+        1.4,
+        0.56,
+        1.9
+      ],
+      "rotation": 0,
+      "elevation": 0,
+      "color": "#C6A87B"
     }
   ]
 }

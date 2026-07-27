@@ -1,14 +1,57 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="900" height="620" viewBox="0 0 900 620">
-  <rect width="900" height="620" fill="#f4f3ef"/>
-  <g fill="#ffffff" stroke="#4d544f" stroke-width="12">
-    <rect x="90" y="80" width="720" height="460"/>
-    <path d="M500 80v460"/>
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="850" viewBox="0 0 1200 850">
+  <rect width="1200" height="850" fill="#edece7"/>
+  <rect x="52" y="44" width="1096" height="762" rx="18" fill="#f9f8f4" stroke="#cac9c3" stroke-width="2"/>
+  <g transform="translate(210 90)">
+    <rect width="744" height="630" fill="#ffffff" stroke="#363d39" stroke-width="16"/>
+    <g fill="none" stroke="#4a514d" stroke-width="10" stroke-linecap="square">
+      <path d="M192 0v300M366 60v240M558 0v210"/>
+      <path d="M0 120h192M192 60h366M558 210h186"/>
+      <path d="M0 300h366M558 310h186M0 420h192M522 420h222"/>
+      <path d="M192 300v330M522 420v210M618 210v210"/>
+      <path d="M192 535h330"/>
+    </g>
+    <g fill="none" stroke="#b46d50" stroke-width="15">
+      <path d="M0 350h0M192 357h0M192 270h0M155 120h0M558 145h0M618 260h0M618 365h0M120 420h0M575 420h0"/>
+    </g>
+    <g fill="#3d4540" font-family="Arial, sans-serif" font-size="17" text-anchor="middle">
+      <text x="96" y="64">厨房</text>
+      <text x="279" y="34">生活阳台一</text>
+      <text x="462" y="34">生活阳台二</text>
+      <text x="650" y="74">书房兼客卧</text>
+      <text x="96" y="210">六人餐厅</text>
+      <text x="279" y="190">公共区扩展</text>
+      <text x="462" y="190">家庭工作区</text>
+      <text x="676" y="258">公卫</text>
+      <text x="96" y="360">玄关</text>
+      <text x="415" y="362">连续大客厅</text>
+      <text x="676" y="366">主卫</text>
+      <text x="96" y="520">保留次卧</text>
+      <text x="357" y="584">南向阳台</text>
+      <text x="632" y="520">主卧套房</text>
+    </g>
+    <g fill="#f0e4d4" stroke="#8b7358" stroke-width="2">
+      <rect x="28" y="24" width="132" height="36" rx="5"/>
+      <rect x="35" y="172" width="122" height="58" rx="8"/>
+      <rect x="225" y="150" width="82" height="112" rx="8"/>
+      <rect x="405" y="102" width="116" height="46" rx="6"/>
+      <rect x="243" y="345" width="178" height="50" rx="9"/>
+      <rect x="330" y="407" width="92" height="48" rx="7"/>
+      <rect x="46" y="465" width="105" height="132" rx="9"/>
+      <rect x="574" y="465" width="116" height="136" rx="9"/>
+    </g>
+    <g fill="#47705b">
+      <circle cx="477" cy="486" r="12"/>
+      <circle cx="447" cy="560" r="10"/>
+      <circle cx="270" cy="585" r="11"/>
+    </g>
+    <g fill="#646a66" font-family="Arial, sans-serif" font-size="13">
+      <text x="10" y="-22">北 ↑</text>
+      <text x="600" y="655">合成户型依据 · 仅用于模板演示</text>
+    </g>
   </g>
-  <g fill="#3e4540" font-family="Arial, sans-serif" font-size="28" text-anchor="middle">
-    <text x="295" y="300">Living and dining</text>
-    <text x="655" y="300">Bedroom</text>
-  </g>
-  <g fill="#9b4f3c" font-family="Arial, sans-serif" font-size="18">
-    <text x="90" y="58">SYNTHETIC TEST FLOOR PLAN · NOT CUSTOMER DATA</text>
+  <g fill="#6f756f" font-family="Arial, sans-serif">
+    <text x="78" y="91" font-size="15" font-weight="700" letter-spacing="2">PERSONAL AGENT · SYNTHETIC REDACTED PLAN</text>
+    <text x="78" y="742" font-size="14">示例尺寸为概念标定，不代表现场测绘、结构鉴定或施工图结论。</text>
+    <text x="78" y="772" font-size="13">户型要点：连续公共区 · 保留次卧 · 主卧套房 · 双生活阳台 · 书房兼客卧</text>
   </g>
 </svg>

@@ -54,8 +54,24 @@ button:focus-visible, select:focus-visible { outline: 2px solid var(--clay); out
 .navigator .summary { margin: 16px 8px; border-top: 1px solid var(--line); padding-top: 14px; color: var(--muted); font-size: 9px; line-height: 1.55; }
 
 .viewport { min-width: 0; min-height: 0; position: relative; }
-#scene { width: 100%; height: 100%; display: block; touch-action: none; }
+#scene { width: 100%; height: 100%; display: block; background: radial-gradient(circle at 55% 38%, #f5f4ef 0, #dfe3df 52%, #cbd0cc 100%); touch-action: none; }
 #scene > div, #scene canvas { width: 100% !important; height: 100% !important; }
+.pascal-room-label { pointer-events: none; }
+.pascal-room-label span {
+  display: block;
+  transform: translateY(-8px);
+  border: 1px solid rgba(255, 255, 255, .78);
+  border-radius: 999px;
+  padding: 5px 9px;
+  background: rgba(35, 43, 38, .82);
+  box-shadow: 0 5px 18px rgba(35, 42, 37, .18);
+  color: white;
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 1;
+  white-space: nowrap;
+  backdrop-filter: blur(8px);
+}
 .gesture { position: absolute; z-index: 2; top: 12px; right: 14px; color: var(--muted); font-size: 9px; pointer-events: none; }
 
 .viewer-tools {
@@ -132,7 +148,8 @@ button:focus-visible, select:focus-visible { outline: 2px solid var(--clay); out
 .plan-svg .level-title { fill: #657068; font-size: 12px; letter-spacing: .08em; }
 body[data-labels="hidden"] .plan-svg text,
 body[data-labels="hidden"] #scene [id$="-label"],
-body[data-labels="hidden"] #scene .label-pin { display: none !important; }
+body[data-labels="hidden"] #scene .label-pin,
+body[data-labels="hidden"] #scene .pascal-room-label { display: none !important; }
 
 @media (max-width: 900px), (orientation: landscape) and (max-height: 650px) {
   .top { height: 58px; grid-template-columns: auto minmax(0, 1fr) auto; padding: 7px max(10px, env(safe-area-inset-right)) 7px max(10px, env(safe-area-inset-left)); }
