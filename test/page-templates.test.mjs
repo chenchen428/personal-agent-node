@@ -140,6 +140,11 @@ test("template catalog and example route consume only the verified generated art
   assert.match(projectCamera, /pascal-camera-mode/);
   assert.match(projectCamera, /activeMode\.current/);
   assert.match(projectCamera, /1_900, 2_800/);
+  assert.match(projectCamera, /hasUserCameraPose/);
+  assert.match(projectCamera, /onStart=\{markUserCameraPose\}/);
+  assert.match(projectCamera, /event\?\.detail\?\.automatic === true/);
+  assert.match(projectCamera, /viewport\.current = size/);
+  assert.doesNotMatch(projectCamera, /\[cameraMode, frame, invalidate, size\.height, size\.width\]/);
   assert.match(viewerClient, /<ArchitectureEnvelope payload=\{payload\}/);
   assert.match(viewerClient, /<ViewerLifecycle \/>/);
   assert.match(viewerClient, /wallMode: 'down'/);
@@ -148,6 +153,7 @@ test("template catalog and example route consume only the verified generated art
   assert.match(viewerClient, /disablePostFx/);
   assert.match(viewerClient, /shadows: true/);
   assert.match(viewerClient, /setTimeout\(restoreCamera, 1_800\)/);
+  assert.match(viewerClient, /detail: \{ automatic: true \}/);
   assert.match(viewerClient, /pascal-camera-mode/);
   assert.match(viewerLifecycle, /useFrame/);
   assert.match(viewerLifecycle, /pascal-viewer-warmup/);

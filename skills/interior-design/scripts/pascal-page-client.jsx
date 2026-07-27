@@ -176,7 +176,9 @@ function PascalScene({ payload }) {
       onSceneReadyChange={(ready) => {
         if (!ready) return;
         const restoreCamera = () => {
-          window.dispatchEvent(new CustomEvent('pascal-reset-camera'));
+          window.dispatchEvent(new CustomEvent('pascal-reset-camera', {
+            detail: { automatic: true },
+          }));
           window.dispatchEvent(new CustomEvent('pascal-viewer-warmup'));
         };
         restoreCamera();

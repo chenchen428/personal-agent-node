@@ -6,9 +6,12 @@ import { useViewer } from '@pascal-app/viewer';
 export function ProjectCamera({ payload }) {
   const controls = useRef(null);
   const activeMode = useRef('perspective');
+  const hasUserCameraPose = useRef(false);
+  const settleTimers = useRef([]);
   const camera = useThree((state) => state.camera);
   const invalidate = useThree((state) => state.invalidate);
   const size = useThree((state) => state.size);
+  const viewport = useRef(size);
   const cameraMode = useViewer((state) => state.cameraMode);
   const frame = useMemo(() => {
     const points = Object.values(payload.scene?.nodes || {})
@@ -26,11 +29,22 @@ export function ProjectCamera({ payload }) {
   }, [payload]);
 
   useEffect(() => {
+    viewport.current = size;
+  }, [size]);
+
+  useEffect(() => {
+    const clearSettleTimers = () => {
+      settleTimers.current.forEach(window.clearTimeout);
+      settleTimers.current = [];
+    };
     const applyPose = async (mode = cameraMode) => {
       activeMode.current = mode;
       const api = controls.current;
       if (!api) return;
-      const aspect = size.height > 0 ? size.width / size.height : 16 / 9;
+      const currentViewport = viewport.current;
+      const aspect = currentViewport.height > 0
+        ? currentViewport.width / currentViewport.height
+        : 16 / 9;
       const narrowViewportScale = Math.max(1, 1.5 / aspect);
       if (mode === 'orthographic') {
         await api.setLookAt(
@@ -55,23 +69,44 @@ export function ProjectCamera({ payload }) {
       }
       invalidate();
     };
-    const reset = () => { void applyPose(activeMode.current); };
+    const reset = (event) => {
+      const automatic = event?.detail?.automatic === true;
+      if (automatic && hasUserCameraPose.current) return;
+      if (!automatic) {
+        hasUserCameraPose.current = false;
+        clearSettleTimers();
+      }
+      void applyPose(activeMode.current);
+    };
     const changeMode = (event) => {
       const mode = event.detail;
-      if (mode === 'perspective' || mode === 'orthographic') void applyPose(mode);
+      if (mode === 'perspective' || mode === 'orthographic') {
+        hasUserCameraPose.current = false;
+        clearSettleTimers();
+        void applyPose(mode);
+      }
     };
     activeMode.current = cameraMode;
     void applyPose();
-    const settleTimers = [160, 520, 1_100, 1_900, 2_800]
-      .map((delay) => window.setTimeout(reset, delay));
+    settleTimers.current = [160, 520, 1_100, 1_900, 2_800]
+      .map((delay) => window.setTimeout(
+        () => reset({ detail: { automatic: true } }),
+        delay,
+      ));
     window.addEventListener('pascal-reset-camera', reset);
     window.addEventListener('pascal-camera-mode', changeMode);
     return () => {
-      settleTimers.forEach(window.clearTimeout);
+      clearSettleTimers();
       window.removeEventListener('pascal-reset-camera', reset);
       window.removeEventListener('pascal-camera-mode', changeMode);
     };
-  }, [cameraMode, frame, invalidate, size.height, size.width]);
+  }, [cameraMode, frame, invalidate]);
+
+  const markUserCameraPose = () => {
+    hasUserCameraPose.current = true;
+    settleTimers.current.forEach(window.clearTimeout);
+    settleTimers.current = [];
+  };
 
   return <CameraControls
     camera={camera}
@@ -80,6 +115,7 @@ export function ProjectCamera({ payload }) {
     makeDefault
     maxDistance={frame.span * 5}
     minDistance={Math.max(2, frame.span * 0.16)}
+    onStart={markUserCameraPose}
     ref={controls}
   />;
 }
