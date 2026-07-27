@@ -1,11 +1,11 @@
-import React, { Component, useEffect, useMemo, useRef, useState } from 'react';
+import React, { Component, useEffect, useMemo, useState } from 'react';
 import { createRoot } from 'react-dom/client';
-import { CameraControls, Html } from '@react-three/drei';
-import { useThree } from '@react-three/fiber';
+import { Html } from '@react-three/drei';
 import useScene from '@pascal-app/core/store';
 import { Viewer, useViewer } from '@pascal-app/viewer';
-import { Sphere, Vector3 } from 'three';
 import { ArchitectureEnvelope } from './pascal-architecture.jsx';
+import { ProjectCamera } from './pascal-project-camera.jsx';
+import { showViewerFallback, ViewerLifecycle } from './pascal-viewer-lifecycle.jsx';
 class ViewerBoundary extends Component {
   constructor(props) {
     super(props);
@@ -17,7 +17,7 @@ class ViewerBoundary extends Component {
   }
 
   componentDidCatch() {
-    document.body.dataset.viewerState = 'fallback';
+    showViewerFallback();
   }
 
   render() {
@@ -145,72 +145,14 @@ function SceneLabels({ payload }) {
         node.polygon.reduce((sum, point) => sum + point[1], 0) / node.polygon.length,
       ],
     })), [payload]);
-  return labels.map((label) => <Html center className="pascal-room-label" key={label.id} position={label.position}>
+  return labels.map((label, index) => <Html
+    center
+    className={`pascal-room-label${[1, 4, 7, 8, 12].includes(index) ? ' is-dark' : ''}`}
+    key={label.id}
+    position={label.position}
+  >
     <span>{label.name}</span>
   </Html>);
-}
-
-function ProjectCamera({ payload }) {
-  const controls = useRef(null);
-  const camera = useThree((state) => state.camera);
-  const invalidate = useThree((state) => state.invalidate);
-  const cameraMode = useViewer((state) => state.cameraMode);
-  const frame = useMemo(() => {
-    const points = Object.values(payload.scene?.nodes || {})
-      .filter((node) => node.type === 'zone' && Array.isArray(node.polygon))
-      .flatMap((node) => node.polygon);
-    const minX = Math.min(...points.map((point) => point[0]), 0);
-    const maxX = Math.max(...points.map((point) => point[0]), 8);
-    const minZ = Math.min(...points.map((point) => point[1]), 0);
-    const maxZ = Math.max(...points.map((point) => point[1]), 8);
-    return {
-      sphere: new Sphere(
-        new Vector3((minX + maxX) / 2, 1.5, (minZ + maxZ) / 2),
-        Math.hypot(maxX - minX, maxZ - minZ, 3) * 0.58,
-      ),
-      centerX: (minX + maxX) / 2,
-      centerZ: (minZ + maxZ) / 2,
-      span: Math.max(maxX - minX, maxZ - minZ, 8),
-    };
-  }, [payload]);
-  useEffect(() => {
-    const api = controls.current;
-    if (!api) return;
-    void (async () => {
-      if (cameraMode === 'orthographic') {
-        await api.setLookAt(
-          frame.centerX,
-          frame.span * 1.6,
-          frame.centerZ + 0.001,
-          frame.centerX,
-          0,
-          frame.centerZ,
-          false,
-        );
-      } else {
-        await api.setLookAt(
-          frame.centerX + frame.span * 0.95,
-          frame.span * 1.28,
-          frame.centerZ + frame.span * 0.95,
-          frame.centerX,
-          0.7,
-          frame.centerZ,
-          false,
-        );
-      }
-      await api.fitToSphere(frame.sphere, false);
-      invalidate();
-    })();
-  }, [camera, cameraMode, frame, invalidate]);
-  return <CameraControls
-    camera={camera}
-    dollyToCursor
-    key={cameraMode}
-    makeDefault
-    maxDistance={frame.span * 5}
-    minDistance={Math.max(2, frame.span * 0.16)}
-    ref={controls}
-  />;
 }
 
 function PascalScene({ payload }) {
@@ -232,11 +174,10 @@ function PascalScene({ payload }) {
       sceneReadyKey={payload.sceneHash || payload.revision}
       sceneReadyMaxWaitMs={12_000}
       onSceneReadyChange={(ready) => {
-        document.body.dataset.viewerState = ready ? 'ready' : 'loading';
-        const fallback = document.getElementById('fallback');
-        if (fallback) fallback.hidden = ready;
+        if (ready) window.dispatchEvent(new CustomEvent('pascal-viewer-warmup'));
       }}
     >
+      <ViewerLifecycle />
       <ProjectCamera payload={payload} />
       <ArchitectureEnvelope payload={payload} />
       <ProceduralFurniture highlighted={highlighted} items={payload.furniture || []} />
@@ -248,7 +189,6 @@ function PascalScene({ payload }) {
 function start() {
   const source = document.getElementById('pascal-scene');
   const target = document.getElementById('scene');
-  const fallback = document.getElementById('fallback');
   if (!source || !target) return;
   try {
     const payload = JSON.parse(source.textContent || '{}');
@@ -282,6 +222,15 @@ function start() {
         useViewer.getState().setCameraMode(mode);
         return true;
       },
+      resetCamera() {
+        useViewer.getState().setCameraMode('perspective');
+        window.dispatchEvent(new CustomEvent('pascal-reset-camera'));
+        return true;
+      },
+      warmup() {
+        window.dispatchEvent(new CustomEvent('pascal-viewer-warmup'));
+        return true;
+      },
       highlight(ids) {
         const selectedIds = Array.isArray(ids) ? ids : [];
         useViewer.getState().setSelection({ selectedIds });
@@ -291,8 +240,7 @@ function start() {
     };
     createRoot(target).render(<PascalScene payload={payload} />);
   } catch {
-    document.body.dataset.viewerState = 'fallback';
-    if (fallback) fallback.hidden = false;
+    showViewerFallback();
   }
 }
 

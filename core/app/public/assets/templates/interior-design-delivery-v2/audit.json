@@ -52,8 +52,8 @@
           7.25
         ],
         "gridMetres": 0.25,
-        "walkableCells": 2061,
-        "walkableEdges": 3804
+        "walkableCells": 2079,
+        "walkableEdges": 3852
       },
       "threshold": {
         "comfortReviewWidthMetres": 0.75

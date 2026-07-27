@@ -2,14 +2,14 @@
   "schemaVersion": 1,
   "engine": "pascal-v2",
   "revision": 2,
-  "sceneHash": "f4e71c03c11691c11a33dd9d0a87b2082a9f0b328aac420855d961dc909efd9d",
+  "sceneHash": "a31c2086448b0ba533978952c0c7b8b781975953a7c303a2ab110c5d8ac9a404",
   "scene": {
     "nodes": {
       "page-building-0002": {
         "object": "node",
         "id": "page-building-0002",
         "type": "building",
-        "name": "C 户型 · 现代温润全屋改造",
+        "name": "C 户型 · 四房两厅两卫",
         "parentId": "page-site-0001",
         "visible": true,
         "children": [
@@ -880,7 +880,7 @@
         "object": "node",
         "id": "page-site-0001",
         "type": "site",
-        "name": "C 户型 · 现代温润全屋改造",
+        "name": "C 户型 · 四房两厅两卫",
         "parentId": null,
         "visible": true,
         "polygon": {
@@ -1747,7 +1747,7 @@
         "object": "node",
         "id": "page-zone-0056",
         "type": "zone",
-        "name": "南向阳台",
+        "name": "南向景观阳台",
         "parentId": "page-level-0003",
         "visible": true,
         "metadata": {
@@ -1781,7 +1781,7 @@
         "object": "node",
         "id": "page-zone-0054",
         "type": "zone",
-        "name": "保留次卧",
+        "name": "卧室一 · 南向",
         "parentId": "page-level-0003",
         "visible": true,
         "metadata": {
@@ -1815,7 +1815,7 @@
         "object": "node",
         "id": "page-zone-0047",
         "type": "zone",
-        "name": "六人餐厅",
+        "name": "餐厅 · 六人位",
         "parentId": "page-level-0003",
         "visible": true,
         "metadata": {
@@ -1849,11 +1849,11 @@
         "object": "node",
         "id": "page-zone-0049",
         "type": "zone",
-        "name": "家庭工作区",
+        "name": "卧室二 · 北向",
         "parentId": "page-level-0003",
         "visible": true,
         "metadata": {
-          "roomKind": "family-work",
+          "roomKind": "bedroom",
           "requiredAccess": true
         },
         "polygon": [
@@ -1985,7 +1985,7 @@
         "object": "node",
         "id": "page-zone-0053",
         "type": "zone",
-        "name": "大客厅 · 连续公共区",
+        "name": "客厅 · 多功能厅",
         "parentId": "page-level-0003",
         "visible": true,
         "metadata": {
@@ -2027,11 +2027,11 @@
         "object": "node",
         "id": "page-zone-0048",
         "type": "zone",
-        "name": "原卧室并入公共区",
+        "name": "过厅 · 内走廊",
         "parentId": "page-level-0003",
         "visible": true,
         "metadata": {
-          "roomKind": "living-extension",
+          "roomKind": "foyer",
           "requiredAccess": true
         },
         "polygon": [
@@ -2061,7 +2061,7 @@
         "object": "node",
         "id": "page-zone-0055",
         "type": "zone",
-        "name": "主卧套房",
+        "name": "主卧 · 南向",
         "parentId": "page-level-0003",
         "visible": true,
         "metadata": {
@@ -2163,11 +2163,11 @@
         "object": "node",
         "id": "page-zone-0046",
         "type": "zone",
-        "name": "书房兼客卧",
+        "name": "卧室三 · 北向",
         "parentId": "page-level-0003",
         "visible": true,
         "metadata": {
-          "roomKind": "study",
+          "roomKind": "bedroom",
           "requiredAccess": true
         },
         "polygon": [
@@ -2472,38 +2472,38 @@
     {
       "id": "page-item-0014",
       "levelId": "page-level-0003",
-      "name": "家庭工作椅",
-      "kind": "chair",
+      "name": "卧室二衣柜",
+      "kind": "cabinet",
       "position": [
-        7.75,
-        3.05
+        8.9,
+        2.05
       ],
       "size": [
-        0.62,
-        0.62,
-        0.86
+        0.52,
+        1.4,
+        2.1
       ],
-      "rotation": 180,
+      "rotation": 0,
       "elevation": 0,
-      "color": "#47705B"
+      "color": "#80664D"
     },
     {
       "id": "page-item-0015",
       "levelId": "page-level-0003",
-      "name": "家庭工作台",
-      "kind": "desk",
+      "name": "卧室二双人床",
+      "kind": "bed",
       "position": [
         7.75,
-        2.1
+        3.15
       ],
       "size": [
         1.75,
-        0.68,
-        0.76
+        2,
+        0.74
       ],
       "rotation": 0,
       "elevation": 0,
-      "color": "#C6A87B"
+      "color": "#D9D2C8"
     },
     {
       "id": "page-item-0016",
@@ -2850,7 +2850,7 @@
     {
       "id": "page-item-0035",
       "levelId": "page-level-0003",
-      "name": "工作椅",
+      "name": "卧室三书椅",
       "kind": "chair",
       "position": [
         10.85,
@@ -2868,7 +2868,7 @@
     {
       "id": "page-item-0036",
       "levelId": "page-level-0003",
-      "name": "双人工作桌",
+      "name": "卧室三书桌",
       "kind": "desk",
       "position": [
         10.85,
@@ -2886,18 +2886,18 @@
     {
       "id": "page-item-0037",
       "levelId": "page-level-0003",
-      "name": "折叠沙发床",
-      "kind": "sofa-bed",
+      "name": "卧室三单人床",
+      "kind": "bed",
       "position": [
         10.85,
-        3.45
+        3.05
       ],
       "size": [
-        2.05,
-        0.82,
-        0.82
+        1.45,
+        1.95,
+        0.72
       ],
-      "rotation": 180,
+      "rotation": 0,
       "elevation": 0,
       "color": "#D9D2C8"
     },

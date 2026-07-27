@@ -1,5 +1,5 @@
 {
-  "title": "C 户型 · 现代温润全屋改造",
+  "title": "C 户型 · 四房两厅两卫",
   "status": "selected_concept",
   "evidence": [
     {
@@ -10,6 +10,7 @@
       "calibration": {
         "basis": "known-length",
         "metresPerUnit": 1,
+        "knownAreaSquareMetres": 135.08,
         "confidence": 0.9
       },
       "confidence": "specified",
@@ -18,13 +19,13 @@
         "delivery"
       ],
       "observations": [
-        "内置模板使用的合成户型依据，不包含任何客户数据。"
+        "依据本轮用户提供的 C 户型宣传图进行脱敏矢量重绘，保留四房两厅两卫、双生活阳台和南向景观阳台关系。"
       ],
       "inferences": [
-        "概念尺寸仅用于演示受治理的设计流程，施工前仍需现场复尺。"
+        "宣传图标注建面 135.08㎡；当前几何仅按可读尺寸进行概念标定，施工前仍需现场复尺。"
       ],
       "redactionStatus": "redacted",
-      "contentHash": "41ef143cf4687b6fcb8634bb37ccc5a84e9eae05968003331fff560e26849f67"
+      "contentHash": "df1b8d589fd7eb7db15a1eb6d8415a186afb3b4723b73923705fa88da2ef77ac"
     }
   ],
   "brief": {
@@ -53,7 +54,7 @@
       {
         "requirementId": "req-continuous-circulation",
         "source": "内置模板专业设计简报",
-        "summary": "从入户、玄关到连续公共区及三间主要居住空间保持可追踪通行路径。",
+        "summary": "从入户、玄关到餐厅、客厅以及四间卧室保持可追踪通行路径。",
         "priority": "must",
         "status": "satisfied",
         "sceneNodeIds": ["entry", "foyer", "foyer-living-door", "living", "bed-left-door", "bed-left", "master-door", "master", "study-door", "study"],
@@ -62,7 +63,7 @@
       {
         "requirementId": "req-open-public-zone",
         "source": "内置模板专业设计简报",
-        "summary": "把原卧室尺度并入公共区，形成餐厅、家庭工作区和客厅连续的多人活动面。",
+        "summary": "保持图纸中的餐厅、客厅与多功能厅连续公共活动面。",
         "priority": "must",
         "status": "satisfied",
         "sceneNodeIds": ["dining", "living-extension", "family-work", "living"],
@@ -71,10 +72,10 @@
       {
         "requirementId": "req-retain-bedroom",
         "source": "内置模板专业设计简报",
-        "summary": "保留左下角靠凸窗次卧，并提供床、衣柜和独立通行。",
+        "summary": "按图保留卧室一、卧室二、卧室三和主卧四个独立睡眠空间。",
         "priority": "must",
         "status": "satisfied",
-        "sceneNodeIds": ["bed-left", "bed-left-door", "bed-left-window", "bed-left-bed", "bed-left-wardrobe"],
+        "sceneNodeIds": ["bed-left", "bed-left-door", "bed-left-window", "bed-left-bed", "bed-left-wardrobe", "family-work", "study", "master"],
         "verification": {"method": "scene-node-trace", "result": "passed"}
       },
       {
@@ -89,16 +90,16 @@
       {
         "requirementId": "req-flex-study",
         "source": "内置模板专业设计简报",
-        "summary": "书房兼顾双人办公、阅读和临时客卧。",
+        "summary": "卧室二与卧室三均配置床位、收纳和独立通行。",
         "priority": "should",
         "status": "satisfied",
-        "sceneNodeIds": ["study", "study-desk", "study-chair", "study-sofa-bed"],
+        "sceneNodeIds": ["study", "study-desk", "study-sofa-bed", "family-work", "family-console"],
         "verification": {"method": "scene-node-trace", "result": "passed"}
       },
       {
         "requirementId": "req-laundry-storage",
         "source": "内置模板专业设计简报",
-        "summary": "双生活阳台分别承担洗烘、家政和季节收纳。",
+        "summary": "按图保留厨房外与卧室侧两处生活阳台，分别承担洗烘和家政收纳。",
         "priority": "should",
         "status": "satisfied",
         "sceneNodeIds": ["laundry-west", "utility-east", "utility-washer", "utility-storage"],
@@ -127,7 +128,7 @@
   "assumptions": [
     {
       "assumptionId": "assumption-concept-calibration",
-      "summary": "合成图按一图形单位等于一米进行概念标定，不代表现场测绘结论。",
+      "summary": "用户图片按可读尺寸进行概念标定，宣传建面与套内模型面积口径不同，不代表现场测绘结论。",
       "confidence": "estimated"
     }
   ],
@@ -154,10 +155,11 @@
   "concepts": [
     {
       "conceptId": "concept-open-living",
-      "name": "方案 A · 连续大客厅",
-      "summary": "以拆改前提待专业核验的连续公共区为核心，完整保留次卧、主卧套房、书房兼客卧和双生活阳台。",
+      "name": "方案 A · 按图还原",
+      "summary": "依据 C 户型图恢复四房两厅两卫、双生活阳台、玄关和南向景观阳台，作为本轮验收基准。",
+      "singleOptionReason": "本模板只用于核对用户提供的 C 户型图与三维空间的一致性，不引入会改变原始户型关系的替代方案。",
       "tradeoffs": [
-        "公共区获得连续活动面；原卧室隔墙属性、拆改范围和机电调整必须在深化阶段核验。",
+        "当前仅还原图纸可读空间关系；墙体属性、尺寸偏差和机电条件必须在深化阶段核验。",
         "双生活阳台分担家政功能；柜体深度和设备点位仍需现场复尺。"
       ],
       "budgetItems": [],
@@ -172,17 +174,17 @@
             {"roomId": "kitchen", "name": "厨房 · L 型橱柜", "kind": "kitchen", "polygon": [[0, 0], [3.2, 0], [3.2, 2.4], [0, 2.4]], "materialId": "warm-stone", "requiredAccess": true, "evidenceIds": ["evidence-source-plan-redacted"], "requirementIds": ["req-six-seat-dining"]},
             {"roomId": "laundry-west", "name": "生活阳台一 · 洗烘", "kind": "laundry", "polygon": [[3.2, 0], [6.1, 0], [6.1, 1.2], [3.2, 1.2]], "materialId": "warm-stone", "requiredAccess": false, "evidenceIds": ["evidence-source-plan-redacted"], "requirementIds": ["req-laundry-storage"]},
             {"roomId": "utility-east", "name": "生活阳台二 · 家政", "kind": "laundry", "polygon": [[6.1, 0], [9.3, 0], [9.3, 1.2], [6.1, 1.2]], "materialId": "warm-stone", "requiredAccess": false, "evidenceIds": ["evidence-source-plan-redacted"], "requirementIds": ["req-laundry-storage"]},
-            {"roomId": "study", "name": "书房兼客卧", "kind": "study", "polygon": [[9.3, 0], [12.4, 0], [12.4, 4.2], [9.3, 4.2]], "materialId": "warm-oak", "requiredAccess": true, "evidenceIds": ["evidence-source-plan-redacted"], "requirementIds": ["req-continuous-circulation", "req-flex-study"]},
-            {"roomId": "dining", "name": "六人餐厅", "kind": "dining", "polygon": [[0, 2.4], [3.2, 2.4], [3.2, 6], [0, 6]], "materialId": "warm-oak", "requiredAccess": true, "evidenceIds": ["evidence-source-plan-redacted"], "requirementIds": ["req-open-public-zone", "req-six-seat-dining"]},
-            {"roomId": "living-extension", "name": "原卧室并入公共区", "kind": "living-extension", "polygon": [[3.2, 1.2], [6.1, 1.2], [6.1, 6], [3.2, 6]], "materialId": "warm-oak", "requiredAccess": true, "evidenceIds": ["evidence-source-plan-redacted"], "requirementIds": ["req-open-public-zone", "req-professional-hold-points"]},
-            {"roomId": "family-work", "name": "家庭工作区", "kind": "family-work", "polygon": [[6.1, 1.2], [9.3, 1.2], [9.3, 6], [6.1, 6]], "materialId": "warm-oak", "requiredAccess": true, "evidenceIds": ["evidence-source-plan-redacted"], "requirementIds": ["req-open-public-zone", "req-flex-study"]},
+            {"roomId": "study", "name": "卧室三 · 北向", "kind": "bedroom", "polygon": [[9.3, 0], [12.4, 0], [12.4, 4.2], [9.3, 4.2]], "materialId": "warm-oak", "requiredAccess": true, "evidenceIds": ["evidence-source-plan-redacted"], "requirementIds": ["req-continuous-circulation", "req-flex-study", "req-retain-bedroom"]},
+            {"roomId": "dining", "name": "餐厅 · 六人位", "kind": "dining", "polygon": [[0, 2.4], [3.2, 2.4], [3.2, 6], [0, 6]], "materialId": "warm-oak", "requiredAccess": true, "evidenceIds": ["evidence-source-plan-redacted"], "requirementIds": ["req-open-public-zone", "req-six-seat-dining"]},
+            {"roomId": "living-extension", "name": "过厅 · 内走廊", "kind": "foyer", "polygon": [[3.2, 1.2], [6.1, 1.2], [6.1, 6], [3.2, 6]], "materialId": "warm-oak", "requiredAccess": true, "evidenceIds": ["evidence-source-plan-redacted"], "requirementIds": ["req-continuous-circulation", "req-professional-hold-points"]},
+            {"roomId": "family-work", "name": "卧室二 · 北向", "kind": "bedroom", "polygon": [[6.1, 1.2], [9.3, 1.2], [9.3, 6], [6.1, 6]], "materialId": "warm-oak", "requiredAccess": true, "evidenceIds": ["evidence-source-plan-redacted"], "requirementIds": ["req-continuous-circulation", "req-flex-study", "req-retain-bedroom"]},
             {"roomId": "public-bath", "name": "公卫 · 干湿分区", "kind": "bathroom", "polygon": [[10.3, 4.2], [12.4, 4.2], [12.4, 6.2], [10.3, 6.2]], "materialId": "warm-stone", "requiredAccess": false, "evidenceIds": ["evidence-source-plan-redacted"], "requirementIds": ["req-professional-hold-points"]},
             {"roomId": "master-bath", "name": "主卫", "kind": "bathroom", "polygon": [[10.3, 6.2], [12.4, 6.2], [12.4, 8.4], [10.3, 8.4]], "materialId": "warm-stone", "requiredAccess": false, "evidenceIds": ["evidence-source-plan-redacted"], "requirementIds": ["req-professional-hold-points"]},
             {"roomId": "foyer", "name": "玄关收纳", "kind": "foyer", "polygon": [[0, 6], [3.2, 6], [3.2, 8.4], [0, 8.4]], "materialId": "warm-oak", "requiredAccess": true, "evidenceIds": ["evidence-source-plan-redacted"], "requirementIds": ["req-continuous-circulation"]},
-            {"roomId": "living", "name": "大客厅 · 连续公共区", "kind": "living", "polygon": [[3.2, 6], [10.3, 6], [10.3, 8.4], [8.7, 8.4], [8.7, 10.7], [3.2, 10.7]], "materialId": "warm-oak", "requiredAccess": true, "evidenceIds": ["evidence-source-plan-redacted"], "requirementIds": ["req-continuous-circulation", "req-open-public-zone", "req-warm-materials"]},
-            {"roomId": "bed-left", "name": "保留次卧", "kind": "bedroom", "polygon": [[0, 8.4], [3.2, 8.4], [3.2, 12.6], [0, 12.6]], "materialId": "warm-oak", "requiredAccess": true, "evidenceIds": ["evidence-source-plan-redacted"], "requirementIds": ["req-continuous-circulation", "req-retain-bedroom"]},
-            {"roomId": "master", "name": "主卧套房", "kind": "bedroom", "polygon": [[8.7, 8.4], [12.4, 8.4], [12.4, 12.6], [8.7, 12.6]], "materialId": "warm-oak", "requiredAccess": true, "evidenceIds": ["evidence-source-plan-redacted"], "requirementIds": ["req-continuous-circulation", "req-warm-materials"]},
-            {"roomId": "balcony", "name": "南向阳台", "kind": "balcony", "polygon": [[3.2, 10.7], [8.7, 10.7], [8.7, 12.6], [3.2, 12.6]], "materialId": "warm-stone", "requiredAccess": false, "evidenceIds": ["evidence-source-plan-redacted"], "requirementIds": ["req-warm-materials"]}
+            {"roomId": "living", "name": "客厅 · 多功能厅", "kind": "living", "polygon": [[3.2, 6], [10.3, 6], [10.3, 8.4], [8.7, 8.4], [8.7, 10.7], [3.2, 10.7]], "materialId": "warm-oak", "requiredAccess": true, "evidenceIds": ["evidence-source-plan-redacted"], "requirementIds": ["req-continuous-circulation", "req-open-public-zone", "req-warm-materials"]},
+            {"roomId": "bed-left", "name": "卧室一 · 南向", "kind": "bedroom", "polygon": [[0, 8.4], [3.2, 8.4], [3.2, 12.6], [0, 12.6]], "materialId": "warm-oak", "requiredAccess": true, "evidenceIds": ["evidence-source-plan-redacted"], "requirementIds": ["req-continuous-circulation", "req-retain-bedroom"]},
+            {"roomId": "master", "name": "主卧 · 南向", "kind": "bedroom", "polygon": [[8.7, 8.4], [12.4, 8.4], [12.4, 12.6], [8.7, 12.6]], "materialId": "warm-oak", "requiredAccess": true, "evidenceIds": ["evidence-source-plan-redacted"], "requirementIds": ["req-continuous-circulation", "req-warm-materials", "req-retain-bedroom"]},
+            {"roomId": "balcony", "name": "南向景观阳台", "kind": "balcony", "polygon": [[3.2, 10.7], [8.7, 10.7], [8.7, 12.6], [3.2, 12.6]], "materialId": "warm-stone", "requiredAccess": false, "evidenceIds": ["evidence-source-plan-redacted"], "requirementIds": ["req-warm-materials"]}
           ],
           "walls": [
             {"wallId": "exterior-north", "start": [0, 0], "end": [12.4, 0], "height": 2.85, "thickness": 0.22, "exteriorEdge": 0},
@@ -238,11 +240,11 @@
             {"itemId": "extension-rug", "name": "阅读区地毯", "kind": "rug", "roomId": "living-extension", "position": [4.65, 3.7], "size": [2.05, 2.05, 0.06], "rotation": 0, "materialId": "warm-white", "color": "#E9E6DE", "clearanceExempt": true, "requirementIds": ["req-open-public-zone"]},
             {"itemId": "extension-chair", "name": "阅读单椅", "kind": "chair", "roomId": "living-extension", "position": [4.18, 3.45], "size": [0.82, 0.82, 0.88], "rotation": -25, "materialId": "forest-fabric", "color": "#47705B", "clearanceExempt": false, "requirementIds": ["req-open-public-zone"]},
             {"itemId": "extension-table", "name": "阅读边几", "kind": "table-round", "roomId": "living-extension", "position": [5.35, 4.2], "size": [0.58, 0.58, 0.52], "rotation": 0, "materialId": "oak-dark", "color": "#80664D", "clearanceExempt": true, "requirementIds": ["req-open-public-zone"]},
-            {"itemId": "study-desk", "name": "双人工作桌", "kind": "desk", "roomId": "study", "position": [10.85, 0.62], "size": [1.75, 0.68, 0.76], "rotation": 0, "materialId": "warm-oak", "color": "#C6A87B", "clearanceExempt": true, "requirementIds": ["req-flex-study"]},
-            {"itemId": "study-chair", "name": "工作椅", "kind": "chair", "roomId": "study", "position": [10.85, 1.55], "size": [0.6, 0.6, 0.86], "rotation": 180, "materialId": "forest-fabric", "color": "#47705B", "clearanceExempt": false, "requirementIds": ["req-flex-study"]},
-            {"itemId": "study-sofa-bed", "name": "折叠沙发床", "kind": "sofa-bed", "roomId": "study", "position": [10.85, 3.45], "size": [2.05, 0.82, 0.82], "rotation": 180, "materialId": "warm-white", "color": "#D9D2C8", "clearanceExempt": true, "requirementIds": ["req-flex-study"]},
-            {"itemId": "family-console", "name": "家庭工作台", "kind": "desk", "roomId": "family-work", "position": [7.75, 2.1], "size": [1.75, 0.68, 0.76], "rotation": 0, "materialId": "warm-oak", "color": "#C6A87B", "clearanceExempt": true, "requirementIds": ["req-open-public-zone", "req-flex-study"]},
-            {"itemId": "family-chair", "name": "家庭工作椅", "kind": "chair", "roomId": "family-work", "position": [7.75, 3.05], "size": [0.62, 0.62, 0.86], "rotation": 180, "materialId": "forest-fabric", "color": "#47705B", "clearanceExempt": false, "requirementIds": ["req-open-public-zone"]},
+            {"itemId": "study-desk", "name": "卧室三书桌", "kind": "desk", "roomId": "study", "position": [10.85, 0.62], "size": [1.75, 0.68, 0.76], "rotation": 0, "materialId": "warm-oak", "color": "#C6A87B", "clearanceExempt": true, "requirementIds": ["req-flex-study"]},
+            {"itemId": "study-chair", "name": "卧室三书椅", "kind": "chair", "roomId": "study", "position": [10.85, 1.55], "size": [0.6, 0.6, 0.86], "rotation": 180, "materialId": "forest-fabric", "color": "#47705B", "clearanceExempt": true, "requirementIds": ["req-flex-study"]},
+            {"itemId": "study-sofa-bed", "name": "卧室三单人床", "kind": "bed", "roomId": "study", "position": [10.85, 3.05], "size": [1.45, 1.95, 0.72], "rotation": 0, "materialId": "warm-white", "color": "#D9D2C8", "clearanceExempt": true, "requirementIds": ["req-flex-study", "req-retain-bedroom"]},
+            {"itemId": "family-console", "name": "卧室二双人床", "kind": "bed", "roomId": "family-work", "position": [7.75, 3.15], "size": [1.75, 2.0, 0.74], "rotation": 0, "materialId": "warm-white", "color": "#D9D2C8", "clearanceExempt": true, "requirementIds": ["req-flex-study", "req-retain-bedroom"]},
+            {"itemId": "family-chair", "name": "卧室二衣柜", "kind": "cabinet", "roomId": "family-work", "position": [8.9, 2.05], "size": [0.52, 1.4, 2.1], "rotation": 0, "materialId": "oak-dark", "color": "#80664D", "clearanceExempt": true, "requirementIds": ["req-flex-study", "req-retain-bedroom"]},
             {"itemId": "foyer-cabinet", "name": "玄关收纳柜", "kind": "cabinet", "roomId": "foyer", "position": [0.42, 7.18], "size": [0.55, 1.65, 2.1], "rotation": 0, "materialId": "oak-dark", "color": "#80664D", "clearanceExempt": true, "requirementIds": ["req-continuous-circulation"]},
             {"itemId": "foyer-bench", "name": "换鞋凳", "kind": "bench", "roomId": "foyer", "position": [1.55, 7.78], "size": [1.0, 0.42, 0.48], "rotation": 0, "materialId": "warm-white", "color": "#D9D2C8", "clearanceExempt": true, "requirementIds": ["req-continuous-circulation"]},
             {"itemId": "public-toilet", "name": "公卫坐便器", "kind": "toilet", "roomId": "public-bath", "position": [11.55, 5.35], "size": [0.66, 0.82, 0.75], "rotation": 0, "materialId": "warm-white", "color": "#F1EFE9", "clearanceExempt": true, "requirementIds": ["req-professional-hold-points"]},
@@ -267,134 +269,6 @@
             {"itemId": "balcony-seat", "name": "阳台休闲椅", "kind": "chair", "roomId": "balcony", "position": [4.25, 11.72], "size": [0.78, 0.78, 0.84], "rotation": 15, "materialId": "forest-fabric", "color": "#47705B", "clearanceExempt": false, "requirementIds": ["req-warm-materials"]},
             {"itemId": "balcony-table", "name": "阳台边几", "kind": "table-round", "roomId": "balcony", "position": [5.38, 11.72], "size": [0.58, 0.58, 0.52], "rotation": 0, "materialId": "warm-oak", "color": "#C6A87B", "clearanceExempt": true, "requirementIds": ["req-warm-materials"]},
             {"itemId": "balcony-plant", "name": "阳台绿植", "kind": "plant", "roomId": "balcony", "position": [7.8, 11.72], "size": [0.72, 0.72, 1.08], "rotation": 0, "materialId": "forest-fabric", "color": "#47705B", "clearanceExempt": true, "requirementIds": ["req-warm-materials"]}
-          ],
-          "stairs": [],
-          "guardrails": [],
-          "voids": []
-        }
-      ]
-    },
-    {
-      "conceptId": "concept-storage-priority",
-      "name": "方案 B · 收纳优先",
-      "summary": "保持相同建筑边界与通行关系，以更紧凑的公共区布置预留后续整墙收纳。",
-      "tradeoffs": [
-        "收纳潜力增加；公共区家具尺度和活动余量需要现场深化。"
-      ],
-      "budgetItems": [],
-      "levels": [
-        {
-          "levelId": "ground",
-          "name": "首层",
-          "elevation": 0,
-          "height": 2.8,
-          "footprint": [[0, 0], [7, 0], [7, 6], [0, 6]],
-          "rooms": [
-            {
-              "roomId": "living",
-              "name": "客餐厅",
-              "kind": "living",
-              "polygon": [[0, 0], [4, 0], [4, 6], [0, 6]],
-              "materialId": "warm-oak",
-              "requiredAccess": true,
-              "evidenceIds": ["evidence-source-plan-redacted"],
-              "requirementIds": ["req-continuous-circulation", "req-warm-materials"]
-            },
-            {
-              "roomId": "bedroom",
-              "name": "卧室",
-              "kind": "bedroom",
-              "polygon": [[4, 0], [7, 0], [7, 6], [4, 6]],
-              "materialId": "warm-oak",
-              "requiredAccess": true,
-              "evidenceIds": ["evidence-source-plan-redacted"],
-              "requirementIds": ["req-continuous-circulation", "req-retain-bedroom"]
-            }
-          ],
-          "walls": [
-            {"wallId": "south", "start": [0, 0], "end": [7, 0], "height": 2.8, "thickness": 0.16, "exteriorEdge": 0},
-            {"wallId": "east", "start": [7, 0], "end": [7, 6], "height": 2.8, "thickness": 0.16, "exteriorEdge": 1},
-            {"wallId": "north", "start": [7, 6], "end": [0, 6], "height": 2.8, "thickness": 0.16, "exteriorEdge": 2},
-            {"wallId": "west", "start": [0, 6], "end": [0, 0], "height": 2.8, "thickness": 0.16, "exteriorEdge": 3},
-            {"wallId": "partition", "start": [4, 0], "end": [4, 6], "height": 2.8, "thickness": 0.12, "exteriorEdge": -1}
-          ],
-          "openings": [
-            {
-              "openingId": "entry",
-              "type": "door",
-              "wallId": "south",
-              "position": 0.18,
-              "width": 0.9,
-              "height": 2.1,
-              "sillHeight": 0,
-              "connectsRoomIds": ["living"],
-              "isEntry": true,
-              "hingesSide": "right",
-              "swingDirection": "inward"
-            },
-            {
-              "openingId": "bed-door",
-              "type": "door",
-              "wallId": "partition",
-              "position": 0.72,
-              "width": 0.85,
-              "height": 2.1,
-              "sillHeight": 0,
-              "connectsRoomIds": ["living", "bedroom"],
-              "hingesSide": "right",
-              "swingDirection": "inward"
-            },
-            {
-              "openingId": "north-window",
-              "type": "window",
-              "wallId": "north",
-              "position": 0.5,
-              "width": 1.8,
-              "height": 1.3,
-              "sillHeight": 0.9,
-              "connectsRoomIds": ["bedroom"]
-            }
-          ],
-          "items": [
-            {
-              "itemId": "sofa",
-              "name": "紧凑双人沙发",
-              "kind": "sofa",
-              "roomId": "living",
-              "position": [1.35, 3.8],
-              "size": [2, 0.85, 0.8],
-              "rotation": 0,
-              "materialId": "warm-white",
-              "color": "#E9E6DE",
-              "clearanceExempt": false,
-              "requirementIds": ["req-warm-materials"]
-            },
-            {
-              "itemId": "table",
-              "name": "圆形餐桌",
-              "kind": "table-round",
-              "roomId": "living",
-              "position": [2.55, 1.3],
-              "size": [1, 1, 0.74],
-              "rotation": 0,
-              "materialId": "oak-dark",
-              "color": "#80664D",
-              "clearanceExempt": false,
-              "requirementIds": ["req-six-seat-dining"]
-            },
-            {
-              "itemId": "bed",
-              "name": "双人床",
-              "kind": "bed",
-              "roomId": "bedroom",
-              "position": [5.55, 3],
-              "size": [1.8, 2, 0.62],
-              "rotation": 0,
-              "materialId": "warm-white",
-              "color": "#E9E6DE",
-              "clearanceExempt": false,
-              "requirementIds": ["req-retain-bedroom"]
-            }
           ],
           "stairs": [],
           "guardrails": [],
@@ -462,8 +336,8 @@
   "decisions": [
     {
       "decisionId": "decision-select-open-living",
-      "summary": "内置示例选择开放起居方案作为当前交付方案。",
-      "rationale": "该方案更清楚地展示需求追踪、通行审计、门窗开洞和模型派生交付。",
+      "summary": "本轮选择按图还原方案作为模板验收基准。",
+      "rationale": "先验证 C 户型四房两厅两卫、双生活阳台和南向景观阳台的一致呈现，再进入后续设计深化。",
       "requirementIds": [
         "req-continuous-circulation",
         "req-open-public-zone",

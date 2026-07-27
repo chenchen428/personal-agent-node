@@ -2,7 +2,9 @@
 
 The only registered implementation is `interior-design-delivery` version 2. Generate it from a quality-gated v2 project with the registry command. Do not recreate a visually similar page.
 
-The fixed structure includes source plan, revision annotation, Pascal design model, requirements and revision history, floor selection, real doors/windows and key components, 3D/orthographic views, labels, desktop/mobile-landscape layouts, concept comparison, stacked/solo/exploded levels, issue and requirement highlighting, assumptions, unknowns, professional verification, revision summary, and a model-derived SVG fallback.
+The fixed structure uses the `su-design-classic` full-canvas shell: floating header, bottom-left source/revision/model switch, bottom-center viewing tools, and bottom-right gesture guidance. It includes source plan, revision annotation, Pascal design model, requirements and revision history, floor selection, real doors/windows and key components, 3D/orthographic views, labels, desktop/mobile-landscape layouts, concept comparison when multiple concepts exist, stacked/solo/exploded levels, issue and requirement highlighting, assumptions, unknowns, professional verification, revision summary, and a model-derived SVG fallback. A justified single-concept delivery hides the meaningless concept switch.
+
+The Page must warm the viewer automatically. The fallback stays visible only until the first valid Canvas frame, labels stay hidden during that interval, and scheduled invalidations cover cold-start layout and font timing. Displaying 3D may never depend on a click, drag, mode switch, or other user input. A real viewer error may reveal the accessible model-derived SVG fallback.
 
 The Page is a read-only artifact. It cannot save scene changes, call MCP or Agent tools, read files, access loopback, load remote content, execute evidence markup, or contain Space/owner/managed-object IDs. CSP denies network, frames, plugins, external fonts, workers, media, and form submission. Only the redacted source-plan copy and minimal viewer payload are embedded.
 
@@ -12,4 +14,4 @@ The built-in catalog example is not a separately authored preview. `scripts/buil
 
 Publication uses `pa-cli pages publish`. Record the returned immutable Page ID and artifact hash. Natural-language changes return to the main Agent, create a structured revision, rerun the gate, generate a new artifact, and publish a new version. Rollback selects a previous immutable artifact.
 
-Automated acceptance covers code, schema, scene, semantic HTML, accessibility markers, CSP, privacy, routes, size, and deterministic hashes. Do not open a browser, take screenshots, click through, or mark visual acceptance passed. Report `visualAcceptance: user` and keep it pending until the user reviews desktop and mobile interaction.
+Automated acceptance covers code, schema, scene, semantic HTML, accessibility markers, CSP, privacy, routes, size, deterministic hashes, the classic layout marker, and the automatic viewer lifecycle contract. Do not mark visual acceptance passed. Report `visualAcceptance: user` and keep it pending until the user reviews desktop and mobile interaction.

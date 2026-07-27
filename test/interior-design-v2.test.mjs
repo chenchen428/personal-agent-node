@@ -347,7 +347,9 @@ test('generates a deterministic, private, offline Pascal Page v2 with accessible
   assert.match(firstHtml, /data-label-mode="visible"/);
   assert.match(firstHtml, /data:image\/svg\+xml;base64/);
   assert.match(firstHtml, /connect-src 'none'/);
-  assert.match(firstHtml, /视觉与交互等待用户验收/);
+  assert.match(firstHtml, /完成态模型 · 手动查看/);
+  assert.match(firstHtml, /data-layout-profile="su-design-classic"/);
+  assert.match(firstHtml, /pascal-viewer-warmup/);
   assert.doesNotMatch(firstHtml, /space-page|owner-page|managedObjectId|file:\/\/|localhost|127\.0\.0\.1|sourceMappingURL/);
   assert.doesNotMatch(firstHtml, /renovation_|concept-open-living|req-continuous-circulation|decision-select-open-living|evidence-source/);
   assert.doesNotMatch(fs.readFileSync(path.join(firstDir, 'scene.json'), 'utf8'), /renovation_|projectId|ownerId|spaceId|sourceId/);
@@ -488,13 +490,7 @@ function makeHarness(name, { multiLevel = false, alternatives = true } = {}) {
 
 function baseSeed() {
   const seed = structuredClone(nativeSeed);
-  const sourceConcept = seed.concepts.find((concept) => concept.conceptId === 'concept-storage-priority');
-  assert.ok(sourceConcept, 'the professional example must retain the compact regression fixture source');
-  const primaryConcept = structuredClone(sourceConcept);
-  primaryConcept.conceptId = 'concept-compact-primary';
-  primaryConcept.name = 'Compact primary test concept';
-  primaryConcept.summary = 'Stable two-room fixture used only by engine regression tests.';
-  primaryConcept.tradeoffs = ['This compact fixture isolates deterministic engine behavior from the shipping template.'];
+  const primaryConcept = compactRegressionConcept();
   const alternativeConcept = structuredClone(primaryConcept);
   alternativeConcept.conceptId = 'concept-compact-alternative';
   alternativeConcept.name = 'Compact alternative test concept';
@@ -537,6 +533,133 @@ function baseSeed() {
     requirementIds: ['req-continuous-circulation', 'req-furniture-clearance'],
   }];
   return seed;
+}
+
+function compactRegressionConcept() {
+  return {
+    conceptId: 'concept-compact-primary',
+    name: 'Compact primary test concept',
+    summary: 'Stable two-room fixture used only by engine regression tests.',
+    tradeoffs: ['This compact fixture isolates deterministic engine behavior from the shipping template.'],
+    budgetItems: [],
+    levels: [{
+      levelId: 'ground',
+      name: 'Ground level',
+      elevation: 0,
+      height: 2.8,
+      footprint: [[0, 0], [7, 0], [7, 6], [0, 6]],
+      rooms: [
+        {
+          roomId: 'living',
+          name: 'Living room',
+          kind: 'living',
+          polygon: [[0, 0], [4, 0], [4, 6], [0, 6]],
+          materialId: 'warm-oak',
+          requiredAccess: true,
+          evidenceIds: ['evidence-source-plan-redacted'],
+          requirementIds: ['req-continuous-circulation'],
+        },
+        {
+          roomId: 'bedroom',
+          name: 'Bedroom',
+          kind: 'bedroom',
+          polygon: [[4, 0], [7, 0], [7, 6], [4, 6]],
+          materialId: 'warm-oak',
+          requiredAccess: true,
+          evidenceIds: ['evidence-source-plan-redacted'],
+          requirementIds: ['req-continuous-circulation'],
+        },
+      ],
+      walls: [
+        { wallId: 'south', start: [0, 0], end: [7, 0], height: 2.8, thickness: 0.16, exteriorEdge: 0 },
+        { wallId: 'east', start: [7, 0], end: [7, 6], height: 2.8, thickness: 0.16, exteriorEdge: 1 },
+        { wallId: 'north', start: [7, 6], end: [0, 6], height: 2.8, thickness: 0.16, exteriorEdge: 2 },
+        { wallId: 'west', start: [0, 6], end: [0, 0], height: 2.8, thickness: 0.16, exteriorEdge: 3 },
+        { wallId: 'partition', start: [4, 0], end: [4, 6], height: 2.8, thickness: 0.12, exteriorEdge: -1 },
+      ],
+      openings: [
+        {
+          openingId: 'entry',
+          type: 'door',
+          wallId: 'south',
+          position: 0.18,
+          width: 0.9,
+          height: 2.1,
+          sillHeight: 0,
+          connectsRoomIds: ['living'],
+          isEntry: true,
+          hingesSide: 'right',
+          swingDirection: 'inward',
+        },
+        {
+          openingId: 'bed-door',
+          type: 'door',
+          wallId: 'partition',
+          position: 0.72,
+          width: 0.85,
+          height: 2.1,
+          sillHeight: 0,
+          connectsRoomIds: ['living', 'bedroom'],
+          hingesSide: 'right',
+          swingDirection: 'inward',
+        },
+        {
+          openingId: 'north-window',
+          type: 'window',
+          wallId: 'north',
+          position: 0.5,
+          width: 1.8,
+          height: 1.3,
+          sillHeight: 0.9,
+          connectsRoomIds: ['bedroom'],
+        },
+      ],
+      items: [
+        {
+          itemId: 'sofa',
+          name: 'Sofa',
+          kind: 'sofa',
+          roomId: 'living',
+          position: [1.35, 3.8],
+          size: [2, 0.85, 0.8],
+          rotation: 0,
+          materialId: 'warm-white',
+          color: '#E9E6DE',
+          clearanceExempt: false,
+          requirementIds: ['req-furniture-clearance'],
+        },
+        {
+          itemId: 'table',
+          name: 'Dining table',
+          kind: 'table-round',
+          roomId: 'living',
+          position: [2.55, 1.3],
+          size: [1, 1, 0.74],
+          rotation: 0,
+          materialId: 'oak-dark',
+          color: '#80664D',
+          clearanceExempt: false,
+          requirementIds: ['req-furniture-clearance'],
+        },
+        {
+          itemId: 'bed',
+          name: 'Bed',
+          kind: 'bed',
+          roomId: 'bedroom',
+          position: [5.55, 3],
+          size: [1.8, 2, 0.62],
+          rotation: 0,
+          materialId: 'warm-white',
+          color: '#E9E6DE',
+          clearanceExempt: false,
+          requirementIds: ['req-furniture-clearance'],
+        },
+      ],
+      stairs: [],
+      guardrails: [],
+      voids: [],
+    }],
+  };
 }
 
 function makeDuplexConcept(source) {

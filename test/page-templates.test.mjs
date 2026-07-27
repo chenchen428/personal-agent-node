@@ -47,6 +47,7 @@ test("the committed example is the byte-stable output of the governed native v2 
     "artifact-hash-verify",
   ]);
   assert.equal(manifest.source.renderProfile, "professional-mesh-ink");
+  assert.equal(manifest.source.layoutProfile, "su-design-classic");
   assert.deepEqual(manifest.source.qualityFloor, {
     rooms: 12,
     furniture: 30,
@@ -73,6 +74,9 @@ test("the committed example is the byte-stable output of the governed native v2 
   assert.match(html, /pascal-room-label/);
   assert.match(html, /pascal-highlight/);
   assert.match(html, /professional-mesh-ink/);
+  assert.match(html, /data-layout-profile="su-design-classic"/);
+  assert.match(html, /pascal-viewer-warmup/);
+  assert.doesNotMatch(html, /class="navigator"/);
   assert.ok(nodes.filter((node) => node.type === "zone").length >= 12);
   assert.ok(nodes.filter((node) => ["door", "window"].includes(node.type)).length >= 14);
   assert.ok(nodes.filter((node) => node.type === "wall").length >= 20);
@@ -95,6 +99,8 @@ test("template catalog and example route consume only the verified generated art
   const nextConfig = read("core/app/next.config.ts");
   const runtimeBuild = read("skills/interior-design/scripts/build-pascal-runtime.mjs");
   const viewerClient = read("skills/interior-design/scripts/pascal-page-client.jsx");
+  const projectCamera = read("skills/interior-design/scripts/pascal-project-camera.jsx");
+  const viewerLifecycle = read("skills/interior-design/scripts/pascal-viewer-lifecycle.jsx");
   const architectureClient = read("skills/interior-design/scripts/pascal-architecture.jsx");
   assert.match(list, /coverPath=\{template\.exampleArtifact\.coverPath\}/);
   assert.match(artwork, /src=\{coverPath\}/);
@@ -107,17 +113,23 @@ test("template catalog and example route consume only the verified generated art
   assert.match(nextConfig, /interior-design-delivery-v2/);
   assert.match(nextConfig, /max-age=300, must-revalidate/);
   assert.match(runtimeBuild, /\['import\.meta\.url', 'document\.baseURI'\]/);
-  assert.match(viewerClient, /function ProjectCamera/);
-  assert.match(viewerClient, /<CameraControls/);
-  assert.match(viewerClient, /camera=\{camera\}/);
-  assert.match(viewerClient, /api\.setLookAt/);
-  assert.match(viewerClient, /api\.fitToSphere/);
+  assert.match(projectCamera, /function ProjectCamera/);
+  assert.match(projectCamera, /<CameraControls/);
+  assert.match(projectCamera, /camera=\{camera\}/);
+  assert.match(projectCamera, /api\.setLookAt/);
+  assert.match(projectCamera, /api\.fitToSphere/);
+  assert.match(projectCamera, /pascal-reset-camera/);
   assert.match(viewerClient, /<ArchitectureEnvelope payload=\{payload\}/);
+  assert.match(viewerClient, /<ViewerLifecycle \/>/);
   assert.match(viewerClient, /wallMode: 'down'/);
   assert.match(viewerClient, /shading: 'rendered'/);
   assert.match(viewerClient, /professional-mesh-ink/);
   assert.match(viewerClient, /disablePostFx/);
   assert.match(viewerClient, /shadows: true/);
+  assert.match(viewerLifecycle, /useFrame/);
+  assert.match(viewerLifecycle, /pascal-viewer-warmup/);
+  assert.match(viewerLifecycle, /fallback\.hidden = true/);
+  assert.match(viewerLifecycle, /body\.dataset\.viewerState = 'ready'/);
   assert.match(architectureClient, /personal-agent-architecture-envelope/);
   assert.match(architectureClient, /pascal-room-surface/);
   assert.match(architectureClient, /pascal-wall-cap/);

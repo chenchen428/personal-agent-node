@@ -36,12 +36,13 @@ Customer projects belong only under the trusted Space at `projects/home-renovati
 
    `node skills/interior-design/scripts/cli.mjs page --template interior-design-delivery --project-dir <project-dir> --output <project-dir>/derived/page --json`
 
-   Require template v2, `pascal-v2`, the artifact marker, offline CSP, model-derived SVG fallback, and `visualAcceptance: user`. Page generation must stop on automatic blocking issues.
+   Require template v2, `pascal-v2`, the artifact marker, the `su-design-classic` full-canvas shell, automatic first-frame 3D warmup, offline CSP, model-derived SVG fallback, and `visualAcceptance: user`. Page generation must stop on automatic blocking issues.
 8. Publish only through `pa-cli pages publish` and use its returned `pageId`, URL, or `linkNotice`. Never guess a hostname or return a loopback or local path. Subsequent natural-language feedback creates a new project revision, audit, Page artifact, and publication; it does not edit the delivered Page in place.
 
 ## Design and safety rules
 
 - Support apartments, duplexes, and houses with at most two levels: levels, zones, walls, real door/window openings, slabs, ceilings, stairs, voids, guardrails, procedural furniture, cabinets, major equipment, material intent, and lighting intent.
+- Keep the read-only delivery model full-canvas with the approved floating SU-design controls. Never require a click, drag, or mode switch to reveal 3D; keep labels hidden until the first valid Canvas frame, and use the model-derived SVG only for real loading failure.
 - Preserve source-plan, revision annotation, model, requirement, concept, audit, assumption, unknown, professional-verification, budget, and revision provenance.
 - Do not infer load-bearing status, hidden services, exact area, fabrication dimensions, permits, or local compliance from a raster plan.
 - Escalate structure, gas, electrical, fire, waterproofing, drainage, stair structure, and exact site dimensions to the applicable qualified professional.

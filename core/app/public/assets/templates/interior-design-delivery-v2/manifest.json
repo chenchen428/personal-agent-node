@@ -6,24 +6,24 @@
   "visualAcceptance": "user",
   "files": {
     "index.html": {
-      "bytes": 2703602,
-      "sha256": "1dda19c09cf6273ee1f07f83c7dba075bbc0c5c396dffb0a998f7f7d778b5072"
+      "bytes": 2710408,
+      "sha256": "cd6e39f6e4a6a484afb097a7eec1551fea95c9e0b29dfeb00b590a84fee91480"
     },
     "scene.json": {
-      "bytes": 64346,
-      "sha256": "9933bd86e17203a240ff5977c0dca8ea222001dc8b83d80db4451506130ed7bc"
+      "bytes": 64341,
+      "sha256": "68458de1a3c643252f2d15a293e82718226b484a1972d368cbabafd37d9f35a2"
     },
     "audit.json": {
       "bytes": 2093,
-      "sha256": "c6295ac19f3e221e752baeaec5b701241ec1fec7ed031c0e89c1fb76d11cef3a"
+      "sha256": "f3e12e7e347bd3257d0a7f19bdb60e5a727b9c95a92252373b070161168dbaf5"
     },
     "template.json": {
-      "bytes": 3992,
-      "sha256": "7a63a2bb9bb22f5aa3211129f78c7a6ab286d057d44b1c0eeff6c4499910d4df"
+      "bytes": 4562,
+      "sha256": "4be0d95c40e9b1b7913149af12a6a7aa128b30ddbf334f394ab0f8c1abb3e08c"
     },
     "cover.svg": {
-      "bytes": 23263,
-      "sha256": "db87ea9c299a39608221461bb810c3275e1d4dabb5b8a6081c5c5b9d845245e6"
+      "bytes": 23252,
+      "sha256": "2abf29cd46970fd33eb188261cf14242c8ea9434de33b24fe7394dac54812f67"
     }
   },
   "source": {
@@ -35,12 +35,13 @@
       "page-v2-generate",
       "artifact-hash-verify"
     ],
-    "seedSha256": "8fc3e8d9051ad5b30b3d4588ec9e838ef67208e3b24554e72e93db3402b39f6a",
-    "evidenceSha256": "41ef143cf4687b6fcb8634bb37ccc5a84e9eae05968003331fff560e26849f67",
-    "projectSha256": "652bc7989d2c8008a7d10dcabd75c3b837b0ee7f7908656b5e6b221ed8de2cf3",
-    "sceneSha256": "884807ee1a62c5ad3e0cbe33ad78b136cd48d0a9cd658929eee6cce5ba5bca20",
-    "auditSha256": "72cae20b3d4f5360ef44942561d677c0ffc1bd704989bd37526dea9eafa82f80",
+    "seedSha256": "d8547a1fa002048bad245308a4966da6eddb5fa3023430c9f893fe4a945c41e3",
+    "evidenceSha256": "df1b8d589fd7eb7db15a1eb6d8415a186afb3b4723b73923705fa88da2ef77ac",
+    "projectSha256": "c1b0196012f30d385b33f1c99f371a85bcc0f6fac7d190231282581477392efe",
+    "sceneSha256": "4046e8e47a3522de83f27588194af4b8f05052f0ae4b91833cf0714055b74fd5",
+    "auditSha256": "fb795fef85625f48878d80d6fe731a5dc89a645c9349ac48840a0a56619b2a57",
     "renderProfile": "professional-mesh-ink",
+    "layoutProfile": "su-design-classic",
     "qualityFloor": {
       "rooms": 12,
       "furniture": 30,

@@ -80,6 +80,7 @@ export async function buildTemplateExample({ check = false } = {}) {
       sceneSha256: compiled.scene.sceneHash,
       auditSha256: compiled.project.quality.sha256,
       renderProfile: 'professional-mesh-ink',
+      layoutProfile: 'su-design-classic',
       qualityFloor: TEMPLATE_QUALITY_FLOOR,
     };
     manifest.files['index.html'] = fileRecord(path.join(output, 'index.html'));
@@ -119,6 +120,9 @@ export function verifyTemplateExample(directory = targetRoot) {
   }
   if (manifest.source.renderProfile !== 'professional-mesh-ink') {
     throw new Error('built-in template professional render profile is missing');
+  }
+  if (manifest.source.layoutProfile !== 'su-design-classic') {
+    throw new Error('built-in template classic SU layout profile is missing');
   }
   for (const [name, expected] of Object.entries(manifest.files || {})) {
     const target = path.join(directory, name);
@@ -160,6 +164,8 @@ export function verifyTemplateExample(directory = targetRoot) {
     || !html.includes('pascal-room-surface')
     || !html.includes('pascal-wall-cap')
     || !html.includes('professional-mesh-ink')
+    || !html.includes('data-layout-profile="su-design-classic"')
+    || !html.includes('pascal-viewer-warmup')
     || !html.includes('CameraControls')
     || !html.includes('setLookAt')) {
     throw new Error('built-in template lost its model-derived cover, labels, highlighting, or automatic camera framing');
