@@ -5,6 +5,7 @@ import { useThree } from '@react-three/fiber';
 import useScene from '@pascal-app/core/store';
 import { Viewer, useViewer } from '@pascal-app/viewer';
 import { Sphere, Vector3 } from 'three';
+import { ArchitectureEnvelope } from './pascal-architecture.jsx';
 
 class ViewerBoundary extends Component {
   constructor(props) {
@@ -234,6 +235,7 @@ function PascalScene({ payload }) {
       }}
     >
       <ProjectCamera payload={payload} />
+      <ArchitectureEnvelope payload={payload} />
       <ProceduralFurniture highlighted={highlighted} items={payload.furniture || []} />
       <SceneLabels payload={payload} />
     </Viewer>
@@ -259,7 +261,7 @@ function start() {
     viewer.setUnit('metric');
     viewer.setTextures(false);
     viewer.setLevelMode('stacked');
-    viewer.setWallMode('cutaway');
+    viewer.setWallMode('down');
     viewer.setCameraMode('perspective');
     window.PersonalAgentPascalViewer = {
       setLevelMode(mode) {

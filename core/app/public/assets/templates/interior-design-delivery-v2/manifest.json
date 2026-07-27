@@ -6,8 +6,8 @@
   "visualAcceptance": "user",
   "files": {
     "index.html": {
-      "bytes": 2697586,
-      "sha256": "f6b92db8eaac01464c8d59565cfd763201589c781fd70f2185b20cf7751fa95c"
+      "bytes": 2723356,
+      "sha256": "6f0149876e2f48b43776d2a87329737b0dff8c0470598a35a3b35d7ede37390b"
     },
     "scene.json": {
       "bytes": 64346,
@@ -18,8 +18,8 @@
       "sha256": "c6295ac19f3e221e752baeaec5b701241ec1fec7ed031c0e89c1fb76d11cef3a"
     },
     "template.json": {
-      "bytes": 3157,
-      "sha256": "3bbfcce442c3a148059433c472b7662bde21a5ecc76292a186f1a7c6bdca307e"
+      "bytes": 3593,
+      "sha256": "1fd915e6b4bce55442de110354f1b6193627a6f24ff010434c013774c51e895e"
     },
     "cover.svg": {
       "bytes": 23263,
@@ -45,7 +45,10 @@
       "furniture": 30,
       "openings": 14,
       "doors": 8,
-      "windows": 6
+      "windows": 6,
+      "walls": 20,
+      "slabs": 1,
+      "ceilings": 1
     }
   }
 }

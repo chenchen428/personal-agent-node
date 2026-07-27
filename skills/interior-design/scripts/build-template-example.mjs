@@ -27,6 +27,9 @@ const TEMPLATE_QUALITY_FLOOR = Object.freeze({
   openings: 14,
   doors: 8,
   windows: 6,
+  walls: 20,
+  slabs: 1,
+  ceilings: 1,
 });
 
 export async function buildTemplateExample({ check = false } = {}) {
@@ -134,6 +137,9 @@ export function verifyTemplateExample(directory = targetRoot) {
     openings: nodes.filter((node) => ['door', 'window'].includes(node.type)).length,
     doors: nodes.filter((node) => node.type === 'door').length,
     windows: nodes.filter((node) => node.type === 'window').length,
+    walls: nodes.filter((node) => node.type === 'wall').length,
+    slabs: nodes.filter((node) => node.type === 'slab').length,
+    ceilings: nodes.filter((node) => node.type === 'ceiling').length,
   };
   const floor = manifest.source.qualityFloor || {};
   for (const [key, minimum] of Object.entries(TEMPLATE_QUALITY_FLOOR)) {
@@ -146,6 +152,8 @@ export function verifyTemplateExample(directory = targetRoot) {
     || !cover.includes('data-cover-item=')
     || !html.includes('pascal-room-label')
     || !html.includes('pascal-highlight')
+    || !html.includes('personal-agent-architecture-envelope')
+    || !html.includes('pascal-room-surface')
     || !html.includes('CameraControls')
     || !html.includes('setLookAt')) {
     throw new Error('built-in template lost its model-derived cover, labels, highlighting, or automatic camera framing');

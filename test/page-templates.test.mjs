@@ -52,6 +52,9 @@ test("the committed example is the byte-stable output of the governed native v2 
     openings: 14,
     doors: 8,
     windows: 6,
+    walls: 20,
+    slabs: 1,
+    ceilings: 1,
   });
   for (const [name, expected] of Object.entries(manifest.files)) {
     const value = fs.readFileSync(path.join(artifactRoot, name));
@@ -70,6 +73,9 @@ test("the committed example is the byte-stable output of the governed native v2 
   assert.match(html, /pascal-highlight/);
   assert.ok(nodes.filter((node) => node.type === "zone").length >= 12);
   assert.ok(nodes.filter((node) => ["door", "window"].includes(node.type)).length >= 14);
+  assert.ok(nodes.filter((node) => node.type === "wall").length >= 20);
+  assert.ok(nodes.filter((node) => node.type === "slab").length >= 1);
+  assert.ok(nodes.filter((node) => node.type === "ceiling").length >= 1);
   assert.ok(scene.furniture.length >= 30);
   assert.match(cover, /模型派生轴测封面/);
   assert.match(cover, /data-cover-item=/);
@@ -87,6 +93,7 @@ test("template catalog and example route consume only the verified generated art
   const nextConfig = read("core/app/next.config.ts");
   const runtimeBuild = read("skills/interior-design/scripts/build-pascal-runtime.mjs");
   const viewerClient = read("skills/interior-design/scripts/pascal-page-client.jsx");
+  const architectureClient = read("skills/interior-design/scripts/pascal-architecture.jsx");
   assert.match(list, /coverPath=\{template\.exampleArtifact\.coverPath\}/);
   assert.match(artwork, /src=\{coverPath\}/);
   assert.match(detail, /artifactPath=\{template\.exampleArtifact\.pagePath\}/);
@@ -103,6 +110,12 @@ test("template catalog and example route consume only the verified generated art
   assert.match(viewerClient, /camera=\{camera\}/);
   assert.match(viewerClient, /api\.setLookAt/);
   assert.match(viewerClient, /api\.fitToSphere/);
+  assert.match(viewerClient, /<ArchitectureEnvelope payload=\{payload\}/);
+  assert.match(viewerClient, /setWallMode\('down'\)/);
+  assert.match(architectureClient, /personal-agent-architecture-envelope/);
+  assert.match(architectureClient, /pascal-room-surface/);
+  assert.match(architectureClient, /function splitWall/);
+  assert.match(architectureClient, /function BalconyRailing/);
   const templateComponents = fs.readdirSync(path.join(root, "core/app/src/components/page-templates"));
   assert.equal(templateComponents.some((name) => name.startsWith("interior-template-")), false);
   assert.equal(templateComponents.includes("page-template-example-page.tsx"), false);

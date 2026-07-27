@@ -18,6 +18,7 @@ The catalog cover, desktop/mobile detail preview, and opened example all consume
 - Source plan, revision annotation, Pascal design model, requirements, and revision history.
 - Floor switching plus stacked, solo, and exploded level modes.
 - Real door/window openings, balconies/key components, slabs, ceilings, stairs, voids, guardrails, procedural furniture, cabinets, and major equipment where relevant.
+- A complete model-derived architectural cutaway: continuous room surfaces, continuous wall enclosure cut around real doors/windows, balcony guardrails, and furnished rooms visible together in the primary isometric view. A floor plan, isolated wall lines, or scattered furniture alone is a quality regression.
 - 3D and orthographic views, hideable labels, issue/requirement highlighting, and model-derived SVG fallback.
 - Concept A/B comparison or a visible single-option reason.
 - Assumptions, unknowns, professional verifications, quality report, and concept-design disclaimer.
@@ -28,5 +29,7 @@ The catalog cover, desktop/mobile detail preview, and opened example all consume
 The Page is read-only and self-contained. It loads no remote assets, CDN, iframe, external font, analytics, file URL, loopback API, MCP, or Agent tool. CSP denies network and active embedding. The payload excludes Space, owner, managed-object, project-path, and credential fields. Only redacted evidence may be embedded.
 
 Run schema, scene hash, quality, template, semantic HTML, CSP, privacy, offline-resource, size, and deterministic-hash checks. Require template v2, `pascal-v2`, artifact marker, and `visualAcceptance: user`.
+
+The architectural presentation layer must be deterministically derived from the current Pascal `scene.json`; never maintain a second hand-authored model. The built-in professional example is a minimum visual-completeness baseline, not merely a node-count fixture.
 
 Do not open a browser, take screenshots, perform click-through acceptance, or declare appearance approved. Publish with `pa-cli pages publish`, return its actual Page ID/link result, and leave visual and interaction acceptance to the user. A revision returns to the main Agent and creates a new project revision and immutable artifact.
