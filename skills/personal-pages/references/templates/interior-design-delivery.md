@@ -9,7 +9,7 @@ Use this template for装修设计、室内设计、户型改造、家居布局�
 
 ## Required project
 
-Require the trusted Space-owned project v2, current compiled Pascal scene, matching deterministic audit, a redacted user-uploaded source-plan image, and a redacted Agent-uploaded revision-annotation image. The project records evidence, scale confidence, brief, requirements, concepts, assumptions, unknowns, professional verifications, materials, budget, revisions, and provenance. Never substitute the example project or let user JSON self-assert Space/owner identity.
+Require the trusted Space-owned project v2, current compiled Pascal scene, matching deterministic audit, a redacted user-uploaded source-plan image, and a redacted Agent-uploaded revision-annotation image. The source image SHA-256 must match project provenance, every concept's model-basis reference, the compiled scene, and the Page payload; 3D, orthographic plan, labels, and derived explanations must therefore share the displayed user upload. The project records evidence, scale confidence, brief, requirements, concepts, assumptions, unknowns, professional verifications, materials, budget, revisions, and provenance. Never substitute the example project or let user JSON self-assert Space/owner identity.
 
 The catalog cover, desktop/mobile detail preview, and opened example all consume the same committed artifact generated from `skills/interior-design/examples/professional-template/seed.json` by `build-template-example.mjs`. The manifest records the native seed, evidence, governed project, Pascal scene, professional audit, and every delivered file hash. This example proves the generator contract; it is never a customer design seed.
 

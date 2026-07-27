@@ -292,9 +292,10 @@
     },
     "concept": {
       "type": "object",
-      "required": ["conceptId", "name", "summary", "tradeoffs", "budgetItems", "levels"],
+      "required": ["conceptId", "sourcePlanEvidenceId", "name", "summary", "tradeoffs", "budgetItems", "levels"],
       "properties": {
         "conceptId": { "$ref": "#/$defs/id" },
+        "sourcePlanEvidenceId": { "$ref": "#/$defs/id" },
         "name": { "type": "string", "minLength": 1, "maxLength": 120 },
         "summary": { "type": "string", "minLength": 1, "maxLength": 2000 },
         "singleOptionReason": { "type": "string", "maxLength": 2000 },
@@ -482,13 +483,15 @@
     },
     "provenance": {
       "type": "object",
-      "required": ["interiorDesignEngine", "adapter", "adapterVersion", "pascalCoreVersion", "pascalMcpVersion"],
+      "required": ["interiorDesignEngine", "adapter", "adapterVersion", "pascalCoreVersion", "pascalMcpVersion", "sourcePlanEvidenceId", "sourcePlanSha256"],
       "properties": {
         "interiorDesignEngine": { "const": "pascal-v2" },
         "adapter": { "const": "personal-agent-pascal" },
         "adapterVersion": { "type": "integer", "minimum": 1 },
         "pascalCoreVersion": { "type": "string", "minLength": 1 },
-        "pascalMcpVersion": { "type": "string", "minLength": 1 }
+        "pascalMcpVersion": { "type": "string", "minLength": 1 },
+        "sourcePlanEvidenceId": { "$ref": "#/$defs/id" },
+        "sourcePlanSha256": { "$ref": "#/$defs/sha256" }
       },
       "additionalProperties": true
     }

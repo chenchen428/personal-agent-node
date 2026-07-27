@@ -237,6 +237,10 @@ export class PascalInteriorAdapter {
         pascal: { coreVersion: PASCAL_CORE_VERSION, mcpVersion: PASCAL_MCP_VERSION },
         projectId: project.projectId,
         revision: project.revision,
+        modelBasis: {
+          evidenceId: project.provenance.sourcePlanEvidenceId,
+          sha256: project.provenance.sourcePlanSha256,
+        },
         sceneHash,
         scene: canonical,
         mappings: Object.fromEntries(mappings.sort(([a], [b]) => a.localeCompare(b))),
@@ -321,6 +325,7 @@ export class PascalInteriorAdapter {
       schemaVersion: 1,
       engine: 'pascal-v2',
       revision: snapshot.revision,
+      sourcePlanSha256: snapshot.modelBasis?.sha256,
       sceneHash: sha256(canonicalJson({ scene, furniture })),
       scene,
       furniture,

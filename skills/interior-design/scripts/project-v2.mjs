@@ -127,6 +127,7 @@ export function validateProjectV2(project, { context } = {}) {
   array(project.evidence, 'evidence', errors);
   if (project.evidence?.length > 100) errors.push('evidence must contain at most 100 items');
   const evidenceIds = uniqueIds(project.evidence, 'evidenceId', 'evidence', errors);
+  const evidenceById = new Map(list(project.evidence).map((entry) => [entry?.evidenceId, entry]));
   for (const evidence of list(project.evidence)) {
     if (!plainObject(evidence)) continue;
     if (!EVIDENCE_CLASSES.has(evidence.classification)) errors.push(`evidence ${evidence.evidenceId}: classification is invalid`);
@@ -198,6 +199,10 @@ export function validateProjectV2(project, { context } = {}) {
 
   for (const concept of list(project.concepts)) {
     if (!plainObject(concept)) continue;
+    if (!evidenceIds.has(concept.sourcePlanEvidenceId)) errors.push(`concept ${concept.conceptId}: sourcePlanEvidenceId does not resolve`);
+    if (concept.sourcePlanEvidenceId !== project.provenance?.sourcePlanEvidenceId) {
+      errors.push(`concept ${concept.conceptId}: sourcePlanEvidenceId must match project provenance`);
+    }
     text(concept.name, `concept ${concept.conceptId}: name`, errors, 120);
     text(concept.summary, `concept ${concept.conceptId}: summary`, errors, 1000);
     array(concept.tradeoffs, `concept ${concept.conceptId}: tradeoffs`, errors);
@@ -257,12 +262,23 @@ export function validateProjectV2(project, { context } = {}) {
   if (project.provenance?.adapter !== 'personal-agent-pascal' || project.provenance?.adapterVersion !== 1) errors.push('provenance adapter contract is invalid');
   if (project.provenance?.interiorDesignEngine !== 'pascal-v2') errors.push('provenance interior-design engine is unsupported');
   if (project.provenance?.pascalCoreVersion !== '0.9.2' || project.provenance?.pascalMcpVersion !== '0.3.2') errors.push('provenance Pascal versions are unsupported');
+  const sourcePlanEvidence = evidenceById.get(project.provenance?.sourcePlanEvidenceId);
+  if (!sourcePlanEvidence) {
+    errors.push('provenance.sourcePlanEvidenceId does not resolve');
+  } else {
+    if (sourcePlanEvidence.classification !== 'structure-reference') errors.push('provenance source plan must be structure-reference evidence');
+    if (!sourcePlanEvidence.allowedUses?.includes('structure')) errors.push('provenance source plan must allow structure modeling');
+    if (project.provenance?.sourcePlanSha256 !== sourcePlanEvidence.contentHash) errors.push('provenance sourcePlanSha256 must match the source-plan evidence');
+  }
   return errors;
 }
 
 export function createProjectFromSeed(seed, context, { now = () => new Date().toISOString(), slug = 'project' } = {}) {
   const timestamp = now();
   const projectId = seed.projectId || `renovation_${cleanToken(slug)}_${sha256(`${context.spaceId}:${slug}`).slice(0, 10)}`;
+  const sourcePlanEvidence = list(seed.evidence).find((entry) => entry?.classification === 'structure-reference');
+  const sourcePlanEvidenceId = seed.provenance?.sourcePlanEvidenceId || sourcePlanEvidence?.evidenceId || '';
+  const sourcePlanSha256 = seed.provenance?.sourcePlanSha256 || sourcePlanEvidence?.contentHash || '';
   const project = normalizeProjectV2({
     ...structuredClone(seed),
     schemaVersion: PROJECT_SCHEMA_VERSION,
@@ -287,7 +303,10 @@ export function createProjectFromSeed(seed, context, { now = () => new Date().to
     assumptions: seed.assumptions || [],
     unknowns: seed.unknowns || [],
     professionalVerifications: seed.professionalVerifications || [],
-    concepts: seed.concepts || [],
+    concepts: list(seed.concepts).map((concept) => ({
+      ...concept,
+      sourcePlanEvidenceId: concept?.sourcePlanEvidenceId || sourcePlanEvidenceId,
+    })),
     selectedConceptId: seed.selectedConceptId || seed.concepts?.[0]?.conceptId || '',
     designIntent: { style: [], materials: [], lighting: [], maintenance: [], ...(seed.designIntent || {}) },
     decisions: seed.decisions || [],
@@ -300,6 +319,8 @@ export function createProjectFromSeed(seed, context, { now = () => new Date().to
       adapterVersion: 1,
       pascalCoreVersion: '0.9.2',
       pascalMcpVersion: '0.3.2',
+      sourcePlanEvidenceId,
+      sourcePlanSha256,
       ...(seed.provenance || {}),
     },
   });

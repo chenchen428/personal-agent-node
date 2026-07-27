@@ -25,7 +25,7 @@ export function PageTemplateDetailPage({ template }: { template: PageTemplate })
         <ul>{template.fixedFramework.slice(0, 6).map((item) => <li key={item}><Check aria-hidden="true" />{item}</li>)}</ul>
       </article>
       <aside>
-        <div className="template-source-rule"><FileImage aria-hidden="true" /><span><strong>证据、模型与审计并列查看</strong><small>用户上传户型图、Agent 上传标注图、Pascal 设计模型、用户需求和质量边界保持在同一份交付里。</small></span></div>
+        <div className="template-source-rule"><FileImage aria-hidden="true" /><span><strong>用户原图是唯一户型依据</strong><small>Agent 标注、Pascal 3D、正交平面、空间标签和方案说明都由同一张用户上传图生成，并通过来源哈希校验。</small></span></div>
         <dl>
           <div><dt>关联技能</dt><dd>{template.skill}</dd></div>
           <div><dt>模板实现</dt><dd>v{template.implementation.version} · 受治理项目同源生成</dd></div>

@@ -1,3 +1,4 @@
+import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 
@@ -45,6 +46,7 @@ export function loadPlanImageAsset(filePath, { alt = '装修设计图纸' } = {}
   return {
     dataUrl: `data:${mimeType};base64,${buffer.toString('base64')}`,
     alt,
+    sha256: crypto.createHash('sha256').update(buffer).digest('hex'),
   };
 }
 

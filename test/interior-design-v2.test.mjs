@@ -146,6 +146,10 @@ test('compiles deterministic single-level Pascal scenes with real doors, windows
   const adapter = new PascalInteriorAdapter();
   const first = await adapter.compileScene(project);
   const second = await adapter.compileScene(structuredClone(project));
+  assert.deepEqual(first.modelBasis, {
+    evidenceId: project.provenance.sourcePlanEvidenceId,
+    sha256: project.provenance.sourcePlanSha256,
+  });
   assert.equal(first.sceneHash, second.sceneHash);
   assert.deepEqual(first.scene, second.scene);
   assert.deepEqual(first.furniture, second.furniture);
@@ -159,6 +163,7 @@ test('compiles deterministic single-level Pascal scenes with real doors, windows
   assert.ok(first.mappings.sofa);
   assert.equal((await adapter.queryScene({ snapshot: first, sourceIds: ['entry'] })).nodes[0].type, 'door');
   const { payload: pagePayload, pageMappings } = adapter.exportForPage(first);
+  assert.equal(pagePayload.sourcePlanSha256, project.provenance.sourcePlanSha256);
   assert.doesNotMatch(JSON.stringify(pagePayload), /projectId|ownerId|sourceId|requirementIds/);
   assert.doesNotMatch(JSON.stringify(pagePayload), /renovation_/);
   assert.match(pageMappings.entry, /^page-door-/);
@@ -348,6 +353,8 @@ test('generates a deterministic, private, offline Pascal Page v2 with accessible
   assert.match(firstHtml, /data-label-mode="visible"/);
   assert.match(firstHtml, /data:image\/png;base64/);
   assert.match(firstHtml, /用户户型图与 Agent 标注/);
+  assert.match(firstHtml, /用户原图是唯一户型依据/);
+  assert.match(firstHtml, new RegExp(compiled.project.provenance.sourcePlanSha256));
   assert.match(firstHtml, /plan-source-image/);
   assert.match(firstHtml, /plan-annotation-image/);
   assert.match(firstHtml, /connect-src 'none'/);
@@ -370,6 +377,14 @@ test('generates a deterministic, private, offline Pascal Page v2 with accessible
   assert.throws(() => generateProfessionalPage({ projectDir: harness.projectDir, context: harness.context, output: firstDir, skillRoot, template }), /evidence directory.*symbolic link/);
   fs.unlinkSync(evidenceDirectory);
   fs.renameSync(preservedEvidenceDirectory, evidenceDirectory);
+  const sourcePlanProjectPath = path.join(evidenceDirectory, 'source-plan.png');
+  const originalSourcePlan = fs.readFileSync(sourcePlanProjectPath);
+  fs.copyFileSync(annotationPath, sourcePlanProjectPath);
+  assert.throws(
+    () => generateProfessionalPage({ projectDir: harness.projectDir, context: harness.context, output: firstDir, skillRoot, template }),
+    /share one verified model basis/,
+  );
+  fs.writeFileSync(sourcePlanProjectPath, originalSourcePlan);
   const auditPath = path.join(harness.projectDir, 'derived', 'audit.json');
   const blockedAudit = JSON.parse(fs.readFileSync(auditPath, 'utf8'));
   blockedAudit.ok = false;
@@ -403,7 +418,10 @@ test('formal v2 schema and runtime validator reject oversized or structurally in
   assert.equal(schema.properties.schemaVersion.const, 2);
   assert.equal(schema.additionalProperties, false);
   assert.ok(schema.$defs.evidence.properties.classification.enum.includes('revision-annotation'));
+  assert.ok(schema.$defs.concept.required.includes('sourcePlanEvidenceId'));
+  assert.ok(schema.$defs.provenance.required.includes('sourcePlanSha256'));
   const project = createProjectFromSeed(baseSeed(), { spaceRoot: '/tmp', spaceId: 'schema-space', ownerId: 'schema-owner' }, { now: () => '2026-07-27T00:00:00.000Z' });
+  assert.equal(project.concepts.every((concept) => concept.sourcePlanEvidenceId === project.provenance.sourcePlanEvidenceId), true);
   const broken = structuredClone(project);
   delete broken.evidence[0].calibration;
   assert.match(validateProjectV2(broken).join('\n'), /calibration/);
@@ -411,6 +429,9 @@ test('formal v2 schema and runtime validator reject oversized or structurally in
   delete invalidManagedObject.evidence[0].relativePath;
   invalidManagedObject.evidence[0].managedObjectId = 'obj_from-another-space';
   assert.match(validateProjectV2(invalidManagedObject).join('\n'), /managedObjectId is invalid/);
+  const unrelatedModelBasis = structuredClone(project);
+  unrelatedModelBasis.provenance.sourcePlanSha256 = '0'.repeat(64);
+  assert.match(validateProjectV2(unrelatedModelBasis).join('\n'), /sourcePlanSha256 must match/);
   const tooManyLevels = structuredClone(project);
   tooManyLevels.concepts[0].levels.push(structuredClone(tooManyLevels.concepts[0].levels[0]), structuredClone(tooManyLevels.concepts[0].levels[0]));
   assert.match(validateProjectV2(tooManyLevels).join('\n'), /at most 2 levels/);

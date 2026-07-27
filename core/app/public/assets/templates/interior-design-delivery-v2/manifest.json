@@ -6,20 +6,20 @@
   "visualAcceptance": "user",
   "files": {
     "index.html": {
-      "bytes": 5192481,
-      "sha256": "dbfd5d24764a57818410d29167ff088a94c2a490421449b1f4db22ecb664e194"
+      "bytes": 5192559,
+      "sha256": "3f7ffdad77e0b197c94ed094b61ef842c7f1fadc5c62d2d1b20e5a4341fe6fec"
     },
     "scene.json": {
-      "bytes": 64341,
-      "sha256": "68458de1a3c643252f2d15a293e82718226b484a1972d368cbabafd37d9f35a2"
+      "bytes": 64431,
+      "sha256": "69ff08f595b43fed678c0520f28f7552690a99a5a082ed950a0fa0e03ca29041"
     },
     "audit.json": {
       "bytes": 2093,
       "sha256": "f3e12e7e347bd3257d0a7f19bdb60e5a727b9c95a92252373b070161168dbaf5"
     },
     "template.json": {
-      "bytes": 4869,
-      "sha256": "74044c38f457d3faeaf2f36d2d23fb5b3a800410dce04499c08f5d6c517d9f9d"
+      "bytes": 5265,
+      "sha256": "51e231cf3a2ce2334b405bfe23dc52d8e97e447dfc78e1609d5d1025fa05e762"
     },
     "cover.svg": {
       "bytes": 23252,
@@ -35,10 +35,11 @@
       "page-v2-generate",
       "artifact-hash-verify"
     ],
-    "seedSha256": "c76e8e38900f7c788f9429e0dea3068e08d9cb012fa85265da5f2870fcd2ba52",
+    "seedSha256": "bfaecfbb18495dcbfd0f0be263a02e3c1ab0b9b7097ea5c6a124420e4f9418d6",
     "evidenceSha256": "23eab735dd2dcd2190264f93b3aad274b08a68b822c4a6f597a377afdc763542",
+    "modelBasisSha256": "23eab735dd2dcd2190264f93b3aad274b08a68b822c4a6f597a377afdc763542",
     "annotationSha256": "fd7d3df1c3bdc8a503808b641f0dc3baa23f8365ae5e4999f4e5907f3907baa8",
-    "projectSha256": "f964f39012e4f1cba1e347a5ec5aa94e3fa68c2e87949a7ca711106b4fc4eb4e",
+    "projectSha256": "de733ffa62d74a0f65b3aed85ef5163a5ab6fff069ce87967a9d4906de2c5af6",
     "sceneSha256": "4046e8e47a3522de83f27588194af4b8f05052f0ae4b91833cf0714055b74fd5",
     "auditSha256": "fb795fef85625f48878d80d6fe731a5dc89a645c9349ac48840a0a56619b2a57",
     "renderProfile": "professional-mesh-ink",

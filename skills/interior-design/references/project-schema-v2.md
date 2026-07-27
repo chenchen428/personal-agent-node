@@ -6,7 +6,7 @@ The trusted Space context supplies `spaceId`, `ownerId`, and the absolute Space 
 
 `project.json` is the design authority. `scene.json` is the compiled Pascal delivery authority. `derived/audit.json` is the deterministic gate result. `derived/manifest.json` records revision hashes. `.runtime/pascal.db` is a per-project Node SQLite index with checked schema and ownership; it is not shared and never replaces JSON authority. `history/` keeps the latest 50 revisions and preserves older revisions under `history/archive/`.
 
-`provenance.interiorDesignEngine` is immutable and equals `pascal-v2`. `registry/interior-design.json` requires this single engine for every production project.
+`provenance.interiorDesignEngine` is immutable and equals `pascal-v2`. `registry/interior-design.json` requires this single engine for every production project. `provenance.sourcePlanEvidenceId` selects the single user-uploaded `structure-reference` used as the model basis, and `provenance.sourcePlanSha256` must equal that evidence record's content hash. Every concept repeats the same `sourcePlanEvidenceId`; a mismatch blocks validation, scene audit, and Page generation.
 
 Writes use a project lock, `baseRevision`, bounded JSON, prototype-key rejection, temporary files, fsync, atomic rename, history snapshots, and manifest hashes. A stale revision returns `REVISION_CONFLICT` with the current revision and replay guidance.
 
@@ -14,7 +14,7 @@ If a crash or tamper makes the current files disagree with the manifest, reads f
 
 ## Evidence
 
-Each evidence record has a stable ID, governed managed-object reference or safe `evidence/` relative path, classification, orientation, calibration, confidence, allowed uses, observations, inferences, redaction status, and SHA-256. `structure-reference` identifies the user-uploaded floor plan; `revision-annotation` identifies the separate image that the Agent produces and uploads after analysis. The Page never synthesizes either image in the browser. Observations describe only what is visible or measured; inferences remain separate. Contradictory verified calibrations for the same segment block compilation. Missing reliable scale is allowed only as an explicitly labeled concept.
+Each evidence record has a stable ID, governed managed-object reference or safe `evidence/` relative path, classification, orientation, calibration, confidence, allowed uses, observations, inferences, redaction status, and SHA-256. `structure-reference` identifies the user-uploaded floor plan and is the unique basis for the structured concept, Pascal 3D, orthographic plan, labels, and derived design explanations; `revision-annotation` identifies the separate image that the Agent produces and uploads after analysis. The Page never synthesizes either image in the browser. Observations describe only what is visible or measured; inferences remain separate. Contradictory verified calibrations for the same segment block compilation. Missing reliable scale is allowed only as an explicitly labeled concept.
 
 Managed references must use the Node `obj_<24 hex>` contract and remain inert inside this Skill. The main Agent and `personal-files` validate current-Space ownership before materializing a copy; the v2 CLI never dereferences an arbitrary managed ID or cross-project path. Page delivery accepts only a redacted project-local evidence copy.
 

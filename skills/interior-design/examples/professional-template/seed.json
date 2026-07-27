@@ -174,6 +174,7 @@
   "concepts": [
     {
       "conceptId": "concept-open-living",
+      "sourcePlanEvidenceId": "evidence-source-plan-redacted",
       "name": "方案 A · 按图还原",
       "summary": "依据 C 户型图恢复四房两厅两卫、双生活阳台、玄关和南向景观阳台，作为本轮验收基准。",
       "singleOptionReason": "本模板只用于核对用户提供的 C 户型图与三维空间的一致性，不引入会改变原始户型关系的替代方案。",
@@ -364,5 +365,9 @@
         "req-six-seat-dining"
       ]
     }
-  ]
+  ],
+  "provenance": {
+    "sourcePlanEvidenceId": "evidence-source-plan-redacted",
+    "sourcePlanSha256": "23eab735dd2dcd2190264f93b3aad274b08a68b822c4a6f597a377afdc763542"
+  }
 }

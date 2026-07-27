@@ -27,6 +27,13 @@ export function auditProfessionalProject(project, scenePayload = null) {
     if (scenePayload.projectId !== project.projectId) findings.push(issue(project, 'scene.project-mismatch', 'blocking', 'The compiled scene belongs to another project.', {
       fix: 'Discard the mismatched scene and compile this project again.',
     }));
+    if (scenePayload.modelBasis?.evidenceId !== project.provenance.sourcePlanEvidenceId
+      || scenePayload.modelBasis?.sha256 !== project.provenance.sourcePlanSha256) {
+      findings.push(issue(project, 'scene.source-plan-mismatch', 'blocking', 'The compiled scene is not bound to the project source-plan image.', {
+        evidenceIds: [project.provenance.sourcePlanEvidenceId].filter(Boolean),
+        fix: 'Rebuild the structured concept and Pascal scene from the governed user-uploaded source plan.',
+      }));
+    }
     if (scenePayload.sceneHash !== compiledSceneHash(scenePayload.scene, scenePayload.furniture || [])) findings.push(issue(project, 'scene.hash-mismatch', 'blocking', 'The compiled scene hash does not match its content.', {
       fix: 'Restore the last valid manifest or recompile the scene.',
     }));

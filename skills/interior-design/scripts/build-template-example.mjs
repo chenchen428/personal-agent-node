@@ -78,6 +78,7 @@ export async function buildTemplateExample({ check = false } = {}) {
       ],
       seedSha256: sha256(seedBytes),
       evidenceSha256: sha256(sourceBytes),
+      modelBasisSha256: compiled.scene.modelBasis.sha256,
       annotationSha256: sha256(annotationBytes),
       projectSha256: sha256(canonicalJson(readProject(projectDir, context).project)),
       sceneSha256: compiled.scene.sceneHash,
