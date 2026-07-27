@@ -217,7 +217,7 @@ function ProjectCamera({ payload }) {
 function PascalScene({ payload }) {
   const [highlighted, setHighlighted] = useState(new Set());
   useEffect(() => {
-    document.body.dataset.renderProfile = 'professional-ssgi-ink';
+    document.body.dataset.renderProfile = 'professional-mesh-ink';
     const handler = (event) => setHighlighted(new Set(event.detail || []));
     window.addEventListener('pascal-highlight', handler);
     return () => {
@@ -228,6 +228,7 @@ function PascalScene({ payload }) {
   return <ViewerBoundary>
     <Viewer
       defaultRender={{ shading: 'rendered', textures: false, colorPreset: 'clay' }}
+      disablePostFx
       renderContext="viewer"
       sceneReadyKey={payload.sceneHash || payload.revision}
       sceneReadyMaxWaitMs={12_000}
@@ -259,13 +260,13 @@ function start() {
       materials: scene.materials || {},
     });
     useScene.getState().setReadOnly(true);
-    const viewer = useViewer.getState();
-    viewer.setProjectId(payload.projectId || null);
-    viewer.setUnit('metric');
-    viewer.setTextures(false);
-    viewer.setLevelMode('stacked');
-    viewer.setWallMode('down');
-    viewer.setCameraMode('perspective');
+    useViewer.setState((state) => ({
+      projectId: payload.projectId || null, renderContext: 'viewer',
+      shading: 'rendered', shadingByContext: { ...state.shadingByContext, viewer: 'rendered' },
+      colorPreset: 'clay', edges: 'off', shadows: true, sceneTheme: 'studio',
+      transparentBackground: false, unit: 'metric', unitExplicit: true, textures: false,
+      levelMode: 'stacked', wallMode: 'down', cameraMode: 'perspective',
+    }));
     window.PersonalAgentPascalViewer = {
       setLevelMode(mode) {
         if (!['stacked', 'exploded', 'solo'].includes(mode)) return false;
@@ -296,5 +297,4 @@ function start() {
   }
 }
 
-if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start, { once: true });
-else start();
+if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start, { once: true }); else start();

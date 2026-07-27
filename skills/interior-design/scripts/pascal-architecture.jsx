@@ -77,6 +77,13 @@ function BoxShell({ color, position, rotation = [0, 0, 0], size }) {
   </mesh>;
 }
 
+function BasicBoxShell({ color, position, rotation = [0, 0, 0], size }) {
+  return <mesh position={position} rotation={rotation}>
+    <boxGeometry args={size} />
+    <meshBasicMaterial color={color} />
+  </mesh>;
+}
+
 function WallShell({ piece }) {
   const [length, height, depth] = piece.size;
   const edge = piece.exterior ? '#343b38' : '#555e58';
@@ -90,9 +97,14 @@ function WallShell({ piece }) {
       position={[0, 0, 0]}
       size={piece.size}
     />
-    <BoxShell color={edge} position={[0, height / 2 + 0.015, 0]} size={[length + 0.025, 0.03, depth + 0.025]} />
-    <BoxShell color={edge} position={[-length / 2 - 0.008, 0, 0]} size={[0.024, height + 0.03, depth + 0.025]} />
-    <BoxShell color={edge} position={[length / 2 + 0.008, 0, 0]} size={[0.024, height + 0.03, depth + 0.025]} />
+    <BasicBoxShell color={edge} position={[0, height / 2 + 0.015, 0]} size={[length + 0.025, 0.03, depth + 0.025]} />
+    {piece.bottom < EPSILON ? <BasicBoxShell
+      color={edge}
+      position={[0, -height / 2 + 0.012, 0]}
+      size={[length + 0.025, 0.024, depth + 0.025]}
+    /> : null}
+    <BasicBoxShell color={edge} position={[-length / 2 - 0.008, 0, 0]} size={[0.024, height + 0.03, depth + 0.025]} />
+    <BasicBoxShell color={edge} position={[length / 2 + 0.008, 0, 0]} size={[0.024, height + 0.03, depth + 0.025]} />
   </group>;
 }
 
@@ -109,9 +121,9 @@ function BalconyRailing({ railing }) {
         transparent
       />
     </mesh>
-    <BoxShell color="#414946" position={[0, 1.12, 0]} size={[railing.length, 0.07, 0.07]} />
-    {Array.from({ length: postCount + 1 }, (_, index) => <BoxShell
-      color="#414946"
+    <BasicBoxShell color="#28312d" position={[0, 1.12, 0]} size={[railing.length, 0.07, 0.07]} />
+    {Array.from({ length: postCount + 1 }, (_, index) => <BasicBoxShell
+      color="#28312d"
       key={index}
       position={[-railing.length / 2 + (index * railing.length) / postCount, 0.64, 0]}
       size={[0.055, 1.02, 0.055]}
@@ -204,6 +216,7 @@ function splitWall(wall, nodes, railings, bounds) {
       if (top - bottom < 0.035) return;
       const local = (from + to) / 2;
       pieces.push({
+        bottom,
         exterior: onExteriorBoundary(wall.start, wall.end, bounds),
         id: `${wall.id}:${index}:${verticalIndex}`,
         position: [
