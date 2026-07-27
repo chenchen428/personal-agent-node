@@ -4,7 +4,7 @@ import { CameraControls, Html } from '@react-three/drei';
 import { useThree } from '@react-three/fiber';
 import useScene from '@pascal-app/core/store';
 import { Viewer, useViewer } from '@pascal-app/viewer';
-import { Box3, Vector3 } from 'three';
+import { Sphere, Vector3 } from 'three';
 
 class ViewerBoundary extends Component {
   constructor(props) {
@@ -164,9 +164,9 @@ function ProjectCamera({ payload }) {
     const minZ = Math.min(...points.map((point) => point[1]), 0);
     const maxZ = Math.max(...points.map((point) => point[1]), 8);
     return {
-      box: new Box3(
-        new Vector3(minX, 0, minZ),
-        new Vector3(maxX, Math.max(3, payload.levels?.length * 3 || 3), maxZ),
+      sphere: new Sphere(
+        new Vector3((minX + maxX) / 2, 1.5, (minZ + maxZ) / 2),
+        Math.hypot(maxX - minX, maxZ - minZ, 3) * 0.56,
       ),
       centerX: (minX + maxX) / 2,
       centerZ: (minZ + maxZ) / 2,
@@ -198,12 +198,7 @@ function ProjectCamera({ payload }) {
           false,
         );
       }
-      await api.fitToBox(frame.box, false, {
-        paddingBottom: 1.2,
-        paddingLeft: 1.2,
-        paddingRight: 1.2,
-        paddingTop: 1.2,
-      });
+      await api.fitToSphere(frame.sphere, false);
       invalidate();
     })();
   }, [camera, cameraMode, frame, invalidate]);

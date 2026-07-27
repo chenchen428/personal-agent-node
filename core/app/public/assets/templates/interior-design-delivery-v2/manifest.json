@@ -6,8 +6,8 @@
   "visualAcceptance": "user",
   "files": {
     "index.html": {
-      "bytes": 2697650,
-      "sha256": "f0b3d0455ccd7252a5abe5820f85858eb11649a53a7748c681d0e18011df2060"
+      "bytes": 2697586,
+      "sha256": "f6b92db8eaac01464c8d59565cfd763201589c781fd70f2185b20cf7751fa95c"
     },
     "scene.json": {
       "bytes": 64346,
