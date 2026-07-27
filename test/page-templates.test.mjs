@@ -86,6 +86,7 @@ test("template catalog and example route consume only the verified generated art
   const styles = read("core/app/src/app/page-templates.css");
   const nextConfig = read("core/app/next.config.ts");
   const runtimeBuild = read("skills/interior-design/scripts/build-pascal-runtime.mjs");
+  const viewerClient = read("skills/interior-design/scripts/pascal-page-client.jsx");
   assert.match(list, /coverPath=\{template\.exampleArtifact\.coverPath\}/);
   assert.match(artwork, /src=\{coverPath\}/);
   assert.match(detail, /artifactPath=\{template\.exampleArtifact\.pagePath\}/);
@@ -97,6 +98,9 @@ test("template catalog and example route consume only the verified generated art
   assert.match(nextConfig, /interior-design-delivery-v2/);
   assert.match(nextConfig, /max-age=300, must-revalidate/);
   assert.match(runtimeBuild, /\['import\.meta\.url', 'document\.baseURI'\]/);
+  assert.match(viewerClient, /function ProjectCamera/);
+  assert.match(viewerClient, /<CameraControls/);
+  assert.match(viewerClient, /api\.setLookAt/);
   const templateComponents = fs.readdirSync(path.join(root, "core/app/src/components/page-templates"));
   assert.equal(templateComponents.some((name) => name.startsWith("interior-template-")), false);
   assert.equal(templateComponents.includes("page-template-example-page.tsx"), false);

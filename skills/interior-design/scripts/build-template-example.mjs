@@ -145,8 +145,10 @@ export function verifyTemplateExample(directory = targetRoot) {
   if (!cover.includes('模型派生轴测封面')
     || !cover.includes('data-cover-item=')
     || !html.includes('pascal-room-label')
-    || !html.includes('pascal-highlight')) {
-    throw new Error('built-in template lost its model-derived isometric cover, labels, or requirement highlighting');
+    || !html.includes('pascal-highlight')
+    || !html.includes('CameraControls')
+    || !html.includes('setLookAt')) {
+    throw new Error('built-in template lost its model-derived cover, labels, highlighting, or automatic camera framing');
   }
   return { files: Object.keys(manifest.files).sort(), manifest };
 }

@@ -1,6 +1,7 @@
-import React, { Component, useEffect, useMemo, useState } from 'react';
+import React, { Component, useEffect, useMemo, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
-import { Html } from '@react-three/drei';
+import { CameraControls, Html } from '@react-three/drei';
+import { useThree } from '@react-three/fiber';
 import useScene from '@pascal-app/core/store';
 import { Viewer, useViewer } from '@pascal-app/viewer';
 
@@ -148,6 +149,59 @@ function SceneLabels({ payload }) {
   </Html>);
 }
 
+function ProjectCamera({ payload }) {
+  const controls = useRef(null);
+  const invalidate = useThree((state) => state.invalidate);
+  const cameraMode = useViewer((state) => state.cameraMode);
+  const frame = useMemo(() => {
+    const points = Object.values(payload.scene?.nodes || {})
+      .filter((node) => node.type === 'zone' && Array.isArray(node.polygon))
+      .flatMap((node) => node.polygon);
+    const minX = Math.min(...points.map((point) => point[0]), 0);
+    const maxX = Math.max(...points.map((point) => point[0]), 8);
+    const minZ = Math.min(...points.map((point) => point[1]), 0);
+    const maxZ = Math.max(...points.map((point) => point[1]), 8);
+    return {
+      centerX: (minX + maxX) / 2,
+      centerZ: (minZ + maxZ) / 2,
+      span: Math.max(maxX - minX, maxZ - minZ, 8),
+    };
+  }, [payload]);
+  useEffect(() => {
+    const api = controls.current;
+    if (!api) return;
+    if (cameraMode === 'orthographic') {
+      void api.setLookAt(
+        frame.centerX,
+        frame.span * 1.45,
+        frame.centerZ + 0.001,
+        frame.centerX,
+        0,
+        frame.centerZ,
+        false,
+      );
+    } else {
+      void api.setLookAt(
+        frame.centerX + frame.span * 0.88,
+        frame.span * 0.92,
+        frame.centerZ + frame.span * 0.88,
+        frame.centerX,
+        0.7,
+        frame.centerZ,
+        false,
+      );
+    }
+    invalidate();
+  }, [cameraMode, frame, invalidate]);
+  return <CameraControls
+    dollyToCursor
+    makeDefault
+    maxDistance={frame.span * 5}
+    minDistance={Math.max(2, frame.span * 0.16)}
+    ref={controls}
+  />;
+}
+
 function PascalScene({ payload }) {
   const [highlighted, setHighlighted] = useState(new Set());
   useEffect(() => {
@@ -168,6 +222,7 @@ function PascalScene({ payload }) {
         if (fallback) fallback.hidden = ready;
       }}
     >
+      <ProjectCamera payload={payload} />
       <ProceduralFurniture highlighted={highlighted} items={payload.furniture || []} />
       <SceneLabels payload={payload} />
     </Viewer>
