@@ -101,6 +101,7 @@ test("template catalog and example route consume only the verified generated art
   assert.match(viewerClient, /function ProjectCamera/);
   assert.match(viewerClient, /<CameraControls/);
   assert.match(viewerClient, /api\.setLookAt/);
+  assert.match(viewerClient, /api\.fitToBox/);
   const templateComponents = fs.readdirSync(path.join(root, "core/app/src/components/page-templates"));
   assert.equal(templateComponents.some((name) => name.startsWith("interior-template-")), false);
   assert.equal(templateComponents.includes("page-template-example-page.tsx"), false);

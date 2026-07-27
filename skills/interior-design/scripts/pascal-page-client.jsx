@@ -4,6 +4,7 @@ import { CameraControls, Html } from '@react-three/drei';
 import { useThree } from '@react-three/fiber';
 import useScene from '@pascal-app/core/store';
 import { Viewer, useViewer } from '@pascal-app/viewer';
+import { Box3, Vector3 } from 'three';
 
 class ViewerBoundary extends Component {
   constructor(props) {
@@ -162,6 +163,10 @@ function ProjectCamera({ payload }) {
     const minZ = Math.min(...points.map((point) => point[1]), 0);
     const maxZ = Math.max(...points.map((point) => point[1]), 8);
     return {
+      box: new Box3(
+        new Vector3(minX, 0, minZ),
+        new Vector3(maxX, Math.max(3, payload.levels?.length * 3 || 3), maxZ),
+      ),
       centerX: (minX + maxX) / 2,
       centerZ: (minZ + maxZ) / 2,
       span: Math.max(maxX - minX, maxZ - minZ, 8),
@@ -170,28 +175,36 @@ function ProjectCamera({ payload }) {
   useEffect(() => {
     const api = controls.current;
     if (!api) return;
-    if (cameraMode === 'orthographic') {
-      void api.setLookAt(
-        frame.centerX,
-        frame.span * 1.45,
-        frame.centerZ + 0.001,
-        frame.centerX,
-        0,
-        frame.centerZ,
-        false,
-      );
-    } else {
-      void api.setLookAt(
-        frame.centerX + frame.span * 0.88,
-        frame.span * 0.92,
-        frame.centerZ + frame.span * 0.88,
-        frame.centerX,
-        0.7,
-        frame.centerZ,
-        false,
-      );
-    }
-    invalidate();
+    void (async () => {
+      if (cameraMode === 'orthographic') {
+        await api.setLookAt(
+          frame.centerX,
+          frame.span * 1.6,
+          frame.centerZ + 0.001,
+          frame.centerX,
+          0,
+          frame.centerZ,
+          false,
+        );
+      } else {
+        await api.setLookAt(
+          frame.centerX + frame.span,
+          frame.span,
+          frame.centerZ + frame.span,
+          frame.centerX,
+          0.7,
+          frame.centerZ,
+          false,
+        );
+      }
+      await api.fitToBox(frame.box, false, {
+        paddingBottom: 1.2,
+        paddingLeft: 1.2,
+        paddingRight: 1.2,
+        paddingTop: 1.2,
+      });
+      invalidate();
+    })();
   }, [cameraMode, frame, invalidate]);
   return <CameraControls
     dollyToCursor
