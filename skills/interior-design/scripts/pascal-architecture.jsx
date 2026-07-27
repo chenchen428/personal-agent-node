@@ -1,5 +1,4 @@
 import React, { useEffect, useMemo } from 'react';
-import { Edges } from '@react-three/drei';
 import { DoubleSide, Shape } from 'three';
 
 const EPSILON = 0.001;
@@ -36,14 +35,12 @@ export function ArchitectureEnvelope({ payload }) {
   return <group name="personal-agent-architecture-envelope">
     <BoxShell
       color="#d5d9d5"
-      edgeColor="#b5bbb5"
       position={[architecture.center[0], -0.06, architecture.center[1]]}
       size={[architecture.size[0] + 5.4, 0.12, architecture.size[1] + 5.4]}
     />
     {architecture.rooms.map((room) => <RoomSurface key={room.id} room={room} />)}
     {architecture.wallPieces.map((piece) => <BoxShell
       color={piece.exterior ? '#f4f2eb' : '#ebe8df'}
-      edgeColor={piece.exterior ? '#747a75' : '#93968f'}
       key={piece.id}
       position={piece.position}
       rotation={[0, piece.rotation, 0]}
@@ -76,15 +73,13 @@ function RoomSurface({ room }) {
       roughness={0.9}
       side={DoubleSide}
     />
-    <Edges color="#f7f3e9" threshold={8} />
   </mesh>;
 }
 
-function BoxShell({ color, edgeColor, position, rotation = [0, 0, 0], size }) {
+function BoxShell({ color, position, rotation = [0, 0, 0], size }) {
   return <mesh castShadow position={position} receiveShadow rotation={rotation}>
     <boxGeometry args={size} />
     <meshStandardMaterial color={color} metalness={0} roughness={0.82} />
-    <Edges color={edgeColor} threshold={12} />
   </mesh>;
 }
 
@@ -101,10 +96,9 @@ function BalconyRailing({ railing }) {
         transparent
       />
     </mesh>
-    <BoxShell color="#414946" edgeColor="#2f3633" position={[0, 1.12, 0]} size={[railing.length, 0.07, 0.07]} />
+    <BoxShell color="#414946" position={[0, 1.12, 0]} size={[railing.length, 0.07, 0.07]} />
     {Array.from({ length: postCount + 1 }, (_, index) => <BoxShell
       color="#414946"
-      edgeColor="#2f3633"
       key={index}
       position={[-railing.length / 2 + (index * railing.length) / postCount, 0.64, 0]}
       size={[0.055, 1.02, 0.055]}
