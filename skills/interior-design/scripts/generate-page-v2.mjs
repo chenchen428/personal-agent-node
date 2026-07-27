@@ -1,7 +1,7 @@
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
-import { loadInteriorTemplateContract, loadSourcePlanAsset } from './generate-page.mjs';
+import { loadInteriorTemplateContract, loadSourcePlanAsset } from './page-assets.mjs';
 import { PascalInteriorAdapter } from './pascal-adapter.mjs';
 import { canonicalJson, readProject, selectedConcept, sha256 } from './project-v2.mjs';
 import { compiledSceneHash } from './scene-hash.mjs';
@@ -166,7 +166,7 @@ function sanitizeAudit(audit, mappings) {
   };
 }
 
-function renderProjectPlan(concept, svgId) {
+export function renderProjectPlan(concept, svgId) {
   const levels = concept.levels;
   const width = 920;
   const height = 580;
@@ -222,6 +222,21 @@ function renderProjectPlan(concept, svgId) {
     return `<g data-level-plan="${levelIndex + 1}"><rect class="level-frame" x="${(panelX + 8).toFixed(1)}" y="8" width="${(panelWidth - 16).toFixed(1)}" height="${height - 16}" rx="12"/><text class="level-title" x="${(panelX + panelWidth / 2).toFixed(1)}" y="34">${escapeHtml(level.name)} · ${level.elevation.toFixed(2)}m</text>${roomMarkup}${wallMarkup}${openingMarkup}${furnitureMarkup}</g>`;
   }).join('');
   return `<svg class="plan-svg" id="${escapeAttr(svgId)}" viewBox="0 0 ${width} ${height}" role="img" aria-label="当前设计 revision 的分层模型派生平面图">${levelMarkup}</svg>`;
+}
+
+export function renderProjectCoverSvg(concept) {
+  const plan = renderProjectPlan(concept, 'generated-template-cover-plan')
+    .replace('<svg ', '<svg xmlns="http://www.w3.org/2000/svg" ')
+    .replace('class="plan-svg"', 'class="plan-svg" width="1200" height="675"');
+  return `${plan.replace('>', `><style>
+    .level-frame{fill:#f3f1ea;stroke:#28312b;stroke-width:2}
+    .room{stroke:#f9f8f4;stroke-width:8}
+    .wall{stroke:#26302a;stroke-width:9;stroke-linecap:square}
+    .opening{stroke:#b45f43;stroke-width:13}
+    .furniture{fill:#fffaf1;stroke:#80664d;stroke-width:2}
+    text{fill:#26302a;font:600 16px Arial,sans-serif;text-anchor:middle}
+    .level-title{font-size:18px;letter-spacing:1px}
+  </style><rect width="920" height="580" fill="#dfe5de"/>`)}\n`;
 }
 
 function renderRequirements(project, mappings) {

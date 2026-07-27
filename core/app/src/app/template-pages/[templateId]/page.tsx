@@ -1,9 +1,9 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { findPageTemplate } from "@/components/page-templates/catalog";
-import { PageTemplateExamplePage } from "@/components/page-templates/page-template-example-page";
 
 export default async function TemplateExample({ params }: { params: Promise<{ templateId: string }> }) {
   const { templateId } = await params;
-  if (!findPageTemplate(decodeURIComponent(templateId))) notFound();
-  return <PageTemplateExamplePage />;
+  const template = findPageTemplate(decodeURIComponent(templateId));
+  if (!template) notFound();
+  redirect(template.exampleArtifact.pagePath);
 }

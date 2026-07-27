@@ -2,19 +2,11 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import {
-  generatePage,
-  loadInteriorTemplateContract,
-  loadLegacyInteriorTemplateContract,
-  loadSourcePlanAsset,
-  verifyGeneratedPageHtml,
-} from './generate-page.mjs';
 import { generateProfessionalPage } from './generate-page-v2.mjs';
-import { loadInteriorEnginePolicy, requireV2ProjectCreation } from './engine-policy.mjs';
-import { auditModel, normalizeModel, validateModel } from './model.mjs';
+import { loadInteriorEnginePolicy } from './engine-policy.mjs';
+import { loadInteriorTemplateContract } from './page-assets.mjs';
 import {
   canonicalJson,
-  importV1Seed,
   initializeProject,
   projectError,
   readProject,
@@ -43,10 +35,7 @@ const argv = hasSubcommand ? rest : [maybeSubcommand, ...rest].filter((value) =>
 const options = parse(argv);
 
 try {
-  if (command === 'validate') await legacyValidate();
-  else if (command === 'normalize') await legacyNormalize();
-  else if (command === 'audit') await legacyAudit();
-  else if (command === 'project') await projectCommand();
+  if (command === 'project') await projectCommand();
   else if (command === 'scene') await sceneCommand();
   else if (command === 'page') await pageCommand();
   else emitHelp();
@@ -65,86 +54,15 @@ try {
   process.exitCode = Number.isInteger(error.exitCode) ? error.exitCode : 1;
 }
 
-async function legacyValidate() {
-  const model = readJson(required(options.input, '--input'));
-  const errors = validateModel(model);
-  emit({ ok: errors.length === 0, schemaVersion: 1, errors });
-  if (errors.length) process.exitCode = 1;
-}
-
-async function legacyNormalize() {
-  const input = readJson(required(options.input, '--input'));
-  const errors = validateModel(input);
-  if (errors.length) throw projectError('V1_MODEL_INVALID', errors.join('\n'), 2, { errors });
-  const model = normalizeModel(input);
-  const nextErrors = validateModel(model);
-  if (nextErrors.length) throw projectError('V1_MODEL_INVALID', nextErrors.join('\n'), 2, { errors: nextErrors });
-  writeJson(required(options.output, '--output'), model);
-  emit({ ok: true, schemaVersion: 1, outputHash: sha256(canonicalJson(model)), areaM2: model.project.areaM2, rooms: model.rooms.length });
-}
-
-async function legacyAudit() {
-  const model = readJson(required(options.input, '--input'));
-  const report = auditModel(model);
-  emit({ schemaVersion: 1, ...report });
-  if (!report.ok) process.exitCode = 5;
-}
-
 async function projectCommand() {
   const context = resolveTrustedContext();
   const projectDirInput = required(options['project-dir'], '--project-dir');
   if (subcommand === 'init') {
-    requireV2ProjectCreation(enginePolicy);
     const seed = readJson(required(options.input, '--input'));
     const inputHash = sha256(canonicalJson(seed));
     const result = initializeProject(projectDirInput, seed, context);
     recordEvent(result.projectDir, context, result.project, 'ok', { inputHash });
     emitProjectResult(result.project, { inputHash, state: result.project.status });
-    return;
-  }
-  if (subcommand === 'import-v1') {
-    requireV2ProjectCreation(enginePolicy);
-    const modelPath = required(options.input, '--input');
-    const model = readJson(modelPath);
-    const sourceBytes = fs.readFileSync(path.resolve(modelPath));
-    const errors = validateModel(model);
-    if (errors.length) throw projectError('V1_MODEL_INVALID', errors.join('\n'), 2, { errors });
-    const seed = importV1Seed(model);
-    let sourcePlan = null;
-    if (options['source-plan']) {
-      const sourcePath = path.resolve(options['source-plan']);
-      loadSourcePlanAsset(sourcePath);
-      const extension = path.extname(sourcePath).toLowerCase();
-      sourcePlan = {
-        sourcePath,
-        relativePath: `evidence/source-plan${extension}`,
-        bytes: fs.readFileSync(sourcePath),
-      };
-      seed.evidence.push({
-        evidenceId: 'evidence-source-plan-redacted',
-        relativePath: sourcePlan.relativePath,
-        classification: 'structure-reference',
-        orientation: model.project?.sourceOrientation || 'unknown',
-        calibration: model.project?.scale || { basis: 'unknown' },
-        confidence: model.project?.scale?.basis === 'known-length' ? 'specified' : 'estimated',
-        allowedUses: ['structure', 'delivery'],
-        observations: ['Redacted source plan supplied during v1 migration.'],
-        inferences: [],
-        redactionStatus: 'redacted',
-        contentHash: sha256(sourcePlan.bytes),
-      });
-    }
-    const result = initializeProject(projectDirInput, seed, context);
-    const evidencePath = path.join(result.projectDir, 'evidence', 'legacy-v1-model.json');
-    fs.writeFileSync(evidencePath, sourceBytes, { mode: 0o600, flag: 'wx' });
-    if (sourcePlan) fs.writeFileSync(path.join(result.projectDir, sourcePlan.relativePath), sourcePlan.bytes, { mode: 0o600, flag: 'wx' });
-    const projectHash = sha256(canonicalJson(result.project));
-    recordEvent(result.projectDir, context, result.project, 'ok', { inputHash: sha256(sourceBytes), projectHash });
-    emitProjectResult(result.project, {
-      inputHash: sha256(sourceBytes),
-      projectHash,
-      migration: 'v1-to-v2-non-destructive',
-    });
     return;
   }
   if (subcommand === 'recover') {
@@ -193,7 +111,7 @@ async function projectCommand() {
     if (!audit.ok) process.exitCode = 5;
     return;
   }
-  throw projectError('INVALID_COMMAND', 'project requires init, import-v1, validate, audit, or recover', 2);
+  throw projectError('INVALID_COMMAND', 'project requires init, validate, audit, or recover', 2);
 }
 
 async function sceneCommand() {
@@ -229,38 +147,24 @@ async function pageCommand() {
   const currentTemplate = loadInteriorTemplateContract(skillRoot);
   const requestedTemplate = options.template || currentTemplate.id;
   if (requestedTemplate !== currentTemplate.id) throw projectError('INVALID_TEMPLATE', `--template must be ${currentTemplate.id}`, 2);
-  if (options['project-dir']) {
-    const context = resolveTrustedContext();
-    const { projectDir, project } = readProject(options['project-dir'], context);
-    const output = path.resolve(required(options.output, '--output'));
-    const derivedRoot = path.resolve(projectDir, 'derived');
-    if (!isInside(derivedRoot, output)) throw projectError('PROJECT_OUTPUT_VIOLATION', 'v2 Page output must stay inside the project derived directory', 4);
-    const result = generateProfessionalPage({ projectDir, context, output, skillRoot, template: currentTemplate });
-    recordEvent(projectDir, context, project, 'ok', { outputHash: result.manifest.files['index.html'].sha256 });
-    emitProjectResult(project, {
-      output: path.relative(projectDir, output),
-      outputHash: result.manifest.files['index.html'].sha256,
-      totalBytes: result.totalBytes,
-      template: result.verification,
-      adapterVersion: project.scene.adapterVersion,
-      pascal: {
-        coreVersion: project.provenance.pascalCoreVersion,
-        mcpVersion: project.provenance.pascalMcpVersion,
-      },
-    });
-    return;
-  }
-  const legacyTemplate = loadLegacyInteriorTemplateContract(skillRoot);
-  const model = readJson(required(options.input, '--input'));
-  const errors = validateModel(model);
-  if (errors.length) throw projectError('V1_MODEL_INVALID', errors.join('\n'), 2, { errors });
-  const report = auditModel(model);
-  if (!report.ok) throw projectError('QUALITY_GATE_BLOCKED', report.findings.map((item) => `${item.code}: ${item.message}`).join('\n'), 5);
+  const context = resolveTrustedContext();
+  const { projectDir, project } = readProject(required(options['project-dir'], '--project-dir'), context);
   const output = path.resolve(required(options.output, '--output'));
-  const sourcePlan = loadSourcePlanAsset(required(options['source-plan'], '--source-plan'));
-  const index = generatePage({ model, output, skillRoot, sourcePlan, template: legacyTemplate });
-  const templateVerification = verifyGeneratedPageHtml(fs.readFileSync(index, 'utf8'), legacyTemplate);
-  emit({ ok: true, schemaVersion: 1, outputHash: sha256(fs.readFileSync(index)), template: templateVerification });
+  const derivedRoot = path.resolve(projectDir, 'derived');
+  if (!isInside(derivedRoot, output)) throw projectError('PROJECT_OUTPUT_VIOLATION', 'Page output must stay inside the project derived directory', 4);
+  const result = generateProfessionalPage({ projectDir, context, output, skillRoot, template: currentTemplate });
+  recordEvent(projectDir, context, project, 'ok', { outputHash: result.manifest.files['index.html'].sha256 });
+  emitProjectResult(project, {
+    output: path.relative(projectDir, output),
+    outputHash: result.manifest.files['index.html'].sha256,
+    totalBytes: result.totalBytes,
+    template: result.verification,
+    adapterVersion: project.scene.adapterVersion,
+    pascal: {
+      coreVersion: project.provenance.pascalCoreVersion,
+      mcpVersion: project.provenance.pascalMcpVersion,
+    },
+  });
 }
 
 function emitProjectResult(project, extra = {}) {
@@ -307,9 +211,7 @@ function tryRecordFailure(error) {
 function emitHelp() {
   process.stdout.write([
     'Usage:',
-    '  interior <validate|normalize|audit> --input <v1-model.json>',
-    '  interior page --input <v1-model.json> --source-plan <redacted-image> --output <page-dir>',
-    '  interior project <init|import-v1|validate|audit|recover> --project-dir <space-project-dir>',
+    '  interior project <init|validate|audit|recover> --project-dir <space-project-dir>',
     '  interior scene <compile|apply|undo|redo> --project-dir <space-project-dir> --base-revision <n>',
     '  interior page --project-dir <space-project-dir> --output <project-derived-page-dir>',
     '',
@@ -362,12 +264,6 @@ function rejectPrototypeKeys(key, value) {
     throw projectError('UNTRUSTED_JSON', 'prototype-polluting JSON key rejected', 2);
   }
   return value;
-}
-
-function writeJson(file, value) {
-  const target = path.resolve(file);
-  fs.mkdirSync(path.dirname(target), { recursive: true });
-  fs.writeFileSync(target, `${JSON.stringify(value, null, 2)}\n`);
 }
 
 function assertJsonComplexity(value) {

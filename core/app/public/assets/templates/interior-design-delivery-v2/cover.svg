@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" class="plan-svg" width="1200" height="675" id="generated-template-cover-plan" viewBox="0 0 920 580" role="img" aria-label="当前设计 revision 的分层模型派生平面图"><style>
+    .level-frame{fill:#f3f1ea;stroke:#28312b;stroke-width:2}
+    .room{stroke:#f9f8f4;stroke-width:8}
+    .wall{stroke:#26302a;stroke-width:9;stroke-linecap:square}
+    .opening{stroke:#b45f43;stroke-width:13}
+    .furniture{fill:#fffaf1;stroke:#80664d;stroke-width:2}
+    text{fill:#26302a;font:600 16px Arial,sans-serif;text-anchor:middle}
+    .level-title{font-size:18px;letter-spacing:1px}
+  </style><rect width="920" height="580" fill="#dfe5de"/><g data-level-plan="1"><rect class="level-frame" x="8.0" y="8" width="904.0" height="564" rx="12"/><text class="level-title" x="460.0" y="34">首层 · 0.00m</text><polygon class="room" points="34.0,550.0 362.0,550.0 362.0,58.0 34.0,58.0" fill="#c8d5cc"/><text x="198.0" y="304.0">客餐厅</text><polygon class="room" points="362.0,550.0 608.0,550.0 608.0,58.0 362.0,58.0" fill="#d8d2c8"/><text x="485.0" y="304.0">卧室</text><line class="wall" x1="34.0" y1="550.0" x2="608.0" y2="550.0"/><line class="wall" x1="608.0" y1="550.0" x2="608.0" y2="58.0"/><line class="wall" x1="608.0" y1="58.0" x2="34.0" y2="58.0"/><line class="wall" x1="34.0" y1="58.0" x2="34.0" y2="550.0"/><line class="wall" x1="362.0" y1="550.0" x2="362.0" y2="58.0"/><line class="opening" x1="100.4" y1="550.0" x2="174.2" y2="550.0"/><line class="opening" x1="362.0" y1="230.6" x2="362.0" y2="160.9"/><line class="opening" x1="394.8" y1="58.0" x2="247.2" y2="58.0"/><rect class="furniture" x="66.8" y="250.7" width="180.4" height="73.8" rx="4" transform="rotate(0.0 157.0 287.6)"/><rect class="furniture" x="210.3" y="398.3" width="90.2" height="90.2" rx="4" transform="rotate(0.0 255.4 443.4)"/><rect class="furniture" x="415.3" y="222.0" width="147.6" height="164.0" rx="4" transform="rotate(0.0 489.1 304.0)"/></g></svg>

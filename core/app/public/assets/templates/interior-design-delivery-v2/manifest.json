@@ -1,0 +1,44 @@
+{
+  "schemaVersion": 1,
+  "templateId": "interior-design-delivery",
+  "templateVersion": 2,
+  "artifactMarker": "personal-agent-page-template",
+  "visualAcceptance": "user",
+  "files": {
+    "index.html": {
+      "bytes": 2594903,
+      "sha256": "881a6aaac703612396c0462aa62443ff1028d411051a1cb0d1f6e55cd5bd1894"
+    },
+    "scene.json": {
+      "bytes": 13068,
+      "sha256": "7965770048dfe19d5fb5667aab02cb2ed6fb845191780346f09ff81dfb55737d"
+    },
+    "audit.json": {
+      "bytes": 2093,
+      "sha256": "d1a165e0d0c41855ef1c4274e338f3546fd54d443a957dc6ef85632992ed674d"
+    },
+    "template.json": {
+      "bytes": 3157,
+      "sha256": "3bbfcce442c3a148059433c472b7662bde21a5ecc76292a186f1a7c6bdca307e"
+    },
+    "cover.svg": {
+      "bytes": 1973,
+      "sha256": "3210d15bacdea7fc19e625fae9107dc2c48ad9379df0ffef6c44e2c58d95af4a"
+    }
+  },
+  "source": {
+    "kind": "native-governed-pascal-v2-project",
+    "pipeline": [
+      "project-v2-seed",
+      "pascal-scene-compile",
+      "professional-quality-audit",
+      "page-v2-generate",
+      "artifact-hash-verify"
+    ],
+    "seedSha256": "ea47e09573be85ccd5c247de15aa1e47d5245cdc17272a8af4a6707114cc7a04",
+    "evidenceSha256": "729dde9191b973e351adae3e25e0fbe6f69e1f16a2246fc01ee58773939231e1",
+    "projectSha256": "3d885bf18b15dfac14bafff618840c336ee2c3a4eb677db82f6e0579c2784d9c",
+    "sceneSha256": "025bb92fcdc233965c7f6b051ecd5f81b2e115aa876ae72c0a20aa74e930302e",
+    "auditSha256": "101d87d3b386dab8fdcd2bd9b8262939b801953977f711697aa9f6bfb1031fe6"
+  }
+}

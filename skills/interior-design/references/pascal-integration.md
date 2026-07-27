@@ -14,4 +14,4 @@ An unsupported package version, missing default scene, invalid opening wall, Pas
 
 The Page viewer is read-only. It loads the embedded sanitized scene and procedural items, exposes only camera, level mode, level selection, and highlighting, and falls back to a model-derived SVG plan when WebGL or Viewer initialization fails.
 
-The rollout switch is `registry/interior-design.json` (or trusted deployment override `PERSONAL_AGENT_INTERIOR_DESIGN_ENGINE`). `legacy-v1` blocks only new v2 project creation; validate, audit, recover, scene, and Page operations remain available for retained v2 projects. `pascal-v2-preview` permits explicit v2 CLI projects, and `pascal-v2` is the post-gate default for new projects.
+`registry/interior-design.json` and the optional trusted deployment override `PERSONAL_AGENT_INTERIOR_DESIGN_ENGINE` accept only `pascal-v2`. Unsupported values fail closed before command execution.

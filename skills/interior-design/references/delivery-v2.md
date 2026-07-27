@@ -8,6 +8,8 @@ The Page is a read-only artifact. It cannot save scene changes, call MCP or Agen
 
 Generation writes exactly `index.html`, `scene.json`, `audit.json`, `template.json`, and `manifest.json`; the directory limit is 20 MiB. The verifier scans template metadata, CSP, remote executable assets, Pascal/CDN hosts, loopback/file URLs, development paths, source maps, and private identity fields.
 
+The built-in catalog example is not a separately authored preview. `scripts/build-template-example.mjs` initializes `examples/professional-template/seed.json` as a governed project, compiles its Pascal scene, runs the same professional audit, calls the same Page generator, derives `cover.svg` from the selected model, and records seed, evidence, project, scene, audit, and file hashes in the committed manifest. `--check` regenerates the artifact and fails on any byte drift.
+
 Publication uses `pa-cli pages publish`. Record the returned immutable Page ID and artifact hash. Natural-language changes return to the main Agent, create a structured revision, rerun the gate, generate a new artifact, and publish a new version. Rollback selects a previous immutable artifact.
 
 Automated acceptance covers code, schema, scene, semantic HTML, accessibility markers, CSP, privacy, routes, size, and deterministic hashes. Do not open a browser, take screenshots, click through, or mark visual acceptance passed. Report `visualAcceptance: user` and keep it pending until the user reviews desktop and mobile interaction.

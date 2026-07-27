@@ -14,7 +14,7 @@ import {
   writeProjectRevision,
 } from './project-v2.mjs';
 
-export async function compileProjectScene(projectDirInput, context, { baseRevision, adapter = new PascalInteriorAdapter() } = {}) {
+export async function compileProjectScene(projectDirInput, context, { baseRevision, adapter = new PascalInteriorAdapter(), now } = {}) {
   const { projectDir, project } = readProject(projectDirInput, context);
   requireBaseRevision(project, baseRevision);
   const nextInput = structuredClone(project);
@@ -34,7 +34,7 @@ export async function compileProjectScene(projectDirInput, context, { baseRevisi
   const audit = auditProfessionalProject(nextInput, payload);
   nextInput.status = audit.ok ? 'quality_gated' : 'scene_compiled';
   nextInput.quality = { auditPath: 'derived/audit.json', sha256: audit.sha256, blockingCount: audit.blockingCount, warningCount: audit.warningCount };
-  const next = writeProjectRevision(projectDir, project, nextInput, { scene: payload, audit });
+  const next = writeProjectRevision(projectDir, project, nextInput, { scene: payload, audit, ...(now ? { now } : {}) });
   payload.revision = next.revision;
   clearRedo(projectDir);
   return { projectDir, project: next, scene: payload };

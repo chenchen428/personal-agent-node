@@ -1,5 +1,5 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "templates": [
     {
       "id": "interior-design-delivery",
@@ -11,6 +11,12 @@
         "version": 2,
         "generator": "node skills/interior-design/scripts/cli.mjs page --template interior-design-delivery --project-dir <space-owned-project-dir> --output <page-dir> --json",
         "artifactMarker": "personal-agent-page-template"
+      },
+      "exampleArtifact": {
+        "source": "native-governed-pascal-v2-project",
+        "pagePath": "/assets/templates/interior-design-delivery-v2/index.html",
+        "manifestPath": "/assets/templates/interior-design-delivery-v2/manifest.json",
+        "coverPath": "/assets/templates/interior-design-delivery-v2/cover.svg"
       },
       "acceptance": {
         "visualOwner": "user",

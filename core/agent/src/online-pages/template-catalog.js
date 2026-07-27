@@ -18,7 +18,7 @@ export function resolvePageTemplateRegistryPath(moduleFile = fileURLToPath(impor
 
 export function readPageTemplateRegistry(registryPath = defaultRegistryPath) {
   const parsed = JSON.parse(fs.readFileSync(registryPath, "utf8"));
-  if (parsed.schemaVersion !== 1 || !Array.isArray(parsed.templates)) {
+  if (parsed.schemaVersion !== 2 || !Array.isArray(parsed.templates)) {
     throw new Error("unsupported Page template registry");
   }
   const ids = new Set();
@@ -36,6 +36,10 @@ export function readPageTemplateRegistry(registryPath = defaultRegistryPath) {
     }
     if (template.acceptance?.visualOwner !== "user" || template.acceptance?.agentBrowserReview !== false) {
       throw new Error(`invalid Page template acceptance owner: ${id}`);
+    }
+    if (template.exampleArtifact?.source !== "native-governed-pascal-v2-project"
+      || !["pagePath", "manifestPath", "coverPath"].every((field) => String(template.exampleArtifact?.[field] || "").startsWith("/assets/templates/"))) {
+      throw new Error(`invalid Page template example artifact: ${id}`);
     }
     for (const field of ["matchTerms", "fixedFramework", "agentFreedom", "agentInstructions"]) {
       if (!Array.isArray(template[field]) || template[field].length === 0 || template[field].some((item) => !String(item || "").trim())) {
@@ -61,6 +65,7 @@ export function listPageTemplates({ registry = readPageTemplateRegistry() } = {}
     desktop: Boolean(template.desktop),
     mobileLandscape: Boolean(template.mobileLandscape),
     implementation: { ...template.implementation },
+    exampleArtifact: { ...template.exampleArtifact },
     acceptance: { ...template.acceptance },
   }));
 }

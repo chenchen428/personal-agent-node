@@ -734,9 +734,9 @@
       "owner": "interior-design",
       "kind": "skill-script",
       "entrypoint": "skills/interior-design/scripts/cli.mjs",
-      "command": "node skills/interior-design/scripts/cli.mjs <validate|normalize|audit|project|scene|page>",
-      "workspaceCommand": "node scripts/skill-tree.mjs interior <validate|normalize|audit|project|scene|page>",
-      "description": "Preserve the v1 concept path and operate governed v2 renovation projects: evidence, requirements, revisions, deterministic Pascal scenes, professional quality gates, and offline interior-design-delivery Pages."
+      "command": "node skills/interior-design/scripts/cli.mjs <project|scene|page>",
+      "workspaceCommand": "node scripts/skill-tree.mjs interior <project|scene|page>",
+      "description": "Operate governed Pascal v2 renovation projects: evidence, requirements, revisions, deterministic building scenes, professional quality gates, and offline interior-design-delivery Pages."
     },
     {
       "name": "personal-agent",

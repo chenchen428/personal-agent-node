@@ -6,13 +6,12 @@ import os from 'node:os';
 import path from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import test from 'node:test';
-import { loadInteriorEnginePolicy, requireV2ProjectCreation } from '../skills/interior-design/scripts/engine-policy.mjs';
+import { loadInteriorEnginePolicy } from '../skills/interior-design/scripts/engine-policy.mjs';
 import { generateProfessionalPage, verifyProfessionalPageHtml } from '../skills/interior-design/scripts/generate-page-v2.mjs';
-import { loadInteriorTemplateContract, loadSourcePlanAsset } from '../skills/interior-design/scripts/generate-page.mjs';
+import { loadInteriorTemplateContract, loadSourcePlanAsset } from '../skills/interior-design/scripts/page-assets.mjs';
 import { loadPascalRuntimeModule, PascalInteriorAdapter } from '../skills/interior-design/scripts/pascal-adapter.mjs';
 import {
   createProjectFromSeed,
-  importV1Seed,
   initializeProject,
   readProject,
   recordProjectAuditEvent,
@@ -32,54 +31,35 @@ import {
 
 const root = path.resolve(import.meta.dirname, '..');
 const skillRoot = path.join(root, 'skills/interior-design');
-const sourcePlanPath = path.join(root, 'test/fixtures/skill-cases/interior-design/source-plan.svg');
-const legacyModelPath = path.join(root, 'test/fixtures/skill-cases/interior-design/model.json');
-const legacyModel = JSON.parse(fs.readFileSync(legacyModelPath, 'utf8'));
+const exampleRoot = path.join(root, 'skills/interior-design/examples/professional-template');
+const sourcePlanPath = path.join(exampleRoot, 'source-plan.svg');
+const nativeSeedPath = path.join(exampleRoot, 'seed.json');
+const nativeSeed = JSON.parse(fs.readFileSync(nativeSeedPath, 'utf8'));
 
-test('rolls new-project engine policy forward and back without invalidating retained v2 projects', () => {
+test('requires Pascal v2 as the only interior-design engine and rejects removed engine paths', () => {
   const current = loadInteriorEnginePolicy({ env: {} });
   assert.equal(current.configuredEngine, 'pascal-v2');
-  assert.equal(current.allowsV2Creation, true);
-  assert.deepEqual(current.rollback, {
-    target: 'legacy-v1',
-    preserveV2Projects: true,
-    rebuildExistingArtifacts: false,
-  });
-  const preview = loadInteriorEnginePolicy({ env: { PERSONAL_AGENT_INTERIOR_DESIGN_ENGINE: 'pascal-v2-preview' } });
-  assert.equal(preview.previewOnly, true);
-  const rolledBack = loadInteriorEnginePolicy({ env: { PERSONAL_AGENT_INTERIOR_DESIGN_ENGINE: 'legacy-v1' } });
-  assert.equal(rolledBack.allowsV2Creation, false);
-  assert.throws(() => requireV2ProjectCreation(rolledBack), (error) => error.code === 'INTERIOR_V2_CREATION_DISABLED');
-  const harness = makeHarness('rollback');
+  assert.equal(current.creationPolicy, 'pascal-v2-required');
+  assert.throws(
+    () => loadInteriorEnginePolicy({ env: { PERSONAL_AGENT_INTERIOR_DESIGN_ENGINE: 'unsupported-engine' } }),
+    (error) => error.code === 'INTERIOR_ENGINE_INVALID',
+  );
+  const harness = makeHarness('single-engine');
   assert.equal(readProject(harness.projectDir, harness.context).project.provenance.interiorDesignEngine, 'pascal-v2');
   const cli = path.join(skillRoot, 'scripts/cli.mjs');
-  const legacyResult = spawnSync(process.execPath, [cli, 'validate', '--input', legacyModelPath, '--json'], {
+  const removedResult = spawnSync(process.execPath, [cli, 'validate', '--input', nativeSeedPath, '--json'], {
     encoding: 'utf8',
-    env: { ...process.env, PERSONAL_AGENT_INTERIOR_DESIGN_ENGINE: 'legacy-v1' },
+    env: process.env,
   });
-  assert.equal(legacyResult.status, 0, legacyResult.stderr);
-  assert.equal(JSON.parse(legacyResult.stdout).schemaVersion, 1);
-  const blockedResult = spawnSync(process.execPath, [
-    cli,
-    'project',
-    'init',
-    '--project-dir',
-    path.join(harness.spaceRoot, 'projects', 'home-renovation-disabled'),
-    '--input',
-    path.join(harness.runtimeRoot, 'not-needed.json'),
-    '--json',
-  ], {
-    encoding: 'utf8',
-    env: {
-      ...process.env,
-      PERSONAL_AGENT_INTERIOR_DESIGN_ENGINE: 'legacy-v1',
-      PERSONAL_AGENT_SPACE_ROOT: harness.spaceRoot,
-      PERSONAL_AGENT_SPACE_ID: harness.context.spaceId,
-      PERSONAL_AGENT_OWNER_ID: harness.context.ownerId,
-    },
-  });
-  assert.equal(blockedResult.status, 7, blockedResult.stderr);
-  assert.equal(JSON.parse(blockedResult.stdout).error.code, 'INTERIOR_V2_CREATION_DISABLED');
+  assert.equal(removedResult.status, 0, removedResult.stderr);
+  assert.match(removedResult.stdout, /Usage:/);
+  assert.equal(removedResult.stdout, [
+    'Usage:',
+    '  interior project <init|validate|audit|recover> --project-dir <space-project-dir>',
+    '  interior scene <compile|apply|undo|redo> --project-dir <space-project-dir> --base-revision <n>',
+    '  interior page --project-dir <space-project-dir> --output <project-derived-page-dir>',
+    '',
+  ].join('\n'));
 });
 
 test('ships a pinned, hash-verified Pascal runtime that works in-process without Bun or vision tools', async () => {
@@ -119,12 +99,12 @@ test('ships a pinned, hash-verified Pascal runtime that works in-process without
   assert.doesNotMatch(fs.readFileSync(path.join(skillRoot, 'assets/pascal-headless.bundle'), 'utf8'), /bun:sqlite/);
 });
 
-test('governs project directories, ownership, symlinks, SQLite identity, and v1 migration', () => {
+test('governs native v2 project directories, ownership, symlinks, and SQLite identity', () => {
   const harness = makeHarness('security');
-  const before = sha256(fs.readFileSync(legacyModelPath));
+  const before = sha256(fs.readFileSync(nativeSeedPath));
   assert.equal(readProject(harness.projectDir, harness.context).project.schemaVersion, 2);
   assert.equal(fs.existsSync(path.join(harness.projectDir, '.runtime/pascal.db')), true);
-  assert.equal(sha256(fs.readFileSync(legacyModelPath)), before);
+  assert.equal(sha256(fs.readFileSync(nativeSeedPath)), before);
   const auditEvent = recordProjectAuditEvent(harness.projectDir, harness.context, {
     projectId: readProject(harness.projectDir, harness.context).project.projectId,
     revision: 1,
@@ -137,7 +117,7 @@ test('governs project directories, ownership, symlinks, SQLite identity, and v1 
   assert.equal(auditEvent.durationMs, 12);
   const auditLogPath = path.join(harness.projectDir, '.runtime', 'audit.ndjson');
   const auditLine = fs.readFileSync(auditLogPath, 'utf8');
-  assert.doesNotMatch(auditLine, /\/tmp\/|legacy-v1-model\.json|source-plan/);
+  assert.doesNotMatch(auditLine, /\/tmp\/|seed\.json|source-plan/);
   assert.equal(fs.statSync(auditLogPath).mode & 0o777, 0o600);
   assert.throws(() => resolveProjectDirectory(path.join(harness.spaceRoot, 'outside'), harness.context), /projects directory/);
   assert.throws(() => readProject(harness.projectDir, { ...harness.context, spaceId: 'another-space' }), /trusted Space/);
@@ -296,7 +276,7 @@ test('professional gates deterministically expose geometry, clearance, evidence,
   }).includes('circulation.minimum-width'));
   const sourcedThresholdProject = structuredClone(current);
   sourcedThresholdProject.brief.qualityThresholds = {
-    minimumPassageWidthMetres: { value: 0.9, source: 'user-requirement', reference: 'req-legacy-1' },
+    minimumPassageWidthMetres: { value: 0.9, source: 'user-requirement', reference: 'req-continuous-circulation' },
   };
   const sourcedThresholdIssue = auditProfessionalProject(sourcedThresholdProject, scene).findings.find((entry) => entry.ruleId === 'circulation.minimum-width');
   assert.equal(sourcedThresholdIssue.thresholdSource, 'user-requirement');
@@ -369,7 +349,7 @@ test('generates a deterministic, private, offline Pascal Page v2 with accessible
   assert.match(firstHtml, /connect-src 'none'/);
   assert.match(firstHtml, /视觉与交互等待用户验收/);
   assert.doesNotMatch(firstHtml, /space-page|owner-page|managedObjectId|file:\/\/|localhost|127\.0\.0\.1|sourceMappingURL/);
-  assert.doesNotMatch(firstHtml, /renovation_|concept-imported|req-legacy|decision-import|evidence-source/);
+  assert.doesNotMatch(firstHtml, /renovation_|concept-open-living|req-continuous-circulation|decision-select-open-living|evidence-source/);
   assert.doesNotMatch(fs.readFileSync(path.join(firstDir, 'scene.json'), 'utf8'), /renovation_|projectId|ownerId|spaceId|sourceId/);
   assert.ok(first.totalBytes < 20 * 1024 * 1024);
   assert.deepEqual(fs.readdirSync(firstDir).sort(), ['audit.json', 'index.html', 'manifest.json', 'scene.json', 'template.json']);
@@ -493,15 +473,9 @@ function makeHarness(name, { multiLevel = false, alternatives = true } = {}) {
   const context = { spaceRoot, spaceId: `space-${name}`, ownerId: `owner-${name}` };
   const projectDir = path.join(spaceRoot, 'projects', `home-renovation-${name}`);
   const seed = baseSeed();
-  if (alternatives) {
-    delete seed.concepts[0].singleOptionReason;
-    seed.concepts.push({
-      ...structuredClone(seed.concepts[0]),
-      conceptId: 'concept-alternative',
-      name: '收纳优先方案',
-      summary: '保留相同建筑边界，以更高收纳密度换取更紧凑的公共区。',
-      tradeoffs: ['收纳增加；公共区活动余量需要进一步现场验证。'],
-    });
+  if (!alternatives) {
+    seed.concepts = [seed.concepts[0]];
+    seed.concepts[0].singleOptionReason = 'This test isolates one selected concept.';
   }
   if (multiLevel) {
     seed.concepts = [makeDuplexConcept(seed.concepts[0])];
@@ -513,24 +487,7 @@ function makeHarness(name, { multiLevel = false, alternatives = true } = {}) {
 }
 
 function baseSeed() {
-  const seed = importV1Seed(legacyModel);
-  seed.evidence[0] = {
-    ...seed.evidence[0],
-    relativePath: 'evidence/source-plan.svg',
-    redactionStatus: 'redacted',
-    contentHash: sha256(fs.readFileSync(sourcePlanPath)),
-  };
-  seed.concepts[0].levels[0].openings.push({
-    openingId: 'north-window',
-    type: 'window',
-    wallId: 'north',
-    position: .5,
-    width: 1.8,
-    height: 1.3,
-    sillHeight: .9,
-    connectsRoomIds: ['bedroom'],
-  });
-  return seed;
+  return structuredClone(nativeSeed);
 }
 
 function makeDuplexConcept(source) {

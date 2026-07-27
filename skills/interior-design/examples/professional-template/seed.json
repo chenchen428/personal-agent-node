@@ -1,0 +1,422 @@
+{
+  "title": "两居室专业装修概念方案",
+  "status": "selected_concept",
+  "evidence": [
+    {
+      "evidenceId": "evidence-source-plan-redacted",
+      "relativePath": "evidence/source-plan.svg",
+      "classification": "structure-reference",
+      "orientation": "north-up",
+      "calibration": {
+        "basis": "known-length",
+        "metresPerUnit": 1,
+        "confidence": 0.9
+      },
+      "confidence": "specified",
+      "allowedUses": [
+        "structure",
+        "delivery"
+      ],
+      "observations": [
+        "内置模板使用的合成户型依据，不包含任何客户数据。"
+      ],
+      "inferences": [
+        "概念尺寸仅用于演示受治理的设计流程，施工前仍需现场复尺。"
+      ],
+      "redactionStatus": "redacted",
+      "contentHash": "729dde9191b973e351adae3e25e0fbe6f69e1f16a2246fc01ee58773939231e1"
+    }
+  ],
+  "brief": {
+    "household": [
+      {
+        "role": "adult",
+        "count": 2
+      }
+    ],
+    "scope": [
+      "layout",
+      "furniture",
+      "materials"
+    ],
+    "budget": {
+      "currency": "CNY",
+      "totalMinor": 0,
+      "confidence": "unknown"
+    },
+    "schedule": {
+      "confidence": "unknown",
+      "phases": []
+    },
+    "requirements": [
+      {
+        "requirementId": "req-continuous-circulation",
+        "source": "内置模板专业设计简报",
+        "summary": "保持从入户到客餐厅和卧室的连续通行路径。",
+        "priority": "must",
+        "status": "satisfied",
+        "sceneNodeIds": [
+          "entry",
+          "living",
+          "bed-door",
+          "bedroom"
+        ],
+        "verification": {
+          "method": "deterministic-spatial-audit",
+          "result": "passed"
+        }
+      },
+      {
+        "requirementId": "req-furniture-clearance",
+        "source": "内置模板专业设计简报",
+        "summary": "门扇、座椅、餐桌和床的概念使用净距不得被固定家具阻断。",
+        "priority": "must",
+        "status": "satisfied",
+        "sceneNodeIds": [
+          "entry",
+          "bed-door",
+          "sofa",
+          "table",
+          "bed"
+        ],
+        "verification": {
+          "method": "deterministic-clearance-audit",
+          "result": "passed"
+        }
+      }
+    ]
+  },
+  "assumptions": [
+    {
+      "assumptionId": "assumption-concept-calibration",
+      "summary": "合成图按一图形单位等于一米进行概念标定，不代表现场测绘结论。",
+      "confidence": "estimated"
+    }
+  ],
+  "unknowns": [
+    {
+      "unknownId": "unknown-hidden-services",
+      "summary": "墙体性质、隐蔽管线、机电点位与现场偏差尚未核验。"
+    }
+  ],
+  "professionalVerifications": [
+    {
+      "verificationId": "verify-site",
+      "category": "site-measurement",
+      "status": "required",
+      "summary": "施工或采购前由适当专业人员完成现场复尺与条件核验。"
+    },
+    {
+      "verificationId": "verify-structure",
+      "category": "structure",
+      "status": "required",
+      "summary": "任何墙体改动或新开洞均须由适当资质的专业人员核验结构条件与合规要求。"
+    }
+  ],
+  "concepts": [
+    {
+      "conceptId": "concept-open-living",
+      "name": "方案 A · 开放起居",
+      "summary": "以客餐厅连续活动面和顺畅通行为主，保留清晰的两居边界。",
+      "tradeoffs": [
+        "公共区活动余量更大；独立收纳量需要在深化设计中补足。"
+      ],
+      "budgetItems": [],
+      "levels": [
+        {
+          "levelId": "ground",
+          "name": "首层",
+          "elevation": 0,
+          "height": 2.8,
+          "footprint": [[0, 0], [7, 0], [7, 6], [0, 6]],
+          "rooms": [
+            {
+              "roomId": "living",
+              "name": "客餐厅",
+              "kind": "living",
+              "polygon": [[0, 0], [4, 0], [4, 6], [0, 6]],
+              "materialId": "warm-oak",
+              "requiredAccess": true,
+              "evidenceIds": ["evidence-source-plan-redacted"],
+              "requirementIds": ["req-continuous-circulation", "req-furniture-clearance"]
+            },
+            {
+              "roomId": "bedroom",
+              "name": "卧室",
+              "kind": "bedroom",
+              "polygon": [[4, 0], [7, 0], [7, 6], [4, 6]],
+              "materialId": "warm-oak",
+              "requiredAccess": true,
+              "evidenceIds": ["evidence-source-plan-redacted"],
+              "requirementIds": ["req-continuous-circulation", "req-furniture-clearance"]
+            }
+          ],
+          "walls": [
+            {"wallId": "south", "start": [0, 0], "end": [7, 0], "height": 2.8, "thickness": 0.16, "exteriorEdge": 0},
+            {"wallId": "east", "start": [7, 0], "end": [7, 6], "height": 2.8, "thickness": 0.16, "exteriorEdge": 1},
+            {"wallId": "north", "start": [7, 6], "end": [0, 6], "height": 2.8, "thickness": 0.16, "exteriorEdge": 2},
+            {"wallId": "west", "start": [0, 6], "end": [0, 0], "height": 2.8, "thickness": 0.16, "exteriorEdge": 3},
+            {"wallId": "partition", "start": [4, 0], "end": [4, 6], "height": 2.8, "thickness": 0.12, "exteriorEdge": -1}
+          ],
+          "openings": [
+            {
+              "openingId": "entry",
+              "type": "door",
+              "wallId": "south",
+              "position": 0.18,
+              "width": 0.9,
+              "height": 2.1,
+              "sillHeight": 0,
+              "connectsRoomIds": ["living"],
+              "isEntry": true,
+              "hingesSide": "right",
+              "swingDirection": "inward"
+            },
+            {
+              "openingId": "bed-door",
+              "type": "door",
+              "wallId": "partition",
+              "position": 0.72,
+              "width": 0.85,
+              "height": 2.1,
+              "sillHeight": 0,
+              "connectsRoomIds": ["living", "bedroom"],
+              "hingesSide": "right",
+              "swingDirection": "inward"
+            },
+            {
+              "openingId": "north-window",
+              "type": "window",
+              "wallId": "north",
+              "position": 0.5,
+              "width": 1.8,
+              "height": 1.3,
+              "sillHeight": 0.9,
+              "connectsRoomIds": ["bedroom"]
+            }
+          ],
+          "items": [
+            {
+              "itemId": "sofa",
+              "name": "双人沙发",
+              "kind": "sofa",
+              "roomId": "living",
+              "position": [1.5, 3.2],
+              "size": [2.2, 0.9, 0.8],
+              "rotation": 0,
+              "materialId": "warm-white",
+              "color": "#E9E6DE",
+              "clearanceExempt": false,
+              "requirementIds": ["req-furniture-clearance"]
+            },
+            {
+              "itemId": "table",
+              "name": "圆形餐桌",
+              "kind": "table-round",
+              "roomId": "living",
+              "position": [2.7, 1.3],
+              "size": [1.1, 1.1, 0.74],
+              "rotation": 0,
+              "materialId": "oak-dark",
+              "color": "#80664D",
+              "clearanceExempt": false,
+              "requirementIds": ["req-furniture-clearance"]
+            },
+            {
+              "itemId": "bed",
+              "name": "双人床",
+              "kind": "bed",
+              "roomId": "bedroom",
+              "position": [5.55, 3],
+              "size": [1.8, 2, 0.62],
+              "rotation": 0,
+              "materialId": "warm-white",
+              "color": "#E9E6DE",
+              "clearanceExempt": false,
+              "requirementIds": ["req-furniture-clearance"]
+            }
+          ],
+          "stairs": [],
+          "guardrails": [],
+          "voids": []
+        }
+      ]
+    },
+    {
+      "conceptId": "concept-storage-priority",
+      "name": "方案 B · 收纳优先",
+      "summary": "保持相同建筑边界与通行关系，以更紧凑的公共区布置预留后续整墙收纳。",
+      "tradeoffs": [
+        "收纳潜力增加；公共区家具尺度和活动余量需要现场深化。"
+      ],
+      "budgetItems": [],
+      "levels": [
+        {
+          "levelId": "ground",
+          "name": "首层",
+          "elevation": 0,
+          "height": 2.8,
+          "footprint": [[0, 0], [7, 0], [7, 6], [0, 6]],
+          "rooms": [
+            {
+              "roomId": "living",
+              "name": "客餐厅",
+              "kind": "living",
+              "polygon": [[0, 0], [4, 0], [4, 6], [0, 6]],
+              "materialId": "warm-oak",
+              "requiredAccess": true,
+              "evidenceIds": ["evidence-source-plan-redacted"],
+              "requirementIds": ["req-continuous-circulation", "req-furniture-clearance"]
+            },
+            {
+              "roomId": "bedroom",
+              "name": "卧室",
+              "kind": "bedroom",
+              "polygon": [[4, 0], [7, 0], [7, 6], [4, 6]],
+              "materialId": "warm-oak",
+              "requiredAccess": true,
+              "evidenceIds": ["evidence-source-plan-redacted"],
+              "requirementIds": ["req-continuous-circulation", "req-furniture-clearance"]
+            }
+          ],
+          "walls": [
+            {"wallId": "south", "start": [0, 0], "end": [7, 0], "height": 2.8, "thickness": 0.16, "exteriorEdge": 0},
+            {"wallId": "east", "start": [7, 0], "end": [7, 6], "height": 2.8, "thickness": 0.16, "exteriorEdge": 1},
+            {"wallId": "north", "start": [7, 6], "end": [0, 6], "height": 2.8, "thickness": 0.16, "exteriorEdge": 2},
+            {"wallId": "west", "start": [0, 6], "end": [0, 0], "height": 2.8, "thickness": 0.16, "exteriorEdge": 3},
+            {"wallId": "partition", "start": [4, 0], "end": [4, 6], "height": 2.8, "thickness": 0.12, "exteriorEdge": -1}
+          ],
+          "openings": [
+            {
+              "openingId": "entry",
+              "type": "door",
+              "wallId": "south",
+              "position": 0.18,
+              "width": 0.9,
+              "height": 2.1,
+              "sillHeight": 0,
+              "connectsRoomIds": ["living"],
+              "isEntry": true,
+              "hingesSide": "right",
+              "swingDirection": "inward"
+            },
+            {
+              "openingId": "bed-door",
+              "type": "door",
+              "wallId": "partition",
+              "position": 0.72,
+              "width": 0.85,
+              "height": 2.1,
+              "sillHeight": 0,
+              "connectsRoomIds": ["living", "bedroom"],
+              "hingesSide": "right",
+              "swingDirection": "inward"
+            },
+            {
+              "openingId": "north-window",
+              "type": "window",
+              "wallId": "north",
+              "position": 0.5,
+              "width": 1.8,
+              "height": 1.3,
+              "sillHeight": 0.9,
+              "connectsRoomIds": ["bedroom"]
+            }
+          ],
+          "items": [
+            {
+              "itemId": "sofa",
+              "name": "紧凑双人沙发",
+              "kind": "sofa",
+              "roomId": "living",
+              "position": [1.35, 3.8],
+              "size": [2, 0.85, 0.8],
+              "rotation": 0,
+              "materialId": "warm-white",
+              "color": "#E9E6DE",
+              "clearanceExempt": false,
+              "requirementIds": ["req-furniture-clearance"]
+            },
+            {
+              "itemId": "table",
+              "name": "圆形餐桌",
+              "kind": "table-round",
+              "roomId": "living",
+              "position": [2.55, 1.3],
+              "size": [1, 1, 0.74],
+              "rotation": 0,
+              "materialId": "oak-dark",
+              "color": "#80664D",
+              "clearanceExempt": false,
+              "requirementIds": ["req-furniture-clearance"]
+            },
+            {
+              "itemId": "bed",
+              "name": "双人床",
+              "kind": "bed",
+              "roomId": "bedroom",
+              "position": [5.55, 3],
+              "size": [1.8, 2, 0.62],
+              "rotation": 0,
+              "materialId": "warm-white",
+              "color": "#E9E6DE",
+              "clearanceExempt": false,
+              "requirementIds": ["req-furniture-clearance"]
+            }
+          ],
+          "stairs": [],
+          "guardrails": [],
+          "voids": []
+        }
+      ]
+    }
+  ],
+  "selectedConceptId": "concept-open-living",
+  "designIntent": {
+    "style": [
+      "暖调自然",
+      "低反光",
+      "清晰空间边界"
+    ],
+    "materials": [
+      {
+        "materialId": "warm-oak",
+        "name": "暖橡木",
+        "color": "#C9A77B",
+        "maintenance": "采购前核验样板、耐磨等级和保养说明。"
+      },
+      {
+        "materialId": "warm-white",
+        "name": "暖白织物",
+        "color": "#E9E6DE",
+        "maintenance": "核验可拆洗性、耐污等级与替换周期。"
+      },
+      {
+        "materialId": "oak-dark",
+        "name": "深色橡木",
+        "color": "#80664D",
+        "maintenance": "核验涂装体系、耐热性与日常清洁方式。"
+      }
+    ],
+    "lighting": [
+      {
+        "mode": "daylight-plus-ambient",
+        "intent": "优先利用北向自然光，并以均匀环境光补足公共区。"
+      }
+    ],
+    "maintenance": [
+      "最终材料、灯具和家具必须在采购前核验实物样板与供应商技术资料。"
+    ]
+  },
+  "decisions": [
+    {
+      "decisionId": "decision-select-open-living",
+      "summary": "内置示例选择开放起居方案作为当前交付方案。",
+      "rationale": "该方案更清楚地展示需求追踪、通行审计、门窗开洞和模型派生交付。",
+      "requirementIds": [
+        "req-continuous-circulation",
+        "req-furniture-clearance"
+      ]
+    }
+  ]
+}

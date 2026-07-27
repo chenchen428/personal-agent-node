@@ -5,7 +5,7 @@ import { projectError } from './project-v2.mjs';
 
 const moduleDirectory = path.dirname(fileURLToPath(import.meta.url));
 export const ENGINE_POLICY_PATH = path.resolve(moduleDirectory, '../../../registry/interior-design.json');
-export const INTERIOR_ENGINES = Object.freeze(['legacy-v1', 'pascal-v2-preview', 'pascal-v2']);
+export const INTERIOR_ENGINES = Object.freeze(['pascal-v2']);
 
 export function loadInteriorEnginePolicy({
   env = process.env,
@@ -13,9 +13,11 @@ export function loadInteriorEnginePolicy({
 } = {}) {
   const policy = JSON.parse(fs.readFileSync(policyPath, 'utf8'));
   const allowed = Array.isArray(policy.allowedEngines) ? policy.allowedEngines : [];
-  if (policy.schemaVersion !== 1
-    || !INTERIOR_ENGINES.every((engine) => allowed.includes(engine))
-    || allowed.some((engine) => !INTERIOR_ENGINES.includes(engine))) {
+  if (policy.schemaVersion !== 2
+    || policy.interiorDesignEngine !== 'pascal-v2'
+    || policy.creationPolicy !== 'pascal-v2-required'
+    || allowed.length !== 1
+    || allowed[0] !== 'pascal-v2') {
     throw projectError('INTERIOR_ENGINE_POLICY_INVALID', 'interior-design engine policy is invalid', 6);
   }
   const configured = String(env.PERSONAL_AGENT_INTERIOR_DESIGN_ENGINE || policy.interiorDesignEngine || '').trim();
@@ -27,22 +29,6 @@ export function loadInteriorEnginePolicy({
   return {
     schemaVersion: policy.schemaVersion,
     configuredEngine: configured,
-    allowsV2Creation: configured !== 'legacy-v1',
-    previewOnly: configured === 'pascal-v2-preview',
-    rollback: {
-      target: policy.rollback?.target,
-      preserveV2Projects: policy.rollback?.preserveV2Projects === true,
-      rebuildExistingArtifacts: policy.rollback?.rebuildExistingArtifacts === true,
-    },
+    creationPolicy: policy.creationPolicy,
   };
-}
-
-export function requireV2ProjectCreation(policy) {
-  if (policy.allowsV2Creation) return;
-  throw projectError(
-    'INTERIOR_V2_CREATION_DISABLED',
-    'new Pascal v2 projects are disabled while interiorDesignEngine is legacy-v1; existing v2 projects remain readable and recoverable',
-    7,
-    { configuredEngine: policy.configuredEngine },
-  );
 }

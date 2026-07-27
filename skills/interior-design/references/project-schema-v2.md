@@ -6,7 +6,7 @@ The trusted Space context supplies `spaceId`, `ownerId`, and the absolute Space 
 
 `project.json` is the design authority. `scene.json` is the compiled Pascal delivery authority. `derived/audit.json` is the deterministic gate result. `derived/manifest.json` records revision hashes. `.runtime/pascal.db` is a per-project Node SQLite index with checked schema and ownership; it is not shared and never replaces JSON authority. `history/` keeps the latest 50 revisions and preserves older revisions under `history/archive/`.
 
-`provenance.interiorDesignEngine` is immutable for a v2 project and equals `pascal-v2`. The workspace default is governed by `registry/interior-design.json`; switching it to `legacy-v1` stops new v2 creation without deleting, flattening, or hiding existing v2 projects.
+`provenance.interiorDesignEngine` is immutable and equals `pascal-v2`. `registry/interior-design.json` requires this single engine for every production project.
 
 Writes use a project lock, `baseRevision`, bounded JSON, prototype-key rejection, temporary files, fsync, atomic rename, history snapshots, and manifest hashes. A stale revision returns `REVISION_CONFLICT` with the current revision and replay guidance.
 

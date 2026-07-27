@@ -16,7 +16,7 @@ export function PageTemplateDetailPage({ template }: { template: PageTemplate })
       actions={<div className="template-detail-actions"><Badge tone="success">已内置</Badge><a className="button primary" href={`/template-pages/${template.id}`} rel="noreferrer" target="_blank">打开示例<ArrowUpRight aria-hidden="true" /></a></div>}
     />
 
-    <TemplateDevicePreview device={device} onChange={setDevice} />
+    <TemplateDevicePreview artifactPath={template.exampleArtifact.pagePath} device={device} onChange={setDevice} />
 
     <section className="template-detail-overview" aria-label="模板说明">
       <article>
@@ -28,7 +28,7 @@ export function PageTemplateDetailPage({ template }: { template: PageTemplate })
         <div className="template-source-rule"><FileImage aria-hidden="true" /><span><strong>证据、模型与审计并列查看</strong><small>原始图、调整标注、Pascal 设计模型、用户需求和质量边界保持在同一份交付里。</small></span></div>
         <dl>
           <div><dt>关联技能</dt><dd>{template.skill}</dd></div>
-          <div><dt>模板实现</dt><dd>v{template.implementation.version} · 同源生成</dd></div>
+          <div><dt>模板实现</dt><dd>v{template.implementation.version} · 受治理项目同源生成</dd></div>
           <div><dt>适配设备</dt><dd>Web · 移动横屏</dd></div>
           <div><dt>验收方式</dt><dd>确定性检查 · 用户视觉验收</dd></div>
         </dl>
