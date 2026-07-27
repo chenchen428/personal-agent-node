@@ -3,18 +3,18 @@ import { DoubleSide, Shape } from 'three';
 
 const EPSILON = 0.001;
 const FLOOR_COLORS = Object.freeze({
-  balcony: '#c2a975',
-  bathroom: '#929f9b',
-  bedroom: '#c4af92',
-  dining: '#baa07d',
-  foyer: '#b19d80',
-  kitchen: '#98a39d',
-  laundry: '#95a09b',
-  living: '#999c93',
-  'living-extension': '#a5a69c',
-  master: '#c4af92',
-  study: '#a9b5a8',
-  'family-work': '#a9b5a8',
+  balcony: '#c19a58',
+  bathroom: '#748781',
+  bedroom: '#b99a75',
+  dining: '#a98964',
+  foyer: '#9a8164',
+  kitchen: '#7f8e88',
+  laundry: '#788a84',
+  living: '#777d76',
+  'living-extension': '#868b83',
+  master: '#b99a75',
+  study: '#82998a',
+  'family-work': '#82998a',
 });
 
 export function ArchitectureEnvelope({ payload }) {
@@ -34,7 +34,7 @@ export function ArchitectureEnvelope({ payload }) {
   }, [architecture]);
   return <group name="personal-agent-architecture-envelope">
     <BoxShell
-      color="#d5d9d5"
+      color="#adb2ae"
       position={[architecture.center[0], -0.06, architecture.center[1]]}
       size={[architecture.size[0] + 5.4, 0.12, architecture.size[1] + 5.4]}
     />
@@ -62,7 +62,7 @@ function RoomSurface({ room }) {
   >
     <shapeGeometry args={[shape]} />
     <meshStandardMaterial
-      color={FLOOR_COLORS[room.kind] || '#cbc3b5'}
+      color={FLOOR_COLORS[room.kind] || '#b4a58e'}
       metalness={0}
       roughness={0.9}
       side={DoubleSide}
@@ -79,20 +79,20 @@ function BoxShell({ color, position, rotation = [0, 0, 0], size }) {
 
 function WallShell({ piece }) {
   const [length, height, depth] = piece.size;
-  const edge = piece.exterior ? '#747a75' : '#91958f';
+  const edge = piece.exterior ? '#343b38' : '#555e58';
   return <group
     name={`pascal-wall-cap:${piece.id}`}
     position={piece.position}
     rotation={[0, piece.rotation, 0]}
   >
     <BoxShell
-      color={piece.exterior ? '#f4f2eb' : '#ebe8df'}
+      color={piece.exterior ? '#fbf8f0' : '#f2eee5'}
       position={[0, 0, 0]}
       size={piece.size}
     />
-    <BoxShell color={edge} position={[0, height / 2 + 0.012, 0]} size={[length + 0.02, 0.024, depth + 0.02]} />
-    <BoxShell color={edge} position={[-length / 2 - 0.006, 0, 0]} size={[0.018, height + 0.024, depth + 0.02]} />
-    <BoxShell color={edge} position={[length / 2 + 0.006, 0, 0]} size={[0.018, height + 0.024, depth + 0.02]} />
+    <BoxShell color={edge} position={[0, height / 2 + 0.015, 0]} size={[length + 0.025, 0.03, depth + 0.025]} />
+    <BoxShell color={edge} position={[-length / 2 - 0.008, 0, 0]} size={[0.024, height + 0.03, depth + 0.025]} />
+    <BoxShell color={edge} position={[length / 2 + 0.008, 0, 0]} size={[0.024, height + 0.03, depth + 0.025]} />
   </group>;
 }
 

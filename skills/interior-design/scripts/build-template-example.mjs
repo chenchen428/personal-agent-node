@@ -79,6 +79,7 @@ export async function buildTemplateExample({ check = false } = {}) {
       projectSha256: sha256(canonicalJson(readProject(projectDir, context).project)),
       sceneSha256: compiled.scene.sceneHash,
       auditSha256: compiled.project.quality.sha256,
+      renderProfile: 'professional-ssgi-ink',
       qualityFloor: TEMPLATE_QUALITY_FLOOR,
     };
     manifest.files['index.html'] = fileRecord(path.join(output, 'index.html'));
@@ -115,6 +116,9 @@ export function verifyTemplateExample(directory = targetRoot) {
   if (!Array.isArray(manifest.source.pipeline)
     || manifest.source.pipeline.join('>') !== 'project-v2-seed>pascal-scene-compile>professional-quality-audit>page-v2-generate>artifact-hash-verify') {
     throw new Error('built-in template manifest pipeline is incomplete');
+  }
+  if (manifest.source.renderProfile !== 'professional-ssgi-ink') {
+    throw new Error('built-in template professional render profile is missing');
   }
   for (const [name, expected] of Object.entries(manifest.files || {})) {
     const target = path.join(directory, name);
@@ -155,6 +159,7 @@ export function verifyTemplateExample(directory = targetRoot) {
     || !html.includes('personal-agent-architecture-envelope')
     || !html.includes('pascal-room-surface')
     || !html.includes('pascal-wall-cap')
+    || !html.includes('professional-ssgi-ink')
     || !html.includes('CameraControls')
     || !html.includes('setLookAt')) {
     throw new Error('built-in template lost its model-derived cover, labels, highlighting, or automatic camera framing');

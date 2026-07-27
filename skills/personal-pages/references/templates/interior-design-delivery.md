@@ -19,6 +19,7 @@ The catalog cover, desktop/mobile detail preview, and opened example all consume
 - Floor switching plus stacked, solo, and exploded level modes.
 - Real door/window openings, balconies/key components, slabs, ceilings, stairs, voids, guardrails, procedural furniture, cabinets, and major equipment where relevant.
 - A complete model-derived architectural cutaway: continuous room surfaces, continuous wall enclosure cut around real doors/windows, balcony guardrails, and furnished rooms visible together in the primary isometric view. A floor plan, isolated wall lines, or scattered furniture alone is a quality regression.
+- The `professional-ssgi-ink` render profile: rendered shading, ambient occlusion, architectural ink edges, material contrast, and an automatically framed full-house composition.
 - 3D and orthographic views, hideable labels, issue/requirement highlighting, and model-derived SVG fallback.
 - Concept A/B comparison or a visible single-option reason.
 - Assumptions, unknowns, professional verifications, quality report, and concept-design disclaimer.

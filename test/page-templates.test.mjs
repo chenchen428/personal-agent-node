@@ -46,6 +46,7 @@ test("the committed example is the byte-stable output of the governed native v2 
     "page-v2-generate",
     "artifact-hash-verify",
   ]);
+  assert.equal(manifest.source.renderProfile, "professional-ssgi-ink");
   assert.deepEqual(manifest.source.qualityFloor, {
     rooms: 12,
     furniture: 30,
@@ -71,6 +72,7 @@ test("the committed example is the byte-stable output of the governed native v2 
   assert.match(html, /data-presentation="review"/);
   assert.match(html, /pascal-room-label/);
   assert.match(html, /pascal-highlight/);
+  assert.match(html, /professional-ssgi-ink/);
   assert.ok(nodes.filter((node) => node.type === "zone").length >= 12);
   assert.ok(nodes.filter((node) => ["door", "window"].includes(node.type)).length >= 14);
   assert.ok(nodes.filter((node) => node.type === "wall").length >= 20);
@@ -112,6 +114,9 @@ test("template catalog and example route consume only the verified generated art
   assert.match(viewerClient, /api\.fitToSphere/);
   assert.match(viewerClient, /<ArchitectureEnvelope payload=\{payload\}/);
   assert.match(viewerClient, /setWallMode\('down'\)/);
+  assert.match(viewerClient, /shading: 'rendered'/);
+  assert.match(viewerClient, /professional-ssgi-ink/);
+  assert.doesNotMatch(viewerClient, /disablePostFx/);
   assert.match(architectureClient, /personal-agent-architecture-envelope/);
   assert.match(architectureClient, /pascal-room-surface/);
   assert.match(architectureClient, /pascal-wall-cap/);

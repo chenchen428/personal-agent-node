@@ -6,8 +6,8 @@
   "visualAcceptance": "user",
   "files": {
     "index.html": {
-      "bytes": 2703022,
-      "sha256": "67c082ac22e32e5a8bd1fc070fc80467c515567b8b2b8ca03e0ae9b2ac0b62a4"
+      "bytes": 2703114,
+      "sha256": "224720354c4746cfde65caf15a491ec4159e11c4ffae3a503d20afed6d231e31"
     },
     "scene.json": {
       "bytes": 64346,
@@ -18,8 +18,8 @@
       "sha256": "c6295ac19f3e221e752baeaec5b701241ec1fec7ed031c0e89c1fb76d11cef3a"
     },
     "template.json": {
-      "bytes": 3593,
-      "sha256": "1fd915e6b4bce55442de110354f1b6193627a6f24ff010434c013774c51e895e"
+      "bytes": 3919,
+      "sha256": "db7d6a12c5340f7a041e0ab38ac66d965b1847c3365ff7e8c7b4e7accc79c0f3"
     },
     "cover.svg": {
       "bytes": 23263,
@@ -40,6 +40,7 @@
     "projectSha256": "652bc7989d2c8008a7d10dcabd75c3b837b0ee7f7908656b5e6b221ed8de2cf3",
     "sceneSha256": "884807ee1a62c5ad3e0cbe33ad78b136cd48d0a9cd658929eee6cce5ba5bca20",
     "auditSha256": "72cae20b3d4f5360ef44942561d677c0ffc1bd704989bd37526dea9eafa82f80",
+    "renderProfile": "professional-ssgi-ink",
     "qualityFloor": {
       "rooms": 12,
       "furniture": 30,

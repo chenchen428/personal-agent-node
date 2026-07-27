@@ -167,7 +167,7 @@ function ProjectCamera({ payload }) {
     return {
       sphere: new Sphere(
         new Vector3((minX + maxX) / 2, 1.5, (minZ + maxZ) / 2),
-        Math.hypot(maxX - minX, maxZ - minZ, 3) * 0.49,
+        Math.hypot(maxX - minX, maxZ - minZ, 3) * 0.58,
       ),
       centerX: (minX + maxX) / 2,
       centerZ: (minZ + maxZ) / 2,
@@ -217,14 +217,17 @@ function ProjectCamera({ payload }) {
 function PascalScene({ payload }) {
   const [highlighted, setHighlighted] = useState(new Set());
   useEffect(() => {
+    document.body.dataset.renderProfile = 'professional-ssgi-ink';
     const handler = (event) => setHighlighted(new Set(event.detail || []));
     window.addEventListener('pascal-highlight', handler);
-    return () => window.removeEventListener('pascal-highlight', handler);
+    return () => {
+      delete document.body.dataset.renderProfile;
+      window.removeEventListener('pascal-highlight', handler);
+    };
   }, []);
   return <ViewerBoundary>
     <Viewer
-      defaultRender={{ shading: 'solid', textures: false, colorPreset: 'clay' }}
-      disablePostFx
+      defaultRender={{ shading: 'rendered', textures: false, colorPreset: 'clay' }}
       renderContext="viewer"
       sceneReadyKey={payload.sceneHash || payload.revision}
       sceneReadyMaxWaitMs={12_000}
