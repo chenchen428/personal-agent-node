@@ -78,6 +78,8 @@ test("the committed example is the byte-stable output of the governed native v2 
   assert.match(html, /professional-mesh-ink/);
   assert.match(html, /data-layout-profile="su-design-classic"/);
   assert.match(html, /pascal-viewer-warmup/);
+  assert.match(html, /function restoreModelView\(\)\{call\('resetCamera'\);call\('warmup'\)\}/);
+  assert.match(html, /setTimeout\(restoreModelView,160\)/);
   assert.doesNotMatch(html, /class="navigator"/);
   assert.ok(nodes.filter((node) => node.type === "zone").length >= 12);
   assert.ok(nodes.filter((node) => ["door", "window"].includes(node.type)).length >= 14);
