@@ -114,6 +114,8 @@ test("template catalog and example route consume only the verified generated art
   assert.match(viewerClient, /setWallMode\('down'\)/);
   assert.match(architectureClient, /personal-agent-architecture-envelope/);
   assert.match(architectureClient, /pascal-room-surface/);
+  assert.match(architectureClient, /pascal-wall-cap/);
+  assert.match(architectureClient, /function WallShell/);
   assert.match(architectureClient, /function splitWall/);
   assert.match(architectureClient, /function BalconyRailing/);
   const templateComponents = fs.readdirSync(path.join(root, "core/app/src/components/page-templates"));

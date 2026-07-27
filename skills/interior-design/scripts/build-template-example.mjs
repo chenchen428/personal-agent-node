@@ -154,6 +154,7 @@ export function verifyTemplateExample(directory = targetRoot) {
     || !html.includes('pascal-highlight')
     || !html.includes('personal-agent-architecture-envelope')
     || !html.includes('pascal-room-surface')
+    || !html.includes('pascal-wall-cap')
     || !html.includes('CameraControls')
     || !html.includes('setLookAt')) {
     throw new Error('built-in template lost its model-derived cover, labels, highlighting, or automatic camera framing');

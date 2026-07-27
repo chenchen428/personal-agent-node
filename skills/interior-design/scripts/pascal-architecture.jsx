@@ -3,18 +3,18 @@ import { DoubleSide, Shape } from 'three';
 
 const EPSILON = 0.001;
 const FLOOR_COLORS = Object.freeze({
-  balcony: '#c9b997',
-  bathroom: '#a9b1ad',
-  bedroom: '#d7c9b5',
-  dining: '#cdbb9f',
-  foyer: '#c5b59d',
-  kitchen: '#aeb5b0',
-  laundry: '#adb5b0',
-  living: '#c9bca8',
-  'living-extension': '#d5c6ad',
-  master: '#d7c9b5',
-  study: '#c4cdbf',
-  'family-work': '#c4cdbf',
+  balcony: '#c2a975',
+  bathroom: '#929f9b',
+  bedroom: '#c4af92',
+  dining: '#baa07d',
+  foyer: '#b19d80',
+  kitchen: '#98a39d',
+  laundry: '#95a09b',
+  living: '#999c93',
+  'living-extension': '#a5a69c',
+  master: '#c4af92',
+  study: '#a9b5a8',
+  'family-work': '#a9b5a8',
 });
 
 export function ArchitectureEnvelope({ payload }) {
@@ -39,13 +39,7 @@ export function ArchitectureEnvelope({ payload }) {
       size={[architecture.size[0] + 5.4, 0.12, architecture.size[1] + 5.4]}
     />
     {architecture.rooms.map((room) => <RoomSurface key={room.id} room={room} />)}
-    {architecture.wallPieces.map((piece) => <BoxShell
-      color={piece.exterior ? '#f4f2eb' : '#ebe8df'}
-      key={piece.id}
-      position={piece.position}
-      rotation={[0, piece.rotation, 0]}
-      size={piece.size}
-    />)}
+    {architecture.wallPieces.map((piece) => <WallShell key={piece.id} piece={piece} />)}
     {architecture.railings.map((railing) => <BalconyRailing key={railing.id} railing={railing} />)}
   </group>;
 }
@@ -81,6 +75,25 @@ function BoxShell({ color, position, rotation = [0, 0, 0], size }) {
     <boxGeometry args={size} />
     <meshStandardMaterial color={color} metalness={0} roughness={0.82} />
   </mesh>;
+}
+
+function WallShell({ piece }) {
+  const [length, height, depth] = piece.size;
+  const edge = piece.exterior ? '#747a75' : '#91958f';
+  return <group
+    name={`pascal-wall-cap:${piece.id}`}
+    position={piece.position}
+    rotation={[0, piece.rotation, 0]}
+  >
+    <BoxShell
+      color={piece.exterior ? '#f4f2eb' : '#ebe8df'}
+      position={[0, 0, 0]}
+      size={piece.size}
+    />
+    <BoxShell color={edge} position={[0, height / 2 + 0.012, 0]} size={[length + 0.02, 0.024, depth + 0.02]} />
+    <BoxShell color={edge} position={[-length / 2 - 0.006, 0, 0]} size={[0.018, height + 0.024, depth + 0.02]} />
+    <BoxShell color={edge} position={[length / 2 + 0.006, 0, 0]} size={[0.018, height + 0.024, depth + 0.02]} />
+  </group>;
 }
 
 function BalconyRailing({ railing }) {

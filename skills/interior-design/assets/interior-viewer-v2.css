@@ -59,14 +59,14 @@ button:focus-visible, select:focus-visible { outline: 2px solid var(--clay); out
 .pascal-room-label { pointer-events: none; }
 .pascal-room-label span {
   display: block;
-  transform: translateY(-8px);
+  transform: translateY(-7px);
   border: 1px solid rgba(255, 255, 255, .78);
   border-radius: 999px;
-  padding: 5px 9px;
+  padding: 4px 7px;
   background: rgba(35, 43, 38, .82);
   box-shadow: 0 5px 18px rgba(35, 42, 37, .18);
   color: white;
-  font-size: 9px;
+  font-size: 8px;
   font-weight: 700;
   line-height: 1;
   white-space: nowrap;

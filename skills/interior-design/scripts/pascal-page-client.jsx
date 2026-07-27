@@ -167,7 +167,7 @@ function ProjectCamera({ payload }) {
     return {
       sphere: new Sphere(
         new Vector3((minX + maxX) / 2, 1.5, (minZ + maxZ) / 2),
-        Math.hypot(maxX - minX, maxZ - minZ, 3) * 0.56,
+        Math.hypot(maxX - minX, maxZ - minZ, 3) * 0.49,
       ),
       centerX: (minX + maxX) / 2,
       centerZ: (minZ + maxZ) / 2,
@@ -190,9 +190,9 @@ function ProjectCamera({ payload }) {
         );
       } else {
         await api.setLookAt(
-          frame.centerX + frame.span,
-          frame.span,
-          frame.centerZ + frame.span,
+          frame.centerX + frame.span * 0.95,
+          frame.span * 1.28,
+          frame.centerZ + frame.span * 0.95,
           frame.centerX,
           0.7,
           frame.centerZ,
