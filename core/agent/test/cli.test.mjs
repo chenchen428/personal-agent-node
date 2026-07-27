@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
+import crypto from "node:crypto";
 import fs from "node:fs";
 import http from "node:http";
 import os from "node:os";
@@ -11,6 +12,10 @@ import { createPageThumbnailPng } from "./page-thumbnail-fixture.mjs";
 
 const execFileAsync = promisify(execFile);
 const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+
+function markedInteriorTemplateHtml(body = "<main>CLI Page</main>") {
+  return `<!doctype html><html><head><meta name="personal-agent-page-template" content="personal-agent-page-template"><meta name="personal-agent-page-template-id" content="interior-design-delivery"><meta name="personal-agent-page-template-version" content="2"></head><body data-template-marker="personal-agent-page-template" data-template-id="interior-design-delivery" data-template-version="2">${body}</body></html>`;
+}
 
 test("Memory CLI uses the ephemeral main-turn capability and content-only contract", async (t) => {
   let received = null;
@@ -387,12 +392,14 @@ test("pages template CLI lists match metadata and inspects the full contract", a
   assert.deepEqual(list.templates.map((template) => template.id), ["interior-design-delivery"]);
   assert.equal(list.templates[0].skill, "interior-design");
   assert.match(list.templates[0].useWhen, /户型/);
+  assert.match(list.templates[0].contractDigest, /^[a-f0-9]{64}$/);
 
   const inspected = await execFileAsync(process.execPath, [
     cli, "pages", "templates", "inspect", "--id", "interior-design-delivery", "--json",
   ], { cwd: projectRoot, env: { ...process.env } });
   const template = JSON.parse(inspected.stdout);
   assert.equal(template.id, "interior-design-delivery");
+  assert.equal(template.contractDigest, list.templates[0].contractDigest);
   assert.ok(template.fixedFramework.includes("肉眼可辨的等距 3D / 顶视正交平面视角"));
   assert.ok(template.agentInstructions.some((item) => item.includes("interior-design")));
 
@@ -464,7 +471,8 @@ test("pages publish sends HTML and explicit device thumbnails as one Page contra
 
 test("pages publish returns an explicit notice when no managed domain is accessible", async (t) => {
   const working = fs.mkdtempSync(path.join(os.tmpdir(), "pa-cli-pages-no-domain-"));
-  fs.writeFileSync(path.join(working, "index.html"), "<h1>CLI Page</h1>");
+  const html = markedInteriorTemplateHtml();
+  fs.writeFileSync(path.join(working, "index.html"), html);
   let received = null;
   const server = http.createServer(async (request, response) => {
     const chunks = [];
@@ -508,6 +516,34 @@ test("pages publish returns an explicit notice when no managed domain is accessi
   assert.ok(desktop.subarray(1, 4).equals(Buffer.from("PNG")));
   assert.ok(mobile.subarray(1, 4).equals(Buffer.from("PNG")));
   assert.equal(desktop.equals(mobile), false);
+  assert.deepEqual(received.template, {
+    id: "interior-design-delivery",
+    version: 2,
+    contractDigest: received.template.contractDigest,
+    artifactMarker: "personal-agent-page-template",
+    artifactSha256: crypto.createHash("sha256").update(html).digest("hex"),
+  });
+  assert.match(received.template.contractDigest, /^[a-f0-9]{64}$/);
+});
+
+test("pages publish rejects an unverified registered template before upload", async () => {
+  const working = fs.mkdtempSync(path.join(os.tmpdir(), "pa-cli-pages-template-mismatch-"));
+  fs.writeFileSync(path.join(working, "index.html"), "<h1>Unmarked Page</h1>");
+  await assert.rejects(execFileAsync(process.execPath, [
+    path.join(projectRoot, "bin", "pa-cli.mjs"),
+    "pages", "publish",
+    "--file", "index.html",
+    "--folder", "unverified-page",
+    "--template", "interior-design-delivery",
+    "--json",
+  ], {
+    cwd: working,
+    env: { ...process.env, OPEN_AGENT_BRIDGE_API_BASE: "http://127.0.0.1:1" },
+  }), (error) => {
+    assert.match(error.stderr, /Page template artifact marker mismatch/);
+    assert.doesNotMatch(error.stderr, /ECONNREFUSED/);
+    return true;
+  });
 });
 
 test("pages upload rejects HTML so it cannot bypass thumbnail generation", async () => {

@@ -4,6 +4,7 @@ Template ID: `interior-design-delivery`
 Implementation: version `2`
 Generator: `node skills/interior-design/scripts/cli.mjs page --template interior-design-delivery --project-dir <space-owned-project-dir> --output <project-dir>/derived/page --json`
 Artifact marker: `personal-agent-page-template`
+Publication: fail-closed artifact validation and persisted template provenance are required
 
 Use this template for装修设计、室内设计、户型改造、家居布局、复式/别墅、多层空间、平面图、SketchUp/SU, Pascal model, or professional renovation Agent Page requests. Invoke `interior-design` before generation.
 
@@ -33,4 +34,4 @@ Run schema, scene hash, quality, template, semantic HTML, CSP, privacy, offline-
 
 The architectural presentation layer must be deterministically derived from the current Pascal `scene.json`; never maintain a second hand-authored model. The built-in professional example is a minimum visual-completeness baseline, not merely a node-count fixture.
 
-Do not open a browser, take screenshots, perform click-through acceptance, or declare appearance approved. Publish with `pa-cli pages publish`, return its actual Page ID/link result, and leave visual and interaction acceptance to the user. A revision returns to the main Agent and creates a new project revision and immutable artifact.
+Do not open a browser, take screenshots, perform click-through acceptance, or declare appearance approved. Publish with `pa-cli pages publish --template interior-design-delivery`; require `page.template` to repeat the inspected contract digest and to contain the exact HTML artifact SHA-256. Return the actual Page ID/link result and leave visual and interaction acceptance to the user. A revision returns to the main Agent and creates a new project revision and immutable artifact.

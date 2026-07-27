@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import crypto from "node:crypto";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -86,6 +87,34 @@ test("publishes HTML with persisted desktop and mobile gallery screenshots", asy
     (await listUploadedAssets()).find((item) => item.fileName === "index.html")?.page,
     asset.page,
   );
+});
+
+test("publishes a registered template only with verified persisted provenance", async () => {
+  const html = fs.readFileSync(path.resolve(import.meta.dirname, "../../app/public/assets/templates/interior-design-delivery-v2/index.html"));
+  const asset = await publishHtmlPage({
+    fileName: "index.html",
+    folder: "published-template",
+    content: html.toString("base64"),
+    encoding: "base64",
+    title: "装修设计交付",
+    template: { id: "interior-design-delivery" },
+    desktopThumbnail: {
+      fileName: "page-thumbnail-desktop.png",
+      content: createPageThumbnailPng().toString("base64"),
+    },
+    mobileThumbnail: {
+      fileName: "page-thumbnail-mobile.png",
+      content: createPageThumbnailPng(750, 1200).toString("base64"),
+    },
+  });
+  assert.deepEqual(asset.page.template, {
+    id: "interior-design-delivery",
+    version: 2,
+    contractDigest: asset.page.template.contractDigest,
+    artifactMarker: "personal-agent-page-template",
+    artifactSha256: crypto.createHash("sha256").update(html).digest("hex"),
+  });
+  assert.match(asset.page.template.contractDigest, /^[a-f0-9]{64}$/);
 });
 
 test("publishes Site verification as a complete Pages gallery entry", async () => {

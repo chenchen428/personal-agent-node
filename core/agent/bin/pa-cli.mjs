@@ -5,7 +5,7 @@ import path from "node:path";
 import qrcodeTerminal from "qrcode-terminal";
 import { ingestRawEmail, MAX_MAIL_BYTES } from "../src/connections/mail/mail-ingest.js";
 import { createGeneratedPageThumbnails } from "../src/online-pages/generated-page-thumbnails.js";
-import { inspectPageTemplate, listPageTemplates } from "../src/online-pages/template-catalog.js";
+import { inspectPageTemplate, listPageTemplates, validatePageTemplateArtifact } from "../src/online-pages/template-catalog.js";
 import { normalizeTaskCreate, normalizeTaskPatch } from "../src/server/task-contract.js";
 
 const personalAgentHome = path.resolve(process.env.PERSONAL_AGENT_HOME || path.join(os.homedir(), ".personal-agent"));
@@ -412,6 +412,9 @@ try {
     const resolved = path.resolve(file);
     if (!/\.html?$/i.test(resolved)) throw new Error("pages publish requires an HTML file");
     const content = fs.readFileSync(resolved);
+    const template = args.template
+      ? validatePageTemplateArtifact(String(args.template), content).provenance
+      : undefined;
     const title = args.title || path.basename(resolved, path.extname(resolved));
     const summary = args.summary || "";
     let desktopThumbnail;
@@ -443,6 +446,7 @@ try {
       overwrite: Boolean(args.overwrite),
       title,
       summary,
+      template,
       desktopThumbnail: {
         fileName: args["desktop-thumbnail-name"] || "page-thumbnail-desktop.png",
         content: desktopThumbnail.toString("base64"),

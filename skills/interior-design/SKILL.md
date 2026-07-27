@@ -37,7 +37,7 @@ Customer projects belong only under the trusted Space at `projects/home-renovati
    `node skills/interior-design/scripts/cli.mjs page --template interior-design-delivery --project-dir <project-dir> --output <project-dir>/derived/page --json`
 
    Require template v2, `pascal-v2`, the artifact marker, the `su-design-classic` full-canvas shell, a dedicated loading state, automatic first-frame 3D warmup, visibly distinct 3D/orthographic cameras, offline CSP, model-derived SVG failure fallback, and `visualAcceptance: user`. The 户型图 panel must display the two uploaded passive images and must not redraw either image in the browser. Page generation must stop on automatic blocking issues.
-8. Publish only through `pa-cli pages publish` and use its returned `pageId`, URL, or `linkNotice`. Never guess a hostname or return a loopback or local path. Subsequent natural-language feedback creates a new project revision, audit, Page artifact, and publication; it does not edit the delivered Page in place.
+8. Publish only through `pa-cli pages publish --template interior-design-delivery`. The CLI must verify the template marker, ID, version, inspected contract digest, and exact HTML hash before upload; require the returned `page.template` provenance to match. Use its returned `pageId`, URL, or `linkNotice`. Never guess a hostname or return a loopback or local path. Subsequent natural-language feedback creates a new project revision, audit, Page artifact, and publication; it does not edit the delivered Page in place.
 
 ## Design and safety rules
 

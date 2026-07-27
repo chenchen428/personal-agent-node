@@ -11,17 +11,17 @@ pa-cli pages templates list --json
 pa-cli pages templates inspect --id <matching-template-id> --json
 ```
 
-Compare the user's intent with each template's `useWhen` and `matchTerms`. When a template matches, use it and its linked `skill`; preserve every `fixedFramework` item and follow `agentInstructions`, while adapting only the `agentFreedom` areas to the user's materials. Put the selected template ID, linked Skill, `implementation.version`, `implementation.generator`, `implementation.artifactMarker`, full template contract, original user materials, constraints, and acceptance criteria in the child-task execution prompt. Run the registered generator and verify the resulting marker, template ID, and version. Do not merely copy a template's visual style, independently recreate a similar Page, or use its example content as user data.
+Compare the user's intent with each template's `useWhen` and `matchTerms`. When a template matches, use it and its linked `skill`; preserve every `fixedFramework` item and follow `agentInstructions`, while adapting only the `agentFreedom` areas to the user's materials. Put the selected template ID, linked Skill, `implementation.version`, `implementation.generator`, `implementation.artifactMarker`, `contractDigest`, full template contract, original user materials, constraints, and acceptance criteria in the child-task execution prompt. Run the registered generator and verify the resulting marker, template ID, version, and contract digest. Do not merely copy a template's visual style, independently recreate a similar Page, or use its example content as user data.
 
 Interior design, renovation, floor-plan remodeling, home layout, SketchUp, and SU design Page requests must select `interior-design-delivery` and invoke the `interior-design` Skill. If the user has not supplied a floor plan or key measurements, identify the missing evidence before generation; never present the example floor plan as the user's design. Use the generic Page workflow only when no registered template semantically matches.
 
 ## Publish Contract
 
 1. Finish the HTML and all supporting CSS, JavaScript, fonts, and images before publishing.
-2. Run the template generator's deterministic model, asset, and contract checks. For registered templates, verify the generated artifact marker, template ID, implementation version, and required sections.
+2. Run the template generator's deterministic model, asset, and contract checks. For registered templates, verify the generated artifact marker, template ID, implementation version, contract digest, and required sections.
 3. Do not open a browser, take screenshots, click through the Page, perform visual self-review, or claim that desktop/mobile appearance has passed. Visual and interaction acceptance belongs to the user after publication.
 4. Upload supporting assets with `pa-cli pages upload`. HTML is not accepted by this command.
-5. Publish the HTML last with `pa-cli pages publish`. If template-generated device thumbnails exist, pass both. Otherwise omit both thumbnail flags and the CLI will generate two distinct device-specific gallery previews without opening a browser.
+5. Publish the HTML last with `pa-cli pages publish`. `--template` is fail-closed: the CLI verifies the HTML meta and body marker, template ID, implementation version, registry contract digest, and exact artifact SHA-256 before sending anything. The Node verifies the same artifact again and stores that provenance in the Page manifest. If template-generated device thumbnails exist, pass both. Otherwise omit both thumbnail flags and the CLI will generate two distinct device-specific gallery previews without opening a browser.
 
 ```bash
 pa-cli pages publish \
@@ -69,6 +69,6 @@ personal-agent activity upsert \
 - Storage: both image byte streams and metadata are stored with the Page. Returned thumbnail URLs are stable same-origin resources.
 - Rendering: desktop clients read `desktopThumbnailUrl`; mobile clients read `mobileThumbnailUrl`. Clients must not load the HTML, run an iframe, capture the page again, or fetch an unrelated external image to build the gallery.
 
-After publishing, verify the result contains `page.pageId`, `page.thumbnails.desktop`, and `page.thumbnails.mobile`, including each file name, dimensions, alt text, and SHA-256. Then check through the Page API or CLI result that the Pages list returns the same stored URLs. Do not open the Page for this check. If either thumbnail generation or upload fails, stop the publication and report the failure instead of publishing HTML with one preview.
+After publishing, verify the result contains `page.pageId`, `page.thumbnails.desktop`, `page.thumbnails.mobile`, and—for registered templates—`page.template`. The template provenance must contain the selected ID, implementation version, inspected contract digest, artifact marker, and the SHA-256 of the exact published HTML. Check through the Page API or CLI result that the Pages list returns the same stored URLs and provenance. Do not open the Page for this check. If validation, thumbnail generation, or upload fails, stop the publication instead of publishing an unverifiable artifact or HTML with one preview.
 
 The final response must mark visual and interaction review as pending user acceptance. Deterministic checks can establish template provenance, file integrity, model constraints, and required markup; they cannot establish that the Page looks good to the user.

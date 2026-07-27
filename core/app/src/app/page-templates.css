@@ -1,3 +1,27 @@
+.pages-template-action {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin-left: auto;
+  white-space: nowrap;
+  text-decoration: none;
+}
+
+.pages-template-action svg {
+  width: 15px;
+}
+
+.pages-library-page .page-actions {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.pages-library-page .search-field {
+  min-width: 190px;
+}
+
 .desktop-v72 .page.page-template-catalog,
 .desktop-v72 .page.page-template-detail {
   width: calc(100% - 32px);
@@ -530,6 +554,26 @@
   0% { transform: translateX(-110%); }
   50% { transform: translateX(80%); }
   100% { transform: translateX(250%); }
+}
+
+@media (max-width: 1180px) {
+  .pages-library-page .page-header {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .pages-library-page .page-actions {
+    width: 100%;
+    display: grid;
+    grid-template-columns: auto minmax(160px, 1fr) auto;
+    justify-content: stretch;
+  }
+
+  .pages-library-page .search-field {
+    width: 100%;
+    min-width: 0;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

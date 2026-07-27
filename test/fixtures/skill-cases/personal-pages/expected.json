@@ -6,6 +6,9 @@
     "registeredGeneratorAndVersionRequired": true,
     "redactedUserFloorPlanRequired": true,
     "artifactMarkerVerified": true,
+    "contractDigestVerified": true,
+    "artifactSha256Verified": true,
+    "publicationProvenancePersisted": true,
     "agentBrowserAcceptanceDisabled": true,
     "visualAcceptanceOwnedByUser": true
   },

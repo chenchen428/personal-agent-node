@@ -799,7 +799,7 @@
       "kind": "external-cli",
       "entrypoint": "skills/personal-pages/SKILL.md",
       "command": "pa-cli pages templates list --json",
-      "description": "Select Page templates and publish governed Pages."
+      "description": "Inspect Page contracts, verify template artifacts fail-closed, persist provenance, and publish governed Pages."
     },
     {
       "name": "pa-cli-file",

@@ -3,7 +3,7 @@ import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import test from "node:test";
-import { inspectPageTemplate, listPageTemplates, readPageTemplateRegistry } from "../core/agent/src/online-pages/template-catalog.js";
+import { inspectPageTemplate, listPageTemplates, readPageTemplateRegistry, validatePageTemplateArtifact } from "../core/agent/src/online-pages/template-catalog.js";
 import { buildTemplateExample, verifyTemplateExample } from "../skills/interior-design/scripts/build-template-example.mjs";
 
 const root = path.resolve(import.meta.dirname, "..");
@@ -23,6 +23,7 @@ test("Pages registers one Pascal v2 renovation template with a generated example
   assert.match(template.implementation.generator, /cli\.mjs page --template interior-design-delivery --project-dir/);
   assert.equal(template.implementation.artifactMarker, "personal-agent-page-template");
   assert.deepEqual(template.acceptance, { visualOwner: "user", agentBrowserReview: false });
+  assert.deepEqual(template.publicationContract, { verifyArtifactBeforePublish: true, persistProvenance: true });
   assert.deepEqual(template.exampleArtifact, {
     source: "native-governed-pascal-v2-project",
     pagePath: "/assets/templates/interior-design-delivery-v2/index.html",
@@ -106,6 +107,7 @@ test("template catalog and example route consume only the verified generated art
   const artifactPreview = read("core/app/src/components/page-templates/template-artifact-preview.tsx");
   const exampleRoute = read("core/app/src/app/template-pages/[templateId]/page.tsx");
   const styles = read("core/app/src/app/page-templates.css");
+  const pages = read("core/app/src/components/desktop-v627/pages-page.tsx");
   const nextConfig = read("core/app/next.config.ts");
   const runtimeBuild = read("skills/interior-design/scripts/build-pascal-runtime.mjs");
   const viewerClient = read("skills/interior-design/scripts/pascal-page-client.jsx");
@@ -116,8 +118,11 @@ test("template catalog and example route consume only the verified generated art
   assert.match(artwork, /src=\{coverPath\}/);
   assert.match(detail, /artifactPath=\{template\.exampleArtifact\.pagePath\}/);
   assert.match(devicePreview, /TemplateArtifactPreview/);
-  assert.match(artifactPreview, /sandbox="allow-scripts"/);
+  assert.match(artifactPreview, /key=\{`\$\{artifactPath\}:\$\{device\}`\}/);
+  assert.match(artifactPreview, /sandbox="allow-scripts allow-same-origin"/);
   assert.match(artifactPreview, /referrerPolicy="no-referrer"/);
+  assert.match(pages, /PageSurface className="pages-library-page"/);
+  assert.match(pages, /className="button pages-template-action"/);
   assert.match(exampleRoute, /redirect\(template\.exampleArtifact\.pagePath\)/);
   assert.match(styles, /\.template-artifact-frame/);
   assert.match(nextConfig, /interior-design-delivery-v2/);
@@ -168,10 +173,32 @@ test("Agent template catalog lists matching metadata and inspects the execution 
   assert.equal(templates[0].skill, "interior-design");
   assert.equal(templates[0].implementation.version, 2);
   assert.equal(templates[0].acceptance.agentBrowserReview, false);
+  assert.match(templates[0].contractDigest, /^[a-f0-9]{64}$/);
   const template = inspectPageTemplate("interior-design-delivery", { registry });
   assert.ok(template.fixedFramework.length >= 8);
   assert.ok(template.agentInstructions.some((item) => item.includes("子任务")));
+  assert.equal(template.contractDigest, templates[0].contractDigest);
   assert.equal(inspectPageTemplate("missing-template", { registry }), null);
+});
+
+test("registered template artifacts fail closed and return persisted publication provenance", () => {
+  const html = fs.readFileSync(path.join(artifactRoot, "index.html"));
+  const verified = validatePageTemplateArtifact("interior-design-delivery", html);
+  assert.deepEqual(verified.provenance, {
+    id: "interior-design-delivery",
+    version: 2,
+    contractDigest: verified.template.contractDigest,
+    artifactMarker: "personal-agent-page-template",
+    artifactSha256: crypto.createHash("sha256").update(html).digest("hex"),
+  });
+  assert.throws(
+    () => validatePageTemplateArtifact("interior-design-delivery", html.toString("utf8").replace('data-template-version="2"', 'data-template-version="1"')),
+    /bodyVersion mismatch/,
+  );
+  assert.throws(
+    () => validatePageTemplateArtifact("missing-template", html),
+    /Unknown Page template/,
+  );
 });
 
 test("desktop header owns reusable drill-down breadcrumbs", () => {

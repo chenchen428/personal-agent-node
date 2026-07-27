@@ -24,6 +24,10 @@ export type PageTemplate = {
     visualOwner: "user";
     agentBrowserReview: false;
   };
+  publicationContract: {
+    verifyArtifactBeforePublish: true;
+    persistProvenance: true;
+  };
   fixedFramework: string[];
   agentFreedom: string[];
 };

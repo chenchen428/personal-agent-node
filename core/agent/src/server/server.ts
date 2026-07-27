@@ -1265,6 +1265,7 @@ async function handleRequest(request: http.IncomingMessage, response: http.Serve
       overwrite: Boolean(body.overwrite),
       title: body.title,
       summary: body.summary,
+      template: body.template,
       desktopThumbnail: body.desktopThumbnail,
       mobileThumbnail: body.mobileThumbnail,
     });
@@ -2139,6 +2140,7 @@ async function buildClientPages(url?: URL) {
       ? `/publications/${encodeURIComponent(publication.id)}/${encodeURIComponent(publication.page.thumbnails.mobile.fileName)}`
       : "",
     mobileThumbnailAlt: String(publication.page?.thumbnails?.mobile?.alt || ""),
+    template: publication.page?.template,
   }));
   const publicPages = publicAssets
     .filter((asset: any) => /\.html?$/i.test(String(asset.fileName || "")))
@@ -2159,6 +2161,7 @@ async function buildClientPages(url?: URL) {
       desktopThumbnailAlt: String(asset.page?.thumbnails?.desktop?.alt || asset.page?.thumbnail?.alt || ""),
       mobileThumbnailUrl: String(asset.mobileThumbnailUrl || ""),
       mobileThumbnailAlt: String(asset.page?.thumbnails?.mobile?.alt || ""),
+      template: asset.page?.template,
     }));
   const pages = [...privatePages, ...publicPages].sort((left, right) => right.updatedAt.localeCompare(left.updatedAt));
   if (!url) return pages;

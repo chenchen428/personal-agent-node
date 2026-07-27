@@ -58,7 +58,28 @@ export function pageProperties(input, desktopThumbnail, mobileThumbnail) {
     thumbnailAlt: desktopThumbnail.alt || `${title} desktop preview`,
     desktopThumbnailAlt: desktopThumbnail.alt || `${title} desktop preview`,
     mobileThumbnailAlt: mobileThumbnail.alt || `${title} mobile preview`,
+    template: normalizePageTemplateProvenance(input.template),
   };
+}
+
+function normalizePageTemplateProvenance(value) {
+  if (!value) return undefined;
+  const template = {
+    id: String(value.id || "").trim(),
+    version: Number(value.version),
+    contractDigest: String(value.contractDigest || "").trim().toLowerCase(),
+    artifactMarker: String(value.artifactMarker || "").trim(),
+    artifactSha256: String(value.artifactSha256 || "").trim().toLowerCase(),
+  };
+  if (!/^[a-z][a-z0-9-]*$/.test(template.id)
+    || !Number.isInteger(template.version)
+    || template.version < 1
+    || !/^[a-f0-9]{64}$/.test(template.contractDigest)
+    || !/^[a-z][a-z0-9-]*$/.test(template.artifactMarker)
+    || !/^[a-f0-9]{64}$/.test(template.artifactSha256)) {
+    throw new Error("invalid Page template provenance");
+  }
+  return template;
 }
 
 function normalizedText(value, maximum) {
