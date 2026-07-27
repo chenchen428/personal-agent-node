@@ -28,7 +28,7 @@ export const PROJECT_STATUSES = new Set([
   'archived',
 ]);
 
-const EVIDENCE_CLASSES = new Set(['structure-reference', 'style-reference', 'edit-target', 'site-photo', 'measurement']);
+const EVIDENCE_CLASSES = new Set(['structure-reference', 'revision-annotation', 'style-reference', 'edit-target', 'site-photo', 'measurement']);
 const CONFIDENCE = new Set(['verified', 'specified', 'estimated', 'unknown']);
 const PRIORITIES = new Set(['must', 'should', 'prefer', 'avoid']);
 const REQUIREMENT_STATUSES = new Set(['unresolved', 'satisfied', 'partially-satisfied', 'blocked', 'rejected-with-reason']);

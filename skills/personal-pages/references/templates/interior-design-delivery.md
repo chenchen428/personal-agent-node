@@ -9,18 +9,18 @@ Use this template for装修设计、室内设计、户型改造、家居布局�
 
 ## Required project
 
-Require the trusted Space-owned project v2, current compiled Pascal scene, matching deterministic audit, and redacted source-plan evidence. The project records evidence, scale confidence, brief, requirements, concepts, assumptions, unknowns, professional verifications, materials, budget, revisions, and provenance. Never substitute the example project or let user JSON self-assert Space/owner identity.
+Require the trusted Space-owned project v2, current compiled Pascal scene, matching deterministic audit, a redacted user-uploaded source-plan image, and a redacted Agent-uploaded revision-annotation image. The project records evidence, scale confidence, brief, requirements, concepts, assumptions, unknowns, professional verifications, materials, budget, revisions, and provenance. Never substitute the example project or let user JSON self-assert Space/owner identity.
 
 The catalog cover, desktop/mobile detail preview, and opened example all consume the same committed artifact generated from `skills/interior-design/examples/professional-template/seed.json` by `build-template-example.mjs`. The manifest records the native seed, evidence, governed project, Pascal scene, professional audit, and every delivered file hash. This example proves the generator contract; it is never a customer design seed.
 
 ## Fixed framework
 
-- Source plan, revision annotation, Pascal design model, requirements, and revision history.
+- User-uploaded source-plan image, Agent-uploaded revision-annotation image, Pascal design model, requirements, and revision history. The two plan images use ordinary `<img>` elements; the Page does not redraw or annotate them.
 - Floor switching plus stacked, solo, and exploded level modes.
 - Real door/window openings, balconies/key components, slabs, ceilings, stairs, voids, guardrails, procedural furniture, cabinets, and major equipment where relevant.
 - A complete model-derived architectural cutaway: continuous room surfaces, continuous wall enclosure cut around real doors/windows, balcony guardrails, and furnished rooms visible together in the primary isometric view. A floor plan, isolated wall lines, or scattered furniture alone is a quality regression.
 - The `professional-mesh-ink` render profile: rendered shading, WebGPU-safe geometry ink, stable shadows, material contrast, and an automatically framed full-house composition.
-- 3D and orthographic views, hideable labels, issue/requirement highlighting, and model-derived SVG fallback.
+- Dedicated cold-start loading state, visibly distinct isometric 3D and top-down orthographic views, hideable labels, issue/requirement highlighting, and model-derived SVG failure fallback.
 - Concept A/B comparison or a visible single-option reason.
 - Assumptions, unknowns, professional verifications, quality report, and concept-design disclaimer.
 - Independent desktop and mobile-landscape layouts with accessible buttons, keyboard operation, state text, and non-3D summaries.

@@ -70,6 +70,11 @@ test("the committed example is the byte-stable output of the governed native v2 
   assert.match(html, /data-engine="pascal-v2"/);
   assert.match(html, /id="pascal-scene"/);
   assert.match(html, /id="model-derived-plan"/);
+  assert.match(html, /id="viewer-loading"/);
+  assert.match(html, /用户户型图与 Agent 标注/);
+  assert.match(html, /plan-source-image/);
+  assert.match(html, /plan-annotation-image/);
+  assert.match(html, /data-plan-mode="annotation"/);
   assert.match(html, /data-presentation-panel="review"/);
   assert.doesNotMatch(html, /data-presentation="review"/);
   assert.match(html, /<nav class="presentation-switch"[\s\S]*SU 设计稿[\s\S]*户型图[\s\S]*用户需求[\s\S]*<\/nav>/);
@@ -127,6 +132,8 @@ test("template catalog and example route consume only the verified generated art
   assert.match(projectCamera, /frame\.span \* 0\.71/);
   assert.doesNotMatch(projectCamera, /api\.fitToSphere/);
   assert.match(projectCamera, /pascal-reset-camera/);
+  assert.match(projectCamera, /pascal-camera-mode/);
+  assert.match(projectCamera, /activeMode\.current/);
   assert.match(projectCamera, /1_900, 2_800/);
   assert.match(viewerClient, /<ArchitectureEnvelope payload=\{payload\}/);
   assert.match(viewerClient, /<ViewerLifecycle \/>/);
@@ -136,9 +143,11 @@ test("template catalog and example route consume only the verified generated art
   assert.match(viewerClient, /disablePostFx/);
   assert.match(viewerClient, /shadows: true/);
   assert.match(viewerClient, /setTimeout\(restoreCamera, 1_800\)/);
+  assert.match(viewerClient, /pascal-camera-mode/);
   assert.match(viewerLifecycle, /useFrame/);
   assert.match(viewerLifecycle, /pascal-viewer-warmup/);
   assert.match(viewerLifecycle, /fallback\.hidden = true/);
+  assert.match(viewerLifecycle, /loading\.hidden = true/);
   assert.match(viewerLifecycle, /body\.dataset\.viewerState = 'ready'/);
   assert.match(architectureClient, /personal-agent-architecture-envelope/);
   assert.match(architectureClient, /pascal-room-surface/);

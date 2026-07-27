@@ -16,7 +16,7 @@ export function loadInteriorTemplateContract(skillRoot) {
   return template;
 }
 
-export function loadSourcePlanAsset(filePath) {
+export function loadPlanImageAsset(filePath, { alt = '装修设计图纸' } = {}) {
   const resolved = path.resolve(filePath);
   const extension = path.extname(resolved).toLowerCase();
   const mimeType = ({
@@ -31,9 +31,9 @@ export function loadSourcePlanAsset(filePath) {
   if (!buffer.length || buffer.length > 12 * 1024 * 1024) throw new Error('source plan must be between 1 byte and 12 MB');
   if (mimeType === 'image/svg+xml') {
     const source = buffer.toString('utf8');
-    if (!/^\s*(?:<\?xml[^>]*>\s*)?<svg\b/i.test(source)) throw new Error('source plan extension does not match SVG content');
+    if (!/^\s*(?:<\?xml[^>]*>\s*)?<svg\b/i.test(source)) throw new Error('plan image extension does not match SVG content');
     if (/<!DOCTYPE|<!ENTITY|<(?:script|foreignObject|iframe|image|use|link|style)\b|(?:href|src|on[a-z]+)\s*=|url\s*\(/i.test(source)) {
-      throw new Error('source plan SVG must not contain executable or remote-reference markup');
+      throw new Error('plan image SVG must not contain executable or remote-reference markup');
     }
     const elementCount = source.match(/<[a-z][^>]*>/gi)?.length || 0;
     if (elementCount > MAX_SVG_ELEMENTS) throw new Error(`source plan SVG exceeds ${MAX_SVG_ELEMENTS} elements`);
@@ -44,8 +44,12 @@ export function loadSourcePlanAsset(filePath) {
   }
   return {
     dataUrl: `data:${mimeType};base64,${buffer.toString('base64')}`,
-    alt: '用户提供并脱敏的原始户型图',
+    alt,
   };
+}
+
+export function loadSourcePlanAsset(filePath) {
+  return loadPlanImageAsset(filePath, { alt: '用户上传并脱敏的原始户型图' });
 }
 
 function validateRasterDimensions(buffer, extension) {

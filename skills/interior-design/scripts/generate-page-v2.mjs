@@ -1,7 +1,7 @@
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
-import { loadInteriorTemplateContract, loadSourcePlanAsset } from './page-assets.mjs';
+import { loadInteriorTemplateContract, loadPlanImageAsset } from './page-assets.mjs';
 import { PascalInteriorAdapter } from './pascal-adapter.mjs';
 import { canonicalJson, readProject, selectedConcept, sha256 } from './project-v2.mjs';
 import { compiledSceneHash } from './scene-hash.mjs';
@@ -29,12 +29,11 @@ export function generateProfessionalPage({ projectDir: projectDirInput, context,
   if (!audit.ok || audit.blockingCount > 0) throw new Error(`quality gate blocks Page generation with ${audit.blockingCount} issue(s)`);
   if (scenePayload.projectId !== project.projectId || scenePayload.revision !== project.revision || scenePayload.sceneHash !== project.scene.sha256) throw new Error('compiled scene does not match the current project');
   if (compiledSceneHash(scenePayload.scene, scenePayload.furniture || []) !== scenePayload.sceneHash) throw new Error('compiled scene hash does not match its content');
-  const sourcePlan = loadProjectSourcePlan(projectDir, project);
+  const planAssets = loadProjectPlanAssets(projectDir, project);
   const concept = selectedConcept(project);
   const { payload: pagePayload, pageMappings } = new PascalInteriorAdapter().exportForPage(scenePayload);
   const conceptMappings = Object.fromEntries(project.concepts.map((entry, index) => [entry.conceptId, `page-concept-${String(index + 1).padStart(2, '0')}`]));
   const fallbackSvg = renderProjectPlan(concept, 'model-derived-plan');
-  const planSvg = renderProjectPlan(concept, 'revision-derived-plan');
   const style = fs.readFileSync(path.join(skillRoot, 'assets', 'interior-viewer-v2.css'), 'utf8');
   const viewer = fs.readFileSync(path.join(skillRoot, 'assets', 'pascal-viewer.bundle'), 'utf8');
   const title = escapeHtml(project.title);
@@ -56,10 +55,10 @@ export function generateProfessionalPage({ projectDir: projectDirInput, context,
   const html = `<!doctype html>
 <html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src data:; style-src 'unsafe-inline'; script-src 'unsafe-inline'; connect-src 'none'; worker-src 'none'; frame-src 'none'; font-src 'none'; media-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'"><meta name="color-scheme" content="light"><meta name="personal-agent-page-template" content="${escapeAttr(template.implementation.artifactMarker)}"><meta name="personal-agent-page-template-id" content="${TEMPLATE_ID}"><meta name="personal-agent-page-template-version" content="2"><meta name="personal-agent-interior-engine" content="pascal-v2"><title>${title} · 专业装修设计</title><style>${style}</style></head>
 <body data-template-marker="${escapeAttr(template.implementation.artifactMarker)}" data-template-id="${TEMPLATE_ID}" data-template-version="2" data-engine="pascal-v2" data-layout-profile="su-design-classic" data-viewer-state="loading"><main id="app">
-<header class="top"><span class="brand"><span class="mark">PA</span><b>Pages</b></span><div class="identity"><small>PERSONAL AGENT · SU DESIGN</small><strong>${displayTitle}</strong><span>${escapeHtml(subtitle)}</span></div><span class="status"><i></i>完成态模型 · 手动查看</span></header>
+<header class="top"><span class="brand"><span class="mark">PA</span><b>Pages</b></span><div class="identity"><small>PERSONAL AGENT · SU DESIGN</small><strong>${displayTitle}</strong><span>${escapeHtml(subtitle)}</span></div><span class="status" data-viewer-status><i></i><span>正在装配模型</span></span></header>
 <section class="stage">
-<section class="presentation-panel presentation-model" data-presentation-panel="model"><div class="viewport"><div id="scene" role="img" aria-label="${title} 可旋转的 Pascal 建筑场景"></div><div id="fallback"><figure>${fallbackSvg}<figcaption><span>正在准备三维设计模型</span><span>首帧完成后自动进入 3D</span></figcaption></figure></div><div class="viewer-tools" role="group" aria-label="SU 设计稿查看工具">${conceptPicker}<span class="tool-label">${ICONS.layers}设计层</span><span class="level-tools">${allLevelButton}${levelButtons}</span><span class="divider"></span><span class="tool-label">${ICONS.view}视角</span><button class="active" type="button" data-camera-mode="perspective">3D</button><button type="button" data-camera-mode="orthographic">平面</button><span class="advanced-tools" data-level-count="${concept.levels.length}"><button class="active" type="button" data-level-mode="stacked">堆叠</button><button type="button" data-level-mode="exploded">分解</button><button type="button" data-level-mode="solo">单层</button></span><span class="divider"></span><button class="active icon-button" type="button" data-label-mode="visible" aria-label="隐藏细节标注" aria-pressed="true">${ICONS.label}</button><button class="icon-button" type="button" data-reset-view aria-label="复位 SU 设计稿">${ICONS.reset}</button></div><span class="gesture">拖动旋转 · 缩放 · 平移</span></div></section>
-<article class="presentation-panel document-panel plan-panel" data-presentation-panel="plan" hidden><header><div><small>DESIGN EVIDENCE</small><h2>原始图与调整标注</h2></div><p>原图来自项目中允许交付的脱敏证据；标注由当前 revision 的模型派生。</p></header><div class="document-grid"><figure class="card plan-card" data-plan-mode="source"><div class="card-head"><strong>户型依据</strong><span class="segmented"><button class="active" type="button" data-plan-mode="source">原始图</button><button type="button" data-plan-mode="revision">调整标注</button></span></div><img class="plan-source-image" src="${escapeAttr(sourcePlan.dataUrl)}" alt="${escapeAttr(sourcePlan.alt)}">${planSvg}<figcaption class="plan-caption">概念模型不替代现场测绘、施工图、结构鉴定或所在地法规审核。</figcaption></figure><aside class="card"><div class="card-head"><strong>版本脉络</strong></div><div class="stack">${revisions}</div></aside></div></article>
+<section class="presentation-panel presentation-model" data-presentation-panel="model"><div class="viewport"><div id="scene" role="img" aria-label="${title} 可旋转的 Pascal 建筑场景"></div><div id="viewer-loading" role="status" aria-live="polite"><div class="loading-card"><span class="loading-mark"><i></i><i></i><i></i></span><small>PERSONAL AGENT · SU DESIGN</small><strong>正在构建设计模型</strong><p>正在装配空间、材质、家具与标注</p><span class="loading-line"><i></i></span></div></div><div id="fallback" hidden><figure>${fallbackSvg}<figcaption><span>3D 暂时不可用</span><span>已切换到模型派生平面图</span></figcaption></figure></div><div class="viewer-tools" role="group" aria-label="SU 设计稿查看工具">${conceptPicker}<span class="tool-label">${ICONS.layers}设计层</span><span class="level-tools">${allLevelButton}${levelButtons}</span><span class="divider"></span><span class="tool-label">${ICONS.view}视角</span><button class="active" type="button" data-camera-mode="perspective">3D</button><button type="button" data-camera-mode="orthographic">平面</button><span class="advanced-tools" data-level-count="${concept.levels.length}"><button class="active" type="button" data-level-mode="stacked">堆叠</button><button type="button" data-level-mode="exploded">分解</button><button type="button" data-level-mode="solo">单层</button></span><span class="divider"></span><button class="active icon-button" type="button" data-label-mode="visible" aria-label="隐藏细节标注" aria-pressed="true">${ICONS.label}</button><button class="icon-button" type="button" data-reset-view aria-label="复位 SU 设计稿">${ICONS.reset}</button></div><span class="gesture">拖动旋转 · 缩放 · 平移</span></div></section>
+<article class="presentation-panel document-panel plan-panel" data-presentation-panel="plan" hidden><header><div><small>DESIGN EVIDENCE</small><h2>用户户型图与 Agent 标注</h2></div><p>两张图均来自项目附件：原图由用户上传，标注图由 Agent 处理后上传；页面只负责展示图片。</p></header><div class="document-grid"><figure class="card plan-card" data-plan-mode="source"><div class="card-head"><strong>户型依据</strong><span class="segmented"><button class="active" type="button" data-plan-mode="source">用户原图</button><button type="button" data-plan-mode="annotation">Agent 标注图</button></span></div><img class="plan-reference-image plan-source-image" src="${escapeAttr(planAssets.source.dataUrl)}" alt="${escapeAttr(planAssets.source.alt)}"><img class="plan-reference-image plan-annotation-image" src="${escapeAttr(planAssets.annotation.dataUrl)}" alt="${escapeAttr(planAssets.annotation.alt)}"><figcaption class="plan-caption">图片用于概念设计沟通，不替代现场测绘、施工图、结构鉴定或所在地法规审核。</figcaption></figure><aside class="card"><div class="card-head"><strong>版本脉络</strong></div><div class="stack">${revisions}</div></aside></div></article>
 <article class="presentation-panel document-panel" data-presentation-panel="requirements" hidden><header><div><small>REQUIREMENT TRACE</small><h2>需求与专业边界</h2></div><p>点击有模型关联的需求，可在 3D 场景中定位对应构件。</p></header><div class="document-grid"><section class="card"><div class="card-head"><strong>需求状态</strong></div><div class="requirement-list">${requirements}</div></section><aside class="card"><div class="card-head"><strong>假设、未知与专业核验</strong></div><div class="stack">${assumptions}</div></aside></div></article>
 <article class="presentation-panel document-panel" data-presentation-panel="review" hidden><header><div><small>QUALITY GATE</small><h2>质量报告与方案比较</h2></div><p>${audit.blockingCount} 个阻断 · ${audit.warningCount} 个警告 · 规则集 ${escapeHtml(audit.ruleSet)}</p></header><div class="document-grid"><section class="card"><div class="card-head"><strong>审计结果</strong></div><div class="issue-list">${issues}</div></section><aside class="card"><div class="card-head"><strong>方案比较</strong></div><div class="stack">${concepts}</div></aside></div></article>
 <nav class="presentation-switch" aria-label="装修设计资料切换"><button class="active" type="button" data-presentation="model">SU 设计稿</button><button type="button" data-presentation="plan">${ICONS.plan}户型图</button><button type="button" data-presentation="requirements">${ICONS.requirements}用户需求</button></nav>
@@ -118,7 +117,10 @@ export function verifyProfessionalPageHtml(html, template) {
     'data-engine="pascal-v2"',
     'data-layout-profile="su-design-classic"',
     'id="pascal-scene"',
+    'id="viewer-loading"',
     'id="model-derived-plan"',
+    'plan-source-image',
+    'plan-annotation-image',
     'data-level-mode="stacked"',
     'data-level-mode="exploded"',
     'data-level-mode="solo"',
@@ -128,7 +130,8 @@ export function verifyProfessionalPageHtml(html, template) {
     'data-presentation="requirements"',
     'data-presentation-panel="review"',
     "connect-src 'none'",
-    '完成态模型 · 手动查看',
+    'data-viewer-status',
+    '正在装配模型',
   ];
   const missing = required.filter((marker) => !html.includes(marker));
   if (missing.length) throw new Error(`generated Page does not match ${template.id} v2: ${missing.join(', ')}`);
@@ -142,22 +145,34 @@ export function verifyProfessionalPageHtml(html, template) {
   return { ok: true, templateId: template.id, templateVersion: 2, artifactMarker: template.implementation.artifactMarker, engine: 'pascal-v2', visualAcceptance: 'user' };
 }
 
-function loadProjectSourcePlan(projectDir, project) {
-  const evidence = project.evidence.find((entry) => ['structure-reference', 'edit-target'].includes(entry.classification)
+function loadProjectPlanAssets(projectDir, project) {
+  const sourceEvidence = project.evidence.find((entry) => entry.classification === 'structure-reference'
     && entry.relativePath
     && ['redacted', 'not-required'].includes(entry.redactionStatus));
-  if (!evidence) throw new Error('project needs a redacted structure-reference or edit-target evidence file for Page delivery');
+  const annotationEvidence = project.evidence.find((entry) => entry.classification === 'revision-annotation'
+    && entry.relativePath
+    && ['redacted', 'not-required'].includes(entry.redactionStatus));
+  if (!sourceEvidence || !annotationEvidence) {
+    throw new Error('project needs redacted user source-plan and Agent revision-annotation image evidence for Page delivery');
+  }
+  return {
+    source: loadProjectPlanAsset(projectDir, sourceEvidence, '用户上传并脱敏的原始户型图'),
+    annotation: loadProjectPlanAsset(projectDir, annotationEvidence, 'Agent 上传的户型分析标注图'),
+  };
+}
+
+function loadProjectPlanAsset(projectDir, evidence, alt) {
   const target = path.resolve(projectDir, evidence.relativePath);
   const evidenceRoot = path.resolve(projectDir, 'evidence');
   const relative = path.relative(evidenceRoot, target);
-  if (relative.startsWith('..') || path.isAbsolute(relative)) throw new Error('source plan evidence must stay inside the project evidence directory');
+  if (relative.startsWith('..') || path.isAbsolute(relative)) throw new Error('plan image evidence must stay inside the project evidence directory');
   if (fs.lstatSync(evidenceRoot).isSymbolicLink()) throw new Error('project evidence directory must not be a symbolic link');
   const realEvidenceRoot = fs.realpathSync(evidenceRoot);
   const realTarget = fs.realpathSync(target);
   if (!isInside(realEvidenceRoot, realTarget) || fs.lstatSync(target).isSymbolicLink()) {
-    throw new Error('source plan evidence must not escape through a symbolic link');
+    throw new Error('plan image evidence must not escape through a symbolic link');
   }
-  return loadSourcePlanAsset(target);
+  return loadPlanImageAsset(target, { alt });
 }
 
 function sanitizeAudit(audit, mappings) {

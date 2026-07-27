@@ -233,10 +233,12 @@ function start() {
       setCameraMode(mode) {
         if (!['perspective', 'orthographic'].includes(mode)) return false;
         useViewer.getState().setCameraMode(mode);
+        window.dispatchEvent(new CustomEvent('pascal-camera-mode', { detail: mode }));
         return true;
       },
       resetCamera() {
         useViewer.getState().setCameraMode('perspective');
+        window.dispatchEvent(new CustomEvent('pascal-camera-mode', { detail: 'perspective' }));
         window.dispatchEvent(new CustomEvent('pascal-reset-camera'));
         return true;
       },

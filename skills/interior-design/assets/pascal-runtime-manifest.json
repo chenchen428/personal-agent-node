@@ -61,8 +61,8 @@
       "target": "node22-data-module"
     },
     "pascal-viewer.bundle": {
-      "bytes": 2623190,
-      "sha256": "27839a1255591bc22c0e7e88d094f79f9ef13202084624cffcdd73f4e5bddd04",
+      "bytes": 2623910,
+      "sha256": "4d20fc2add470339beb502064d5673426e5d5198fb4eb867ac20e31b2a507cb4",
       "target": "browser-es2022"
     }
   },

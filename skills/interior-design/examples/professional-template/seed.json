@@ -4,7 +4,7 @@
   "evidence": [
     {
       "evidenceId": "evidence-source-plan-redacted",
-      "relativePath": "evidence/source-plan.svg",
+      "relativePath": "evidence/source-plan.png",
       "classification": "structure-reference",
       "orientation": "north-up",
       "calibration": {
@@ -19,13 +19,32 @@
         "delivery"
       ],
       "observations": [
-        "依据本轮用户提供的 C 户型宣传图进行脱敏矢量重绘，保留四房两厅两卫、双生活阳台和南向景观阳台关系。"
+        "本轮用户上传的 C 户型宣传图，保留四房两厅两卫、双生活阳台和南向景观阳台关系。"
       ],
       "inferences": [
         "宣传图标注建面 135.08㎡；当前几何仅按可读尺寸进行概念标定，施工前仍需现场复尺。"
       ],
       "redactionStatus": "redacted",
-      "contentHash": "df1b8d589fd7eb7db15a1eb6d8415a186afb3b4723b73923705fa88da2ef77ac"
+      "contentHash": "23eab735dd2dcd2190264f93b3aad274b08a68b822c4a6f597a377afdc763542"
+    },
+    {
+      "evidenceId": "evidence-agent-annotation-redacted",
+      "relativePath": "evidence/agent-annotation.png",
+      "classification": "revision-annotation",
+      "orientation": "north-up",
+      "calibration": {
+        "basis": "unknown"
+      },
+      "confidence": "specified",
+      "allowedUses": [
+        "delivery"
+      ],
+      "observations": [
+        "Agent 基于用户上传原图制作并上传的沟通标注图，标记入户收纳、公区动线和南向阳台。"
+      ],
+      "inferences": [],
+      "redactionStatus": "redacted",
+      "contentHash": "fd7d3df1c3bdc8a503808b641f0dc3baa23f8365ae5e4999f4e5907f3907baa8"
     }
   ],
   "brief": {

@@ -139,7 +139,7 @@
         "evidenceId": { "$ref": "#/$defs/id" },
         "managedObjectId": { "type": "string", "pattern": "^obj_[a-f0-9]{24}$" },
         "relativePath": { "type": "string", "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$)).+$" },
-        "classification": { "enum": ["structure-reference", "style-reference", "edit-target", "site-photo", "measurement"] },
+        "classification": { "enum": ["structure-reference", "revision-annotation", "style-reference", "edit-target", "site-photo", "measurement"] },
         "orientation": { "type": "string", "minLength": 1, "maxLength": 120 },
         "calibration": {
           "type": "object",

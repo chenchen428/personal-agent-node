@@ -5,6 +5,7 @@ import { useViewer } from '@pascal-app/viewer';
 
 export function ProjectCamera({ payload }) {
   const controls = useRef(null);
+  const activeMode = useRef('perspective');
   const camera = useThree((state) => state.camera);
   const invalidate = useThree((state) => state.invalidate);
   const size = useThree((state) => state.size);
@@ -26,6 +27,7 @@ export function ProjectCamera({ payload }) {
 
   useEffect(() => {
     const applyPose = async (mode = cameraMode) => {
+      activeMode.current = mode;
       const api = controls.current;
       if (!api) return;
       const aspect = size.height > 0 ? size.width / size.height : 16 / 9;
@@ -53,14 +55,21 @@ export function ProjectCamera({ payload }) {
       }
       invalidate();
     };
-    const reset = () => { void applyPose('perspective'); };
+    const reset = () => { void applyPose(activeMode.current); };
+    const changeMode = (event) => {
+      const mode = event.detail;
+      if (mode === 'perspective' || mode === 'orthographic') void applyPose(mode);
+    };
+    activeMode.current = cameraMode;
     void applyPose();
     const settleTimers = [160, 520, 1_100, 1_900, 2_800]
       .map((delay) => window.setTimeout(reset, delay));
     window.addEventListener('pascal-reset-camera', reset);
+    window.addEventListener('pascal-camera-mode', changeMode);
     return () => {
       settleTimers.forEach(window.clearTimeout);
       window.removeEventListener('pascal-reset-camera', reset);
+      window.removeEventListener('pascal-camera-mode', changeMode);
     };
   }, [cameraMode, frame, invalidate, size.height, size.width]);
 

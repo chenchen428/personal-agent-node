@@ -14,7 +14,7 @@ If a crash or tamper makes the current files disagree with the manifest, reads f
 
 ## Evidence
 
-Each evidence record has a stable ID, governed managed-object reference or safe `evidence/` relative path, classification, orientation, calibration, confidence, allowed uses, observations, inferences, redaction status, and SHA-256. Observations describe only what is visible or measured; inferences remain separate. Contradictory verified calibrations for the same segment block compilation. Missing reliable scale is allowed only as an explicitly labeled concept.
+Each evidence record has a stable ID, governed managed-object reference or safe `evidence/` relative path, classification, orientation, calibration, confidence, allowed uses, observations, inferences, redaction status, and SHA-256. `structure-reference` identifies the user-uploaded floor plan; `revision-annotation` identifies the separate image that the Agent produces and uploads after analysis. The Page never synthesizes either image in the browser. Observations describe only what is visible or measured; inferences remain separate. Contradictory verified calibrations for the same segment block compilation. Missing reliable scale is allowed only as an explicitly labeled concept.
 
 Managed references must use the Node `obj_<24 hex>` contract and remain inert inside this Skill. The main Agent and `personal-files` validate current-Space ownership before materializing a copy; the v2 CLI never dereferences an arbitrary managed ID or cross-project path. Page delivery accepts only a redacted project-local evidence copy.
 

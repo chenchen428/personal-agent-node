@@ -32,7 +32,8 @@ import {
 const root = path.resolve(import.meta.dirname, '..');
 const skillRoot = path.join(root, 'skills/interior-design');
 const exampleRoot = path.join(root, 'skills/interior-design/examples/professional-template');
-const sourcePlanPath = path.join(exampleRoot, 'source-plan.svg');
+const sourcePlanPath = path.join(exampleRoot, 'source-plan.png');
+const annotationPath = path.join(exampleRoot, 'agent-annotation.png');
 const nativeSeedPath = path.join(exampleRoot, 'seed.json');
 const nativeSeed = JSON.parse(fs.readFileSync(nativeSeedPath, 'utf8'));
 
@@ -345,9 +346,13 @@ test('generates a deterministic, private, offline Pascal Page v2 with accessible
   assert.match(firstHtml, /id="model-derived-plan"/);
   assert.match(firstHtml, /data-level-mode="exploded"/);
   assert.match(firstHtml, /data-label-mode="visible"/);
-  assert.match(firstHtml, /data:image\/svg\+xml;base64/);
+  assert.match(firstHtml, /data:image\/png;base64/);
+  assert.match(firstHtml, /用户户型图与 Agent 标注/);
+  assert.match(firstHtml, /plan-source-image/);
+  assert.match(firstHtml, /plan-annotation-image/);
   assert.match(firstHtml, /connect-src 'none'/);
-  assert.match(firstHtml, /完成态模型 · 手动查看/);
+  assert.match(firstHtml, /正在装配模型/);
+  assert.match(firstHtml, /data-viewer-status/);
   assert.match(firstHtml, /data-layout-profile="su-design-classic"/);
   assert.match(firstHtml, /pascal-viewer-warmup/);
   assert.doesNotMatch(firstHtml, /space-page|owner-page|managedObjectId|file:\/\/|localhost|127\.0\.0\.1|sourceMappingURL/);
@@ -359,7 +364,7 @@ test('generates a deterministic, private, offline Pascal Page v2 with accessible
   const evidenceDirectory = path.join(harness.projectDir, 'evidence');
   const preservedEvidenceDirectory = path.join(harness.projectDir, 'evidence-preserved');
   const externalEvidenceDirectory = fs.mkdtempSync(path.join(os.tmpdir(), 'pa-interior-evidence-'));
-  fs.copyFileSync(sourcePlanPath, path.join(externalEvidenceDirectory, 'source-plan.svg'));
+  fs.copyFileSync(sourcePlanPath, path.join(externalEvidenceDirectory, 'source-plan.png'));
   fs.renameSync(evidenceDirectory, preservedEvidenceDirectory);
   fs.symlinkSync(externalEvidenceDirectory, evidenceDirectory, 'dir');
   assert.throws(() => generateProfessionalPage({ projectDir: harness.projectDir, context: harness.context, output: firstDir, skillRoot, template }), /evidence directory.*symbolic link/);
@@ -375,7 +380,7 @@ test('generates a deterministic, private, offline Pascal Page v2 with accessible
 });
 
 test('keeps source-plan inputs passive and rejects MIME disguise and active SVG', () => {
-  assert.match(loadSourcePlanAsset(sourcePlanPath).dataUrl, /^data:image\/svg\+xml;base64,/);
+  assert.match(loadSourcePlanAsset(sourcePlanPath).dataUrl, /^data:image\/png;base64,/);
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'pa-interior-source-'));
   const disguised = path.join(directory, 'fake.png');
   fs.writeFileSync(disguised, '<svg xmlns="http://www.w3.org/2000/svg"/>');
@@ -397,6 +402,7 @@ test('formal v2 schema and runtime validator reject oversized or structurally in
   const schema = JSON.parse(fs.readFileSync(path.join(skillRoot, 'schemas/project-v2.schema.json'), 'utf8'));
   assert.equal(schema.properties.schemaVersion.const, 2);
   assert.equal(schema.additionalProperties, false);
+  assert.ok(schema.$defs.evidence.properties.classification.enum.includes('revision-annotation'));
   const project = createProjectFromSeed(baseSeed(), { spaceRoot: '/tmp', spaceId: 'schema-space', ownerId: 'schema-owner' }, { now: () => '2026-07-27T00:00:00.000Z' });
   const broken = structuredClone(project);
   delete broken.evidence[0].calibration;
@@ -484,7 +490,8 @@ function makeHarness(name, { multiLevel = false, alternatives = true } = {}) {
     seed.selectedConceptId = 'concept-duplex';
   }
   initializeProject(projectDir, seed, context, { now: () => '2026-07-27T00:00:00.000Z' });
-  fs.copyFileSync(sourcePlanPath, path.join(projectDir, 'evidence', 'source-plan.svg'));
+  fs.copyFileSync(sourcePlanPath, path.join(projectDir, 'evidence', 'source-plan.png'));
+  fs.copyFileSync(annotationPath, path.join(projectDir, 'evidence', 'agent-annotation.png'));
   return { runtimeRoot, spaceRoot, context, projectDir };
 }
 
@@ -723,7 +730,7 @@ function selectedLevel(project) {
 function calibratedEvidence(id, knownLengthMetres, segmentId) {
   return {
     evidenceId: id,
-    relativePath: 'evidence/source-plan.svg',
+    relativePath: 'evidence/source-plan.png',
     classification: 'measurement',
     orientation: 'north-up',
     calibration: { basis: 'known-length', segmentId, knownLengthMetres, unit: 'm' },

@@ -32,18 +32,18 @@ Customer projects belong only under the trusted Space at `projects/home-renovati
    `node skills/interior-design/scripts/cli.mjs scene apply --project-dir <project-dir> --operations <operations.json> --base-revision <revision> --json`
 
    Use `scene undo` and `scene redo` with `--base-revision` for ordinary recovery. On `REVISION_CONFLICT`, reload and replay; never overwrite. If the current JSON/scene/audit no longer matches its complete manifest, restore a verified history snapshot with `project recover --project-dir <project-dir> --revision <revision> --json`; the corrupted files remain under the private runtime recovery directory for diagnosis.
-7. Read [delivery-v2.md](references/delivery-v2.md), confirm the source-plan evidence is a redacted delivery copy, and generate the registered template:
+7. Read [delivery-v2.md](references/delivery-v2.md), confirm the user-uploaded source plan and Agent-uploaded revision annotation are redacted delivery images, and generate the registered template:
 
    `node skills/interior-design/scripts/cli.mjs page --template interior-design-delivery --project-dir <project-dir> --output <project-dir>/derived/page --json`
 
-   Require template v2, `pascal-v2`, the artifact marker, the `su-design-classic` full-canvas shell, automatic first-frame 3D warmup, offline CSP, model-derived SVG fallback, and `visualAcceptance: user`. Page generation must stop on automatic blocking issues.
+   Require template v2, `pascal-v2`, the artifact marker, the `su-design-classic` full-canvas shell, a dedicated loading state, automatic first-frame 3D warmup, visibly distinct 3D/orthographic cameras, offline CSP, model-derived SVG failure fallback, and `visualAcceptance: user`. The 户型图 panel must display the two uploaded passive images and must not redraw either image in the browser. Page generation must stop on automatic blocking issues.
 8. Publish only through `pa-cli pages publish` and use its returned `pageId`, URL, or `linkNotice`. Never guess a hostname or return a loopback or local path. Subsequent natural-language feedback creates a new project revision, audit, Page artifact, and publication; it does not edit the delivered Page in place.
 
 ## Design and safety rules
 
 - Support apartments, duplexes, and houses with at most two levels: levels, zones, walls, real door/window openings, slabs, ceilings, stairs, voids, guardrails, procedural furniture, cabinets, major equipment, material intent, and lighting intent.
 - Keep the read-only delivery model full-canvas with the approved floating SU-design controls. Never require a click, drag, or mode switch to reveal 3D; keep labels hidden until the first valid Canvas frame, and use the model-derived SVG only for real loading failure.
-- Preserve source-plan, revision annotation, model, requirement, concept, audit, assumption, unknown, professional-verification, budget, and revision provenance.
+- Preserve user-uploaded source-plan image, Agent-uploaded revision-annotation image, model, requirement, concept, audit, assumption, unknown, professional-verification, budget, and revision provenance.
 - Do not infer load-bearing status, hidden services, exact area, fabrication dimensions, permits, or local compliance from a raster plan.
 - Escalate structure, gas, electrical, fire, waterproofing, drainage, stair structure, and exact site dimensions to the applicable qualified professional.
 - Use current primary sources for laws, codes, prices, products, availability, or other time-sensitive claims.

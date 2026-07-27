@@ -45,10 +45,12 @@ export async function buildTemplateExample({ check = false } = {}) {
     };
     fs.mkdirSync(path.dirname(projectDir), { recursive: true, mode: 0o700 });
     const seedBytes = fs.readFileSync(path.join(exampleRoot, 'seed.json'));
-    const sourceBytes = fs.readFileSync(path.join(exampleRoot, 'source-plan.svg'));
+    const sourceBytes = fs.readFileSync(path.join(exampleRoot, 'source-plan.png'));
+    const annotationBytes = fs.readFileSync(path.join(exampleRoot, 'agent-annotation.png'));
     const seed = JSON.parse(seedBytes.toString('utf8'));
     const initialized = initializeProject(projectDir, seed, context, { now: () => fixedTime });
-    fs.copyFileSync(path.join(exampleRoot, 'source-plan.svg'), path.join(projectDir, 'evidence', 'source-plan.svg'));
+    fs.copyFileSync(path.join(exampleRoot, 'source-plan.png'), path.join(projectDir, 'evidence', 'source-plan.png'));
+    fs.copyFileSync(path.join(exampleRoot, 'agent-annotation.png'), path.join(projectDir, 'evidence', 'agent-annotation.png'));
     const compiled = await compileProjectScene(projectDir, context, {
       baseRevision: initialized.project.revision,
       now: () => fixedTime,
@@ -76,6 +78,7 @@ export async function buildTemplateExample({ check = false } = {}) {
       ],
       seedSha256: sha256(seedBytes),
       evidenceSha256: sha256(sourceBytes),
+      annotationSha256: sha256(annotationBytes),
       projectSha256: sha256(canonicalJson(readProject(projectDir, context).project)),
       sceneSha256: compiled.scene.sceneHash,
       auditSha256: compiled.project.quality.sha256,

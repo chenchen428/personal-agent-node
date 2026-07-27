@@ -5,16 +5,31 @@ function fallbackElement() {
   return document.getElementById('fallback');
 }
 
+function loadingElement() {
+  return document.getElementById('viewer-loading');
+}
+
+function updateStatus(text) {
+  const status = document.querySelector('[data-viewer-status] span');
+  if (status) status.textContent = text;
+}
+
 export function markViewerReady() {
   document.body.dataset.viewerState = 'ready';
+  const loading = loadingElement();
   const fallback = fallbackElement();
+  if (loading) loading.hidden = true;
   if (fallback) fallback.hidden = true;
+  updateStatus('完成态模型 · 手动查看');
 }
 
 export function showViewerFallback() {
   document.body.dataset.viewerState = 'fallback';
+  const loading = loadingElement();
   const fallback = fallbackElement();
+  if (loading) loading.hidden = true;
   if (fallback) fallback.hidden = false;
+  updateStatus('3D 暂不可用 · 查看模型图');
 }
 
 export function ViewerLifecycle() {

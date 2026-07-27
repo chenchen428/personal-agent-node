@@ -393,7 +393,7 @@ test("pages template CLI lists match metadata and inspects the full contract", a
   ], { cwd: projectRoot, env: { ...process.env } });
   const template = JSON.parse(inspected.stdout);
   assert.equal(template.id, "interior-design-delivery");
-  assert.ok(template.fixedFramework.includes("3D / 平面视角"));
+  assert.ok(template.fixedFramework.includes("肉眼可辨的等距 3D / 顶视正交平面视角"));
   assert.ok(template.agentInstructions.some((item) => item.includes("interior-design")));
 
   await assert.rejects(execFileAsync(process.execPath, [
