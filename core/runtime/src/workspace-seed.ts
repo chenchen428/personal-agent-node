@@ -18,6 +18,14 @@ export const PERSONAL_AGENT_SPLIT_SKILLS = [
   "personal-updates",
 ] as const;
 
+const PRODUCT_MANAGED_PAGE_CAPABILITIES = [
+  "skills/interior-design",
+  "skills/personal-pages",
+  "registry/interior-design.json",
+  "registry/page-templates.json",
+  "registry/skills.json",
+] as const;
+
 export function seedAgentWorkspace(config: {
   agentWorkspaceRoot: string;
   dataRoot: string;
@@ -45,12 +53,13 @@ export function seedAgentWorkspace(config: {
       : path.join(releaseRoot, "scripts", script);
     copied += copyMissingTree(source, path.join(config.agentWorkspaceRoot, "scripts", script));
   }
+  const refreshedPaths = refreshProductManagedPageCapabilities(seedRoot, config.agentWorkspaceRoot);
   const retiredSkills = retireSplitPersonalAgentSkill(config, seedRoot, now);
   createDirectoryPointer(
     path.join(config.agentWorkspaceRoot, "skills"),
     path.join(config.agentWorkspaceRoot, ".codex", "skills"),
   );
-  return { copied, retiredSkills };
+  return { copied, refreshed: refreshedPaths.length, refreshedPaths, retiredSkills };
 }
 
 export function copyMissingTree(source: string, target: string): number {
@@ -68,6 +77,56 @@ export function copyMissingTree(source: string, target: string): number {
     copied += copyMissingTree(path.join(source, entry), path.join(target, entry));
   }
   return copied;
+}
+
+function refreshProductManagedPageCapabilities(seedRoot: string, agentWorkspaceRoot: string) {
+  const refreshed: string[] = [];
+  for (const relative of PRODUCT_MANAGED_PAGE_CAPABILITIES) {
+    const source = path.join(seedRoot, ...relative.split("/"));
+    const target = path.join(agentWorkspaceRoot, ...relative.split("/"));
+    if (replaceManagedPath(source, target)) refreshed.push(relative);
+  }
+  return refreshed;
+}
+
+function replaceManagedPath(source: string, target: string) {
+  const sourceStat = fs.statSync(source, { throwIfNoEntry: false });
+  if (!sourceStat || pathsEqual(source, target)) return false;
+  fs.mkdirSync(path.dirname(target), { recursive: true });
+  const temporary = `${target}.product-seed-${process.pid}`;
+  const previous = `${target}.product-previous-${process.pid}`;
+  fs.rmSync(temporary, { recursive: true, force: true });
+  fs.rmSync(previous, { recursive: true, force: true });
+  fs.cpSync(source, temporary, {
+    recursive: sourceStat.isDirectory(),
+    preserveTimestamps: true,
+  });
+  const targetStat = fs.statSync(target, { throwIfNoEntry: false });
+  if (targetStat) fs.renameSync(target, previous);
+  try {
+    fs.renameSync(temporary, target);
+    fs.rmSync(previous, { recursive: true, force: true });
+  } catch (error) {
+    fs.rmSync(temporary, { recursive: true, force: true });
+    if (targetStat && !fs.existsSync(target) && fs.existsSync(previous)) fs.renameSync(previous, target);
+    throw error;
+  }
+  return true;
+}
+
+function pathsEqual(left: string, right: string): boolean {
+  const leftStat = fs.statSync(left, { throwIfNoEntry: false });
+  const rightStat = fs.statSync(right, { throwIfNoEntry: false });
+  if (!leftStat || !rightStat || leftStat.isDirectory() !== rightStat.isDirectory()) return false;
+  if (leftStat.isFile()) {
+    return leftStat.size === rightStat.size && fs.readFileSync(left).equals(fs.readFileSync(right));
+  }
+  const leftEntries = fs.readdirSync(left).sort();
+  const rightEntries = fs.readdirSync(right).sort();
+  if (leftEntries.length !== rightEntries.length) return false;
+  return leftEntries.every((entry, index) => (
+    entry === rightEntries[index] && pathsEqual(path.join(left, entry), path.join(right, entry))
+  ));
 }
 
 function retireSplitPersonalAgentSkill(config: {
