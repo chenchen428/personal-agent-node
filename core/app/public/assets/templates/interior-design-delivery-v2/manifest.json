@@ -6,24 +6,24 @@
   "visualAcceptance": "user",
   "files": {
     "index.html": {
-      "bytes": 5192918,
-      "sha256": "f68d2910ba55e4aaef2cea63821706a6f1f6993496fc94e91f11c58e919bd289"
+      "bytes": 3803453,
+      "sha256": "7c12214331772481f69907f7e017e8e6cd4819261205083ea59d4f212db41a53"
     },
     "scene.json": {
-      "bytes": 64431,
-      "sha256": "69ff08f595b43fed678c0520f28f7552690a99a5a082ed950a0fa0e03ca29041"
+      "bytes": 64502,
+      "sha256": "39a7d3007c25fb64042286cd4b603d0837e0f266b332eefb27880dc034272957"
     },
     "audit.json": {
       "bytes": 2093,
-      "sha256": "f3e12e7e347bd3257d0a7f19bdb60e5a727b9c95a92252373b070161168dbaf5"
+      "sha256": "15e8f3176018b47687c31b3f190b40e92c75a862f9076f17ada3a6d47a03628f"
     },
     "template.json": {
       "bytes": 5601,
       "sha256": "4351340e41fc1c98cca699b49ab2485de68a1d768ffd2dce56a717401282da23"
     },
     "cover.svg": {
-      "bytes": 23252,
-      "sha256": "2abf29cd46970fd33eb188261cf14242c8ea9434de33b24fe7394dac54812f67"
+      "bytes": 23265,
+      "sha256": "18722d13845f4b7782760a9e22202884bb84f7ebcc0a54589ebd2ab8a3cbe4b0"
     }
   },
   "source": {
@@ -35,13 +35,13 @@
       "page-v2-generate",
       "artifact-hash-verify"
     ],
-    "seedSha256": "bfaecfbb18495dcbfd0f0be263a02e3c1ab0b9b7097ea5c6a124420e4f9418d6",
+    "seedSha256": "ffe8839ba102376f0ab0e771f7f3e1c3381e5758b5ac1ba59c63e7b53a668e7b",
     "evidenceSha256": "23eab735dd2dcd2190264f93b3aad274b08a68b822c4a6f597a377afdc763542",
     "modelBasisSha256": "23eab735dd2dcd2190264f93b3aad274b08a68b822c4a6f597a377afdc763542",
-    "annotationSha256": "fd7d3df1c3bdc8a503808b641f0dc3baa23f8365ae5e4999f4e5907f3907baa8",
-    "projectSha256": "de733ffa62d74a0f65b3aed85ef5163a5ab6fff069ce87967a9d4906de2c5af6",
-    "sceneSha256": "4046e8e47a3522de83f27588194af4b8f05052f0ae4b91833cf0714055b74fd5",
-    "auditSha256": "fb795fef85625f48878d80d6fe731a5dc89a645c9349ac48840a0a56619b2a57",
+    "annotationSha256": "2a8a7f8486409aee8e0252adb47f5c33c5e7d935b0b24a172bd6dcec579e48d1",
+    "projectSha256": "3918249d16116e5ac3ea26c9f43f0dd4ae8f4dc7c5606d4a9881e93bdf31e001",
+    "sceneSha256": "97a78dda8f5a774d439d543c06f2d3cbf4c14ee41fbd2cad9e14a41e65ca5061",
+    "auditSha256": "9bbc91482ecb983de3d5214ae1d214eb7cc0a2125877eae0f8f934785fecd785",
     "renderProfile": "professional-mesh-ink",
     "layoutProfile": "su-design-classic",
     "qualityFloor": {

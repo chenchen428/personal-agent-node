@@ -67,6 +67,9 @@ test("the committed example is the byte-stable output of the governed native v2 
   const html = read("core/app/public/assets/templates/interior-design-delivery-v2/index.html");
   const scene = JSON.parse(read("core/app/public/assets/templates/interior-design-delivery-v2/scene.json"));
   const nodes = Object.values(scene.scene.nodes);
+  const walls = nodes.filter((node) => node.type === "wall");
+  const roomNames = nodes.filter((node) => node.type === "zone").map((node) => node.name);
+  const furnitureNames = scene.furniture.map((item) => item.name);
   const cover = read("core/app/public/assets/templates/interior-design-delivery-v2/cover.svg");
   assert.match(html, /data-engine="pascal-v2"/);
   assert.match(html, /id="pascal-scene"/);
@@ -78,6 +81,8 @@ test("the committed example is the byte-stable output of the governed native v2 
   assert.match(html, /data-plan-mode="annotation"/);
   assert.match(html, /data-presentation-panel="review"/);
   assert.doesNotMatch(html, /data-presentation="review"/);
+  assert.match(html, /C 户型 · 三房两厅两卫开放联厅/);
+  assert.match(html, /方案 A · 拆墙开放联厅/);
   assert.match(html, /<nav class="presentation-switch"[\s\S]*SU 设计稿[\s\S]*户型图[\s\S]*用户需求[\s\S]*<\/nav>/);
   assert.match(html, /pascal-room-label/);
   assert.match(html, /pascal-highlight/);
@@ -90,10 +95,29 @@ test("the committed example is the byte-stable output of the governed native v2 
   assert.doesNotMatch(html, /class="navigator"/);
   assert.ok(nodes.filter((node) => node.type === "zone").length >= 12);
   assert.ok(nodes.filter((node) => ["door", "window"].includes(node.type)).length >= 14);
-  assert.ok(nodes.filter((node) => node.type === "wall").length >= 20);
+  assert.ok(walls.length >= 20);
   assert.ok(nodes.filter((node) => node.type === "slab").length >= 1);
   assert.ok(nodes.filter((node) => node.type === "ceiling").length >= 1);
   assert.ok(scene.furniture.length >= 30);
+  assert.equal(scene.sourcePlanSha256, "23eab735dd2dcd2190264f93b3aad274b08a68b822c4a6f597a377afdc763542");
+  assert.equal(manifest.source.annotationSha256, "2a8a7f8486409aee8e0252adb47f5c33c5e7d935b0b24a172bd6dcec579e48d1");
+  assert.ok(roomNames.includes("餐厅联厅 · 拆墙区"));
+  assert.ok(roomNames.includes("开放家庭厅 · 原卧室二"));
+  assert.ok(roomNames.includes("生活阳台一 · 开放洗烘"));
+  assert.ok(furnitureNames.includes("开放家庭厅休闲榻"));
+  assert.equal(furnitureNames.includes("卧室二双人床"), false);
+  assert.equal(walls.some((wall) => wall.start[0] === 3.2
+    && wall.end[0] === 3.2
+    && Math.min(wall.start[1], wall.end[1]) < 6
+    && Math.max(wall.start[1], wall.end[1]) > 2.4), false);
+  assert.equal(walls.some((wall) => wall.start[0] === 6.1
+    && wall.end[0] === 6.1
+    && Math.min(wall.start[1], wall.end[1]) < 6
+    && Math.max(wall.start[1], wall.end[1]) > 1.2), false);
+  assert.equal(walls.some((wall) => wall.start[1] === 1.2
+    && wall.end[1] === 1.2
+    && Math.min(wall.start[0], wall.end[0]) < 6.1
+    && Math.max(wall.start[0], wall.end[0]) > 3.2), false);
   assert.match(cover, /模型派生轴测封面/);
   assert.match(cover, /data-cover-item=/);
   assert.doesNotMatch(html, /data-engine="(?!pascal-v2)[^"]+"|localhost|127\.0\.0\.1|editor\.pascal\.app/);

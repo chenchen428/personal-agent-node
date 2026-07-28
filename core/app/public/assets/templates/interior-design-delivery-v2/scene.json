@@ -3,14 +3,14 @@
   "engine": "pascal-v2",
   "revision": 2,
   "sourcePlanSha256": "23eab735dd2dcd2190264f93b3aad274b08a68b822c4a6f597a377afdc763542",
-  "sceneHash": "a31c2086448b0ba533978952c0c7b8b781975953a7c303a2ab110c5d8ac9a404",
+  "sceneHash": "a4f5f59ca2d6c80a8a64df8281675158d34ab6e69eac48a1d7c44b16388c317f",
   "scene": {
     "nodes": {
       "page-building-0002": {
         "object": "node",
         "id": "page-building-0002",
         "type": "building",
-        "name": "C 户型 · 四房两厅两卫",
+        "name": "C 户型 · 三房两厅两卫开放联厅",
         "parentId": "page-site-0001",
         "visible": true,
         "children": [
@@ -881,7 +881,7 @@
         "object": "node",
         "id": "page-site-0001",
         "type": "site",
-        "name": "C 户型 · 四房两厅两卫",
+        "name": "C 户型 · 三房两厅两卫开放联厅",
         "parentId": null,
         "visible": true,
         "polygon": {
@@ -1199,26 +1199,6 @@
         "frontSide": "exterior",
         "backSide": "interior"
       },
-      "page-wall-0021": {
-        "object": "node",
-        "id": "page-wall-0021",
-        "type": "wall",
-        "parentId": "page-level-0003",
-        "visible": true,
-        "children": [],
-        "thickness": 0.14,
-        "height": 2.85,
-        "start": [
-          6.1,
-          1.2
-        ],
-        "end": [
-          6.1,
-          6
-        ],
-        "frontSide": "unknown",
-        "backSide": "unknown"
-      },
       "page-wall-0031": {
         "object": "node",
         "id": "page-wall-0031",
@@ -1237,6 +1217,46 @@
         "end": [
           3.2,
           8.4
+        ],
+        "frontSide": "unknown",
+        "backSide": "unknown"
+      },
+      "page-wall-0019": {
+        "object": "node",
+        "id": "page-wall-0019",
+        "type": "wall",
+        "parentId": "page-level-0003",
+        "visible": true,
+        "children": [],
+        "thickness": 0.16,
+        "height": 2.85,
+        "start": [
+          3.2,
+          0
+        ],
+        "end": [
+          3.2,
+          1.2
+        ],
+        "frontSide": "unknown",
+        "backSide": "unknown"
+      },
+      "page-wall-0020": {
+        "object": "node",
+        "id": "page-wall-0020",
+        "type": "wall",
+        "parentId": "page-level-0003",
+        "visible": true,
+        "children": [],
+        "thickness": 0.16,
+        "height": 2.85,
+        "start": [
+          3.2,
+          1.2
+        ],
+        "end": [
+          3.2,
+          2.4
         ],
         "frontSide": "unknown",
         "backSide": "unknown"
@@ -1305,26 +1325,6 @@
         "frontSide": "unknown",
         "backSide": "unknown"
       },
-      "page-wall-0020": {
-        "object": "node",
-        "id": "page-wall-0020",
-        "type": "wall",
-        "parentId": "page-level-0003",
-        "visible": true,
-        "children": [],
-        "thickness": 0.14,
-        "height": 2.85,
-        "start": [
-          3.2,
-          1.2
-        ],
-        "end": [
-          9.3,
-          1.2
-        ],
-        "frontSide": "unknown",
-        "backSide": "unknown"
-      },
       "page-wall-0024": {
         "object": "node",
         "id": "page-wall-0024",
@@ -1367,22 +1367,22 @@
         "frontSide": "unknown",
         "backSide": "unknown"
       },
-      "page-wall-0019": {
+      "page-wall-0021": {
         "object": "node",
-        "id": "page-wall-0019",
+        "id": "page-wall-0021",
         "type": "wall",
         "parentId": "page-level-0003",
         "visible": true,
         "children": [],
-        "thickness": 0.16,
+        "thickness": 0.14,
         "height": 2.85,
         "start": [
-          3.2,
-          0
+          6.1,
+          1.2
         ],
         "end": [
-          3.2,
-          6
+          9.3,
+          1.2
         ],
         "frontSide": "unknown",
         "backSide": "unknown"
@@ -1816,7 +1816,7 @@
         "object": "node",
         "id": "page-zone-0047",
         "type": "zone",
-        "name": "餐厅 · 六人位",
+        "name": "开放餐厅 · 六人位",
         "parentId": "page-level-0003",
         "visible": true,
         "metadata": {
@@ -1850,11 +1850,11 @@
         "object": "node",
         "id": "page-zone-0049",
         "type": "zone",
-        "name": "卧室二 · 北向",
+        "name": "开放家庭厅 · 原卧室二",
         "parentId": "page-level-0003",
         "visible": true,
         "metadata": {
-          "roomKind": "bedroom",
+          "roomKind": "living",
           "requiredAccess": true
         },
         "polygon": [
@@ -1952,7 +1952,7 @@
         "object": "node",
         "id": "page-zone-0044",
         "type": "zone",
-        "name": "生活阳台一 · 洗烘",
+        "name": "生活阳台一 · 开放洗烘",
         "parentId": "page-level-0003",
         "visible": true,
         "metadata": {
@@ -2028,11 +2028,11 @@
         "object": "node",
         "id": "page-zone-0048",
         "type": "zone",
-        "name": "过厅 · 内走廊",
+        "name": "餐厅联厅 · 拆墙区",
         "parentId": "page-level-0003",
         "visible": true,
         "metadata": {
-          "roomKind": "foyer",
+          "roomKind": "living",
           "requiredAccess": true
         },
         "polygon": [
@@ -2473,7 +2473,7 @@
     {
       "id": "page-item-0014",
       "levelId": "page-level-0003",
-      "name": "卧室二衣柜",
+      "name": "开放联厅收纳柜",
       "kind": "cabinet",
       "position": [
         8.9,
@@ -2482,7 +2482,7 @@
       "size": [
         0.52,
         1.4,
-        2.1
+        1.2
       ],
       "rotation": 0,
       "elevation": 0,
@@ -2491,16 +2491,16 @@
     {
       "id": "page-item-0015",
       "levelId": "page-level-0003",
-      "name": "卧室二双人床",
-      "kind": "bed",
+      "name": "开放家庭厅休闲榻",
+      "kind": "sofa",
       "position": [
         7.75,
         3.15
       ],
       "size": [
-        1.75,
         2,
-        0.74
+        0.88,
+        0.82
       ],
       "rotation": 0,
       "elevation": 0,
