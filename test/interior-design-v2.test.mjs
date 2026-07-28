@@ -119,7 +119,7 @@ test('governs native v2 project directories, ownership, symlinks, and SQLite ide
   const auditLogPath = path.join(harness.projectDir, '.runtime', 'audit.ndjson');
   const auditLine = fs.readFileSync(auditLogPath, 'utf8');
   assert.doesNotMatch(auditLine, /\/tmp\/|seed\.json|source-plan/);
-  assert.equal(fs.statSync(auditLogPath).mode & 0o777, 0o600);
+  if (process.platform !== 'win32') assert.equal(fs.statSync(auditLogPath).mode & 0o777, 0o600);
   assert.throws(() => resolveProjectDirectory(path.join(harness.spaceRoot, 'outside'), harness.context), /projects directory/);
   assert.throws(() => readProject(harness.projectDir, { ...harness.context, spaceId: 'another-space' }), /trusted Space/);
 
