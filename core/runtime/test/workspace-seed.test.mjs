@@ -35,6 +35,50 @@ test("copies new seed files without replacing existing user content", () => {
   }
 });
 
+test("refreshes product-managed page skills and registries without replacing user skills", () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "personal-agent-page-capability-seed-"));
+  try {
+    const releaseRoot = path.join(root, "release");
+    const agentWorkspaceRoot = path.join(root, "space", "agent-workspace");
+    const dataRoot = path.join(root, "space");
+    for (const skill of ["interior-design", "personal-pages"]) {
+      fs.mkdirSync(path.join(releaseRoot, "workspace", "skills", skill), { recursive: true });
+      fs.mkdirSync(path.join(agentWorkspaceRoot, "skills", skill), { recursive: true });
+      fs.writeFileSync(path.join(releaseRoot, "workspace", "skills", skill, "SKILL.md"), `new ${skill}\n`);
+      fs.writeFileSync(path.join(agentWorkspaceRoot, "skills", skill, "SKILL.md"), `old ${skill}\n`);
+      fs.writeFileSync(path.join(agentWorkspaceRoot, "skills", skill, "removed.txt"), "removed product file\n");
+    }
+    fs.mkdirSync(path.join(agentWorkspaceRoot, "skills", "user-skill"), { recursive: true });
+    fs.writeFileSync(path.join(agentWorkspaceRoot, "skills", "user-skill", "SKILL.md"), "user skill\n");
+    fs.mkdirSync(path.join(releaseRoot, "workspace", "registry"), { recursive: true });
+    fs.mkdirSync(path.join(agentWorkspaceRoot, "registry"), { recursive: true });
+    for (const file of ["interior-design.json", "page-templates.json", "skills.json"]) {
+      fs.writeFileSync(path.join(releaseRoot, "workspace", "registry", file), `new ${file}\n`);
+      fs.writeFileSync(path.join(agentWorkspaceRoot, "registry", file), `old ${file}\n`);
+    }
+
+    const result = seedAgentWorkspace({ agentWorkspaceRoot, dataRoot }, { releaseRoot });
+    assert.equal(result.refreshed, 5);
+    assert.deepEqual(result.refreshedPaths, [
+      "skills/interior-design",
+      "skills/personal-pages",
+      "registry/interior-design.json",
+      "registry/page-templates.json",
+      "registry/skills.json",
+    ]);
+    assert.equal(fs.readFileSync(path.join(agentWorkspaceRoot, "skills", "interior-design", "SKILL.md"), "utf8"), "new interior-design\n");
+    assert.equal(fs.existsSync(path.join(agentWorkspaceRoot, "skills", "interior-design", "removed.txt")), false);
+    assert.equal(fs.readFileSync(path.join(agentWorkspaceRoot, "skills", "user-skill", "SKILL.md"), "utf8"), "user skill\n");
+    assert.equal(fs.readFileSync(path.join(agentWorkspaceRoot, "registry", "page-templates.json"), "utf8"), "new page-templates.json\n");
+
+    const repeated = seedAgentWorkspace({ agentWorkspaceRoot, dataRoot }, { releaseRoot });
+    assert.equal(repeated.refreshed, 0);
+    assert.deepEqual(repeated.refreshedPaths, []);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
 test("seeds split skills and recoverably retires the legacy personal-agent skill", () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "personal-agent-seed-upgrade-"));
   try {

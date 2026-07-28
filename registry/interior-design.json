@@ -1,0 +1,8 @@
+{
+  "schemaVersion": 2,
+  "interiorDesignEngine": "pascal-v2",
+  "allowedEngines": [
+    "pascal-v2"
+  ],
+  "creationPolicy": "pascal-v2-required"
+}

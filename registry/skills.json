@@ -734,9 +734,9 @@
       "owner": "interior-design",
       "kind": "skill-script",
       "entrypoint": "skills/interior-design/scripts/cli.mjs",
-      "command": "node skills/interior-design/scripts/cli.mjs <validate|normalize|audit|page>",
-      "workspaceCommand": "node scripts/skill-tree.mjs interior <validate|normalize|page>",
-      "description": "Validate and normalize concept floor-plan models and render self-contained, manually explorable Three.js Pages from the built-in renovation delivery template."
+      "command": "node skills/interior-design/scripts/cli.mjs <project|scene|page>",
+      "workspaceCommand": "node scripts/skill-tree.mjs interior <project|scene|page>",
+      "description": "Operate governed Pascal v2 renovation projects: evidence, requirements, revisions, deterministic building scenes, professional quality gates, and offline interior-design-delivery Pages."
     },
     {
       "name": "personal-agent",
@@ -799,7 +799,7 @@
       "kind": "external-cli",
       "entrypoint": "skills/personal-pages/SKILL.md",
       "command": "pa-cli pages templates list --json",
-      "description": "Select Page templates and publish governed Pages."
+      "description": "Inspect Page contracts, verify template artifacts fail-closed, persist provenance, and publish governed Pages."
     },
     {
       "name": "pa-cli-file",

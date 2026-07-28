@@ -14,9 +14,19 @@ export type PageTemplate = {
     generator: string;
     artifactMarker: string;
   };
+  exampleArtifact: {
+    source: "native-governed-pascal-v2-project";
+    pagePath: string;
+    manifestPath: string;
+    coverPath: string;
+  };
   acceptance: {
     visualOwner: "user";
     agentBrowserReview: false;
+  };
+  publicationContract: {
+    verifyArtifactBeforePublish: true;
+    persistProvenance: true;
   };
   fixedFramework: string[];
   agentFreedom: string[];

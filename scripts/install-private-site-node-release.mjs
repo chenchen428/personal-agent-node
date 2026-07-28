@@ -3,7 +3,6 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
-import { pruneInactiveRelease } from "../core/runtime/src/release-pruning.ts";
 import { canonicalInstallRoot } from "./install-root.mjs";
 import { installPersonalAgentCommand } from "./personal-agent-command.mjs";
 
@@ -44,7 +43,12 @@ runCandidate(privateSite, ["app-compatibility", "--data-root", dataRoot], preact
 const oldCurrent = pointerTarget(current);
 if (oldCurrent && path.resolve(oldCurrent) !== path.resolve(target)) replacePointer(previous, oldCurrent);
 replacePointer(current, target);
-const personalAgentCommand = installPersonalAgentCommand({ installRoot, dataRoot, homeRoot });
+const personalAgentCommand = installPersonalAgentCommand({
+  installRoot,
+  dataRoot,
+  homeRoot,
+  env: preactivationEnvironment,
+});
 const installation = {
   schemaVersion: 2,
   activeReleaseId: manifest.releaseId,
@@ -100,6 +104,18 @@ function pointerTarget(linkPath) {
 
 function isDanglingLink(linkPath) {
   try { return fs.lstatSync(linkPath).isSymbolicLink(); } catch { return false; }
+}
+
+function pruneInactiveRelease(releasePath) {
+  try {
+    fs.rmSync(releasePath, { recursive: true, force: true });
+    return { removed: true, deferred: false };
+  } catch (error) {
+    if (process.platform === "win32" && ["EBUSY", "EPERM", "ENOTEMPTY"].includes(error?.code)) {
+      return { removed: false, deferred: true, code: error.code };
+    }
+    throw error;
+  }
 }
 
 function parseArgs(argv) {

@@ -1,0 +1,379 @@
+{
+  "title": "C 户型 · 三房两厅两卫开放联厅",
+  "status": "selected_concept",
+  "evidence": [
+    {
+      "evidenceId": "evidence-source-plan-redacted",
+      "relativePath": "evidence/source-plan.png",
+      "classification": "structure-reference",
+      "orientation": "north-up",
+      "calibration": {
+        "basis": "known-length",
+        "metresPerUnit": 1,
+        "knownAreaSquareMetres": 135.08,
+        "confidence": 0.9
+      },
+      "confidence": "specified",
+      "allowedUses": [
+        "structure",
+        "delivery"
+      ],
+      "observations": [
+        "本轮用户上传的 C 户型宣传图，保留四房两厅两卫、双生活阳台和南向景观阳台关系。"
+      ],
+      "inferences": [
+        "宣传图标注建面 135.08㎡；当前几何仅按可读尺寸进行概念标定，施工前仍需现场复尺。"
+      ],
+      "redactionStatus": "redacted",
+      "contentHash": "23eab735dd2dcd2190264f93b3aad274b08a68b822c4a6f597a377afdc763542"
+    },
+    {
+      "evidenceId": "evidence-agent-annotation-redacted",
+      "relativePath": "evidence/agent-annotation.png",
+      "classification": "revision-annotation",
+      "orientation": "north-up",
+      "calibration": {
+        "basis": "unknown"
+      },
+      "confidence": "specified",
+      "allowedUses": [
+        "delivery"
+      ],
+      "observations": [
+        "Agent 根据用户本轮红框意见复核并上传的沟通标注图：拆除餐厅、过厅与原卧室二之间的隔墙，并打开生活阳台一与联厅衔接处的标注墙段。"
+      ],
+      "inferences": [],
+      "redactionStatus": "redacted",
+      "contentHash": "2a8a7f8486409aee8e0252adb47f5c33c5e7d935b0b24a172bd6dcec579e48d1"
+    }
+  ],
+  "brief": {
+    "household": [
+      {"role": "adult", "count": 2},
+      {"role": "child", "count": 1},
+      {"role": "guest", "count": 2}
+    ],
+    "scope": [
+      "layout",
+      "storage",
+      "furniture",
+      "materials",
+      "lighting"
+    ],
+    "budget": {
+      "currency": "CNY",
+      "totalMinor": 0,
+      "confidence": "unknown"
+    },
+    "schedule": {
+      "confidence": "unknown",
+      "phases": []
+    },
+    "requirements": [
+      {
+        "requirementId": "req-continuous-circulation",
+        "source": "内置模板专业设计简报",
+        "summary": "从入户、玄关到开放餐厅、家庭厅、客厅以及三间独立卧室保持可追踪通行路径。",
+        "priority": "must",
+        "status": "satisfied",
+        "sceneNodeIds": ["entry", "foyer", "foyer-living-door", "living", "bed-left-door", "bed-left", "master-door", "master", "study-door", "study"],
+        "verification": {"method": "deterministic-spatial-audit", "result": "passed"}
+      },
+      {
+        "requirementId": "req-open-public-zone",
+        "source": "用户本轮户型图红框意见",
+        "summary": "拆除餐厅、过厅与原卧室二之间的隔墙，并打开生活阳台一与联厅之间的标注墙段，形成连续开放公共区。",
+        "priority": "must",
+        "status": "satisfied",
+        "sceneNodeIds": ["dining", "living-extension", "family-work", "living"],
+        "verification": {"method": "scene-zone-trace", "result": "passed"}
+      },
+      {
+        "requirementId": "req-retain-bedroom",
+        "source": "内置模板专业设计简报",
+        "summary": "保留卧室一、卧室三和主卧三个独立睡眠空间，原卧室二调整为开放家庭厅。",
+        "priority": "must",
+        "status": "satisfied",
+        "sceneNodeIds": ["bed-left", "bed-left-door", "bed-left-window", "bed-left-bed", "bed-left-wardrobe", "study", "study-sofa-bed", "master"],
+        "verification": {"method": "scene-node-trace", "result": "passed"}
+      },
+      {
+        "requirementId": "req-six-seat-dining",
+        "source": "内置模板专业设计简报",
+        "summary": "餐厅满足六人固定就餐，并保留通往厨房和公共区的概念净距。",
+        "priority": "must",
+        "status": "satisfied",
+        "sceneNodeIds": ["dining", "dining-table", "kitchen-door"],
+        "verification": {"method": "deterministic-clearance-audit", "result": "passed"}
+      },
+      {
+        "requirementId": "req-flex-study",
+        "source": "内置模板专业设计简报",
+        "summary": "卧室三保留床位与书桌，原卧室二改为与餐厅连续的家庭阅读和工作区。",
+        "priority": "should",
+        "status": "satisfied",
+        "sceneNodeIds": ["study", "study-desk", "study-sofa-bed", "family-work", "family-console", "family-chair"],
+        "verification": {"method": "scene-node-trace", "result": "passed"}
+      },
+      {
+        "requirementId": "req-laundry-storage",
+        "source": "内置模板专业设计简报",
+        "summary": "生活阳台一与开放联厅打通后继续承担洗烘，生活阳台二保留独立家政收纳。",
+        "priority": "should",
+        "status": "satisfied",
+        "sceneNodeIds": ["laundry-west", "utility-east", "utility-washer", "utility-storage"],
+        "verification": {"method": "scene-node-trace", "result": "passed"}
+      },
+      {
+        "requirementId": "req-warm-materials",
+        "source": "内置模板专业设计简报",
+        "summary": "使用暖木、米白织物和低反光石材形成现代温润的统一材料语言。",
+        "priority": "prefer",
+        "status": "satisfied",
+        "sceneNodeIds": ["living", "living-sofa", "living-media", "master-bed"],
+        "verification": {"method": "material-intent-review", "result": "passed"}
+      },
+      {
+        "requirementId": "req-professional-hold-points",
+        "source": "内置模板专业设计简报",
+        "summary": "墙体、现场尺寸、湿区、电气和隐蔽工程必须保留专业核验停点。",
+        "priority": "must",
+        "status": "satisfied",
+        "sceneNodeIds": ["laundry-west", "living-extension", "family-work", "public-bath", "master-bath"],
+        "verification": {"method": "professional-verification-register", "result": "recorded"}
+      }
+    ]
+  },
+  "assumptions": [
+    {
+      "assumptionId": "assumption-concept-calibration",
+      "summary": "用户图片按可读尺寸进行概念标定，宣传建面与套内模型面积口径不同，不代表现场测绘结论。",
+      "confidence": "estimated"
+    }
+  ],
+  "unknowns": [
+    {
+      "unknownId": "unknown-hidden-services",
+      "summary": "红框墙段的结构性质、隐蔽管线、生活阳台高差与防水边界、机电点位及现场偏差尚未核验。"
+    }
+  ],
+  "professionalVerifications": [
+    {
+      "verificationId": "verify-site",
+      "category": "site-measurement",
+      "status": "required",
+      "summary": "施工或采购前由适当专业人员完成现场复尺与条件核验。"
+    },
+    {
+      "verificationId": "verify-structure",
+      "category": "structure",
+      "status": "required",
+      "summary": "餐厅、过厅、原卧室二及生活阳台一衔接处的全部拟拆墙段，施工前须由适当资质的专业人员核验结构条件、管线与合规要求。"
+    },
+    {
+      "verificationId": "verify-balcony-threshold",
+      "category": "waterproofing-drainage",
+      "status": "required",
+      "summary": "生活阳台一与联厅打通前须现场核验地面高差、防水反坎、排水组织与门槛处理，未经核验不得按无高差空间施工。"
+    }
+  ],
+  "concepts": [
+    {
+      "conceptId": "concept-open-living",
+      "sourcePlanEvidenceId": "evidence-source-plan-redacted",
+      "name": "方案 A · 拆墙开放联厅",
+      "summary": "依据 C 户型原图与本轮红框意见，将餐厅、过厅、原卧室二及生活阳台一衔接区打开，形成三房两厅两卫的连续开放联厅。",
+      "singleOptionReason": "本轮用户已明确指定红框墙段拆除方向，示例仅落实该调整并验证原图、标注、平面与三维的一致性。",
+      "tradeoffs": [
+        "减少一间独立卧室，换取餐厅、家庭厅与生活阳台一之间更连续的采光、视线和家庭活动面。",
+        "红框墙段、阳台高差、防水排水、结构属性、尺寸偏差和机电条件必须在深化及施工前完成专业核验。"
+      ],
+      "budgetItems": [],
+      "levels": [
+        {
+          "levelId": "ground",
+          "name": "首层",
+          "elevation": 0,
+          "height": 2.85,
+          "footprint": [[0, 0], [12.4, 0], [12.4, 12.6], [0, 12.6]],
+          "rooms": [
+            {"roomId": "kitchen", "name": "厨房 · L 型橱柜", "kind": "kitchen", "polygon": [[0, 0], [3.2, 0], [3.2, 2.4], [0, 2.4]], "materialId": "warm-stone", "requiredAccess": true, "evidenceIds": ["evidence-source-plan-redacted"], "requirementIds": ["req-six-seat-dining"]},
+            {"roomId": "laundry-west", "name": "生活阳台一 · 开放洗烘", "kind": "laundry", "polygon": [[3.2, 0], [6.1, 0], [6.1, 1.2], [3.2, 1.2]], "materialId": "warm-stone", "requiredAccess": false, "evidenceIds": ["evidence-source-plan-redacted"], "requirementIds": ["req-open-public-zone", "req-laundry-storage", "req-professional-hold-points"]},
+            {"roomId": "utility-east", "name": "生活阳台二 · 家政", "kind": "laundry", "polygon": [[6.1, 0], [9.3, 0], [9.3, 1.2], [6.1, 1.2]], "materialId": "warm-stone", "requiredAccess": false, "evidenceIds": ["evidence-source-plan-redacted"], "requirementIds": ["req-laundry-storage"]},
+            {"roomId": "study", "name": "卧室三 · 北向", "kind": "bedroom", "polygon": [[9.3, 0], [12.4, 0], [12.4, 4.2], [9.3, 4.2]], "materialId": "warm-oak", "requiredAccess": true, "evidenceIds": ["evidence-source-plan-redacted"], "requirementIds": ["req-continuous-circulation", "req-flex-study", "req-retain-bedroom"]},
+            {"roomId": "dining", "name": "开放餐厅 · 六人位", "kind": "dining", "polygon": [[0, 2.4], [3.2, 2.4], [3.2, 6], [0, 6]], "materialId": "warm-oak", "requiredAccess": true, "evidenceIds": ["evidence-source-plan-redacted"], "requirementIds": ["req-open-public-zone", "req-six-seat-dining"]},
+            {"roomId": "living-extension", "name": "餐厅联厅 · 拆墙区", "kind": "living", "polygon": [[3.2, 1.2], [6.1, 1.2], [6.1, 6], [3.2, 6]], "materialId": "warm-oak", "requiredAccess": true, "evidenceIds": ["evidence-source-plan-redacted"], "requirementIds": ["req-continuous-circulation", "req-open-public-zone", "req-professional-hold-points"]},
+            {"roomId": "family-work", "name": "开放家庭厅 · 原卧室二", "kind": "living", "polygon": [[6.1, 1.2], [9.3, 1.2], [9.3, 6], [6.1, 6]], "materialId": "warm-oak", "requiredAccess": true, "evidenceIds": ["evidence-source-plan-redacted"], "requirementIds": ["req-continuous-circulation", "req-open-public-zone", "req-flex-study", "req-professional-hold-points"]},
+            {"roomId": "public-bath", "name": "公卫 · 干湿分区", "kind": "bathroom", "polygon": [[10.3, 4.2], [12.4, 4.2], [12.4, 6.2], [10.3, 6.2]], "materialId": "warm-stone", "requiredAccess": false, "evidenceIds": ["evidence-source-plan-redacted"], "requirementIds": ["req-professional-hold-points"]},
+            {"roomId": "master-bath", "name": "主卫", "kind": "bathroom", "polygon": [[10.3, 6.2], [12.4, 6.2], [12.4, 8.4], [10.3, 8.4]], "materialId": "warm-stone", "requiredAccess": false, "evidenceIds": ["evidence-source-plan-redacted"], "requirementIds": ["req-professional-hold-points"]},
+            {"roomId": "foyer", "name": "玄关收纳", "kind": "foyer", "polygon": [[0, 6], [3.2, 6], [3.2, 8.4], [0, 8.4]], "materialId": "warm-oak", "requiredAccess": true, "evidenceIds": ["evidence-source-plan-redacted"], "requirementIds": ["req-continuous-circulation"]},
+            {"roomId": "living", "name": "客厅 · 多功能厅", "kind": "living", "polygon": [[3.2, 6], [10.3, 6], [10.3, 8.4], [8.7, 8.4], [8.7, 10.7], [3.2, 10.7]], "materialId": "warm-oak", "requiredAccess": true, "evidenceIds": ["evidence-source-plan-redacted"], "requirementIds": ["req-continuous-circulation", "req-open-public-zone", "req-warm-materials"]},
+            {"roomId": "bed-left", "name": "卧室一 · 南向", "kind": "bedroom", "polygon": [[0, 8.4], [3.2, 8.4], [3.2, 12.6], [0, 12.6]], "materialId": "warm-oak", "requiredAccess": true, "evidenceIds": ["evidence-source-plan-redacted"], "requirementIds": ["req-continuous-circulation", "req-retain-bedroom"]},
+            {"roomId": "master", "name": "主卧 · 南向", "kind": "bedroom", "polygon": [[8.7, 8.4], [12.4, 8.4], [12.4, 12.6], [8.7, 12.6]], "materialId": "warm-oak", "requiredAccess": true, "evidenceIds": ["evidence-source-plan-redacted"], "requirementIds": ["req-continuous-circulation", "req-warm-materials", "req-retain-bedroom"]},
+            {"roomId": "balcony", "name": "南向景观阳台", "kind": "balcony", "polygon": [[3.2, 10.7], [8.7, 10.7], [8.7, 12.6], [3.2, 12.6]], "materialId": "warm-stone", "requiredAccess": false, "evidenceIds": ["evidence-source-plan-redacted"], "requirementIds": ["req-warm-materials"]}
+          ],
+          "walls": [
+            {"wallId": "exterior-north", "start": [0, 0], "end": [12.4, 0], "height": 2.85, "thickness": 0.22, "exteriorEdge": 0},
+            {"wallId": "exterior-east", "start": [12.4, 0], "end": [12.4, 12.6], "height": 2.85, "thickness": 0.22, "exteriorEdge": 1},
+            {"wallId": "exterior-south", "start": [12.4, 12.6], "end": [0, 12.6], "height": 2.85, "thickness": 0.22, "exteriorEdge": 2},
+            {"wallId": "exterior-west", "start": [0, 12.6], "end": [0, 0], "height": 2.85, "thickness": 0.22, "exteriorEdge": 3},
+            {"wallId": "kitchen-south", "start": [0, 2.4], "end": [3.2, 2.4], "height": 2.85, "thickness": 0.16, "exteriorEdge": -1},
+            {"wallId": "kitchen-east-north", "start": [3.2, 0], "end": [3.2, 1.2], "height": 2.85, "thickness": 0.16, "exteriorEdge": -1},
+            {"wallId": "kitchen-east-south", "start": [3.2, 1.2], "end": [3.2, 2.4], "height": 2.85, "thickness": 0.16, "exteriorEdge": -1},
+            {"wallId": "utility-south", "start": [6.1, 1.2], "end": [9.3, 1.2], "height": 2.85, "thickness": 0.14, "exteriorEdge": -1},
+            {"wallId": "study-west", "start": [9.3, 0], "end": [9.3, 4.2], "height": 2.85, "thickness": 0.16, "exteriorEdge": -1},
+            {"wallId": "study-south", "start": [9.3, 4.2], "end": [12.4, 4.2], "height": 2.85, "thickness": 0.16, "exteriorEdge": -1},
+            {"wallId": "bath-spine", "start": [10.3, 4.2], "end": [10.3, 8.4], "height": 2.85, "thickness": 0.14, "exteriorEdge": -1},
+            {"wallId": "bath-split", "start": [10.3, 6.2], "end": [12.4, 6.2], "height": 2.85, "thickness": 0.14, "exteriorEdge": -1},
+            {"wallId": "dining-foyer", "start": [0, 6], "end": [3.2, 6], "height": 2.85, "thickness": 0.16, "exteriorEdge": -1},
+            {"wallId": "foyer-east", "start": [3.2, 6], "end": [3.2, 8.4], "height": 2.85, "thickness": 0.16, "exteriorEdge": -1},
+            {"wallId": "extension-south", "start": [3.2, 6], "end": [6.1, 6], "height": 2.85, "thickness": 0.14, "exteriorEdge": -1},
+            {"wallId": "bed-left-north", "start": [0, 8.4], "end": [3.2, 8.4], "height": 2.85, "thickness": 0.16, "exteriorEdge": -1},
+            {"wallId": "bed-left-east", "start": [3.2, 8.4], "end": [3.2, 12.6], "height": 2.85, "thickness": 0.16, "exteriorEdge": -1},
+            {"wallId": "master-north", "start": [8.7, 8.4], "end": [12.4, 8.4], "height": 2.85, "thickness": 0.16, "exteriorEdge": -1},
+            {"wallId": "master-west", "start": [8.7, 8.4], "end": [8.7, 12.6], "height": 2.85, "thickness": 0.16, "exteriorEdge": -1},
+            {"wallId": "balcony-north", "start": [3.2, 10.7], "end": [8.7, 10.7], "height": 2.85, "thickness": 0.14, "exteriorEdge": -1}
+          ],
+          "openings": [
+            {"openingId": "entry", "type": "door", "wallId": "exterior-west", "position": 0.43, "width": 1.05, "height": 2.2, "sillHeight": 0, "connectsRoomIds": ["foyer"], "isEntry": true, "hingesSide": "right", "swingDirection": "inward"},
+            {"openingId": "kitchen-door", "type": "door", "wallId": "kitchen-south", "position": 0.72, "width": 1.5, "height": 2.2, "sillHeight": 0, "connectsRoomIds": ["kitchen", "dining"], "hingesSide": "left", "swingDirection": "inward"},
+            {"openingId": "foyer-living-door", "type": "door", "wallId": "foyer-east", "position": 0.5, "width": 1.7, "height": 2.2, "sillHeight": 0, "connectsRoomIds": ["foyer", "living"], "hingesSide": "right", "swingDirection": "inward"},
+            {"openingId": "extension-door", "type": "door", "wallId": "extension-south", "position": 0.5, "width": 1.7, "height": 2.2, "sillHeight": 0, "connectsRoomIds": ["living-extension", "living"], "hingesSide": "left", "swingDirection": "inward"},
+            {"openingId": "dining-door", "type": "door", "wallId": "dining-foyer", "position": 0.68, "width": 1.5, "height": 2.2, "sillHeight": 0, "connectsRoomIds": ["dining", "foyer"], "hingesSide": "right", "swingDirection": "inward"},
+            {"openingId": "study-door", "type": "door", "wallId": "study-west", "position": 0.7, "width": 1.4, "height": 2.2, "sillHeight": 0, "connectsRoomIds": ["study", "family-work"], "hingesSide": "right", "swingDirection": "inward"},
+            {"openingId": "public-bath-door", "type": "door", "wallId": "bath-spine", "position": 0.24, "width": 0.82, "height": 2.2, "sillHeight": 0, "connectsRoomIds": ["public-bath", "family-work"], "hingesSide": "left", "swingDirection": "inward"},
+            {"openingId": "master-bath-door", "type": "door", "wallId": "bath-spine", "position": 0.74, "width": 0.82, "height": 2.2, "sillHeight": 0, "connectsRoomIds": ["master-bath", "living"], "hingesSide": "right", "swingDirection": "inward"},
+            {"openingId": "bed-left-door", "type": "door", "wallId": "bed-left-north", "position": 0.65, "width": 1.4, "height": 2.2, "sillHeight": 0, "connectsRoomIds": ["bed-left", "foyer"], "hingesSide": "right", "swingDirection": "inward"},
+            {"openingId": "master-door", "type": "door", "wallId": "master-north", "position": 0.3, "width": 1.4, "height": 2.2, "sillHeight": 0, "connectsRoomIds": ["master", "living"], "hingesSide": "left", "swingDirection": "inward"},
+            {"openingId": "kitchen-window", "type": "window", "wallId": "exterior-north", "position": 0.13, "width": 2.15, "height": 1.35, "sillHeight": 0.9, "connectsRoomIds": ["kitchen"]},
+            {"openingId": "laundry-west-window", "type": "window", "wallId": "exterior-north", "position": 0.38, "width": 2.2, "height": 1.35, "sillHeight": 0.9, "connectsRoomIds": ["laundry-west"]},
+            {"openingId": "utility-east-window", "type": "window", "wallId": "exterior-north", "position": 0.62, "width": 2.4, "height": 1.35, "sillHeight": 0.9, "connectsRoomIds": ["utility-east"]},
+            {"openingId": "study-window", "type": "window", "wallId": "exterior-north", "position": 0.87, "width": 2.35, "height": 1.35, "sillHeight": 0.9, "connectsRoomIds": ["study"]},
+            {"openingId": "master-window", "type": "window", "wallId": "exterior-south", "position": 0.15, "width": 2.6, "height": 1.55, "sillHeight": 0.65, "connectsRoomIds": ["master"]},
+            {"openingId": "balcony-window", "type": "window", "wallId": "balcony-north", "position": 0.5, "width": 4.5, "height": 2.15, "sillHeight": 0.15, "connectsRoomIds": ["living", "balcony"]},
+            {"openingId": "bed-left-window", "type": "window", "wallId": "exterior-south", "position": 0.87, "width": 2.25, "height": 1.55, "sillHeight": 0.65, "connectsRoomIds": ["bed-left"]}
+          ],
+          "items": [
+            {"itemId": "kitchen-run", "name": "L 型橱柜主柜", "kind": "cabinet", "roomId": "kitchen", "position": [1.6, 0.55], "size": [2.4, 0.62, 0.92], "rotation": 0, "materialId": "warm-white", "color": "#E8E0D4", "clearanceExempt": true, "requirementIds": ["req-warm-materials"]},
+            {"itemId": "kitchen-side-run", "name": "L 型橱柜侧柜", "kind": "cabinet", "roomId": "kitchen", "position": [0.55, 1.45], "size": [0.62, 1.45, 1.2], "rotation": 0, "materialId": "warm-oak", "color": "#C6A87B", "clearanceExempt": true, "requirementIds": ["req-warm-materials"]},
+            {"itemId": "kitchen-fridge", "name": "嵌入式冰箱", "kind": "appliance", "roomId": "kitchen", "position": [2.7, 1.82], "size": [0.72, 0.66, 1.85], "rotation": 0, "materialId": "stone-grey", "color": "#8F9591", "clearanceExempt": true, "requirementIds": ["req-warm-materials"]},
+            {"itemId": "utility-washer", "name": "洗烘塔", "kind": "appliance", "roomId": "laundry-west", "position": [3.8, 0.52], "size": [0.72, 0.68, 1.9], "rotation": 0, "materialId": "warm-white", "color": "#E9E6DE", "clearanceExempt": true, "requirementIds": ["req-laundry-storage"]},
+            {"itemId": "utility-west-cabinet", "name": "家政高柜", "kind": "cabinet", "roomId": "laundry-west", "position": [5.15, 0.45], "size": [1.4, 0.56, 1.9], "rotation": 0, "materialId": "warm-oak", "color": "#C6A87B", "clearanceExempt": true, "requirementIds": ["req-laundry-storage"]},
+            {"itemId": "utility-storage", "name": "季节收纳柜", "kind": "cabinet", "roomId": "utility-east", "position": [7.15, 0.44], "size": [1.55, 0.56, 1.9], "rotation": 0, "materialId": "warm-oak", "color": "#C6A87B", "clearanceExempt": true, "requirementIds": ["req-laundry-storage"]},
+            {"itemId": "utility-sink", "name": "家政水槽", "kind": "sink", "roomId": "utility-east", "position": [8.55, 0.46], "size": [0.85, 0.58, 0.86], "rotation": 0, "materialId": "warm-stone", "color": "#A8A49A", "clearanceExempt": true, "requirementIds": ["req-laundry-storage"]},
+            {"itemId": "dining-table", "name": "六人餐桌", "kind": "dining-table", "roomId": "dining", "position": [1.62, 4.15], "size": [1.95, 0.92, 0.76], "rotation": 0, "materialId": "warm-oak", "color": "#C6A87B", "clearanceExempt": true, "requirementIds": ["req-six-seat-dining", "req-warm-materials"]},
+            {"itemId": "dining-sideboard", "name": "餐边柜", "kind": "cabinet", "roomId": "dining", "position": [0.36, 3.15], "size": [0.48, 1.25, 1.05], "rotation": 0, "materialId": "oak-dark", "color": "#80664D", "clearanceExempt": true, "requirementIds": ["req-six-seat-dining"]},
+            {"itemId": "extension-rug", "name": "阅读区地毯", "kind": "rug", "roomId": "living-extension", "position": [4.65, 3.7], "size": [2.05, 2.05, 0.06], "rotation": 0, "materialId": "warm-white", "color": "#E9E6DE", "clearanceExempt": true, "requirementIds": ["req-open-public-zone"]},
+            {"itemId": "extension-chair", "name": "阅读单椅", "kind": "chair", "roomId": "living-extension", "position": [4.18, 3.45], "size": [0.82, 0.82, 0.88], "rotation": -25, "materialId": "forest-fabric", "color": "#47705B", "clearanceExempt": false, "requirementIds": ["req-open-public-zone"]},
+            {"itemId": "extension-table", "name": "阅读边几", "kind": "table-round", "roomId": "living-extension", "position": [5.35, 4.2], "size": [0.58, 0.58, 0.52], "rotation": 0, "materialId": "oak-dark", "color": "#80664D", "clearanceExempt": true, "requirementIds": ["req-open-public-zone"]},
+            {"itemId": "study-desk", "name": "卧室三书桌", "kind": "desk", "roomId": "study", "position": [10.85, 0.62], "size": [1.75, 0.68, 0.76], "rotation": 0, "materialId": "warm-oak", "color": "#C6A87B", "clearanceExempt": true, "requirementIds": ["req-flex-study"]},
+            {"itemId": "study-chair", "name": "卧室三书椅", "kind": "chair", "roomId": "study", "position": [10.85, 1.55], "size": [0.6, 0.6, 0.86], "rotation": 180, "materialId": "forest-fabric", "color": "#47705B", "clearanceExempt": true, "requirementIds": ["req-flex-study"]},
+            {"itemId": "study-sofa-bed", "name": "卧室三单人床", "kind": "bed", "roomId": "study", "position": [10.85, 3.05], "size": [1.45, 1.95, 0.72], "rotation": 0, "materialId": "warm-white", "color": "#D9D2C8", "clearanceExempt": true, "requirementIds": ["req-flex-study", "req-retain-bedroom"]},
+            {"itemId": "family-console", "name": "开放家庭厅休闲榻", "kind": "sofa", "roomId": "family-work", "position": [7.75, 3.15], "size": [2.0, 0.88, 0.82], "rotation": 0, "materialId": "warm-white", "color": "#D9D2C8", "clearanceExempt": true, "requirementIds": ["req-open-public-zone", "req-flex-study"]},
+            {"itemId": "family-chair", "name": "开放联厅收纳柜", "kind": "cabinet", "roomId": "family-work", "position": [8.9, 2.05], "size": [0.52, 1.4, 1.2], "rotation": 0, "materialId": "oak-dark", "color": "#80664D", "clearanceExempt": true, "requirementIds": ["req-open-public-zone", "req-flex-study"]},
+            {"itemId": "foyer-cabinet", "name": "玄关收纳柜", "kind": "cabinet", "roomId": "foyer", "position": [0.42, 7.18], "size": [0.55, 1.65, 2.1], "rotation": 0, "materialId": "oak-dark", "color": "#80664D", "clearanceExempt": true, "requirementIds": ["req-continuous-circulation"]},
+            {"itemId": "foyer-bench", "name": "换鞋凳", "kind": "bench", "roomId": "foyer", "position": [1.55, 7.78], "size": [1.0, 0.42, 0.48], "rotation": 0, "materialId": "warm-white", "color": "#D9D2C8", "clearanceExempt": true, "requirementIds": ["req-continuous-circulation"]},
+            {"itemId": "public-toilet", "name": "公卫坐便器", "kind": "toilet", "roomId": "public-bath", "position": [11.55, 5.35], "size": [0.66, 0.82, 0.75], "rotation": 0, "materialId": "warm-white", "color": "#F1EFE9", "clearanceExempt": true, "requirementIds": ["req-professional-hold-points"]},
+            {"itemId": "public-vanity", "name": "公卫台盆柜", "kind": "sink", "roomId": "public-bath", "position": [11.75, 4.62], "size": [0.95, 0.55, 0.86], "rotation": 0, "materialId": "warm-oak", "color": "#C6A87B", "clearanceExempt": true, "requirementIds": ["req-professional-hold-points"]},
+            {"itemId": "master-toilet", "name": "主卫坐便器", "kind": "toilet", "roomId": "master-bath", "position": [11.55, 7.42], "size": [0.66, 0.82, 0.75], "rotation": 180, "materialId": "warm-white", "color": "#F1EFE9", "clearanceExempt": true, "requirementIds": ["req-professional-hold-points"]},
+            {"itemId": "master-vanity", "name": "主卫台盆柜", "kind": "sink", "roomId": "master-bath", "position": [11.75, 6.62], "size": [0.95, 0.55, 0.86], "rotation": 0, "materialId": "warm-oak", "color": "#C6A87B", "clearanceExempt": true, "requirementIds": ["req-professional-hold-points"]},
+            {"itemId": "living-rug", "name": "客厅地毯", "kind": "rug", "roomId": "living", "position": [5.72, 8.08], "size": [3.75, 2.2, 0.06], "rotation": 0, "materialId": "warm-white", "color": "#E9E6DE", "clearanceExempt": true, "requirementIds": ["req-open-public-zone", "req-warm-materials"]},
+            {"itemId": "living-sofa", "name": "三人沙发", "kind": "sofa", "roomId": "living", "position": [4.85, 7.2], "size": [2.75, 0.92, 0.86], "rotation": 0, "materialId": "warm-white", "color": "#D9D2C8", "clearanceExempt": true, "requirementIds": ["req-open-public-zone", "req-warm-materials"]},
+            {"itemId": "coffee-table", "name": "客厅茶几", "kind": "coffee-table", "roomId": "living", "position": [6.1, 8.15], "size": [1.45, 0.68, 0.46], "rotation": 0, "materialId": "warm-oak", "color": "#C6A87B", "clearanceExempt": true, "requirementIds": ["req-open-public-zone"]},
+            {"itemId": "accent-chair", "name": "客厅单椅", "kind": "chair", "roomId": "living", "position": [7.75, 7.35], "size": [0.82, 0.82, 0.88], "rotation": -24, "materialId": "forest-fabric", "color": "#47705B", "clearanceExempt": false, "requirementIds": ["req-open-public-zone", "req-warm-materials"]},
+            {"itemId": "living-media", "name": "电视与低柜", "kind": "media", "roomId": "living", "position": [9.9, 7.15], "size": [0.42, 2.0, 1.28], "rotation": 0, "materialId": "oak-dark", "color": "#56645C", "clearanceExempt": true, "requirementIds": ["req-warm-materials"]},
+            {"itemId": "living-lamp", "name": "客厅落地灯", "kind": "lamp", "roomId": "living", "position": [3.62, 9.75], "size": [0.4, 0.4, 1.65], "rotation": 0, "materialId": "oak-dark", "color": "#80664D", "clearanceExempt": true, "requirementIds": ["req-warm-materials"]},
+            {"itemId": "living-plant", "name": "客厅绿植", "kind": "plant", "roomId": "living", "position": [8.15, 9.75], "size": [0.72, 0.72, 1.25], "rotation": 0, "materialId": "forest-fabric", "color": "#47705B", "clearanceExempt": true, "requirementIds": ["req-warm-materials"]},
+            {"itemId": "bed-left-bed", "name": "次卧双人床", "kind": "bed", "roomId": "bed-left", "position": [1.55, 10.62], "size": [1.82, 2.0, 0.72], "rotation": 0, "materialId": "warm-white", "color": "#D9D2C8", "clearanceExempt": true, "requirementIds": ["req-retain-bedroom"]},
+            {"itemId": "bed-left-side", "name": "次卧床头柜", "kind": "cabinet", "roomId": "bed-left", "position": [0.38, 10.62], "size": [0.48, 0.48, 0.52], "rotation": 0, "materialId": "warm-oak", "color": "#C6A87B", "clearanceExempt": true, "requirementIds": ["req-retain-bedroom"]},
+            {"itemId": "bed-left-wardrobe", "name": "次卧衣柜", "kind": "cabinet", "roomId": "bed-left", "position": [2.78, 9.46], "size": [0.56, 1.55, 2.15], "rotation": 0, "materialId": "oak-dark", "color": "#80664D", "clearanceExempt": true, "requirementIds": ["req-retain-bedroom"]},
+            {"itemId": "master-rug", "name": "主卧地毯", "kind": "rug", "roomId": "master", "position": [10.55, 10.65], "size": [3.05, 3.0, 0.05], "rotation": 0, "materialId": "warm-white", "color": "#E9E6DE", "clearanceExempt": true, "requirementIds": ["req-warm-materials"]},
+            {"itemId": "master-bed", "name": "主卧双人床", "kind": "bed", "roomId": "master", "position": [10.55, 10.65], "size": [2.05, 2.05, 0.75], "rotation": 0, "materialId": "warm-white", "color": "#D9D2C8", "clearanceExempt": true, "requirementIds": ["req-continuous-circulation", "req-warm-materials"]},
+            {"itemId": "master-side-left", "name": "主卧左床头柜", "kind": "cabinet", "roomId": "master", "position": [9.25, 10.65], "size": [0.5, 0.5, 0.54], "rotation": 0, "materialId": "warm-oak", "color": "#C6A87B", "clearanceExempt": true, "requirementIds": ["req-warm-materials"]},
+            {"itemId": "master-side-right", "name": "主卧右床头柜", "kind": "cabinet", "roomId": "master", "position": [11.82, 10.65], "size": [0.5, 0.5, 0.54], "rotation": 0, "materialId": "warm-oak", "color": "#C6A87B", "clearanceExempt": true, "requirementIds": ["req-warm-materials"]},
+            {"itemId": "master-wardrobe", "name": "主卧整墙衣柜", "kind": "cabinet", "roomId": "master", "position": [11.95, 9.35], "size": [0.48, 1.5, 2.15], "rotation": 0, "materialId": "oak-dark", "color": "#80664D", "clearanceExempt": true, "requirementIds": ["req-warm-materials"]},
+            {"itemId": "balcony-seat", "name": "阳台休闲椅", "kind": "chair", "roomId": "balcony", "position": [4.25, 11.72], "size": [0.78, 0.78, 0.84], "rotation": 15, "materialId": "forest-fabric", "color": "#47705B", "clearanceExempt": false, "requirementIds": ["req-warm-materials"]},
+            {"itemId": "balcony-table", "name": "阳台边几", "kind": "table-round", "roomId": "balcony", "position": [5.38, 11.72], "size": [0.58, 0.58, 0.52], "rotation": 0, "materialId": "warm-oak", "color": "#C6A87B", "clearanceExempt": true, "requirementIds": ["req-warm-materials"]},
+            {"itemId": "balcony-plant", "name": "阳台绿植", "kind": "plant", "roomId": "balcony", "position": [7.8, 11.72], "size": [0.72, 0.72, 1.08], "rotation": 0, "materialId": "forest-fabric", "color": "#47705B", "clearanceExempt": true, "requirementIds": ["req-warm-materials"]}
+          ],
+          "stairs": [],
+          "guardrails": [],
+          "voids": []
+        }
+      ]
+    }
+  ],
+  "selectedConceptId": "concept-open-living",
+  "designIntent": {
+    "style": [
+      "暖调自然",
+      "低反光",
+      "清晰空间边界"
+    ],
+    "materials": [
+      {
+        "materialId": "warm-oak",
+        "name": "暖橡木",
+        "color": "#C9A77B",
+        "maintenance": "采购前核验样板、耐磨等级和保养说明。"
+      },
+      {
+        "materialId": "warm-white",
+        "name": "暖白织物",
+        "color": "#E9E6DE",
+        "maintenance": "核验可拆洗性、耐污等级与替换周期。"
+      },
+      {
+        "materialId": "oak-dark",
+        "name": "深色橡木",
+        "color": "#80664D",
+        "maintenance": "核验涂装体系、耐热性与日常清洁方式。"
+      },
+      {
+        "materialId": "warm-stone",
+        "name": "暖灰防滑石材",
+        "color": "#A8A49A",
+        "wetAreaSuitability": "specified",
+        "maintenance": "湿区采购前核验防滑等级、吸水率、铺贴系统和清洁说明。"
+      },
+      {
+        "materialId": "stone-grey",
+        "name": "低反光金属灰",
+        "color": "#8F9591",
+        "maintenance": "核验设备饰面耐指纹性能和厂商清洁要求。"
+      },
+      {
+        "materialId": "forest-fabric",
+        "name": "森林绿织物",
+        "color": "#47705B",
+        "maintenance": "核验耐磨、色牢度、可拆洗性与替换周期。"
+      }
+    ],
+    "lighting": [
+      {
+        "mode": "daylight-plus-ambient",
+        "intent": "优先利用北向自然光，并以均匀环境光补足公共区。"
+      }
+    ],
+    "maintenance": [
+      "最终材料、灯具和家具必须在采购前核验实物样板与供应商技术资料。"
+    ]
+  },
+  "decisions": [
+    {
+      "decisionId": "decision-select-open-living",
+      "summary": "本轮选择拆墙开放联厅方案作为模板验收基准。",
+      "rationale": "按用户红框意见打开餐厅、过厅、原卧室二与生活阳台一衔接区，并确保上传原图、调整标注、平面和三维模型一致呈现。",
+      "requirementIds": [
+        "req-continuous-circulation",
+        "req-open-public-zone",
+        "req-retain-bedroom",
+        "req-six-seat-dining"
+      ]
+    }
+  ],
+  "provenance": {
+    "sourcePlanEvidenceId": "evidence-source-plan-redacted",
+    "sourcePlanSha256": "23eab735dd2dcd2190264f93b3aad274b08a68b822c4a6f597a377afdc763542"
+  }
+}

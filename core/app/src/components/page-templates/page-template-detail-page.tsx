@@ -16,19 +16,19 @@ export function PageTemplateDetailPage({ template }: { template: PageTemplate })
       actions={<div className="template-detail-actions"><Badge tone="success">已内置</Badge><a className="button primary" href={`/template-pages/${template.id}`} rel="noreferrer" target="_blank">打开示例<ArrowUpRight aria-hidden="true" /></a></div>}
     />
 
-    <TemplateDevicePreview device={device} onChange={setDevice} />
+    <TemplateDevicePreview artifactPath={template.exampleArtifact.pagePath} device={device} onChange={setDevice} />
 
     <section className="template-detail-overview" aria-label="模板说明">
       <article>
-        <h2>从户型图到 SketchUp 式完整家装鸟瞰</h2>
-        <p>先归纳用户持续迭代的需求与原始户型图，再使用墙体、门窗、定制柜、家具与软装组件构建 SketchUp 式整屋模型，并保留户型调整依据。</p>
+        <h2>从装修证据到可追溯的 Pascal 专业概念模型</h2>
+        <p>把脱敏户型依据、需求优先级、A/B 方案、真实门窗开洞、多层构件、质量审计和专业核验边界放进同一份离线交付，并保留每次 revision 的调整依据。</p>
         <ul>{template.fixedFramework.slice(0, 6).map((item) => <li key={item}><Check aria-hidden="true" />{item}</li>)}</ul>
       </article>
       <aside>
-        <div className="template-source-rule"><FileImage aria-hidden="true" /><span><strong>户型图与方案并列查看</strong><small>原始图、调整标注、SU 设计稿和用户需求保持在同一份交付里。</small></span></div>
+        <div className="template-source-rule"><FileImage aria-hidden="true" /><span><strong>用户原图是唯一户型依据</strong><small>Agent 标注、Pascal 3D、正交平面、空间标签和方案说明都由同一张用户上传图生成，并通过来源哈希校验。</small></span></div>
         <dl>
           <div><dt>关联技能</dt><dd>{template.skill}</dd></div>
-          <div><dt>模板实现</dt><dd>v{template.implementation.version} · 同源生成</dd></div>
+          <div><dt>模板实现</dt><dd>v{template.implementation.version} · 受治理项目同源生成</dd></div>
           <div><dt>适配设备</dt><dd>Web · 移动横屏</dd></div>
           <div><dt>验收方式</dt><dd>确定性检查 · 用户视觉验收</dd></div>
         </dl>

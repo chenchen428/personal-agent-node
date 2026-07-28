@@ -14,7 +14,7 @@ export function PageTemplatesPage() {
     <section className="template-card-grid" aria-label="发布页模板列表">
       {pageTemplates.map((template) => <article className="template-mini-card" key={template.id}>
         <Link aria-label={`查看${template.name}`} className="template-mini-preview" href={`/app/pages/templates/${template.id}`} prefetch>
-          <TemplateCardArtwork />
+          <TemplateCardArtwork coverPath={template.exampleArtifact.coverPath} />
           <span><Eye aria-hidden="true" />进入详情</span>
         </Link>
         <div className="template-mini-body">

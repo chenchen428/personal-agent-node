@@ -33,8 +33,8 @@ const nextConfig: NextConfig = {
         headers: [{ key: "Cache-Control", value: "private, no-store" }],
       },
       {
-        source: "/assets/templates/interior-design-su-cover-v8.webp",
-        headers: [{ key: "Cache-Control", value: "public, max-age=31536000, immutable" }],
+        source: "/assets/templates/interior-design-delivery-v2/:path*",
+        headers: [{ key: "Cache-Control", value: "public, max-age=300, must-revalidate" }],
       },
     ];
   },

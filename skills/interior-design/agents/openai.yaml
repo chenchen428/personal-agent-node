@@ -1,4 +1,4 @@
 interface:
-  display_name: "装修设计与 3D 户型"
-  short_description: "从户型证据生成可手动浏览的 3D 装修概念图与交付页"
-  default_prompt: "Use $interior-design to turn my floor plan and style references into a calibrated concept model and a manually explorable renovation delivery Page."
+  display_name: "专业装修设计 Agent"
+  short_description: "从受治理证据建立可追溯 Pascal 场景、专业质量审计与离线交付页"
+  default_prompt: "Use $interior-design to build a governed professional concept project from my renovation evidence and requirements, compare options, compile and audit a deterministic Pascal scene, and generate an offline delivery Page with explicit professional boundaries."

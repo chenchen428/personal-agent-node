@@ -2,7 +2,7 @@ import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import { backup as sqliteBackup, DatabaseSync } from "node:sqlite";
-import archiver from "archiver";
+import { ZipArchive } from "archiver";
 
 const jobs = new Map();
 
@@ -27,7 +27,7 @@ async function createArchive(dataRoot, job) {
     fs.mkdirSync(outputDir, { recursive: true, mode: 0o700 });
     const databaseFiles = await snapshotDatabases(dataRoot, databaseSnapshot, job);
     const output = fs.createWriteStream(temporary, { mode: 0o600 });
-    const archive = archiver("zip", { zlib: { level: 6 } });
+    const archive = new ZipArchive({ zlib: { level: 6 } });
     const completed = new Promise((resolve, reject) => {
       output.once("close", resolve);
       output.once("error", reject);
