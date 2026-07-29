@@ -1,8 +1,7 @@
 "use client";
 
-import Link from "next/link";
 import { formatDetailedElapsed, formatTaskDuration, isRunning, statusLabel, useClock } from "./data";
-import { BackIcon } from "./shell";
+import { DetailShell } from "./shell";
 import { TaskConversationContent, TaskLoading, TaskUnavailable } from "./task-display-presentation";
 import { useTaskDisplayHistory } from "./use-task-display-history";
 import type { Session } from "./types";
@@ -12,33 +11,28 @@ export function MobileTaskDetail({ taskId, returnHref, returnLabel }: { taskId: 
   const now = useClock(1_000);
   const running = history.task ? isRunning(history.task.status) : false;
   const hasContent = Boolean(history.items.length || history.latestPlan.steps.length);
-  return <div className="mobile-current"><div className="mobile-stage"><div className="phone content-detail-phone task-conversation-phone">
-    <main className="content-detail-screen">
-      <div className="task-conversation-bar">
-        <Link href={returnHref} aria-label={`返回${returnLabel}`}><BackIcon /></Link>
-        <strong>{history.task?.title || "任务详情"}</strong>
-        <span>{history.task ? taskStatusLabel(history.task.status) : ""}</span>
-      </div>
-      <div
-        className="content-detail-scroll"
-        data-task-display-scroll="tail"
-        ref={history.scrollRef}
-        onScroll={history.onScroll}
-      >
-        {history.error ? <TaskUnavailable error /> : history.task && hasContent ? <TaskConversationContent
-          items={history.items}
-          plan={history.latestPlan.steps}
-          userName={history.task.senderName || "你"}
-          loadingEarlier={history.loadingEarlier}
-          positioned={history.positioned}
-          runtime={<>
-            {history.newUpdate ? <button className="task-new-update" type="button" onClick={() => history.scrollLatest()}>有新进展 <span aria-hidden="true">↓</span></button> : null}
-            <TaskRuntime task={history.task} running={running} now={now} />
-          </>}
-        /> : history.loading ? <TaskLoading /> : <TaskUnavailable />}
-      </div>
-    </main>
-  </div></div></div>;
+  return <DetailShell
+    returnHref={returnHref}
+    returnLabel={returnLabel}
+    title={history.task?.title || "任务详情"}
+    trailing={history.task ? taskStatusLabel(history.task.status) : ""}
+    section="workers"
+    task
+    scrollRef={history.scrollRef}
+    onScroll={history.onScroll}
+  >
+    {history.error ? <TaskUnavailable error /> : history.task && hasContent ? <TaskConversationContent
+      items={history.items}
+      plan={history.latestPlan.steps}
+      userName={history.task.senderName || "你"}
+      loadingEarlier={history.loadingEarlier}
+      positioned={history.positioned}
+      runtime={<>
+        {history.newUpdate ? <button className="task-new-update" type="button" onClick={() => history.scrollLatest()}>有新进展 <span aria-hidden="true">↓</span></button> : null}
+        <TaskRuntime task={history.task} running={running} now={now} />
+      </>}
+    /> : history.loading ? <TaskLoading /> : <TaskUnavailable />}
+  </DetailShell>;
 }
 
 function TaskRuntime({ task, running, now }: { task: Session; running: boolean; now: number }) {

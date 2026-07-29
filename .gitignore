@@ -4,6 +4,7 @@
 !.env.example
 .local/
 coverage/
+test-results/
 dist/
 !examples/personal-apps/personal-agent.daily-brief/dist/
 !examples/personal-apps/personal-agent.daily-brief/dist/**

@@ -77,8 +77,8 @@ export function useSourcePage(fallback: "pages" | "workers") {
   return source;
 }
 
-export async function fetchJson<T>(url: string): Promise<T> {
-  const response = await fetch(url, { cache: "no-store" });
+export async function fetchJson<T>(url: string, init: RequestInit = {}): Promise<T> {
+  const response = await fetch(url, { ...init, cache: "no-store" });
   const contentType = response.headers.get("content-type") || "";
   const text = await response.text();
   let payload: unknown;

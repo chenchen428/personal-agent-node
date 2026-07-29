@@ -123,7 +123,7 @@ test("Next.js owns the approved V6.39 mobile client and V7.3 desktop workspace",
   assert.match(spaceSwitcher, /isLoopbackHostname/);
   assert.match(spaceSwitcher, /x-personal-agent-surface/);
   assert.match(overview, /sec-ch-ua-mobile/);
-  assert.match(overview, /redirect\("\/app\/mobile"\)/);
+  assert.match(overview, /return <MobileActivity/);
   assert.match(read("core/app/src/app/app/loading.tsx"), /isMobileRequest/);
   assert.match(read("core/app/src/app/app/loading.tsx"), /MobileContentSkeleton/);
   assert.match(read("core/app/src/app/app/layout.tsx"), /initialMobileHint/);
@@ -411,7 +411,7 @@ test("Next.js owns the approved V6.39 mobile client and V7.3 desktop workspace",
   assert.match(mobileClient, /hasRunningTask/);
   assert.match(mobileClient, /重启后已继续处理/);
   assert.match(mobileClient, /\/display-events\?/);
-  assert.match(mobileClient, /data-task-display-scroll="tail"/);
+  assert.match(mobileClient, /data-task-display-scroll=\{task \? "tail" : undefined\}/);
   assert.match(mobileClient, /element\.scrollTop = element\.scrollHeight/);
   assert.match(mobileClient, /drawerOpen \? <MobileDrawer/);
   assert.doesNotMatch(mobileClient, /messageLimit=80/);

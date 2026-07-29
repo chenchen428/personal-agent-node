@@ -383,7 +383,7 @@ async function handleRequest(request: http.IncomingMessage, response: http.Serve
         pages: { list: true, publish: true },
         memory: { list: true, search: true, inspect: true, spaceIsolated: true, readOnlyUi: true },
         apps: { history: { list: true, append: true, rawSql: false } },
-        client: { overview: true, activity: true, pages: true, runtime: true, readOnly: true },
+        client: { overview: true, activity: true, pages: true, runtime: true, taskDetailPagination: true, readOnly: true },
       },
     });
     return;
@@ -511,6 +511,57 @@ async function handleRequest(request: http.IncomingMessage, response: http.Serve
 
   if (url.pathname === "/api/node/v1/client/activity" && request.method === "GET") {
     sendNodeApiResult(response, 200, await buildClientActivity(url));
+    return;
+  }
+
+  const clientTaskMatch = /^\/api\/node\/v1\/client\/tasks\/([^/]+)(?:\/(messages|events|artifacts)(?:\/(\d+))?)?$/.exec(url.pathname);
+  if (clientTaskMatch && request.method === "GET") {
+    const sessionId = decodeURIComponent(clientTaskMatch[1]);
+    const resource = clientTaskMatch[2] || "summary";
+    const eventSeq = Number(clientTaskMatch[3] || 0);
+    const task = store.getSessionSummary(sessionId);
+    if (!task) {
+      sendNodeApiError(response, 404, "NOT_FOUND", "Task was not found");
+      return;
+    }
+    if (resource === "messages") {
+      sendNodeApiResult(response, 200, store.listMessagesPage(sessionId, {
+        beforeSeq: url.searchParams.get("beforeSeq"),
+        afterSeq: url.searchParams.get("afterSeq"),
+        limit: url.searchParams.get("limit") || 30,
+      }));
+      return;
+    }
+    if (resource === "artifacts") {
+      sendNodeApiResult(response, 200, store.listSessionArtifactsPage(sessionId, {
+        beforeSeq: url.searchParams.get("beforeSeq"),
+        limit: url.searchParams.get("limit") || 20,
+      }));
+      return;
+    }
+    if (resource === "events" && eventSeq) {
+      const event = store.getEvent(sessionId, eventSeq);
+      if (!event) sendNodeApiError(response, 404, "NOT_FOUND", "Task event was not found");
+      else sendNodeApiResult(response, 200, { event });
+      return;
+    }
+    if (resource === "events") {
+      const page = store.listEventsPage(sessionId, {
+        beforeSeq: url.searchParams.get("beforeSeq"),
+        afterSeq: url.searchParams.get("afterSeq"),
+        limit: url.searchParams.get("limit") || 50,
+      });
+      sendNodeApiResult(response, 200, { ...page, items: page.items.map(summarizeTaskAuditEvent) });
+      return;
+    }
+    const messages = store.listMessagesPage(sessionId, { limit: url.searchParams.get("messageLimit") || 30 });
+    const artifacts = store.listSessionArtifactsPage(sessionId, { limit: 10 });
+    sendNodeApiResult(response, 200, {
+      contractVersion: "personal-agent/task-detail-v1",
+      task,
+      messages,
+      artifacts,
+    });
     return;
   }
 
@@ -3045,6 +3096,22 @@ function sendUnauthorized(request: http.IncomingMessage, response: http.ServerRe
 
 function sendNodeApiResult(response: http.ServerResponse, statusCode: number, result: unknown, head = false) {
   sendJson(response, statusCode, { schemaVersion: 1, ok: true, result }, head);
+}
+
+function summarizeTaskAuditEvent(event: { seq: number; id: string; sessionId: string; kind: string; createdAt: string; payload?: Record<string, unknown> }) {
+  const payload = event.payload && typeof event.payload === "object" ? event.payload : {};
+  const content = String(payload.content || "");
+  return {
+    id: event.id,
+    seq: event.seq,
+    kind: event.kind,
+    createdAt: event.createdAt,
+    contentPreview: content.slice(0, 4096),
+    truncated: content.length > 4096 || Object.keys(payload).some((key) => !["content", "level", "source", "toolName", "metadata"].includes(key)),
+    level: String(payload.level || "info"),
+    toolName: String(payload.toolName || ""),
+    detailUrl: `/api/node/v1/client/tasks/${encodeURIComponent(event.sessionId)}/events/${event.seq}`,
+  };
 }
 
 function sendNodeApiError(response: http.ServerResponse, statusCode: number, code: string, message: string, head = false) {

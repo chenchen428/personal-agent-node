@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -99,6 +100,20 @@ func TestAuthorizedProductDeliveryApprovesOnlyTheExactCandidateState(t *testing.
 	}
 	if operation.Approval["kind"] != "owner-delegated-agent" || operation.Approval["channel"] != "registered-product-development" || operation.Approval["scope"] != "exact-candidate-digest" {
 		t.Fatalf("unexpected delegated approval: %#v", operation.Approval)
+	}
+}
+
+func TestCandidateHandoffCarriesInstalledRootsForLegacyDesktopLaunchers(t *testing.T) {
+	home := filepath.Join("root", ".personal-agent")
+	environment := strings.Join(candidateHandoffEnvironment(home), "\n")
+	for _, expected := range []string{
+		"PERSONAL_AGENT_HOME=" + home,
+		"PRIVATE_SITE_INSTALL_ROOT=" + filepath.Join(home, "core"),
+		"PRIVATE_SITE_DATA_ROOT=" + filepath.Join(home, "workspace"),
+	} {
+		if !strings.Contains(environment, expected) {
+			t.Fatalf("candidate handoff environment is missing %s", expected)
+		}
 	}
 }
 

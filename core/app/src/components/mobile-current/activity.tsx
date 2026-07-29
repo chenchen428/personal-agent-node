@@ -59,7 +59,7 @@ export function MobileActivity() {
   return <MobileListShell section="activity" title="最近动态" note={runningTasks.length ? `${runningTasks.length} 项工作进行中` : items.length ? `${items.length} 条动态` : "最近动态"} query={query} setQuery={setQuery} searchLabel="搜索最近动态" searchPlaceholder="搜索动态内容">
     <div className="activity-stream">
       {error ? <InlineError message={error} /> : null}
-      {!query && runningTasks.length ? <RunningTaskPresence tasks={runningTasks} expanded={tasksExpanded} setExpanded={setTasksExpanded} /> : null}
+      {!initialLoading && !query && runningTasks.length ? <RunningTaskPresence tasks={runningTasks} expanded={tasksExpanded} setExpanded={setTasksExpanded} /> : null}
       {query ? <SearchStatus count={items.length} summary={`“${query}”`} onClear={() => setQuery("")} /> : null}
       {!loading && !items.length ? <SearchEmpty title={query ? "没有找到相关动态" : "还没有最近动态"} hint={query ? "试试任务名称、邮件主题或页面标题" : "PA 的新工作会显示在这里"} /> : null}
       {initialLoading ? <MobileContentSkeleton kind="activity" /> : items.map((item) => <ActivityEntry item={item} key={item.id} />)}

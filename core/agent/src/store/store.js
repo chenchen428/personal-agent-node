@@ -1061,6 +1061,71 @@ export class BridgeStore {
     `).all(sessionId, Number(afterSeq || 0)).map(rowToEvent);
   }
 
+  getEvent(sessionId, seq) {
+    const row = this.db.prepare("SELECT * FROM events WHERE session_id = ? AND seq = ?").get(sessionId, Number(seq));
+    return row ? rowToEvent(row) : null;
+  }
+
+  listEventsPage(sessionId, { beforeSeq = 0, afterSeq = 0, limit = 50, kinds = [] } = {}) {
+    const pageSize = Math.min(Math.max(Number(limit) || 50, 1), 100);
+    const before = Math.max(0, Number(beforeSeq) || 0);
+    const after = Math.max(0, Number(afterSeq) || 0);
+    const normalizedKinds = Array.isArray(kinds) ? kinds.map(String).filter(Boolean).slice(0, 20) : [];
+    const where = ["session_id = ?"];
+    const params = [sessionId];
+    if (normalizedKinds.length) {
+      where.push(`kind IN (${normalizedKinds.map(() => "?").join(", ")})`);
+      params.push(...normalizedKinds);
+    }
+    if (after) { where.push("seq > ?"); params.push(after); }
+    else if (before) { where.push("seq < ?"); params.push(before); }
+    const ascending = Boolean(after);
+    const rows = this.db.prepare(`
+      SELECT * FROM events WHERE ${where.join(" AND ")} ORDER BY seq ${ascending ? "ASC" : "DESC"} LIMIT ?
+    `).all(...params, pageSize + 1);
+    const hasMore = rows.length > pageSize;
+    const pageRows = (hasMore ? rows.slice(0, pageSize) : rows);
+    const orderedRows = ascending ? pageRows : pageRows.toReversed();
+    const items = orderedRows.map(rowToEvent);
+    return {
+      items,
+      hasMoreBefore: !ascending && hasMore,
+      nextBeforeSeq: !ascending && hasMore ? Number(items[0]?.seq || 0) : 0,
+      hasMoreAfter: ascending && hasMore,
+      nextAfterSeq: ascending && items.length ? Number(items.at(-1)?.seq || after) : after,
+    };
+  }
+
+  listMessagesPage(sessionId, options = {}) {
+    const page = this.listEventsPage(sessionId, {
+      ...options,
+      kinds: ["session.user_message", "session.assistant_message", "session.reasoning", "session.error"],
+    });
+    return {
+      ...page,
+      items: coalesceMessages(page.items.map(eventToMessage).filter(Boolean)).map(toMobileMessage),
+    };
+  }
+
+  listSessionArtifactsPage(sessionId, options = {}) {
+    const pageSize = Math.min(Math.max(Number(options.limit) || 30, 1), 50);
+    const before = Math.max(0, Number(options.beforeSeq) || 0);
+    const where = ["session_id = ?", "json_array_length(COALESCE(json_extract(payload_json, '$.metadata.attachments'), '[]')) > 0"];
+    const params = [sessionId];
+    if (before) { where.push("seq < ?"); params.push(before); }
+    const rows = this.db.prepare(`
+      SELECT * FROM events WHERE ${where.join(" AND ")} ORDER BY seq DESC LIMIT ?
+    `).all(...params, pageSize + 1);
+    const hasMore = rows.length > pageSize;
+    const pageRows = (hasMore ? rows.slice(0, pageSize) : rows).toReversed().map(rowToEvent);
+    return {
+      items: pageRows.flatMap((event) => (Array.isArray(event.payload?.metadata?.attachments) ? event.payload.metadata.attachments : [])
+        .map((artifact) => ({ ...artifact, eventSeq: event.seq, createdAt: event.createdAt }))),
+      hasMoreBefore: hasMore,
+      nextBeforeSeq: hasMore ? Number(pageRows[0]?.seq || 0) : 0,
+    };
+  }
+
   getLatestEvent(sessionId, kinds = []) {
     const normalizedKinds = Array.isArray(kinds) ? kinds.map(String).filter(Boolean) : [];
     if (!normalizedKinds.length) {
@@ -2510,6 +2575,21 @@ function coalesceMessages(messages) {
     output.push(message);
   }
   return output;
+}
+
+function toMobileMessage(message) {
+  const content = String(message.content || "");
+  const metadata = message.metadata && typeof message.metadata === "object" ? message.metadata : {};
+  return {
+    ...message,
+    content: content.length > 16_384 ? `${content.slice(0, 16_384)}\n\n[内容较长，已在移动端截断]` : content,
+    truncated: content.length > 16_384,
+    metadata: {
+      ...(metadata.eventType ? { eventType: metadata.eventType } : {}),
+      ...(Array.isArray(metadata.plan) ? { plan: metadata.plan.slice(0, 50) } : {}),
+      ...(Array.isArray(metadata.attachments) ? { attachments: metadata.attachments.slice(0, 20) } : {}),
+    },
+  };
 }
 
 function normalizeJsonState(input) {

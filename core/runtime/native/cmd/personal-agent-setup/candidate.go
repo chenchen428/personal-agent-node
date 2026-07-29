@@ -263,8 +263,9 @@ func candidateApplyCommand(args []string) {
 		launcher += ".exe"
 	}
 	command := exec.Command(launcher, "--apply-update", job.ID, "--nonce", job.HandoffNonce)
-	command.Env = append(os.Environ(), "PERSONAL_AGENT_HOME="+home)
+	command.Env = candidateHandoffEnvironment(home)
 	if err := command.Start(); err != nil {
+
 		operation.Status, operation.CompletedAt = "failed", time.Now().UTC().Format(time.RFC3339Nano)
 		operation.Error = map[string]any{"code": "CANDIDATE_HANDOFF_FAILED", "message": "desktop handoff could not be started"}
 		job.Status, job.Failure = "failed", operation.Error
@@ -273,6 +274,14 @@ func candidateApplyCommand(args []string) {
 		fail("candidate desktop handoff could not be started")
 	}
 	write(map[string]any{"ok": true, "job": publicCandidateJob(job), "operation": operation})
+}
+
+func candidateHandoffEnvironment(home string) []string {
+	return append(os.Environ(),
+		"PERSONAL_AGENT_HOME="+home,
+		"PRIVATE_SITE_INSTALL_ROOT="+filepath.Join(home, "core"),
+		"PRIVATE_SITE_DATA_ROOT="+filepath.Join(home, "workspace"),
+	)
 }
 
 func candidateOperationFlags(name string, args []string) (string, string, string) {

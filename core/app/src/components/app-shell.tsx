@@ -9,6 +9,7 @@ import { SpaceSwitcher } from "@/components/space-switcher";
 import { UpdateNavItem } from "@/components/update-nav-item";
 import { fetchJson } from "@/lib/client-json";
 import { ManagedConnectionsBootstrap } from "@/components/managed-connections-bootstrap";
+import { MobileAppShell } from "@/components/mobile-current/shell";
 import { DesktopHeaderBreadcrumb } from "@/components/desktop-header-breadcrumb";
 
 type PersonalApp = { id: string; name: string; route: string; desktopRoute?: string; compatible: boolean };
@@ -27,7 +28,7 @@ export function AppShell({ children, initialMobileHint = false }: { children: Re
   }, []);
 
   useCloseProtection(mobile);
-  if (mobile) return children;
+  if (mobile) return <MobileAppShell>{children}</MobileAppShell>;
   return <><ManagedConnectionsBootstrap enabled /><DesktopShell pathname={pathname} apps={apps}>{children}</DesktopShell></>;
 }
 
