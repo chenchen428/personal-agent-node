@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef } from 'react';
 import { CameraControls } from '@react-three/drei';
 import { useThree } from '@react-three/fiber';
 import { useViewer } from '@pascal-app/viewer';
+import { calculateOrthographicZoom } from './pascal-camera-framing.mjs';
 
 export function ProjectCamera({ payload }) {
   const controls = useRef(null);
@@ -21,10 +22,14 @@ export function ProjectCamera({ payload }) {
     const maxX = Math.max(...points.map((point) => point[0]), 8);
     const minZ = Math.min(...points.map((point) => point[1]), 0);
     const maxZ = Math.max(...points.map((point) => point[1]), 8);
+    const width = Math.max(maxX - minX, 1);
+    const depth = Math.max(maxZ - minZ, 1);
     return {
       centerX: (minX + maxX) / 2,
       centerZ: (minZ + maxZ) / 2,
-      span: Math.max(maxX - minX, maxZ - minZ, 8),
+      depth,
+      span: Math.max(width, depth, 8),
+      width,
     };
   }, [payload]);
 
@@ -47,6 +52,12 @@ export function ProjectCamera({ payload }) {
         : 16 / 9;
       const narrowViewportScale = Math.max(1, 1.5 / aspect);
       if (mode === 'orthographic') {
+        const zoom = calculateOrthographicZoom({
+          boundsWidth: frame.width,
+          boundsDepth: frame.depth,
+          viewportWidth: currentViewport.width,
+          viewportHeight: currentViewport.height,
+        });
         await api.setLookAt(
           frame.centerX,
           frame.span * 2.35 * narrowViewportScale,
@@ -56,6 +67,7 @@ export function ProjectCamera({ payload }) {
           frame.centerZ,
           false,
         );
+        await api.zoomTo(zoom, false);
       } else {
         await api.setLookAt(
           frame.centerX + frame.span * 1.12 * narrowViewportScale,
