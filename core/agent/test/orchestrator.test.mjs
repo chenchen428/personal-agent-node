@@ -6,6 +6,7 @@ import test from "node:test";
 import sharp from "sharp";
 import { config } from "../src/config.js";
 import { ActivityStore } from "../src/activity/store.js";
+import { MemoryStore } from "../src/memory/store.js";
 import { dailyTokenLimitSettings } from "../src/agent/daily-token-limit.ts";
 import { buildAgentPath, isLocalConversationSession, progressFatigueDelay, progressTimerInterval, SessionOrchestrator } from "../src/server/orchestrator.js";
 
@@ -70,7 +71,7 @@ test("daily Token limit keeps the desktop message and replies without starting t
     assert.equal(runnerCalls, 0);
     assert.equal(messages.some((message) => message.role === "user" && message.content === "blocked desktop message"), true);
     const reply = messages.find((message) => message.role === "error" && message.metadata?.code === "DAILY_TOKEN_LIMIT_EXCEEDED");
-    assert.match(reply?.content || "", /系统设置/);
+    assert.match(reply?.content || "", /空间设置/);
     assert.equal(reply?.metadata?.dailyLimitMillions, 1);
   } finally {
     orchestrator.stop();
@@ -105,7 +106,98 @@ test("daily Token limit automatically replies on WeChat without starting the Age
     });
     await waitFor(() => sent.some((item) => item.text.includes("DAILY") || item.text.includes("Token")));
     assert.equal(runnerCalls, 0);
-    assert.equal(sent.some((item) => item.text.includes("系统设置")), true);
+    assert.equal(sent.some((item) => item.text.includes("空间设置")), true);
+  } finally {
+    orchestrator.stop();
+    store.close();
+    fs.rmSync(dataDir, { recursive: true, force: true });
+  }
+});
+
+test("deterministically delegates a matched Page template before the main Agent runs", async () => {
+  const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), "oab-orchestrator-page-routing-"));
+  const store = new BridgeStore({ dataDir, consoleBaseUrl: "https://agent.example.test" });
+  const main = store.getOrCreateDesktopMainSession({ workspaceRoot: dataDir });
+  const calls = [];
+  let releaseWorker;
+  const workerGate = new Promise((resolve) => { releaseWorker = resolve; });
+  const orchestrator = new SessionOrchestrator({
+    store,
+    hub: { broadcast: () => {} },
+    channels: {},
+    progressTimerEnabled: false,
+    runner: {
+      runAppServerCommand: async (input) => {
+        calls.push(input);
+        if (calls.length === 1) await workerGate;
+        return { ok: true };
+      },
+      stopAppServerCommand: () => false,
+    },
+  });
+  try {
+    const request = "请立即开始制作一套90平方米二手房的可交互装修设计交付 Page，不要用示例户型替代。";
+    await orchestrator.resumeSession(main.id, request, {
+      displayContent: request,
+      messageMetadata: { channel: "desktop", clientMessageId: "page-routing-1" },
+    });
+    await waitFor(() => calls.length === 1);
+
+    const children = store.listSessionsPage({ parentSessionId: main.id, limit: 20 }).sessions;
+    assert.equal(children.length, 1);
+    assert.equal(calls[0].sessionId, children[0].id);
+    assert.match(calls[0].stdin, /interior-design-delivery/);
+    assert.match(calls[0].stdin, /interior-design/);
+    assert.match(calls[0].stdin, /fixedFramework/);
+    assert.match(calls[0].stdin, /agentInstructions/);
+    assert.match(calls[0].stdin, /90平方米二手房/);
+
+    const messages = store.getSession(main.id).messages;
+    assert.equal(messages.filter((message) => message.role === "user" && message.content === request).length, 1);
+    assert.match(messages.findLast((message) => message.role === "assistant")?.content || "", /已开始处理.*处理中/);
+  } finally {
+    releaseWorker?.();
+    await waitFor(() => !orchestrator.running.size);
+    orchestrator.stop();
+    store.close();
+    fs.rmSync(dataDir, { recursive: true, force: true });
+  }
+});
+
+test("reports parent-scoped task status without starting or duplicating a task", async () => {
+  const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), "oab-orchestrator-task-status-routing-"));
+  const store = new BridgeStore({ dataDir, consoleBaseUrl: "https://agent.example.test" });
+  const main = store.getOrCreateDesktopMainSession({ workspaceRoot: dataDir });
+  const child = store.createSession({
+    role: "worker",
+    parentSessionId: main.id,
+    title: "装修设计交付页",
+    taskDescription: "使用内置模板制作装修设计交付页",
+    workspaceRoot: dataDir,
+  });
+  store.updateSession(child.id, { status: "running" });
+  let runnerCalls = 0;
+  const orchestrator = new SessionOrchestrator({
+    store,
+    hub: { broadcast: () => {} },
+    channels: {},
+    progressTimerEnabled: false,
+    runner: {
+      runAppServerCommand: async () => { runnerCalls += 1; },
+      stopAppServerCommand: () => false,
+    },
+  });
+  try {
+    const before = store.countSessions({ parentSessionId: main.id });
+    await orchestrator.resumeSession(main.id, "现在做到哪一步了？请只返回刚才那个任务的当前状态。", {
+      displayContent: "现在做到哪一步了？请只返回刚才那个任务的当前状态。",
+      messageMetadata: { channel: "desktop", clientMessageId: "task-status-1" },
+    });
+    assert.equal(runnerCalls, 0);
+    assert.equal(store.countSessions({ parentSessionId: main.id }), before);
+    const reply = store.getSession(main.id).messages.findLast((message) => message.role === "assistant");
+    assert.match(reply?.content || "", /装修设计交付页”当前状态：处理中/);
+    assert.doesNotMatch(reply?.content || "", /worker|子任务/i);
   } finally {
     orchestrator.stop();
     store.close();
@@ -174,6 +266,94 @@ test("main-Agent PATH prefers the stable CLI from the active installation", () =
   assert.equal(entries[0], cliBin);
   assert.equal(entries[1], path.join(installRoot, "bin"));
   assert.equal(entries.at(-1), inherited);
+});
+
+test("recalls current-Space Memory before each real main-Agent user turn only", async () => {
+  const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), "oab-orchestrator-memory-"));
+  const store = new BridgeStore({ dataDir, consoleBaseUrl: "https://agent.example.test" });
+  const main = store.getOrCreateDesktopMainSession({ workspaceRoot: dataDir });
+  const memoryStore = new MemoryStore({
+    databasePath: store.databasePath,
+    spaceId: "space-memory",
+    sessionResolver: (sessionId) => store.getSessionRecord(sessionId),
+  });
+  const memory = memoryStore.create({ sessionId: main.id }, { content: "用户偏好每次回复先给结论。" });
+  const calls = [];
+  const orchestrator = new SessionOrchestrator({
+    store,
+    memoryStore,
+    hub: { broadcast: () => {} },
+    channels: {},
+    progressTimerEnabled: false,
+    runner: {
+      runAppServerCommand: async (input) => { calls.push(input); return { ok: true }; },
+      stopAppServerCommand: () => false,
+    },
+  });
+  try {
+    await orchestrator.runTurn(main.id, "请按我的回复偏好回答", { developerInstructions: "main" });
+    assert.match(calls[0].appServerDeveloperInstructions, /personal-agent-memory:recall/);
+    assert.match(calls[0].appServerDeveloperInstructions, /先给结论/);
+    assert.match(calls[0].appServerDeveloperInstructions, /pa-cli memory list\|search\|show\|stats\|create\|update\|delete/);
+    assert.equal(memoryStore.getForReader(memory.id).hitCount, 1);
+    await orchestrator.runTurn(main.id, "[internal]", { developerInstructions: "main", internalInput: true });
+    assert.doesNotMatch(calls[1].appServerDeveloperInstructions, /personal-agent-memory:recall/);
+    assert.equal(memoryStore.getForReader(memory.id).hitCount, 1);
+  } finally {
+    orchestrator.stop();
+    memoryStore.close();
+    store.close();
+    fs.rmSync(dataDir, { recursive: true, force: true });
+  }
+});
+
+test("issues an expiring Memory CLI capability only to the active main-Agent turn", async () => {
+  const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), "oab-orchestrator-memory-cli-"));
+  const store = new BridgeStore({ dataDir, consoleBaseUrl: "https://agent.example.test" });
+  const main = store.getOrCreateDesktopMainSession({ workspaceRoot: dataDir });
+  const memoryStore = new MemoryStore({
+    databasePath: store.databasePath,
+    spaceId: "space-memory-cli",
+    sessionResolver: (sessionId) => store.getSessionRecord(sessionId),
+  });
+  let issuedCapability = "";
+  let orchestrator;
+  orchestrator = new SessionOrchestrator({
+    store,
+    memoryStore,
+    hub: { broadcast: () => {} },
+    channels: {},
+    progressTimerEnabled: false,
+    runner: {
+      runAppServerCommand: async (input) => {
+        issuedCapability = /临时能力值 ([A-Za-z0-9_-]+)/.exec(input.appServerDeveloperInstructions)?.[1] || "";
+        assert.ok(issuedCapability);
+        const created = orchestrator.executeMemoryCli(issuedCapability, { action: "create", input: { content: "用户偏好结论优先。" } });
+        assert.equal(created.data.content, "用户偏好结论优先。");
+        await input.onSessionEvent({
+          sessionId: input.sessionId,
+          kind: "session.tool_use",
+          payload: { content: `pa-cli memory create --capability ${issuedCapability}` },
+        });
+        return { ok: true };
+      },
+      stopAppServerCommand: () => false,
+    },
+  });
+  try {
+    await orchestrator.runTurn(main.id, "记住我的偏好", { developerInstructions: "main" });
+    assert.equal(memoryStore.listForReader({ status: "active" }).items.length, 1);
+    assert.equal(store.getSession(main.id).messages.some((message) => JSON.stringify(message).includes(issuedCapability)), false);
+    assert.throws(
+      () => orchestrator.executeMemoryCli(issuedCapability, { action: "list", input: {} }),
+      (error) => error.code === "MEMORY_CAPABILITY_INVALID",
+    );
+  } finally {
+    orchestrator.stop();
+    memoryStore.close();
+    store.close();
+    fs.rmSync(dataDir, { recursive: true, force: true });
+  }
 });
 
 test("executes main-Agent Activity controls, strips them from history, and follows up on searches", async () => {
@@ -438,9 +618,10 @@ test("child task input retains the latest visible parent request", async () => {
     metadata: { channel: "desktop" },
   });
   const calls = [];
+  const broadcasts = [];
   const orchestrator = new SessionOrchestrator({
     store,
-    hub: { broadcast: () => {} },
+    hub: { broadcast: (event) => broadcasts.push(event) },
     channels: {},
     progressTimerEnabled: false,
     runner: {
@@ -473,6 +654,10 @@ test("child task input retains the latest visible parent request", async () => {
   assert.match(calls[0], /用户原始请求：\n明天9点钟，提醒我买黄皮寄回家/);
   assert.match(calls[0], /子任务执行说明：\n请为用户创建一次性提醒/);
   assert.equal(store.getSession(worker.id).messages.find((message) => message.role === "user").content, calls[0]);
+  const display = store.listTaskDisplayEvents(worker.id, { limit: 20 });
+  assert.deepEqual(display.items.map((item) => item.content), ["明天九点提醒用户买黄皮寄回家", "提醒已创建"]);
+  assert.equal(display.items.some((item) => item.content.includes("用户原始请求")), false);
+  assert.equal(broadcasts.some((event) => event.type === "task.display.delta" && event.taskId === worker.id), true);
 
   orchestrator.stop();
   store.close();
@@ -659,7 +844,7 @@ test("acknowledges WeChat immediately and queues the completed reply behind the 
   }]);
   assert.equal(calls[0].stdin, "你好，在吗");
   assert.doesNotMatch(calls[0].stdin, /pa-cli session start/);
-  assert.match(calls[0].appServerDeveloperInstructions, /简单问答.*直接自然地回答/);
+  assert.match(calls[0].appServerDeveloperInstructions, /简单问答.*直接处理/);
   assert.match(calls[0].appServerDeveloperInstructions, /不要轮询/);
   assert.match(calls[0].appServerDeveloperInstructions, /1 至 3 句话/);
   assert.match(calls[0].appServerDeveloperInstructions, /pa-cli cron create\|update\|delete\|run/);
@@ -667,6 +852,17 @@ test("acknowledges WeChat immediately and queues the completed reply behind the 
   assert.match(calls[0].appServerDeveloperInstructions, /search main-Agent Activity first/);
   assert.match(calls[0].appServerDeveloperInstructions, /Do not create a child task merely to retrieve an existing result/);
   assert.match(calls[0].appServerDeveloperInstructions, /silently try the other registered local indexes/);
+  assert.match(calls[0].appServerDeveloperInstructions, /凡是需要读写文件.*都必须进入任务调度/);
+  assert.match(calls[0].appServerDeveloperInstructions, /主 Agent 不得自己执行这些实质步骤/);
+  assert.match(calls[0].appServerDeveloperInstructions, /首要职责是面向用户沟通/);
+  assert.match(calls[0].appServerDeveloperInstructions, /彼此独立推进的实质分支应分别创建子任务/);
+  assert.match(calls[0].appServerDeveloperInstructions, /不要在主 Agent 中重复执行已经委派的工作/);
+  assert.match(calls[0].appServerDeveloperInstructions, /负责收集这些状态、向用户汇总有意义的进展/);
+  assert.match(calls[0].appServerDeveloperInstructions, /询问任务、进度、完成情况.*禁止创建或续接任务/);
+  assert.match(calls[0].appServerDeveloperInstructions, new RegExp(`pa-cli session list --parent ${session.id} --all --json`));
+  assert.match(calls[0].appServerDeveloperInstructions, /pa-cli pages templates list --json/);
+  assert.match(calls[0].appServerDeveloperInstructions, /interior-design-delivery/);
+  assert.match(calls[0].appServerDeveloperInstructions, /回复开头必须明确说‘任务已完成’或‘任务未完成’/);
   assert.doesNotMatch(calls[0].appServerDeveloperInstructions, /你好，在吗/);
   await waitFor(() => !orchestrator.running.has(session.id));
   assert.equal(orchestrator.running.has(session.id), false);
@@ -1187,6 +1383,90 @@ test("moves a worker to an interrupted terminal state when execution fails", asy
   await waitFor(() => orchestrator.running.size === 0 && store.getSessionRecord(worker.id).status === "paused");
   assert.equal(store.getSessionRecord(worker.id).status, "paused");
   assert.equal(store.getSession(worker.id).events.some((event) => event.payload?.metadata?.eventType === "worker/turn/terminal-fallback"), true);
+
+  orchestrator.stop();
+  store.close();
+});
+
+test("shows a deterministic task status when the main-Agent completion summary fails", async () => {
+  const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), "oab-orchestrator-worker-summary-fallback-"));
+  const store = new BridgeStore({ dataDir, consoleBaseUrl: "https://agent.example.test" });
+  const main = store.getOrCreateDesktopMainSession({ workspaceRoot: dataDir });
+  const orchestrator = new SessionOrchestrator({
+    store,
+    hub: { broadcast: () => {} },
+    channels: {},
+    progressTimerEnabled: false,
+    runner: {
+      runAppServerCommand: async (config) => {
+        if (config.sessionId === main.id) throw new Error("summary unavailable");
+        await config.onSessionEvent({
+          sessionId: config.sessionId,
+          kind: "session.assistant_message",
+          payload: { content: "已完成模板检查。", metadata: { streamState: "completed" } },
+        });
+        return { ok: true };
+      },
+      stopAppServerCommand: () => false,
+    },
+  });
+
+  const worker = await orchestrator.startWorkerSession({
+    parentSessionId: main.id,
+    title: "检查装修模板",
+    description: "检查装修设计交付页模板契约",
+    task: "检查模板",
+  });
+  await waitFor(() => store.getSession(main.id).messages.some((message) => message.metadata?.eventType === "worker/hook/summary-fallback"));
+  const fallback = store.getSession(main.id).messages.find((message) => message.metadata?.eventType === "worker/hook/summary-fallback");
+  assert.match(fallback.content, /^任务已完成：检查装修模板。https:\/\/agent\.example\.test\/app\/mobile\/workers\//);
+  assert.equal(fallback.metadata.workerSessionId, worker.id);
+  assert.equal(store.getSessionRecord(worker.id).status, "idle");
+
+  orchestrator.stop();
+  store.close();
+});
+
+test("shows a deterministic task status when the app-server reports a failed completion", async () => {
+  const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), "oab-orchestrator-worker-summary-result-fallback-"));
+  const store = new BridgeStore({ dataDir, consoleBaseUrl: "https://agent.example.test" });
+  const main = store.getOrCreateDesktopMainSession({ workspaceRoot: dataDir });
+  const orchestrator = new SessionOrchestrator({
+    store,
+    hub: { broadcast: () => {} },
+    channels: {},
+    progressTimerEnabled: false,
+    runner: {
+      runAppServerCommand: async (config) => {
+        if (config.sessionId === main.id) return { status: "failed", success: false };
+        await config.onSessionEvent({
+          sessionId: config.sessionId,
+          kind: "session.error",
+          payload: { content: "usage limit reached", level: "error" },
+        });
+        await config.onSessionEvent({
+          sessionId: config.sessionId,
+          kind: "session.complete",
+          payload: { content: "failed", status: "failed", success: false },
+        });
+        return { status: "failed", success: false };
+      },
+      stopAppServerCommand: () => false,
+    },
+  });
+
+  const worker = await orchestrator.startWorkerSession({
+    parentSessionId: main.id,
+    title: "生成装修设计交付页",
+    description: "按装修模板生成交付页",
+    task: "生成页面",
+  });
+  await waitFor(() => store.getSession(main.id).messages.some((message) => message.metadata?.eventType === "worker/hook/summary-fallback"));
+  const fallback = store.getSession(main.id).messages.find((message) => message.metadata?.eventType === "worker/hook/summary-fallback");
+  assert.match(fallback.content, /^任务未完成：生成装修设计交付页。https:\/\/agent\.example\.test\/app\/mobile\/workers\//);
+  assert.equal(fallback.metadata.workerSessionId, worker.id);
+  assert.equal(fallback.metadata.success, false);
+  assert.equal(store.getSessionRecord(worker.id).status, "paused");
 
   orchestrator.stop();
   store.close();

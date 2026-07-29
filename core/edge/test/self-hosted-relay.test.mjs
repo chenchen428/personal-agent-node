@@ -13,6 +13,15 @@ test("self-hosted installers restart upgraded Relay code and keep mail ingress p
   const relayInstaller = fs.readFileSync(new URL("../../../infra/edge/install-self-hosted-relay.sh", import.meta.url), "utf8");
   const mailInstaller = fs.readFileSync(new URL("../../../infra/edge/install-self-hosted-mail.sh", import.meta.url), "utf8");
   assert.match(relayInstaller, /systemctl restart personal-agent-self-hosted-relay\.service/);
+  assert.match(relayInstaller, /randomBytes\(32\).*base64url/);
+  assert.match(relayInstaller, /server keeps only its SHA-256 digest/);
+  assert.match(relayInstaller, /requires an interactive terminal/);
+  assert.match(relayInstaller, /Node\.js 22 or newer is required/);
+  assert.match(relayInstaller, /ExecStart=\$NODE_BIN/);
+  assert.doesNotMatch(relayInstaller, /<<'UNIT'/);
+  assert.ok(relayInstaller.includes('process.stdout.write(`${value.siteId} ${value.tokenSha256}\\n`);'));
+  assert.match(relayInstaller, /for ATTEMPT in \{1\.\.20\}/);
+  assert.doesNotMatch(relayInstaller, /TOKEN_SHA256="\$\{3:-\}"/);
   assert.match(relayInstaller, /location = \/__personal_agent_relay\/mail-ingest[\s\S]*return 404;/);
   assert.match(mailInstaller, /virtual_mailbox_maps = lmdb:/);
   assert.match(mailInstaller, /__personal_agent_relay\/mail-ingest/);

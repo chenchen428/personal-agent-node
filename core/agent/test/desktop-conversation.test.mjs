@@ -101,6 +101,34 @@ test("desktop conversation hides internal Agent hook inputs", () => {
   assert.deepEqual(view.messages.map((message) => message.id), ["user", "answer"]);
 });
 
+test("desktop conversation repairs managed desktop image preview URLs", () => {
+  const session = {
+    id: "main",
+    role: "main",
+    events: [],
+    childSessions: [],
+    messages: [{
+      id: "image-message",
+      role: "user",
+      content: "看这张图",
+      metadata: {
+        attachments: [{
+          name: "户型图.png",
+          kind: "image",
+          mimeType: "image/png",
+          sizeBytes: 128,
+          relativePath: "desktop/main/户型图.png",
+          previewUrl: "/app/files/view/desktop/main/%E6%88%B7%E5%9E%8B%E5%9B%BE.png",
+        }],
+      },
+    }],
+  };
+  const attachment = buildDesktopConversationView(session).messages[0].metadata.attachments[0];
+  assert.equal(attachment.previewUrl, "/app/files/raw/desktop/main/%E6%88%B7%E5%9E%8B%E5%9B%BE.png");
+  assert.equal(attachment.viewUrl, "/app/files/view/desktop/main/%E6%88%B7%E5%9E%8B%E5%9B%BE.png");
+  assert.equal(attachment.downloadUrl, "/app/files/raw/desktop/main/%E6%88%B7%E5%9E%8B%E5%9B%BE.png?download=1");
+});
+
 test("desktop conversation merges desktop and WeChat main history with source labels", () => {
   const desktop = {
     id: "desktop-main",

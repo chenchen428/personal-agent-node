@@ -9,7 +9,7 @@ const read = (relative) => fs.readFileSync(path.join(root, relative), "utf8");
 test("desktop and mobile chat render image previews and downloadable file cards with delivery state", () => {
   const desktop = read("core/app/src/components/desktop-v627/conversation-message-list.tsx");
   const desktopTypes = read("core/app/src/components/desktop-v627/types.ts");
-  const mobile = read("core/app/src/components/mobile-current/workers.tsx");
+  const mobile = read("core/app/src/components/mobile-current/task-display-presentation.tsx");
   const mobileTypes = read("core/app/src/components/mobile-current/types.ts");
   const server = read("core/agent/src/server/server.ts");
   const transport = read("core/agent/src/channels/wechat/runtime/wechat-transport.ts");
@@ -20,7 +20,7 @@ test("desktop and mobile chat render image previews and downloadable file cards 
   assert.match(desktopTypes, /downloadUrl\?: string/);
   assert.match(mobile, /attachment\.kind === "image"/);
   assert.match(mobile, /attachment\.downloadUrl \|\| attachment\.previewUrl/);
-  assert.match(mobile, /mobileAttachmentDeliveryLabel/);
+  assert.match(mobile, /attachmentDeliveryLabel/);
   assert.match(mobileTypes, /downloadUrl\?: string/);
   assert.match(server, /\/api\\\/attachments\\\//);
   assert.match(server, /inspectSendableFile/);

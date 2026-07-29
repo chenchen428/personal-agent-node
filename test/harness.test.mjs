@@ -13,7 +13,16 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 function run(command, args) { return spawnSync(command, args, { cwd: root, encoding: 'utf8' }); }
 
 test('customer Harness contains architecture registries and Agent guidance', () => {
-  for (const file of ['AGENTS.md', 'docs/adr/0001-node-product-boundary-freeze.md', 'registry/projects.json', 'registry/skills.json', 'registry/behavior-baselines.json', 'registry/capabilities.json', 'registry/routes.json', 'registry/extensions.json', 'registry/commands.json', 'registry/product-development.json', 'schemas/personal-agent/product-development.schema.json', 'workflows/project-iteration.md', 'workflows/skill-iteration.md', 'workflows/product-development.md', 'skills/personal-agent/references/product-development.md']) assert.equal(fs.existsSync(path.join(root, file)), true, file);
+  for (const file of ['AGENTS.md', 'docs/adr/0001-node-product-boundary-freeze.md', 'registry/projects.json', 'registry/skills.json', 'registry/behavior-baselines.json', 'registry/capabilities.json', 'registry/routes.json', 'registry/extensions.json', 'registry/commands.json', 'registry/product-development.json', 'schemas/personal-agent/product-development.schema.json', 'workflows/project-iteration.md', 'workflows/skill-iteration.md', 'workflows/product-development.md', 'skills/personal-product-development/references/product-development.md']) assert.equal(fs.existsSync(path.join(root, file)), true, file);
+  const developerGuide = fs.readFileSync(path.join(root, 'AGENTS.md'), 'utf8');
+  const customerGuide = fs.readFileSync(path.join(root, 'workspace/AGENTS.md'), 'utf8');
+  for (const guide of [developerGuide, customerGuide]) {
+    assert.match(guide, /main Agent.*user|主 Agent.*用户/is);
+    assert.match(guide, /Proactively delegate substantive work|主动.*实质/is);
+    assert.match(guide, /independent.*Workers|独立.*Workers/is);
+    assert.match(guide, /must not duplicate|do not[\s\S]*duplicate|不要.*重复/is);
+    assert.match(guide, /progress.*final|进度.*最终/is);
+  }
 });
 
 test('installed product development is autonomous, private-root-only, and never targets current', () => {
@@ -57,13 +66,14 @@ test('customer Harness classifies and ships portable creation skills', () => {
   }
   const build = fs.readFileSync(path.join(root, 'scripts/build-private-site-node-dist.mjs'), 'utf8');
   assert.match(build, /\["skills", "workspace\/skills"\]/);
+  assert.match(build, /copyDirectory\(publicRoot, path\.join\(outputRoot, "core", "app", "public"\)\)/);
 });
 
 test('customer Harness carries the portable Node acceptance standard', () => {
-  const standard = fs.readFileSync(path.join(root, 'skills/personal-agent/references/acceptance.md'), 'utf8');
-  for (const requirement of ['Node Core Gate', 'Optional Managed Cloud Integration', 'local-admin', 'ten minutes', 'previous-release rollback', 'public GitHub Release asset', '"route": "/app/chat"', '"uniquePrompt": true', '"realAgentRuntime": true', '"sameSessionAgentReply": true', '"wechatRequired": false', 'connections.wechat', 'optional evidence', 'Stable Go launchers', 'Setup Center']) assert.match(standard, new RegExp(requirement));
-  assert.equal(fs.existsSync(path.join(root, 'test/fixtures/skill-cases/personal-agent-acceptance/case.json')), true);
-  const expected = JSON.parse(fs.readFileSync(path.join(root, 'test/fixtures/skill-cases/personal-agent-acceptance/expected.json'), 'utf8'));
+  const standard = fs.readFileSync(path.join(root, 'skills/personal-acceptance/references/acceptance.md'), 'utf8');
+  for (const requirement of ['Node Core Gate', 'Optional Managed Cloud Integration', 'public whitelist', 'ten minutes', 'previous-release rollback', 'public GitHub Release asset', '"route": "/app/chat"', '"uniquePrompt": true', '"realAgentRuntime": true', '"sameSessionAgentReply": true', '"wechatRequired": false', 'connections.wechat', 'optional evidence', 'Stable Go launchers', 'Setup Center']) assert.match(standard, new RegExp(requirement));
+  assert.equal(fs.existsSync(path.join(root, 'test/fixtures/skill-cases/personal-acceptance/case.json')), true);
+  const expected = JSON.parse(fs.readFileSync(path.join(root, 'test/fixtures/skill-cases/personal-acceptance/expected.json'), 'utf8'));
   assert.deepEqual(Object.keys(expected.node.webConversation), [
     'releaseAssetRuntime',
     'route',
@@ -83,12 +93,19 @@ test('customer Harness carries the portable Node acceptance standard', () => {
   assert.match(artifactVerifier, /realAgentRuntimeRequired: true/);
   assert.match(artifactVerifier, /sameSessionReplyRequired: true/);
   assert.match(artifactVerifier, /wechatRequired: false/);
+  assert.match(artifactVerifier, /"x-personal-agent-surface": "desktop"/);
 });
 
 test('seeded Node home links only to current path-based application routes', () => {
   const source = fs.readFileSync(path.join(root, 'core/runtime/bin/private-site.mjs'), 'utf8');
   for (const route of ['/app', '/app/chat', '/app/mail', '/app/files']) assert.match(source, new RegExp(`href="${route}"`));
   for (const legacy of ['/admin', '/agent', '/mail', '/files']) assert.doesNotMatch(source, new RegExp(`href="${legacy}"`));
+});
+
+test('restore apply validates against the active Site distribution contract', () => {
+  const source = fs.readFileSync(path.join(root, 'core/runtime/bin/private-site.mjs'), 'utf8');
+  assert.match(source, /expectedDistributionVersion:\s*config\.site\.distributionVersion/);
+  assert.doesNotMatch(source, /expectedDistributionVersion:\s*packageMetadata\.version/);
 });
 
 test('Phase 0 behavior baseline registry and cases are complete', () => {
@@ -161,6 +178,13 @@ test('GitHub release chain is version-gated and publishes verifiable artifacts',
   const bad = run(process.execPath, ['scripts/release-check.mjs', '--tag', 'v999.0.0', '--allow-dirty']);
   assert.notEqual(bad.status, 0);
   const workflow = fs.readFileSync(path.join(root, '.github/workflows/release.yml'), 'utf8');
+  assert.match(workflow, /platform:\s*\n\s*needs: prepare/);
+  assert.match(workflow, /publish:\s*\n\s*needs: \[verify, platform\]/);
+  assert.match(workflow, /actions\/cache@v6/);
+  assert.match(workflow, /actions\/upload-artifact@v7/);
+  assert.match(workflow, /actions\/download-artifact@v8/);
+  assert.doesNotMatch(workflow, /Restore Rust release cache/);
+  assert.match(workflow, /cargo-test-\$\{\{ runner\.os \}\}-\$\{\{ runner\.arch \}\}-\$\{\{ hashFiles\('core\/desktop\/src-tauri\/Cargo\.lock'\) \}\}/);
   for (const requirement of [
     'NODE_VERSION: 22.23.1',
     'windows-2025',
@@ -212,6 +236,18 @@ test('GitHub release chain is version-gated and publishes verifiable artifacts',
   }
 });
 
+test('GitHub CI runs independent platform suites in parallel', () => {
+  const workflow = fs.readFileSync(path.join(root, '.github/workflows/ci.yml'), 'utf8');
+  assert.match(workflow, /suite: \[desktop, native, node\]/);
+  assert.match(workflow, /npm run desktop:test/);
+  assert.match(workflow, /npm run native:test/);
+  assert.match(workflow, /npm run harness:test && npm run test:runtime && npm run test:edge && npm run test:agent/);
+  assert.match(workflow, /actions\/checkout@v7/);
+  assert.match(workflow, /actions\/setup-node@v7/);
+  assert.match(workflow, /actions\/setup-go@v7/);
+  assert.match(workflow, /actions\/cache@v6/);
+});
+
 test('public GitHub release keeps customer downloads concise and CI evidence separate', () => {
   const pkg = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'));
   const tag = `v${pkg.version}`;
@@ -223,15 +259,17 @@ test('public GitHub release keeps customer downloads concise and CI evidence sep
   fs.mkdirSync(input);
   fs.mkdirSync(source);
   const assets = [
+    'personal-agent-relay-install.sh',
+    'personal-agent-node-install.sh',
     `personal-agent-node-${tag}-windows-x64-installer.exe`,
     `personal-agent-node-${tag}-windows-x64-updater.exe`,
     `personal-agent-node-${tag}-macos-x64.pkg`,
     `personal-agent-node-${tag}-macos-x64-updater`,
     `personal-agent-node-${tag}-macos-arm64.pkg`,
     `personal-agent-node-${tag}-macos-arm64-updater`,
-    `personal-agent-node-${tag}-linux-x64.tar.zst`,
+    `personal-agent-node-${tag}-linux-x64.tar.gz`,
     `personal-agent-node-${tag}-linux-x64-updater`,
-    `personal-agent-node-${tag}-linux-arm64.tar.zst`,
+    `personal-agent-node-${tag}-linux-arm64.tar.gz`,
     `personal-agent-node-${tag}-linux-arm64-updater`,
   ];
   try {
@@ -248,6 +286,26 @@ test('public GitHub release keeps customer downloads concise and CI evidence sep
     ].sort());
     assert.equal(fs.readFileSync(path.join(output, 'SHA256SUMS'), 'utf8').trim().split('\n').length, assets.length);
     assert.equal(fs.readdirSync(output).some((name) => name.endsWith('.sha256') || name.endsWith('.sigstore.json') || name.includes('SBOM') || name.includes('manifest')), false);
+  } finally {
+    fs.rmSync(temporary, { recursive: true, force: true });
+  }
+});
+
+test('GitHub release builds one self-extracting Relay installer for a public Linux server', () => {
+  const pkg = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'));
+  const tag = `v${pkg.version}`;
+  const temporary = fs.mkdtempSync(path.join(os.tmpdir(), 'personal-agent-relay-release-'));
+  try {
+    const built = run(process.execPath, ['scripts/build-self-hosted-relay-installer.mjs', '--tag', tag, '--output', temporary]);
+    assert.equal(built.status, 0, `${built.stdout}\n${built.stderr}`);
+    const asset = path.join(temporary, 'personal-agent-relay-install.sh');
+    const source = fs.readFileSync(asset, 'utf8');
+    assert.match(source, new RegExp(`Installing Personal Agent Relay ${tag.replaceAll('.', '\\.')}`));
+    assert.match(source, /PERSONAL_AGENT_RELAY/);
+    assert.match(source, /sudo bash personal-agent-relay-install\.sh <domain>/);
+    assert.doesNotMatch(source, /core\/edge\/src\/self-hosted-relay\.ts/);
+    const syntax = run('bash', ['-n', asset]);
+    assert.equal(syntax.status, 0, `${syntax.stdout}\n${syntax.stderr}`);
   } finally {
     fs.rmSync(temporary, { recursive: true, force: true });
   }

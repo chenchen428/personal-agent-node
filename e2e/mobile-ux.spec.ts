@@ -68,20 +68,27 @@ test("large task detail starts with a bounded page and incrementally loads earli
   const context = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, userAgent: mobileUserAgent });
   const page = await context.newPage();
   await mockShellApis(page);
-  const initial = Array.from({ length: 30 }, (_, index) => message(index + 71));
-  const earlier = Array.from({ length: 30 }, (_, index) => message(index + 41));
+  const initial = Array.from({ length: 20 }, (_, index) => displayEvent(index + 81));
+  const earlier = Array.from({ length: 20 }, (_, index) => displayEvent(index + 61));
   const requested: string[] = [];
-  await page.route("**/api/node/v1/client/tasks/task-large**", (route) => {
+  await page.route("**/api/mobile/tasks/task-large/display-events**", (route) => {
     requested.push(route.request().url());
     const url = new URL(route.request().url());
-    if (url.pathname.endsWith("/messages")) return route.fulfill({ json: { schemaVersion: 1, ok: true, result: { items: earlier, hasMoreBefore: true, nextBeforeSeq: 41, hasMoreAfter: false, nextAfterSeq: 0 } } });
-    return route.fulfill({ json: { schemaVersion: 1, ok: true, result: { contractVersion: "personal-agent/task-detail-v1", task: { id: "task-large", role: "worker", title: "大型任务", status: "done", createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }, messages: { items: initial, hasMoreBefore: true, nextBeforeSeq: 71, hasMoreAfter: false, nextAfterSeq: 100 }, artifacts: { items: [], hasMoreBefore: false, nextBeforeSeq: 0 } } } });
+    const loadingEarlier = url.searchParams.has("before");
+    return route.fulfill({ json: { schemaVersion: 1, ok: true, result: {
+      task: { id: "task-large", role: "worker", title: "大型任务", status: "done", createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+      items: loadingEarlier ? earlier : initial,
+      beforeCursor: loadingEarlier ? "cursor-61" : "cursor-81",
+      hasEarlier: true,
+      latestPlan: { steps: [], updatedAt: "" },
+      limit: 20,
+    } } });
   });
   await page.goto("/app/mobile/workers/task-large", { waitUntil: "networkidle" });
-  await expect(page.locator(".mobile-task-message")).toHaveCount(30);
-  await page.getByRole("button", { name: "查看更早消息" }).click();
-  await expect(page.locator(".mobile-task-message")).toHaveCount(60);
-  expect(requested.some((url) => url.includes("beforeSeq=71"))).toBe(true);
+  await expect(page.locator(".mobile-task-message")).toHaveCount(20);
+  await page.locator('[data-task-display-scroll="tail"]').evaluate((element) => element.scrollTo(0, 0));
+  await expect(page.locator(".mobile-task-message")).toHaveCount(40);
+  expect(requested.some((url) => url.includes("before=cursor-81"))).toBe(true);
   expect(requested.some((url) => url.includes("/api/chat/sessions/"))).toBe(false);
   await context.close();
 });
@@ -94,8 +101,8 @@ test("desktop keeps the desktop composition", async ({ page }) => {
   await expect(page.locator(".mobile-current")).toHaveCount(0);
 });
 
-function message(sequence: number) {
-  return { id: `message-${sequence}`, sequence, role: sequence % 2 ? "assistant" : "user", content: `消息 ${sequence}`, createdAt: new Date(2026, 0, 1, 0, sequence).toISOString(), metadata: {} };
+function displayEvent(sequence: number) {
+  return { displayEventId: `message-${sequence}`, taskId: "task-large", sequence, kind: "message", role: sequence % 2 ? "assistant" : "user", content: `消息 ${sequence}`, createdAt: new Date(2026, 0, 1, 0, sequence).toISOString(), metadata: {} };
 }
 
 declare global {

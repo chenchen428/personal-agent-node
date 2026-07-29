@@ -97,7 +97,7 @@ GitHub Release asset:
 | --- | --- | --- |
 | Windows | installer `.exe` | x86-64 |
 | macOS | installer `.pkg` | Apple Silicon, x86-64 |
-| Linux | `.tar.zst`, followed by `.deb` | x86-64, ARM64 |
+| Linux | headless `.tar.gz` plus a version-bound one-line installer | x86-64, ARM64 |
 
 The package contains the Go setup executable, Go launcher, exact supported Node.js
 runtime, immutable application payload, public manifest, checksums, signatures or
@@ -294,8 +294,10 @@ POST /api/system/setup/actions/<action>/approve
 POST /api/system/setup/actions/<action>/execute
 ```
 
-Mutation routes are `local-admin`, deny remote invocation, and require the
-existing plan digest and local human approval for R2/R3. An action may be:
+Mutation routes are `authenticated`: loopback Console requests enter directly,
+while tunneled Web and mobile requests require the host-scoped access session.
+R2/R3 execution still requires the existing plan digest and explicit human
+approval. An action may be:
 
 - an automatic safe repair;
 - a browser authorization handoff;

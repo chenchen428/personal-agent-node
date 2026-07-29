@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect, useMemo, useState, type FormEvent } from "react";
-import { Button, SettingRow } from "../desktop-v72/primitives";
+import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { SettingRow } from "../desktop-v72/primitives";
 import { errorMessage, fetchJson, useJson } from "./shared";
 
 type ModelOption = {
@@ -31,6 +33,8 @@ const effortLabels: Record<string, string> = {
   high: "高",
   xhigh: "极高",
 };
+
+const defaultSelection = "__default__";
 
 export function CodexRuntimeSetting() {
   const { value, loading, error, refresh } = useJson<CodexSettings>("/api/system/codex-settings");
@@ -86,17 +90,27 @@ export function CodexRuntimeSetting() {
     description={description}
     control={<form className="settings-codex-runtime" onSubmit={save} aria-busy={loading || saving}>
       <label className="sr-only" htmlFor="codex-runtime-model">Codex 模型</label>
-      <select id="codex-runtime-model" className="settings-select" disabled={saving || !value} value={model} onChange={(event) => { setModel(event.target.value); setFeedback(""); }}>
-        <option value="">{defaultLabel}</option>
-        {value?.models.map((item) => <option key={item.id} value={item.id}>{item.label ? `${item.label} · ${item.id}` : item.id}</option>)}
-      </select>
+      <Select disabled={saving || !value} value={model || defaultSelection} onValueChange={(nextModel) => { setModel(nextModel === defaultSelection ? "" : nextModel); setFeedback(""); }}>
+        <SelectTrigger id="codex-runtime-model" className="w-[300px]" aria-label="Codex 模型">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value={defaultSelection}>{defaultLabel}</SelectItem>
+          {value?.models.map((item) => <SelectItem key={item.id} value={item.id}>{item.label ? `${item.label} · ${item.id}` : item.id}</SelectItem>)}
+        </SelectContent>
+      </Select>
       <label className="sr-only" htmlFor="codex-runtime-effort">推理强度</label>
-      <select id="codex-runtime-effort" className="settings-select" disabled={saving || !value} value={reasoningEffort} onChange={(event) => { setReasoningEffort(event.target.value); setFeedback(""); }}>
-        <option value="">模型默认</option>
-        {efforts.map((effort) => <option key={effort} value={effort}>{effortLabels[effort] || effort}</option>)}
-      </select>
-      {error && !value ? <Button type="button" onClick={() => void refresh()}>重新读取</Button> : null}
-      <Button type="submit" variant="primary" disabled={saving || !value}>{saving ? "保存中…" : "保存当前设置"}</Button>
+      <Select disabled={saving || !value} value={reasoningEffort || defaultSelection} onValueChange={(nextEffort) => { setReasoningEffort(nextEffort === defaultSelection ? "" : nextEffort); setFeedback(""); }}>
+        <SelectTrigger id="codex-runtime-effort" className="w-[160px]" aria-label="推理强度">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value={defaultSelection}>模型默认</SelectItem>
+          {efforts.map((effort) => <SelectItem key={effort} value={effort}>{effortLabels[effort] || effort}</SelectItem>)}
+        </SelectContent>
+      </Select>
+      {error && !value ? <Button type="button" variant="outline" onClick={() => void refresh()}>重新读取</Button> : null}
+      <Button type="submit" disabled={saving || !value}>{saving ? "保存中…" : "保存当前设置"}</Button>
     </form>}
   />;
 }

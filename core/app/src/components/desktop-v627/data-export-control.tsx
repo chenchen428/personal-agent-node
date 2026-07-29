@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Button } from "../desktop-v72/primitives";
+import { Button } from "@/components/ui/button";
 import { errorMessage, fetchJson } from "./shared";
 
 type ExportJob = { id: string; state: "running" | "completed" | "failed"; progress: number; path?: string; revealUrl?: string; error?: string };
@@ -31,6 +31,6 @@ export function DataExportControl({ onFeedback }: { onFeedback: (message: string
     finally { setBusy(false); }
   };
   if (job?.state === "running") return <div className="data-export-progress" role="status"><progress max="100" value={job.progress} /><span>{job.progress}%</span></div>;
-  if (job?.state === "completed") return <div className="data-export-complete"><Button onClick={() => { if (job.revealUrl) window.location.href = job.revealUrl; }}>在文件夹中显示</Button><small title={job.path}>{job.path}</small></div>;
-  return <Button disabled={busy} onClick={() => void start()}>{busy ? "准备中…" : "导出数据"}</Button>;
+  if (job?.state === "completed") return <div className="data-export-complete"><Button variant="outline" onClick={() => { if (job.revealUrl) window.location.href = job.revealUrl; }}>在文件夹中显示</Button><small title={job.path}>{job.path}</small></div>;
+  return <Button variant="outline" disabled={busy} onClick={() => void start()}>{busy ? "准备中…" : "导出数据"}</Button>;
 }

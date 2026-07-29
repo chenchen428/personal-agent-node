@@ -17,8 +17,9 @@ small platform package. Bundling Chromium or a second Node runtime would violate
 
 ## Decision
 
-Ship a Tauri 2 desktop shell for Windows, macOS, and Linux as a platform-specific member of each
-immutable Node release.
+Ship a Tauri 2 desktop shell for Windows and macOS as a platform-specific member of each
+immutable Node release. Linux is a headless server target: it ships no Tauri binary, WebKitGTK
+dependency, desktop launcher, or desktop entry and runs through a systemd user service.
 
 The shell:
 
@@ -27,7 +28,7 @@ The shell:
 - loads the existing loopback Console directly without login or an installer bootstrap session;
 - keeps password authentication on tunneled or public-domain requests and exposes password reset
   only to the direct loopback System Settings route;
-- uses WebView2 on Windows, WKWebView on macOS, and WebKitGTK on Linux;
+- uses WebView2 on Windows and WKWebView on macOS;
 - exposes no Tauri command, plugin permission, or native API to the loopback page;
 - opens non-loopback HTTP(S) navigation in the system browser and denies other external schemes;
 - starts the existing bundled Node runtime without a terminal when the first client instance opens;
@@ -45,7 +46,10 @@ switching `current` / `previous` switches the desktop shell and runtime together
 - Rust and Tauri become pinned build dependencies in the native platform jobs.
 - Each target is built on its native CI runner and included in checksum, SBOM, signing, provenance,
   installation, upgrade, and rollback acceptance.
-- Linux packages depend on a compatible system WebKitGTK runtime instead of bundling a browser.
+- Linux x86-64 and ARM64 packages remain native CI outputs but contain only the headless runtime,
+  stable CLI, systemd integration, and immutable update/rollback executors.
+- Linux setup stays bound to loopback; remote administration begins through an SSH port forward or
+  an explicitly configured authenticated tunnel.
 - Visual appearance and browser interaction remain user-owned acceptance. Automated checks cover
   build contracts, URL policy, single-instance behavior, packaging, installation, and lifecycle
   semantics without browser automation.
@@ -55,5 +59,6 @@ switching `current` / `previous` switches the desktop shell and runtime together
 - Electron duplicates Chromium and Node and materially increases package size.
 - A browser/PWA shortcut is smaller but does not provide a consistently governed desktop entry.
 - A second desktop frontend would duplicate the responsive Console and create divergent behavior.
-- Registering an always-on operating-system service would keep Agent, mail, and the mobile entry
-  running after the user closes the client, which conflicts with the approved lifecycle.
+- Registering an always-on operating-system service for Windows or macOS would keep Agent, mail,
+  and the mobile entry running after the user closes the desktop client, which conflicts with their
+  approved lifecycle. Linux intentionally uses a headless systemd user service instead.

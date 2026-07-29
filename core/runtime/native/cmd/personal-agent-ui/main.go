@@ -34,6 +34,7 @@ func main() {
 		"PRIVATE_SITE_INSTALL_ROOT": installRoot,
 		"PRIVATE_SITE_DATA_ROOT":    filepath.Join(filepath.Dir(installRoot), "workspace"),
 	})
+	configureDetachedLaunch(command)
 	if err := command.Start(); err != nil {
 		fail(err)
 	}

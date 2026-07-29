@@ -17,7 +17,8 @@ export function ScheduledTasksPage() {
     const keyword = query.trim().toLowerCase();
     return tasks.filter((task) => !keyword || `${task.name} ${task.prompt} ${task.cron} ${describeCron(task.cron)}`.toLowerCase().includes(keyword));
   }, [query, tasks]);
-  const selected = filtered.find((task) => task.id === selectedId) || filtered[0];
+  const activeId = filtered.some((task) => task.id === selectedId) ? selectedId : filtered[0]?.id || "";
+  const selected = filtered.find((task) => task.id === activeId);
   const initialLoading = loading && !value;
 
   return <main className="v72-page v72-page-flush v72-schedule-page"><div className="v72-split-view">
@@ -30,7 +31,7 @@ export function ScheduledTasksPage() {
       {initialLoading ? <LoadingState label="正在读取自动化" compact /> : filtered.map((task) => {
         const absoluteNextRun = absoluteDateTime(task.nextRunAt);
         const nextRun = task.enabled ? formatScheduleDateTime(task.nextRunAt, task.timezone, true) : "已暂停";
-        return <button className={`v72-select-row schedule-select-row${selected?.id === task.id ? " selected" : ""}`} type="button" onClick={() => setSelectedId(task.id)} key={task.id}>
+        return <button className={`v72-select-row schedule-select-row${activeId === task.id ? " selected" : ""}`} type="button" aria-pressed={activeId === task.id} onClick={() => setSelectedId(task.id)} key={task.id}>
           <span className="v72-row-icon">{task.enabled ? <CalendarClock /> : <PauseCircle />}</span>
           <span className="v72-select-body"><span className="v72-select-line"><strong>{task.name}</strong>{absoluteNextRun && task.enabled ? <time dateTime={absoluteNextRun} title={absoluteNextRun}>{nextRun}</time> : <time>{nextRun}</time>}</span><p>{task.enabled ? "运行中" : "已暂停"} · {describeCron(task.cron)}</p></span>
         </button>;

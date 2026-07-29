@@ -31,7 +31,7 @@ export const desktopNavigationGroups: NavigationGroup[] = [
 
 export const desktopUtilityNavigation: NavigationItem[] = [
   { label: "运行设置", href: "/app/runtime", icon: Gauge },
-  { label: "系统设置", href: "/app/settings", icon: Settings },
+  { label: "空间设置", href: "/app/settings", icon: Settings },
 ];
 
 export const desktopNavigation = desktopNavigationGroups.flatMap((group) => group.items);

@@ -4,6 +4,8 @@ import os from "node:os";
 import path from "node:path";
 import qrcodeTerminal from "qrcode-terminal";
 import { ingestRawEmail, MAX_MAIL_BYTES } from "../src/connections/mail/mail-ingest.js";
+import { createGeneratedPageThumbnails } from "../src/online-pages/generated-page-thumbnails.js";
+import { inspectPageTemplate, listPageTemplates, validatePageTemplateArtifact } from "../src/online-pages/template-catalog.js";
 import { normalizeTaskCreate, normalizeTaskPatch } from "../src/server/task-contract.js";
 
 const personalAgentHome = path.resolve(process.env.PERSONAL_AGENT_HOME || path.join(os.homedir(), ".personal-agent"));
@@ -35,13 +37,13 @@ try {
     });
     print({ ok: true, sha256: result.sha256, queuedForIntervalScan: result.queuedForIntervalScan === true });
   } else if (command === "memory") {
-    throw new Error("The legacy Memory domain has been removed; the verified main Agent must use pa-cli activity");
+    print(await memoryCommand(subcommand));
   } else if (command === "automation") {
     throw new Error("The standalone automation product has been removed; use pa-cli cron for task-based automation");
   } else if (command === "session" && (subcommand === "list" || subcommand === "search")) {
     const query = args.query || args.q || (subcommand === "search" ? args._.slice(2).join(" ") : "");
     if (subcommand === "search" && !query) throw new Error("--query is required");
-    print(await listSessions({ query }));
+    print(await listSessions({ query, parentSessionId: args.parent || "" }));
   } else if (command === "session" && subcommand === "start") {
     const task = readTaskArgument({
       inline: args.task || args.t,
@@ -183,7 +185,7 @@ try {
     const connection = catalog.find((item) => item.id === connectionId);
     if (!connection) throw new Error(`Unknown connection: ${connectionId}`);
     print(connection);
-  } else if (command === "connection" && ["wechat", "wechat-personal", "xiaohongshu", "twitter", "notion", "mail", "sites"].includes(subcommand)) {
+  } else if (command === "connection" && ["wechat", "dingtalk", "wechat-personal", "xiaohongshu", "twitter", "notion", "mail", "sites"].includes(subcommand)) {
     const connectionId = subcommand;
     const operation = String(args._[2] || "status").trim();
     if (connectionId === "wechat" && operation === "qianxun") print(await qianxunConnectionCommand(args));
@@ -384,26 +386,56 @@ try {
       excludeRelativePaths,
       execute: args.execute === true,
     }));
+  } else if (command === "pages" && subcommand === "templates") {
+    const action = String(args._[2] || "list").trim();
+    if (action === "list") {
+      print({ schemaVersion: 1, templates: listPageTemplates() });
+    } else if (action === "inspect") {
+      const templateId = String(args.id || args.template || args._[3] || "").trim();
+      if (!templateId) throw new Error("--id is required");
+      const template = inspectPageTemplate(templateId);
+      if (!template) throw new Error(`Unknown Page template: ${templateId}`);
+      print(template);
+    } else {
+      throw new Error("pages templates action must be list or inspect");
+    }
   } else if (command === "pages" && subcommand === "publish") {
     const file = args.file || args.f;
     const desktopThumbnailFile = args["desktop-thumbnail"];
     const mobileThumbnailFile = args["mobile-thumbnail"];
     const folder = args.folder;
     if (!file) throw new Error("--file is required");
-    if (!desktopThumbnailFile || !mobileThumbnailFile) {
-      throw new Error("HTML publishing requires --desktop-thumbnail <png> and --mobile-thumbnail <png>");
+    if (Boolean(desktopThumbnailFile) !== Boolean(mobileThumbnailFile)) {
+      throw new Error("provide both --desktop-thumbnail <png> and --mobile-thumbnail <png>, or omit both");
     }
     if (!folder) throw new Error("HTML publishing requires --folder <stable-name>");
     const resolved = path.resolve(file);
-    const resolvedDesktopThumbnail = path.resolve(desktopThumbnailFile);
-    const resolvedMobileThumbnail = path.resolve(mobileThumbnailFile);
     if (!/\.html?$/i.test(resolved)) throw new Error("pages publish requires an HTML file");
-    if (!/\.png$/i.test(resolvedDesktopThumbnail) || !/\.png$/i.test(resolvedMobileThumbnail)) {
-      throw new Error("pages publish requires PNG desktop and mobile thumbnails");
-    }
     const content = fs.readFileSync(resolved);
-    const desktopThumbnail = fs.readFileSync(resolvedDesktopThumbnail);
-    const mobileThumbnail = fs.readFileSync(resolvedMobileThumbnail);
+    const template = args.template
+      ? validatePageTemplateArtifact(String(args.template), content).provenance
+      : undefined;
+    const title = args.title || path.basename(resolved, path.extname(resolved));
+    const summary = args.summary || "";
+    let desktopThumbnail;
+    let mobileThumbnail;
+    if (desktopThumbnailFile && mobileThumbnailFile) {
+      const resolvedDesktopThumbnail = path.resolve(desktopThumbnailFile);
+      const resolvedMobileThumbnail = path.resolve(mobileThumbnailFile);
+      if (!/\.png$/i.test(resolvedDesktopThumbnail) || !/\.png$/i.test(resolvedMobileThumbnail)) {
+        throw new Error("pages publish requires PNG desktop and mobile thumbnails");
+      }
+      desktopThumbnail = fs.readFileSync(resolvedDesktopThumbnail);
+      mobileThumbnail = fs.readFileSync(resolvedMobileThumbnail);
+    } else {
+      const generated = await createGeneratedPageThumbnails({
+        title,
+        summary,
+        templateId: args.template || "",
+      });
+      desktopThumbnail = generated.desktop;
+      mobileThumbnail = generated.mobile;
+    }
     const result = await post(args.private ? "/api/publications/publish" : "/api/pages/publish", {
       fileName: args.name || path.basename(resolved),
       content: content.toString("base64"),
@@ -412,8 +444,9 @@ try {
       publicationId: folder,
       mimeType: args.mime || "text/html; charset=utf-8",
       overwrite: Boolean(args.overwrite),
-      title: args.title || path.basename(resolved, path.extname(resolved)),
-      summary: args.summary || "",
+      title,
+      summary,
+      template,
       desktopThumbnail: {
         fileName: args["desktop-thumbnail-name"] || "page-thumbnail-desktop.png",
         content: desktopThumbnail.toString("base64"),
@@ -501,6 +534,58 @@ async function readResponse(response) {
   return data;
 }
 
+async function memoryCommand(action) {
+  const supported = new Set(["list", "search", "show", "stats", "recall", "create", "update", "delete"]);
+  if (!supported.has(action)) throw new Error("memory action must be list, search, show, stats, recall, create, update, or delete");
+  const memoryId = String(args.id || args.memory || args._[2] || "").trim();
+  const input = {};
+  if (action === "list" || action === "search") {
+    if (args.query || args.q) input.query = args.query || args.q;
+    if (args.status) input.status = args.status;
+    if (args.limit !== undefined) input.limit = requiredInteger(args.limit, "--limit", { minimum: 1 });
+  }
+  if (action === "recall") {
+    input.query = args.query || args.q || "";
+    input.limit = args.limit === undefined ? 12 : requiredInteger(args.limit, "--limit", { minimum: 1, maximum: 12 });
+    input.turnId = String(args["turn-id"] || `cli-${Date.now()}-${Math.random().toString(16).slice(2)}`);
+  }
+  if (action === "create" || action === "update") {
+    input.content = readMemoryContent(args);
+  }
+  if (action === "update" || action === "delete") {
+    if (!memoryId) throw new Error("--id is required");
+    input.expectedRevision = requiredInteger(args["expected-revision"], "--expected-revision", { minimum: 1 });
+  }
+  if (action === "show" && !memoryId) throw new Error("--id is required");
+  const capability = String(args.capability || "").trim();
+  if (!capability) throw new Error("--capability is required and must come from the current main Agent turn");
+  const response = await fetch(`${apiBase}/api/internal/memory-agent`, {
+    method: "POST",
+    headers: {
+      ...headers(),
+      "content-type": "application/json",
+      "x-personal-agent-memory-capability": capability,
+    },
+    body: JSON.stringify({ action, memoryId, input }),
+  });
+  return (await readResponse(response)).result;
+}
+
+function readMemoryContent(parsed) {
+  const file = parsed["content-file"];
+  const content = file ? fs.readFileSync(resolveRegularFile(file, "--content-file"), "utf8") : String(parsed.content || "");
+  if (!content.trim()) throw new Error("--content or --content-file is required");
+  return content;
+}
+
+function requiredInteger(value, name, { minimum = 0, maximum = Number.MAX_SAFE_INTEGER } = {}) {
+  const number = Number(value);
+  if (!Number.isInteger(number) || number < minimum || number > maximum) {
+    throw new Error(`${name} must be an integer from ${minimum} to ${maximum}`);
+  }
+  return number;
+}
+
 function headers() {
   return token ? { authorization: `Bearer ${token}` } : {};
 }
@@ -527,7 +612,7 @@ function delay(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-async function listSessions({ query = "" } = {}) {
+async function listSessions({ query = "", parentSessionId = "" } = {}) {
   const limit = Math.min(Math.max(Number.parseInt(args.limit || "20", 10) || 20, 1), 50);
   let cursor = args.cursor || "";
   const sessions = [];
@@ -535,6 +620,7 @@ async function listSessions({ query = "" } = {}) {
   do {
     const params = new URLSearchParams({ limit: String(limit), summary: "1" });
     if (query) params.set("query", query);
+    if (parentSessionId) params.set("parent", parentSessionId);
     if (cursor) params.set("cursor", cursor);
     if (args.archived) params.set("archived", "1");
     const page = await get(`/api/sessions?${params}`);
@@ -679,9 +765,17 @@ async function personalWechatConnectionCommand(parsed) {
 
 function help() {
   console.log(`Usage:
+  pa-cli memory list [--status active|forgotten] [--query <text>] [--limit <n>] --capability <ephemeral> [--json]
+  pa-cli memory search --query <text> [--status active|forgotten] --capability <ephemeral> [--json]
+  pa-cli memory show --id <memory-id> --capability <ephemeral> [--json]
+  pa-cli memory stats --capability <ephemeral> [--json]
+  pa-cli memory recall --query <text> [--limit 12] --capability <ephemeral> [--json]
+  pa-cli memory create (--content <text>|--content-file <utf8-file>) --capability <ephemeral> [--json]
+  pa-cli memory update --id <memory-id> (--content <text>|--content-file <utf8-file>) --expected-revision <n> --capability <ephemeral> [--json]
+  pa-cli memory delete --id <memory-id> --expected-revision <n> --capability <ephemeral> [--json]
   pa-cli session start (--task "..."|--task-file <utf8-file>) [--parent <session> --title "..." --description "..."] [--workspace <path>] [--json]
   pa-cli session update --session <id> [--title "..."] [--description "..."] [--json]
-  pa-cli session list [--query "..."] [--limit <n>] [--cursor <cursor>] [--all] [--json]
+  pa-cli session list [--query "..."] [--parent <main-session>] [--limit <n>] [--cursor <cursor>] [--all] [--json]
   pa-cli session search --query "..." [--all] [--json]
   pa-cli session input --session <id> --text "..." [--notify-wechat]
   pa-cli session resume --session <id> (--task "..."|--task-file <utf8-file>)
@@ -701,7 +795,7 @@ function help() {
   pa-cli cron delete --id <task-id>
   pa-cli cron run --id <task-id> [--json]
   pa-cli connection list [--json]
-  pa-cli connection inspect <wechat|wechat-personal|xiaohongshu|twitter|notion|mail|sites> [--json]
+  pa-cli connection inspect <wechat|dingtalk|wechat-personal|xiaohongshu|twitter|notion|mail|sites> [--json]
   pa-cli connection <id> status [--json]
   pa-cli connection wechat connect [--json]
   pa-cli connection wechat send-file --file <path> [--title <name>] [--recipient <wechat-id>]
@@ -761,7 +855,9 @@ function help() {
   pa-cli file gc [--dry-run] [--execute] [--json]
   pa-cli file verify-storage [--execute] [--json]
   pa-cli file reconcile --root <allowlisted-dir> --source <source> --visibility public|private [--prefix <path>] [--exclude-manifest <json>] [--execute] [--json]
-  pa-cli pages publish --file <index.html> --folder <stable-name> --desktop-thumbnail <desktop.png> --mobile-thumbnail <mobile.png> [--title <text>] [--summary <text>] [--desktop-thumbnail-alt <text>] [--mobile-thumbnail-alt <text>] [--private] [--overwrite] [--json]
+  pa-cli pages templates list [--json]
+  pa-cli pages templates inspect --id <template-id> [--json]
+  pa-cli pages publish --file <index.html> --folder <stable-name> [--template <template-id>] [--desktop-thumbnail <desktop.png> --mobile-thumbnail <mobile.png>] [--title <text>] [--summary <text>] [--desktop-thumbnail-alt <text>] [--mobile-thumbnail-alt <text>] [--private] [--overwrite] [--json]
   pa-cli pages upload --file <asset.css|asset.js|image> [--folder <name>] [--private] [--json]`);
 }
 

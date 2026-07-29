@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "capability": "activity",
+  "operator": "verified-main-agent",
+  "workerAllowed": false,
+  "titleCharacters": 30,
+  "attachments": 10,
+  "goodActivity": {
+    "outcome": true,
+    "meaning": true,
+    "nextAction": true,
+    "stableDestinationWhenAvailable": true,
+    "targetDerivedRepresentativeMedia": true,
+    "managedAttachmentsOnly": true
+  },
+  "artifactInformationConsumedByMainAgent": true,
+  "memoryDomainActive": true,
+  "memoryDomainSeparate": true
+}

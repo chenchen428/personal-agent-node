@@ -44,6 +44,36 @@ test("replacing a Space connection releases its previous account without exposin
   assert.doesNotMatch(persisted, /old-account|new-account/);
 });
 
+test("legacy duplicated WeChat credentials deterministically stay with the original Space after reinstall", (t) => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "pa-connection-legacy-owner-"));
+  t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+  const personal = "sp_personal00000001";
+  const work = "sp_work000000000000";
+  const account = {
+    token: "legacy-token",
+    baseUrl: "https://wechat.invalid",
+    accountId: "bot-original",
+    userId: "wxid-original",
+    savedAt: "2026-07-01T00:00:00.000Z",
+  };
+  for (const [spaceId, kind, createdAt] of [
+    [personal, "personal", "2026-07-01T00:00:00.000Z"],
+    [work, "user", "2026-07-02T00:00:00.000Z"],
+  ]) {
+    const spaceRoot = path.join(root, "spaces", spaceId);
+    fs.mkdirSync(path.join(spaceRoot, "channels", "wechat"), { recursive: true });
+    fs.writeFileSync(path.join(spaceRoot, "space.json"), JSON.stringify({ schemaVersion: 1, spaceId, kind, createdAt }));
+    fs.writeFileSync(path.join(spaceRoot, "channels", "wechat", "account.json"), JSON.stringify(account));
+  }
+
+  const ownership = new InstallationConnectionOwnership({ installationDataRoot: root });
+  assert.throws(
+    () => ownership.assertOrClaim("wechat-claw", [account.accountId, account.userId], work),
+    (error) => error.code === "WECHAT_SPACE_CONFLICT",
+  );
+  assert.equal(ownership.assertOrClaim("wechat-claw", [account.accountId, account.userId], personal).owned, true);
+});
+
 test("WeChat claw connector fails closed before polling or sending from a conflicting Space", async (t) => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "pa-wechat-claw-conflict-"));
   const channelDataDir = path.join(root, "space-b-channel");
@@ -53,6 +83,7 @@ test("WeChat claw connector fails closed before polling or sending from a confli
     baseUrl: "https://wechat.invalid",
     accountId: "bot-exclusive",
     userId: "wxid-exclusive",
+    spaceId: "sp_personal00000001",
     savedAt: new Date().toISOString(),
   }));
   const previousDataDir = process.env.CLI_BRIDGE_DATA_DIR;

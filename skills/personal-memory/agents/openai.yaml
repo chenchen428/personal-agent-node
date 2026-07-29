@@ -1,0 +1,4 @@
+interface:
+  display_name: "个人记忆"
+  short_description: "查询和维护当前空间中由主 Agent 管理的长期记忆。"
+  default_prompt: "使用 $personal-memory 在当前空间查询、创建、更新或删除记忆。"

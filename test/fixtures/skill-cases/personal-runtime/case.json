@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "skill": "personal-runtime",
+  "title": "Cloud 离线时的本地能力发现与诚实命令面",
+  "prompt": "Cloud 不可用。用机器可读帮助区分 implemented、preview、planned：默认只展示 implemented，preview 必须显式 opt-in 并告警，planned 即使带 --preview 也必须 fail-closed；不能读取数据库、调用旧接口或泄露凭据。",
+  "commands": [
+    "personal-agent help --json",
+    "personal-agent help --preview --json",
+    "personal-agent help --all --json",
+    "personal-agent status --json",
+    "personal-agent capabilities list --json",
+    "personal-agent skill verify personal-runtime --json",
+    "personal-agent extension list --json",
+    "personal-agent extension list --preview --json",
+    "personal-agent managed-task execute --json",
+    "personal-agent managed-task execute --preview --json"
+  ],
+  "artifacts": [{ "path": "expected.json", "label": "Redacted local-only acceptance expectation" }]
+}

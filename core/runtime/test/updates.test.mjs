@@ -48,10 +48,16 @@ test("update manager checks, plans, autonomously authorizes, verifies, and hands
     fs.mkdirSync(productCheckout, { recursive: true });
     fs.writeFileSync(path.join(runtimeDir, "product-development.json"), JSON.stringify({ schemaVersion: 1, repository: "chenchen428/personal-agent", checkoutPath: productCheckout, ready: true }));
     const applied = await manager.apply({ jobId: planned.job.id, operationId: planned.operation.id, digest: planned.operation.digest, authorizationPolicy: "product-development" });
-    assert.equal(applied.job.status, "handoff");
+    assert.equal(applied.job.status, process.platform === "linux" ? "activating" : "handoff");
     assert.deepEqual(applied.operation.approval, { kind: "policy", policy: "product-development" });
     assert.equal(spawns.length, 1);
-    assert.deepEqual(spawns[0].args.slice(0, 2), ["--apply-update", planned.job.id]);
+    if (process.platform === "linux") {
+      assert.equal(path.basename(spawns[0].command), "candidate");
+      assert.deepEqual(spawns[0].args.slice(0, 2), ["update", "--home"]);
+      assert.match(spawns[0].args.join(" "), new RegExp(`${planned.job.id}/job\\.json`));
+    } else {
+      assert.deepEqual(spawns[0].args.slice(0, 2), ["--apply-update", planned.job.id]);
+    }
     const stored = manager.readJob(planned.job.id);
     assert.equal(fs.readFileSync(stored.artifactPath).toString(), candidate.toString());
     assert.ok(stored.handoffNonce.length >= 32);

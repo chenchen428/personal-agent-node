@@ -1,0 +1,4 @@
+interface:
+  display_name: "Personal Agent 产品开发"
+  short_description: "进入注册的私有产品仓库并按边界完成 Cloud 与 Node 研发交付。"
+  default_prompt: "使用 $personal-product-development 开始一个 Personal Agent 产品研发任务。"

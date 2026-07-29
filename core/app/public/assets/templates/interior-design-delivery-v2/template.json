@@ -1,0 +1,80 @@
+{
+  "id": "interior-design-delivery",
+  "name": "装修设计交付页模板",
+  "category": "装修设计",
+  "skill": "interior-design",
+  "status": "built-in",
+  "implementation": {
+    "version": 2,
+    "generator": "node skills/interior-design/scripts/cli.mjs page --template interior-design-delivery --project-dir <space-owned-project-dir> --output <page-dir> --json",
+    "artifactMarker": "personal-agent-page-template"
+  },
+  "exampleArtifact": {
+    "source": "native-governed-pascal-v2-project",
+    "pagePath": "/assets/templates/interior-design-delivery-v2/index.html",
+    "manifestPath": "/assets/templates/interior-design-delivery-v2/manifest.json",
+    "coverPath": "/assets/templates/interior-design-delivery-v2/cover.svg"
+  },
+  "acceptance": {
+    "visualOwner": "user",
+    "agentBrowserReview": false
+  },
+  "publicationContract": {
+    "verifyArtifactBeforePublish": true,
+    "persistProvenance": true
+  },
+  "summary": "把证据、需求、方案选择、Pascal 建筑场景、专业质量审计和版本脉络组织成可追溯、离线可查看的专业装修设计交付页。",
+  "useWhen": "用户要求根据户型图、室内空间或居住需求制作装修设计、户型改造、家居布局或可交互装修交付页时使用。",
+  "matchTerms": [
+    "装修设计",
+    "室内设计",
+    "户型改造",
+    "家居布局",
+    "平面图",
+    "SketchUp",
+    "SU 设计稿"
+  ],
+  "desktop": true,
+  "mobileLandscape": true,
+  "fixedFramework": [
+    "su-design-classic 历史全画布交付骨架：浅色无包边画布、悬浮顶栏、左下 SU 设计稿 / 户型图 / 用户需求三项切换、底部居中视图工具和右下操作提示；质量审计保留在交付数据中",
+    "用户上传户型原图 / Agent 上传标注图 / Pascal 设计模型切换；两张图均为普通图片，页面不重绘标注",
+    "用户原图 SHA-256、项目 provenance、每个 concept、Pascal scene modelBasis 与 Page payload 必须同源；3D、正交平面、标签和方案说明不得套用示例或通用户型",
+    "用户需求核心点与迭代脉络",
+    "设计模型按用户实际提供的图纸切换楼层",
+    "入户门 / 室内门 / 窗 / 阳台组件",
+    "由 Pascal 场景节点派生的连续房间地面、带真实洞口的完整墙体围护和阳台栏杆",
+    "professional-mesh-ink 渲染档位的实体建筑墨线、稳定投影、材质层次和完整入镜构图",
+    "Pascal 建筑场景与模型派生 SVG 平面降级视图",
+    "首屏使用专用 loading，不展示模型派生平面图；首个有效渲染帧自动进入 3D，禁止依赖点击、拖动或切换控件触发 Canvas 显示",
+    "肉眼可辨的等距 3D / 顶视正交平面视角",
+    "楼层堆叠 / 单层 / 分解模式",
+    "多方案项目的方案比较入口；单方案须记录原因并隐藏无意义切换",
+    "需求与审计问题定位高亮",
+    "设计假设 / 未知项 / 专业核验清单",
+    "可显示隐藏的细节标注",
+    "Web 与移动横屏独立布局"
+  ],
+  "agentFreedom": [
+    "从对话持续归纳需求核心点",
+    "基于用户原图生成并上传独立的标注图片",
+    "按用户图纸组织多层 Pascal 设计模型",
+    "墙体、门窗与空间几何",
+    "阳台、栏杆与生活区构件",
+    "家具、柜体和生活物件",
+    "细节标注内容"
+  ],
+  "agentInstructions": [
+    "先调用并遵循 interior-design 技能，再开始生成页面。",
+    "必须使用 implementation.generator 从 Space 内受治理的 project.json v2 生成页面，并确认产物携带 implementation.artifactMarker、模板 ID 与版本；不得另写一套相似页面冒充模板产物。",
+    "保留 fixedFramework 的全部交付结构，只根据用户材料和需求调整 agentFreedom 范围内的内容。",
+    "主交付页面固定采用 su-design-classic 全画布结构，不得改回永久侧栏或以平面降级图占据主视图；首屏必须自动预热并在首个有效 Canvas 帧后显示 3D，不能要求用户点击、拖动或切换控件后才出现。",
+    "3D 主视图必须保持完整建筑剖切模型：连续房间地面、连续墙体围护、真实门窗洞口、阳台栏杆和完整软装同时可见；不得退化为仅平面图、孤立墙线或散落家具。建筑表现层必须从当前 Pascal scene.json 节点派生，不得维护第二套手工场景。",
+    "主视图必须使用 professional-mesh-ink 渲染档位，保持 rendered shading、稳定投影、由建筑几何派生的实体墨线、材质对比和完整住宅构图；不得依赖安装态可能退成空画布的屏幕后处理，也不得回退到无墨线裸直出。",
+    "把模板 ID、关联技能、用户原始材料、约束和验收标准完整写入子任务执行说明。",
+    "没有用户户型图或关键尺寸时，把缺失项记录为未知或专业核验，不得把示例户型冒充用户方案或宣称施工精度。",
+    "用户上传的 structure-reference 是唯一户型依据；Agent 标注图只能补充沟通信息，不能替换模型依据。来源 ID 或哈希不一致时必须停止编译和发布。",
+    "发布必须使用 pa-cli pages publish --template interior-design-delivery；CLI 与 Node 必须复核模板标识、ID、版本、契约摘要和 HTML 哈希，并把 page.template 溯源写入公开或私有 Page 清单。",
+    "只运行确定性的模型审计与模板契约校验；不得打开浏览器、自行截图走查或宣称视觉验收通过，视觉与交互验收交给用户。"
+  ]
+}

@@ -1,10 +1,11 @@
 import { headers } from "next/headers";
 import { OverviewPage as DesktopOverview } from "@/components/desktop-v627/overview-page";
 import { MobileActivity } from "@/components/mobile-current/activity";
-import { detectRequestSurface } from "@/lib/request-surface";
+import { isMobileRequest } from "@/lib/request-device";
+
+export const dynamic = "force-dynamic";
 
 export default async function OverviewPage() {
-  const requestHeaders = await headers();
-  if (detectRequestSurface(requestHeaders) === "mobile") return <MobileActivity />;
+  if (isMobileRequest(await headers())) return <MobileActivity />;
   return <DesktopOverview />;
 }

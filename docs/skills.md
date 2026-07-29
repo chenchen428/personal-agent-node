@@ -16,13 +16,13 @@ These are customer capabilities and belong only to the Node Harness. The private
 
 | Category | Portable skill directories |
 | --- | --- |
-| Research & Knowledge | `skills/deep-research`, `skills/knowledge-capture` |
+| Research & Knowledge | `skills/deep-research`, `skills/knowledge-capture`, `skills/personal-memory`, `skills/personal-files`, `skills/personal-data` |
 | Writing & Content | `skills/content-workbench` |
 | Visual & Media | `skills/visual-content`, `skills/media-toolkit`, `skills/guizang-social-card-skill`, `skills/guizang-ppt-skill` |
 | Travel & Location | `skills/travel-guidebook` |
 | Home & Living | `skills/home-renovation`, `skills/interior-design` |
-| Product Engineering | `skills/frontend-design`, `skills/ui-ux-pro-max` |
-| Publishing & Automation | `skills/personal-agent` |
+| Product Engineering | `skills/frontend-design`, `skills/ui-ux-pro-max`, `skills/personal-product-development`, `skills/personal-bug-report`, `skills/personal-acceptance` |
+| Publishing & Automation | `skills/personal-runtime`, `skills/personal-connectivity`, `skills/personal-connections`, `skills/personal-activity`, `skills/personal-tasks`, `skills/personal-schedules`, `skills/personal-pages`, `skills/personal-updates` |
 
 The catalog records exact upstream revisions, licenses, risks, security boundaries, related skills, and reproducible cases. The installed release seeds the complete `skills/` tree—including bundled local Three.js Page assets—into the customer's mutable Workspace on both new installation and upgrade.
 
@@ -36,4 +36,4 @@ The catalog records exact upstream revisions, licenses, risks, security boundari
 - Update the owning Skill metadata, direct references, registered cases, and catalog entry together. If the change adds or alters a Node-owned CLI or product capability, also update command and capability registries, behavior baselines, schemas, implementation, semantic tests, packaging, and acceptance evidence.
 - Scan the complete public diff before delivery. Private Cloud behavior, operator configuration, secrets, customer content, local paths, and parent-workspace assumptions must never enter the public Node release.
 
-Owner-specific `blog-publishing` is excluded. `release-ops`, `open-agent-bridge`, and the old `guizang-social-card` copy are replaced by `personal-agent-operations`, `personal-agent`, and the pinned latest `guizang-social-card-skill`. `travel-planner`, `amap-jsapi`, and `pinterest-interior-design-skill` remain excluded because their upstream repositories declare no redistribution license. The workspace-authored `home-renovation` Skill independently covers the broader renovation lifecycle without copying those sources. Run `node scripts/skill-tree.mjs catalog` to inspect the installed set.
+Owner-specific `blog-publishing` is excluded. The former monolithic `personal-agent` Skill is split into focused `personal-*` capabilities, while the removed `open-agent-bridge` Skill remains replaced by the stable product CLIs. The old `guizang-social-card` copy is replaced by the pinned latest `guizang-social-card-skill`. `travel-planner`, `amap-jsapi`, and `pinterest-interior-design-skill` remain excluded because their upstream repositories declare no redistribution license. The workspace-authored `home-renovation` Skill independently covers the broader renovation lifecycle without copying those sources. Run `node scripts/skill-tree.mjs catalog` to inspect the installed set.

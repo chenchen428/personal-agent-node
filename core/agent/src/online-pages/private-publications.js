@@ -2,6 +2,7 @@ import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import { decodePageThumbnail, pageProperties } from "./page-thumbnail.js";
+import { verifyPageTemplatePublication } from "./template-catalog.js";
 
 export class PrivatePublicationStore {
   constructor({ rootDir } = {}) {
@@ -38,8 +39,12 @@ export class PrivatePublicationStore {
     if (!/\.html?$/i.test(fileName)) throw new Error("pages publish requires an HTML entry file");
     const desktopThumbnail = decodePageThumbnail(input.desktopThumbnail, { variant: "desktop" });
     const mobileThumbnail = decodePageThumbnail(input.mobileThumbnail, { variant: "mobile" });
-    if (desktopThumbnail.buffer.equals(mobileThumbnail.buffer)) throw new Error("desktop and mobile Page thumbnails must be different screenshots");
-    const properties = pageProperties(input, desktopThumbnail, mobileThumbnail);
+    if (desktopThumbnail.buffer.equals(mobileThumbnail.buffer)) throw new Error("desktop and mobile Page thumbnails must be distinct images");
+    const pageBytes = input.encoding === "base64"
+      ? Buffer.from(String(input.content || ""), "base64")
+      : Buffer.from(String(input.content || ""), "utf8");
+    const template = verifyPageTemplatePublication(input, pageBytes);
+    const properties = pageProperties({ ...input, template }, desktopThumbnail, mobileThumbnail);
     const desktopThumbnailAsset = this.upload({
       publicationId: input.publicationId,
       fileName: desktopThumbnail.fileName,
@@ -70,6 +75,7 @@ export class PrivatePublicationStore {
       visibility: "private",
       thumbnail: desktopMetadata,
       thumbnails: { desktop: desktopMetadata, mobile: mobileMetadata },
+      ...(properties.template ? { template: properties.template } : {}),
     };
     fs.writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`, { mode: 0o600 });
     return {

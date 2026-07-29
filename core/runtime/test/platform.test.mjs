@@ -19,10 +19,29 @@ test("renders a macOS launchd Node service", () => {
 });
 
 test("renders a Linux systemd user Node service", () => {
-  const output = renderSystemdUserService(config, { cliPath: "/opt/private-site/bin/private-site.mjs", nodePath: "/usr/bin/node" });
+  const output = renderSystemdUserService(config, {
+    cliPath: "/opt/private-site/bin/private-site.mjs",
+    nodePath: "/usr/bin/node",
+    workingDirectory: "/Users/example/.personal-agent",
+  });
+  assert.match(output, /WorkingDirectory=\/Users\/example\/\.personal-agent/);
+  assert.doesNotMatch(output, /WorkingDirectory="/);
   assert.match(output, /ExecStart="\/usr\/bin\/node" "\/opt\/private-site\/bin\/private-site\.mjs" start/);
   assert.match(output, /Restart=on-failure/);
   assert.match(output, /WantedBy=default\.target/);
+});
+
+test("escapes Linux systemd working-directory paths without quoting the directive", () => {
+  const spacedConfig = { ...config, installationDataRoot: "/home/example/Personal Agent" };
+  const output = renderSystemdUserService(spacedConfig, {
+    cliPath: "/opt/Personal Agent/bin/private-site.mjs",
+    nodePath: "/opt/Personal Agent/runtime/node",
+    workingDirectory: "/opt/Personal Agent/core",
+  });
+  assert.match(output, /WorkingDirectory=\/opt\/Personal\\x20Agent\/core/);
+  assert.doesNotMatch(output, /WorkingDirectory="/);
+  assert.match(output, /Environment=PRIVATE_SITE_DATA_ROOT="\/home\/example\/Personal Agent"/);
+  assert.match(output, /ExecStart="\/opt\/Personal Agent\/runtime\/node"/);
 });
 
 test("renders a Windows interactive-user scheduled task", () => {

@@ -161,6 +161,14 @@ export function createUpdateManager({ config, operations, now = () => Date.now()
   }
 
   function launchShellHandoff(job) {
+    if (process.platform === "linux") {
+      const executable = job.kind === "apply" ? job.artifactPath : path.join(installRoot, "bin", "personal-agent-setup");
+      if (!executable || !fs.statSync(executable, { throwIfNoEntry: false })?.isFile()) throw operationError("HEADLESS_HANDOFF_UNAVAILABLE", "Verified Linux update executor is unavailable", 7);
+      transition(job, "activating");
+      const child = spawnImpl(executable, [job.kind === "apply" ? "update" : "rollback-update", "--home", path.dirname(installRoot), "--job", path.join(jobDirectory(job.id), "job.json"), "--nonce", job.handoffNonce], { detached: true, stdio: "ignore", windowsHide: true, env: process.env });
+      child.unref?.();
+      return;
+    }
     const launcher = path.join(installRoot, "bin", process.platform === "win32" ? "personal-agent-ui.exe" : "personal-agent-ui");
     if (!fs.existsSync(launcher)) throw operationError("DESKTOP_HANDOFF_UNAVAILABLE", "Stable desktop launcher is unavailable", 7);
     const child = spawnImpl(launcher, ["--apply-update", job.id, "--nonce", job.handoffNonce], { detached: true, stdio: "ignore", windowsHide: true, env: process.env });

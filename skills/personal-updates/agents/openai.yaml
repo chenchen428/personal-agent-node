@@ -1,0 +1,4 @@
+interface:
+  display_name: "Personal Agent 更新"
+  short_description: "检查、规划、执行并验证客户端更新及上一版本回滚结果。"
+  default_prompt: "使用 $personal-updates 检查、执行或回滚 Personal Agent 更新。"

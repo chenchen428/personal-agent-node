@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
+import crypto from "node:crypto";
 import fs from "node:fs";
 import http from "node:http";
 import os from "node:os";
@@ -12,19 +13,43 @@ import { createPageThumbnailPng } from "./page-thumbnail-fixture.mjs";
 const execFileAsync = promisify(execFile);
 const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
-test("legacy Memory CLI fails closed and points to main-Agent Activity", async () => {
-  await assert.rejects(
-    execFileAsync(process.execPath, [path.join(projectRoot, "bin", "pa-cli.mjs"), "memory", "recall", "--json"], {
-      cwd: projectRoot,
-      env: { ...process.env },
-    }),
-    (error) => {
-      assert.equal(error.code, 1);
-      assert.match(error.stderr, /legacy Memory domain has been removed/);
-      assert.match(error.stderr, /pa-cli activity/);
-      return true;
-    },
-  );
+function markedInteriorTemplateHtml(body = "<main>CLI Page</main>") {
+  return `<!doctype html><html><head><meta name="personal-agent-page-template" content="personal-agent-page-template"><meta name="personal-agent-page-template-id" content="interior-design-delivery"><meta name="personal-agent-page-template-version" content="2"></head><body data-template-marker="personal-agent-page-template" data-template-id="interior-design-delivery" data-template-version="2">${body}</body></html>`;
+}
+
+test("Memory CLI uses the ephemeral main-turn capability and content-only contract", async (t) => {
+  let received = null;
+  const server = http.createServer(async (request, response) => {
+    const chunks = [];
+    for await (const chunk of request) chunks.push(chunk);
+    received = {
+      method: request.method,
+      url: request.url,
+      capability: request.headers["x-personal-agent-memory-capability"],
+      body: JSON.parse(Buffer.concat(chunks).toString("utf8")),
+    };
+    response.writeHead(200, { "content-type": "application/json" });
+    response.end(JSON.stringify({ ok: true, result: { action: "create", data: { id: "mem_1", content: "用户偏好先给结论。", revision: 1 } } }));
+  });
+  await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
+  t.after(() => server.close());
+  const address = server.address();
+  const result = await execFileAsync(process.execPath, [
+    path.join(projectRoot, "bin", "pa-cli.mjs"), "memory", "create",
+    "--content", "用户偏好先给结论。",
+    "--capability", "ephemeral-memory-capability",
+    "--json",
+  ], {
+    cwd: projectRoot,
+    env: { ...process.env, OPEN_AGENT_BRIDGE_API_BASE: `http://127.0.0.1:${address.port}` },
+  });
+  assert.deepEqual(received, {
+    method: "POST",
+    url: "/api/internal/memory-agent",
+    capability: "ephemeral-memory-capability",
+    body: { action: "create", memoryId: "", input: { content: "用户偏好先给结论。" } },
+  });
+  assert.equal(JSON.parse(result.stdout).data.content, "用户偏好先给结论。");
 });
 
 test("cron CLI creates and verifies a governed scheduled task", async (t) => {
@@ -123,6 +148,41 @@ test("session CLI requires concise child-task metadata and supports updates", as
     execFileAsync(process.execPath, [path.join(projectRoot, "bin", "pa-cli.mjs"), "session", "start", "--parent", "main-1", "--task", "work", "--json"], { cwd: projectRoot, env }),
     (error) => /必须设置标题/.test(error.stderr),
   );
+});
+
+test("session list scopes status reads to one parent session", async (t) => {
+  let receivedUrl = "";
+  const server = http.createServer(async (request, response) => {
+    receivedUrl = request.url || "";
+    response.writeHead(200, { "content-type": "application/json" });
+    response.end(JSON.stringify({
+      ok: true,
+      sessions: [{
+        id: "task-current",
+        role: "worker",
+        parentSessionId: "main-current",
+        status: "running",
+        title: "制作装修交付页",
+        taskDescription: "使用装修模板制作交付页",
+      }],
+      nextCursor: "",
+      hasMore: false,
+    }));
+  });
+  await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
+  t.after(() => server.close());
+  const address = server.address();
+  const { stdout } = await execFileAsync(process.execPath, [
+    path.join(projectRoot, "bin", "pa-cli.mjs"),
+    "session", "list", "--parent", "main-current", "--all", "--json",
+  ], {
+    cwd: projectRoot,
+    env: { ...process.env, OPEN_AGENT_BRIDGE_API_BASE: `http://127.0.0.1:${address.port}` },
+  });
+  const url = new URL(receivedUrl, "http://127.0.0.1");
+  assert.equal(url.pathname, "/api/sessions");
+  assert.equal(url.searchParams.get("parent"), "main-current");
+  assert.equal(JSON.parse(stdout).sessions[0].status, "running");
 });
 
 test("session CLI preserves the unavailable-domain notice instead of inventing a task URL", async (t) => {
@@ -321,7 +381,37 @@ test("confirmed channel login delegates QR delivery and monitoring to the bridge
   assert.doesNotMatch(stdout, /qrImage|base64/);
 });
 
-test("pages publish sends HTML and both device screenshots as one Page contract", async (t) => {
+test("pages template CLI lists match metadata and inspects the full contract", async () => {
+  const cli = path.join(projectRoot, "bin", "pa-cli.mjs");
+  const listed = await execFileAsync(process.execPath, [cli, "pages", "templates", "list", "--json"], {
+    cwd: projectRoot,
+    env: { ...process.env },
+  });
+  const list = JSON.parse(listed.stdout);
+  assert.equal(list.schemaVersion, 1);
+  assert.deepEqual(list.templates.map((template) => template.id), ["interior-design-delivery"]);
+  assert.equal(list.templates[0].skill, "interior-design");
+  assert.match(list.templates[0].useWhen, /户型/);
+  assert.match(list.templates[0].contractDigest, /^[a-f0-9]{64}$/);
+
+  const inspected = await execFileAsync(process.execPath, [
+    cli, "pages", "templates", "inspect", "--id", "interior-design-delivery", "--json",
+  ], { cwd: projectRoot, env: { ...process.env } });
+  const template = JSON.parse(inspected.stdout);
+  assert.equal(template.id, "interior-design-delivery");
+  assert.equal(template.contractDigest, list.templates[0].contractDigest);
+  assert.ok(template.fixedFramework.includes("肉眼可辨的等距 3D / 顶视正交平面视角"));
+  assert.ok(template.agentInstructions.some((item) => item.includes("interior-design")));
+
+  await assert.rejects(execFileAsync(process.execPath, [
+    cli, "pages", "templates", "inspect", "--id", "missing", "--json",
+  ], { cwd: projectRoot, env: { ...process.env } }), (error) => {
+    assert.match(error.stderr, /Unknown Page template/);
+    return true;
+  });
+});
+
+test("pages publish sends HTML and explicit device thumbnails as one Page contract", async (t) => {
   const working = fs.mkdtempSync(path.join(os.tmpdir(), "pa-cli-pages-"));
   fs.writeFileSync(path.join(working, "index.html"), "<h1>CLI Page</h1>");
   fs.writeFileSync(path.join(working, "desktop.png"), createPageThumbnailPng());
@@ -381,11 +471,13 @@ test("pages publish sends HTML and both device screenshots as one Page contract"
 
 test("pages publish returns an explicit notice when no managed domain is accessible", async (t) => {
   const working = fs.mkdtempSync(path.join(os.tmpdir(), "pa-cli-pages-no-domain-"));
-  fs.writeFileSync(path.join(working, "index.html"), "<h1>CLI Page</h1>");
-  fs.writeFileSync(path.join(working, "desktop.png"), createPageThumbnailPng());
-  fs.writeFileSync(path.join(working, "mobile.png"), createPageThumbnailPng(750, 1200));
+  const html = markedInteriorTemplateHtml();
+  fs.writeFileSync(path.join(working, "index.html"), html);
+  let received = null;
   const server = http.createServer(async (request, response) => {
-    for await (const _chunk of request) {}
+    const chunks = [];
+    for await (const chunk of request) chunks.push(chunk);
+    received = JSON.parse(Buffer.concat(chunks).toString("utf8"));
     response.writeHead(200, { "content-type": "application/json" });
     response.end(JSON.stringify({
       ok: true,
@@ -405,8 +497,9 @@ test("pages publish returns an explicit notice when no managed domain is accessi
     "pages", "publish",
     "--file", "index.html",
     "--folder", "cli-page",
-    "--desktop-thumbnail", "desktop.png",
-    "--mobile-thumbnail", "mobile.png",
+    "--template", "interior-design-delivery",
+    "--title", "无需浏览器验收的页面",
+    "--summary", "CLI 自动生成桌面和移动端画廊预览。",
     "--json",
   ], {
     cwd: working,
@@ -417,6 +510,39 @@ test("pages publish returns an explicit notice when no managed domain is accessi
     url: "",
     internalUrl: "/public/uploads/cli-page/index.html",
     linkNotice: "暂未配置可访问的域名链接，无法直接访问页面",
+  });
+  const desktop = Buffer.from(received.desktopThumbnail.content, "base64");
+  const mobile = Buffer.from(received.mobileThumbnail.content, "base64");
+  assert.ok(desktop.subarray(1, 4).equals(Buffer.from("PNG")));
+  assert.ok(mobile.subarray(1, 4).equals(Buffer.from("PNG")));
+  assert.equal(desktop.equals(mobile), false);
+  assert.deepEqual(received.template, {
+    id: "interior-design-delivery",
+    version: 2,
+    contractDigest: received.template.contractDigest,
+    artifactMarker: "personal-agent-page-template",
+    artifactSha256: crypto.createHash("sha256").update(html).digest("hex"),
+  });
+  assert.match(received.template.contractDigest, /^[a-f0-9]{64}$/);
+});
+
+test("pages publish rejects an unverified registered template before upload", async () => {
+  const working = fs.mkdtempSync(path.join(os.tmpdir(), "pa-cli-pages-template-mismatch-"));
+  fs.writeFileSync(path.join(working, "index.html"), "<h1>Unmarked Page</h1>");
+  await assert.rejects(execFileAsync(process.execPath, [
+    path.join(projectRoot, "bin", "pa-cli.mjs"),
+    "pages", "publish",
+    "--file", "index.html",
+    "--folder", "unverified-page",
+    "--template", "interior-design-delivery",
+    "--json",
+  ], {
+    cwd: working,
+    env: { ...process.env, OPEN_AGENT_BRIDGE_API_BASE: "http://127.0.0.1:1" },
+  }), (error) => {
+    assert.match(error.stderr, /Page template artifact marker mismatch/);
+    assert.doesNotMatch(error.stderr, /ECONNREFUSED/);
+    return true;
   });
 });
 

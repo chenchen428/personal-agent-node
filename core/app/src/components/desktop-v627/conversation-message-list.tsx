@@ -15,7 +15,7 @@ export function ConversationMessageList({ messages, loading, loadingEarlier, has
       const user = message.role === "user";
       return <article className={`message${user ? " user" : ""}${message.metadata?.optimistic ? " optimistic" : ""}`} key={message.id}>
         <span className={`avatar${user ? " user" : ""}`}>{user ? "你" : "PA"}</span>
-        <div className="message-body"><div><MarkdownContent content={message.content} linkTransform={localTaskDetailHref} /><MessageAttachments messageId={message.id} attachments={message.metadata?.attachments || []} />{linkedTask && index === linkedIndex ? <TaskReference task={linkedTask} /> : null}</div>{index === planIndex ? <ConversationPlan plan={plan} /> : null}<div className="message-meta">{user && message.metadata?.sourceLabel ? <span className="message-source">{message.metadata.sourceLabel}</span> : null}<time className="message-time" dateTime={message.createdAt}>{formatTime(message.createdAt)}</time></div></div>
+        <div className="message-content"><MessageAttachments messageId={message.id} attachments={message.metadata?.attachments || []} /><div className="message-body"><div><MarkdownContent content={message.content} linkTransform={localTaskDetailHref} />{linkedTask && index === linkedIndex ? <TaskReference task={linkedTask} /> : null}</div>{index === planIndex ? <ConversationPlan plan={plan} /> : null}<div className="message-meta">{user && message.metadata?.sourceLabel ? <span className="message-source">{message.metadata.sourceLabel}</span> : null}<time className="message-time" dateTime={message.createdAt}>{formatTime(message.createdAt)}</time></div></div></div>
       </article>;
     })}
     {processing ? <article className="message message-processing" role="status" aria-live="polite"><span className="avatar">PA</span><div className="message-body"><span className="message-dots" aria-hidden="true"><i /><i /><i /></span><p>正在处理，回复会自动显示</p></div></article> : null}
@@ -38,7 +38,7 @@ function findLastAssistant(messages: Message[], sessionId = "") { for (let index
 function MessageAttachments({ messageId, attachments }: { messageId: string; attachments: NonNullable<Message["metadata"]>["attachments"] }) {
   if (!attachments?.length) return null;
   return <div className="message-attachments">{attachments.map((attachment) => attachment.kind === "image" && attachment.previewUrl
-    ? <a className="message-image" href={attachment.previewUrl} target="_blank" rel="noreferrer" key={`${messageId}-${attachment.objectId || attachment.name}`}>
+    ? <a className="message-image" href={attachment.viewUrl || attachment.previewUrl} target="_blank" rel="noreferrer" key={`${messageId}-${attachment.objectId || attachment.name}`}>
       <img src={attachment.previewUrl} alt={attachment.alt || attachment.name} width={attachment.width} height={attachment.height} />
       <span><strong>{attachment.caption || attachment.name}</strong><small>{attachment.width && attachment.height ? `${attachment.width} × ${attachment.height} · ` : ""}{deliveryLabel(attachment.deliveryState)}</small></span>
     </a>

@@ -50,6 +50,11 @@ export function createPrivateSiteGateway(options = {}) {
         sendText(response, 400, "Unsafe request path\n", request.method === "HEAD");
         return;
       }
+      const url = new URL(request.url || "/", `http://${host || "localhost"}`);
+      if (isSpaceManagementPath(url.pathname) && !isDirectLoopbackConsoleRequest(request)) {
+        sendText(response, 403, "Space management is available only from the local desktop\n", request.method === "HEAD");
+        return;
+      }
       const spaceProxy = resolveRelaySpaceProxyTarget(request, config);
       if (spaceProxy?.statusCode) {
         sendText(response, spaceProxy.statusCode, `${spaceProxy.message}\n`, request.method === "HEAD");
@@ -60,7 +65,6 @@ export function createPrivateSiteGateway(options = {}) {
         proxy.web(request, response, { target: spaceProxy.target });
         return;
       }
-      const url = new URL(request.url || "/", `http://${host || "localhost"}`);
       const mailIngest = resolveRelayMailIngestTarget(request, url, config);
       if (mailIngest) {
         if (mailIngest.statusCode) {
@@ -91,11 +95,7 @@ export function createPrivateSiteGateway(options = {}) {
         return;
       }
       const route = matchRoute(routes, host, url.pathname, config);
-      if (!route) {
-        sendText(response, 404, "Unknown Site route\n", request.method === "HEAD");
-        return;
-      }
-      if (route.access === "public" && request.method !== "GET" && request.method !== "HEAD") {
+      if (route?.access === "public" && request.method !== "GET" && request.method !== "HEAD") {
         sendText(response, 405, "Method Not Allowed\n", request.method === "HEAD");
         return;
       }
@@ -103,6 +103,10 @@ export function createPrivateSiteGateway(options = {}) {
       if (!authorized) {
         response.writeHead(302, { Location: `/login?return_to=${encodeURIComponent(`${url.pathname}${url.search}`)}`, "Cache-Control": "no-store" });
         response.end();
+        return;
+      }
+      if (!route) {
+        sendText(response, 404, "Unknown Site route\n", request.method === "HEAD");
         return;
       }
       if (url.pathname === "/") {
@@ -155,8 +159,8 @@ export function createPrivateSiteGateway(options = {}) {
       }
       const url = new URL(request.url || "/", `http://${host || "localhost"}`);
       const route = matchRoute(routes, host, url.pathname, config);
-      if (!route?.target || !route.websocket) return rejectUpgrade(socket, 404);
       if (!await authorizeRoute(request, route, config)) return rejectUpgrade(socket, 401);
+      if (!route?.target || !route.websocket) return rejectUpgrade(socket, 404);
       prepareProxyHeaders(request, config, route.access !== "public");
       rewriteProxyUrl(request, route, url);
       proxy.ws(request, socket, head, { target: route.target });
@@ -219,23 +223,19 @@ async function authorizeRequest(request, config) {
 }
 
 export async function authorizeRoute(request, route, config) {
-  const access = route.access || "public";
-  if (access === "public") return true;
-  if (access === "internal") return false;
-  if (isDirectLoopbackConsoleRequest(request)) {
-    return ["authenticated", "local-admin", "local-bootstrap"].includes(access);
-  }
-  if (access === "local-bootstrap") return false;
-  if (!await authorizeRequest(request, config)) return false;
-  if (access === "authenticated") return true;
-  if (access === "local-admin") return false;
-  return false;
+  if (isDirectLoopbackConsoleRequest(request)) return true;
+  if (route?.access === "public") return true;
+  return await authorizeRequest(request, config);
 }
 
 export function isDirectLoopbackConsoleRequest(request) {
   const host = normalizeRequestHost(request.headers.host);
   return isLoopbackAddress(request.socket.remoteAddress)
     && ["127.0.0.1", "localhost", "::1"].includes(host);
+}
+
+function isSpaceManagementPath(pathname) {
+  return pathname === "/api/system/spaces" || pathname === "/api/spaces";
 }
 
 export function resolvePersonalWechatCallbackTarget(request, url, config, resolver = null) {
@@ -442,7 +442,7 @@ function normalizeRoute(entry, config) {
     target: localTargets[entry.key] || entry.target || "",
     source: publicationSources[entry.key] || legacySource || entry.source,
     websocket: entry.websocket === true,
-    access: entry.access || "public",
+    access: entry.access || "authenticated",
   };
 }
 

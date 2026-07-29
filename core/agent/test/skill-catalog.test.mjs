@@ -15,35 +15,90 @@ test("parses plain, quoted, and folded skill descriptions", () => {
   assert.equal(parseSkillFrontmatter("---\nname: folded\ndescription: >\n  First line.\n  Second line.\n---\n").description, "First line. Second line.");
 });
 
-test("reads the canonical skill registry and SKILL descriptions", () => {
+test("discovers skills from the skills directory and enriches registered entries", () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "oab-skill-catalog-"));
   try {
     fs.mkdirSync(path.join(root, "registry"), { recursive: true });
     fs.mkdirSync(path.join(root, "skills", "alpha"), { recursive: true });
-    fs.mkdirSync(path.join(root, "skills", "beta"), { recursive: true });
+    fs.mkdirSync(path.join(root, "skills", "gamma"), { recursive: true });
     fs.writeFileSync(path.join(root, "registry", "skills.json"), JSON.stringify({
       categories: [
         { id: "second", label: "Second", order: 20 },
         { id: "first", label: "First", order: 10 },
       ],
       skills: [
-        { name: "beta", directory: "skills/beta", category: "second", maturity: "beta", risks: ["network-read"], security: { network: "read" }, origin: { kind: "adapted" }, cli: [], examples: ["beta.json"], caseRequired: true, related: ["alpha"] },
         { name: "alpha", directory: "skills/alpha", category: "first", maturity: "stable", risks: [], security: { network: "none" }, origin: { kind: "workspace" }, cli: ["alpha"], examples: [], caseRequired: false, related: [] },
+        { name: "removed", directory: "skills/removed", category: "second", maturity: "beta", risks: ["network-read"], security: { network: "read" }, origin: { kind: "adapted" }, cli: [], examples: ["removed.json"], caseRequired: true, related: ["alpha"] },
       ],
     }));
     fs.writeFileSync(path.join(root, "skills", "alpha", "SKILL.md"), "---\nname: alpha\ndescription: Alpha description.\n---\n");
-    fs.writeFileSync(path.join(root, "skills", "beta", "SKILL.md"), "---\nname: beta\ndescription: >\n  Beta first line.\n  Beta second line.\n---\n");
+    fs.writeFileSync(path.join(root, "skills", "gamma", "SKILL.md"), "---\nname: gamma\ndescription: >\n  Gamma first line.\n  Gamma second line.\n---\n");
 
     const catalog = readWorkspaceSkillCatalog(root);
-    assert.deepEqual(catalog.categories.map((category) => category.id), ["first", "second"]);
-    assert.deepEqual(catalog.skills.map((skill) => skill.name), ["alpha", "beta"]);
-    assert.equal(catalog.skills[1].description, "Beta first line. Beta second line.");
+    assert.deepEqual(catalog.categories.map((category) => category.id), ["first", "second", "uncategorized"]);
+    assert.deepEqual(catalog.skills.map((skill) => skill.name), ["alpha", "gamma"]);
+    assert.equal(catalog.skills[1].description, "Gamma first line. Gamma second line.");
     assert.deepEqual(catalog.skills[0].cli, ["alpha"]);
     assert.equal(catalog.skills[0].directory, "skills/alpha");
-    assert.deepEqual(catalog.skills[1].risks, ["network-read"]);
-    assert.deepEqual(catalog.skills[1].security, { network: "read" });
-    assert.equal(catalog.skills[1].caseRequired, true);
+    assert.equal(catalog.skills[1].directory, "skills/gamma");
+    assert.equal(catalog.skills[1].category, "uncategorized");
+    assert.deepEqual(catalog.skills[1].risks, []);
+    assert.deepEqual(catalog.skills[1].security, {});
+    assert.equal(catalog.skills[1].caseRequired, false);
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("reads the skills directory again when a skill is added", () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "oab-skill-refresh-"));
+  try {
+    fs.mkdirSync(path.join(root, "registry"), { recursive: true });
+    fs.mkdirSync(path.join(root, "skills", "alpha"), { recursive: true });
+    fs.writeFileSync(path.join(root, "registry", "skills.json"), JSON.stringify({ categories: [], skills: [] }));
+    fs.writeFileSync(path.join(root, "skills", "alpha", "SKILL.md"), "---\nname: alpha\ndescription: Alpha.\n---\n");
+    assert.deepEqual(readWorkspaceSkillCatalog(root).skills.map((skill) => skill.name), ["alpha"]);
+
+    fs.mkdirSync(path.join(root, "skills", "beta"), { recursive: true });
+    fs.writeFileSync(path.join(root, "skills", "beta", "SKILL.md"), "---\nname: beta\ndescription: Beta.\n---\n");
+    assert.deepEqual(readWorkspaceSkillCatalog(root).skills.map((skill) => skill.name), ["alpha", "beta"]);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("uses release metadata for skills discovered in an older mutable Workspace", () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "oab-skill-metadata-"));
+  const release = fs.mkdtempSync(path.join(os.tmpdir(), "oab-skill-release-"));
+  try {
+    fs.mkdirSync(path.join(root, "registry"), { recursive: true });
+    fs.mkdirSync(path.join(root, "skills", "split-skill"), { recursive: true });
+    fs.mkdirSync(path.join(release, "registry"), { recursive: true });
+    fs.writeFileSync(path.join(root, "registry", "skills.json"), JSON.stringify({
+      categories: [],
+      skills: [],
+    }));
+    fs.writeFileSync(path.join(release, "registry", "skills.json"), JSON.stringify({
+      categories: [{ id: "product", label: "Product", order: 10 }],
+      skills: [{
+        name: "split-skill",
+        directory: "skills/split-skill",
+        category: "product",
+        maturity: "stable",
+        risks: [],
+      }],
+    }));
+    fs.writeFileSync(
+      path.join(root, "skills", "split-skill", "SKILL.md"),
+      "---\nname: split-skill\ndescription: Split skill.\n---\n",
+    );
+
+    const catalog = readWorkspaceSkillCatalog(root, { metadataRoots: [release, root] });
+    assert.deepEqual(catalog.categories.map((category) => category.id), ["product"]);
+    assert.equal(catalog.skills[0].category, "product");
+    assert.equal(catalog.skills[0].maturity, "stable");
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+    fs.rmSync(release, { recursive: true, force: true });
   }
 });

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Personal Agent Bug 报告"
+  short_description: "使用客户 GitHub 身份脱敏、查重、提交并验证公开 Node 问题。"
+  default_prompt: "使用 $personal-bug-report 为这个 Personal Agent Node 问题准备并提交报告。"

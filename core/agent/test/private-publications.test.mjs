@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import crypto from "node:crypto";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -47,4 +48,32 @@ test("private Page publishing stores desktop and mobile screenshots as first-cla
   assert.equal(published.page.thumbnails.mobile.height, 1200);
   assert.equal(store.list()[0].page.thumbnails.mobile.alt, "Private report mobile overview");
   assert.equal(fs.existsSync(store.resolve("private-report", "page-thumbnail-mobile.png").filePath), true);
+});
+
+test("private registered Page publication re-verifies and stores template provenance", () => {
+  const rootDir = fs.mkdtempSync(path.join(os.tmpdir(), "oab-private-template-page-"));
+  const store = new PrivatePublicationStore({ rootDir });
+  const html = fs.readFileSync(path.resolve(import.meta.dirname, "../../app/public/assets/templates/interior-design-delivery-v2/index.html"));
+  const published = store.publish({
+    publicationId: "private-template",
+    fileName: "index.html",
+    content: html.toString("base64"),
+    encoding: "base64",
+    template: { id: "interior-design-delivery" },
+    desktopThumbnail: {
+      fileName: "page-thumbnail-desktop.png",
+      content: createPageThumbnailPng().toString("base64"),
+    },
+    mobileThumbnail: {
+      fileName: "page-thumbnail-mobile.png",
+      content: createPageThumbnailPng(750, 1200).toString("base64"),
+    },
+  });
+  assert.deepEqual(published.page.template, {
+    id: "interior-design-delivery",
+    version: 2,
+    contractDigest: published.page.template.contractDigest,
+    artifactMarker: "personal-agent-page-template",
+    artifactSha256: crypto.createHash("sha256").update(html).digest("hex"),
+  });
 });

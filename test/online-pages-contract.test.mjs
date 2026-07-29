@@ -9,16 +9,18 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 test("Online Pages CLI, Skill, server, clients, and Activity share one dual-device contract", () => {
   const cli = read("core/agent/bin/pa-cli.mjs");
   const runtimeCli = read("core/runtime/bin/personal-agent.mjs");
-  const skill = read("skills/personal-agent/references/online-pages.md");
+  const skill = read("skills/personal-pages/references/publishing.md");
   const server = read("core/agent/src/server/server.ts");
   const activity = read("core/agent/src/activity/store.js");
   const desktop = read("core/app/src/components/desktop-v627/shared.tsx");
   const mobile = read("core/app/src/components/mobile-current/pages.tsx");
 
-  assert.match(cli, /--desktop-thumbnail <png> and --mobile-thumbnail <png>/);
+  assert.match(cli, /createGeneratedPageThumbnails/);
+  assert.match(cli, /omit both/);
   assert.match(cli, /desktopThumbnail:/);
   assert.match(cli, /mobileThumbnail:/);
-  assert.match(skill, /two distinct screenshots/);
+  assert.match(skill, /without opening a browser/);
+  assert.match(skill, /pending user acceptance/);
   assert.match(skill, /page\.thumbnails\.desktop/);
   assert.match(skill, /page\.thumbnails\.mobile/);
   assert.match(skill, /--target-type page/);

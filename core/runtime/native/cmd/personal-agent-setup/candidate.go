@@ -236,7 +236,28 @@ func candidateApplyCommand(args []string) {
 	if err := writeCandidateFiles(jobDirectory, &job, &operation); err != nil {
 		fail(err.Error())
 	}
-	auditCandidate(home, "executing", &operation, map[string]any{"handoff": "desktop-owner"})
+	handoff := "desktop-owner"
+	if runtime.GOOS == "linux" {
+		handoff = "headless-updater"
+	}
+	auditCandidate(home, "executing", &operation, map[string]any{"handoff": handoff})
+	if runtime.GOOS == "linux" {
+		job.Status, job.UpdatedAt = "activating", time.Now().UTC().Format(time.RFC3339Nano)
+		if err := writeCandidateFiles(jobDirectory, &job, &operation); err != nil {
+			fail(err.Error())
+		}
+		command := exec.Command(job.ArtifactPath, "update", "--home", home, "--job", filepath.Join(jobDirectory, "job.json"), "--nonce", job.HandoffNonce)
+		if err := command.Start(); err != nil {
+			operation.Status, operation.CompletedAt = "failed", time.Now().UTC().Format(time.RFC3339Nano)
+			operation.Error = map[string]any{"code": "CANDIDATE_HANDOFF_FAILED", "message": "headless update handoff could not be started"}
+			job.Status, job.Failure = "failed", operation.Error
+			_ = writeCandidateFiles(jobDirectory, &job, &operation)
+			auditCandidate(home, "failed", &operation, map[string]any{"code": "CANDIDATE_HANDOFF_FAILED"})
+			fail("candidate headless update handoff could not be started")
+		}
+		write(map[string]any{"ok": true, "job": publicCandidateJob(job), "operation": operation})
+		return
+	}
 	launcher := filepath.Join(home, "core", "bin", "personal-agent-ui")
 	if runtime.GOOS == "windows" {
 		launcher += ".exe"

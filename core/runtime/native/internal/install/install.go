@@ -221,7 +221,7 @@ func Install(ctx context.Context, opts Options, runner Runner) (result Result, r
 			return result, fmt.Errorf("remove legacy background service launcher: %w", err)
 		}
 	}
-	if manifest.DesktopShell != nil {
+	if manifest.DesktopShell != nil && !resolved.SkipDesktopEntry {
 		if err := installDesktopEntry(resolved, runner, envFor(resolved)); err != nil {
 			return result, fmt.Errorf("install desktop entry: %w", err)
 		}
@@ -553,18 +553,20 @@ func normalizeOptions(opts Options) (Options, error) {
 }
 
 func existingWorkspaceDomain(dataRoot string) string {
-	if domain := siteDomain(filepath.Join(dataRoot, "config", "site.json")); domain != "" {
-		return domain
-	}
 	entries, err := os.ReadDir(filepath.Join(dataRoot, "spaces"))
 	if err != nil {
-		return ""
+		return siteDomain(filepath.Join(dataRoot, "config", "site.json"))
 	}
+	legacyDomains := map[string]struct{}{}
 	for _, entry := range entries {
 		if !entry.IsDir() {
 			continue
 		}
 		spaceRoot := filepath.Join(dataRoot, "spaces", entry.Name())
+		domain := siteDomain(filepath.Join(spaceRoot, "config", "site.json"))
+		if domain != "" {
+			legacyDomains[domain] = struct{}{}
+		}
 		data, readErr := os.ReadFile(filepath.Join(spaceRoot, "space.json"))
 		if readErr != nil {
 			continue
@@ -575,9 +577,14 @@ func existingWorkspaceDomain(dataRoot string) string {
 		if json.Unmarshal(data, &space) != nil || space.Kind != "personal" {
 			continue
 		}
-		return siteDomain(filepath.Join(spaceRoot, "config", "site.json"))
+		return domain
 	}
-	return ""
+	if len(legacyDomains) == 1 {
+		for domain := range legacyDomains {
+			return domain
+		}
+	}
+	return siteDomain(filepath.Join(dataRoot, "config", "site.json"))
 }
 
 func siteDomain(file string) string {

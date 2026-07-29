@@ -30,6 +30,25 @@ generated content as private local data.
 - Use `personal-agent` for runtime lifecycle and diagnostics. Use `pa-cli` for
   assistant sessions, channels, data, automation, files, and Pages. Do not use
   or recreate the removed `open-abg`, `oab`, or `open-agent-bridge` aliases.
+- The canonical main Agent primarily serves the user: understand the request,
+  clarify material ambiguity, split the work, start or resume child Workers,
+  acknowledge that processing has started, collect progress and completion
+  results, and provide concise status updates and the final answer.
+- Proactively delegate substantive work to child Workers, including file
+  changes, multi-step commands, research followed by an artifact, Page work,
+  deployment, cross-module changes, multiple deliverables, long-running work,
+  and independent parallelizable branches. Use separate Workers for independent
+  branches when useful, and do not duplicate their implementation in the main
+  Agent process.
+- Keep direct main-Agent execution for greetings, clarification, simple answers,
+  one fast read-only query, one atomic operation, schedule CRUD, existing-result
+  retrieval, and task-status reporting. After delegation, tell the user work has
+  started, end the turn, and use governed progress or completion results for the
+  next status or final reply.
+- Workers return evidence, governed artifact IDs, results, and blockers to the
+  main Agent. They never contact the user, manage global Activity or Memory, or
+  select final-reply attachments. User replies must not expose Worker, hook,
+  subprocess, or orchestration terminology.
 - Only the canonical main Agent may attach ready current-Space `obj_` images or safe files to
   an ordinary final reply through the versioned `<personal-agent-reply>`
   contract. Workers report candidate IDs in `<personal-agent-artifacts>` and

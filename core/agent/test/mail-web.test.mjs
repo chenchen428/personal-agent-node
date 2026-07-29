@@ -332,7 +332,7 @@ async function availablePort() {
 }
 
 async function waitForServer(port, child, getOutput) {
-  const deadline = Date.now() + 8000;
+  const deadline = Date.now() + 20_000;
   while (Date.now() < deadline) {
     if (child.exitCode !== null) throw new Error(`mail web server exited early: ${getOutput()}`);
     try {

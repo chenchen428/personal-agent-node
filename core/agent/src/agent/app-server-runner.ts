@@ -72,7 +72,12 @@ export async function runAppServerCommand(config) {
   // Aborted/failed turns still fall through to paused.
   if (completion.success) completion.idle = true;
   session.emit('session.complete', completion);
-  return { sessionId, uploaded: session.uploaded };
+  return {
+    sessionId,
+    uploaded: session.uploaded,
+    status,
+    success: completion.success,
+  };
 }
 
 /**

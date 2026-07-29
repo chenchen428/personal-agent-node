@@ -11,6 +11,7 @@ import { ConnectionOperationSop, type ConnectionOperationStep } from "./connecti
 import { PersonalWechatAction } from "./personal-wechat-action";
 import { ConnectionClearDialog } from "./connection-clear-dialog";
 import { WechatClawAction } from "./wechat-claw-action";
+import { DingTalkAction } from "./dingtalk-action";
 
 export function ConnectionActionRow({ connection, refresh }: { connection: Connection; refresh: () => Promise<void> }) {
   if (connection.id === "wechat-personal") return <><div className="connection-summary-action"><p>{connection.description}</p><PersonalWechatAction connection={connection} refresh={refresh} /></div></>;
@@ -26,6 +27,8 @@ function DefaultConnectionActionRow({ connection, refresh }: { connection: Conne
         ? <OpenCliAction connection={connection} refresh={refresh} />
         : connection.id === "wechat"
           ? <WechatClawAction connection={connection} refresh={refresh} />
+          : connection.id === "dingtalk"
+            ? <DingTalkAction connection={connection} refresh={refresh} />
           : null;
 
   return <div className="connection-summary-action"><p>{connection.description}</p>{action}</div>;

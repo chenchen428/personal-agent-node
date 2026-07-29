@@ -1,7 +1,7 @@
-export function TemplateCardArtwork() {
-  return <div className="template-card-artwork" aria-hidden="true">
-    <header><span>PA</span><b>C 户型 · 现代温润</b><i /></header>
-    <div className="template-mini-home"><i /><i /><i /><i /><i /><i /><i /><i /></div>
-    <footer><span>客厅</span><span>餐厅</span><span>厨房</span><b>3D 鸟瞰</b></footer>
+export function TemplateCardArtwork({ coverPath }: { coverPath: string }) {
+  return <div className="template-card-artwork" aria-label="装修设计交付页 Pascal 专业模型截图">
+    <img alt="由内置 Pascal v2 项目生成的专业装修概念模型轴测封面" decoding="async" fetchPriority="high" loading="eager" src={coverPath} />
+    <span className="template-artwork-live"><i />Pascal 模型</span>
+    <footer><span>装修设计交付页</span><b>真实产物</b></footer>
   </div>;
 }

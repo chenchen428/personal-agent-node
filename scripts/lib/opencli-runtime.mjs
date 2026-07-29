@@ -18,6 +18,7 @@ export function assembleOpenCliRuntime({ workspaceRoot, releaseRoot, npmInvocati
     [...npmInvocation.prefixArgs, "ci", "--omit=dev", "--ignore-scripts", "--no-audit", "--no-fund"],
     { cwd: targetRoot, stdio },
   );
+  fs.rmSync(path.join(targetRoot, "node_modules", ".bin"), { recursive: true, force: true });
 
   verifyOpenCliRuntime({ releaseRoot, descriptor });
   return {
@@ -41,6 +42,7 @@ export function verifyOpenCliRuntime({ releaseRoot, descriptor = readDescriptor(
   if (installed.license !== descriptor.license) throw new Error(`Bundled OpenCLI license mismatch: expected ${descriptor.license}`);
   if (!fs.statSync(entrypoint, { throwIfNoEntry: false })?.isFile()) throw new Error("Bundled OpenCLI entrypoint is missing");
   if (!fs.statSync(path.join(packageRoot, "LICENSE"), { throwIfNoEntry: false })?.isFile()) throw new Error("Bundled OpenCLI license file is missing");
+  assertNoSymlinks(path.join(releaseRoot, SOURCE_RELATIVE));
   return { descriptor, entrypoint, packageRoot };
 }
 
@@ -84,6 +86,13 @@ function releasePath(root, relative) {
   const normalized = String(relative || "").replaceAll("\\", "/");
   if (!normalized || normalized.startsWith("/") || normalized.split("/").includes("..")) throw new Error("Unsafe OpenCLI runtime path");
   return path.join(root, ...normalized.split("/"));
+}
+
+function assertNoSymlinks(directory) {
+  for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
+    if (entry.isSymbolicLink()) throw new Error(`Bundled OpenCLI runtime contains a symbolic link: ${entry.name}`);
+    if (entry.isDirectory()) assertNoSymlinks(path.join(directory, entry.name));
+  }
 }
 
 function readJson(file) {

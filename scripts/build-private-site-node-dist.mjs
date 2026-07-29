@@ -88,6 +88,8 @@ function copyNextStandalone() {
   if (!fs.existsSync(path.join(standalone, "core", "app", "server.js"))) throw new Error("Next.js standalone server is missing");
   copyDirectory(standalone, outputRoot);
   copyDirectory(staticRoot, path.join(outputRoot, "core", "app", ".next", "static"));
+  const publicRoot = path.join(root, "core", "app", "public");
+  if (fs.existsSync(publicRoot)) copyDirectory(publicRoot, path.join(outputRoot, "core", "app", "public"));
   fs.writeFileSync(path.join(outputRoot, "core", "app", "package.json"), `${JSON.stringify({ name: "@personal-agent/app-runtime", private: true, type: "module" }, null, 2)}\n`);
 }
 

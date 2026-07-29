@@ -6,7 +6,7 @@ import test from "node:test";
 import { buildServiceEnvironment, initializeSite, resolveNodeConfig, writeWorkerConfig } from "../src/config.ts";
 import { resolveSpaceInitializationDomain } from "../src/installation-supervisor.ts";
 import { createSpace, getSpace } from "../src/space-registry.ts";
-import { componentSpecs } from "../src/supervisor.ts";
+import { componentSpecs, systemCaNodeOptions } from "../src/supervisor.ts";
 import { BridgeStore } from "../../agent/src/store/store.js";
 
 test("each Space receives a complete process group with isolated ports, secrets, databases, cookies, and workspace", () => {
@@ -28,6 +28,9 @@ test("each Space receives a complete process group with isolated ports, secrets,
     assert.ok(personalComponents.some((component) => component.name === "open-agent-bridge-worker"));
     assert.ok(personalComponents.some((component) => component.name === "personal-agent-app"));
     assert.ok(personalComponents.some((component) => component.name === "private-site-gateway"));
+    assert.match(personalComponents.find((component) => component.name === "personal-agent-tunnel").env.NODE_OPTIONS, /(^|\s)--use-system-ca(?=\s|$)/);
+    assert.equal(systemCaNodeOptions("--trace-warnings"), "--trace-warnings --use-system-ca");
+    assert.equal(systemCaNodeOptions("--use-system-ca"), "--use-system-ca");
     assert.notEqual(personal.gateway.port, custom.gateway.port);
     assert.notEqual(personal.ports.bridge, custom.ports.bridge);
     assert.notEqual(personal.ports.control, custom.ports.control);

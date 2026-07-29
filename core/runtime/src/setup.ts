@@ -110,13 +110,19 @@ export async function setupStatus({
   const mailIdentityValue = connectionMode === 'managed-cloud'
     ? managed.agentMail.value || ''
     : customMailReady ? `agent@${customDomains.mail.domain}` : '';
+  const managedCloudRecoveryCurrent = managedCloudAction?.state === 'starting'
+    || managedCloudAction?.state === 'running'
+    || (['failed', 'cancelled'].includes(managedCloudAction?.state)
+      && stateTimestamp(managedCloudAction) >= stateTimestamp(reverseTunnel));
   const effectiveManagedCloudAction = managedCloudComplete
     ? { state: 'succeeded', phase: 'complete' }
-    : reverseTunnel?.state === 'reauth_required'
-      ? { state: 'failed', phase: 'enrollment', code: 'CLOUD_REAUTH_REQUIRED' }
-      : managedCloudAction?.state === 'succeeded'
-        ? { state: 'idle', phase: 'idle' }
-        : managedCloudAction;
+    : managedCloudRecoveryCurrent
+      ? managedCloudAction
+      : connectionMode === 'managed-cloud' && reverseTunnel?.state === 'reauth_required'
+        ? { state: 'failed', phase: 'enrollment', code: 'CLOUD_REAUTH_REQUIRED' }
+        : managedCloudAction?.state === 'succeeded'
+          ? { state: 'idle', phase: 'idle' }
+          : managedCloudAction;
 
   const checks = [
     makeCheck('installation.release', releaseReady, releaseReady ? '已安装可信发行版' : '需要完成发行版安装', { installed: releaseReady, releaseId: releaseReady ? String(installation.activeReleaseId).slice(0, 128) : '' }, generatedAt),
@@ -185,6 +191,10 @@ function safePublicAuthorizationUrl(value) {
     if (!['https:', 'http:'].includes(url.protocol) || (url.protocol === 'http:' && !['127.0.0.1', 'localhost'].includes(url.hostname))) return '';
     return url.href.length <= 2048 ? url.href : '';
   } catch { return ''; }
+}
+
+function stateTimestamp(value) {
+  return Date.parse(String(value?.updatedAt || ''));
 }
 
 export async function inspectRemoteConnectivity({ host, token, lookup = dns.lookup, fetchImpl = fetch } = {}) {

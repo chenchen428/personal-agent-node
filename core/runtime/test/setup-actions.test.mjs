@@ -50,8 +50,17 @@ test('mail setup explicitly selects optional readiness without storing secrets',
   const dataRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'personal-agent-setup-mail-action-'));
   try {
     const { config } = initializeSite({ dataRoot, domain: 'personal-agent.local' });
-    const result = await executeSetupAction({ actionId: 'mail.enable', input: {}, dataRoot });
-    assert.deepEqual(result, { selected: true, dimension: 'mail', next: '/app/mail' });
+    const operations = createOperationStore({ dataRoot: config.dataRoot, randomUUID: () => '00000000-0000-4000-8000-000000000002' });
+    const plan = planSetupAction({ actionId: 'mail.enable', operations, dataRoot, input: {} });
+    assert.equal(plan.risk, 'R2');
+    operations.approve(plan.id, { digest: plan.digest, actor: { kind: 'human', authenticated: true, loopback: true, channel: 'local-console' } });
+    const executed = await operations.execute(plan.id, {
+      digest: plan.digest,
+      actor: { kind: 'runtime' },
+      handler: () => executeSetupAction({ actionId: 'mail.enable', input: {}, dataRoot }),
+    });
+    assert.equal(executed.status, 'succeeded');
+    assert.deepEqual(executed.result, { selected: true, dimension: 'mail', next: '/app/mail' });
     const selections = JSON.parse(fs.readFileSync(path.join(config.configDir, 'setup-selections.json'), 'utf8'));
     assert.deepEqual(selections, { schemaVersion: 1, mail: true });
   } finally { fs.rmSync(dataRoot, { recursive: true, force: true }); }
@@ -197,10 +206,11 @@ test('custom-domain R2 plan binds only the approved domain and kind', async () =
   try {
     const { config } = initializeSite({ dataRoot, domain: 'personal-agent.local' });
     const operations = createOperationStore({ dataRoot: config.dataRoot, randomUUID: () => '00000000-0000-4000-8000-000000000099' });
-    const input = { kind: 'sites', domain: 'agent.example.net' };
+    const input = { kind: 'sites', domain: 'agent.example.net', relayToken: 'a'.repeat(43) };
     const plan = planSetupAction({ actionId: 'connectivity.custom-domain-start', operations, dataRoot: config.dataRoot, input });
     assert.equal(plan.risk, 'R2');
-    assert.match(plan.stateFingerprint, /sites:agent\.example\.net$/);
+    assert.match(plan.stateFingerprint, /sites:agent\.example\.net:[a-f0-9]{64}$/);
+    assert.doesNotMatch(plan.stateFingerprint, new RegExp(input.relayToken));
     operations.approve(plan.id, { digest: plan.digest, actor: { kind: 'human', authenticated: true, loopback: true, channel: 'local-console' } });
     await assert.rejects(operations.execute(plan.id, {
       digest: plan.digest,

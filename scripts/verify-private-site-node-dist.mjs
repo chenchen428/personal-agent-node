@@ -154,7 +154,7 @@ function verifyPreparation() {
     for (const relative of ["AGENTS.md", "skills", "workflows", "registry"]) {
       assert(fs.existsSync(path.join(personalRoot, "agent-workspace", relative)), `Prepared Agent workspace is missing: ${relative}`);
     }
-    for (const relative of ["registry/product-development.json", "workflows/product-development.md", "skills/personal-agent/references/product-development.md"]) {
+    for (const relative of ["registry/product-development.json", "workflows/product-development.md", "skills/personal-product-development/references/product-development.md"]) {
       assert(fs.existsSync(path.join(personalRoot, "agent-workspace", ...relative.split("/"))), `Prepared Agent workspace is missing product development contract: ${relative}`);
     }
     const appCompatibility = JSON.parse(fs.readFileSync(path.join(personalRoot, "config", "apps-compatibility.json"), "utf8"));
@@ -191,10 +191,11 @@ async function verifyApplication() {
     assert(setup.status === 200, `Next BFF setup route failed: ${setup.status}`);
     const setupBody = await setup.json();
     assert(setupBody.schemaVersion === 1 && Array.isArray(setupBody.checks), "Next BFF returned an invalid setup contract");
-    const spaces = await fetch(`http://127.0.0.1:${appPort}/api/system/spaces`);
+    const localDesktopHeaders = { "x-personal-agent-surface": "desktop" };
+    const spaces = await fetch(`http://127.0.0.1:${appPort}/api/system/spaces`, { headers: localDesktopHeaders });
     const spacesBody = await spaces.json();
     assert(spaces.status === 200 && spacesBody.spaces?.length === 1 && spacesBody.spaces[0].kind === "personal", "Next BFF did not expose exactly one Personal Space");
-    const gatewayCompatibleSpaces = await fetch(`http://127.0.0.1:${appPort}/api/spaces`);
+    const gatewayCompatibleSpaces = await fetch(`http://127.0.0.1:${appPort}/api/spaces`, { headers: localDesktopHeaders });
     const gatewayCompatibleSpacesBody = await gatewayCompatibleSpaces.json();
     assert(gatewayCompatibleSpaces.status === 200 && gatewayCompatibleSpacesBody.spaces?.length === 1, "Next BFF rejected the gateway-rewritten Space route");
     const page = await (await fetch(`http://127.0.0.1:${appPort}/app/setup`)).text();

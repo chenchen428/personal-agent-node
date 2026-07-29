@@ -111,7 +111,9 @@ func updateCommand(args []string) {
 		job.CompletedAt = time.Now().UTC().Format(time.RFC3339)
 		writeUpdateJob(jobPath, &job)
 		completeCandidateOperation(jobPath, &job, "rolled_back", err)
-		_ = launchInstalledDesktop(home, "/app/update")
+		if runtime.GOOS != "linux" {
+			_ = launchInstalledDesktop(home, "/app/update")
+		}
 		fail(err.Error())
 	}
 	if err := installSetupExecutable(executable, result.InstallRoot); err != nil {
@@ -136,8 +138,10 @@ func rollbackUpdateCommand(args []string) {
 	if result.ReleaseID != job.TargetReleaseID {
 		failUpdate(jobPath, &job, fmt.Errorf("rollback target does not match the approved release"))
 	}
-	if err := launchInstalledDesktop(home, "/app/update"); err != nil {
-		failUpdate(jobPath, &job, err)
+	if runtime.GOOS != "linux" {
+		if err := launchInstalledDesktop(home, "/app/update"); err != nil {
+			failUpdate(jobPath, &job, err)
+		}
 	}
 	if err := waitForLocalGateway(90 * time.Second); err != nil {
 		failUpdate(jobPath, &job, err)

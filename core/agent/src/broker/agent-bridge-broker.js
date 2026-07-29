@@ -107,7 +107,7 @@ export class AgentBridgeBroker {
   createBrokerSession(body) {
     const workspaceName = String(body.workspaceName || body.workspace || "").trim();
     const workspace = this.resolveWorkspace({ name: workspaceName });
-    return this.store.createSession({
+    const session = this.store.createSession({
       role: "worker",
       parentSessionId: body.parentSessionId || null,
       title: body.title || body.taskDescription || body.content || "Agent Bridge session",
@@ -120,6 +120,15 @@ export class AgentBridgeBroker {
         source: "agent-bridge-broker",
       },
     });
+    const item = this.store.appendTaskDisplayEvent(session.id, {
+      sourceEventId: `task-description:${session.id}`,
+      kind: "requirement",
+      role: "user",
+      content: session.taskDescription,
+      createdAt: session.createdAt,
+    });
+    if (item) this.hub.broadcast({ type: "task.display.delta", taskId: session.id, item, task: this.store.getMobileTaskSummary(session.id) });
+    return session;
   }
 
   async dispatchSessionAction(sessionId, body) {
@@ -219,11 +228,31 @@ export class AgentBridgeBroker {
       return;
     }
     if (message.type === "session.delta") {
+      // Broker actions persist user input before delivery so queued and offline
+      // sessions can show it immediately. Codex app-server emits that same input
+      // back as a userMessage item; storing the echo would create a second bubble.
+      if (message.kind === "session.user_message" && message.payload?.source === "agent-bridge-appserver") return;
       const event = this.store.appendEvent(message.sessionId, message.kind, {
         ...(message.payload || {}),
         metadata: message.payload?.metadata || {},
       });
       this.hub.broadcast({ type: "session.delta", event, session: this.store.getSessionRecord(message.sessionId) });
+      const projection = this.store.projectTaskDisplayEvent(event);
+      if (projection?.type === "event") {
+        this.hub.broadcast({
+          type: "task.display.delta",
+          taskId: projection.taskId,
+          item: projection.item,
+          task: this.store.getMobileTaskSummary(projection.taskId),
+        });
+      } else if (projection?.type === "plan") {
+        this.hub.broadcast({
+          type: "task.display.plan",
+          taskId: projection.taskId,
+          latestPlan: projection.latestPlan,
+          task: this.store.getMobileTaskSummary(projection.taskId),
+        });
+      }
       return;
     }
     if (message.type === "session.queued") {

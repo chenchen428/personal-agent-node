@@ -1,0 +1,29 @@
+{
+  "schemaVersion": 1,
+  "templateSelection": {
+    "requiredBeforeGeneration": true,
+    "matchingTemplateAndSkillPassedToChildTask": true,
+    "registeredGeneratorAndVersionRequired": true,
+    "redactedUserFloorPlanRequired": true,
+    "artifactMarkerVerified": true,
+    "contractDigestVerified": true,
+    "artifactSha256Verified": true,
+    "publicationProvenancePersisted": true,
+    "agentBrowserAcceptanceDisabled": true,
+    "visualAcceptanceOwnedByUser": true
+  },
+  "galleryPreviews": {
+    "desktopAndMobileAreDistinct": true,
+    "cliCanGenerateWithoutBrowser": true
+  },
+  "pageLinks": {
+    "internalUrlIsRelative": true,
+    "cliUrlUsesManagedDomain": true,
+    "missingDomainReturnsNotice": true,
+    "localPathsAreNeverDeliverableLinks": true,
+    "shareUrlIsSeparate": true,
+    "shareUrlRequiresExplicitShareIntent": true,
+    "tunnelOriginPersistedInternally": false,
+    "agentConversationUsesInternalUrl": true
+  }
+}

@@ -1,0 +1,66 @@
+{
+  "schemaVersion": 1,
+  "revision": 2,
+  "ruleSet": "professional-interior-v2",
+  "ruleSetVersion": 1,
+  "ok": true,
+  "blockingCount": 0,
+  "warningCount": 2,
+  "findings": [
+    {
+      "issueId": "issue_d2bfda92e8ae3c1a",
+      "ruleId": "budget.unknown",
+      "severity": "warning",
+      "message": "The project budget is not calibrated; cost output remains scope guidance only.",
+      "nodeIds": [],
+      "measurement": null,
+      "threshold": null,
+      "thresholdSource": "product-concept-default",
+      "fix": "Record a target budget and estimate confidence before procurement decisions.",
+      "professionalVerification": false
+    },
+    {
+      "issueId": "issue_e698430912656286",
+      "ruleId": "schedule.unknown",
+      "severity": "warning",
+      "message": "No delivery phases are allocated for the recorded renovation scope.",
+      "nodeIds": [],
+      "measurement": {
+        "scopeItems": 5,
+        "phases": 0,
+        "confidence": "unknown"
+      },
+      "threshold": {
+        "phasesRequiredWhenScheduleKnown": true
+      },
+      "thresholdSource": "product-concept-default",
+      "fix": "Record demolition, construction, systems, finishes, fixtures, furniture, verification, or other project-specific phases.",
+      "professionalVerification": false
+    },
+    {
+      "issueId": "issue_987e3efa649d1112",
+      "ruleId": "circulation.narrowest-passage",
+      "severity": "info",
+      "message": "The narrowest modeled route on 首层 is reported for design review.",
+      "nodeIds": [
+        "page-zone-0043"
+      ],
+      "measurement": {
+        "minimumWidthMetres": 1.05,
+        "location": [
+          0,
+          7.25
+        ],
+        "gridMetres": 0.25,
+        "walkableCells": 2138,
+        "walkableEdges": 4007
+      },
+      "threshold": {
+        "comfortReviewWidthMetres": 0.75
+      },
+      "thresholdSource": "product-concept-default",
+      "fix": "Keep this bottleneck visible and replace the product default if the user or jurisdiction supplies another threshold.",
+      "professionalVerification": false
+    }
+  ]
+}

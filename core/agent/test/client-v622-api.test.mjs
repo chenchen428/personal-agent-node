@@ -5,17 +5,21 @@ import net from "node:net";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
+import { DatabaseSync } from "node:sqlite";
 import { initializeInstallation } from "../../runtime/src/space-registry.ts";
 
 const agentRoot = path.resolve(import.meta.dirname, "..");
 const workspaceRoot = path.resolve(agentRoot, "..", "..");
+const packageVersion = JSON.parse(fs.readFileSync(path.join(workspaceRoot, "package.json"), "utf8")).version;
 
 test("V6.22 read-only client API is local, searchable and self-contained", async (t) => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "personal-agent-client-v622-"));
   const port = await freePort();
   const token = "client-v622-test-token";
   const installationRoot = path.join(root, "workspace");
+  const configuredWorkspaceRoot = path.join(root, "agent-workspace-without-package");
   const { personal } = initializeInstallation({ dataRoot: installationRoot });
+  fs.mkdirSync(configuredWorkspaceRoot, { recursive: true });
   const uploadsDir = path.join(root, "uploads");
   fs.mkdirSync(path.join(uploadsDir, "relative-page"), { recursive: true });
   fs.writeFileSync(path.join(uploadsDir, "relative-page", "index.html"), "<h1>Relative page</h1>");
@@ -29,12 +33,13 @@ test("V6.22 read-only client API is local, searchable and self-contained", async
       PERSONAL_AGENT_AUTH_PASSWORD: "client-v622-local-password",
       PERSONAL_AGENT_AUTH_COOKIE_SECRET: "client-v622-cookie-secret-for-tests",
       OPEN_AGENT_BRIDGE_DATA_DIR: path.join(root, "bridge"),
-      OPEN_AGENT_BRIDGE_WORKSPACE_ROOT: workspaceRoot,
+      OPEN_AGENT_BRIDGE_WORKSPACE_ROOT: configuredWorkspaceRoot,
       OPEN_AGENT_BRIDGE_AGENT_DATA_DIR: path.join(root, "agent-data"),
       OPEN_AGENT_BRIDGE_AGENT_DATA_DATABASE: path.join(root, "agent-data", "agent-data.sqlite"),
       OPEN_AGENT_BRIDGE_PRIVATE_PUBLICATIONS_DIR: path.join(root, "private-publications"),
       OPEN_AGENT_BRIDGE_UPLOADS_DIR: uploadsDir,
       OPEN_AGENT_BRIDGE_MAIL_DATA_DIR: path.join(root, "mail"),
+      PRIVATE_SITE_INSTALL_ROOT: "",
       PRIVATE_SITE_DATA_ROOT: installationRoot,
       PERSONAL_AGENT_SPACE_ID: personal.id,
       PERSONAL_AGENT_SPACE_ROOT: personal.root,
@@ -43,6 +48,8 @@ test("V6.22 read-only client API is local, searchable and self-contained", async
       OPEN_AGENT_BRIDGE_CHANNEL_POLL: "0",
       OPEN_AGENT_BRIDGE_SCHEDULER: "0",
       OPEN_AGENT_BRIDGE_ALLOW_LOCAL_ONLY_MANAGED_FILES: "1",
+      PERSONAL_AGENT_VERSION: "",
+      PERSONAL_AGENT_HOME: "",
     },
     stdio: ["ignore", "pipe", "pipe"],
   });
@@ -84,7 +91,9 @@ test("V6.22 read-only client API is local, searchable and self-contained", async
   assert.equal(overview.result.machine.state, "running");
   assert.equal(overview.result.machine.mobileAccess, "unavailable");
   assert.equal(overview.result.machine.mobileAddress, "");
-  assert.equal(overview.result.machine.workspaceRoot, workspaceRoot);
+  assert.equal(overview.result.machine.workspaceRoot, configuredWorkspaceRoot);
+  assert.equal(overview.result.space.id, personal.id);
+  assert.equal(overview.result.space.displayName, "个人隔离空间");
   assert.equal(typeof overview.result.counts.pages, "number");
   assert.equal(typeof overview.result.counts.runningWork, "number");
   assert.equal(Array.isArray(overview.result.recent), true);
@@ -93,46 +102,79 @@ test("V6.22 read-only client API is local, searchable and self-contained", async
   const connections = await get(port, token, "/api/connections");
   assert.ok(Date.now() - connectionsStartedAt < 1_000, "connections must not wait for browser or network probes");
   assert.equal(Array.isArray(connections.connections), true);
-
-  const personalWechatSetup = await get(port, token, "/api/connections/wechat-personal/setup");
-  assert.equal(personalWechatSetup.setup.qianxunDocsUrl, "https://daenmax.github.io/qxpro-doc/doc/start/");
-  assert.equal(personalWechatSetup.setup.qianxunBaseUrl, "http://127.0.0.1:8055");
-  assert.equal(personalWechatSetup.setup.callbackUrl, "http://127.0.0.1:8843/api/internal/channels/wechat-personal/callback");
-  if (process.platform === "win32") {
-    assert.equal(typeof (await get(port, token, "/api/connections/wechat-personal/status?probe=0")).connection, "object");
-  } else {
-    assert.equal(await status(port, token, "/api/connections/wechat-personal/status?probe=0"), 404);
+  assert.equal(connections.connections.some((connection) => connection.id === "dingtalk"), true);
+  assert.equal(connections.connections.some((connection) => connection.id === "wechat-personal"), process.platform === "win32");
+  assert.equal(connections.connections.some((connection) => connection.id === "xiaohongshu"), process.platform === "win32" || process.platform === "darwin");
+  assert.equal(connections.connections.some((connection) => connection.id === "twitter"), process.platform === "win32" || process.platform === "darwin");
+  for (const id of ["mail", "sites"]) {
+    const connection = connections.connections.find((candidate) => candidate.id === id);
+    assert.equal(connection.state, "degraded");
+    assert.equal(connection.statusLabel, "未生效");
+    assert.equal(connection.tone, "warning");
+    assert.equal(connection.details.customRelayInstallerUrl, `https://github.com/chenchen428/personal-agent-node/releases/download/v${packageVersion}/personal-agent-relay-install.sh`);
   }
-  assert.deepEqual((await get(port, token, "/api/connections/wechat-personal/conversations?limit=50&before=100")).conversations, []);
-  assert.deepEqual((await get(port, token, "/api/connections/wechat-personal/history?conversation=pwc_0123456789abcdef0123456789abcdef&limit=100")).messages, []);
-  assert.equal(await status(port, token, "/api/connections/wechat-personal/history?conversation=raw-wxid"), 400);
-  const callback = await fetch(`http://127.0.0.1:${port}/api/internal/channels/wechat-personal/callback`, {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({ type: "recvMsg", wxid: "wxid_owner", data: { msgType: 1, fromWxid: "wxid_friend", msg: "hello" } }),
-  });
-  assert.equal(callback.status, 200);
-  assert.equal((await callback.text()).trim(), "ignored:not_configured");
-  const localProxyStart = await fetch(`http://127.0.0.1:${port}/api/connections/wechat-personal/connectivity-test/start`, {
-    method: "POST",
-    headers: {
-      authorization: `Bearer ${token}`,
-      "x-personal-agent-authenticated": "1",
-      "x-forwarded-for": "127.0.0.1",
-    },
-  });
-  assert.equal(localProxyStart.status, 409);
-  assert.notEqual((await localProxyStart.json()).error, "个人微信收发测试只能从本机开始");
-  const remoteProxyStart = await fetch(`http://127.0.0.1:${port}/api/connections/wechat-personal/connectivity-test/start`, {
-    method: "POST",
-    headers: {
-      authorization: `Bearer ${token}`,
-      "x-personal-agent-authenticated": "1",
-      "x-forwarded-for": "203.0.113.9",
-    },
-  });
-  assert.equal(remoteProxyStart.status, 403);
-  assert.equal((await remoteProxyStart.json()).error, "个人微信收发测试只能从本机开始");
+  assert.equal((await get(port, token, "/api/connections/dingtalk/status")).connection.state, "needs_setup");
+  assert.equal(await status(port, token, "/api/mobile/tasks/missing-task"), 404);
+  assert.equal(await status(port, token, "/api/mobile/tasks/missing-task/display-events"), 404);
+
+  const taskId = "api-display-task";
+  seedTaskDisplayLedger(path.join(root, "bridge", "state.sqlite"), taskId);
+  const displayTail = await get(port, token, `/api/mobile/tasks/${taskId}/display-events?limit=20`);
+  assert.deepEqual(displayTail.result.items.map((item) => item.sequence), Array.from({ length: 20 }, (_, index) => index + 6));
+  assert.equal(displayTail.result.items.at(-1).content, "display-25");
+  assert.equal(displayTail.result.items.some((item) => item.content.includes("raw Codex")), false);
+  assert.equal(displayTail.result.hasEarlier, true);
+  assert.ok(displayTail.result.beforeCursor);
+  const earlier = await get(port, token, `/api/mobile/tasks/${taskId}/display-events?limit=20&before=${encodeURIComponent(displayTail.result.beforeCursor)}`);
+  assert.deepEqual(earlier.result.items.map((item) => item.sequence), [1, 2, 3, 4, 5]);
+  assert.equal(earlier.result.hasEarlier, false);
+  assert.equal(await status(port, token, `/api/mobile/tasks/${taskId}/display-events?before=${encodeURIComponent(`${displayTail.result.beforeCursor}x`)}`), 400);
+  const mobileLegacyTaskDetail = await get(port, token, `/api/mobile/tasks/${taskId}?messageLimit=20`);
+  assert.equal(mobileLegacyTaskDetail.result.session.messages.length, 20);
+  assert.equal(mobileLegacyTaskDetail.result.session.messages.at(-1).content, "display-25");
+
+  if (process.platform === "win32") {
+    const personalWechatSetup = await get(port, token, "/api/connections/wechat-personal/setup");
+    assert.equal(personalWechatSetup.setup.qianxunDocsUrl, "https://daenmax.github.io/qxpro-doc/doc/start/");
+    assert.equal(personalWechatSetup.setup.qianxunBaseUrl, "http://127.0.0.1:8055");
+    assert.equal(personalWechatSetup.setup.callbackUrl, "http://127.0.0.1:8843/api/internal/channels/wechat-personal/callback");
+    assert.equal(typeof (await get(port, token, "/api/connections/wechat-personal/status?probe=0")).connection, "object");
+    assert.deepEqual((await get(port, token, "/api/connections/wechat-personal/conversations?limit=50&before=100")).conversations, []);
+    assert.deepEqual((await get(port, token, "/api/connections/wechat-personal/history?conversation=pwc_0123456789abcdef0123456789abcdef&limit=100")).messages, []);
+    assert.equal(await status(port, token, "/api/connections/wechat-personal/history?conversation=raw-wxid"), 400);
+    const callback = await fetch(`http://127.0.0.1:${port}/api/internal/channels/wechat-personal/callback`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ type: "recvMsg", wxid: "wxid_owner", data: { msgType: 1, fromWxid: "wxid_friend", msg: "hello" } }),
+    });
+    assert.equal(callback.status, 200);
+    assert.equal((await callback.text()).trim(), "ignored:not_configured");
+    const localProxyStart = await fetch(`http://127.0.0.1:${port}/api/connections/wechat-personal/connectivity-test/start`, {
+      method: "POST",
+      headers: { authorization: `Bearer ${token}`, "x-personal-agent-authenticated": "1", "x-forwarded-for": "127.0.0.1" },
+    });
+    assert.equal(localProxyStart.status, 409);
+    assert.notEqual((await localProxyStart.json()).error, "个人微信收发测试只能从本机开始");
+    const remoteProxyStart = await fetch(`http://127.0.0.1:${port}/api/connections/wechat-personal/connectivity-test/start`, {
+      method: "POST",
+      headers: { authorization: `Bearer ${token}`, "x-personal-agent-authenticated": "1", "x-forwarded-for": "203.0.113.9" },
+    });
+    assert.equal(remoteProxyStart.status, 403);
+    assert.equal((await remoteProxyStart.json()).error, "个人微信收发测试只能从本机开始");
+  } else {
+    for (const pathname of [
+      "/api/connections/wechat-personal/setup",
+      "/api/connections/wechat-personal/status?probe=0",
+      "/api/connections/wechat-personal/conversations?limit=50",
+      "/api/connections/wechat/qianxun/status",
+    ]) assert.equal(await status(port, token, pathname), 404);
+    const callback = await fetch(`http://127.0.0.1:${port}/api/internal/channels/wechat-personal/callback`, { method: "POST" });
+    assert.equal(callback.status, 404);
+  }
+  if (process.platform === "linux") {
+    assert.equal(await status(port, token, "/api/connections/xiaohongshu/status"), 404);
+    assert.equal(await status(port, token, "/api/connections/twitter/status"), 404);
+  }
 
   const activity = await get(port, token, "/api/node/v1/client/activity?q=does-not-exist&limit=3");
   assert.deepEqual(activity.result.items, []);
@@ -151,7 +193,10 @@ test("V6.22 read-only client API is local, searchable and self-contained", async
   assert.deepEqual(mobileActivity.result.items, []);
   assert.equal(mobileActivity.result.query, "does-not-exist");
   assert.equal(await status(port, token, "/agent-memory"), 404);
-  assert.equal(await status(port, token, "/api/memories"), 404);
+  const memories = await get(port, token, "/api/memories?status=active&query=does-not-exist");
+  assert.deepEqual(memories.items, []);
+  assert.deepEqual(memories.counts, { active: 0, forgotten: 0 });
+  assert.equal(memories.space.id, personal.id);
 
   const mobileTasks = await get(port, token, "/api/mobile/tasks?query=does-not-exist&status=running");
   assert.deepEqual(mobileTasks.result.items, []);
@@ -185,6 +230,37 @@ async function status(port, token, pathname) {
   return response.status;
 }
 
+function seedTaskDisplayLedger(databasePath, taskId) {
+  const db = new DatabaseSync(databasePath);
+  const now = "2026-07-20T12:00:00.000Z";
+  try {
+    db.exec("BEGIN IMMEDIATE");
+    db.prepare(`
+      INSERT INTO sessions
+        (id, role, parent_session_id, channel, sender_id, sender_name, workspace_root, agent_type, agent_alias, status, title, task_description, summary, cli_session_id, created_at, updated_at, metadata_json)
+      VALUES (?, 'worker', NULL, NULL, NULL, NULL, ?, 'codex', 'codex', 'idle', 'API display task', 'Only display the ledger', '', NULL, ?, ?, '{}')
+    `).run(taskId, path.dirname(databasePath), now, now);
+    db.prepare("INSERT INTO events (id, session_id, seq, kind, payload_json, created_at) VALUES (?, ?, 1, 'session.tool_result', ?, ?)")
+      .run("raw-internal-event", taskId, JSON.stringify({ content: "raw Codex history must remain unread" }), now);
+    db.prepare("INSERT INTO task_display_state (session_id, latest_plan_json, last_display_seq, updated_at) VALUES (?, ?, 25, ?)")
+      .run(taskId, JSON.stringify({ steps: [{ step: "Latest plan", status: "inProgress" }], updatedAt: now }), now);
+    const insertDisplay = db.prepare(`
+      INSERT INTO task_display_events
+        (id, session_id, display_seq, source_event_id, kind, role, content, metadata_json, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, '{}', ?)
+    `);
+    for (let index = 1; index <= 25; index += 1) {
+      insertDisplay.run(`display-event-${index}`, taskId, index, `source-${index}`, index === 1 ? "requirement" : "message", index === 1 ? "user" : "assistant", `display-${index}`, now);
+    }
+    db.exec("COMMIT");
+  } catch (error) {
+    try { db.exec("ROLLBACK"); } catch {}
+    throw error;
+  } finally {
+    db.close();
+  }
+}
+
 async function freePort() {
   return await new Promise((resolve, reject) => {
     const server = net.createServer();
@@ -194,7 +270,7 @@ async function freePort() {
 }
 
 async function waitForServer(port, child, getOutput) {
-  const deadline = Date.now() + 15_000;
+  const deadline = Date.now() + 30_000;
   while (Date.now() < deadline) {
     if (child.exitCode !== null) throw new Error(`Agent exited before startup (${child.exitCode})\n${getOutput()}`);
     try { const response = await fetch(`http://127.0.0.1:${port}/health`); if (response.ok) return; } catch {}

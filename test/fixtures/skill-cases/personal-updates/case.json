@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "skill": "personal-updates",
+  "title": "摘要绑定的客户端更新与结果验证",
+  "prompt": "检查并规划 Personal Agent 更新。普通流程只执行已由本机批准的精确 operation 和 digest；产品研发流程使用受限 standing authorization。重启后必须查询持久化状态，不得从旧进程退出推断成功。",
+  "commands": [
+    "personal-agent update check --json",
+    "personal-agent update plan --json",
+    "personal-agent update apply --operation <operation-id> --digest <digest> --json",
+    "personal-agent update status --json"
+  ],
+  "artifacts": [{ "path": "expected.json", "label": "Update and rollback expectation" }]
+}

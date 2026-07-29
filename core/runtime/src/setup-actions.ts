@@ -39,7 +39,7 @@ const mutationActions = Object.freeze({
     target: 'custom-domain',
   },
   'mail.enable': {
-    risk: 'R1',
+    risk: 'R2',
     summary: 'Enable local mail readiness checks',
     target: 'local-mail',
   },

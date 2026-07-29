@@ -12,10 +12,13 @@
     "Internal Page and thumbnail URLs remain relative to the current desktop or mobile origin",
     "pa-cli pages publish returns the managed-tunnel HTTPS URL alongside the canonical internalUrl, or an explicit unavailable-domain notice when no accessible domain exists",
     "Public shareUrl is separate and never replaces the managed delivery URL or internal URL",
-    "Every new Page persists different desktop and mobile screenshots and each client renders its matching screenshot",
+    "Every new Page persists different desktop and mobile thumbnails and each client renders its matching thumbnail; when omitted, the CLI generates distinct device gallery previews without browser capture",
+    "The Agent lists and inspects registered Page templates before generation, selects every semantic match, and passes the template contract, linked Skill, implementation version, exact generator, artifact marker, contract digest and user-owned visual acceptance contract into a child task",
+    "Registered template publication fails closed before upload when the HTML marker, ID or version differs, then the Node re-verifies and persists template ID, version, contract digest, marker and exact artifact SHA-256 in public or private Page metadata",
     "Page publication returns a stable pageId and Page Activity must target that id so the Activity card opens Page detail",
-    "Page Activity uses the stored mobile screenshot as representative feed media without scraping Page HTML",
-    "The authenticated Pages module exposes a lightweight template catalog and a detail preview without rendering WebGL in the template list",
-    "The built-in renovation delivery template is linked to interior-design and supports Web and mobile landscape preview"
+    "Page Activity uses the stored mobile thumbnail as representative feed media without scraping Page HTML",
+    "The authenticated Pages module exposes a compact static template catalog whose cover and trusted sandboxed desktop/mobile detail preview consume the same hash-verified generated Page artifact, reload on device changes, and render functional same-origin 3D while the detail shell appears before artifact loading completes",
+    "A template detail opens that same generated Page example in a separate authenticated tab",
+    "The built-in renovation delivery template v2 is linked to interior-design, is regenerated from a native trusted-Space seed by the registered Pascal v2 implementation, records seed, user-uploaded source-plan image, Agent-uploaded revision-annotation image, project, scene, audit and file hashes, embeds both redacted images through ordinary image elements plus a sanitized deterministic Pascal scene, uses a dedicated cold-start loading state, preserves concepts, requirements, quality issues, assumptions, unknowns and professional verifications, provides floor stacked, solo and exploded modes plus visibly distinct isometric 3D and top-down orthographic views, labels and model-derived SVG failure fallback, contains no remote or loopback dependency or private identity field, supports desktop and mobile landscape interaction, performs no Agent browser self-acceptance, and leaves visual and interaction acceptance to the user"
   ]
 }

@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useState, type FormEvent } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { validateLocalPasswordInput } from "@/lib/setup-tasks";
-import { Button } from "../desktop-v72/primitives";
 import { errorMessage } from "./shared";
 
 export function PasswordSettingsDialog({ onClose, onSaved }: { onClose: () => void; onSaved: (message: string) => void }) {
@@ -34,5 +35,5 @@ export function PasswordSettingsDialog({ onClose, onSaved }: { onClose: () => vo
     } catch (cause) { setFeedback(errorMessage(cause)); }
     finally { setSaving(false); }
   };
-  return <div className="settings-dialog-backdrop" role="presentation" onMouseDown={() => { if (!saving) onClose(); }}><form className="settings-dialog" role="dialog" aria-modal="true" aria-labelledby="password-dialog-title" onSubmit={submit} onMouseDown={(event) => event.stopPropagation()}><h2 id="password-dialog-title">修改访问密码</h2><p>新密码保存后，手机与私有域名上的其他会话会立即失效。</p><label>新的访问密码<input autoFocus type="password" minLength={12} maxLength={256} value={password} onChange={(event) => setPassword(event.target.value)} placeholder="至少 12 个字符" /></label><label>确认访问密码<input type="password" minLength={12} maxLength={256} value={confirmation} onChange={(event) => setConfirmation(event.target.value)} placeholder="再次输入" /></label>{feedback ? <div className="notice" role="alert">{feedback}</div> : null}<div className="settings-dialog-actions"><Button type="button" disabled={saving} onClick={onClose}>取消</Button><Button variant="primary" disabled={saving || Boolean(issue)}>{saving ? "保存中…" : "保存"}</Button></div></form></div>;
+  return <div className="settings-dialog-backdrop" role="presentation" onMouseDown={() => { if (!saving) onClose(); }}><form className="settings-dialog" role="dialog" aria-modal="true" aria-labelledby="password-dialog-title" onSubmit={submit} onMouseDown={(event) => event.stopPropagation()}><h2 id="password-dialog-title">修改访问密码</h2><p>新密码保存后，手机与私有域名上的其他会话会立即失效。</p><label>新的访问密码<Input autoFocus type="password" minLength={12} maxLength={256} value={password} onChange={(event) => setPassword(event.target.value)} placeholder="至少 12 个字符" /></label><label>确认访问密码<Input type="password" minLength={12} maxLength={256} value={confirmation} onChange={(event) => setConfirmation(event.target.value)} placeholder="再次输入" /></label>{feedback ? <div className="notice" role="alert">{feedback}</div> : null}<div className="settings-dialog-actions"><Button type="button" variant="outline" disabled={saving} onClick={onClose}>取消</Button><Button disabled={saving || Boolean(issue)}>{saving ? "保存中…" : "保存"}</Button></div></form></div>;
 }

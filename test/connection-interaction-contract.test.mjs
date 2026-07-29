@@ -16,6 +16,7 @@ test("connection UI separates OpenCLI browser reads from QR and account authoriz
   const unbindDialog = read("core/app/src/components/desktop-v627/domain-unbind-dialog.tsx");
   const clearDialog = read("core/app/src/components/desktop-v627/connection-clear-dialog.tsx");
   const wechatAction = read("core/app/src/components/desktop-v627/wechat-claw-action.tsx");
+  const dingtalkAction = read("core/app/src/components/desktop-v627/dingtalk-action.tsx");
   const domainRuntime = read("core/agent/src/connections/domain-binding-verification.js");
   const sitePublication = read("core/agent/src/connections/verification-site-publication.js");
   const publicMailSender = read("core/agent/src/connections/mail/public-test-sender.js");
@@ -27,6 +28,7 @@ test("connection UI separates OpenCLI browser reads from QR and account authoriz
   const xiaohongshu = read("core/agent/src/channels/xiaohongshu/opencli-provider.js");
   const twitter = read("core/agent/src/channels/twitter/opencli-provider.js");
   const xiaohongshuRuntime = read("core/agent/src/channels/xiaohongshu/channel.js");
+  const server = read("core/agent/src/server/server.ts");
   const registry = JSON.parse(read("registry/connections.json"));
   const xiaohongshuConnection = registry.connections.find((connection) => connection.id === "xiaohongshu");
   const twitterConnection = registry.connections.find((connection) => connection.id === "twitter");
@@ -42,9 +44,19 @@ test("connection UI separates OpenCLI browser reads from QR and account authoriz
   assert.match(domainAction, /DomainEntryMenu/);
   assert.match(domainAction, /CustomDomainSop/);
   assert.match(domainEntryMenu, />配置</);
+  assert.match(domainEntryMenu, /使用平台域名/);
   assert.match(domainEntryMenu, /使用自定义域名/);
-  assert.match(domainEntryMenu, /role="menuitem"/);
-  assert.match(customDomainSop, /启动转发服务/);
+  assert.match(domainEntryMenu, /DropdownMenuContent/);
+  assert.match(domainEntryMenu, /onSelect=\{onPlatform\}/);
+  assert.match(domainEntryMenu, /onSelect=\{onCustom\}/);
+  assert.match(customDomainSop, /准备公网服务器/);
+  assert.match(customDomainSop, /type="password"/);
+  assert.match(customDomainSop, /relayToken/);
+  assert.match(customDomainSop, /personal-agent-relay-install\.sh/);
+  assert.match(customDomainSop, /正在读取当前版本的 Relay 安装命令/);
+  assert.doesNotMatch(customDomainSop, /当前安装版本未提供 Relay 安装脚本/);
+  assert.match(customDomainSop, /navigator\.clipboard\.writeText/);
+  assert.match(customDomainSop, /复制命令/);
   assert.match(customDomainSop, /配置自定义域名/);
   assert.match(customDomainSop, /验证并生效/);
   assert.match(customDomainSop, /connectivity\.custom-domain-start/);
@@ -55,7 +67,7 @@ test("connection UI separates OpenCLI browser reads from QR and account authoriz
   assert.match(domainRuntime, /查看验证发布/);
   assert.match(domainRuntime, /查看测试收到的邮件/);
   assert.match(domainRuntime, /createVerificationSitePublication/);
-  assert.match(domainRuntime, /启动转发服务/);
+  assert.match(domainRuntime, /准备公网服务器/);
   assert.match(domainRuntime, /binding === "custom"/);
   assert.match(sitePublication, /page-thumbnail-desktop\.png/);
   assert.match(sitePublication, /page-thumbnail-mobile\.png/);
@@ -101,10 +113,23 @@ test("connection UI separates OpenCLI browser reads from QR and account authoriz
   assert.doesNotMatch(twitter, /authStatus|startLogin|pollLogin|qrImage/);
   assert.equal(xiaohongshuConnection.accessMode, "browser");
   assert.equal(twitterConnection.accessMode, "browser");
+  assert.deepEqual(xiaohongshuConnection.platforms, ["win32", "darwin"]);
+  assert.deepEqual(twitterConnection.platforms, ["win32", "darwin"]);
   assert.equal(xiaohongshuConnection.skillName, "social-browser-read");
   assert.equal(twitterConnection.skillName, "social-browser-read");
+  assert.match(server, /CONNECTION_PLATFORM_UNSUPPORTED/);
+  assert.match(server, /if \(openCliBrowserSupported\) void Promise\.all/);
+  assert.match(server, /if \(personalWechatSupported\) wechatQianxun\.attach/);
   assert.match(wechatRuntime, /LOGIN_SESSION_TIMEOUT_MS = 2 \* 60 \* 1000/);
   assert.match(wechatRuntime, /status === "scaned" \? "scanned"/);
+  assert.match(actions, /DingTalkAction/);
+  assert.match(dingtalkAction, /\/api\/connections\/dingtalk\/configuration/);
+  assert.match(dingtalkAction, /Client Secret/);
+  assert.match(dingtalkAction, /ConnectionOperationSop/);
+  assert.match(dingtalkAction, /建立 Stream 连接/);
+  assert.match(dingtalkAction, /收发文字、图片和文件/);
+  assert.match(dingtalkAction, /清空配置/);
+  assert.doesNotMatch(dingtalkAction, /console\.log|setMessage\(clientSecret\)/);
   assert.match(xiaohongshuRuntime, /SESSION_TTL_MS = 2 \* 60 \* 1000/);
 });
 
@@ -124,6 +149,8 @@ test("personal WeChat is independent from WeChat claw and configures a Qianxun-b
   assert.equal(claw.name, "微信 claw");
   assert.equal(claw.capabilities.some((capability) => capability.includes("千寻")), false);
   assert.equal(personal.name, "个人微信");
+  assert.deepEqual(personal.platforms, ["win32"]);
+  assert.match(personal.description, /仅支持 Windows/);
   assert.match(personal.description, /不下载、不启动也不分发千寻 Pro 二进制/);
   assert.match(action, /wechat-personal\/detect/);
   assert.match(action, /wechat-personal\/setup/);
@@ -184,7 +211,7 @@ test("personal WeChat is independent from WeChat claw and configures a Qianxun-b
 
 test("Notion runtime uses the official headless login handoff and login poll", () => {
   const runtime = read("core/agent/src/connections/notion-cli.js");
-  const skill = read("skills/personal-agent/references/connectors/notion.md");
+  const skill = read("skills/personal-connections/references/connectors/notion.md");
   assert.match(runtime, /\["login", "--no-browser"\]/);
   assert.match(runtime, /\["login", "poll"\]/);
   assert.match(runtime, /\["logout"\]/);
@@ -196,7 +223,7 @@ test("Notion runtime uses the official headless login handoff and login poll", (
 
 test("domain connector skills describe completion callbacks for bind and remove", () => {
   for (const id of ["mail", "sites"]) {
-    const skill = read(`skills/personal-agent/references/connectors/${id}.md`);
+    const skill = read(`skills/personal-connections/references/connectors/${id}.md`);
     assert.match(skill, /持续检查/);
     assert.match(skill, /状态回调/);
     assert.match(skill, /use-custom-domain/);
@@ -222,6 +249,7 @@ test("connection directory separates all connections from connections with effec
   assert.match(page, /window\.setInterval\(refreshWhenVisible, 15_000\)/);
   assert.match(page, /window\.addEventListener\("focus", refreshWhenVisible\)/);
   assert.match(page, /document\.addEventListener\("visibilitychange", refreshWhenVisible\)/);
+  assert.doesNotMatch(page, /connection-operation-strip|可用操作/);
   assert.match(viewSwitch, /role="group" aria-label="连接视图"/);
   assert.match(viewSwitch, /aria-pressed=\{value === "all"\}/);
   assert.match(viewSwitch, /aria-pressed=\{value === "effective"\}/);

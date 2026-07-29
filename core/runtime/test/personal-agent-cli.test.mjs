@@ -176,16 +176,17 @@ test('setup status exposes separate readiness dimensions and remains read-only',
   }
 });
 
-test('every planned command leaf remains unavailable by default and with preview opt-in', () => {
+test('every planned command leaf remains unavailable by default and with preview opt-in', async () => {
   const help = JSON.parse(runOk(['help', '--all', '--json']).stdout);
   const planned = help.result.commandGroups.planned.flatMap((entry) => expandCommandName(entry.name));
   assert.ok(planned.length > 0);
-  for (const command of planned) {
-    for (const optIn of [[], ['--preview']]) {
-      const result = run([...command.split(' '), ...optIn, '--json']);
+  const cases = planned.flatMap((command) => [[], ['--preview']].map((optIn) => ({ command, optIn })));
+  for (let index = 0; index < cases.length; index += 8) {
+    await Promise.all(cases.slice(index, index + 8).map(async ({ command, optIn }) => {
+      const result = await runAsync([...command.split(' '), ...optIn, '--json'], '');
       assert.equal(result.status, 7, `${command} ${optIn.join(' ')}`);
       assert.equal(JSON.parse(result.stderr).error.code, 'CAPABILITY_UNAVAILABLE', `${command} ${optIn.join(' ')}`);
-    }
+    }));
   }
 });
 
@@ -209,18 +210,19 @@ test('preview commands require explicit opt-in and warn on success', () => {
 
 test('skill commands use the public registry fields and succeed for a real skill', () => {
   const list = JSON.parse(runOk(['skill', 'list', '--json']).stdout);
-  const personalAgent = list.result.skills.find((entry) => entry.name === 'personal-agent');
-  assert.ok(personalAgent);
-  assert.equal(personalAgent.directory, 'skills/personal-agent');
-  assert.ok(Array.isArray(personalAgent.risks));
-  assert.equal(Object.hasOwn(personalAgent, 'id'), false);
+  const personalRuntime = list.result.skills.find((entry) => entry.name === 'personal-runtime');
+  assert.ok(personalRuntime);
+  assert.equal(personalRuntime.directory, 'skills/personal-runtime');
+  assert.ok(Array.isArray(personalRuntime.risks));
+  assert.equal(Object.hasOwn(personalRuntime, 'id'), false);
+  assert.equal(list.result.skills.some((entry) => entry.name === 'personal-agent'), false);
 
-  const inspect = JSON.parse(runOk(['skill', 'inspect', 'personal-agent', '--json']).stdout);
-  assert.equal(inspect.result.skill.name, 'personal-agent');
-  assert.equal(inspect.result.skill.directory, 'skills/personal-agent');
+  const inspect = JSON.parse(runOk(['skill', 'inspect', 'personal-runtime', '--json']).stdout);
+  assert.equal(inspect.result.skill.name, 'personal-runtime');
+  assert.equal(inspect.result.skill.directory, 'skills/personal-runtime');
 
-  const verify = JSON.parse(runOk(['skill', 'verify', 'personal-agent', '--json']).stdout);
-  assert.equal(verify.result.skillName, 'personal-agent');
+  const verify = JSON.parse(runOk(['skill', 'verify', 'personal-runtime', '--json']).stdout);
+  assert.equal(verify.result.skillName, 'personal-runtime');
   assert.equal(verify.result.verified, true);
 });
 

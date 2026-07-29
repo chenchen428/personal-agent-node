@@ -36,7 +36,7 @@ export type Connection = {
     userConfirmationRequired: boolean;
     customExtensionRequired: boolean;
   };
-  details?: { configured?: boolean; platformDomainBound?: boolean; bindingMode?: "platform" | "custom" | ""; platformDomain?: string; customDomain?: string; customServer?: string; customPublicAddress?: string; customServiceReady?: boolean; mailAddress?: string; publicReady?: boolean; publicStatus?: "ready" | "tunnel-offline" | "unavailable" | "not-bound"; publicReason?: string; publicOrigin?: string; domainVerification?: DomainVerification; policyEnabled?: boolean; connectivityTestPassed?: boolean };
+  details?: { configured?: boolean; clientId?: string; lastConnectedAt?: string; lastInboundAt?: string; platformDomainBound?: boolean; bindingMode?: "platform" | "custom" | ""; platformDomain?: string; customDomain?: string; customServer?: string; customPublicAddress?: string; customServiceReady?: boolean; customRelayCredentialPrepared?: boolean; customRelayInstallerUrl?: string; mailAddress?: string; publicReady?: boolean; publicStatus?: "ready" | "tunnel-offline" | "unavailable" | "not-bound"; publicReason?: string; publicOrigin?: string; domainVerification?: DomainVerification; policyEnabled?: boolean; connectivityTestPassed?: boolean };
 };
 
 export type PersonalWechatDirectoryEntry = { id: string; name: string; maskedId: string };

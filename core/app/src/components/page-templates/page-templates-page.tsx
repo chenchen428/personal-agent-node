@@ -1,19 +1,30 @@
 import Link from "next/link";
-import { ArrowLeft, ArrowRight, LayoutTemplate, Monitor, Smartphone, Sparkles } from "lucide-react";
+import { ArrowUpRight, Eye, Monitor, Smartphone } from "lucide-react";
+import { Badge, PageHeader, PageSurface } from "@/components/desktop-v72/primitives";
 import { pageTemplates } from "./catalog";
 import { TemplateCardArtwork } from "./template-card-artwork";
 
 export function PageTemplatesPage() {
-  return <main className="page-template-page">
-    <header className="page-template-heading"><div><span>PAGES · TEMPLATE</span><h1>发布页模板</h1><p>从稳定的交付框架开始，再由 Agent 根据具体任务生成内容。</p></div><Link className="page-template-back" href="/app/pages"><ArrowLeft aria-hidden="true" />返回发布页</Link></header>
-    <section className="page-template-summary"><LayoutTemplate aria-hidden="true" /><div><span>当前精选</span><strong>{pageTemplates.length}</strong></div><p>模板只定义交付所需的信息层级、交互边界和设备适配；具体内容仍由 Agent 根据用户需求判断。</p></section>
-    <div className="page-template-grid">{pageTemplates.map((template) => <article className="page-template-card" key={template.id}>
-      <TemplateCardArtwork />
-      <div className="page-template-card-copy"><div className="page-template-card-meta"><span>已内置</span><small>{template.category}</small></div><b>FEATURED TEMPLATE</b><h2>{template.name}</h2><p>{template.summary}</p>
-        <ul><li><Monitor aria-hidden="true" />Web 完整展示</li><li><Smartphone aria-hidden="true" />移动端横屏查看</li><li><Sparkles aria-hidden="true" />Agent 自由生成细节</li></ul>
-        <span className="page-template-skill">关联技能 <code>{template.skill}</code></span>
-        <Link href={`/app/pages/templates/${template.id}`}>查看模板详情<ArrowRight aria-hidden="true" /></Link>
-      </div>
-    </article>)}</div>
-  </main>;
+  return <PageSurface className="page-template-catalog" width="wide">
+    <PageHeader
+      title="发布页模板"
+      description="选择一个稳定的交付结构，具体内容、户型与用户需求仍由 Agent 按本次任务生成。"
+      actions={<span className="template-catalog-count">{pageTemplates.length} 个内置模板</span>}
+    />
+    <section className="template-card-grid" aria-label="发布页模板列表">
+      {pageTemplates.map((template) => <article className="template-mini-card" key={template.id}>
+        <Link aria-label={`查看${template.name}`} className="template-mini-preview" href={`/app/pages/templates/${template.id}`} prefetch>
+          <TemplateCardArtwork coverPath={template.exampleArtifact.coverPath} />
+          <span><Eye aria-hidden="true" />进入详情</span>
+        </Link>
+        <div className="template-mini-body">
+          <header><Badge tone="success">已内置</Badge><span>{template.category}</span></header>
+          <h2>{template.name}</h2>
+          <p>{template.summary}</p>
+          <div className="template-mini-devices"><span><Monitor aria-hidden="true" />Web</span><span><Smartphone aria-hidden="true" />移动横屏</span></div>
+          <Link href={`/app/pages/templates/${template.id}`} prefetch>查看模板<ArrowUpRight aria-hidden="true" /></Link>
+        </div>
+      </article>)}
+    </section>
+  </PageSurface>;
 }

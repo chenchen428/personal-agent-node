@@ -5,7 +5,7 @@ import test from "node:test";
 
 const root = path.resolve(import.meta.dirname, "..");
 
-test("Next.js owns the approved V6.35 mobile client and V7.3 desktop workspace", () => {
+test("Next.js owns the approved V6.39 mobile client and V7.3 desktop workspace", () => {
   const shell = read("core/app/src/components/app-shell.tsx");
   const navigation = read("core/app/src/components/navigation.ts");
   const desktopNavigationSource = `${navigation}\n${shell}`;
@@ -14,15 +14,26 @@ test("Next.js owns the approved V6.35 mobile client and V7.3 desktop workspace",
     .map((file) => read(`core/app/src/components/desktop-v627/${file}`))
     .join("\n");
   const workersClient = read("core/app/src/components/desktop-v627/workers-page.tsx");
+  const workerSessions = read("core/app/src/components/desktop-v627/use-worker-sessions.ts");
+  const workerStatus = read("core/app/src/components/desktop-v627/worker-status.ts");
+  const taskConversation = read("core/app/src/components/desktop-v627/task-conversation.tsx");
   const scheduledTasksClient = read("core/app/src/components/desktop-v627/scheduled-tasks-page.tsx");
   const scheduledTaskDetail = read("core/app/src/components/desktop-v627/scheduled-task-detail.tsx");
   const taskViewNavigation = read("core/app/src/components/desktop-v627/task-module-view-navigation.tsx");
+  const taskStatusFilter = read("core/app/src/components/desktop-v627/task-status-filter.tsx");
   const overviewClient = read("core/app/src/components/desktop-v627/overview-page.tsx");
   const mobileAccessControl = read("core/app/src/components/desktop-v627/mobile-access-control.tsx");
   const connectionsClient = read("core/app/src/components/desktop-v627/connections-page.tsx");
+  const channelsClient = read("core/app/src/components/desktop-v627/channels-page.tsx");
   const connectionViewSwitch = read("core/app/src/components/desktop-v627/connection-view-switch.tsx");
   const connectionActionsClient = read("core/app/src/components/desktop-v627/connection-action-row.tsx");
+  const currentMailClient = read("core/app/src/components/desktop-v627/mail-page.tsx");
+  const personalWechatHistory = read("core/app/src/components/desktop-v627/use-personal-wechat-history.ts");
   const skillsClient = read("core/app/src/components/desktop-v627/skills-page.tsx");
+  const memoryClient = read("core/app/src/components/desktop-v627/memory-page.tsx");
+  const collectionDetail = read("core/app/src/components/desktop-v72/collection-detail.tsx");
+  const settingsCollection = read("core/app/src/components/desktop-v72/settings-collection-layout.tsx");
+  const settingsLayout = read("core/app/src/components/desktop-v72/settings-layout.tsx");
   const updateClient = read("core/app/src/components/desktop-v627/update-page.tsx");
   const dataClient = read("core/app/src/components/desktop-v627/data-page.tsx");
   const dataEmptyState = read("core/app/src/components/desktop-v627/data-empty-state.tsx");
@@ -40,6 +51,9 @@ test("Next.js owns the approved V6.35 mobile client and V7.3 desktop workspace",
     "mobile-current/activity.tsx",
     "mobile-current/pages.tsx",
     "mobile-current/workers.tsx",
+    "mobile-current/mobile-task-detail.tsx",
+    "mobile-current/task-display-presentation.tsx",
+    "mobile-current/use-task-display-history.ts",
     "mobile-current/apps.tsx",
     "mobile-current/personal-app.tsx",
     "mobile-current/about.tsx",
@@ -48,7 +62,6 @@ test("Next.js owns the approved V6.35 mobile client and V7.3 desktop workspace",
     "mobile-current/mail.tsx",
     "mobile-current/shell.tsx",
     "mobile-current/data.tsx",
-    "mobile-current/use-task-detail.ts",
   ].map((relative) => read(`core/app/src/components/${relative}`)).join("\n");
   const mailClient = read("core/app/src/components/mail-dashboard.tsx");
   const setupDashboard = read("core/app/src/components/setup-dashboard.tsx");
@@ -57,9 +70,12 @@ test("Next.js owns the approved V6.35 mobile client and V7.3 desktop workspace",
     "conversation-message-list.tsx",
     "conversation-plan.tsx",
     "conversation-composer.tsx",
+    "conversation-attachment-list.tsx",
+    "conversation-attachments.ts",
+    "use-conversation-attachments.ts",
   ].map((file) => read(`core/app/src/components/desktop-v627/${file}`)).join("\n");
-  const overview = read("core/app/src/app/app/page.tsx");
-  const requestSurface = read("core/app/src/lib/request-surface.ts");
+  const conversationComposer = read("core/app/src/components/desktop-v627/conversation-composer.tsx");
+  const overview = `${read("core/app/src/app/app/page.tsx")}\n${read("core/app/src/lib/request-device.ts")}`;
   const mobile = read("core/app/src/app/app/mobile/page.tsx");
   const legacyCss = read("core/app/src/app/desktop-v627-v4.css");
   const css = read("core/app/src/app/desktop-v72.css");
@@ -77,7 +93,7 @@ test("Next.js owns the approved V6.35 mobile client and V7.3 desktop workspace",
   assert.match(shell, /__personal-agent\/close/);
   assert.match(shell, /仍有工作正在进行/);
   assert.match(shell, /\["start", "running"\]/);
-  assert.match(shell, /系统设置/);
+  assert.match(shell, /空间设置/);
   assert.match(shell, /本机工作区/);
   assert.match(shell, /\/api\/system\/apps/);
   assert.match(dataClient, /\/api\/app\/data\/schema\?counts=0&preview=1/);
@@ -90,14 +106,27 @@ test("Next.js owns the approved V6.35 mobile client and V7.3 desktop workspace",
   assert.match(dataClient, /illustrated:\s*true/);
   assert.match(dataEmptyState, /IllustratedEmptyState/);
   assert.match(read("core/app/src/components/desktop-v72/loading-state.tsx"), /role="status"/);
-  assert.doesNotMatch(read("core/app/src/components/desktop-v72/settings-layout.tsx"), /Token统计/);
+  assert.doesNotMatch(settingsLayout, /Token统计/);
+  assert.match(settingsLayout, /通用/);
+  assert.match(settingsLayout, /\/app\/settings\/memory/);
+  assert.match(memoryClient, /\/api\/memories\?status=/);
+  assert.match(memoryClient, /搜索记忆内容/);
+  assert.match(memoryClient, /按热度排序/);
+  assert.doesNotMatch(memoryClient, /编辑|停用|新增记忆|删除/);
+  assert.match(skillsClient, /SettingsCollectionLayout/);
   assert.match(navigation, /统计目录/);
   assert.match(tokenUsageHook, /\/api\/token-usage\?range=/);
   assert.match(mobileClient, /MobileTokenUsageSection/);
   assert.match(mobileClient, /TokenUsageHeatmap/);
-  assert.match(requestSurface, /sec-ch-ua-mobile/);
-  assert.match(overview, /detectRequestSurface/);
+  assert.match(mobileClient, /MobileSpaceContext/);
+  assert.doesNotMatch(mobileClient, /MobileSpaceSelector|waitForSpaceRuntime|buildSpaceNavigationUrl|\/api\/system\/spaces/);
+  assert.match(spaceSwitcher, /isLoopbackHostname/);
+  assert.match(spaceSwitcher, /x-personal-agent-surface/);
+  assert.match(overview, /sec-ch-ua-mobile/);
   assert.match(overview, /return <MobileActivity/);
+  assert.match(read("core/app/src/app/app/loading.tsx"), /isMobileRequest/);
+  assert.match(read("core/app/src/app/app/loading.tsx"), /MobileContentSkeleton/);
+  assert.match(read("core/app/src/app/app/layout.tsx"), /initialMobileHint/);
   assert.match(overviewClient, /MobileAccessControl/);
   assert.match(mobileAccessControl, /\/app\/mobile/);
   assert.match(mobileAccessControl, /远程访问暂不可用，请在连接处配置公网域名后即可访问/);
@@ -160,9 +189,28 @@ test("Next.js owns the approved V6.35 mobile client and V7.3 desktop workspace",
   assert.match(desktopComponents, /data-pager/);
   assert.match(desktopComponents, /hasRunningWorker/);
   assert.match(desktopComponents, /window\.setInterval\([\s\S]*2500\)/);
-  assert.match(desktopComponents, /status === "idle" \? "已完成"/);
+  assert.match(workerStatus, /status === "idle"/);
   assert.match(desktopComponents, /v72-split-view/);
-  assert.doesNotMatch(workersClient, /v72-task-composer|继续这个任务|\/input/);
+  assert.match(workersClient, /selectedId === item\.id/);
+  assert.match(workersClient, /TaskStatusFilter/);
+  assert.match(workerStatus, /"all" \| "running" \| "completed" \| "paused"/);
+  assert.match(workerSessions, /setSelectedId\(sessionId\)/);
+  assert.ok(workerSessions.indexOf("setSelectedId(sessionId)") < workerSessions.indexOf("await fetchJson"));
+  assert.match(workerSessions, /\/input/);
+  assert.match(workerSessions, /请继续完成这个任务/);
+  assert.match(taskConversation, /恢复任务/);
+  assert.match(currentMailClient, /const \[detailLoading, setDetailLoading\]/);
+  assert.match(currentMailClient, /requestRef/);
+  assert.match(currentMailClient, /selectedId === item\.id/);
+  assert.ok(currentMailClient.indexOf("setSelectedId(id)") < currentMailClient.indexOf("void load(id, { detail: true })"));
+  assert.match(personalWechatHistory, /setSelectedId\(id\);[\s\S]*setHistoryLoading\(true\);[\s\S]*fetchJson/);
+  assert.match(connectionsClient, /const activeId =/);
+  assert.match(channelsClient, /const activeId =/);
+  assert.match(skillsClient, /const activeName =/);
+  assert.match(memoryClient, /const activeId =/);
+  assert.match(scheduledTasksClient, /const activeId =/);
+  assert.match(collectionDetail, /aria-pressed=\{item\.id === selectedId\}/);
+  assert.match(settingsCollection, /aria-pressed=\{row\.id === selectedId\}/);
   assert.match(taskViewNavigation, /\/app\/workers\/schedules/);
   assert.match(workersClient, /TaskModuleViewNavigation active="tasks"/);
   assert.match(workersClient, /v72-split-toolbar-title[\s\S]*<h1>任务<\/h1>[\s\S]*TaskModuleViewNavigation/);
@@ -185,7 +233,7 @@ test("Next.js owns the approved V6.35 mobile client and V7.3 desktop workspace",
   assert.doesNotMatch(overviewClient, /下午好|最近工作/);
   assert.match(connectionsClient, /\/api\/connections/);
   assert.match(connectionActionsClient, /connection-summary-action/);
-  assert.match(connectionsClient, /connection\.cli\.operations/);
+  assert.doesNotMatch(connectionsClient, /connection\.cli\.operations|connection-operation-strip|可用操作/);
   assert.match(connectionsClient, /accessModeLabel/);
   assert.match(connectionsClient, /浏览器连接/);
   assert.match(connectionsClient, /ConnectionViewSwitch/);
@@ -209,11 +257,11 @@ test("Next.js owns the approved V6.35 mobile client and V7.3 desktop workspace",
   assert.doesNotMatch(connectionActionsClient, /fetchJson\("\/api\/connections\/notion\/login\/poll"/);
   assert.doesNotMatch(connectionsClient, /Web 控制台|手机访问/);
   assert.match(conversationClient, /MarkdownContent/);
-  assert.match(workersClient, /MarkdownContent/);
+  assert.match(taskConversation, /MarkdownContent/);
   assert.match(css, /\.desktop-v72 \.v72-markdown/);
   assert.doesNotMatch(desktopNavigationSource, /\/app\/automations/);
-  assert.match(skillsClient, /skill-filter-bar/);
-  assert.match(skillsClient, /skill-library-layout/);
+  assert.match(skillsClient, /SettingsCollectionLayout/);
+  assert.match(skillsClient, /搜索技能/);
   assert.doesNotMatch(updateClient, /rollback-plan|RotateCcw|恢复 \{/);
   assert.match(desktopComponents, /PageDetail/);
   assert.match(desktopComponents, /runtime-page-full/);
@@ -238,6 +286,45 @@ test("Next.js owns the approved V6.35 mobile client and V7.3 desktop workspace",
   assert.doesNotMatch(conversationClient, /planIndex = messages\.findIndex/);
   assert.match(conversationClient, /composer-wrap/);
   assert.match(conversationClient, /添加附件/);
+  assert.match(conversationClient, /onPaste=\{pasteImages\}/);
+  assert.match(conversationClient, /if \(!images\.length\) return;[\s\S]*event\.preventDefault\(\)/);
+  assert.match(conversationClient, /item\.type\.toLowerCase\(\)\.startsWith\("image\/"\)/);
+  assert.match(conversationClient, /MAX_ATTACHMENT_COUNT = 4/);
+  assert.match(conversationClient, /MAX_TOTAL_ATTACHMENT_BYTES = 10 \* 1024 \* 1024/);
+  assert.match(conversationClient, /\/api\/chat\/desktop\/conversation\/attachments/);
+  assert.match(conversationClient, /attachments: attachments\.map\(\(\{ objectId \}\) => \(\{ objectId \}\)\)/);
+  assert.match(conversationClient, /attachment\.viewUrl \|\| attachment\.previewUrl/);
+  assert.match(conversationClient, /正在上传附件/);
+  assert.ok(conversationComposer.indexOf("<ConversationAttachmentList") < conversationComposer.indexOf("<textarea"));
+  const clearDraftIndex = conversationComposer.indexOf('setMessage("");');
+  const awaitSendIndex = conversationComposer.indexOf("await sendRequest");
+  assert.notEqual(clearDraftIndex, -1);
+  assert.notEqual(awaitSendIndex, -1);
+  assert.ok(
+    clearDraftIndex < awaitSendIndex,
+    "the composer clears as soon as the optimistic send is accepted",
+  );
+  assert.match(conversationComposer, /setMessage\(\(current\) => current \|\| submittedMessage\)/);
+  assert.match(conversationComposer, /restoreAttachments\(submittedAttachments\)/);
+  assert.ok(conversationClient.indexOf("<MessageAttachments") < conversationClient.indexOf("<MarkdownContent"));
+  const selectedImageRule = css.match(/\.desktop-v72 \.composer-selected-image\s*\{[^}]*\}/)?.[0] || "";
+  assert.match(selectedImageRule, /width:\s*56px/);
+  assert.match(selectedImageRule, /height:\s*56px/);
+  assert.match(css, /\.desktop-v72 \.composer-selected-image img\s*\{[^}]*object-fit:\s*cover/);
+  const messageImageRule = css.match(/\.desktop-v72 \.message-image\s*\{[^}]*\}/)?.[0] || "";
+  assert.match(messageImageRule, /width:\s*56px/);
+  assert.match(messageImageRule, /height:\s*56px/);
+  assert.match(css, /\.desktop-v72 \.message-image img\s*\{[^}]*object-fit:\s*cover/);
+  const iconButtonSvgRule = css.match(/\.desktop-v72 \.icon-button > svg\s*\{[^}]*\}/)?.[0] || "";
+  assert.match(iconButtonSvgRule, /width:\s*15px/);
+  assert.match(iconButtonSvgRule, /height:\s*15px/);
+  assert.match(agentServer, /at most 4 attachments are allowed/);
+  assert.match(agentServer, /\/api\/desktop\/conversation\/attachments/);
+  assert.match(agentServer, /source: "desktop-chat"/);
+  assert.match(agentServer, /uploadPrivateAttachment/);
+  assert.match(agentServer, /resolveDesktopAttachments/);
+  assert.match(agentServer, /mimeType\.toLowerCase\(\)\.startsWith\("image\/"\) \? "image" : "file"/);
+  assert.match(agentServer, /deliveryState: "sent"/);
   assert.match(css, /\.desktop-v72 \.message-thread/);
   assert.match(css, /\.desktop-v72 \.composer/);
   assert.match(css, /\.desktop-v72 \.message-processing/);
@@ -248,6 +335,9 @@ test("Next.js owns the approved V6.35 mobile client and V7.3 desktop workspace",
   assert.doesNotMatch(conversationClient, /model|reasoning|sandbox|approval/i);
   assert.doesNotMatch(conversationClient, /\/api\/chat\/sessions/);
   assert.doesNotMatch(conversationClient, /createdBy|task:\s*content/);
+  assert.match(taskStatusFilter, /@\/components\/ui\/select/);
+  assert.match(taskStatusFilter, /<SelectTrigger/);
+  assert.doesNotMatch(taskStatusFilter, /<select|<option/);
   assert.match(desktopComponents, /本机可信/);
   assert.match(desktopComponents, /其他设备会话已失效/);
   assert.match(desktopComponents, /installation\.local-auth/);
@@ -320,13 +410,14 @@ test("Next.js owns the approved V6.35 mobile client and V7.3 desktop workspace",
   assert.match(mobileClient, /有新进展/);
   assert.match(mobileClient, /hasRunningTask/);
   assert.match(mobileClient, /重启后已继续处理/);
-  assert.match(mobileClient, /session && \(visibleMessages\.length \|\| plan\.length\)/);
-  assert.match(mobileClient, /\/api\/node\/v1\/client\/tasks\/\$\{encodeURIComponent\(sessionId\)\}/);
-  assert.match(mobileClient, /AbortController/);
-  assert.match(mobileClient, /beforeSeq=/);
+  assert.match(mobileClient, /\/display-events\?/);
+  assert.match(mobileClient, /data-task-display-scroll=\{task \? "tail" : undefined\}/);
+  assert.match(mobileClient, /element\.scrollTop = element\.scrollHeight/);
+  assert.match(mobileClient, /drawerOpen \? <MobileDrawer/);
+  assert.doesNotMatch(mobileClient, /messageLimit=80/);
   assert.doesNotMatch(mobileClient.match(/const navItems:[\s\S]*?\];/)?.[0] || "", /conversations/);
-  for (const responsibility of ["activity", "pages", "workers", "apps", "personal-app", "about", "wechat-status", "mail", "shell", "token-usage", "data", "types"]) {
-    const file = path.join(root, "core/app/src/components/mobile-current", `${responsibility}.${responsibility === "types" ? "ts" : "tsx"}`);
+  for (const responsibility of ["activity.tsx", "pages.tsx", "workers.tsx", "mobile-task-detail.tsx", "task-display-presentation.tsx", "use-task-display-history.ts", "apps.tsx", "personal-app.tsx", "about.tsx", "wechat-status.tsx", "mail.tsx", "shell.tsx", "token-usage.tsx", "data.tsx", "types.ts"]) {
+    const file = path.join(root, "core/app/src/components/mobile-current", responsibility);
     assert.equal(fs.existsSync(file), true, responsibility);
     assert.ok(fs.readFileSync(file, "utf8").split(/\r?\n/).length <= 300, `${responsibility} exceeds 300 lines`);
   }
@@ -339,7 +430,7 @@ test("all finalized client routes have independently buildable Next pages", () =
   const pages = [
     "app/page.tsx", "app/conversations/page.tsx", "app/workers/page.tsx", "app/workers/schedules/page.tsx", "app/schedules/page.tsx", "app/automations/page.tsx", "app/mail/page.tsx",
     "app/pages/page.tsx", "app/pages/[pageId]/page.tsx", "app/data/page.tsx", "app/apps/page.tsx", "app/apps/[appId]/page.tsx",
-    "app/connections/page.tsx", "app/connections/wechat-personal/page.tsx", "app/channels/page.tsx", "app/skills/page.tsx", "app/statistics/token-usage/page.tsx", "app/setup/page.tsx", "app/runtime/page.tsx", "app/settings/page.tsx", "app/update/page.tsx",
+    "app/connections/page.tsx", "app/connections/wechat-personal/page.tsx", "app/channels/page.tsx", "app/skills/page.tsx", "app/statistics/token-usage/page.tsx", "app/setup/page.tsx", "app/runtime/page.tsx", "app/settings/page.tsx", "app/settings/memory/page.tsx", "app/update/page.tsx",
     "app/mobile/page.tsx", "app/mobile/pages/page.tsx", "app/mobile/pages/[pageId]/page.tsx",
     "app/mobile/workers/page.tsx", "app/mobile/workers/[sessionId]/page.tsx",
     "app/mobile/conversations/page.tsx", "app/mobile/conversations/[sessionId]/page.tsx",
@@ -367,6 +458,7 @@ test("gateway routes the approved client to Next and its read-only data to the l
   const routes = distribution.routing.paths;
   assert.equal(routes.find((route) => route.key === "app").targetKey, "console");
   assert.equal(routes.find((route) => route.key === "app-pages").targetKey, "console");
+  assert.deepEqual(routes.find((route) => route.key === "template-pages"), { key: "template-pages", prefix: "/template-pages", access: "authenticated", kind: "proxy", targetKey: "console", upstreamPath: "/template-pages" });
   assert.equal(routes.find((route) => route.key === "app-connections").targetKey, "console");
   assert.deepEqual(routes.find((route) => route.key === "app-schedules"), { key: "app-schedules", prefix: "/app/schedules", access: "authenticated", kind: "proxy", targetKey: "console", upstreamPath: "/app/schedules" });
   assert.equal(routes.find((route) => route.key === "api-node-v1").targetKey, "agent");
@@ -378,16 +470,22 @@ test("gateway routes the approved client to Next and its read-only data to the l
   assert.deepEqual(routes.find((route) => route.key === "api-token-usage"), { key: "api-token-usage", prefix: "/api/token-usage", access: "authenticated", kind: "proxy", targetKey: "agent", upstreamPath: "/api/token-usage" });
   assert.deepEqual(routeRegistry.routes.find((route) => route.pattern === "/api/token-usage"), { pattern: "/api/token-usage", access: "authenticated", capability: "agent" });
   assert.deepEqual(routes.find((route) => route.key === "api-connections"), { key: "api-connections", prefix: "/api/connections", access: "authenticated", kind: "proxy", targetKey: "agent", upstreamPath: "/api/connections" });
-  assert.equal(routes.find((route) => route.key === "home").access, "authenticated");
-  assert.equal(routes.find((route) => route.key === "app-settings").access, "local-admin");
-  assert.equal(routes.find((route) => route.key === "api-system-setup-actions").access, "local-admin");
-  assert.deepEqual(routes.find((route) => route.key === "api-system-update"), { key: "api-system-update", prefix: "/api/system/update", access: "local-admin", kind: "proxy", targetKey: "console", upstreamPath: "/api/update" });
+  const homeRoute = routes.find((route) => route.key === "home");
+  const homeHost = distribution.domain.standardHosts.find((host) => host.key === "home");
+  assert.equal(homeRoute.access, "authenticated");
+  assert.equal(homeHost.access, homeRoute.access);
+  assert.equal(homeHost.kind, homeRoute.kind);
+  assert.equal(routes.find((route) => route.key === "app-settings").access, "authenticated");
+  assert.equal(routes.find((route) => route.key === "api-system-setup-actions").access, "authenticated");
+  assert.deepEqual(routes.find((route) => route.key === "api-system-update"), { key: "api-system-update", prefix: "/api/system/update", access: "authenticated", kind: "proxy", targetKey: "console", upstreamPath: "/api/update" });
   assert.deepEqual(routes.find((route) => route.key === "public-pages"), { key: "public-pages", prefix: "/public", access: "public", kind: "proxy", targetKey: "agent", upstreamPath: "/pages" });
   assert.deepEqual(routes.find((route) => route.key === "private-publications"), { key: "private-publications", prefix: "/publications", access: "authenticated", kind: "proxy", targetKey: "agent", upstreamPath: "/publications" });
   assert.match(nextBff, /path\[0\] === "system"/);
   assert.match(nextBff, /"authorization"/);
   assert.match(nextBff, /"data-export"/);
   assert.match(nextBff, /"spaces"/);
+  assert.match(nextBff, /isLocalDesktopSpaceManagementRequest/);
+  assert.match(nextBff, /DESKTOP_LOCAL_ONLY/);
   assert.match(nextBff, /"expect"/);
   assert.match(nextBff, /PERSONAL_AGENT_CONTROL_URL/);
   assert.match(nextBff, /OPEN_AGENT_BRIDGE_INTERNAL_URL/);

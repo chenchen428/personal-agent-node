@@ -19,6 +19,7 @@ type Space = {
 type SpacesResponse = { currentSpaceId: string | null; spaces: Space[] };
 
 export function SpaceSwitcher() {
+  const [localDesktop, setLocalDesktop] = useState(false);
   const [snapshot, setSnapshot] = useState<SpacesResponse>({ currentSpaceId: null, spaces: [] });
   const [open, setOpen] = useState(false);
   const [creating, setCreating] = useState(false);
@@ -27,8 +28,10 @@ export function SpaceSwitcher() {
   const root = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    if (!isLoopbackHostname(window.location.hostname)) return;
+    setLocalDesktop(true);
     let active = true;
-    fetchJson<SpacesResponse>("/api/system/spaces")
+    fetchJson<SpacesResponse>("/api/system/spaces", { headers: { "x-personal-agent-surface": "desktop" } })
       .then((value) => { if (active) setSnapshot(value); })
       .catch(() => undefined);
     return () => { active = false; };
@@ -44,6 +47,7 @@ export function SpaceSwitcher() {
 
   const current = snapshot.spaces.find((space) => space.id === snapshot.currentSpaceId) || snapshot.spaces[0];
   const options = snapshot.spaces;
+  if (!localDesktop) return null;
   const switchTo = async (space: Space) => {
     if (space.id === snapshot.currentSpaceId) return setOpen(false);
     setSwitchingSpaceId(space.id);
@@ -104,7 +108,7 @@ function CreateSpaceDialog({ onClose, onCreated }: { onClose: () => void; onCrea
     try {
       const result = await fetchJson<{ space: Space }>("/api/system/spaces", {
         method: "POST",
-        headers: { "content-type": "application/json" },
+        headers: { "content-type": "application/json", "x-personal-agent-surface": "desktop" },
         body: JSON.stringify({ action: "create", displayName, slug }),
       });
       onCreated(result.space);
@@ -123,4 +127,8 @@ function CreateSpaceDialog({ onClose, onCreated }: { onClose: () => void; onCrea
       <footer><button type="button" onClick={onClose}>取消</button><button className="primary" type="submit" disabled={busy || !displayName.trim() || !slug.trim()}>{busy ? "创建中…" : "创建"}</button></footer>
     </form>
   </div>;
+}
+
+function isLoopbackHostname(hostname: string) {
+  return ["127.0.0.1", "localhost", "::1", "[::1]"].includes(hostname.toLowerCase());
 }

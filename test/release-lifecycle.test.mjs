@@ -105,6 +105,30 @@ test('Windows rematerializes bridge directories expanded by release copy', { ski
 test('release installation does not materialize repository Agent compatibility links', () => {
   const installer = fs.readFileSync(path.join(root, 'scripts', 'install-private-site-node-release.mjs'), 'utf8');
   assert.doesNotMatch(installer, /materializeHarnessLinks|verifyHarnessLinks/);
+  assert.doesNotMatch(installer, /from\s+["'][^"']+\.ts["']/, 'the release installer must run under plain Node without a TypeScript loader');
+  assert.match(
+    installer,
+    /installPersonalAgentCommand\(\{[\s\S]*?env:\s*preactivationEnvironment,[\s\S]*?\}\)/,
+    'isolated installs must place the personal-agent command under the selected install root',
+  );
+});
+
+test('local deployment installs and rolls back with the bundled release installer', () => {
+  const deployment = fs.readFileSync(path.join(root, 'scripts', 'deploy-private-site-node.mjs'), 'utf8');
+  const desktopBuild = fs.readFileSync(path.join(root, 'scripts', 'build-desktop-shell.mjs'), 'utf8');
+  assert.match(deployment, /releaseInstaller\(releaseRoot\)/);
+  assert.match(deployment, /releaseInstaller\(previousRoot\)/);
+  assert.match(deployment, /args\.domain \|\| installedDomain\(previousRoot\)/);
+  assert.match(deployment, /"--domain", domain/);
+  assert.match(deployment, /let domain = "";\s*\n\s*try \{/);
+  assert.match(deployment, /releaseInstaller\(previousRoot\)[^\n]*"--domain", domain/);
+  assert.match(deployment, /buildDesktopOverlay\(releaseRoot\)/);
+  assert.match(deployment, /overlayLocalNodeRuntime\(releaseRoot\)/);
+  assert.match(deployment, /fs\.copyFileSync\(process\.execPath, target\)/);
+  assert.match(deployment, /build-desktop-shell\.mjs/);
+  assert.match(desktopBuild, /codesign/);
+  assert.match(desktopBuild, /\['--force', '--deep', '--sign', '-', appPath\]/);
+  assert.doesNotMatch(deployment, /path\.join\(root,\s*["']scripts["'],\s*["']install-private-site-node-release\.mjs["']\)/);
 });
 
 test('fresh release installation points to the local Setup Center with optional WeChat guidance', () => {

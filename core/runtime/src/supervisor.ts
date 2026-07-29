@@ -181,7 +181,7 @@ export function componentSpecs(config, workerConfig) {
     ...reverseTunnel,
     cwd: workspaceRoot,
     waitFor: config.gateway.port,
-    env: {},
+    env: { NODE_OPTIONS: systemCaNodeOptions(process.env.NODE_OPTIONS) },
   });
   if (fs.existsSync(path.join(toolsStandaloneRoot, "server.js"))) {
     components.splice(3, 0, {
@@ -217,6 +217,12 @@ export function componentSpecs(config, workerConfig) {
     });
   }
   return components;
+}
+
+export function systemCaNodeOptions(value = "") {
+  const options = String(value || "").trim();
+  if (/(^|\s)--use-system-ca(?=\s|$)/.test(options)) return options;
+  return `${options} --use-system-ca`.trim();
 }
 
 export function resolveXiaohongshuRuntime({ releaseRoot = workspaceRoot, platform = process.platform } = {}) {

@@ -31,6 +31,7 @@ test('desktop shell stays inside the immutable platform release', () => {
   const installer = read('scripts/build-platform-installer.mjs');
   const releaseWorkflow = read('.github/workflows/release.yml');
   assert.match(build, /manifest\.desktopShell/);
+  assert.match(build, /\['win32', 'darwin'\]/);
   assert.match(build, /writeChecksums\(releaseRoot\)/);
   assert.match(installer, /buildGo\('personal-agent'/);
   assert.doesNotMatch(installer, /buildGo\('personal-agent-service'/);
@@ -38,6 +39,8 @@ test('desktop shell stays inside the immutable platform release', () => {
   assert.doesNotMatch(installer, /core\/channels\/xiaohongshu\/runtime\/xiaohongshu-mcp\.exe/);
   assert.doesNotMatch(releaseWorkflow, /Build pinned Xiaohongshu runtime for Windows/);
   assert.doesNotMatch(releaseWorkflow, /--local-xiaohongshu --output-root dist\/release-payload\/core\/channels\/xiaohongshu\/runtime/);
+  assert.match(releaseWorkflow, /Assert Linux release stays headless/);
+  assert.match(releaseWorkflow, /matrix\.platform != 'linux'/);
   const rust = read('core/desktop/src-tauri/src/lib.rs');
   assert.match(rust, /DAEMON_START: &str = "daemon-start"/);
   assert.match(rust, /DAEMON_STOP: &str = "stop"/);

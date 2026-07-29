@@ -10,7 +10,7 @@ export function buildSitesConnectionStatus({ domainReady, domain, verified, exte
         : "not-bound";
 
   return {
-    state: publicStatus === "ready" || publicStatus === "not-bound" ? "connected" : "degraded",
+    state: publicStatus === "ready" ? "connected" : "degraded",
     primaryAction: platformDomainBound ? "清空配置" : "配置",
     statusLabel: publicStatus === "ready"
       ? "公网访问正常"
@@ -26,7 +26,9 @@ export function buildSitesConnectionStatus({ domainReady, domain, verified, exte
                 ? "公网连接正在恢复"
         : publicStatus === "unavailable"
           ? "公网访问不可用"
-          : "本地已连接",
+          : domainReady
+            ? "等待平台域名验证"
+            : "未生效",
     runtime: [
       { label: "公网域名", value: domain || "尚未分配" },
       {

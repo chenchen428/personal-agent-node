@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { describeWechatLoginError, readWechatLoginPayload, WechatLoginRequestError } from "@/components/wechat-login-error";
 
 export type WechatLogin = {
   session: string;
@@ -33,16 +34,18 @@ export function useWechatLogin({ connected, onConnected, autoStart = false, reco
     setMessage("正在向微信申请一次性二维码…");
     try {
       const response = await fetch("/api/channels/wechat/login/start", { method: "POST" });
-      const payload = await response.json() as WechatLogin & { ok?: boolean; error?: string };
-      if (!response.ok || payload.ok === false || !payload.session || !payload.qrSvg) throw new Error(payload.error || `HTTP ${response.status}`);
+      const payload = await readWechatLoginPayload<WechatLogin & { ok?: boolean; code?: string; error?: string }>(response);
+      if (!payload.session || !payload.qrSvg) {
+        throw new WechatLoginRequestError(502, "WECHAT_QR_RESPONSE_INVALID", "微信连接服务没有返回有效二维码，请重新生成。");
+      }
       if (attempt.current !== currentAttempt) return;
       setLogin({ ...payload, expiresAt: payload.expiresAt || new Date(Date.now() + 2 * 60_000).toISOString() });
       setPhase("ready");
       setMessage("等待你在微信中确认。这个页面会自动更新连接状态。");
-    } catch {
+    } catch (error) {
       if (attempt.current !== currentAttempt) return;
       setPhase("error");
-      setMessage("暂时无法生成二维码。请检查当前网络后重试。");
+      setMessage(describeWechatLoginError(error));
     }
   }, []);
 
@@ -78,8 +81,7 @@ export function useWechatLogin({ connected, onConnected, autoStart = false, reco
       }
       try {
         const response = await fetch(`/api/channels/wechat/login/status?session=${encodeURIComponent(session)}`, { cache: "no-store" });
-        const payload = await response.json() as Partial<WechatLogin> & { ok?: boolean; error?: string };
-        if (!response.ok || payload.ok === false) throw new Error(payload.error || `HTTP ${response.status}`);
+        const payload = await readWechatLoginPayload<Partial<WechatLogin> & { ok?: boolean; code?: string; error?: string }>(response);
         if (cancelled) return;
         setLogin((current) => current?.session === session ? { ...current, ...payload } : current);
         if (payload.connected || payload.status === "confirmed") {
@@ -95,8 +97,8 @@ export function useWechatLogin({ connected, onConnected, autoStart = false, reco
           setPhase("expired");
           setMessage("二维码已过期，请重新生成。");
         }
-      } catch {
-        if (!cancelled) setMessage("正在等待微信确认；如果长时间没有变化，请重新生成二维码。");
+      } catch (error) {
+        if (!cancelled) setMessage(`${describeWechatLoginError(error)} 页面会继续检测，也可以重新生成二维码。`);
       } finally {
         if (!cancelled && !terminal) timer = window.setTimeout(() => void poll(), 1800);
       }

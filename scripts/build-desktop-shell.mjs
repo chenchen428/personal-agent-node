@@ -26,6 +26,7 @@ function main() {
   if (fs.existsSync(output)) throw new Error(`Desktop output already exists: ${output}`);
   fs.mkdirSync(output, { recursive: true });
   const copied = copyArtifact(output);
+  if (platform === 'darwin') adHocSignMacApp(copied);
   const bytes = directoryBytes(copied);
   const compressedBytes = gzipBytes(copied);
   const packageBudget = { rawBytes: 10 * 1024 * 1024, compressedBytes: 5 * 1024 * 1024 };
@@ -48,6 +49,16 @@ function build() {
     stdio: 'inherit',
   });
   if (result.status !== 0) throw new Error(`Tauri desktop build failed with status ${result.status}`);
+}
+
+function adHocSignMacApp(appPath) {
+  const result = spawnSync('codesign', ['--force', '--deep', '--sign', '-', appPath], {
+    encoding: 'utf8',
+    windowsHide: true,
+  });
+  if (result.status !== 0) {
+    throw new Error(`macOS desktop signing failed: ${String(result.stderr || result.stdout || 'unknown error').trim()}`);
+  }
 }
 
 function copyArtifact(destination) {
@@ -98,7 +109,7 @@ function assertHostTarget() {
   if (platform !== process.platform || architecture !== process.arch) {
     throw new Error(`Desktop shell must build on its native target: host=${process.platform}-${process.arch} target=${platform}-${architecture}`);
   }
-  if (!['win32', 'darwin', 'linux'].includes(platform) || !['x64', 'arm64'].includes(architecture)) {
+  if (!['win32', 'darwin'].includes(platform) || !['x64', 'arm64'].includes(architecture)) {
     throw new Error(`Unsupported desktop target: ${platform}-${architecture}`);
   }
 }

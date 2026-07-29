@@ -27,7 +27,7 @@ import { FINAL_REPLY_MAX_IMAGE_BYTES } from "../final-reply/control.js";
 import { AgentDataStore } from "../data/agent-data.js";
 import { ingestRawEmail, MAX_MAIL_BYTES } from "../connections/mail/mail-ingest.js";
 import { parseMailForDisplay, readMailAttachment } from "../connections/mail/mail-reader.js";
-import { buildConnectionCatalog, inspectConnection, readConnectionRegistry } from "../connections/catalog.js";
+import { buildConnectionCatalog, connectionPlatformSupport, inspectConnection, readConnectionRegistry } from "../connections/catalog.js";
 import { buildSitesConnectionStatus } from "../connections/sites-status.js";
 import { MailConnectionScanner } from "../connections/mail/scanner.js";
 import { MailTaskDispatcher, mailTaskFromEvent } from "../connections/mail/task-dispatcher.js";
@@ -37,6 +37,7 @@ import { NotionCliConnection } from "../connections/notion-cli.js";
 import { OpenCliRunner } from "../connections/opencli/runner.js";
 import { WeChatQianxunConnector } from "../connections/wechat-qianxun/connector.ts";
 import { InstallationConnectionOwnership } from "../connections/connection-ownership.ts";
+import { DingTalkConnector } from "../connections/dingtalk/connector.ts";
 import { BridgeStore } from "../store/store.js";
 import { AgentBridgeBroker } from "../broker/agent-bridge-broker.js";
 import { readWorkspaceSkillCatalog } from "../skills/catalog.js";
@@ -46,12 +47,13 @@ import { buildConversationAttachmentDeliveryView, buildDesktopConversationView }
 import { SessionOrchestrator } from "./orchestrator.js";
 import { renderConsoleSessionsFragment, renderDashboard, renderDataPage, renderDataRowsFragment, renderMessagesFragment, renderNewSession, renderPagesIndex, renderPrivateFileBatch, renderPrivateFilePreview, renderReleaseNotesPage, renderSessionDetail, renderSkillCatalogPage } from "../web/pages.js";
 import { renderMailPage } from "../web/mail-page.js";
-import { buildPrivateAttachmentPreviewUrl, decodePrivateAttachmentPath, privateFilePreviewKind, relativeAttachmentPath, sanitizeInboundAttachmentFileName, storedAttachmentDisplayName } from "../private-files/attachments.js";
-import { configurePrivateManagedFiles, headPrivateAttachment, privateStorageConfigured, readPrivateAttachment, signPrivateAttachmentUrl, verifyPrivateStorageAccess } from "../private-files/local-store.js";
+import { buildPrivateAttachmentPreviewUrl, buildPrivateAttachmentUrls, decodePrivateAttachmentPath, privateFilePreviewKind, relativeAttachmentPath, sanitizeInboundAttachmentFileName, storedAttachmentDisplayName } from "../private-files/attachments.js";
+import { configurePrivateManagedFiles, headPrivateAttachment, privateStorageConfigured, readPrivateAttachment, signPrivateAttachmentUrl, uploadPrivateAttachment, verifyPrivateStorageAccess } from "../private-files/local-store.js";
 import { ReleaseNotesStore } from "../release-notes/store.js";
 import { AppHistoryStore } from "../apps/history-store.js";
 import { ActivityStore } from "../activity/store.js";
 import { buildActivityTargetPreview } from "../activity/presentation.js";
+import { MemoryStore } from "../memory/store.js";
 import { authorizationSettings, readAuthorizationMode, withAuthorizationCliFlag, writeAuthorizationMode } from "../agent/authorization-mode.ts";
 import { readDailyTokenLimit, writeDailyTokenLimit } from "../agent/daily-token-limit.ts";
 import { readCodexRuntimeSettings, writeCodexRuntimeSettings } from "../agent/codex-runtime-settings.ts";
@@ -84,6 +86,12 @@ const activityStore = new ActivityStore({
   databasePath: store.databasePath,
   sessionResolver: (sessionId) => store.getSessionRecord(sessionId),
   attachmentResolver: (objectId) => managedFiles.stat(objectId),
+});
+const memoryStore = new MemoryStore({
+  dataDir: config.dataDir,
+  databasePath: store.databasePath,
+  spaceId: config.spaceId || config.spaceSlug || "personal",
+  sessionResolver: (sessionId) => store.getSessionRecord(sessionId),
 });
 configureOnlinePagesStorage({ catalog: managedFileCatalog, remote: managedStorage });
 configurePrivateManagedFiles({ catalog: managedFileCatalog });
@@ -120,6 +128,8 @@ const mailTasks = new MailTaskDispatcher({
   mailProtection: config.mailProtection,
 });
 const connectionRegistry = readConnectionRegistry();
+const personalWechatSupported = connectionPlatformSupport("wechat-personal", { registry: connectionRegistry }).supported;
+const openCliBrowserSupported = connectionPlatformSupport("xiaohongshu", { registry: connectionRegistry }).supported;
 const notion = new NotionCliConnection();
 const publicTestMailSender = new PublicTestMailSender();
 let domainBindingVerification: DomainBindingVerification;
@@ -151,6 +161,13 @@ const connectionOwnership = new InstallationConnectionOwnership({ installationDa
 const ownership = { store: connectionOwnership, spaceId: config.spaceId };
 const wechat = new WeChatConnector(logger, ownership);
 const wechatQianxun = new WeChatQianxunConnector({ dataRoot: config.siteDataRoot, ownership });
+const dingtalk = new DingTalkConnector({
+  dataRoot: config.siteDataRoot,
+  inboundAttachmentsDir: config.inboundAttachmentsDir,
+  registerAttachment: (input) => uploadPrivateAttachment(input),
+  logger,
+  ownership,
+});
 const xiaohongshu = new XiaohongshuChannel({
   baseUrl: config.xiaohongshuBaseUrl,
   logger,
@@ -166,11 +183,15 @@ const channelLoginCoordinator = {
     return await cloudBinding.consumeWechatMessage(message) || await xiaohongshuLogin.consumeWechatMessage(message);
   },
 };
-const orchestrator = new SessionOrchestrator({ store, hub, channels: { wechat, "wechat-personal": wechatQianxun }, managedFiles, activityStore, channelLoginCoordinator });
+const orchestrator = new SessionOrchestrator({ store, hub, channels: { wechat, "wechat-personal": wechatQianxun, dingtalk }, managedFiles, activityStore, memoryStore, channelLoginCoordinator });
 const scheduledTasks = new ScheduledTaskRunner({ store, broker: agentBridgeBroker, channels: { wechat }, logger });
 wechat.attach(orchestrator);
-wechatQianxun.attach((message) => orchestrator.handleChannelMessage("wechat-personal", message));
-if (config.channelPollEnabled) wechat.start();
+if (personalWechatSupported) wechatQianxun.attach((message) => orchestrator.handleChannelMessage("wechat-personal", message));
+dingtalk.attach((message) => orchestrator.handleChannelMessage("dingtalk", message));
+if (config.channelPollEnabled) {
+  wechat.start();
+  dingtalk.start();
+}
 if (config.schedulerEnabled) scheduledTasks.start();
 
 const server = http.createServer(async (request, response) => {
@@ -181,10 +202,13 @@ const server = http.createServer(async (request, response) => {
     const statusCode = error instanceof ChannelInputError
       ? 400
       : Number((error as { statusCode?: number } | null)?.statusCode || 500);
-    const payload = { ok: false, error: error instanceof Error ? error.message : String(error) };
+    const payload = {
+      ok: false,
+      code: String((error as { code?: string } | null)?.code || "REQUEST_FAILED"),
+      error: error instanceof Error ? error.message : String(error),
+    };
     if (String(request.url || "").startsWith("/api/node/v1")) {
-      const code = String((error as { code?: string } | null)?.code || "REQUEST_FAILED");
-      sendNodeApiError(response, statusCode, code, payload.error, request.method === "HEAD");
+      sendNodeApiError(response, statusCode, payload.code, payload.error, request.method === "HEAD");
     }
     else if (String(request.url || "").startsWith("/api/channels")) sendChannelJson(response, statusCode, payload);
     else sendJson(response, statusCode, payload, request.method === "HEAD");
@@ -241,11 +265,13 @@ for (const signal of ["SIGINT", "SIGTERM"]) {
     xiaohongshuLogin.stop();
     orchestrator.stop();
     wechat.stop();
+    dingtalk.stop();
     server.close(() => {
       wechatQianxun.close();
       managedFileCatalog.close();
       agentData.close();
       activityStore.close();
+      memoryStore.close();
       store.close();
       process.exit(0);
     });
@@ -261,6 +287,19 @@ async function handleRequest(request: http.IncomingMessage, response: http.Serve
   if (url.pathname === "/health") {
     sendJson(response, 200, { ok: true, service: "open-agent-bridge" }, request.method === "HEAD");
     return;
+  }
+
+  const restrictedConnectionId = platformRestrictedConnectionId(url.pathname);
+  if (restrictedConnectionId) {
+    const support = connectionPlatformSupport(restrictedConnectionId, { registry: connectionRegistry });
+    if (!support.supported) {
+      sendJson(response, 404, {
+        ok: false,
+        code: "CONNECTION_PLATFORM_UNSUPPORTED",
+        error: `${support.name} 当前仅支持 ${formatSupportedPlatforms(support.platforms)}。`,
+      }, request.method === "HEAD");
+      return;
+    }
   }
 
   if (await personalAuth.handle(request, response, url)) {
@@ -279,6 +318,17 @@ async function handleRequest(request: http.IncomingMessage, response: http.Serve
     }
     const capability = String(request.headers["x-personal-agent-activity-capability"] || "");
     const result = orchestrator.executeActivityCli(capability, await readJsonBody(request, 64 * 1024));
+    sendJson(response, 200, { ok: true, result });
+    return;
+  }
+
+  if (url.pathname === "/api/internal/memory-agent" && request.method === "POST") {
+    if (!isTrustedLocalRequest(request)) {
+      sendJson(response, 403, { ok: false, error: "Memory Agent access requires loopback" });
+      return;
+    }
+    const capability = String(request.headers["x-personal-agent-memory-capability"] || "");
+    const result = orchestrator.executeMemoryCli(capability, await readJsonBody(request, 64 * 1024));
     sendJson(response, 200, { ok: true, result });
     return;
   }
@@ -331,6 +381,7 @@ async function handleRequest(request: http.IncomingMessage, response: http.Serve
         mail: { messages: { list: true, inspect: true } },
         data: { schema: true, query: true, distinct: true, rawSql: false },
         pages: { list: true, publish: true },
+        memory: { list: true, search: true, inspect: true, spaceIsolated: true, readOnlyUi: true },
         apps: { history: { list: true, append: true, rawSql: false } },
         client: { overview: true, activity: true, pages: true, runtime: true, taskDetailPagination: true, readOnly: true },
       },
@@ -423,6 +474,33 @@ async function handleRequest(request: http.IncomingMessage, response: http.Serve
 
   if (url.pathname === "/api/mobile/tasks" && request.method === "GET") {
     sendNodeApiResult(response, 200, buildMobileTasks(url));
+    return;
+  }
+
+  const mobileTaskDisplayMatch = /^\/api\/mobile\/tasks\/([^/]+)\/display-events$/.exec(url.pathname);
+  if (mobileTaskDisplayMatch && request.method === "GET") {
+    try {
+      const page = store.listTaskDisplayEvents(decodeURIComponent(mobileTaskDisplayMatch[1]), {
+        limit: Number(url.searchParams.get("limit") || 20),
+        before: url.searchParams.get("before") || "",
+      });
+      if (!page) sendNodeApiError(response, 404, "TASK_NOT_FOUND", "Task not found");
+      else sendNodeApiResult(response, 200, page);
+    } catch (error: any) {
+      if (error?.code === "TASK_DISPLAY_CURSOR_INVALID") {
+        sendNodeApiError(response, 400, error.code, error.message);
+      } else throw error;
+    }
+    return;
+  }
+
+  const mobileTaskMatch = /^\/api\/mobile\/tasks\/([^/]+)$/.exec(url.pathname);
+  if (mobileTaskMatch && request.method === "GET") {
+    const session = store.getMobileSessionDetail(decodeURIComponent(mobileTaskMatch[1]), {
+      messageLimit: Number(url.searchParams.get("messageLimit") || 80),
+    });
+    if (!session) sendNodeApiError(response, 404, "TASK_NOT_FOUND", "Task not found");
+    else sendNodeApiResult(response, 200, { session });
     return;
   }
 
@@ -727,12 +805,37 @@ async function handleRequest(request: http.IncomingMessage, response: http.Serve
   }
 
   if (url.pathname === "/agent-skills" && (request.method === "GET" || request.method === "HEAD")) {
-    sendHtml(response, 200, renderSkillCatalogPage(readWorkspaceSkillCatalog(config.workspaceRoot)), request.method === "HEAD");
+    sendHtml(response, 200, renderSkillCatalogPage(readWorkspaceSkillCatalog(config.workspaceRoot, {
+      metadataRoots: [config.releaseRoot, config.workspaceRoot],
+    })), request.method === "HEAD");
     return;
   }
 
   if (url.pathname === "/api/skills" && (request.method === "GET" || request.method === "HEAD")) {
-    sendJson(response, 200, { ok: true, ...readWorkspaceSkillCatalog(config.workspaceRoot) }, request.method === "HEAD");
+    sendJson(response, 200, { ok: true, ...readWorkspaceSkillCatalog(config.workspaceRoot, {
+      metadataRoots: [config.releaseRoot, config.workspaceRoot],
+    }), space: currentMemorySpace() }, request.method === "HEAD");
+    return;
+  }
+
+  if (url.pathname === "/api/memories" && (request.method === "GET" || request.method === "HEAD")) {
+    const result = memoryStore.listForReader({
+      query: url.searchParams.get("query") || "",
+      status: url.searchParams.get("status") || "active",
+      limit: Number(url.searchParams.get("limit") || 200),
+    });
+    sendJson(response, 200, { ok: true, ...result, space: currentMemorySpace() }, request.method === "HEAD");
+    return;
+  }
+
+  const memoryMatch = /^\/api\/memories\/([^/]+)$/.exec(url.pathname);
+  if (memoryMatch && (request.method === "GET" || request.method === "HEAD")) {
+    const memory = memoryStore.getForReader(decodeURIComponent(memoryMatch[1]));
+    if (!memory) {
+      sendJson(response, 404, { ok: false, error: "Memory was not found in the current Space" }, request.method === "HEAD");
+      return;
+    }
+    sendJson(response, 200, { ok: true, memory, space: currentMemorySpace() }, request.method === "HEAD");
     return;
   }
 
@@ -827,21 +930,24 @@ async function handleRequest(request: http.IncomingMessage, response: http.Serve
 
   if (url.pathname === "/api/connections" && request.method === "GET") {
     const wechatStatus = wechat.catalogStatus();
-    const personalWechatStatus = await wechatQianxun.status({ probe: false });
+    const personalWechatStatus = personalWechatSupported
+      ? personalWechatCatalogStatus(await wechatQianxun.status({ probe: false }), wechatQianxun.accessPolicy(), wechatQianxun.connectivityTestStatus())
+      : {};
     const platform = platformConnectionStatuses();
-    const xiaohongshuStatus = xiaohongshuBrowser.catalogStatus();
-    const twitterStatus = twitter.catalogStatus();
-    void Promise.all([xiaohongshuBrowser.status(), twitter.status()]);
+    const xiaohongshuStatus = openCliBrowserSupported ? xiaohongshuBrowser.catalogStatus() : {};
+    const twitterStatus = openCliBrowserSupported ? twitter.catalogStatus() : {};
+    if (openCliBrowserSupported) void Promise.all([xiaohongshuBrowser.status(), twitter.status()]);
     const connections = buildConnectionCatalog({
       registry: connectionRegistry,
       statuses: {
-        "wechat-personal": personalWechatCatalogStatus(personalWechatStatus, wechatQianxun.accessPolicy(), wechatQianxun.connectivityTestStatus()),
+        "wechat-personal": personalWechatStatus,
         wechat: {
           state: wechatStatus.loginState === "space-conflict" ? "error" : wechatStatus.connected ? "connected" : "needs_setup",
           statusLabel: wechatStatus.loginState === "space-conflict" ? "已被其他 Space 占用" : wechatStatus.connected ? "已连接" : "待连接",
           ...(wechatStatus.reason ? { error: wechatStatus.reason } : {}),
           details: { configured: wechatStatus.configured },
         },
+        dingtalk: dingtalk.catalogStatus(),
         xiaohongshu: xiaohongshuStatus,
         twitter: twitterStatus,
         notion: notion.catalogStatus(),
@@ -873,6 +979,8 @@ async function handleRequest(request: http.IncomingMessage, response: http.Serve
       };
     } else if (id === "wechat-personal") {
       dynamicStatus = personalWechatCatalogStatus(await wechatQianxun.status({ probe: true }), wechatQianxun.accessPolicy(), wechatQianxun.connectivityTestStatus());
+    } else if (id === "dingtalk") {
+      dynamicStatus = dingtalk.status();
     } else if (id === "mail") dynamicStatus = { ...mailScanner.status(), ...platformConnectionStatuses().mail };
     else if (id === "sites") dynamicStatus = platformConnectionStatuses().sites;
     const merged = inspectConnection(id, { registry: connectionRegistry, statuses: { [id]: dynamicStatus } });
@@ -898,6 +1006,17 @@ async function handleRequest(request: http.IncomingMessage, response: http.Serve
   }
   if (url.pathname === "/api/connections/notion/login/start" && request.method === "POST") {
     sendChannelJson(response, 200, { ok: true, ...(await notion.startLogin()) });
+    return;
+  }
+  if (url.pathname === "/api/connections/dingtalk/configuration" && request.method === "POST") {
+    if (!isTrustedLocalConsoleRequest(request)) { sendJson(response, 403, { ok: false, error: "钉钉配置只能从本机保存" }); return; }
+    const status = await dingtalk.configure(await readJsonBody(request, 16 * 1024));
+    sendChannelJson(response, 200, { ok: true, connection: inspectConnection("dingtalk", { registry: connectionRegistry, statuses: { dingtalk: status } }) });
+    return;
+  }
+  if (url.pathname === "/api/connections/dingtalk/configuration" && request.method === "DELETE") {
+    if (!isTrustedLocalConsoleRequest(request)) { sendJson(response, 403, { ok: false, error: "钉钉配置只能从本机清空" }); return; }
+    sendChannelJson(response, 200, { ok: true, result: dingtalk.clearConfiguration() });
     return;
   }
   if (url.pathname === "/api/connections/xiaohongshu/open" && request.method === "POST") {
@@ -1197,6 +1316,7 @@ async function handleRequest(request: http.IncomingMessage, response: http.Serve
       overwrite: Boolean(body.overwrite),
       title: body.title,
       summary: body.summary,
+      template: body.template,
       desktopThumbnail: body.desktopThumbnail,
       mobileThumbnail: body.mobileThumbnail,
     });
@@ -1474,6 +1594,17 @@ async function handleRequest(request: http.IncomingMessage, response: http.Serve
     return;
   }
 
+  if (url.pathname === "/api/desktop/conversation/attachments" && request.method === "POST") {
+    const body = await readJsonBody(request, Math.ceil(config.maxUploadBytes * 1.5) + 1_048_576);
+    const main = store.getOrCreateDesktopMainSession({ workspaceRoot: config.workspaceRoot });
+    const attachments = await persistDesktopAttachments(body.attachments, main.id);
+    sendJson(response, 201, {
+      ok: true,
+      attachments: attachments.map(({ filePath: _filePath, ...attachment }) => attachment),
+    });
+    return;
+  }
+
   if (url.pathname === "/api/desktop/conversation/messages" && request.method === "POST") {
     const body = await readJsonBody(request, Math.ceil(config.maxUploadBytes * 1.5) + 1_048_576);
     const content = String(body.content || body.text || "").trim();
@@ -1486,7 +1617,7 @@ async function handleRequest(request: http.IncomingMessage, response: http.Serve
       && event.payload?.metadata?.eventType === "desktop/message-accepted"
       && event.payload?.metadata?.clientMessageId === clientMessageId);
     if (!duplicate) {
-      const attachments = await persistDesktopAttachments(body.attachments, main.id);
+      const attachments = await resolveDesktopAttachments(body.attachments, main.id);
       await orchestrator.resumeSession(main.id, desktopAgentContent(content, attachments), {
         displayContent: content,
         messageMetadata: {
@@ -1514,17 +1645,22 @@ async function handleRequest(request: http.IncomingMessage, response: http.Serve
 
   if (url.pathname === "/api/sessions" && request.method === "GET") {
     const query = url.searchParams.get("query") || "";
+    const parentSessionId = url.searchParams.get("parent") || "";
     const page = store.listSessionsPage({
       includeArchived: url.searchParams.get("archived") === "1",
       limit: Number(url.searchParams.get("limit") || config.sessionPageSize),
       cursor: url.searchParams.get("cursor") || "",
       query,
+      parentSessionId,
       hydrate: false,
     });
     sendJson(response, 200, {
       ok: true,
       ...page,
-      totalSessions: store.countSessions(),
+      totalSessions: store.countSessions({
+        includeArchived: url.searchParams.get("archived") === "1",
+        parentSessionId,
+      }),
       html: renderConsoleSessionsFragment(page.sessions, { empty: !page.sessions.length, search: Boolean(query) }),
     });
     return;
@@ -1812,6 +1948,7 @@ async function buildClientOverview() {
   const recent = await buildClientActivity(new URL("http://local/api/node/v1/client/activity?limit=5"));
   const externalAccess = config.externalAccess();
   return {
+    space: currentMemorySpace(),
     machine: {
       id: config.instanceId,
       state: "running",
@@ -1858,6 +1995,21 @@ function personalWechatCallbackUrl() {
   return `http://127.0.0.1:8843${callbackPath}/${encodeURIComponent(config.spaceSlug)}`;
 }
 
+function platformRestrictedConnectionId(pathname: string) {
+  if (pathname.startsWith("/api/connections/wechat-personal/")
+    || pathname.startsWith("/api/connections/wechat/qianxun/")
+    || pathname.startsWith("/api/internal/channels/wechat-personal/callback")
+    || pathname.startsWith("/api/internal/channels/wechat/qianxun/callback")) return "wechat-personal";
+  if (pathname.startsWith("/api/connections/xiaohongshu/")) return "xiaohongshu";
+  if (pathname.startsWith("/api/connections/twitter/")) return "twitter";
+  return "";
+}
+
+function formatSupportedPlatforms(platforms: string[]) {
+  const labels: Record<string, string> = { win32: "Windows", darwin: "macOS", linux: "Linux" };
+  return platforms.map((platform) => labels[platform] || platform).join(" / ");
+}
+
 function platformConnectionStatuses() {
   const services = managedServiceReadiness({ dataRoot: config.siteDataRoot });
   const external = config.externalAccess();
@@ -1869,52 +2021,83 @@ function platformConnectionStatuses() {
   const customServiceReady = customTunnel?.state === "ready";
   const customSiteBound = Boolean(customSite && domainBindingVerification.isVerified("sites", "custom"));
   const customMailBound = Boolean(customMail && domainBindingVerification.isVerified("mail", "custom"));
+  const customSiteReady = customSiteBound && customServiceReady;
+  const customMailReady = customMailBound && customServiceReady;
   const siteBound = !customSite && services.publicDomain.ready && domainBindingVerification.isVerified("sites");
   const mailBound = !customMail && services.agentMail.ready && domainBindingVerification.isVerified("mail");
   const domain = services.publicDomain.value || "";
   const mailAddress = services.agentMail.value || "";
   const customSiteVerification = domainBindingVerification.status("sites", "custom");
   const customMailVerification = domainBindingVerification.status("mail", "custom");
+  const relayInstallerUrl = selfHostedRelayInstallerUrl();
   const sites = customSite ? {
-    state: customSiteBound ? "connected" : "degraded",
+    state: customSiteReady ? "connected" : "degraded",
     primaryAction: "清空配置",
-    statusLabel: customSiteBound ? "自定义域名已生效" : "等待自定义域名验证",
+    statusLabel: customSiteReady ? "自定义域名已生效" : customServiceReady ? "等待自定义域名验证" : "Relay 连接恢复中",
     runtime: [
       { label: "自定义域名", value: customSite.domain },
       { label: "Relay 连接", value: customServiceReady ? "已连接" : "等待连接" },
-      { label: "公网访问", value: customSiteBound ? `https://${customSite.domain}` : "等待 DNS、TLS 与内容验证" },
+      { label: "公网访问", value: customSiteReady ? `https://${customSite.domain}` : customSiteBound ? "Relay 恢复后可用" : "等待 DNS、TLS 与内容验证" },
     ],
-    details: { platformDomainBound: false, bindingMode: "custom", customDomain: customSite.domain, customPublicAddress: customSite.publicAddress, customServiceReady, publicReady: customSiteBound, publicStatus: customSiteBound ? "ready" : customServiceReady ? "unavailable" : "tunnel-offline", publicOrigin: customSiteBound ? `https://${customSite.domain}` : "", domainVerification: customSiteVerification },
-  } : buildSitesConnectionStatus({
+    details: { platformDomainBound: false, bindingMode: "custom", customDomain: customSite.domain, customPublicAddress: customSite.publicAddress, customServiceReady, customRelayCredentialPrepared: true, customRelayInstallerUrl: relayInstallerUrl, publicReady: customSiteReady, publicStatus: customSiteReady ? "ready" : customServiceReady ? "unavailable" : "tunnel-offline", publicOrigin: customSiteReady ? `https://${customSite.domain}` : "", domainVerification: customSiteVerification },
+  } : withRelayInstaller(buildSitesConnectionStatus({
     domainReady: services.publicDomain.ready,
     domain,
     verified: siteBound,
     external,
     verification: domainBindingVerification.status("sites", "platform"),
-  });
+  }), relayInstallerUrl);
   return {
     sites,
     mail: customMail ? {
-      state: "connected",
+      state: customMailReady ? "connected" : "degraded",
       primaryAction: "清空配置",
-      statusLabel: customMailBound ? "自定义邮箱已生效" : "等待自定义邮箱验证",
+      statusLabel: customMailReady ? "自定义邮箱已生效" : customServiceReady ? "等待自定义邮箱验证" : "转发连接恢复中",
       runtime: [
         { label: "自定义邮箱地址", value: `agent@${customMail.domain}` },
         { label: "转发服务", value: customServiceReady ? "已连接" : "等待准备" },
-        { label: "公网收件", value: customMailBound ? "测试邮件已在本机收到" : "等待 MX 与真实收件验证" },
+        { label: "公网收件", value: customMailReady ? "测试邮件已在本机收到" : customMailBound ? "转发恢复后可用" : "等待 MX 与真实收件验证" },
       ],
-      details: { platformDomainBound: false, bindingMode: "custom", customDomain: customMail.domain, customPublicAddress: customMail.publicAddress, customServiceReady, mailAddress: `agent@${customMail.domain}`, domainVerification: customMailVerification },
+      details: { platformDomainBound: false, bindingMode: "custom", customDomain: customMail.domain, customPublicAddress: customMail.publicAddress, customServiceReady, customRelayCredentialPrepared: true, customRelayInstallerUrl: relayInstallerUrl, mailAddress: `agent@${customMail.domain}`, domainVerification: customMailVerification },
     } : {
-      state: "connected",
+      state: mailBound ? "connected" : "degraded",
       primaryAction: mailAddress ? "清空配置" : "配置",
-      statusLabel: mailBound ? "已验证平台邮箱" : "本地已连接",
+      statusLabel: mailBound ? "已验证平台邮箱" : services.agentMail.ready ? "等待平台邮箱验证" : "未生效",
       runtime: [
         { label: "平台邮箱地址", value: mailAddress || "尚未分配" },
         { label: "公网收件", value: mailBound ? "测试邮件已在本机收到" : services.agentMail.ready ? "等待绑定验证" : "分配域名后可用" },
       ],
-      details: { platformDomainBound: mailBound, bindingMode: mailBound ? "platform" : "", platformDomain: domain, mailAddress, domainVerification: domainBindingVerification.status("mail", "platform") },
+      details: { platformDomainBound: mailBound, bindingMode: mailBound ? "platform" : "", platformDomain: domain, customRelayInstallerUrl: relayInstallerUrl, mailAddress, domainVerification: domainBindingVerification.status("mail", "platform") },
     },
   };
+}
+
+function selfHostedRelayInstallerUrl() {
+  const rawVersion = String(process.env.PERSONAL_AGENT_VERSION
+    || readJsonFile(path.join(config.workspaceRoot, "package.json"))?.version
+    || readJsonFile(path.join(process.env.PRIVATE_SITE_INSTALL_ROOT || "", "installation.json"))?.activeReleaseId
+    || readJsonFile(path.join(process.env.PERSONAL_AGENT_HOME || "", "core", "installation.json"))?.activeReleaseId
+    || nearestPackageVersion(config.rootDir)
+    || "").trim();
+  const version = rawVersion.replace(/^v/i, "");
+  if (!/^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/.test(version)) return "";
+  return `https://github.com/chenchen428/personal-agent-node/releases/download/v${encodeURIComponent(version)}/personal-agent-relay-install.sh`;
+}
+
+function nearestPackageVersion(start: string) {
+  let current = path.resolve(start || ".");
+  for (let index = 0; index < 8; index += 1) {
+    const value = readJsonFile(path.join(current, "package.json"))?.version;
+    if (value) return value;
+    const parent = path.dirname(current);
+    if (parent === current) break;
+    current = parent;
+  }
+  return "";
+}
+
+function withRelayInstaller(connection: any, installerUrl: string) {
+  return { ...connection, details: { ...(connection.details || {}), customRelayInstallerUrl: installerUrl } };
 }
 
 async function buildClientActivity(url: URL) {
@@ -1959,6 +2142,15 @@ async function buildClientActivity(url: URL) {
   };
 }
 
+function currentMemorySpace() {
+  const space = config.spaceId ? getSpace(config.installationDataRoot, config.spaceId) : null;
+  return {
+    id: config.spaceId || config.spaceSlug || "personal",
+    slug: space?.slug || config.spaceSlug || "personal",
+    displayName: space?.displayName || (config.spaceKind === "personal" ? "个人隔离空间" : config.spaceSlug || "当前空间"),
+  };
+}
+
 function clientActivityTargetHref(target: { type: string; id: string } | null) {
   if (!target) return "";
   if (target.type === "work") return `/app/mobile/workers/${encodeURIComponent(target.id)}`;
@@ -1999,6 +2191,7 @@ async function buildClientPages(url?: URL) {
       ? `/publications/${encodeURIComponent(publication.id)}/${encodeURIComponent(publication.page.thumbnails.mobile.fileName)}`
       : "",
     mobileThumbnailAlt: String(publication.page?.thumbnails?.mobile?.alt || ""),
+    template: publication.page?.template,
   }));
   const publicPages = publicAssets
     .filter((asset: any) => /\.html?$/i.test(String(asset.fileName || "")))
@@ -2019,6 +2212,7 @@ async function buildClientPages(url?: URL) {
       desktopThumbnailAlt: String(asset.page?.thumbnails?.desktop?.alt || asset.page?.thumbnail?.alt || ""),
       mobileThumbnailUrl: String(asset.mobileThumbnailUrl || ""),
       mobileThumbnailAlt: String(asset.page?.thumbnails?.mobile?.alt || ""),
+      template: asset.page?.template,
     }));
   const pages = [...privatePages, ...publicPages].sort((left, right) => right.updatedAt.localeCompare(left.updatedAt));
   if (!url) return pages;
@@ -2661,24 +2855,85 @@ async function persistDesktopAttachments(input: unknown, sessionId: string) {
   const output = [];
   for (const { entry, buffer } of decoded) {
     const name = sanitizeInboundAttachmentFileName(entry?.name, "desktop-file");
+    const mimeType = String(entry?.mimeType || "application/octet-stream").slice(0, 160);
     const storedName = `${new Date().toISOString().replace(/[:.]/g, "-")}-${randomUUID().slice(0, 8)}-${name}`;
     const filePath = path.join(targetDir, storedName);
     assertInside(config.inboundAttachmentsDir, filePath);
     await fs.promises.writeFile(filePath, buffer, { flag: "wx", mode: 0o600 });
+    const relativePath = relativeAttachmentPath(config.inboundAttachmentsDir, filePath);
+    const managed = await uploadPrivateAttachment({
+      filePath,
+      relativePath,
+      contentType: mimeType,
+      source: "desktop-chat",
+      originalName: name,
+    });
     output.push({
+      objectId: managed.objectId,
       name,
-      mimeType: String(entry?.mimeType || "application/octet-stream").slice(0, 160),
+      kind: mimeType.toLowerCase().startsWith("image/") ? "image" : "file",
+      mimeType,
       sizeBytes: buffer.length,
-      relativePath: relativeAttachmentPath(config.inboundAttachmentsDir, filePath),
-      previewUrl: buildPrivateAttachmentPreviewUrl({
-        rootDir: config.inboundAttachmentsDir,
-        filePath,
-        consoleBaseUrl: config.consoleBaseUrl,
-      }),
+      relativePath,
+      ...buildPrivateAttachmentUrls(relativePath),
+      deliveryState: "sent",
       filePath,
     });
   }
   return output;
+}
+
+async function resolveDesktopAttachments(input: unknown, sessionId: string) {
+  const entries = Array.isArray(input) ? input : [];
+  if (entries.some((entry) => String(entry?.content || "").trim())) {
+    return persistDesktopAttachments(entries, sessionId);
+  }
+  if (entries.length > 4) throw Object.assign(new Error("at most 4 attachments are allowed"), { statusCode: 400 });
+  const sessionPrefix = `desktop/${sessionId}/`;
+  let total = 0;
+  return entries.map((entry) => {
+    const objectId = String(entry?.objectId || "").trim();
+    if (!/^obj_[a-f0-9]{24}$/.test(objectId)) {
+      throw Object.assign(new Error("attachment objectId is required"), { statusCode: 400 });
+    }
+    let object;
+    try {
+      object = managedFiles.stat(objectId);
+    } catch (error: any) {
+      if (error?.code === "ENOENT") {
+        throw Object.assign(new Error("attachment is not available in this conversation"), { statusCode: 404 });
+      }
+      throw error;
+    }
+    const relativePath = String(object.relativePath || "").replace(/\\/g, "/").replace(/^\/+/, "");
+    const filePath = path.resolve(String(object.localPath || ""));
+    const expectedFilePath = path.resolve(config.inboundAttachmentsDir, relativePath);
+    const valid = object.visibility === "private"
+      && object.source === "desktop-chat"
+      && object.status === "ready"
+      && relativePath.startsWith(sessionPrefix)
+      && filePath === expectedFilePath
+      && filePath
+      && fs.existsSync(filePath);
+    if (!valid) throw Object.assign(new Error("attachment is not available in this conversation"), { statusCode: 404 });
+    assertInside(config.inboundAttachmentsDir, filePath);
+    total += Number(object.sizeBytes || 0);
+    if (total > config.maxUploadBytes) {
+      throw Object.assign(new Error(`attachments exceed ${config.maxUploadBytes} bytes`), { statusCode: 413 });
+    }
+    const mimeType = String(object.contentType || "application/octet-stream").slice(0, 160);
+    return {
+      objectId,
+      name: sanitizeInboundAttachmentFileName(object.originalName, "desktop-file"),
+      kind: mimeType.toLowerCase().startsWith("image/") ? "image" : "file",
+      mimeType,
+      sizeBytes: Number(object.sizeBytes || 0),
+      relativePath,
+      ...buildPrivateAttachmentUrls(relativePath),
+      deliveryState: "sent",
+      filePath,
+    };
+  });
 }
 
 function desktopAgentContent(content: string, attachments: Array<{ name: string; filePath: string }>) {
