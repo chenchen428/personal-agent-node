@@ -7,6 +7,7 @@ import path from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import test from 'node:test';
 import { loadInteriorEnginePolicy } from '../skills/interior-design/scripts/engine-policy.mjs';
+import { calculateOrthographicZoom } from '../skills/interior-design/scripts/pascal-camera-framing.mjs';
 import { generateProfessionalPage, verifyProfessionalPageHtml } from '../skills/interior-design/scripts/generate-page-v2.mjs';
 import { loadInteriorTemplateContract, loadSourcePlanAsset } from '../skills/interior-design/scripts/page-assets.mjs';
 import { loadPascalRuntimeModule, PascalInteriorAdapter } from '../skills/interior-design/scripts/pascal-adapter.mjs';
@@ -36,6 +37,33 @@ const sourcePlanPath = path.join(exampleRoot, 'source-plan.png');
 const annotationPath = path.join(exampleRoot, 'agent-annotation.png');
 const nativeSeedPath = path.join(exampleRoot, 'seed.json');
 const nativeSeed = JSON.parse(fs.readFileSync(nativeSeedPath, 'utf8'));
+
+test('fits the orthographic floor plan to the available viewport', () => {
+  const projectCamera = fs.readFileSync(
+    path.join(root, 'skills/interior-design/scripts/pascal-project-camera.jsx'),
+    'utf8',
+  );
+  assert.equal(calculateOrthographicZoom({
+    boundsWidth: 15,
+    boundsDepth: 15,
+    viewportWidth: 2048,
+    viewportHeight: 1152,
+  }), 53.76);
+  assert.equal(calculateOrthographicZoom({
+    boundsWidth: 18,
+    boundsDepth: 10,
+    viewportWidth: 1200,
+    viewportHeight: 800,
+  }), 46.666666666666664);
+  assert.equal(calculateOrthographicZoom({
+    boundsWidth: 0,
+    boundsDepth: 0,
+    viewportWidth: 0,
+    viewportHeight: 0,
+  }), 0.7);
+  assert.match(projectCamera, /calculateOrthographicZoom/);
+  assert.match(projectCamera, /api\.zoomTo\(zoom, false\)/);
+});
 
 test('requires Pascal v2 as the only interior-design engine and rejects removed engine paths', () => {
   const current = loadInteriorEnginePolicy({ env: {} });
