@@ -25,6 +25,11 @@ This repository is both the public, local-first Personal Agent runtime and the c
 - Top-level `skills/` is the portable skill source. Compatibility paths `.agents`, `.codex`, `.claude`, `.cursor`, and `CLAUDE.md` are generated locally and ignored.
 - Production releases are immutable artifacts. Mutable state must never be packaged into `dist/`.
 
+## Documentation Language
+
+- 面向用户的方案、架构说明、ADR、实施计划和验收说明默认使用中文，除非用户明确要求其他语言。
+- 代码标识、协议字段、CLI 参数、第三方产品名称和必须保持兼容的原文可以保留英文，但正文解释应使用中文。
+
 ## Private Asset Delivery
 
 - Every inbound upload and Agent-produced file that may be referenced later belongs under the owning Space's user-owned `workspace/`: inbound files under `files/inbound`, managed outputs under `files/managed`, materialized copies under `files/materialized`, and private Page bundles under `publications/private`.

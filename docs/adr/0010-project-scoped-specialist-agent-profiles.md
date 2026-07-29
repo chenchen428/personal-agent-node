@@ -1,124 +1,97 @@
-# ADR 0010: Project-scoped specialist Agent profiles
+# ADR 0010：项目级专业子 Agent 配置
 
-- Status: Proposed
-- Date: 2026-07-29
-- Scope: Personal Agent Node main-Agent delegation, Worker sessions, portable
-  Skills, and customer Workspace
-- Related: ADR 0003 Core/workspace delivery, `AGENTS.md` main-Agent and Worker
-  delegation contract
+- 状态：提议
+- 日期：2026-07-29
+- 范围：Personal Agent Node 主 Agent 委派、Worker 会话、可移植 Skill 与用户 Workspace
+- 相关文档：ADR 0003 Core/Workspace 交付、`AGENTS.md` 中主 Agent 与 Worker 委派约定
 
-## Summary
+## 摘要
 
-Personal Agent should improve domain specialization without replacing its
-existing main-Agent, Worker, Skill, Page, file, or session architecture.
+Personal Agent 应在不替换现有主 Agent、Worker、Skill、Page、文件与会话架构的前提下，提高垂直领域任务的专业性。
 
-The product will add a small catalog of specialist Agent profiles. A specialist
-profile is a named Worker configuration with:
+本方案增加一组轻量的专业子 Agent 配置。每个专业子 Agent 本质上是一种具名的 Worker 配置，包含：
 
-- stable professional instructions;
-- a curated list of existing Skills to prefer;
-- concise routing signals for the main Agent; and
-- project-scoped session identity.
+- 稳定的专业角色说明；
+- 推荐优先使用的现有 Skill 列表；
+- 供主 Agent 路由使用的简明领域描述；
+- 项目级会话身份。
 
-The canonical main Agent remains the only user-facing Agent. It selects a
-specialist, starts one Worker session for a new domain project, and resumes that
-same session for later work on the same project. The specialist keeps the
-professional history of that project in its Codex thread and persists current
-facts in ordinary project artifacts. A different project or a different
-specialist starts a different Worker session.
+唯一的主 Agent 继续负责面向用户。对于一个新的垂直领域项目，主 Agent 选择对应的专业子 Agent 并启动一个 Worker 会话；用户以后继续修改同一个项目时，主 Agent 恢复同一个会话。专业子 Agent 的 Codex 任务保留该项目的专业工作历史，项目文件保留当前有效事实。不同项目或不同专业子 Agent 使用不同的 Worker 会话。
 
-This decision deliberately does not introduce a general workflow engine, an
-Agent-to-Agent messaging network, a new memory product, a new permission
-system, or an autonomous review hierarchy. Users continue to review the
-specialist's output and request revisions through the main Agent.
+本方案刻意不引入通用工作流引擎、Agent 间消息网络、新的记忆产品、新的权限系统或自动化审核层级。用户仍然通过主 Agent 查看专业子 Agent 的产物，并直接提出修改意见。
 
-## Goal
+## 目标
 
-The goal is to let focused child Agents handle work in their own professional
-domain while preserving the current product and keeping the implementation
-small.
+目标是让专业子 Agent 专注处理自己的垂直领域工作，同时保持当前产品结构，尽量减少改造范围。
 
-The first profiles are:
+第一批专业子 Agent 包括：
 
-1. interior design;
-2. presentation design;
-3. poster and social-visual design; and
-4. travel planning.
+1. 装修设计；
+2. PPT 设计；
+3. 海报与社交视觉设计；
+4. 旅游规划。
 
-Success means:
+满足以下条件即视为方案成功：
 
-- a domain task receives stable professional instructions instead of only a
-  generic Worker prompt;
-- the specialist can use the existing reusable Skills and product commands;
-- revisions of the same project preserve the specialist's prior reasoning and
-  working context;
-- unrelated projects do not share a specialist thread;
-- cross-domain work receives only the selected source artifacts and task
-  context; and
-- the user continues to see one coherent conversation with the main Agent.
+- 垂直领域任务能够获得稳定的专业说明，而不只是通用 Worker 提示；
+- 专业子 Agent 可以继续使用现有公共 Skill 与产品命令；
+- 同一个项目的后续修改能够保留此前的专业推理与工作上下文；
+- 无关项目不会共享专业子 Agent 会话；
+- 跨领域协作只传递选定的源产物与任务上下文；
+- 用户始终只面对一个连贯的主 Agent 会话。
 
-## Non-goals
+## 非目标
 
-This proposal does not:
+本方案不做以下事情：
 
-- turn every Skill into an Agent;
-- copy shared Skills into Agent directories;
-- introduce peer-to-peer Agent conversations;
-- create a separate publishing Agent;
-- add an Agent marketplace or Agent settings UI;
-- add a declarative workflow or DAG runtime;
-- add a separate domain-memory database;
-- add automatic creator/reviewer Agent loops;
-- replace the existing `main` and `worker` session roles;
-- make the Worker a second user-facing assistant; or
-- change the user's responsibility to inspect results and request revisions.
+- 不把每一个 Skill 都改造成 Agent；
+- 不把公共 Skill 复制到各个 Agent 目录；
+- 不引入 Agent 之间的点对点对话；
+- 不增加独立的“发布 Agent”；
+- 不增加 Agent 市场或 Agent 设置界面；
+- 不增加声明式工作流或 DAG 运行时；
+- 不增加单独的领域记忆数据库；
+- 不增加自动化的“创作 Agent + 审核 Agent”循环；
+- 不替换现有的 `main` 和 `worker` 会话角色；
+- 不让 Worker 成为第二个面向用户的助手；
+- 不改变由用户查看结果并提出修改意见的产品方式。
 
-## Current architecture
+## 当前架构
 
-Personal Agent Node already has the required execution foundation:
+Personal Agent Node 已经具备所需的执行基础：
 
-- the canonical main Agent owns user conversation, delegation, progress, and
-  final replies;
-- each Worker owns an independent Codex thread;
-- Worker sessions can be resumed and recovered after interruption;
-- Workers already return governed artifacts and cannot author global Activity
-  or Memory;
-- `pa-cli session start`, `resume`, `list`, `search`, and `status` provide the
-  task lifecycle;
-- portable Skills already contain the professional procedures, scripts,
-  references, assets, and quality checks used by domain work; and
-- Online Pages, managed files, research, media processing, and other shared
-  functions already have stable product or Skill entry points.
+- 唯一主 Agent 负责用户对话、任务委派、进度汇总与最终回复；
+- 每个 Worker 拥有独立的 Codex 任务；
+- Worker 会话可以恢复，也可以在中断后继续；
+- Worker 已经能够返回受治理的产物，但不能写入全局 Activity 或 Memory；
+- `pa-cli session start`、`resume`、`list`、`search` 与 `status` 已提供任务生命周期；
+- 可移植 Skill 已经包含垂直工作所需的专业流程、脚本、参考资料、素材与质量检查；
+- Online Pages、托管文件、研究、媒体处理等公共能力已经具有稳定的产品或 Skill 入口。
 
-The missing concept is a first-class specialist profile. Today every created
-Worker receives the same base instructions and is identified only as a
-`worker`. Domain selection is expressed through task text, Skill invocation,
-and a small amount of hard-coded routing.
+当前缺少的是一等的“专业子 Agent 配置”概念。现在创建的 Worker 都使用同一套基础说明，只以 `worker` 身份存在。垂直领域选择主要依赖任务文本、Skill 触发和少量硬编码路由。
 
-## Decision
+## 决策
 
-### 1. Keep one canonical main Agent
+### 1. 保留唯一主 Agent
 
-The main Agent continues to:
+主 Agent 继续负责：
 
-- understand the user's current request;
-- decide whether the request needs delegation;
-- select a specialist profile when one clearly owns the request;
-- determine whether the request belongs to an existing project;
-- start or resume the appropriate Worker session;
-- pass the latest user request and relevant governed artifacts;
-- receive progress, completion, missing-input, and failure results; and
-- communicate with the user.
+- 理解用户当前请求；
+- 判断任务是否需要委派；
+- 在领域归属明确时选择专业子 Agent；
+- 判断请求是否属于已有项目；
+- 启动或恢复正确的 Worker 会话；
+- 传入用户最新请求和相关受治理产物；
+- 接收进度、完成、缺少输入和失败结果；
+- 与用户沟通。
 
-The main Agent does not perform the specialist's substantive work after
-delegating it.
+主 Agent 一旦完成委派，就不再重复执行专业子 Agent 的主体工作。
 
-### 2. Add specialist profiles on top of Workers
+### 2. 在现有 Worker 之上增加专业配置
 
-A specialist is not a new security role or runtime process type. It remains a
-Worker session whose metadata identifies an Agent profile.
+专业子 Agent 不是新的安全角色，也不是新的运行时进程类型。它仍然是 Worker 会话，只是在会话元数据中记录所使用的 Agent 配置。
 
-The portable source layout will be:
+可移植源文件采用以下目录结构：
 
 ```text
 agents/
@@ -139,14 +112,14 @@ registry/
 └── agents.json
 ```
 
-`agent.yaml` is intentionally small:
+`agent.yaml` 保持精简：
 
 ```yaml
 schemaVersion: 1
 id: interior-designer
 version: 1
-displayName: Interior Design Agent
-description: Handles renovation, floor-plan, layout, and interior delivery work.
+displayName: 装修设计 Agent
+description: 负责装修、户型、空间布局和室内设计交付。
 instructions: AGENT.md
 skills:
   - home-renovation
@@ -166,149 +139,123 @@ routing:
   - 家居布局
 ```
 
-The profile does not duplicate Skill instructions. `AGENT.md` contains only the
-stable professional identity and composition guidance:
+Agent 配置不复制 Skill 说明。`AGENT.md` 只定义稳定的专业身份与组合方式：
 
-- the domain it owns;
-- how it interprets a task;
-- which existing Skills it should prefer;
-- the expected result shape;
-- how it handles user-requested revisions;
-- domain-specific boundaries that apply across its Skills; and
-- how it reports artifacts and missing inputs to the main Agent.
+- 负责的领域；
+- 如何理解任务；
+- 优先使用哪些现有 Skill；
+- 预期结果结构；
+- 如何处理用户提出的修改；
+- 跨 Skill 都必须遵守的领域边界；
+- 如何向主 Agent 报告产物和缺失输入。
 
-### 3. Reuse shared Skills from one source
+### 3. 公共 Skill 只维护一份
 
-Skills remain the reusable capability layer. A Skill may be listed by any
-number of specialist profiles.
+Skill 继续作为可复用能力层。任意数量的专业子 Agent 都可以引用同一个 Skill。
 
-For example:
+例如：
 
 ```text
-interior-designer ─────┐
-presentation-designer ─┼── personal-pages
-travel-planner ────────┘
+装修设计 Agent ───┐
+PPT 设计 Agent ───┼── personal-pages
+旅游规划 Agent ───┘
 ```
 
-`personal-pages`, `personal-files`, `visual-content`, `media-toolkit`,
-`deep-research`, and similar shared Skills continue to have one source
-directory and one registry entry. An Agent profile references them by Skill ID;
-it never vendors, forks, or copies their content.
+`personal-pages`、`personal-files`、`visual-content`、`media-toolkit`、`deep-research` 等公共 Skill 继续只保留一个源目录和一个注册表条目。Agent 配置通过 Skill ID 引用它们，禁止复制、分叉或内嵌 Skill 内容。
 
-Agent profile loading does not need to hide every other installed Skill in the
-first implementation. The profile prompt tells the Worker which Skills own its
-normal work, while the existing Skill trigger and safety rules remain
-available. A later implementation may restrict the exposed catalog if prompt
-size or incorrect Skill selection becomes an observed problem.
+第一阶段不必隐藏其他已安装 Skill。Agent 提示说明其日常工作应优先使用哪些 Skill，现有的 Skill 触发与安全规则仍然有效。只有在实际观察到提示长度或错误 Skill 选择问题后，才考虑限制专业子 Agent 可见的 Skill 目录。
 
-### 4. Use project-scoped sticky Worker sessions
+### 4. 使用项目级粘性 Worker 会话
 
-The specialist session key is:
+专业子 Agent 的会话身份键为：
 
 ```text
 mainSessionId + agentId + projectKey
 ```
 
-The main session preserves the user relationship. `agentId` preserves the
-professional identity. `projectKey` separates independent projects handled by
-the same specialist.
+`mainSessionId` 保留用户关系，`agentId` 保留专业身份，`projectKey` 隔离同一专业子 Agent 处理的不同项目。
 
-Examples:
+例如：
 
 ```text
-main session
+主会话
 ├── interior-designer / home-renovation-001
 ├── interior-designer / parents-home-renovation-001
 ├── presentation-designer / annual-review-2026
 └── travel-planner / japan-2026-october
 ```
 
-The first task for a project starts a Worker session. Later tasks for that same
-project resume the same Worker session. The session may be `idle` between
-tasks; `idle` means the current turn is complete, not that the project history
-must be discarded.
+一个项目的首个任务会启动新的 Worker 会话。以后属于同一项目的任务恢复这个 Worker 会话。任务完成后，会话可以进入 `idle`；`idle` 只表示当前轮次已完成，不代表需要丢弃项目历史。
 
-This keeps useful tacit context such as:
+这样可以保留下列隐性上下文：
 
-- why an earlier option was chosen;
-- which options the user rejected;
-- assumptions already discussed;
-- the location and lineage of working files;
-- earlier tool or generation problems;
-- the relationship between current and previous artifacts; and
-- domain terminology established during the project.
+- 为什么此前选择了某个方案；
+- 用户否定过哪些选项；
+- 已经讨论并确认的假设；
+- 工作文件的位置与版本关系；
+- 之前出现过的工具或生成问题；
+- 当前产物与历史产物之间的关系；
+- 项目中已经建立的专业术语。
 
-### 5. Persist current truth in project artifacts
+### 5. 当前事实必须持久化到项目产物
 
-The Worker thread preserves professional working history, but it is not the
-authoritative database for the current result.
+Worker 任务保留专业工作历史，但它不是当前结果的权威数据库。
 
-Each specialist continues to use its existing domain artifacts:
+各专业子 Agent 继续使用原有的领域产物：
 
-- interior design uses its governed project schema, evidence, requirements,
-  revisions, scene, audit, and publication records;
-- presentation design keeps the brief, outline, visual direction, deck, and
-  revision notes in its task directory;
-- poster design keeps its content plan, source assets, layout source, renders,
-  and delivery record;
-- travel planning keeps the trip brief, itinerary, sources, unresolved facts,
-  HTML, and optional PDF.
+- 装修设计保存受治理的项目结构、证据、需求、修订、场景、审计和发布记录；
+- PPT 设计在任务目录保存需求简报、大纲、视觉方向、演示文件和修订记录；
+- 海报设计保存内容规划、源素材、布局源文件、渲染结果和交付记录；
+- 旅游规划保存旅行需求、行程、来源、未确认事实、HTML 和可选 PDF。
 
-On every resumed task, the specialist should treat information in this order:
+恢复任务时，专业子 Agent 按以下优先级判断当前事实：
 
-1. the user's latest feedback;
-2. the current verified project files and revision;
-3. previously confirmed decisions;
-4. prior conversation and discarded drafts.
+1. 用户最新反馈；
+2. 当前经过验证的项目文件与修订版本；
+3. 此前已经确认的决策；
+4. 历史对话与已废弃草稿。
 
-This prevents stale statements in the thread from overriding the current
-artifact state.
+这样可以防止会话中的旧信息覆盖项目文件中的当前状态。
 
-### 6. Start or resume by explicit project identity
+### 6. 根据明确的项目身份决定新建或续接
 
-The main Agent resumes a specialist session when all of the following are true:
+同时满足以下条件时，主 Agent 恢复已有专业子 Agent 会话：
 
-- the request belongs to the same domain;
-- it refers to the same project or artifact lineage;
-- one matching child session exists under the current main session;
-- the user is continuing, answering, correcting, or revising that work; and
-- no independent concurrent turn is already mutating the same project.
+- 请求属于相同领域；
+- 请求指向同一个项目或同一条产物版本链；
+- 当前主会话下存在唯一匹配的子会话；
+- 用户是在继续、回答、纠正或修改该工作；
+- 没有另一个并发任务正在修改同一个项目。
 
-Typical resume requests include:
+典型的续接请求包括：
 
-- answering a question raised by the specialist;
-- supplying a missing measurement, source, or image;
-- revising the current layout, style, itinerary, poster, or deck;
-- regenerating or republishing the current deliverable;
-- continuing interrupted work; and
-- explicitly continuing a named prior project.
+- 回答专业子 Agent 此前提出的问题；
+- 补充缺失的尺寸、来源或图片；
+- 修改当前布局、风格、行程、海报或 PPT；
+- 重新生成或重新发布当前交付物；
+- 继续此前中断的工作；
+- 明确要求继续某个已命名项目。
 
-The main Agent starts a new specialist session when:
+出现以下情况时，主 Agent 启动新的专业子 Agent 会话：
 
-- the request belongs to another domain;
-- it concerns another home, trip, deck, campaign, or other independent project;
-- the user explicitly asks to start over without the previous working history;
-- independent branches must run concurrently;
-- multiple historical projects match and the user selects a different one; or
-- an incompatible future profile version requires a fresh continuation
-  session.
+- 请求属于另一个领域；
+- 请求涉及另一套住房、旅行、PPT、营销活动或其他独立项目；
+- 用户明确要求从头开始，不保留此前工作历史；
+- 需要并发执行彼此独立的分支；
+- 多个历史项目都可能匹配，而用户选择了另一个项目；
+- 未来 Agent 配置版本不兼容，必须使用新的延续会话。
 
-Keyword similarity alone is never sufficient to resume a session. If multiple
-projects match and the target is material, the main Agent asks one concise
-clarifying question.
+不能仅凭关键词相似就恢复会话。如果存在多个可能匹配的项目，而且选择会实质影响结果，主 Agent 只向用户提出一个简短的澄清问题。
 
-### 7. Generate and retain `projectKey` internally
+### 7. 在系统内部生成并保留 `projectKey`
 
-`projectKey` is an internal routing identity, not a user-facing name.
+`projectKey` 是内部路由身份，不是面向用户的项目名称。
 
-When an existing governed domain object has a stable project ID, that ID should
-be used. Otherwise the main Agent or orchestrator generates an opaque key when
-the first Worker session starts.
+如果现有领域对象已经拥有稳定项目 ID，应直接使用该 ID。否则由主 Agent 或编排器在第一次启动 Worker 会话时生成不透明键。
 
-Examples shown in prompts or diagnostics may be readable, but the runtime must
-not depend on a user-provided title being unique.
+提示或诊断中可以展示便于阅读的示例，但运行时不能依赖用户输入的标题具有唯一性。
 
-The Worker session stores both:
+Worker 会话同时保存：
 
 ```json
 {
@@ -318,112 +265,94 @@ The Worker session stores both:
 }
 ```
 
-The title and task description remain user-readable metadata; they are not the
-identity key.
+标题与任务描述仍然是便于用户阅读的元数据，但不是身份键。
 
-### 8. Use task-oriented turns inside the sticky session
+### 8. 粘性会话中的每一轮仍然是具体任务
 
-Every `start` or `resume` input is still a concrete task. The main Agent passes:
+每次 `start` 或 `resume` 的输入都必须是一个明确任务。主 Agent 传入：
 
-- the user's latest request, preserving dates, quantities, names, and
-  constraints;
-- the intended outcome;
-- newly supplied governed object IDs;
-- relevant existing artifact IDs or project paths already owned by the
-  specialist;
-- explicit feedback on the current result; and
-- the deliverables expected from this turn.
+- 用户最新请求，完整保留日期、数量、名称和限制；
+- 本轮期望结果；
+- 本轮新增的受治理对象 ID；
+- 由专业子 Agent 管理的相关现有产物 ID 或项目路径；
+- 用户对当前结果的明确反馈；
+- 本轮必须交付的内容。
 
-The main Agent does not need to reconstruct all previous project history on
-resume because the specialist thread and project artifacts already contain it.
+恢复已有会话时，主 Agent 不需要重建整个项目历史，因为专业子 Agent 任务和项目产物已经保留这些信息。
 
-A new specialist session, including a cross-domain handoff, receives a fuller
-task packet:
+新建专业子 Agent 会话时，包括跨领域交接，应传入更完整的任务包：
 
 ```json
 {
   "agentId": "presentation-designer",
-  "objective": "Create a presentation from the accepted interior-design result.",
+  "objective": "根据已经确认的装修设计结果制作一份 PPT。",
   "userRequest": "把装修方案做成一份 PPT",
   "inputs": [
     {
       "kind": "page",
       "id": "page_123",
-      "purpose": "Accepted interior-design delivery"
+      "purpose": "已经确认的装修设计交付物"
     }
   ],
   "context": {
-    "audience": "Home owner and family",
+    "audience": "房屋业主及家人",
     "language": "zh-CN"
   },
   "deliverables": [
-    "Presentation",
-    "Published presentation Page"
+    "PPT 文件",
+    "已发布的 PPT Page"
   ]
 }
 ```
 
-The exact wire format may remain plain task text in the first implementation.
-The important contract is that the task preserves the complete user request,
-governed artifact references, constraints, and deliverables.
+第一阶段可以继续使用普通任务文本，不要求立即引入新的线协议。关键约定是：任务必须完整保留用户请求、受治理产物引用、限制条件和交付要求。
 
-### 9. Keep cross-Agent communication mediated by the main Agent
+### 9. Agent 之间的沟通统一经过主 Agent
 
-Specialists do not directly share threads or send conversational messages to
-one another.
+专业子 Agent 不直接共享任务，也不互相发送对话消息。
 
-For cross-domain work:
+跨领域工作采用以下流程：
 
-1. the source specialist completes or updates its artifact;
-2. the main Agent selects the artifact and relevant result summary;
-3. the main Agent starts or resumes the target specialist;
-4. the target specialist receives only that selected context; and
-5. the target result returns to the main Agent.
+1. 来源专业子 Agent 完成或更新产物；
+2. 主 Agent 选择要交接的产物和相关结果摘要；
+3. 主 Agent 启动或恢复目标专业子 Agent；
+4. 目标专业子 Agent 只接收选定的上下文；
+5. 目标结果返回主 Agent。
 
-For example, turning an interior-design result into a presentation starts a
-presentation session with the accepted design artifacts. It does not grant the
-presentation specialist access to the interior specialist's complete thread.
+例如，将装修设计结果转换为 PPT 时，主 Agent 用已经确认的设计产物启动 PPT 设计会话，不会把装修设计 Agent 的完整任务历史开放给 PPT 设计 Agent。
 
-This preserves context isolation without adding an Agent messaging bus.
+该方式在保持上下文隔离的同时，不需要新增 Agent 消息总线。
 
-### 10. Let the domain specialist publish its own deliverable
+### 10. 领域专业子 Agent 负责发布自己的交付物
 
-Publishing is part of the domain task when the user asks for a published
-result. It does not require a separate publishing Agent.
+当用户要求发布结果时，发布属于领域任务本身，不需要独立的发布 Agent。
 
-Examples:
+例如：
 
-- the interior specialist generates and publishes the interior delivery Page;
-- the presentation specialist generates and publishes the deck;
-- the travel specialist publishes the guidebook Page and exports PDF when
-  requested;
-- the poster specialist renders and registers the managed output files.
+- 装修设计 Agent 生成并发布装修交付 Page；
+- PPT 设计 Agent 生成并发布演示文稿；
+- 旅游规划 Agent 发布攻略 Page，并在用户需要时导出 PDF；
+- 海报设计 Agent 渲染并登记托管输出文件。
 
-The specialist uses the existing shared `personal-pages` Skill and
-`pa-cli pages publish` contract. The Page service continues to validate the
-template, artifact, visibility, and returned URL. The specialist returns the
-real `pageId`, URL or `linkNotice`, and artifact metadata to the main Agent. The
-main Agent communicates the result to the user.
+专业子 Agent 使用现有公共 `personal-pages` Skill 与 `pa-cli pages publish` 契约。Page 服务继续负责校验模板、产物、可见性和返回 URL。专业子 Agent 将真实的 `pageId`、URL 或 `linkNotice` 以及产物元数据返回主 Agent，由主 Agent 向用户说明结果。
 
-If the user asks only for a draft, the task stops before publication.
+如果用户只要求草稿，任务在发布之前结束。
 
-### 11. Preserve the existing main/Worker authority boundary
+### 11. 保留现有主 Agent 与 Worker 权限边界
 
-This proposal requires no new permission framework. Existing rules remain:
+本方案不需要新的权限框架。继续遵守现有规则：
 
-- the main Agent owns Activity, Memory, user communication, and final-reply
-  attachment selection;
-- Workers execute assigned work and report artifacts;
-- Workers do not send independent channel notifications;
-- publication and file operations continue through their registered product
-  contracts; and
-- current authorization and confirmation behavior remains unchanged.
+- 主 Agent 负责 Activity、Memory、用户沟通和最终回复附件选择；
+- Worker 执行分配的工作并报告产物；
+- Worker 不独立发送渠道通知；
+- 发布与文件操作继续经过注册的产品契约；
+- 当前授权与确认行为保持不变。
 
-## Initial specialist catalog
+## 第一批专业子 Agent
 
-### Interior Design Agent
+### 装修设计 Agent
 
-Primary Skills:
+主要 Skill：
 
 - `home-renovation`
 - `interior-design`
@@ -432,12 +361,11 @@ Primary Skills:
 - `personal-files`
 - `personal-pages`
 
-Owns renovation briefs, floor-plan evidence, layout and concept work, governed
-scene generation, revisions, audits, and interior delivery Pages.
+负责装修需求、户型证据、布局与概念方案、受治理场景生成、修改、审计和装修交付 Page。
 
-### Presentation Design Agent
+### PPT 设计 Agent
 
-Primary Skills:
+主要 Skill：
 
 - `guizang-ppt-skill`
 - `content-workbench`
@@ -447,12 +375,11 @@ Primary Skills:
 - `personal-files`
 - `personal-pages`
 
-Owns audience and presentation framing, outline and narrative, visual system,
-deck generation, revision, and publication.
+负责受众与演示目标梳理、大纲与叙事、视觉系统、PPT 生成、修改和发布。
 
-### Poster Design Agent
+### 海报设计 Agent
 
-Primary Skills:
+主要 Skill：
 
 - `guizang-social-card-skill`
 - `visual-content`
@@ -460,12 +387,11 @@ Primary Skills:
 - `content-workbench`
 - `personal-files`
 
-Owns posters, social cards, carousel images, WeChat cover pairs, rendering, and
-revision of the same visual campaign.
+负责海报、社交卡片、轮播图片、微信封面组合，同一视觉活动的渲染与修改。
 
-### Travel Planning Agent
+### 旅游规划 Agent
 
-Primary Skills:
+主要 Skill：
 
 - `travel-guidebook`
 - `deep-research`
@@ -474,14 +400,13 @@ Primary Skills:
 - `personal-files`
 - `personal-pages`
 
-Owns trip constraints, current source research, itinerary feasibility,
-guidebook generation, revision, publication, and optional PDF export.
+负责旅行限制、最新资料调研、行程可行性、攻略生成、修改、发布和可选 PDF 导出。
 
-## Runtime and API plan
+## 运行时与 API 方案
 
-### Agent registry
+### Agent 注册表
 
-Add:
+新增：
 
 ```text
 registry/agents.json
@@ -489,19 +414,19 @@ schemas/personal-agent/agents.schema.json
 scripts/agent-guard.mjs
 ```
 
-The guard verifies:
+守卫脚本验证：
 
-- profile IDs and directories are unique;
-- `agent.yaml` and `AGENT.md` exist;
-- the manifest schema is supported;
-- every referenced Skill exists in `registry/skills.json`;
-- routing terms are non-empty and bounded;
-- no profile path escapes `agents/`; and
-- the installed Workspace contains the registered profile source.
+- Agent 配置 ID 和目录唯一；
+- `agent.yaml` 与 `AGENT.md` 存在；
+- 配置清单 Schema 版本受支持；
+- 引用的每一个 Skill 都存在于 `registry/skills.json`；
+- 路由词非空且数量、长度受限；
+- 配置路径不能越出 `agents/`；
+- 安装后的 Workspace 中存在注册的 Agent 配置源文件。
 
-### Session metadata
+### 会话元数据
 
-Keep `role` as `worker`. Store specialist fields in `metadata_json`:
+继续保留 `role: worker`，将专业字段保存在 `metadata_json`：
 
 ```json
 {
@@ -512,27 +437,26 @@ Keep `role` as `worker`. Store specialist fields in `metadata_json`:
 }
 ```
 
-No database migration is required for the first implementation.
+第一阶段不需要数据库迁移。
 
 ### CLI
 
-Extend session creation:
+扩展会话创建命令：
 
 ```bash
 pa-cli session start \
   --agent interior-designer \
   --project-key project_7e6b2f20 \
   --parent <main-session-id> \
-  --title "Home renovation" \
-  --description "Interior concept and delivery" \
+  --title "家庭装修" \
+  --description "室内概念与交付" \
   --task-file <task-file> \
   --json
 ```
 
-`--agent` and `--project-key` are optional so generic Workers and existing
-callers continue to work.
+`--agent` 与 `--project-key` 均为可选参数，因此通用 Worker 与现有调用方继续保持兼容。
 
-Extend lookup:
+扩展会话查询命令：
 
 ```bash
 pa-cli session list \
@@ -543,12 +467,11 @@ pa-cli session list \
   --json
 ```
 
-`session resume` keeps the original profile and project metadata. It must not
-accept flags that silently change the existing Agent identity.
+`session resume` 保留原 Agent 配置与项目元数据，不能接受会静默改变现有 Agent 身份的参数。
 
 ### HTTP API
 
-Extend `POST /api/sessions` with optional:
+为 `POST /api/sessions` 增加可选字段：
 
 ```json
 {
@@ -557,49 +480,42 @@ Extend `POST /api/sessions` with optional:
 }
 ```
 
-Extend `GET /api/sessions` with optional `agent` and `project` filters.
+为 `GET /api/sessions` 增加可选的 `agent` 与 `project` 过滤条件。
 
-Unknown Agent IDs fail with a clear client error instead of silently starting a
-generic Worker.
+遇到未知 Agent ID 时，返回明确的客户端错误，不能静默退回通用 Worker。
 
-### Orchestrator prompt composition
+### 编排器提示组合
 
-For a specialist Worker, compose:
+专业 Worker 的提示按以下顺序组合：
 
 ```text
-base Worker instructions
-+ selected specialist AGENT.md
-+ concise selected-Skill guidance
-+ current task input
+Worker 基础说明
++ 所选专业子 Agent 的 AGENT.md
++ 精简的推荐 Skill 指引
++ 当前任务输入
 ```
 
-The base Worker instructions remain the source of main/Worker boundaries,
-artifact return format, publication rules, and user-notification restrictions.
-The specialist instructions add professional behavior; they do not replace the
-base contract.
+Worker 基础说明继续作为主 Agent/Worker 权限边界、产物返回格式、发布规则和用户通知限制的唯一来源。专业说明只增加领域行为，不替代基础约定。
 
-The loaded profile ID and version are recorded in session metadata and events
-so a resumed session cannot silently change professional identity.
+会话元数据与事件记录实际加载的 Agent ID 和版本，确保恢复会话时不能静默切换专业身份。
 
-### Main-Agent routing instructions
+### 主 Agent 路由说明
 
-Generate a concise specialist catalog from `registry/agents.json` for the main
-Agent. The main Agent should:
+从 `registry/agents.json` 为主 Agent 生成精简的专业子 Agent 目录。主 Agent 应：
 
-1. handle simple direct requests itself under the existing rules;
-2. select a specialist only when its domain clearly owns substantive work;
-3. search child sessions by parent, Agent, and project;
-4. resume a unique matching project;
-5. create a new project session when no match exists;
-6. ask a concise question only when multiple material projects match; and
-7. use a generic Worker when no specialist owns the task.
+1. 按现有规则直接处理简单请求；
+2. 只在专业领域明确拥有主体工作时选择专业子 Agent；
+3. 按父会话、Agent 与项目查询子会话；
+4. 恢复唯一匹配的项目；
+5. 没有匹配项时创建新的项目会话；
+6. 多个重要项目都匹配时，只提出一个简短问题；
+7. 没有专业子 Agent 负责时使用通用 Worker。
 
-The catalog should not inject every specialist's full `AGENT.md` into the main
-Agent.
+不能把每个专业子 Agent 的完整 `AGENT.md` 都注入主 Agent。
 
-### Installed Workspace
+### 安装后的 Workspace
 
-Extend Workspace seeding and release packaging to include:
+扩展 Workspace 初始化与发布打包范围，包含：
 
 ```text
 agents/
@@ -607,156 +523,140 @@ registry/agents.json
 scripts/agent-guard.mjs
 ```
 
-Built-in profile source is product-managed in the same way as other portable
-Harness source. User task data and generated artifacts remain under the
-customer-owned Workspace and are never written into `agents/`.
+内置 Agent 配置源文件与其他可移植 Harness 源文件一样由产品管理。用户任务数据和生成产物继续保存在用户拥有的 Workspace 中，禁止写入 `agents/`。
 
-Compatibility bridge changes are not required because the initial runtime
-loads Agent profiles through the Personal Agent registry rather than expecting
-Codex, Claude, Cursor, or another client to discover a new standard directory.
+第一阶段由 Personal Agent 注册表加载 Agent 配置，不要求 Codex、Claude、Cursor 或其他客户端识别新的标准目录，因此不需要修改兼容桥。
 
-## Detailed dispatch examples
+## 详细调度示例
 
-### New interior project
+### 新建装修项目
 
-1. User supplies a floor plan and asks for a design.
-2. Main Agent selects `interior-designer`.
-3. No matching project exists.
-4. Main Agent starts a Worker with a generated `projectKey`.
-5. Worker applies the interior Skills, creates the project, and publishes when
-   requested.
-6. Worker returns the project and Page artifacts.
-7. Main Agent reports the result.
+1. 用户提供户型图并要求设计。
+2. 主 Agent 选择 `interior-designer`。
+3. 系统没有找到匹配项目。
+4. 主 Agent 使用新生成的 `projectKey` 启动 Worker。
+5. Worker 使用装修相关 Skill 创建项目，并在用户要求时发布。
+6. Worker 返回项目和 Page 产物。
+7. 主 Agent 向用户报告结果。
 
-### Revision of the same interior project
+### 修改同一个装修项目
 
-1. User asks to preserve a piano area and change the wood tone.
-2. Main Agent identifies the accepted interior artifact or named project.
-3. Main Agent finds the matching `interior-designer` session.
-4. Main Agent resumes it with the user's feedback.
-5. Worker reloads the current project revision, applies the revision, verifies
-   it, and republishes when requested.
-6. Main Agent reports the updated result.
+1. 用户要求保留钢琴区域并更换木色。
+2. 主 Agent 根据已确认的装修产物或项目名称识别项目。
+3. 主 Agent 找到匹配的 `interior-designer` 会话。
+4. 主 Agent 使用用户反馈恢复该会话。
+5. Worker 读取当前项目版本，完成修改和验证，并在用户要求时重新发布。
+6. 主 Agent 向用户报告更新后的结果。
 
-### Another home
+### 设计另一套住房
 
-1. User supplies a different floor plan for a parent.
-2. Main Agent recognizes an independent project.
-3. Main Agent starts a second `interior-designer` session with another
-   `projectKey`.
-4. Neither specialist thread receives the other home's context.
+1. 用户为父母的住房提供另一张户型图。
+2. 主 Agent 识别出这是独立项目。
+3. 主 Agent 使用另一个 `projectKey` 启动第二个 `interior-designer` 会话。
+4. 两个专业会话不会接收到另一套住房的上下文。
 
-### Interior result to presentation
+### 将装修结果制作成 PPT
 
-1. User asks to turn the accepted design into a presentation.
-2. Main Agent selects the accepted design artifacts.
-3. Main Agent starts `presentation-designer` with a new presentation
-   `projectKey`.
-4. Presentation Agent receives the artifacts and the new presentation task,
-   not the interior thread.
-5. Later presentation revisions resume the presentation session.
+1. 用户要求把已经确认的设计制作成 PPT。
+2. 主 Agent 选择已经确认的设计产物。
+3. 主 Agent 使用新的 PPT `projectKey` 启动 `presentation-designer`。
+4. PPT 设计 Agent 只接收选定产物与新的 PPT 任务，不接收装修 Agent 的完整任务历史。
+5. 后续 PPT 修改恢复 PPT 设计会话。
 
-### Missing input
+### 缺少关键输入
 
-1. Specialist cannot proceed without a material choice.
-2. Specialist ends the turn with the missing question and current project
-   reference.
-3. Main Agent asks the user.
-4. The user's answer resumes the same specialist session.
+1. 专业子 Agent 发现没有某个关键选择就无法继续。
+2. 专业子 Agent 结束当前轮次，返回待确认问题与当前项目引用。
+3. 主 Agent 向用户提出问题。
+4. 用户回答后，恢复同一个专业子 Agent 会话。
 
-### Interrupted execution
+### 执行中断
 
-An unfinished specialist task uses the existing Worker recovery path. Recovery
-resumes the same session and does not create a new project or repeat completed
-publication side effects.
+未完成的专业任务继续使用现有 Worker 恢复机制。恢复时沿用同一个会话，不创建新项目，也不重复已经完成的发布副作用。
 
-## Implementation sequence
+## 实施顺序
 
-### Slice 1: Registry and profile loader
+### 阶段一：注册表与配置加载器
 
-- add `registry/agents.json`;
-- add the Agent manifest schema and guard;
-- add the four profile directories;
-- load and validate a profile by ID;
-- include profile source in Workspace seeding and packaging; and
-- keep all runtime behavior unchanged when `agentId` is absent.
+- 增加 `registry/agents.json`；
+- 增加 Agent 清单 Schema 与守卫脚本；
+- 增加四个专业子 Agent 目录；
+- 支持按 ID 加载并校验 Agent 配置；
+- 将 Agent 配置源文件加入 Workspace 初始化与打包；
+- `agentId` 缺失时保持所有现有运行时行为不变。
 
-### Slice 2: Session metadata and CLI/API
+### 阶段二：会话元数据与 CLI/API
 
-- add `--agent` and `--project-key` to `pa-cli session start`;
-- accept and validate the fields in `POST /api/sessions`;
-- persist them in `metadata_json`;
-- return them in session summaries;
-- add list filters; and
-- ensure resume preserves the original profile identity.
+- 为 `pa-cli session start` 增加 `--agent` 和 `--project-key`；
+- 在 `POST /api/sessions` 中接收并校验这些字段；
+- 将字段持久化到 `metadata_json`；
+- 在会话摘要中返回这些字段；
+- 增加列表过滤条件；
+- 确保恢复会话时保留原专业身份。
 
-### Slice 3: Specialist prompt composition
+### 阶段三：专业提示组合
 
-- append the selected `AGENT.md` after base Worker instructions;
-- expose the selected profile and Skill list in sanitized diagnostic events;
-- add prompt-composition tests;
-- fail closed on missing or invalid registered profile source; and
-- preserve generic Worker behavior.
+- 在 Worker 基础说明之后追加所选 `AGENT.md`；
+- 在经过脱敏的诊断事件中展示所选 Agent 配置与 Skill 列表；
+- 增加提示组合测试；
+- 注册配置缺失或无效时失败关闭；
+- 保持通用 Worker 行为不变。
 
-### Slice 4: Main-Agent routing
+### 阶段四：主 Agent 路由
 
-- inject only the concise registered Agent catalog into main-Agent
-  instructions;
-- implement the `agentId + projectKey` lookup path;
-- update start/resume guidance;
-- remove domain-specific routing text that is fully owned by a specialist
-  profile only after equivalent behavior is covered; and
-- keep existing Page-template direct routing until its specialist replacement
-  passes the same behavior tests.
+- 只把精简的已注册 Agent 目录注入主 Agent；
+- 实现 `agentId + projectKey` 查询路径；
+- 更新新建与恢复会话指引；
+- 只有在对应行为已经由专业配置完整覆盖后，才移除硬编码的领域路由文本；
+- 在专业替代方案通过相同行为测试前，保留现有 Page 模板直接路由。
 
-This sequence avoids a flag day. Every slice is independently testable and the
-existing generic Worker remains the fallback.
+以上顺序不要求一次性切换。每个阶段都可以独立测试，现有通用 Worker 始终作为回退方案。
 
-## Verification
+## 验证方案
 
-### Registry tests
+### 注册表测试
 
-- valid profiles pass;
-- duplicate IDs fail;
-- missing instructions fail;
-- unknown Skill references fail;
-- path traversal fails; and
-- installed profile sources match the release registry.
+- 有效配置通过；
+- 重复 ID 失败；
+- 缺少说明文件失败；
+- 引用未知 Skill 失败；
+- 路径穿越失败；
+- 安装后的配置源文件与发布注册表一致。
 
-### Session tests
+### 会话测试
 
-- generic session creation remains unchanged;
-- specialist creation records `agentId`, profile version, and `projectKey`;
-- unknown Agent IDs fail;
-- list filters return the expected session;
-- resume retains Agent identity;
-- two projects using the same specialist remain distinct; and
-- two specialists using the same source artifact remain distinct.
+- 通用会话创建行为不变；
+- 专业会话记录 `agentId`、配置版本和 `projectKey`；
+- 未知 Agent ID 失败；
+- 列表过滤能够返回预期会话；
+- 恢复会话保留 Agent 身份；
+- 同一专业子 Agent 的两个项目保持隔离；
+- 使用同一源产物的两个专业子 Agent 仍然保持隔离。
 
-### Prompt tests
+### 提示测试
 
-- the Worker base contract remains present;
-- the selected specialist instructions are present;
-- unrelated specialist instructions are absent;
-- referenced Skills are named without duplicating their full instructions; and
-- main-only Activity and Memory capabilities are not granted to Workers.
+- Worker 基础约定仍然存在；
+- 所选专业子 Agent 说明存在；
+- 无关专业子 Agent 说明不存在；
+- 只引用推荐 Skill 名称，不复制其完整说明；
+- 不向 Worker 授予只属于主 Agent 的 Activity 与 Memory 能力。
 
-### Behavior cases
+### 行为用例
 
-At minimum, cover:
+至少覆盖：
 
-1. new interior project;
-2. revision of the same interior project;
-3. second independent interior project;
-4. accepted interior result handed to presentation design;
-5. missing-input question and resume;
-6. interrupted Worker recovery;
-7. specialist Page publication and artifact return; and
-8. generic non-domain Worker fallback.
+1. 新建装修项目；
+2. 修改同一个装修项目；
+3. 新建第二个独立装修项目；
+4. 将已确认的装修结果交给 PPT 设计；
+5. 缺少输入时提问并恢复；
+6. Worker 中断后恢复；
+7. 专业子 Agent 发布 Page 并返回产物；
+8. 无匹配领域时退回通用 Worker。
 
-### Repository checks
+### 仓库检查
 
-Implementation changes must pass the Node Harness requirements:
+正式实现必须通过 Node Harness 的全部要求：
 
 ```bash
 npm run doctor
@@ -768,43 +668,39 @@ npm test
 npm run check
 ```
 
-Documentation-only adoption of this proposed ADR does not claim the Agent
-registry or runtime behavior is implemented.
+当前只采纳这份提议状态的 ADR，并不表示 Agent 注册表或运行时行为已经实现。
 
-## Compatibility and rollback
+## 兼容与回滚
 
-All new fields are optional. Existing sessions without `agentId` remain generic
-Workers. Existing `pa-cli session start` callers remain valid.
+所有新增字段都是可选字段。没有 `agentId` 的现有会话继续作为通用 Worker。现有 `pa-cli session start` 调用方保持有效。
 
-If specialist routing causes a regression:
+如果专业路由引发回归：
 
-- stop selecting profiles in the main-Agent instructions;
-- continue running generic Workers;
-- preserve existing specialist session records as ordinary Worker sessions; and
-- leave generated projects and artifacts unchanged.
+- 停止在主 Agent 说明中选择专业配置；
+- 继续运行通用 Worker；
+- 将已有专业会话记录作为普通 Worker 会话保留；
+- 保留已经生成的项目和产物。
 
-Removing the routing entry does not delete sessions or customer data.
+删除路由条目不会删除会话或用户数据。
 
-## Consequences
+## 影响
 
-Positive consequences:
+正面影响：
 
-- domain work receives a stable professional identity;
-- iterative work retains useful professional history;
-- unrelated projects stay isolated;
-- shared Skills remain maintainable in one place;
-- publishing remains part of the owning domain task;
-- user-requested revisions fit the existing session resume mechanism; and
-- implementation stays close to the current Worker architecture.
+- 垂直任务获得稳定的专业身份；
+- 迭代工作保留有价值的专业历史；
+- 无关项目保持隔离；
+- 公共 Skill 仍然只需维护一份；
+- 发布继续属于领域任务本身；
+- 用户提出的修改可以直接复用现有会话恢复机制；
+- 实现方式贴近当前 Worker 架构，改造范围较小。
 
-Tradeoffs:
+需要接受的取舍：
 
-- the main Agent must identify or generate a project key correctly;
-- long-lived project threads may eventually require a continuation session;
-- current project files must remain the source of truth when thread history is
-  stale;
-- profile routing quality depends on concise, non-overlapping descriptions; and
-- a specialist profile improves consistency but does not replace user review.
+- 主 Agent 必须正确识别或生成项目键；
+- 长期项目的任务历史过长后，可能需要创建延续会话；
+- 任务历史过时时，必须以当前项目文件为准；
+- 专业路由质量依赖简洁且边界清晰的领域描述；
+- 专业子 Agent 能提高一致性，但不能替代用户验收。
 
-These tradeoffs are preferable to either a fully stateless child on every turn
-or a large new multi-Agent platform.
+相比每一轮都创建完全无状态的子 Agent，或建设一套庞大的多 Agent 平台，这些取舍更符合当前“只拆分专业工作、不大改造”的目标。
