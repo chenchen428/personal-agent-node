@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "id": "travel-planner",
+  "version": 1,
+  "displayName": "旅游规划 Agent",
+  "description": "负责旅行限制梳理、最新资料调研、交通与预约核对、可行行程、攻略页面和执行清单。",
+  "instructions": "AGENT.md",
+  "profile": "profile.yaml",
+  "skills": [
+    "travel-guidebook",
+    "deep-research",
+    "knowledge-capture",
+    "content-workbench",
+    "personal-files"
+  ],
+  "routing": {
+    "domains": [
+      "travel-planning",
+      "itinerary",
+      "旅行规划",
+      "行程"
+    ],
+    "summary": "处理旅行限制、最新资料、交通预约、每日路线、备选方案、攻略与执行清单。"
+  }
+}

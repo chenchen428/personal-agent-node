@@ -98,7 +98,7 @@ checks.push({ name: 'commands declare R0-R3 risk', ok: commands.commands.every((
 checks.push({ name: 'agent output contract is JSON', ok: commands.output?.agentFormat === 'json' && commands.output?.formats?.includes('json') });
 const personalSkillNames = [
   'personal-runtime', 'personal-connectivity', 'personal-connections', 'personal-activity',
-  'personal-tasks', 'personal-schedules', 'personal-pages', 'personal-files', 'personal-data',
+  'personal-tasks', 'personal-schedules', 'personal-files', 'personal-data',
   'personal-updates', 'personal-product-development', 'personal-bug-report',
   'personal-acceptance', 'personal-memory',
 ];
@@ -106,6 +106,15 @@ checks.push({
   name: 'Personal Agent capabilities use focused skills',
   ok: personalSkillNames.every((name) => exists(`skills/${name}/SKILL.md`))
     && !exists('skills/personal-agent/SKILL.md'),
+});
+checks.push({
+  name: 'Page template product layer is retired',
+  ok: !exists('registry/page-templates.json')
+    && !exists('skills/personal-pages')
+    && !exists('test/fixtures/skill-cases/personal-pages')
+    && !exists('core/app/public/assets/templates/interior-design-delivery-v2')
+    && exists('agents/interior-designer/examples/featured-delivery.json')
+    && exists('core/app/public/assets/agents/interior-designer/featured/manifest.json'),
 });
 checks.push({ name: 'legacy bridge skill removed', ok: !exists('skills/open-agent-bridge/SKILL.md') });
 const cloudEnrollmentSource = fs.readFileSync(path.join(root, 'core/runtime/src/cloud-enrollment.ts'), 'utf8');

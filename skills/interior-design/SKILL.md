@@ -32,12 +32,12 @@ Customer projects belong only under the trusted Space at `projects/home-renovati
    `node skills/interior-design/scripts/cli.mjs scene apply --project-dir <project-dir> --operations <operations.json> --base-revision <revision> --json`
 
    Use `scene undo` and `scene redo` with `--base-revision` for ordinary recovery. On `REVISION_CONFLICT`, reload and replay; never overwrite. If the current JSON/scene/audit no longer matches its complete manifest, restore a verified history snapshot with `project recover --project-dir <project-dir> --revision <revision> --json`; the corrupted files remain under the private runtime recovery directory for diagnosis.
-7. Read [delivery-v2.md](references/delivery-v2.md), confirm the user-uploaded source plan and Agent-uploaded revision annotation are redacted delivery images, and generate the registered template:
+7. Read [delivery-v2.md](references/delivery-v2.md), confirm the user-uploaded source plan and Agent-uploaded revision annotation are redacted delivery images, and generate the current interior-designer delivery:
 
-   `node skills/interior-design/scripts/cli.mjs page --template interior-design-delivery --project-dir <project-dir> --output <project-dir>/derived/page --json`
+   `node skills/interior-design/scripts/cli.mjs page --project-dir <project-dir> --output <project-dir>/derived/page --json`
 
-   Require template v2, `pascal-v2`, the artifact marker, the `su-design-classic` full-canvas shell, a dedicated loading state, automatic first-frame 3D warmup, visibly distinct 3D/orthographic cameras, offline CSP, model-derived SVG failure fallback, and `visualAcceptance: user`. The 户型图 panel must display the two uploaded passive images and must not redraw either image in the browser. Page generation must stop on automatic blocking issues.
-8. Publish only through `pa-cli pages publish --template interior-design-delivery`. The CLI must verify the template marker, ID, version, inspected contract digest, and exact HTML hash before upload; require the returned `page.template` provenance to match. Use its returned `pageId`, URL, or `linkNotice`. Never guess a hostname or return a loopback or local path. Subsequent natural-language feedback creates a new project revision, audit, Page artifact, and publication; it does not edit the delivered Page in place.
+   Require interior-designer Agent provenance, delivery version 2, `pascal-v2`, the `su-design-classic` full-canvas shell, a dedicated loading state, automatic first-frame 3D warmup, visibly distinct 3D/orthographic cameras, offline CSP, model-derived SVG failure fallback, and `visualAcceptance: user`. The 户型图 panel must display the two uploaded passive images and must not redraw either image in the browser. Page generation must stop on automatic blocking issues.
+8. Publish only through `pa-cli pages publish --file <project-dir>/derived/page/index.html --folder <page-folder> --json`. Use its returned `pageId`, URL, or `linkNotice`. Never pass `--template`, guess a hostname, or return a loopback or local path. Subsequent natural-language feedback creates a new project revision, audit, Page artifact, and publication; it does not edit the delivered Page in place.
 
 ## Design and safety rules
 
@@ -58,6 +58,6 @@ Customer projects belong only under the trusted Space at `projects/home-renovati
 - [delivery-v2.md](references/delivery-v2.md): Page v2, privacy, offline packaging, publication, and user acceptance.
 - `schemas/project-v2.schema.json`: formal project contract.
 - `scripts/cli.mjs`: governed project, scene, audit, recovery, and Page command surface.
-- `examples/professional-template/seed.json`: native built-in example seed used by the same production pipeline.
-- `scripts/build-template-example.mjs`: deterministic generator and drift verifier for the committed Pages template example.
+- `examples/professional-agent-example/seed.json`: synthetic representative Agent example seed used by the same production pipeline.
+- `scripts/build-agent-delivery-example.mjs`: deterministic generator and drift verifier for the committed interior-designer representative delivery.
 - `assets/pascal-runtime-manifest.json`: exact upstream versions, licenses, policies, sizes, and hashes.

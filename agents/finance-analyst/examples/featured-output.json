@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "id": "finance-monthly-reconciliation",
+  "source": "product-example",
+  "kind": "analysis-page",
+  "title": "月度账务核对报告",
+  "summary": "逐笔来源、分类结构、周期变化、异常交易和复核动作组成的脱敏示例。",
+  "sanitized": true,
+  "verified": true,
+  "presentation": {
+    "devices": ["desktop", "mobile"],
+    "primaryView": "desktop"
+  }
+}

@@ -1,43 +1,62 @@
-# ADR 0010：项目级专业子 Agent 配置
+# ADR 0010：项目级专业子 Agent 与 Agent Teams 产品模型
 
 - 状态：提议
 - 日期：2026-07-29
-- 范围：Personal Agent Node 主 Agent 委派、Worker 会话、可移植 Skill 与用户 Workspace
-- 相关文档：ADR 0003 Core/Workspace 交付、`AGENTS.md` 中主 Agent 与 Worker 委派约定
+- 范围：Personal Agent Node 主 Agent 委派、专业 Worker、桌面端 Agent Teams、Pages 交付与用户 Workspace
+- 设计事实来源：`projects/prototype`
+- 相关文档：ADR 0003 Core/Workspace 交付、`AGENTS.md` 中主 Agent与 Worker 委派约定
 
 ## 摘要
 
-Personal Agent 应在不替换现有主 Agent、Worker、Skill、Page、文件与会话架构的前提下，提高垂直领域任务的专业性。
+Personal Agent 的产品模型调整为 **Agent Teams**。
 
-本方案增加一组轻量的专业子 Agent 配置。每个专业子 Agent 本质上是一种具名的 Worker 配置，包含：
-
-- 稳定的专业角色说明；
-- 推荐优先使用的现有 Skill 列表；
-- 供主 Agent 路由使用的简明领域描述；
-- 项目级会话身份。
-
-唯一的主 Agent 继续负责面向用户。对于一个新的垂直领域项目，主 Agent 选择对应的专业子 Agent 并启动一个 Worker 会话；用户以后继续修改同一个项目时，主 Agent 恢复同一个会话。专业子 Agent 的 Codex 任务保留该项目的专业工作历史，项目文件保留当前有效事实。不同项目或不同专业子 Agent 使用不同的 Worker 会话。
-
-本方案刻意不引入通用工作流引擎、Agent 间消息网络、新的记忆产品、新的权限系统或自动化审核层级。用户仍然通过主 Agent 查看专业子 Agent 的产物，并直接提出修改意见。
-
-## 目标
-
-目标是让专业子 Agent 专注处理自己的垂直领域工作，同时保持当前产品结构，尽量减少改造范围。
+用户始终只与唯一主 Agent 沟通。主 Agent 理解请求、识别项目、选择专业子 Agent、分派或恢复任务、汇总进度与结果。专业子 Agent 是拥有稳定领域身份、工作方法、项目上下文和交付标准的团队成员；在运行时仍然使用受隔离的 Worker 会话，不新增第二类用户助手或新的安全角色。
 
 第一批专业子 Agent 包括：
 
-1. 装修设计；
-2. PPT 设计；
-3. 海报与社交视觉设计；
-4. 旅游规划。
+1. 装修设计 Agent；
+2. 海报设计 Agent；
+3. 旅游规划 Agent；
+4. 账务分析 Agent。
+
+每个专业子 Agent 同时拥有：
+
+- 面向运行时的 `agent.yaml`；
+- 面向专业执行的 `AGENT.md`；
+- 面向用户和桌面端的 `profile.yaml`；
+- 经过脱敏、可验证来源的产出示例。
+
+桌面端在“连接”之后新增 Agent 团队入口与每个成员的独立介绍页。Agent 团队页沿用 Personal Agent 主体卡片结构，展示成员身份、专业范围、能力摘要、可用状态和详情入口，不再使用像素办公室、运行模拟世界或任务分派动画。`/app` 首页继续承担当前 Space 总览。
+
+Personal Agent 不再提供可选择、可配置、可复用的 Page 模板。模板目录、模板详情、模板注册表、模板选择 CLI、模板强制路由和独立 `personal-pages` Skill 下线。原模板中的垂直领域方法、适用范围、生成方式、产出示例与验收标准迁入对应专业子 Agent。
+
+Pages 本身不下线。Pages 继续作为 Agent 产物的发布、访问、缩略图、Activity 关联和历史结果载体。
+
+## 背景
+
+现有 Worker 架构已经能够委派、恢复和返回受治理产物，但所有 Worker 使用同一种通用身份。垂直专业性依赖 Skill 触发、任务文本和 Page 模板直接路由，导致以下问题：
+
+- 用户看不到团队中有哪些专业成员，也无法在使用前理解其边界；
+- 同一个领域的稳定方法分散在 Skill、模板、路由提示和示例资产中；
+- Page 模板同时承担产品入口、专业路由、生成约束和展示示例，职责过多；
+- 模板看似是可以挑选的外观框架，实际却携带了装修等垂直领域的完整专业流程；
+- 现有产品没有独立、可理解的专业成员目录，用户无法在使用前判断主 Agent 会把任务交给谁。
+
+专业能力应归属于专业子 Agent，Page 应回到“交付结果”这一单一职责。
+
+## 目标
 
 满足以下条件即视为方案成功：
 
-- 垂直领域任务能够获得稳定的专业说明，而不只是通用 Worker 提示；
-- 专业子 Agent 可以继续使用现有公共 Skill 与产品命令；
-- 同一个项目的后续修改能够保留此前的专业推理与工作上下文；
-- 无关项目不会共享专业子 Agent 会话；
-- 跨领域协作只传递选定的源产物与任务上下文；
+- 垂直领域任务获得稳定、版本化的专业身份与工作方法；
+- 每个专业子 Agent 都有独立、详尽、可从桌面端进入的介绍页；
+- 介绍页明确展示能力、使用范围、所需输入、工作方式、产出示例、限制和验收标准；
+- 同一项目的后续修改恢复同一个专业子 Agent 会话；
+- 不同项目、不同 Agent 和不同 Space 的上下文保持隔离；
+- 跨领域协作只传递选定的受治理产物与必要上下文；
+- Agent 团队页能清楚解释“主 Agent 统一分派、项目上下文连续、专业边界清晰”的协作模型；
+- Page 模板产品层完全下线，不再承担专业路由；
+- Page 发布、访问、历史结果和安全边界保持可用；
 - 用户始终只面对一个连贯的主 Agent 会话。
 
 ## 非目标
@@ -45,74 +64,72 @@ Personal Agent 应在不替换现有主 Agent、Worker、Skill、Page、文件�
 本方案不做以下事情：
 
 - 不把每一个 Skill 都改造成 Agent；
-- 不把公共 Skill 复制到各个 Agent 目录；
-- 不引入 Agent 之间的点对点对话；
-- 不增加独立的“发布 Agent”；
-- 不增加 Agent 市场或 Agent 设置界面；
-- 不增加声明式工作流或 DAG 运行时；
+- 不复制或内嵌公共 Skill；
+- 不允许专业子 Agent 之间点对点发送消息；
+- 不增加独立“发布 Agent”；
+- 不提供 Agent 市场、安装商店或用户编辑专业提示的设置界面；
+- 不把只读 Agent 目录和介绍页做成配置管理界面；
+- 不引入声明式工作流、DAG 运行时或自动审核循环；
 - 不增加单独的领域记忆数据库；
-- 不增加自动化的“创作 Agent + 审核 Agent”循环；
-- 不替换现有的 `main` 和 `worker` 会话角色；
-- 不让 Worker 成为第二个面向用户的助手；
-- 不改变由用户查看结果并提出修改意见的产品方式。
+- 不替换现有 `main` 和 `worker` 会话角色；
+- 不让 Worker 直接面向用户、写入全局 Activity 或 Memory；
+- 不把 Agent 团队目录做成任务控制面或运行状态模拟器；
+- 不因模板下线而删除历史 Page 或用户产物；
+- 不用自动视觉测试替代用户对设计稿和正式 UI 的验收。
 
-## 当前架构
+## 核心决策
 
-Personal Agent Node 已经具备所需的执行基础：
+### 1. 产品层是 Agent Teams，安全层仍是 main + worker
 
-- 唯一主 Agent 负责用户对话、任务委派、进度汇总与最终回复；
-- 每个 Worker 拥有独立的 Codex 任务；
-- Worker 会话可以恢复，也可以在中断后继续；
-- Worker 已经能够返回受治理的产物，但不能写入全局 Activity 或 Memory；
-- `pa-cli session start`、`resume`、`list`、`search` 与 `status` 已提供任务生命周期；
-- 可移植 Skill 已经包含垂直工作所需的专业流程、脚本、参考资料、素材与质量检查；
-- Online Pages、托管文件、研究、媒体处理等公共能力已经具有稳定的产品或 Skill 入口。
-
-当前缺少的是一等的“专业子 Agent 配置”概念。现在创建的 Worker 都使用同一套基础说明，只以 `worker` 身份存在。垂直领域选择主要依赖任务文本、Skill 触发和少量硬编码路由。
-
-## 决策
-
-### 1. 保留唯一主 Agent
+产品向用户展示一个主 Agent 和多个专业团队成员。
 
 主 Agent 继续负责：
 
-- 理解用户当前请求；
-- 判断任务是否需要委派；
-- 在领域归属明确时选择专业子 Agent；
-- 判断请求是否属于已有项目；
-- 启动或恢复正确的 Worker 会话；
-- 传入用户最新请求和相关受治理产物；
+- 理解用户请求和重要歧义；
+- 判断是否需要委派；
+- 选择专业子 Agent 或通用 Worker；
+- 判断请求属于新项目还是已有项目；
+- 启动、恢复和监控正确的 Worker 会话；
+- 只传入当前任务需要的受治理对象与上下文；
 - 接收进度、完成、缺少输入和失败结果；
-- 与用户沟通。
+- 组织 Activity、Memory、最终附件和用户回复。
 
-主 Agent 一旦完成委派，就不再重复执行专业子 Agent 的主体工作。
+专业子 Agent 继续运行在 `role: worker` 会话中。它不获得主 Agent 的权限，不成为第二个对话入口，也不创建 Agent 间消息网络。
 
-### 2. 在现有 Worker 之上增加专业配置
+产品名称变化不扩大权限边界。
 
-专业子 Agent 不是新的安全角色，也不是新的运行时进程类型。它仍然是 Worker 会话，只是在会话元数据中记录所使用的 Agent 配置。
+### 2. 每个专业子 Agent 是一等产品实体
 
-可移植源文件采用以下目录结构：
+可移植源文件采用：
 
 ```text
 agents/
 ├── interior-designer/
 │   ├── agent.yaml
-│   └── AGENT.md
-├── presentation-designer/
-│   ├── agent.yaml
-│   └── AGENT.md
+│   ├── AGENT.md
+│   ├── profile.yaml
+│   └── examples/
 ├── poster-designer/
-│   ├── agent.yaml
-│   └── AGENT.md
-└── travel-planner/
-    ├── agent.yaml
-    └── AGENT.md
+├── travel-planner/
+└── finance-analyst/
 
 registry/
 └── agents.json
 ```
 
-`agent.yaml` 保持精简：
+三类文件职责不可混淆：
+
+| 文件 | 受众 | 职责 |
+| --- | --- | --- |
+| `agent.yaml` | 运行时 | ID、版本、说明文件、推荐 Skill、路由摘要、公开资料引用 |
+| `AGENT.md` | 专业 Worker | 如何理解任务、组合 Skill、维护项目、处理修改和报告产物 |
+| `profile.yaml` | 用户与 UI | 介绍页内容、能力、边界、方法、结果类型、示例和验收标准 |
+
+桌面端禁止直接展示完整 `AGENT.md`。内部提示、守卫说明、工具细节和不适合公开的实现约束不能通过介绍 API 泄露。
+
+### 3. Agent 配置保持精简，公开资料保持结构化
+
+`agent.yaml` 示例：
 
 ```yaml
 schemaVersion: 1
@@ -121,288 +138,310 @@ version: 1
 displayName: 装修设计 Agent
 description: 负责装修、户型、空间布局和室内设计交付。
 instructions: AGENT.md
+profile: profile.yaml
 skills:
   - home-renovation
   - interior-design
   - visual-content
   - media-toolkit
   - personal-files
-  - personal-pages
 routing:
-  - renovation
-  - interior design
-  - floor plan
-  - furniture layout
-  - 装修
-  - 室内设计
-  - 户型
-  - 家居布局
+  domains:
+    - renovation
+    - interior design
+    - 装修
+    - 户型
+  summary: 户型、空间布局、室内概念、3D 场景与装修方案修订。
 ```
 
-Agent 配置不复制 Skill 说明。`AGENT.md` 只定义稳定的专业身份与组合方式：
+`profile.yaml` 必须支持：
 
-- 负责的领域；
-- 如何理解任务；
-- 优先使用哪些现有 Skill；
-- 预期结果结构；
-- 如何处理用户提出的修改；
-- 跨 Skill 都必须遵守的领域边界；
-- 如何向主 Agent 报告产物和缺失输入。
-
-### 3. 公共 Skill 只维护一份
-
-Skill 继续作为可复用能力层。任意数量的专业子 Agent 都可以引用同一个 Skill。
-
-例如：
-
-```text
-装修设计 Agent ───┐
-PPT 设计 Agent ───┼── personal-pages
-旅游规划 Agent ───┘
+```yaml
+schemaVersion: 1
+overview:
+  role: 空间与室内设计专家
+  tagline: 把户型证据、生活需求和设计取舍变成可持续修改的专业方案。
+capabilities: []
+useWhen: []
+notFor: []
+requiredInputs: []
+workflow: []
+deliverables: []
+examples: []
+limitations: []
+acceptance: []
+visualIdentity: {}
 ```
 
-`personal-pages`、`personal-files`、`visual-content`、`media-toolkit`、`deep-research` 等公共 Skill 继续只保留一个源目录和一个注册表条目。Agent 配置通过 Skill ID 引用它们，禁止复制、分叉或内嵌 Skill 内容。
+每个列表必须有明确数量和长度上限。示例只能引用产品打包的安全示例资产或受治理对象，不允许任意绝对路径、`file://`、loopback URL、远程脚本或未验证 HTML。
 
-第一阶段不必隐藏其他已安装 Skill。Agent 提示说明其日常工作应优先使用哪些 Skill，现有的 Skill 触发与安全规则仍然有效。只有在实际观察到提示长度或错误 Skill 选择问题后，才考虑限制专业子 Agent 可见的 Skill 目录。
+### 4. 公共 Skill 继续只维护一份
 
-### 4. 使用项目级粘性 Worker 会话
+Skill 仍是可复用能力层。多个专业子 Agent 可以引用同一个 Skill，例如 `deep-research`、`visual-content`、`content-workbench`、`media-toolkit` 和 `personal-files`。
 
-专业子 Agent 的会话身份键为：
+Agent 配置通过 Skill ID 引用公共能力，禁止：
+
+- 把 Skill 复制到 Agent 目录；
+- 将完整 Skill 内容嵌入 `AGENT.md`；
+- 为同一公共能力建立 Agent 私有分叉；
+- 因 Agent 产品化而改变原 Skill 的授权与安全规则。
+
+独立 `personal-pages` Skill 例外：它当前以模板选择为首要职责，随模板产品层一起退休。通用 Page 发布的安全规则迁入 Worker 基础约定、CLI 契约和 Page 服务，不再作为用户可发现的垂直 Skill。
+
+### 5. 使用项目级粘性专业 Worker 会话
+
+专业子 Agent 会话身份键为：
 
 ```text
 mainSessionId + agentId + projectKey
 ```
 
-`mainSessionId` 保留用户关系，`agentId` 保留专业身份，`projectKey` 隔离同一专业子 Agent 处理的不同项目。
-
-例如：
+`mainSessionId` 保留用户关系，`agentId` 保留专业身份，`projectKey` 隔离同一专业子 Agent 的不同项目。
 
 ```text
 主会话
-├── interior-designer / home-renovation-001
-├── interior-designer / parents-home-renovation-001
-├── presentation-designer / annual-review-2026
-└── travel-planner / japan-2026-october
+├── interior-designer / project_7e6b2f20
+├── interior-designer / project_a1700c31
+├── travel-planner / project_f030dc57
+└── finance-analyst / project_9c121e84
 ```
 
-一个项目的首个任务会启动新的 Worker 会话。以后属于同一项目的任务恢复这个 Worker 会话。任务完成后，会话可以进入 `idle`；`idle` 只表示当前轮次已完成，不代表需要丢弃项目历史。
+项目首个任务创建新会话；后续属于同一项目的任务恢复该会话。任务完成后可以进入 `idle`，但项目历史与当前产物仍然保留。
 
-这样可以保留下列隐性上下文：
+### 6. 当前事实必须持久化到项目产物
 
-- 为什么此前选择了某个方案；
-- 用户否定过哪些选项；
-- 已经讨论并确认的假设；
-- 工作文件的位置与版本关系；
-- 之前出现过的工具或生成问题；
-- 当前产物与历史产物之间的关系；
-- 项目中已经建立的专业术语。
+Worker 会话保留专业工作历史，但不是当前结果的权威数据库。
 
-### 5. 当前事实必须持久化到项目产物
-
-Worker 任务保留专业工作历史，但它不是当前结果的权威数据库。
-
-各专业子 Agent 继续使用原有的领域产物：
-
-- 装修设计保存受治理的项目结构、证据、需求、修订、场景、审计和发布记录；
-- PPT 设计在任务目录保存需求简报、大纲、视觉方向、演示文件和修订记录；
-- 海报设计保存内容规划、源素材、布局源文件、渲染结果和交付记录；
-- 旅游规划保存旅行需求、行程、来源、未确认事实、HTML 和可选 PDF。
-
-恢复任务时，专业子 Agent 按以下优先级判断当前事实：
+当前事实的优先级为：
 
 1. 用户最新反馈；
-2. 当前经过验证的项目文件与修订版本；
-3. 此前已经确认的决策；
-4. 历史对话与已废弃草稿。
+2. 当前经过验证的项目文件和修订版本；
+3. 此前已确认的决策；
+4. 历史对话和废弃草稿。
 
-这样可以防止会话中的旧信息覆盖项目文件中的当前状态。
+各专业子 Agent 使用适合领域的项目结构：
 
-### 6. 根据明确的项目身份决定新建或续接
+- 装修设计保存证据、需求、布局、场景、修订、审计和交付记录；
+- 海报设计保存内容规划、源素材、版式源文件、渲染结果和规格；
+- 旅游规划保存限制、来源、行程、预订优先级、未知项、Page 和可选 PDF；
+- 账务分析保存账单来源、标准化流水、分类确认、异常项、分析 Page 和复核清单。
 
-同时满足以下条件时，主 Agent 恢复已有专业子 Agent 会话：
+### 7. 根据明确项目身份新建或续接
+
+同时满足以下条件时恢复已有专业会话：
 
 - 请求属于相同领域；
-- 请求指向同一个项目或同一条产物版本链；
-- 当前主会话下存在唯一匹配的子会话；
+- 请求指向同一项目或产物版本链；
+- 当前主会话下存在唯一匹配；
 - 用户是在继续、回答、纠正或修改该工作；
-- 没有另一个并发任务正在修改同一个项目。
+- 没有另一个并发任务正在修改同一项目。
 
-典型的续接请求包括：
-
-- 回答专业子 Agent 此前提出的问题；
-- 补充缺失的尺寸、来源或图片；
-- 修改当前布局、风格、行程、海报或 PPT；
-- 重新生成或重新发布当前交付物；
-- 继续此前中断的工作；
-- 明确要求继续某个已命名项目。
-
-出现以下情况时，主 Agent 启动新的专业子 Agent 会话：
+以下情况创建新会话：
 
 - 请求属于另一个领域；
-- 请求涉及另一套住房、旅行、PPT、营销活动或其他独立项目；
-- 用户明确要求从头开始，不保留此前工作历史；
+- 涉及另一套住房、旅行、活动、账务周期或其他独立项目；
+- 用户明确要求从头开始；
 - 需要并发执行彼此独立的分支；
-- 多个历史项目都可能匹配，而用户选择了另一个项目；
-- 未来 Agent 配置版本不兼容，必须使用新的延续会话。
+- 多个历史项目匹配且用户选择了另一个项目；
+- Agent 配置版本不兼容，必须创建延续会话。
 
-不能仅凭关键词相似就恢复会话。如果存在多个可能匹配的项目，而且选择会实质影响结果，主 Agent 只向用户提出一个简短的澄清问题。
+不能只凭关键词相似恢复会话。多个重要项目都可能匹配时，主 Agent只提出一个会实质影响结果的简短问题。
 
-### 7. 在系统内部生成并保留 `projectKey`
+### 8. Agent 间交接统一经过主 Agent
 
-`projectKey` 是内部路由身份，不是面向用户的项目名称。
-
-如果现有领域对象已经拥有稳定项目 ID，应直接使用该 ID。否则由主 Agent 或编排器在第一次启动 Worker 会话时生成不透明键。
-
-提示或诊断中可以展示便于阅读的示例，但运行时不能依赖用户输入的标题具有唯一性。
-
-Worker 会话同时保存：
-
-```json
-{
-  "agentId": "interior-designer",
-  "agentProfileVersion": 1,
-  "projectKey": "project_7e6b2f20"
-}
-```
-
-标题与任务描述仍然是便于用户阅读的元数据，但不是身份键。
-
-### 8. 粘性会话中的每一轮仍然是具体任务
-
-每次 `start` 或 `resume` 的输入都必须是一个明确任务。主 Agent 传入：
-
-- 用户最新请求，完整保留日期、数量、名称和限制；
-- 本轮期望结果；
-- 本轮新增的受治理对象 ID；
-- 由专业子 Agent 管理的相关现有产物 ID 或项目路径；
-- 用户对当前结果的明确反馈；
-- 本轮必须交付的内容。
-
-恢复已有会话时，主 Agent 不需要重建整个项目历史，因为专业子 Agent 任务和项目产物已经保留这些信息。
-
-新建专业子 Agent 会话时，包括跨领域交接，应传入更完整的任务包：
-
-```json
-{
-  "agentId": "presentation-designer",
-  "objective": "根据已经确认的装修设计结果制作一份 PPT。",
-  "userRequest": "把装修方案做成一份 PPT",
-  "inputs": [
-    {
-      "kind": "page",
-      "id": "page_123",
-      "purpose": "已经确认的装修设计交付物"
-    }
-  ],
-  "context": {
-    "audience": "房屋业主及家人",
-    "language": "zh-CN"
-  },
-  "deliverables": [
-    "PPT 文件",
-    "已发布的 PPT Page"
-  ]
-}
-```
-
-第一阶段可以继续使用普通任务文本，不要求立即引入新的线协议。关键约定是：任务必须完整保留用户请求、受治理产物引用、限制条件和交付要求。
-
-### 9. Agent 之间的沟通统一经过主 Agent
-
-专业子 Agent 不直接共享任务，也不互相发送对话消息。
-
-跨领域工作采用以下流程：
+跨领域工作流程：
 
 1. 来源专业子 Agent 完成或更新产物；
-2. 主 Agent 选择要交接的产物和相关结果摘要；
+2. 主 Agent 选择受治理产物和必要摘要；
 3. 主 Agent 启动或恢复目标专业子 Agent；
-4. 目标专业子 Agent 只接收选定的上下文；
-5. 目标结果返回主 Agent。
+4. 目标 Agent 只接收选定上下文；
+5. 结果返回主 Agent。
 
-例如，将装修设计结果转换为 PPT 时，主 Agent 用已经确认的设计产物启动 PPT 设计会话，不会把装修设计 Agent 的完整任务历史开放给 PPT 设计 Agent。
+例如，将旅行攻略制作成社交卡片时，海报设计 Agent 接收确认后的攻略产物和新的传播目标，不接收旅游规划 Agent 的完整任务历史。
 
-该方式在保持上下文隔离的同时，不需要新增 Agent 消息总线。
+### 9. 专业子 Agent 负责自己的交付
 
-### 10. 领域专业子 Agent 负责发布自己的交付物
+发布属于领域任务，不新增发布 Agent。
 
-当用户要求发布结果时，发布属于领域任务本身，不需要独立的发布 Agent。
+- 装修设计 Agent 生成装修交付 Page；
+- 海报设计 Agent 渲染并登记托管图片；
+- 旅游规划 Agent 发布攻略 Page，并可导出 PDF；
+- 账务分析 Agent 发布脱敏分析 Page，并可交付标准化账本和复核清单。
 
-例如：
+Agent 使用通用 `pa-cli pages publish` 或 `pa-cli pages upload` 契约。Page 服务继续负责：
 
-- 装修设计 Agent 生成并发布装修交付 Page；
-- PPT 设计 Agent 生成并发布演示文稿；
-- 旅游规划 Agent 发布攻略 Page，并在用户需要时导出 PDF；
-- 海报设计 Agent 渲染并登记托管输出文件。
+- 公开与私有隔离；
+- 安全内容与文件检查；
+- `pageId`；
+- 当前访问环境对应的安全 URL 或 `linkNotice`；
+- 桌面端与移动端缩略图；
+- Page Activity 的稳定 target；
+- 历史访问兼容。
 
-专业子 Agent 使用现有公共 `personal-pages` Skill 与 `pa-cli pages publish` 契约。Page 服务继续负责校验模板、产物、可见性和返回 URL。专业子 Agent 将真实的 `pageId`、URL 或 `linkNotice` 以及产物元数据返回主 Agent，由主 Agent 向用户说明结果。
+Page 服务不再选择模板，也不校验模板 ID、模板版本、模板 marker 或模板 contract digest。
 
-如果用户只要求草稿，任务在发布之前结束。
+## 桌面端产品信息架构
 
-### 11. 保留现有主 Agent 与 Worker 权限边界
+### Agent 团队成员目录
 
-本方案不需要新的权限框架。继续遵守现有规则：
+正式 Node 路由：
 
-- 主 Agent 负责 Activity、Memory、用户沟通和最终回复附件选择；
-- Worker 执行分配的工作并报告产物；
-- Worker 不独立发送渠道通知；
-- 发布与文件操作继续经过注册的产品契约；
-- 当前授权与确认行为保持不变。
+```text
+/app/agents
+```
+
+Prototype 设计路由：
+
+```text
+/desktop/agents
+```
+
+该入口位于桌面端“连接”菜单之后，使用与桌面端其他一级页面一致的 Page Header、留白、边框和卡片语言。页面包含：
+
+- 一段简洁的团队定位；
+- “主 Agent 统一分派、项目上下文连续、专业边界清晰”三条协作原则；
+- 四个专业成员在宽屏同排展示、窄屏自适应换列的紧凑卡片目录；
+- 每张卡片中的专业名称、领域角色、能力摘要、可用状态、能力与产出数量；
+- 进入独立 Agent 介绍页的整卡链接。
+
+卡片必须直接使用“装修设计 Agent、海报设计 Agent、旅游规划 Agent、账务分析 Agent”等完整名称，不得使用“空间 Agent、视觉 Agent”等需要二次理解的抽象简称。页面不展示像素办公室、人物工位、任务移动、活动日志或模拟运行状态，也不提供安装、删除、启用、禁用或编辑提示操作。用户仍通过主 Agent 对话创建或修改工作。
+
+### Agent 介绍页
+
+正式 Node：
+
+```text
+/app/agents/<agentId>
+```
+
+Prototype：
+
+```text
+/desktop/agents/<agentId>
+```
+
+每个页面使用规整的三段式信息结构：
+
+1. 身份与专业契约：名称、角色、定位、能力与产出数量、公开 Skill 摘要；
+2. 代表产物：从原 Pages 模板展示能力迁入的真实页面、文件、图片或研究结果示例；
+3. 专业说明：能力与使用边界、工作方法、其他交付类型和验收标准。
+
+代表产物必须以可感知其专业质量的尺寸内嵌展示，不提供“打开完整产物”等跳离介绍页的操作。设备支持按产物本身决定，不强制所有示例同时提供 Web 和移动双视图：海报、社交卡片与旅行攻略可以只提供移动端主视图，装修 3D 与账务分析可以保留更适合的大屏视图。它是能力证明，不是用户可选择、可配置或可复用的模板。页面骨架可以复用，但不得只替换名称、图标和主题色。四个 Agent 的专业方法、示例与验收说明必须分别编写。
+
+介绍页属于长内容阅读界面，不沿用团队卡片的压缩字号。主要说明文字应保持清晰可读，辅助标签只承担次要层级。一个代表产物同时支持桌面端与移动端预览时，设备切换必须单行等宽显示，不得因容器选择器或窄宽度变成上下两行；仅支持移动端时展示不可换行的设备说明。
+
+### Pages 结果库
+
+正式 Node：
+
+```text
+/app/pages
+```
+
+Prototype：
+
+```text
+/desktop/pages
+```
+
+Pages 只展示已生成和已发布结果。页面保留搜索、可见性筛选、缩略图、详情和打开操作；不再提供“查看模板”入口。
+
+## Agent 团队卡片状态契约
+
+### 状态模型
+
+Agent 团队目录只展示成员注册与可用状态，不承载任务执行状态。受控值为：
+
+```text
+available
+updating
+unavailable
+```
+
+状态必须来自当前 Space 的 Agent 注册表与配置校验结果。任务是否已分派、执行中、等待输入、失败或完成继续由任务和对话页面表达，不投影到团队目录。
+
+禁止在正式产品中：
+
+- 用循环动画或演示事件冒充任务状态；
+- 显示另一个 Space 的 Agent 可用状态；
+- 展示内部路径、原始提示或未脱敏错误；
+- 在卡片中提供与目录职责无关的运行控制；
+- 使用无实际详情路由的点击卡片。
 
 ## 第一批专业子 Agent
 
-### 装修设计 Agent
+| Agent | 核心范围 | 典型交付 | 主要公共 Skill |
+| --- | --- | --- | --- |
+| 装修设计 | 户型证据、空间策略、布局、3D 场景、修订 | 交互 Page、方案文档、布局与概念图 | `home-renovation`、`interior-design`、`visual-content`、`media-toolkit`、`personal-files` |
+| 海报设计 | 传播信息、视觉概念、系列排版、多规格渲染 | 海报、轮播图、社交卡片、微信封面 | `guizang-social-card-skill`、`visual-content`、`media-toolkit`、`content-workbench`、`personal-files` |
+| 旅游规划 | 约束、最新资料、交通与预约、行程可行性 | 攻略 Page、执行清单、来源说明、可选 PDF | `travel-guidebook`、`deep-research`、`knowledge-capture`、`content-workbench`、`personal-files` |
+| 账务分析 | 账单解析、逐笔核对、分类确认、趋势与异常 | 分析 Page、标准化账本、异常与订阅复核清单 | `content-workbench`、`knowledge-capture`、`deep-research`、`personal-files` |
 
-主要 Skill：
+详尽能力、范围、方法和示例由各 Agent 的 `profile.yaml` 单独维护，不在主 Agent 提示中展开。
 
-- `home-renovation`
-- `interior-design`
-- `visual-content`
-- `media-toolkit`
-- `personal-files`
-- `personal-pages`
+## Page 模板下线
 
-负责装修需求、户型证据、布局与概念方案、受治理场景生成、修改、审计和装修交付 Page。
+### 下线范围
 
-### PPT 设计 Agent
+下列能力不再出现在新版本产品中：
 
-主要 Skill：
+- `registry/page-templates.json`；
+- `/app/pages/templates` 和 `/app/pages/templates/*`；
+- `/template-pages/*` 示例路由；
+- Pages 页“查看模板”入口；
+- 模板目录、模板详情、设备模板预览和模板面包屑；
+- `pa-cli pages templates list`；
+- `pa-cli pages templates inspect`；
+- `pa-cli pages publish --template`；
+- 模板语义匹配与强制委派；
+- 模板 ID、版本、marker、contract digest 与 template provenance 的新写入；
+- `skills/personal-pages` 作为独立可发现 Skill；
+- 模板专属测试、基线和 Workspace 播种。
 
-- `guizang-ppt-skill`
-- `content-workbench`
-- `visual-content`
-- `media-toolkit`
-- `deep-research`
-- `personal-files`
-- `personal-pages`
+### 原模板内容迁移
 
-负责受众与演示目标梳理、大纲与叙事、视觉系统、PPT 生成、修改和发布。
+| 原模板内容 | 新归属 |
+| --- | --- |
+| 名称、分类、摘要 | `profile.yaml` 的介绍与交付说明 |
+| `useWhen`、匹配词 | `agent.yaml.routing` 与介绍页使用范围 |
+| 关联 Skill | `agent.yaml.skills` |
+| 固定框架 | Agent 工作方法和交付标准 |
+| Agent 可调整范围 | `profile.yaml` 与 `AGENT.md` |
+| Agent 执行说明 | `AGENT.md` |
+| 生成器 | 对应领域 Skill 的内部实现 |
+| 示例产物 | `agents/<id>/examples` 或安全打包的 Agent 示例资产 |
+| 验收条款 | `profile.yaml.acceptance` 与领域测试 |
+| 发布安全 | 通用 Page 服务与 CLI 契约 |
 
-### 海报设计 Agent
+示例是 Agent 能力证明，不再是用户选择后复用的模板。UI 使用“产出示例”“专业交付示例”或“案例”，不得继续使用“模板”暗示创建入口。
 
-主要 Skill：
+### 保留范围
 
-- `guizang-social-card-skill`
-- `visual-content`
-- `media-toolkit`
-- `content-workbench`
-- `personal-files`
+以下能力必须保留：
 
-负责海报、社交卡片、轮播图片、微信封面组合，同一视觉活动的渲染与修改。
+- `pa-cli pages publish`；
+- `pa-cli pages upload`；
+- 私有与公开 Page；
+- `pageId`、安全 URL 与 `linkNotice`；
+- 桌面与移动缩略图；
+- Pages 结果库和详情页；
+- Page Activity 关联；
+- 历史已发布 Page；
+- 领域 Agent 生成 Page 的能力。
 
-### 旅游规划 Agent
+### 历史兼容
 
-主要 Skill：
+历史 Page manifest 中已有的模板字段继续按只读兼容数据解析：
 
-- `travel-guidebook`
-- `deep-research`
-- `knowledge-capture`
-- `content-workbench`
-- `personal-files`
-- `personal-pages`
+- 不改写；
+- 不因字段存在而拒绝访问；
+- 不在新发布中继续生成；
+- 不把历史 Page 重新暴露成可选模板；
+- 不删除用户文件、Page、Activity 或缩略图。
 
-负责旅行限制、最新资料调研、行程可行性、攻略生成、修改、发布和可选 PDF 导出。
+旧安装升级时显式退休产品管理的模板注册表与 `personal-pages` Skill，避免留下仍被路由或发现的幽灵能力。
 
-## 运行时与 API 方案
+## 运行时与 API
 
 ### Agent 注册表
 
@@ -411,22 +450,25 @@ Worker 会话同时保存：
 ```text
 registry/agents.json
 schemas/personal-agent/agents.schema.json
+schemas/personal-agent/agent-profile.schema.json
 scripts/agent-guard.mjs
 ```
 
-守卫脚本验证：
+守卫验证：
 
-- Agent 配置 ID 和目录唯一；
-- `agent.yaml` 与 `AGENT.md` 存在；
-- 配置清单 Schema 版本受支持；
-- 引用的每一个 Skill 都存在于 `registry/skills.json`；
-- 路由词非空且数量、长度受限；
+- Agent ID、目录和路由身份唯一；
+- `agent.yaml`、`AGENT.md`、`profile.yaml` 存在；
+- Schema 版本受支持；
+- 引用 Skill 均存在；
+- 路由摘要非空且有长度上限；
 - 配置路径不能越出 `agents/`；
-- 安装后的 Workspace 中存在注册的 Agent 配置源文件。
+- 示例引用只指向允许的本地安全资产或受治理对象；
+- 用户可见文案不包含绝对路径、secret、内部提示或不受信任 HTML；
+- 安装后的 Workspace 存在注册的 Agent 源文件。
 
 ### 会话元数据
 
-继续保留 `role: worker`，将专业字段保存在 `metadata_json`：
+继续使用 `role: worker`：
 
 ```json
 {
@@ -437,11 +479,11 @@ scripts/agent-guard.mjs
 }
 ```
 
-第一阶段不需要数据库迁移。
+专业字段保存于 `metadata_json`。恢复会话时不得静默切换 Agent 身份或配置版本。
 
 ### CLI
 
-扩展会话创建命令：
+扩展会话创建：
 
 ```bash
 pa-cli session start \
@@ -454,9 +496,7 @@ pa-cli session start \
   --json
 ```
 
-`--agent` 与 `--project-key` 均为可选参数，因此通用 Worker 与现有调用方继续保持兼容。
-
-扩展会话查询命令：
+扩展会话查询：
 
 ```bash
 pa-cli session list \
@@ -467,11 +507,20 @@ pa-cli session list \
   --json
 ```
 
-`session resume` 保留原 Agent 配置与项目元数据，不能接受会静默改变现有 Agent 身份的参数。
+`--agent` 与 `--project-key` 保持可选，以兼容通用 Worker。`session resume` 沿用原专业身份，不能接受会改变身份的参数。
+
+Agent 公开目录增加只读命令：
+
+```bash
+pa-cli agents list --json
+pa-cli agents inspect --id interior-designer --json
+```
+
+它们只返回经过 Schema 校验的公开资料，不返回 `AGENT.md`。
 
 ### HTTP API
 
-为 `POST /api/sessions` 增加可选字段：
+`POST /api/sessions` 增加可选字段：
 
 ```json
 {
@@ -480,42 +529,34 @@ pa-cli session list \
 }
 ```
 
-为 `GET /api/sessions` 增加可选的 `agent` 与 `project` 过滤条件。
+`GET /api/sessions` 增加 `agent` 与 `project` 过滤。
 
-遇到未知 Agent ID 时，返回明确的客户端错误，不能静默退回通用 Worker。
+桌面端增加只读接口：
 
-### 编排器提示组合
+```text
+GET /api/agents
+GET /api/agents/<agentId>
+GET /api/agent-team/status
+```
 
-专业 Worker 的提示按以下顺序组合：
+接口必须绑定当前 Owner 与 Space。未知 Agent ID 返回明确客户端错误，不能静默退回通用 Worker。
+
+### 提示组合
+
+专业 Worker 提示按以下顺序组合：
 
 ```text
 Worker 基础说明
 + 所选专业子 Agent 的 AGENT.md
-+ 精简的推荐 Skill 指引
++ 精简推荐 Skill 指引
 + 当前任务输入
 ```
 
-Worker 基础说明继续作为主 Agent/Worker 权限边界、产物返回格式、发布规则和用户通知限制的唯一来源。专业说明只增加领域行为，不替代基础约定。
-
-会话元数据与事件记录实际加载的 Agent ID 和版本，确保恢复会话时不能静默切换专业身份。
-
-### 主 Agent 路由说明
-
-从 `registry/agents.json` 为主 Agent 生成精简的专业子 Agent 目录。主 Agent 应：
-
-1. 按现有规则直接处理简单请求；
-2. 只在专业领域明确拥有主体工作时选择专业子 Agent；
-3. 按父会话、Agent 与项目查询子会话；
-4. 恢复唯一匹配的项目；
-5. 没有匹配项时创建新的项目会话；
-6. 多个重要项目都匹配时，只提出一个简短问题；
-7. 没有专业子 Agent 负责时使用通用 Worker。
-
-不能把每个专业子 Agent 的完整 `AGENT.md` 都注入主 Agent。
+主 Agent 只接收从 `registry/agents.json` 生成的精简目录，不接收所有 `AGENT.md` 或完整 `profile.yaml`。
 
 ### 安装后的 Workspace
 
-扩展 Workspace 初始化与发布打包范围，包含：
+Workspace 初始化与发布打包包含：
 
 ```text
 agents/
@@ -523,140 +564,121 @@ registry/agents.json
 scripts/agent-guard.mjs
 ```
 
-内置 Agent 配置源文件与其他可移植 Harness 源文件一样由产品管理。用户任务数据和生成产物继续保存在用户拥有的 Workspace 中，禁止写入 `agents/`。
-
-第一阶段由 Personal Agent 注册表加载 Agent 配置，不要求 Codex、Claude、Cursor 或其他客户端识别新的标准目录，因此不需要修改兼容桥。
-
-## 详细调度示例
-
-### 新建装修项目
-
-1. 用户提供户型图并要求设计。
-2. 主 Agent 选择 `interior-designer`。
-3. 系统没有找到匹配项目。
-4. 主 Agent 使用新生成的 `projectKey` 启动 Worker。
-5. Worker 使用装修相关 Skill 创建项目，并在用户要求时发布。
-6. Worker 返回项目和 Page 产物。
-7. 主 Agent 向用户报告结果。
-
-### 修改同一个装修项目
-
-1. 用户要求保留钢琴区域并更换木色。
-2. 主 Agent 根据已确认的装修产物或项目名称识别项目。
-3. 主 Agent 找到匹配的 `interior-designer` 会话。
-4. 主 Agent 使用用户反馈恢复该会话。
-5. Worker 读取当前项目版本，完成修改和验证，并在用户要求时重新发布。
-6. 主 Agent 向用户报告更新后的结果。
-
-### 设计另一套住房
-
-1. 用户为父母的住房提供另一张户型图。
-2. 主 Agent 识别出这是独立项目。
-3. 主 Agent 使用另一个 `projectKey` 启动第二个 `interior-designer` 会话。
-4. 两个专业会话不会接收到另一套住房的上下文。
-
-### 将装修结果制作成 PPT
-
-1. 用户要求把已经确认的设计制作成 PPT。
-2. 主 Agent 选择已经确认的设计产物。
-3. 主 Agent 使用新的 PPT `projectKey` 启动 `presentation-designer`。
-4. PPT 设计 Agent 只接收选定产物与新的 PPT 任务，不接收装修 Agent 的完整任务历史。
-5. 后续 PPT 修改恢复 PPT 设计会话。
-
-### 缺少关键输入
-
-1. 专业子 Agent 发现没有某个关键选择就无法继续。
-2. 专业子 Agent 结束当前轮次，返回待确认问题与当前项目引用。
-3. 主 Agent 向用户提出问题。
-4. 用户回答后，恢复同一个专业子 Agent 会话。
-
-### 执行中断
-
-未完成的专业任务继续使用现有 Worker 恢复机制。恢复时沿用同一个会话，不创建新项目，也不重复已经完成的发布副作用。
+用户任务数据和生成产物继续保存在用户拥有的 Workspace，禁止写入产品管理的 `agents/`。
 
 ## 实施顺序
 
-### 阶段一：注册表与配置加载器
+### 阶段一：设计与契约
 
-- 增加 `registry/agents.json`；
-- 增加 Agent 清单 Schema 与守卫脚本；
-- 增加四个专业子 Agent 目录；
-- 支持按 ID 加载并校验 Agent 配置；
-- 将 Agent 配置源文件加入 Workspace 初始化与打包；
-- `agentId` 缺失时保持所有现有运行时行为不变。
+- 完成 ADR；
+- 在 `projects/prototype` 下实现融合运行演示与成员目录的 Agent 团队页，以及四个介绍页；
+- 从 Prototype 移除 Pages 模板入口、路由、组件和 fixture；
+- 将设计路由登记在 `src/app/surfaces.ts`；
+- 用户完成视觉与交互验收；
+- 未获用户批准前不把 Prototype 直接同步到 Node 正式 UI。
 
-### 阶段二：会话元数据与 CLI/API
+### 阶段二：Agent 注册与公开资料
 
-- 为 `pa-cli session start` 增加 `--agent` 和 `--project-key`；
-- 在 `POST /api/sessions` 中接收并校验这些字段；
-- 将字段持久化到 `metadata_json`；
-- 在会话摘要中返回这些字段；
-- 增加列表过滤条件；
-- 确保恢复会话时保留原专业身份。
+- 增加 Agent 注册表、Schema 和守卫；
+- 增加四个 Agent 目录；
+- 增加运行配置、专业说明、公开资料与示例元数据；
+- 加入 Workspace 初始化和发布打包；
+- 增加公开目录 CLI/API；
+- `agentId` 缺失时保持通用 Worker 行为。
 
-### 阶段三：专业提示组合
+### 阶段三：专业会话与路由
 
-- 在 Worker 基础说明之后追加所选 `AGENT.md`；
-- 在经过脱敏的诊断事件中展示所选 Agent 配置与 Skill 列表；
-- 增加提示组合测试；
-- 注册配置缺失或无效时失败关闭；
-- 保持通用 Worker 行为不变。
+- 为会话 CLI/API 增加 Agent 与项目字段；
+- 持久化 `agentId`、配置版本和 `projectKey`；
+- 组合专业提示；
+- 实现主 Agent 的专业目录路由；
+- 新建与恢复行为通过项目隔离用例；
+- 配置缺失、版本不支持或未知 Agent 时失败关闭。
 
-### 阶段四：主 Agent 路由
+### 阶段四：模板退休与知识迁移
 
-- 只把精简的已注册 Agent 目录注入主 Agent；
-- 实现 `agentId + projectKey` 查询路径；
-- 更新新建与恢复会话指引；
-- 只有在对应行为已经由专业配置完整覆盖后，才移除硬编码的领域路由文本；
-- 在专业替代方案通过相同行为测试前，保留现有 Page 模板直接路由。
+- 将装修模板中的方法、示例和验收迁入装修 Agent 与领域 Skill；
+- 将通用发布安全规则迁入 Worker 基础约定和 Page 契约；
+- 移除模板注册表、CLI、路由、UI、自动委派、Skill 和播种；
+- 更新行为基线、Skill 注册表、route registry、site distribution 与测试；
+- 对旧 Workspace 执行显式退休迁移；
+- 保留历史 Page 的只读兼容。
 
-以上顺序不要求一次性切换。每个阶段都可以独立测试，现有通用 Worker 始终作为回退方案。
+### 阶段五：Node UI
+
+- 用户批准 Prototype 后，在 Node 实现 `/app/agents` 与详情；
+- 将 `/app/agents` 卡片目录绑定当前 Space 的真实 Agent 注册状态；
+- 保持 `/app` 为当前 Space 总览；
+- 从正式 Pages UI 移除模板入口；
+- 覆盖正常、空、加载、等待输入、失败、离线和权限状态；
+- 保持桌面、移动和 Space 隔离；
+- 视觉与交互最终由用户验收。
+
+## 设计文档与设计稿对齐矩阵
+
+| 决策 | Prototype 设计证据 | 正式 Node 目标 |
+| --- | --- | --- |
+| Space 首页保持总览 | `/desktop` | `/app` |
+| Agent 团队卡片目录 | `/desktop/agents` | `/app/agents` |
+| 装修设计介绍 | `/desktop/agents/interior-designer` | `/app/agents/interior-designer` |
+| 海报设计介绍 | `/desktop/agents/poster-designer` | `/app/agents/poster-designer` |
+| 旅游规划介绍 | `/desktop/agents/travel-planner` | `/app/agents/travel-planner` |
+| 账务分析介绍 | `/desktop/agents/finance-analyst` | `/app/agents/finance-analyst` |
+| Pages 只保留结果 | `/desktop/pages` 无模板入口 | `/app/pages` 无模板入口 |
+| 模板目录下线 | Prototype 不注册模板路由 | Node 删除模板路由 |
+| 代表产物承接原模板展示能力 | 详情首屏嵌入真实 Page 或专业产物 | Node 读取 Agent 示例资产 |
+| 目录不冒充任务状态 | 只展示成员可用状态 | Node 绑定 Agent 注册状态 |
+| reduced motion | `prefers-reduced-motion` | 同等实现 |
+
+本 ADR、`src/app/surfaces.ts` 和可运行 Prototype 必须同时更新。任何一处仍出现模板目录、模板选择入口或与 Agent 介绍不一致的能力说明，都视为未对齐。
 
 ## 验证方案
 
-### 注册表测试
+### 注册表与资料
 
-- 有效配置通过；
+- 有效 Agent 和 profile 通过；
 - 重复 ID 失败；
-- 缺少说明文件失败；
+- 缺少任一源文件失败；
 - 引用未知 Skill 失败；
-- 路径穿越失败；
-- 安装后的配置源文件与发布注册表一致。
+- 路径穿越和不安全示例引用失败；
+- 内部提示不进入公开 API；
+- 安装后源文件与注册表一致。
 
-### 会话测试
+### 会话与路由
 
-- 通用会话创建行为不变；
-- 专业会话记录 `agentId`、配置版本和 `projectKey`；
-- 未知 Agent ID 失败；
-- 列表过滤能够返回预期会话；
-- 恢复会话保留 Agent 身份；
-- 同一专业子 Agent 的两个项目保持隔离；
-- 使用同一源产物的两个专业子 Agent 仍然保持隔离。
+- 通用会话行为不变；
+- 专业会话记录 Agent、版本和项目；
+- 未知 Agent 失败；
+- 恢复会话保留身份；
+- 同 Agent 不同项目隔离；
+- 不同 Agent 使用同一源产物仍隔离；
+- 无匹配领域时使用通用 Worker；
+- 跨领域交接只传递选定产物。
 
-### 提示测试
+### Agent 团队与介绍页语义
 
-- Worker 基础约定仍然存在；
-- 所选专业子 Agent 说明存在；
-- 无关专业子 Agent 说明不存在；
-- 只引用推荐 Skill 名称，不复制其完整说明；
-- 不向 Worker 授予只属于主 Agent 的 Activity 与 Memory 能力。
+- 每个注册 Agent 有独立详情路由；
+- 详情完整覆盖能力、范围、输入、方法、产物、示例和验收；
+- Agent 团队页每张成员卡片都进入正确详情；
+- 详情首屏代表产物能展示原模板承载的专业结果能力，但不提供模板选择或复用；
+- 演示数据明确标记为演示；
+- 正式状态只来自当前 Space；
+- reduced-motion 下信息不丢失；
+- 不出现无行为的按钮或链接。
 
-### 行为用例
+### 模板退休
 
-至少覆盖：
-
-1. 新建装修项目；
-2. 修改同一个装修项目；
-3. 新建第二个独立装修项目；
-4. 将已确认的装修结果交给 PPT 设计；
-5. 缺少输入时提问并恢复；
-6. Worker 中断后恢复；
-7. 专业子 Agent 发布 Page 并返回产物；
-8. 无匹配领域时退回通用 Worker。
+- 新安装不包含模板注册表和独立 `personal-pages` Skill；
+- 模板 CLI 和 `--template` 参数不可用；
+- 新 Page 不写模板 provenance；
+- Pages 结果库仍可搜索、打开和区分可见性；
+- 历史 Page 继续读取；
+- 专业 Agent 可以使用通用 Page 发布契约；
+- 模板直接路由不再拦截新建 Page 请求。
 
 ### 仓库检查
 
-正式实现必须通过 Node Harness 的全部要求：
+正式实现必须通过 Node Harness：
 
 ```bash
 npm run doctor
@@ -668,39 +690,57 @@ npm test
 npm run check
 ```
 
-当前只采纳这份提议状态的 ADR，并不表示 Agent 注册表或运行时行为已经实现。
+Prototype 必须通过：
+
+```bash
+npm run check
+npm run build
+npm run package:check
+```
+
+遵守仓库 UI 验收约定：除非用户明确要求，不运行浏览器自动化、截图或自动点击验收。编译成功不代表设计批准。
 
 ## 兼容与回滚
 
-所有新增字段都是可选字段。没有 `agentId` 的现有会话继续作为通用 Worker。现有 `pa-cli session start` 调用方保持有效。
+所有新增会话字段保持可选。没有 `agentId` 的现有会话继续作为通用 Worker。
 
 如果专业路由引发回归：
 
-- 停止在主 Agent 说明中选择专业配置；
-- 继续运行通用 Worker；
-- 将已有专业会话记录作为普通 Worker 会话保留；
-- 保留已经生成的项目和产物。
+- 暂停主 Agent 选择专业配置；
+- 继续使用通用 Worker；
+- 现有专业会话作为普通 Worker 会话保留；
+- 保留项目和产物；
+- 不恢复已退休的模板产品入口作为长期回退。
 
-删除路由条目不会删除会话或用户数据。
+如果 Agent Teams UI 引发回归：
 
-## 影响
+- 可以回退 Agent 团队卡片目录展示；
+- 不删除会话、Agent 配置或项目数据；
+- Pages 结果库保持独立可用。
+
+删除专业路由或退休模板不会删除用户会话、文件、Page、Activity 或 Memory。
+
+## 影响与取舍
 
 正面影响：
 
-- 垂直任务获得稳定的专业身份；
-- 迭代工作保留有价值的专业历史；
-- 无关项目保持隔离；
-- 公共 Skill 仍然只需维护一份；
-- 发布继续属于领域任务本身；
-- 用户提出的修改可以直接复用现有会话恢复机制；
-- 实现方式贴近当前 Worker 架构，改造范围较小。
+- 产品从抽象的“主 Agent + 后台 Worker”变为用户可理解的 Agent Teams；
+- 垂直领域拥有稳定、可解释的专业身份；
+- 用户在使用前就能理解能力与边界；
+- 专业方法、示例和验收不再分散在模板产品层；
+- 同一项目保留有价值的专业历史；
+- Pages 回到结果发布与访问的单一职责；
+- 公共 Skill 仍然只维护一份；
+- Agent 团队页能够解释真实协作过程。
 
 需要接受的取舍：
 
 - 主 Agent 必须正确识别或生成项目键；
-- 长期项目的任务历史过长后，可能需要创建延续会话；
-- 任务历史过时时，必须以当前项目文件为准；
-- 专业路由质量依赖简洁且边界清晰的领域描述；
-- 专业子 Agent 能提高一致性，但不能替代用户验收。
+- Agent 公开资料成为需要版本化和审核的新产品内容；
+- 长期项目历史过长时可能需要延续会话；
+- 任务历史过时时必须以当前项目文件为准；
+- Agent 团队状态聚合必须防止跨 Space 泄露和伪实时；
+- 四个 Agent 的介绍页不能依赖同一套泛化文案，维护成本高于模板卡片；
+- 专业 Agent 能提高一致性，但不能替代用户验收或持证专业判断。
 
-相比每一轮都创建完全无状态的子 Agent，或建设一套庞大的多 Agent 平台，这些取舍更符合当前“只拆分专业工作、不大改造”的目标。
+本 ADR 只采纳提议状态的产品、运行时和迁移方案。Prototype 的存在不表示 Agent 注册表、专业路由、模板退休或正式 Node UI 已经实现。

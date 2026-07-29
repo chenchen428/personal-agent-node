@@ -38,6 +38,7 @@ import { OpenCliRunner } from "../connections/opencli/runner.js";
 import { WeChatQianxunConnector } from "../connections/wechat-qianxun/connector.ts";
 import { InstallationConnectionOwnership } from "../connections/connection-ownership.ts";
 import { DingTalkConnector } from "../connections/dingtalk/connector.ts";
+import { createAgentCatalog, normalizeAgentId, normalizeProjectKey } from "../agents/catalog.js";
 import { BridgeStore } from "../store/store.js";
 import { AgentBridgeBroker } from "../broker/agent-bridge-broker.js";
 import { readWorkspaceSkillCatalog } from "../skills/catalog.js";
@@ -107,6 +108,10 @@ const historyCleanupTimer = setInterval(() => {
 }, config.historyCleanupIntervalMs);
 historyCleanupTimer.unref?.();
 const hub = new BrowserHub();
+const agentCatalog = createAgentCatalog({
+  workspaceRoot: config.workspaceRoot,
+  releaseRoot: config.releaseRoot,
+});
 const agentBridgeBroker = new AgentBridgeBroker({ store, hub, logger });
 const agentData = new AgentDataStore({
   dataDir: config.agentDataDir,
@@ -183,7 +188,7 @@ const channelLoginCoordinator = {
     return await cloudBinding.consumeWechatMessage(message) || await xiaohongshuLogin.consumeWechatMessage(message);
   },
 };
-const orchestrator = new SessionOrchestrator({ store, hub, channels: { wechat, "wechat-personal": wechatQianxun, dingtalk }, managedFiles, activityStore, memoryStore, channelLoginCoordinator });
+const orchestrator = new SessionOrchestrator({ store, hub, channels: { wechat, "wechat-personal": wechatQianxun, dingtalk }, managedFiles, activityStore, memoryStore, channelLoginCoordinator, agentCatalog });
 const scheduledTasks = new ScheduledTaskRunner({ store, broker: agentBridgeBroker, channels: { wechat }, logger });
 wechat.attach(orchestrator);
 if (personalWechatSupported) wechatQianxun.attach((message) => orchestrator.handleChannelMessage("wechat-personal", message));
@@ -1592,15 +1597,31 @@ async function handleRequest(request: http.IncomingMessage, response: http.Serve
     return;
   }
 
+  if ((url.pathname === "/api/agents" || url.pathname === "/api/agent-team/status") && request.method === "GET") {
+    sendJson(response, 200, { ok: true, agents: agentCatalog.listPublic() });
+    return;
+  }
+
+  const apiAgentMatch = /^\/api\/agents\/([^/]+)$/.exec(url.pathname);
+  if (apiAgentMatch && request.method === "GET") {
+    const agent = agentCatalog.inspectPublic(decodeURIComponent(apiAgentMatch[1]));
+    sendJson(response, 200, { ok: true, agent });
+    return;
+  }
+
   if (url.pathname === "/api/sessions" && request.method === "GET") {
     const query = url.searchParams.get("query") || "";
     const parentSessionId = url.searchParams.get("parent") || "";
+    const agentId = normalizeAgentId(url.searchParams.get("agent"), { optional: true });
+    const projectKey = normalizeProjectKey(url.searchParams.get("project"), { optional: true });
     const page = store.listSessionsPage({
       includeArchived: url.searchParams.get("archived") === "1",
       limit: Number(url.searchParams.get("limit") || config.sessionPageSize),
       cursor: url.searchParams.get("cursor") || "",
       query,
       parentSessionId,
+      agentId,
+      projectKey,
       hydrate: false,
     });
     sendJson(response, 200, {
@@ -1609,6 +1630,8 @@ async function handleRequest(request: http.IncomingMessage, response: http.Serve
       totalSessions: store.countSessions({
         includeArchived: url.searchParams.get("archived") === "1",
         parentSessionId,
+        agentId,
+        projectKey,
       }),
       html: renderConsoleSessionsFragment(page.sessions, { empty: !page.sessions.length, search: Boolean(query) }),
     });
@@ -1624,6 +1647,8 @@ async function handleRequest(request: http.IncomingMessage, response: http.Serve
       parentSessionId: body.parentSessionId || body.parent,
       workspaceRoot: body.workspaceRoot || body.workspace,
       createdBy: body.createdBy || "api",
+      agentId: body.agentId,
+      projectKey: body.projectKey,
     });
     sendJson(response, 200, { ok: true, session });
     return;
@@ -1658,7 +1683,12 @@ async function handleRequest(request: http.IncomingMessage, response: http.Serve
       const body = await readJsonBody(request);
       const content = String(body.content || body.text || "").trim();
       if (!content) throw new Error("content is required");
-      await orchestrator.resumeSession(sessionId, content, { notifyWechat: body.notifyWechat === true });
+      await orchestrator.resumeSession(sessionId, content, {
+        notifyWechat: body.notifyWechat === true,
+        ...(body.agentId !== undefined ? { agentId: body.agentId } : {}),
+        ...(body.projectKey !== undefined ? { projectKey: body.projectKey } : {}),
+        ...(body.agentProfileVersion !== undefined ? { agentProfileVersion: body.agentProfileVersion } : {}),
+      });
       sendJson(response, 202, { ok: true, session: store.getSession(sessionId) });
       return;
     }

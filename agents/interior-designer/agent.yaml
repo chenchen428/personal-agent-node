@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "id": "interior-designer",
+  "version": 1,
+  "displayName": "装修设计 Agent",
+  "description": "负责户型证据、空间策略、布局、室内概念、可治理三维场景、修订和专业交付。",
+  "instructions": "AGENT.md",
+  "profile": "profile.yaml",
+  "skills": [
+    "home-renovation",
+    "interior-design",
+    "visual-content",
+    "media-toolkit",
+    "personal-files"
+  ],
+  "routing": {
+    "domains": [
+      "renovation",
+      "interior-design",
+      "装修",
+      "户型"
+    ],
+    "summary": "处理住宅户型证据、空间布局、室内概念、三维场景、装修方案修订与交付。"
+  }
+}

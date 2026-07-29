@@ -1,0 +1,39 @@
+{
+  "schemaVersion": 1,
+  "id": "interior-c-layout-delivery",
+  "agent": {
+    "id": "interior-designer",
+    "version": 1
+  },
+  "delivery": {
+    "version": 2,
+    "engine": "pascal-v2",
+    "layoutProfile": "su-design-classic",
+    "renderProfile": "professional-mesh-ink",
+    "generator": "node skills/interior-design/scripts/cli.mjs page --project-dir <space-owned-project-dir> --output <page-dir> --json"
+  },
+  "asset": {
+    "basePath": "/assets/agents/interior-designer/featured",
+    "pagePath": "/assets/agents/interior-designer/featured/index.html",
+    "manifestPath": "/assets/agents/interior-designer/featured/manifest.json",
+    "coverPath": "/assets/agents/interior-designer/featured/cover.svg"
+  },
+  "acceptance": {
+    "visualOwner": "user",
+    "agentBrowserReview": false,
+    "verifyArtifactBeforePublish": true
+  },
+  "fixedFramework": [
+    "Full-canvas offline delivery with a compact floating header, three presentation modes, bottom view controls, and responsive mobile-landscape layout.",
+    "The user-uploaded source plan, Agent annotation, governed project, Pascal scene model basis, and Page payload must resolve to the same evidence hash.",
+    "The Pascal scene remains the only production 3D engine and supplies the model-derived SVG failure fallback.",
+    "A dedicated loading state precedes automatic first-frame 3D warmup; Canvas visibility must not depend on a click or drag.",
+    "Perspective and orthographic views, stacked and isolated levels, labels, highlights, concept comparison, requirements, audit findings, and revision history remain available.",
+    "The delivery carries no remote resources, no customer data, and no claim of survey, construction drawing, structural, engineering, or code-compliance authority."
+  ],
+  "agentFreedom": [
+    "Derive spatial strategy and annotations from the current governed project evidence.",
+    "Choose room, wall, opening, furniture, cabinet, material-intent, lighting-intent, and label content within the accepted project scope.",
+    "Revise the governed scene and regenerate a new immutable delivery after user feedback."
+  ]
+}

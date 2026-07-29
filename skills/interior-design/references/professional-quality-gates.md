@@ -15,7 +15,7 @@ Every finding records stable issue ID, rule/version, severity, affected nodes/le
 - Unresolved or untraceable `must` requirements.
 - Missing room/item material intent, known wet-area contradiction, target budget without complete scope/category/confidence allocation, known schedule without phases, and unsupported scene capacity.
 - High-risk scope without matching professional verification.
-- Page template/version/marker, CSP, self-contained assets, redacted evidence, privacy fields, loopback/development paths, size, and offline fallback.
+- Agent identity, delivery version and engine provenance, CSP, self-contained assets, redacted evidence, privacy fields, loopback/development paths, size, and offline fallback.
 
 Warnings expose unknown scale, explicit blocked requirements, unverified wet-area material, unknown budget, and concept allocation beyond the target. Warnings remain in the Page; they are not silently waived.
 

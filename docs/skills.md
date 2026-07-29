@@ -22,7 +22,7 @@ These are customer capabilities and belong only to the Node Harness. The private
 | Travel & Location | `skills/travel-guidebook` |
 | Home & Living | `skills/home-renovation`, `skills/interior-design` |
 | Product Engineering | `skills/frontend-design`, `skills/ui-ux-pro-max`, `skills/personal-product-development`, `skills/personal-bug-report`, `skills/personal-acceptance` |
-| Publishing & Automation | `skills/personal-runtime`, `skills/personal-connectivity`, `skills/personal-connections`, `skills/personal-activity`, `skills/personal-tasks`, `skills/personal-schedules`, `skills/personal-pages`, `skills/personal-updates` |
+| Publishing & Automation | `skills/personal-runtime`, `skills/personal-connectivity`, `skills/personal-connections`, `skills/personal-activity`, `skills/personal-tasks`, `skills/personal-schedules`, `skills/personal-updates` |
 
 The catalog records exact upstream revisions, licenses, risks, security boundaries, related skills, and reproducible cases. The installed release seeds the complete `skills/` tree—including bundled local Three.js Page assets—into the customer's mutable Workspace on both new installation and upgrade.
 

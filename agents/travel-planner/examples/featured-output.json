@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "id": "travel-hokkaido-family-itinerary",
+  "source": "product-example",
+  "kind": "guide-page",
+  "title": "北海道七日家庭行程",
+  "summary": "按区域和体力编排，并包含预约优先级、来源时效与雨天备选的脱敏示例。",
+  "sanitized": true,
+  "verified": true,
+  "presentation": {
+    "devices": ["mobile"],
+    "primaryView": "mobile"
+  }
+}

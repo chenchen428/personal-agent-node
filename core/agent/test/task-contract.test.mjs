@@ -18,6 +18,8 @@ test("child tasks require concise Agent-generated title and description", () => 
     title: "整理发布页",
     description: "完成页面制作、发布和验证",
     task: "Read the workspace rules and finish the page.",
+    agentId: "",
+    projectKey: "",
   });
   assert.throws(() => normalizeTaskCreate({ parentSessionId: "main-1", description: "说明", task: "work" }), /必须设置标题/);
   assert.throws(() => normalizeTaskCreate({ parentSessionId: "main-1", title: "标题", task: "work" }), /必须设置描述/);

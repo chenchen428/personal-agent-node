@@ -1,0 +1,122 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://personal-agent.cn/schemas/agents-v1.json",
+  "title": "Personal Agent specialist Agent registry",
+  "type": "object",
+  "required": ["schemaVersion", "agents"],
+  "properties": {
+    "schemaVersion": {
+      "const": 1
+    },
+    "agents": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 32,
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/registryEntry"
+      }
+    }
+  },
+  "$defs": {
+    "agentId": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]{2,47}$"
+    },
+    "registryEntry": {
+      "type": "object",
+      "required": ["id", "directory", "config"],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/agentId"
+        },
+        "directory": {
+          "type": "string",
+          "pattern": "^agents/[a-z][a-z0-9-]{2,47}$"
+        },
+        "config": {
+          "const": "agent.yaml"
+        }
+      },
+      "additionalProperties": false
+    },
+    "agentConfig": {
+      "type": "object",
+      "required": [
+        "schemaVersion",
+        "id",
+        "version",
+        "displayName",
+        "description",
+        "instructions",
+        "profile",
+        "skills",
+        "routing"
+      ],
+      "properties": {
+        "schemaVersion": {
+          "const": 1
+        },
+        "id": {
+          "$ref": "#/$defs/agentId"
+        },
+        "version": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100000
+        },
+        "displayName": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 40
+        },
+        "description": {
+          "type": "string",
+          "minLength": 10,
+          "maxLength": 180
+        },
+        "instructions": {
+          "const": "AGENT.md"
+        },
+        "profile": {
+          "const": "profile.yaml"
+        },
+        "skills": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 12,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9-]{1,63}$"
+          }
+        },
+        "routing": {
+          "type": "object",
+          "required": ["domains", "summary"],
+          "properties": {
+            "domains": {
+              "type": "array",
+              "minItems": 2,
+              "maxItems": 12,
+              "uniqueItems": true,
+              "items": {
+                "type": "string",
+                "minLength": 2,
+                "maxLength": 60
+              }
+            },
+            "summary": {
+              "type": "string",
+              "minLength": 10,
+              "maxLength": 200
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

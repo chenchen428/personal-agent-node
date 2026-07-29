@@ -14,7 +14,7 @@
     "ownership": "user",
     "mutable": true,
     "preserveOnUninstall": true,
-    "harness": ["AGENTS.md", "registry", "skills", "workflows"],
+    "harness": ["AGENTS.md", "agents", "registry", "schemas", "scripts", "skills", "workflows"],
     "directories": [
       "apps",
       "plugins",

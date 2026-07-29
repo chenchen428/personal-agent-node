@@ -1,12 +1,12 @@
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
-import { loadInteriorTemplateContract, loadPlanImageAsset } from './page-assets.mjs';
+import { loadInteriorDeliveryContract, loadPlanImageAsset } from './page-assets.mjs';
 import { PascalInteriorAdapter } from './pascal-adapter.mjs';
 import { canonicalJson, readProject, selectedConcept, sha256 } from './project-v2.mjs';
 import { compiledSceneHash } from './scene-hash.mjs';
 
-const TEMPLATE_ID = 'interior-design-delivery';
+const DELIVERY_ID = 'interior-c-layout-delivery';
 const PAGE_LIMIT = 20 * 1024 * 1024;
 const ICONS = Object.freeze({
   layers: '<svg class="ui-icon" viewBox="0 0 20 20" aria-hidden="true"><path d="m10 3 7 3.8-7 3.8-7-3.8L10 3Z"/><path d="m3 10.2 7 3.8 7-3.8"/><path d="m3 13.7 7 3.8 7-3.8"/></svg>',
@@ -17,8 +17,13 @@ const ICONS = Object.freeze({
   requirements: '<svg class="ui-icon" viewBox="0 0 20 20" aria-hidden="true"><path d="M6 3.5h8A1.5 1.5 0 0 1 15.5 5v12H4.5V5A1.5 1.5 0 0 1 6 3.5Z"/><path d="M7.5 3.5V2.3h5v1.2M7 8h6M7 11h6M7 14h4"/></svg>',
 });
 
-export function generateProfessionalPage({ projectDir: projectDirInput, context, output, skillRoot, template = loadInteriorTemplateContract(skillRoot) }) {
-  if (template.id !== TEMPLATE_ID || Number(template.implementation.version) !== 2) throw new Error(`${TEMPLATE_ID} implementation version 2 is required`);
+export function generateProfessionalPage({ projectDir: projectDirInput, context, output, skillRoot, delivery = loadInteriorDeliveryContract(skillRoot) }) {
+  if (delivery.id !== DELIVERY_ID
+    || delivery.agent?.id !== 'interior-designer'
+    || Number(delivery.delivery?.version) !== 2
+    || delivery.delivery?.engine !== 'pascal-v2') {
+    throw new Error(`${DELIVERY_ID} for interior-designer delivery version 2 is required`);
+  }
   const { projectDir, project } = readProject(projectDirInput, context);
   const scenePayload = readJson(path.join(projectDir, 'scene.json'), 10 * 1024 * 1024);
   const audit = readJson(path.join(projectDir, 'derived', 'audit.json'), 4 * 1024 * 1024);
@@ -58,8 +63,8 @@ export function generateProfessionalPage({ projectDir: projectDirInput, context,
   const allLevelButton = concept.levels.length > 1 ? '<button class="active" type="button" data-level-id="">全部</button>' : '';
   const conceptPicker = `<label class="concept-control${project.concepts.length === 1 ? ' is-single' : ''}"><span>设计方案</span><select class="concept-picker" id="concept-picker" aria-label="比较设计方案">${project.concepts.map((entry) => `<option value="${escapeAttr(conceptMappings[entry.conceptId])}"${entry.conceptId === project.selectedConceptId ? ' selected' : ''}>${escapeHtml(entry.name)}</option>`).join('')}</select></label>`;
   const html = `<!doctype html>
-<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src data:; style-src 'unsafe-inline'; script-src 'unsafe-inline'; connect-src 'none'; worker-src 'none'; frame-src 'none'; font-src 'none'; media-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'"><meta name="color-scheme" content="light"><meta name="personal-agent-page-template" content="${escapeAttr(template.implementation.artifactMarker)}"><meta name="personal-agent-page-template-id" content="${TEMPLATE_ID}"><meta name="personal-agent-page-template-version" content="2"><meta name="personal-agent-interior-engine" content="pascal-v2"><title>${title} · 专业装修设计</title><style>${style}</style></head>
-<body data-template-marker="${escapeAttr(template.implementation.artifactMarker)}" data-template-id="${TEMPLATE_ID}" data-template-version="2" data-engine="pascal-v2" data-layout-profile="su-design-classic" data-viewer-state="loading"><main id="app">
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src data:; style-src 'unsafe-inline'; script-src 'unsafe-inline'; connect-src 'none'; worker-src 'none'; frame-src 'none'; font-src 'none'; media-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'"><meta name="color-scheme" content="light"><meta name="personal-agent-id" content="${escapeAttr(delivery.agent.id)}"><meta name="personal-agent-example-id" content="${escapeAttr(delivery.id)}"><meta name="personal-agent-delivery-version" content="${escapeAttr(String(delivery.delivery.version))}"><meta name="personal-agent-interior-engine" content="pascal-v2"><title>${title} · 专业装修设计</title><style>${style}</style></head>
+<body data-agent-id="${escapeAttr(delivery.agent.id)}" data-agent-example-id="${escapeAttr(delivery.id)}" data-delivery-version="${escapeAttr(String(delivery.delivery.version))}" data-engine="pascal-v2" data-layout-profile="su-design-classic" data-viewer-state="loading"><main id="app">
 <header class="top"><span class="brand"><span class="mark">PA</span><b>Pages</b></span><div class="identity"><small>PERSONAL AGENT · SU DESIGN</small><strong>${displayTitle}</strong><span>${escapeHtml(subtitle)}</span></div><span class="status" data-viewer-status><i></i><span>正在装配模型</span></span></header>
 <section class="stage">
 <section class="presentation-panel presentation-model" data-presentation-panel="model"><div class="viewport"><div id="scene" role="img" aria-label="${title} 可旋转的 Pascal 建筑场景"></div><div id="viewer-loading" role="status" aria-live="polite"><div class="loading-card"><span class="loading-mark"><i></i><i></i><i></i></span><small>PERSONAL AGENT · SU DESIGN</small><strong>正在构建设计模型</strong><p>正在装配空间、材质、家具与标注</p><span class="loading-line"><i></i></span></div></div><div id="fallback" hidden><figure>${fallbackSvg}<figcaption><span>3D 暂时不可用</span><span>已切换到模型派生平面图</span></figcaption></figure></div><div class="viewer-tools" role="group" aria-label="SU 设计稿查看工具">${conceptPicker}<span class="tool-label">${ICONS.layers}设计层</span><span class="level-tools">${allLevelButton}${levelButtons}</span><span class="divider"></span><span class="tool-label">${ICONS.view}视角</span><button class="active" type="button" data-camera-mode="perspective">3D</button><button type="button" data-camera-mode="orthographic">平面</button><span class="advanced-tools" data-level-count="${concept.levels.length}"><button class="active" type="button" data-level-mode="stacked">堆叠</button><button type="button" data-level-mode="exploded">分解</button><button type="button" data-level-mode="solo">单层</button></span><span class="divider"></span><button class="active icon-button" type="button" data-label-mode="visible" aria-label="隐藏细节标注" aria-pressed="true">${ICONS.label}</button><button class="icon-button" type="button" data-reset-view aria-label="复位 SU 设计稿">${ICONS.reset}</button></div><span class="gesture">拖动旋转 · 缩放 · 平移</span></div></section>
@@ -69,7 +74,7 @@ export function generateProfessionalPage({ projectDir: projectDirInput, context,
 <nav class="presentation-switch" aria-label="装修设计资料切换"><button class="active" type="button" data-presentation="model">SU 设计稿</button><button type="button" data-presentation="plan">${ICONS.plan}户型图</button><button type="button" data-presentation="requirements">${ICONS.requirements}用户需求</button></nav>
 </section><p class="orientation-hint">横屏查看空间更完整</p><script id="pascal-scene" type="application/json">${safeJson(pagePayload)}</script><script>${pageController()}</script><script>${viewer}</script></main></body></html>`;
   verifyNoGovernanceIdentifiers(html, project);
-  const verification = verifyProfessionalPageHtml(html, template);
+  const verification = verifyProfessionalPageHtml(html, delivery);
   fs.mkdirSync(path.dirname(output), { recursive: true, mode: 0o700 });
   const staging = path.join(path.dirname(output), `.${path.basename(output)}.${process.pid}.${crypto.randomBytes(4).toString('hex')}.tmp`);
   fs.mkdirSync(staging, { mode: 0o700 });
@@ -77,13 +82,20 @@ export function generateProfessionalPage({ projectDir: projectDirInput, context,
   fs.writeFileSync(indexPath, html, { mode: 0o600 });
   fs.writeFileSync(path.join(staging, 'scene.json'), `${JSON.stringify(pagePayload, null, 2)}\n`, { mode: 0o600 });
   fs.writeFileSync(path.join(staging, 'audit.json'), `${JSON.stringify(sanitizeAudit(audit, pageMappings), null, 2)}\n`, { mode: 0o600 });
-  fs.writeFileSync(path.join(staging, 'template.json'), `${JSON.stringify(template, null, 2)}\n`, { mode: 0o600 });
-  const files = ['index.html', 'scene.json', 'audit.json', 'template.json'];
+  const files = ['index.html', 'scene.json', 'audit.json'];
   const manifest = {
     schemaVersion: 1,
-    templateId: template.id,
-    templateVersion: template.implementation.version,
-    artifactMarker: template.implementation.artifactMarker,
+    agent: {
+      id: delivery.agent.id,
+      version: delivery.agent.version,
+      exampleId: delivery.id,
+    },
+    delivery: {
+      version: delivery.delivery.version,
+      engine: delivery.delivery.engine,
+      layoutProfile: delivery.delivery.layoutProfile,
+      renderProfile: delivery.delivery.renderProfile,
+    },
     visualAcceptance: 'user',
     files: Object.fromEntries(files.map((name) => {
       const value = fs.readFileSync(path.join(staging, name));
@@ -114,11 +126,13 @@ function verifyNoGovernanceIdentifiers(html, project) {
   if (exposed) throw new Error('generated Page contains a governed project identifier');
 }
 
-export function verifyProfessionalPageHtml(html, template) {
+export function verifyProfessionalPageHtml(html, delivery) {
   const required = [
-    `name="personal-agent-page-template" content="${template.implementation.artifactMarker}"`,
-    `data-template-id="${template.id}"`,
-    'data-template-version="2"',
+    `name="personal-agent-id" content="${delivery.agent.id}"`,
+    `name="personal-agent-example-id" content="${delivery.id}"`,
+    `data-agent-id="${delivery.agent.id}"`,
+    `data-agent-example-id="${delivery.id}"`,
+    'data-delivery-version="2"',
     'data-engine="pascal-v2"',
     'data-layout-profile="su-design-classic"',
     'id="pascal-scene"',
@@ -139,7 +153,7 @@ export function verifyProfessionalPageHtml(html, template) {
     '正在装配模型',
   ];
   const missing = required.filter((marker) => !html.includes(marker));
-  if (missing.length) throw new Error(`generated Page does not match ${template.id} v2: ${missing.join(', ')}`);
+  if (missing.length) throw new Error(`generated Page does not match ${delivery.id} v2: ${missing.join(', ')}`);
   if (/<(?:script|link|iframe)[^>]+(?:src|href)=["']https?:\/\//i.test(html)) throw new Error('generated Page contains a remote executable asset');
   if (/editor\.pascal\.app|cdn\.jsdelivr\.net|127\.0\.0\.1|localhost|file:\/\//i.test(html)) throw new Error('generated Page contains a forbidden remote or local runtime reference');
   if (/sourceMappingURL|\/Users\/|\/home\/[a-z0-9._-]+\/|[A-Z]:\\Users\\/i.test(html)) throw new Error('generated Page contains a development path or source-map reference');
@@ -147,7 +161,15 @@ export function verifyProfessionalPageHtml(html, template) {
   if (/"(?:spaceId|ownerId|managedObjectId|projectId|sourceId|requirementIds|decisionIds|evidenceIds)"\s*:/i.test(embeddedPayload)) {
     throw new Error('generated Page contains private project identity or trace fields');
   }
-  return { ok: true, templateId: template.id, templateVersion: 2, artifactMarker: template.implementation.artifactMarker, engine: 'pascal-v2', visualAcceptance: 'user' };
+  return {
+    ok: true,
+    agentId: delivery.agent.id,
+    agentVersion: delivery.agent.version,
+    exampleId: delivery.id,
+    deliveryVersion: delivery.delivery.version,
+    engine: delivery.delivery.engine,
+    visualAcceptance: 'user',
+  };
 }
 
 function loadProjectPlanAssets(projectDir, project) {
@@ -396,7 +418,7 @@ function renderRevisions(project) {
 }
 
 function pageController() {
-  return `(function(){const one=(s,r=document)=>r.querySelector(s),all=(s,r=document)=>[...r.querySelectorAll(s)];function active(group,target){all(group).forEach(b=>{const on=b===target;b.classList.toggle('active',on);b.setAttribute('aria-pressed',String(on))})}function restoreModelView(){call('resetCamera');call('warmup')}all('[data-presentation]').forEach(b=>b.addEventListener('click',()=>{all('[data-presentation-panel]').forEach(p=>p.hidden=p.dataset.presentationPanel!==b.dataset.presentation);active('[data-presentation]',b);if(b.dataset.presentation==='model'){requestAnimationFrame(()=>{restoreModelView();requestAnimationFrame(restoreModelView)});setTimeout(restoreModelView,180);setTimeout(restoreModelView,520);setTimeout(restoreModelView,1100)}}));all('[data-plan-mode]').forEach(b=>b.addEventListener('click',()=>{const card=b.closest('.plan-card');if(!card)return;card.dataset.planMode=b.dataset.planMode;active('[data-plan-mode]',b)}));function call(name,value){const api=window.PersonalAgentPascalViewer;return Boolean(api&&typeof api[name]==='function'&&api[name](value))}all('[data-level-mode]').forEach(b=>b.addEventListener('click',()=>{if(call('setLevelMode',b.dataset.levelMode))active('[data-level-mode]',b)}));all('[data-camera-mode]').forEach(b=>b.addEventListener('click',()=>{if(call('setCameraMode',b.dataset.cameraMode))active('[data-camera-mode]',b)}));all('[data-label-mode]').forEach(b=>b.addEventListener('click',()=>{const hidden=document.body.dataset.labels==='hidden';document.body.dataset.labels=hidden?'visible':'hidden';b.classList.toggle('active',hidden);b.setAttribute('aria-pressed',String(hidden));b.setAttribute('aria-label',hidden?'隐藏细节标注':'显示细节标注')}));all('[data-level-id]').forEach(b=>b.addEventListener('click',()=>{call('setLevel',b.dataset.levelId);active('[data-level-id]',b)}));all('[data-reset-view]').forEach(b=>b.addEventListener('click',()=>{call('resetCamera');const camera=one('[data-camera-mode="perspective"]');if(camera)active('[data-camera-mode]',camera)}));all('[data-highlight]').forEach(b=>b.addEventListener('click',()=>{const ids=b.dataset.highlight.split(',').filter(Boolean);call('highlight',ids);if(ids.length)one('[data-presentation="model"]').click()}));const picker=one('#concept-picker');if(picker)picker.addEventListener('change',()=>all('[data-concept-id]').forEach(card=>card.hidden=card.dataset.conceptId!==picker.value));document.addEventListener('keydown',event=>{if(event.key==='Escape')call('highlight',[])});})();`;
+  return `(function(){const one=(s,r=document)=>r.querySelector(s),all=(s,r=document)=>[...r.querySelectorAll(s)];function active(group,target){all(group).forEach(b=>{const on=b===target;b.classList.toggle('active',on);b.setAttribute('aria-pressed',String(on))})}function restoreModelView(){call('resetCamera');call('warmup')}all('[data-presentation]').forEach(b=>b.addEventListener('click',()=>{all('[data-presentation-panel]').forEach(p=>p.hidden=p.dataset.presentationPanel!==b.dataset.presentation);window.dispatchEvent(new CustomEvent('pascal-viewer-visibility'));active('[data-presentation]',b);if(b.dataset.presentation==='model'){requestAnimationFrame(()=>{restoreModelView();requestAnimationFrame(restoreModelView)});setTimeout(restoreModelView,180);setTimeout(restoreModelView,520);setTimeout(restoreModelView,1100)}}));all('[data-plan-mode]').forEach(b=>b.addEventListener('click',()=>{const card=b.closest('.plan-card');if(!card)return;card.dataset.planMode=b.dataset.planMode;active('[data-plan-mode]',b)}));function call(name,value){const api=window.PersonalAgentPascalViewer;return Boolean(api&&typeof api[name]==='function'&&api[name](value))}all('[data-level-mode]').forEach(b=>b.addEventListener('click',()=>{if(call('setLevelMode',b.dataset.levelMode))active('[data-level-mode]',b)}));all('[data-camera-mode]').forEach(b=>b.addEventListener('click',()=>{if(call('setCameraMode',b.dataset.cameraMode))active('[data-camera-mode]',b)}));all('[data-label-mode]').forEach(b=>b.addEventListener('click',()=>{const hidden=document.body.dataset.labels==='hidden';document.body.dataset.labels=hidden?'visible':'hidden';b.classList.toggle('active',hidden);b.setAttribute('aria-pressed',String(hidden));b.setAttribute('aria-label',hidden?'隐藏细节标注':'显示细节标注')}));all('[data-level-id]').forEach(b=>b.addEventListener('click',()=>{call('setLevel',b.dataset.levelId);active('[data-level-id]',b)}));all('[data-reset-view]').forEach(b=>b.addEventListener('click',()=>{call('resetCamera');const camera=one('[data-camera-mode="perspective"]');if(camera)active('[data-camera-mode]',camera)}));all('[data-highlight]').forEach(b=>b.addEventListener('click',()=>{const ids=b.dataset.highlight.split(',').filter(Boolean);call('highlight',ids);if(ids.length)one('[data-presentation="model"]').click()}));const picker=one('#concept-picker');if(picker)picker.addEventListener('change',()=>all('[data-concept-id]').forEach(card=>card.hidden=card.dataset.conceptId!==picker.value));document.addEventListener('keydown',event=>{if(event.key==='Escape')call('highlight',[])});})();`;
 }
 
 function safeJson(value) { return JSON.stringify(value).replaceAll('<', '\\u003c'); }

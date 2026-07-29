@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "agents": [
+    {
+      "id": "interior-designer",
+      "directory": "agents/interior-designer",
+      "config": "agent.yaml"
+    },
+    {
+      "id": "poster-designer",
+      "directory": "agents/poster-designer",
+      "config": "agent.yaml"
+    },
+    {
+      "id": "travel-planner",
+      "directory": "agents/travel-planner",
+      "config": "agent.yaml"
+    },
+    {
+      "id": "finance-analyst",
+      "directory": "agents/finance-analyst",
+      "config": "agent.yaml"
+    }
+  ]
+}

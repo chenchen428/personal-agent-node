@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'">
+  <title>账务分析 Agent 代表产物</title>
+  <style>
+    *{box-sizing:border-box}body{margin:0;background:#dfe1df;color:#202321;font-family:Arial,"Microsoft YaHei",sans-serif}
+    main{min-width:720px;min-height:455px;background:#fbfbf8;padding:24px 28px}
+    header{display:flex;align-items:end;justify-content:space-between;border-bottom:1px solid #cfd2cd;padding-bottom:15px}
+    header small{font:9px monospace;color:#71766f}h1{margin:6px 0 0;font-family:Georgia,serif;font-size:27px}header span{font-size:9px;color:#4c6b5d}
+    .metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;margin-top:17px;background:#d5d8d3;border:1px solid #d5d8d3}
+    .metrics article{padding:14px;background:#fff}.metrics small{font-size:8px;color:#747973}.metrics strong{display:block;margin-top:9px;font-size:20px}.metrics em{font-size:8px;font-style:normal;color:#4c6b5d}
+    .content{display:grid;grid-template-columns:1.2fr .8fr;gap:24px;margin-top:20px}
+    h2{margin:0 0 11px;font-size:11px}.bars{display:grid;gap:10px}.bar{display:grid;grid-template-columns:70px 1fr 48px;align-items:center;gap:9px;font-size:9px}
+    .track{height:8px;background:#e7e8e4}.track i{display:block;height:100%;background:#526b81}.bar:nth-child(2) i{background:#8c6653}.bar:nth-child(3) i{background:#547365}.bar:nth-child(4) i{background:#a38b51}
+    .bar b{text-align:right;font:9px monospace}.review{border-left:1px solid #d5d8d3;padding-left:20px}.review article{display:grid;grid-template-columns:18px 1fr;gap:8px;border-top:1px solid #d5d8d3;padding:9px 0}
+    .review article>span{width:18px;height:18px;display:grid;place-items:center;border-radius:50%;background:#f1e6df;color:#9d4f39;font-size:8px}.review strong{font-size:9px}.review p{margin:3px 0 0;font-size:8px;line-height:1.45;color:#747973}
+    footer{display:flex;justify-content:space-between;margin-top:18px;border-top:1px solid #cfd2cd;padding-top:12px;font:8px monospace;color:#747973}
+  </style>
+</head>
+<body><main>
+  <header><div><small>PERSONAL FINANCE / VERIFIED LEDGER</small><h1>2026 年 6 月账务核对</h1></div><span>126 笔流水 · 4 个账户 · 3 笔待确认</span></header>
+  <section class="metrics"><article><small>本月支出</small><strong>¥18,420</strong><em>较上月 -8.4%</em></article><article><small>固定支出</small><strong>¥9,860</strong><em>53.5%</em></article><article><small>可变支出</small><strong>¥7,920</strong><em>43.0%</em></article><article><small>待确认</small><strong>¥640</strong><em>3 笔</em></article></section>
+  <section class="content"><div><h2>类别结构</h2><div class="bars"><div class="bar"><span>住房</span><div class="track"><i style="width:88%"></i></div><b>¥7,600</b></div><div class="bar"><span>餐饮</span><div class="track"><i style="width:46%"></i></div><b>¥3,940</b></div><div class="bar"><span>交通</span><div class="track"><i style="width:25%"></i></div><b>¥2,180</b></div><div class="bar"><span>家庭</span><div class="track"><i style="width:21%"></i></div><b>¥1,860</b></div></div></div>
+  <aside class="review"><h2>优先复核</h2><article><span>1</span><div><strong>重复视频订阅</strong><p>两个账户在同日扣费，金额与周期相同。</p></div></article><article><span>2</span><div><strong>退款仍未到账</strong><p>6 月 18 日商户退款未匹配到入账流水。</p></div></article><article><span>3</span><div><strong>交通分类待确认</strong><p>一笔 ¥168 交易方名称无法可靠识别。</p></div></article></aside></section>
+  <footer><span>FINANCE ANALYST AGENT</span><span>每个汇总数字均可追溯到原始流水</span></footer>
+</main></body>
+</html>

@@ -1,0 +1,62 @@
+{
+  "schemaVersion": 1,
+  "agent": {
+    "id": "interior-designer",
+    "version": 1,
+    "exampleId": "interior-c-layout-delivery"
+  },
+  "delivery": {
+    "version": 2,
+    "engine": "pascal-v2",
+    "layoutProfile": "su-design-classic",
+    "renderProfile": "professional-mesh-ink"
+  },
+  "visualAcceptance": "user",
+  "files": {
+    "index.html": {
+      "bytes": 3804812,
+      "sha256": "ea79c523ceb189cf4cd50eb4e51e16521a6a4968a278c8932e842187ce399dcc"
+    },
+    "scene.json": {
+      "bytes": 64502,
+      "sha256": "39a7d3007c25fb64042286cd4b603d0837e0f266b332eefb27880dc034272957"
+    },
+    "audit.json": {
+      "bytes": 2093,
+      "sha256": "15e8f3176018b47687c31b3f190b40e92c75a862f9076f17ada3a6d47a03628f"
+    },
+    "cover.svg": {
+      "bytes": 23265,
+      "sha256": "18722d13845f4b7782760a9e22202884bb84f7ebcc0a54589ebd2ab8a3cbe4b0"
+    }
+  },
+  "source": {
+    "kind": "native-governed-pascal-v2-project",
+    "pipeline": [
+      "project-v2-seed",
+      "pascal-scene-compile",
+      "professional-quality-audit",
+      "page-v2-generate",
+      "artifact-hash-verify"
+    ],
+    "seedSha256": "249d0331b0a5ef49435c7ba571a000552ae0ac8a8ce763150d7cea22db261d05",
+    "evidenceSha256": "23eab735dd2dcd2190264f93b3aad274b08a68b822c4a6f597a377afdc763542",
+    "modelBasisSha256": "23eab735dd2dcd2190264f93b3aad274b08a68b822c4a6f597a377afdc763542",
+    "annotationSha256": "2a8a7f8486409aee8e0252adb47f5c33c5e7d935b0b24a172bd6dcec579e48d1",
+    "projectSha256": "09c78835196772d25949a2c4886cb06106c2ebb38e42c6a48c113c1a13cea1d0",
+    "sceneSha256": "58b9fade97393812210e7e29a721e9d76d14eefed02ad6e142355fcdce61d78f",
+    "auditSha256": "5f93a3c93da08df77d31de976b858e0a0b588812344a2404d02f520acd23b809",
+    "renderProfile": "professional-mesh-ink",
+    "layoutProfile": "su-design-classic",
+    "qualityFloor": {
+      "rooms": 12,
+      "furniture": 30,
+      "openings": 14,
+      "doors": 8,
+      "windows": 6,
+      "walls": 20,
+      "slabs": 1,
+      "ceilings": 1
+    }
+  }
+}
