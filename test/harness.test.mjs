@@ -11,6 +11,13 @@ import { extractZipMember } from '../scripts/lib/zip-member.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 function run(command, args) { return spawnSync(command, args, { cwd: root, encoding: 'utf8' }); }
+function resolveBashCommand() {
+  if (process.platform !== 'win32') return 'bash';
+  const gitExecPath = spawnSync('git', ['--exec-path'], { cwd: root, encoding: 'utf8' });
+  if (gitExecPath.status !== 0) return 'bash';
+  const candidate = path.resolve(gitExecPath.stdout.trim(), '../../..', 'bin', 'bash.exe');
+  return fs.existsSync(candidate) ? candidate : 'bash';
+}
 
 test('customer Harness contains architecture registries and Agent guidance', () => {
   for (const file of ['AGENTS.md', 'agents', 'docs/adr/0001-node-product-boundary-freeze.md', 'registry/agents.json', 'registry/projects.json', 'registry/skills.json', 'registry/behavior-baselines.json', 'registry/capabilities.json', 'registry/routes.json', 'registry/extensions.json', 'registry/commands.json', 'registry/product-development.json', 'schemas/personal-agent/agents.schema.json', 'schemas/personal-agent/agent-profile.schema.json', 'schemas/personal-agent/product-development.schema.json', 'scripts/agent-guard.mjs', 'workflows/project-iteration.md', 'workflows/skill-iteration.md', 'workflows/product-development.md', 'skills/personal-product-development/references/product-development.md']) assert.equal(fs.existsSync(path.join(root, file)), true, file);
@@ -328,7 +335,7 @@ test('GitHub release builds one self-extracting Relay installer for a public Lin
     assert.match(source, /PERSONAL_AGENT_RELAY/);
     assert.match(source, /sudo bash personal-agent-relay-install\.sh <domain>/);
     assert.doesNotMatch(source, /core\/edge\/src\/self-hosted-relay\.ts/);
-    const syntax = run('bash', ['-n', asset]);
+    const syntax = run(resolveBashCommand(), ['-n', asset]);
     assert.equal(syntax.status, 0, `${syntax.stdout}\n${syntax.stderr}`);
   } finally {
     fs.rmSync(temporary, { recursive: true, force: true });
