@@ -38,26 +38,18 @@ Read [recommendation-quality.md](references/recommendation-quality.md) before fi
 
 ## Generate the Gift Recommendation Page
 
-Use the registered `gift-advisor-report` Page template after discovery and recommendation are complete.
-
-```text
-pa-cli pages templates list --json
-pa-cli pages templates inspect --id gift-advisor-report --json
-```
-
 Create a Space-owned project directory and write `gift-plan.json` that conforms to [page-input.md](references/page-input.md). Keep user identifiers out of it unless the user explicitly wants a display name in the Page. Do not include hidden reasoning, private conversation transcripts, credentials, internal paths, or unverifiable claims.
 
-Generate the Page only with the registered generator:
+Generate the finished Page with the skill-owned deterministic generator:
 
 ```text
 node skills/gift-advisor/scripts/generate-page.mjs \
-  --template gift-advisor-report \
   --project-dir <space-owned-gift-project> \
   --output <space-owned-gift-project>/derived/page \
   --json
 ```
 
-The generator validates the data contract, budget bounds, HTTPS links, template marker, privacy boundary, semantic HTML, and deterministic file hashes. Fix the project input if it fails; do not weaken the checks or hand-write a lookalike Page.
+The generator validates the data contract, budget bounds, HTTPS links, artifact marker, privacy boundary, semantic HTML, and deterministic file hashes. Fix the project input if it fails; do not weaken the checks or hand-write a lookalike Page.
 
 Publish through the governed Pages workflow:
 
@@ -65,7 +57,6 @@ Publish through the governed Pages workflow:
 pa-cli pages publish \
   --file <space-owned-gift-project>/derived/page/index.html \
   --folder <safe-page-folder> \
-  --template gift-advisor-report \
   --title "<page-title>" \
   --summary "<concise-summary>" \
   --json

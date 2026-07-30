@@ -1,3 +1,5 @@
+import { normalizeAgentId, normalizeProjectKey } from "../agents/catalog.js";
+
 export const TASK_TITLE_MAX_LENGTH = 20;
 export const TASK_DESCRIPTION_MAX_LENGTH = 100;
 
@@ -6,27 +8,20 @@ export function normalizeTaskCreate(input = {}) {
   const title = normalizeSingleLine(input.title);
   const description = normalizeSingleLine(input.description ?? input.taskDescription);
   const task = String(input.task || "").trim();
-  const agentId = normalizeSingleLine(input.agentId);
-  const projectKey = normalizeSingleLine(input.projectKey);
+  const agentId = normalizeAgentId(input.agentId ?? input.agent, { optional: true });
+  const projectKey = normalizeProjectKey(input.projectKey ?? input.project, { optional: true });
 
   if (parentSessionId && !title) throw taskInputError("创建子任务时必须设置标题");
   if (parentSessionId && !description) throw taskInputError("创建子任务时必须设置描述");
   if (parentSessionId && !task) throw taskInputError("创建子任务时必须设置执行内容");
-  if (Boolean(agentId) !== Boolean(projectKey)) throw taskInputError("专业子 Agent 必须同时设置 agentId 和 projectKey");
-  if (agentId && !parentSessionId) throw taskInputError("专业子 Agent 必须属于一个主会话");
-  if (agentId && !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(agentId)) throw taskInputError("专业子 Agent ID 格式无效");
-  if (projectKey && !/^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/.test(projectKey)) throw taskInputError("专业子 Agent 项目键格式无效");
   if (parentSessionId) {
     validateTaskText(title, "任务标题", TASK_TITLE_MAX_LENGTH);
     validateTaskText(description, "任务描述", TASK_DESCRIPTION_MAX_LENGTH);
   }
-  return {
-    parentSessionId,
-    title,
-    description,
-    task,
-    ...(agentId ? { agentId, projectKey } : {}),
-  };
+  if (Boolean(agentId) !== Boolean(projectKey)) {
+    throw taskInputError("专业任务必须同时提供 agentId 和 projectKey");
+  }
+  return { parentSessionId, title, description, task, agentId, projectKey };
 }
 
 export function normalizeTaskPatch(input = {}) {

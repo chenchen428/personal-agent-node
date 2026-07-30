@@ -1,242 +1,122 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://personal-agent.local/schemas/personal-agent/agents.schema.json",
-  "title": "Personal Agent specialist agent registry",
+  "$id": "https://personal-agent.cn/schemas/agents-v1.json",
+  "title": "Personal Agent specialist Agent registry",
   "type": "object",
-  "additionalProperties": false,
   "required": ["schemaVersion", "agents"],
   "properties": {
-    "$schema": {
-      "type": "string"
-    },
     "schemaVersion": {
       "const": 1
     },
     "agents": {
       "type": "array",
       "minItems": 1,
+      "maxItems": 32,
+      "uniqueItems": true,
       "items": {
-        "type": "object",
-        "additionalProperties": false,
-        "required": [
-          "id",
-          "version",
-          "displayName",
-          "description",
-          "publicProfile",
-          "directory",
-          "instructions",
-          "skills",
-          "routing",
-          "example"
-        ],
-        "allOf": [
-          {
-            "if": { "required": ["styleGuide"] },
-            "then": { "required": ["styleCatalog"] }
-          },
-          {
-            "if": { "required": ["styleCatalog"] },
-            "then": { "required": ["styleGuide"] }
-          }
-        ],
-        "properties": {
-          "id": {
-            "type": "string",
-            "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
-            "maxLength": 64
-          },
-          "version": {
-            "type": "integer",
-            "minimum": 1
-          },
-          "displayName": {
-            "type": "string",
-            "minLength": 1,
-            "maxLength": 40
-          },
-          "description": {
-            "type": "string",
-            "minLength": 1,
-            "maxLength": 200
-          },
-          "publicProfile": {
-            "type": "object",
-            "additionalProperties": false,
-            "required": ["role", "tagline", "capabilities", "inputs", "outputs", "boundaries"],
-            "properties": {
-              "role": {
-                "type": "string",
-                "minLength": 1,
-                "maxLength": 80
-              },
-              "tagline": {
-                "type": "string",
-                "minLength": 1,
-                "maxLength": 160
-              },
-              "capabilities": {
-                "$ref": "#/$defs/publicProfileItems"
-              },
-              "inputs": {
-                "$ref": "#/$defs/publicProfileItems"
-              },
-              "outputs": {
-                "$ref": "#/$defs/publicProfileItems"
-              },
-              "boundaries": {
-                "$ref": "#/$defs/publicProfileItems"
-              }
-            }
-          },
-          "directory": {
-            "type": "string",
-            "pattern": "^agents/[a-z0-9]+(?:-[a-z0-9]+)*$"
-          },
-          "instructions": {
-            "const": "AGENT.md"
-          },
-          "styleGuide": {
-            "const": "STYLE-GUIDE.md"
-          },
-          "styleCatalog": {
-            "const": "styles.json"
-          },
-          "skills": {
-            "type": "array",
-            "minItems": 1,
-            "uniqueItems": true,
-            "items": {
-              "type": "string",
-              "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
-            }
-          },
-          "routing": {
-            "type": "array",
-            "minItems": 1,
-            "maxItems": 32,
-            "uniqueItems": true,
-            "items": {
-              "type": "string",
-              "minLength": 1,
-              "maxLength": 80
-            }
-          },
-          "example": {
-            "type": "object",
-            "additionalProperties": false,
-            "required": ["id", "kind", "eyebrow", "title", "description", "format", "devices", "meta"],
-            "properties": {
-              "id": {
-                "type": "string",
-                "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
-              },
-              "kind": {
-                "enum": ["page", "gallery", "image", "video"]
-              },
-              "eyebrow": {
-                "type": "string",
-                "minLength": 1,
-                "maxLength": 80
-              },
-              "title": {
-                "type": "string",
-                "minLength": 1,
-                "maxLength": 100
-              },
-              "description": {
-                "type": "string",
-                "minLength": 1,
-                "maxLength": 300
-              },
-              "format": {
-                "type": "string",
-                "minLength": 1,
-                "maxLength": 100
-              },
-              "src": {
-                "$ref": "#/$defs/exampleAssetPath"
-              },
-              "poster": {
-                "$ref": "#/$defs/exampleAssetPath"
-              },
-              "items": {
-                "type": "array",
-                "minItems": 2,
-                "maxItems": 12,
-                "items": {
-                  "type": "object",
-                  "additionalProperties": false,
-                  "required": ["src", "alt"],
-                  "properties": {
-                    "src": {
-                      "$ref": "#/$defs/exampleAssetPath"
-                    },
-                    "alt": {
-                      "type": "string",
-                      "minLength": 1,
-                      "maxLength": 160
-                    }
-                  }
-                }
-              },
-              "devices": {
-                "type": "array",
-                "minItems": 1,
-                "maxItems": 2,
-                "uniqueItems": true,
-                "items": {
-                  "enum": ["web", "mobile"]
-                }
-              },
-              "meta": {
-                "$ref": "#/$defs/publicProfileItems"
-              }
-            },
-            "allOf": [
-              {
-                "if": {
-                  "properties": { "kind": { "enum": ["page", "image"] } },
-                  "required": ["kind"]
-                },
-                "then": { "required": ["src"] }
-              },
-              {
-                "if": {
-                  "properties": { "kind": { "const": "video" } },
-                  "required": ["kind"]
-                },
-                "then": { "required": ["src", "poster"] }
-              },
-              {
-                "if": {
-                  "properties": { "kind": { "const": "gallery" } },
-                  "required": ["kind"]
-                },
-                "then": { "required": ["items"] }
-              }
-            ]
-          }
-        }
+        "$ref": "#/$defs/registryEntry"
       }
     }
   },
   "$defs": {
-    "exampleAssetPath": {
+    "agentId": {
       "type": "string",
-      "pattern": "^/assets/(?:agent-examples|templates)/[A-Za-z0-9._/-]+$",
-      "maxLength": 240
+      "pattern": "^[a-z][a-z0-9-]{2,47}$"
     },
-    "publicProfileItems": {
-      "type": "array",
-      "minItems": 1,
-      "maxItems": 8,
-      "uniqueItems": true,
-      "items": {
-        "type": "string",
-        "minLength": 1,
-        "maxLength": 160
-      }
+    "registryEntry": {
+      "type": "object",
+      "required": ["id", "directory", "config"],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/agentId"
+        },
+        "directory": {
+          "type": "string",
+          "pattern": "^agents/[a-z][a-z0-9-]{2,47}$"
+        },
+        "config": {
+          "const": "agent.yaml"
+        }
+      },
+      "additionalProperties": false
+    },
+    "agentConfig": {
+      "type": "object",
+      "required": [
+        "schemaVersion",
+        "id",
+        "version",
+        "displayName",
+        "description",
+        "instructions",
+        "profile",
+        "skills",
+        "routing"
+      ],
+      "properties": {
+        "schemaVersion": {
+          "const": 1
+        },
+        "id": {
+          "$ref": "#/$defs/agentId"
+        },
+        "version": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100000
+        },
+        "displayName": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 40
+        },
+        "description": {
+          "type": "string",
+          "minLength": 10,
+          "maxLength": 180
+        },
+        "instructions": {
+          "const": "AGENT.md"
+        },
+        "profile": {
+          "const": "profile.yaml"
+        },
+        "skills": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 12,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9-]{1,63}$"
+          }
+        },
+        "routing": {
+          "type": "object",
+          "required": ["domains", "summary"],
+          "properties": {
+            "domains": {
+              "type": "array",
+              "minItems": 2,
+              "maxItems": 12,
+              "uniqueItems": true,
+              "items": {
+                "type": "string",
+                "minLength": 2,
+                "maxLength": 60
+              }
+            },
+            "summary": {
+              "type": "string",
+              "minLength": 10,
+              "maxLength": 200
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
     }
-  }
+  },
+  "additionalProperties": false
 }

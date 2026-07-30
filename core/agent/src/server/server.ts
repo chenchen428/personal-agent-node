@@ -38,6 +38,7 @@ import { OpenCliRunner } from "../connections/opencli/runner.js";
 import { WeChatQianxunConnector } from "../connections/wechat-qianxun/connector.ts";
 import { InstallationConnectionOwnership } from "../connections/connection-ownership.ts";
 import { DingTalkConnector } from "../connections/dingtalk/connector.ts";
+import { createAgentCatalog, normalizeAgentId, normalizeProjectKey } from "../agents/catalog.js";
 import { BridgeStore } from "../store/store.js";
 import { AgentBridgeBroker } from "../broker/agent-bridge-broker.js";
 import { readWorkspaceSkillCatalog } from "../skills/catalog.js";
@@ -58,7 +59,6 @@ import { authorizationSettings, readAuthorizationMode, withAuthorizationCliFlag,
 import { readDailyTokenLimit, writeDailyTokenLimit } from "../agent/daily-token-limit.ts";
 import { readCodexRuntimeSettings, writeCodexRuntimeSettings } from "../agent/codex-runtime-settings.ts";
 import { discoverAppServerDefaultModel, discoverAppServerModels } from "../agent/app-server-runner.ts";
-import { listAgentProfiles, serializeAgentProfile } from "../agents/registry.js";
 import { shutdownAppServerClient } from "../agent/app-server-client.ts";
 import { managedServiceReadiness } from "../../../runtime/src/cloud-resources.ts";
 import { readCustomDomainBindings } from "../../../runtime/src/custom-domain.ts";
@@ -108,6 +108,10 @@ const historyCleanupTimer = setInterval(() => {
 }, config.historyCleanupIntervalMs);
 historyCleanupTimer.unref?.();
 const hub = new BrowserHub();
+const agentCatalog = createAgentCatalog({
+  workspaceRoot: config.workspaceRoot,
+  releaseRoot: config.releaseRoot,
+});
 const agentBridgeBroker = new AgentBridgeBroker({ store, hub, logger });
 const agentData = new AgentDataStore({
   dataDir: config.agentDataDir,
@@ -184,7 +188,7 @@ const channelLoginCoordinator = {
     return await cloudBinding.consumeWechatMessage(message) || await xiaohongshuLogin.consumeWechatMessage(message);
   },
 };
-const orchestrator = new SessionOrchestrator({ store, hub, channels: { wechat, "wechat-personal": wechatQianxun, dingtalk }, managedFiles, activityStore, memoryStore, channelLoginCoordinator });
+const orchestrator = new SessionOrchestrator({ store, hub, channels: { wechat, "wechat-personal": wechatQianxun, dingtalk }, managedFiles, activityStore, memoryStore, channelLoginCoordinator, agentCatalog });
 const scheduledTasks = new ScheduledTaskRunner({ store, broker: agentBridgeBroker, channels: { wechat }, logger });
 wechat.attach(orchestrator);
 if (personalWechatSupported) wechatQianxun.attach((message) => orchestrator.handleChannelMessage("wechat-personal", message));
@@ -384,7 +388,7 @@ async function handleRequest(request: http.IncomingMessage, response: http.Serve
         pages: { list: true, publish: true },
         memory: { list: true, search: true, inspect: true, spaceIsolated: true, readOnlyUi: true },
         apps: { history: { list: true, append: true, rawSql: false } },
-        client: { overview: true, activity: true, pages: true, runtime: true, readOnly: true },
+        client: { overview: true, activity: true, pages: true, runtime: true, taskDetailPagination: true, readOnly: true },
       },
     });
     return;
@@ -512,6 +516,57 @@ async function handleRequest(request: http.IncomingMessage, response: http.Serve
 
   if (url.pathname === "/api/node/v1/client/activity" && request.method === "GET") {
     sendNodeApiResult(response, 200, await buildClientActivity(url));
+    return;
+  }
+
+  const clientTaskMatch = /^\/api\/node\/v1\/client\/tasks\/([^/]+)(?:\/(messages|events|artifacts)(?:\/(\d+))?)?$/.exec(url.pathname);
+  if (clientTaskMatch && request.method === "GET") {
+    const sessionId = decodeURIComponent(clientTaskMatch[1]);
+    const resource = clientTaskMatch[2] || "summary";
+    const eventSeq = Number(clientTaskMatch[3] || 0);
+    const task = store.getSessionSummary(sessionId);
+    if (!task) {
+      sendNodeApiError(response, 404, "NOT_FOUND", "Task was not found");
+      return;
+    }
+    if (resource === "messages") {
+      sendNodeApiResult(response, 200, store.listMessagesPage(sessionId, {
+        beforeSeq: url.searchParams.get("beforeSeq"),
+        afterSeq: url.searchParams.get("afterSeq"),
+        limit: url.searchParams.get("limit") || 30,
+      }));
+      return;
+    }
+    if (resource === "artifacts") {
+      sendNodeApiResult(response, 200, store.listSessionArtifactsPage(sessionId, {
+        beforeSeq: url.searchParams.get("beforeSeq"),
+        limit: url.searchParams.get("limit") || 20,
+      }));
+      return;
+    }
+    if (resource === "events" && eventSeq) {
+      const event = store.getEvent(sessionId, eventSeq);
+      if (!event) sendNodeApiError(response, 404, "NOT_FOUND", "Task event was not found");
+      else sendNodeApiResult(response, 200, { event });
+      return;
+    }
+    if (resource === "events") {
+      const page = store.listEventsPage(sessionId, {
+        beforeSeq: url.searchParams.get("beforeSeq"),
+        afterSeq: url.searchParams.get("afterSeq"),
+        limit: url.searchParams.get("limit") || 50,
+      });
+      sendNodeApiResult(response, 200, { ...page, items: page.items.map(summarizeTaskAuditEvent) });
+      return;
+    }
+    const messages = store.listMessagesPage(sessionId, { limit: url.searchParams.get("messageLimit") || 30 });
+    const artifacts = store.listSessionArtifactsPage(sessionId, { limit: 10 });
+    sendNodeApiResult(response, 200, {
+      contractVersion: "personal-agent/task-detail-v1",
+      task,
+      messages,
+      artifacts,
+    });
     return;
   }
 
@@ -1593,11 +1648,23 @@ async function handleRequest(request: http.IncomingMessage, response: http.Serve
     return;
   }
 
+  if ((url.pathname === "/api/agents" || url.pathname === "/api/agent-team/status") && request.method === "GET") {
+    sendJson(response, 200, { ok: true, agents: agentCatalog.listPublic() });
+    return;
+  }
+
+  const apiAgentMatch = /^\/api\/agents\/([^/]+)$/.exec(url.pathname);
+  if (apiAgentMatch && request.method === "GET") {
+    const agent = agentCatalog.inspectPublic(decodeURIComponent(apiAgentMatch[1]));
+    sendJson(response, 200, { ok: true, agent });
+    return;
+  }
+
   if (url.pathname === "/api/sessions" && request.method === "GET") {
     const query = url.searchParams.get("query") || "";
     const parentSessionId = url.searchParams.get("parent") || "";
-    const agentId = url.searchParams.get("agent") || "";
-    const projectKey = url.searchParams.get("project") || "";
+    const agentId = normalizeAgentId(url.searchParams.get("agent"), { optional: true });
+    const projectKey = normalizeProjectKey(url.searchParams.get("project"), { optional: true });
     const page = store.listSessionsPage({
       includeArchived: url.searchParams.get("archived") === "1",
       limit: Number(url.searchParams.get("limit") || config.sessionPageSize),
@@ -1622,14 +1689,6 @@ async function handleRequest(request: http.IncomingMessage, response: http.Serve
     return;
   }
 
-  if (url.pathname === "/api/agents" && request.method === "GET") {
-    sendJson(response, 200, {
-      ok: true,
-      agents: listAgentProfiles(config.workspaceRoot).map(serializeAgentProfile),
-    });
-    return;
-  }
-
   if (url.pathname === "/api/sessions" && request.method === "POST") {
     const body = await readJsonBody(request);
     const session = await orchestrator.startWorkerSession({
@@ -1637,10 +1696,10 @@ async function handleRequest(request: http.IncomingMessage, response: http.Serve
       title: body.title,
       description: body.description,
       parentSessionId: body.parentSessionId || body.parent,
-      agentId: body.agentId || body.agent,
-      projectKey: body.projectKey || body.project,
       workspaceRoot: body.workspaceRoot || body.workspace,
       createdBy: body.createdBy || "api",
+      agentId: body.agentId,
+      projectKey: body.projectKey,
     });
     sendJson(response, 200, { ok: true, session });
     return;
@@ -1675,7 +1734,12 @@ async function handleRequest(request: http.IncomingMessage, response: http.Serve
       const body = await readJsonBody(request);
       const content = String(body.content || body.text || "").trim();
       if (!content) throw new Error("content is required");
-      await orchestrator.resumeSession(sessionId, content, { notifyWechat: body.notifyWechat === true });
+      await orchestrator.resumeSession(sessionId, content, {
+        notifyWechat: body.notifyWechat === true,
+        ...(body.agentId !== undefined ? { agentId: body.agentId } : {}),
+        ...(body.projectKey !== undefined ? { projectKey: body.projectKey } : {}),
+        ...(body.agentProfileVersion !== undefined ? { agentProfileVersion: body.agentProfileVersion } : {}),
+      });
       sendJson(response, 202, { ok: true, session: store.getSession(sessionId) });
       return;
     }
@@ -3062,6 +3126,22 @@ function sendUnauthorized(request: http.IncomingMessage, response: http.ServerRe
 
 function sendNodeApiResult(response: http.ServerResponse, statusCode: number, result: unknown, head = false) {
   sendJson(response, statusCode, { schemaVersion: 1, ok: true, result }, head);
+}
+
+function summarizeTaskAuditEvent(event: { seq: number; id: string; sessionId: string; kind: string; createdAt: string; payload?: Record<string, unknown> }) {
+  const payload = event.payload && typeof event.payload === "object" ? event.payload : {};
+  const content = String(payload.content || "");
+  return {
+    id: event.id,
+    seq: event.seq,
+    kind: event.kind,
+    createdAt: event.createdAt,
+    contentPreview: content.slice(0, 4096),
+    truncated: content.length > 4096 || Object.keys(payload).some((key) => !["content", "level", "source", "toolName", "metadata"].includes(key)),
+    level: String(payload.level || "info"),
+    toolName: String(payload.toolName || ""),
+    detailUrl: `/api/node/v1/client/tasks/${encodeURIComponent(event.sessionId)}/events/${event.seq}`,
+  };
 }
 
 function sendNodeApiError(response: http.ServerResponse, statusCode: number, code: string, message: string, head = false) {

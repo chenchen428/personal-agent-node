@@ -12,7 +12,7 @@
     "A Work reports verified artifact information in its final chat reply while the generic completion event remains domain-neutral, and the main Agent uses that information to author Activity",
     "Child tasks require an Agent-generated title of at most 20 characters and description of at most 100 characters, and both fields remain updateable through the Personal Agent CLI",
     "The main Agent proactively delegates substantive work, splits independent branches when useful, stays available for user-facing status and final replies, and never duplicates delegated implementation",
-    "Matched Page-template creation requests are deterministically delegated before the main Agent can execute the work, while task-status questions read only the current main session's children and never create or resume a task",
+    "Matched specialist requests route through the registered Agent profile and project identity while generic Page creation remains a normal Worker capability without template interception",
     "Child task execution preserves the complete latest visible parent request and all delegated prompt text, including content split by nested shell quotes",
     "Internal worker hook inputs never appear in user conversation history",
     "Mobile task detail reads only the Space-local display-event ledger: it opens on the latest 20 visible events at the absolute bottom, pages earlier events with a task-bound opaque cursor while preserving the reading anchor, follows sanitized live updates only when pinned to the tail, and never scans or falls back to raw Codex execution history",
@@ -36,7 +36,6 @@
     "The daily Token limit defaults to 0 (unlimited), uses M units, and replies without starting the Agent when today's usage has reached a configured positive limit",
     "Every real main-Agent user turn recalls at most twelve relevant active memories from the current Space before execution, counts only actually injected records once per session-turn-memory tuple, and never gives the capability to Workers",
     "Memory stores content plus system metadata only, supports main-Agent create, revision-safe update and permanent delete through pa-cli, reactivates forgotten records on update, and exposes only authenticated read-only UI routes",
-    "Memory heat combines 90-day recency and logarithmic hit frequency, active records are ordered by heat, and records become forgotten after one year without creation, update, or hit",
-    "Registered specialist Agents remain project-scoped Workers: start and list preserve agentId, profile version and projectKey, only the selected AGENT.md and its versioned style contract are injected, selected video work records one primary style and at most one bounded secondary style before storyboarding, unknown IDs fail closed, and generic Workers remain backward compatible"
+    "Memory heat combines 90-day recency and logarithmic hit frequency, active records are ordered by heat, and records become forgotten after one year without creation, update, or hit"
   ]
 }

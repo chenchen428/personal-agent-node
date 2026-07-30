@@ -123,7 +123,7 @@ test("Next.js owns the approved V6.39 mobile client and V7.3 desktop workspace",
   assert.match(spaceSwitcher, /isLoopbackHostname/);
   assert.match(spaceSwitcher, /x-personal-agent-surface/);
   assert.match(overview, /sec-ch-ua-mobile/);
-  assert.match(overview, /redirect\("\/app\/mobile"\)/);
+  assert.match(overview, /return <MobileActivity/);
   assert.match(read("core/app/src/app/app/loading.tsx"), /isMobileRequest/);
   assert.match(read("core/app/src/app/app/loading.tsx"), /MobileContentSkeleton/);
   assert.match(read("core/app/src/app/app/layout.tsx"), /initialMobileHint/);
@@ -412,7 +412,7 @@ test("Next.js owns the approved V6.39 mobile client and V7.3 desktop workspace",
   assert.match(mobileClient, /hasRunningTask/);
   assert.match(mobileClient, /重启后已继续处理/);
   assert.match(mobileClient, /\/display-events\?/);
-  assert.match(mobileClient, /data-task-display-scroll="tail"/);
+  assert.match(mobileClient, /data-task-display-scroll=\{task \? "tail" : undefined\}/);
   assert.match(mobileClient, /element\.scrollTop = element\.scrollHeight/);
   assert.match(mobileClient, /drawerOpen \? <MobileDrawer/);
   assert.doesNotMatch(mobileClient, /messageLimit=80/);
@@ -459,7 +459,8 @@ test("gateway routes the approved client to Next and its read-only data to the l
   const routes = distribution.routing.paths;
   assert.equal(routes.find((route) => route.key === "app").targetKey, "console");
   assert.equal(routes.find((route) => route.key === "app-pages").targetKey, "console");
-  assert.deepEqual(routes.find((route) => route.key === "template-pages"), { key: "template-pages", prefix: "/template-pages", access: "authenticated", kind: "proxy", targetKey: "console", upstreamPath: "/template-pages" });
+  assert.deepEqual(routes.find((route) => route.key === "app-agents"), { key: "app-agents", prefix: "/app/agents", access: "authenticated", kind: "proxy", targetKey: "console", upstreamPath: "/app/agents" });
+  assert.equal(routes.some((route) => route.key === "template-pages"), false);
   assert.equal(routes.find((route) => route.key === "app-connections").targetKey, "console");
   assert.deepEqual(routes.find((route) => route.key === "app-schedules"), { key: "app-schedules", prefix: "/app/schedules", access: "authenticated", kind: "proxy", targetKey: "console", upstreamPath: "/app/schedules" });
   assert.equal(routes.find((route) => route.key === "api-node-v1").targetKey, "agent");
@@ -470,6 +471,8 @@ test("gateway routes the approved client to Next and its read-only data to the l
   assert.equal(routes.find((route) => route.key === "api-chat").targetKey, "agent");
   assert.deepEqual(routes.find((route) => route.key === "api-token-usage"), { key: "api-token-usage", prefix: "/api/token-usage", access: "authenticated", kind: "proxy", targetKey: "agent", upstreamPath: "/api/token-usage" });
   assert.deepEqual(routeRegistry.routes.find((route) => route.pattern === "/api/token-usage"), { pattern: "/api/token-usage", access: "authenticated", capability: "agent" });
+  assert.deepEqual(routes.find((route) => route.key === "api-agents"), { key: "api-agents", prefix: "/api/agents", access: "authenticated", kind: "proxy", targetKey: "agent", upstreamPath: "/api/agents" });
+  assert.deepEqual(routeRegistry.routes.find((route) => route.pattern === "/api/agents"), { pattern: "/api/agents", access: "authenticated", capability: "agent" });
   assert.deepEqual(routes.find((route) => route.key === "api-connections"), { key: "api-connections", prefix: "/api/connections", access: "authenticated", kind: "proxy", targetKey: "agent", upstreamPath: "/api/connections" });
   const homeRoute = routes.find((route) => route.key === "home");
   const homeHost = distribution.domain.standardHosts.find((host) => host.key === "home");

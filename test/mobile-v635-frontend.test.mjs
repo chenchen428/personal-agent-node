@@ -39,10 +39,11 @@ test("Mobile V6.39 implements lazy navigation and tail-first task history", () =
   const about = read("core/app/src/components/mobile-current/about.tsx");
   const tokenUsage = read("core/app/src/components/mobile-current/token-usage.tsx");
   assert.match(desktopEntry, /export const dynamic = "force-dynamic"/);
-  assert.match(desktopEntry, /redirect\("\/app\/mobile"\)/);
+  assert.match(desktopEntry, /return <MobileActivity/);
   assert.match(mobileProxy, /matcher: "\/app"/);
   assert.match(mobileProxy, /isMobileRequest\(request\.headers\)/);
-  assert.match(mobileProxy, /NextResponse\.redirect\(new URL\("\/app\/mobile", request\.url\)\)/);
+  assert.doesNotMatch(mobileProxy, /NextResponse\.redirect/);
+  assert.match(mobileProxy, /x-personal-agent-responsive-surface/);
   assert.match(shell, /打开侧边菜单/);
   assert.match(shell, /工作区/);
   assert.match(shell, /自定义应用/);
@@ -66,7 +67,8 @@ test("Mobile V6.39 implements lazy navigation and tail-first task history", () =
   assert.match(history, /task\.display\.delta/);
   assert.match(history, /\/api\/chat\/ws/);
   assert.doesNotMatch(history, /messageLimit=80/);
-  assert.match(detail, /data-task-display-scroll="tail"/);
+  assert.match(shell, /data-task-display-scroll=\{task \? "tail" : undefined\}/);
+  assert.match(detail, /<DetailShell/);
   assert.match(detail, /TaskLoading/);
   assert.match(detail, /TaskUnavailable/);
   assert.match(detail, /mobile-task-runtime/);
@@ -84,6 +86,7 @@ test("Mobile V6.39 implements lazy navigation and tail-first task history", () =
   assert.match(activity, /\/api\/mobile\/tasks\?limit=20&status=running/);
   assert.match(activity, /另有 \$\{parallelTasks\.length\} 项并行工作/);
   assert.match(activity, /parallelTasks\.length \? <>/);
+  assert.match(activity, /!initialLoading && !query && runningTasks\.length/);
   assert.match(pages, /<OrderedPageGrid/);
   assert.match(pages, /filter !== "all"/);
   assert.match(pages, /setFilter\("all"\)/);

@@ -183,8 +183,7 @@
       "related": [
         "knowledge-capture",
         "visual-content",
-        "travel-guidebook",
-        "personal-pages"
+        "travel-guidebook"
       ]
     },
     {
@@ -496,7 +495,6 @@
         "home-renovation",
         "visual-content",
         "media-toolkit",
-        "personal-pages",
         "frontend-design",
         "ui-ux-pro-max"
       ]
@@ -529,7 +527,7 @@
       "caseRequired": true,
       "related": [
         "deep-research",
-        "personal-pages",
+        "personal-tasks",
         "content-workbench",
         "visual-content"
       ]
@@ -618,7 +616,7 @@
       "risks": [],
       "security": {"network":"none","dataClass":"private","outboundData":"none","externalWrite":false,"requiresAuthorization":false,"untrustedContent":true},
       "origin": {"kind":"workspace","license":"Apache-2.0"},
-      "cli": ["personal-agent"],
+      "cli": ["personal-agent","pa-cli-pages"],
       "examples": ["test/fixtures/skill-cases/personal-runtime/case.json"],
       "caseRequired": true,
       "related": ["personal-connectivity","personal-updates","personal-acceptance"]
@@ -660,7 +658,7 @@
       "cli": ["personal-agent-activity"],
       "examples": ["test/fixtures/skill-cases/personal-activity/case.json"],
       "caseRequired": true,
-      "related": ["personal-tasks","personal-pages","personal-files","personal-memory"]
+      "related": ["personal-tasks","personal-files","personal-memory"]
     },
     {
       "name": "personal-tasks",
@@ -673,7 +671,7 @@
       "cli": ["pa-cli-session"],
       "examples": ["test/fixtures/skill-cases/personal-tasks/case.json"],
       "caseRequired": true,
-      "related": ["personal-activity","personal-pages","personal-product-development"]
+      "related": ["personal-activity","personal-product-development"]
     },
     {
       "name": "personal-schedules",
@@ -689,19 +687,6 @@
       "related": ["personal-tasks"]
     },
     {
-      "name": "personal-pages",
-      "directory": "skills/personal-pages",
-      "category": "publishing-automation",
-      "maturity": "beta",
-      "risks": ["local-write","external-write"],
-      "security": {"network":"write","dataClass":"mixed","outboundData":"content","externalWrite":true,"requiresAuthorization":true,"requiresFinalConfirmation":true,"untrustedContent":true},
-      "origin": {"kind":"workspace","license":"Apache-2.0"},
-      "cli": ["pa-cli-pages"],
-      "examples": ["test/fixtures/skill-cases/personal-pages/case.json"],
-      "caseRequired": true,
-      "related": ["personal-tasks","personal-activity","personal-files","interior-design","gift-advisor","content-workbench","visual-content"]
-    },
-    {
       "name": "personal-files",
       "directory": "skills/personal-files",
       "category": "research-knowledge",
@@ -712,7 +697,7 @@
       "cli": ["pa-cli-file"],
       "examples": ["test/fixtures/skill-cases/personal-files/case.json"],
       "caseRequired": true,
-      "related": ["personal-activity","personal-pages","personal-connections"]
+      "related": ["personal-activity","personal-connections"]
     },
     {
       "name": "personal-data",
@@ -848,7 +833,7 @@
       "entrypoint": "skills/interior-design/scripts/cli.mjs",
       "command": "node skills/interior-design/scripts/cli.mjs <project|scene|render|page>",
       "workspaceCommand": "node scripts/skill-tree.mjs interior <project|scene|page>",
-      "description": "Operate governed Pascal v2 renovation projects: evidence, requirements, revisions, deterministic building scenes, professional quality gates, revision-bound SU render registration, and offline interior-design-delivery Pages."
+      "description": "Operate governed Pascal v2 renovation projects: evidence, requirements, revisions, deterministic building scenes, professional quality gates, and offline interior-designer Pages."
     },
     {
       "name": "personal-agent",
@@ -907,11 +892,11 @@
     {
       "name": "pa-cli-pages",
       "category": "publishing-automation",
-      "owner": "personal-pages",
+      "owner": "personal-runtime",
       "kind": "external-cli",
-      "entrypoint": "skills/personal-pages/SKILL.md",
-      "command": "pa-cli pages templates list --json",
-      "description": "Inspect Page contracts, verify template artifacts fail-closed, persist provenance, and publish governed Pages."
+      "entrypoint": "skills/personal-runtime/references/command-map.md",
+      "command": "pa-cli pages list --json",
+      "description": "Inspect and publish governed Pages through the generic Page contract."
     },
     {
       "name": "pa-cli-file",
@@ -1105,8 +1090,7 @@
           "decision": "merged",
           "targets": [
             "content-workbench",
-            "visual-content",
-            "personal-pages"
+            "visual-content"
           ],
           "reason": "Retain content preparation and preview ideas; publish and share only through Open Agent Bridge Pages."
         },
@@ -1115,8 +1099,7 @@
           "decision": "merged",
           "targets": [
             "content-workbench",
-            "visual-content",
-            "personal-pages"
+            "visual-content"
           ],
           "reason": "Retain content preparation and preview ideas; direct account automation is outside the workspace publishing path."
         },
@@ -1125,8 +1108,7 @@
           "decision": "merged",
           "targets": [
             "content-workbench",
-            "visual-content",
-            "personal-pages"
+            "visual-content"
           ],
           "reason": "Retain content preparation and preview ideas; direct account automation is outside the workspace publishing path."
         },

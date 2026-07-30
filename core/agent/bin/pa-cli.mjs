@@ -5,7 +5,6 @@ import path from "node:path";
 import qrcodeTerminal from "qrcode-terminal";
 import { ingestRawEmail, MAX_MAIL_BYTES } from "../src/connections/mail/mail-ingest.js";
 import { createGeneratedPageThumbnails } from "../src/online-pages/generated-page-thumbnails.js";
-import { inspectPageTemplate, listPageTemplates, validatePageTemplateArtifact } from "../src/online-pages/template-catalog.js";
 import { normalizeTaskCreate, normalizeTaskPatch } from "../src/server/task-contract.js";
 
 const personalAgentHome = path.resolve(process.env.PERSONAL_AGENT_HOME || path.join(os.homedir(), ".personal-agent"));
@@ -40,6 +39,12 @@ try {
     print(await memoryCommand(subcommand));
   } else if (command === "automation") {
     throw new Error("The standalone automation product has been removed; use pa-cli cron for task-based automation");
+  } else if (command === "agents" && subcommand === "list") {
+    print((await get("/api/agents")).agents);
+  } else if (command === "agents" && subcommand === "inspect") {
+    const agentId = String(args.id || args.agent || args._[2] || "").trim();
+    if (!agentId) throw new Error("--id is required");
+    print((await get(`/api/agents/${encodeURIComponent(agentId)}`)).agent);
   } else if (command === "session" && (subcommand === "list" || subcommand === "search")) {
     const query = args.query || args.q || (subcommand === "search" ? args._.slice(2).join(" ") : "");
     if (subcommand === "search" && !query) throw new Error("--query is required");
@@ -69,10 +74,10 @@ try {
       title: metadata.title || undefined,
       description: metadata.description || undefined,
       parentSessionId: metadata.parentSessionId || undefined,
-      agentId: metadata.agentId || undefined,
-      projectKey: metadata.projectKey || undefined,
       workspaceRoot: args.workspace,
       createdBy: "pa-cli",
+      agentId: metadata.agentId || undefined,
+      projectKey: metadata.projectKey || undefined,
     });
     print(result.session);
   } else if (command === "session" && subcommand === "update") {
@@ -92,6 +97,9 @@ try {
     });
     if (!sessionId) throw new Error("--session is required");
     if (!content) throw new Error("--text is required");
+    if (subcommand === "resume" && (args.agent !== undefined || args["project-key"] !== undefined || args.project !== undefined)) {
+      throw new Error("session resume cannot change Agent or project identity");
+    }
     print(await post(`/api/sessions/${encodeURIComponent(sessionId)}/input`, {
       content,
       notifyWechat: args['notify-wechat'] === true,
@@ -396,18 +404,7 @@ try {
       execute: args.execute === true,
     }));
   } else if (command === "pages" && subcommand === "templates") {
-    const action = String(args._[2] || "list").trim();
-    if (action === "list") {
-      print({ schemaVersion: 1, templates: listPageTemplates() });
-    } else if (action === "inspect") {
-      const templateId = String(args.id || args.template || args._[3] || "").trim();
-      if (!templateId) throw new Error("--id is required");
-      const template = inspectPageTemplate(templateId);
-      if (!template) throw new Error(`Unknown Page template: ${templateId}`);
-      print(template);
-    } else {
-      throw new Error("pages templates action must be list or inspect");
-    }
+    throw new Error("Page templates have been retired; publish the finished HTML with pa-cli pages publish");
   } else if (command === "pages" && subcommand === "publish") {
     const file = args.file || args.f;
     const desktopThumbnailFile = args["desktop-thumbnail"];
@@ -418,12 +415,12 @@ try {
       throw new Error("provide both --desktop-thumbnail <png> and --mobile-thumbnail <png>, or omit both");
     }
     if (!folder) throw new Error("HTML publishing requires --folder <stable-name>");
+    if (args.template !== undefined) {
+      throw new Error("--template has been retired; publish the finished HTML without template provenance");
+    }
     const resolved = path.resolve(file);
     if (!/\.html?$/i.test(resolved)) throw new Error("pages publish requires an HTML file");
     const content = fs.readFileSync(resolved);
-    const template = args.template
-      ? validatePageTemplateArtifact(String(args.template), content).provenance
-      : undefined;
     const title = args.title || path.basename(resolved, path.extname(resolved));
     const summary = args.summary || "";
     let desktopThumbnail;
@@ -440,7 +437,6 @@ try {
       const generated = await createGeneratedPageThumbnails({
         title,
         summary,
-        templateId: args.template || "",
       });
       desktopThumbnail = generated.desktop;
       mobileThumbnail = generated.mobile;
@@ -455,7 +451,6 @@ try {
       overwrite: Boolean(args.overwrite),
       title,
       summary,
-      template,
       desktopThumbnail: {
         fileName: args["desktop-thumbnail-name"] || "page-thumbnail-desktop.png",
         content: desktopThumbnail.toString("base64"),
@@ -651,10 +646,10 @@ function sessionSummary(session) {
     status: session.status,
     title: session.title,
     taskDescription: session.taskDescription,
+    agentId: session.agentId || session.metadata?.agentId || null,
+    agentProfileVersion: session.agentProfileVersion || session.metadata?.agentProfileVersion || null,
+    projectKey: session.projectKey || session.metadata?.projectKey || null,
     summary: session.summary,
-    agentId: session.metadata?.agentId || "",
-    agentProfileVersion: Number(session.metadata?.agentProfileVersion || 0),
-    projectKey: session.metadata?.projectKey || "",
     workspaceRoot: session.workspaceRoot,
     hasResumeThread: Boolean(session.cliSessionId),
     createdAt: session.createdAt,
@@ -787,9 +782,11 @@ function help() {
   pa-cli memory create (--content <text>|--content-file <utf8-file>) --capability <ephemeral> [--json]
   pa-cli memory update --id <memory-id> (--content <text>|--content-file <utf8-file>) --expected-revision <n> --capability <ephemeral> [--json]
   pa-cli memory delete --id <memory-id> --expected-revision <n> --capability <ephemeral> [--json]
-  pa-cli session start (--task "..."|--task-file <utf8-file>) [--parent <session> --title "..." --description "..."] [--agent <agent-id> --project-key <key>] [--workspace <path>] [--json]
+  pa-cli agents list [--json]
+  pa-cli agents inspect --id <agent-id> [--json]
+  pa-cli session start (--task "..."|--task-file <utf8-file>) [--agent <agent-id> --project-key <project-key>] [--parent <session> --title "..." --description "..."] [--workspace <path>] [--json]
   pa-cli session update --session <id> [--title "..."] [--description "..."] [--json]
-  pa-cli session list [--query "..."] [--parent <main-session>] [--agent <agent-id> --project-key <key>] [--limit <n>] [--cursor <cursor>] [--all] [--json]
+  pa-cli session list [--query "..."] [--parent <main-session>] [--agent <agent-id>] [--project-key <project-key>] [--limit <n>] [--cursor <cursor>] [--all] [--json]
   pa-cli session search --query "..." [--all] [--json]
   pa-cli session input --session <id> --text "..." [--notify-wechat]
   pa-cli session resume --session <id> (--task "..."|--task-file <utf8-file>)
@@ -869,9 +866,7 @@ function help() {
   pa-cli file gc [--dry-run] [--execute] [--json]
   pa-cli file verify-storage [--execute] [--json]
   pa-cli file reconcile --root <allowlisted-dir> --source <source> --visibility public|private [--prefix <path>] [--exclude-manifest <json>] [--execute] [--json]
-  pa-cli pages templates list [--json]
-  pa-cli pages templates inspect --id <template-id> [--json]
-  pa-cli pages publish --file <index.html> --folder <stable-name> [--template <template-id>] [--desktop-thumbnail <desktop.png> --mobile-thumbnail <mobile.png>] [--title <text>] [--summary <text>] [--desktop-thumbnail-alt <text>] [--mobile-thumbnail-alt <text>] [--private] [--overwrite] [--json]
+  pa-cli pages publish --file <index.html> --folder <stable-name> [--desktop-thumbnail <desktop.png> --mobile-thumbnail <mobile.png>] [--title <text>] [--summary <text>] [--desktop-thumbnail-alt <text>] [--mobile-thumbnail-alt <text>] [--private] [--overwrite] [--json]
   pa-cli pages upload --file <asset.css|asset.js|image> [--folder <name>] [--private] [--json]`);
 }
 

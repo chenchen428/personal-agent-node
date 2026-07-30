@@ -4,7 +4,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { generateProfessionalPage } from './generate-page-v2.mjs';
 import { loadInteriorEnginePolicy } from './engine-policy.mjs';
-import { loadInteriorTemplateContract } from './page-assets.mjs';
+import { loadInteriorDeliveryContract } from './page-assets.mjs';
 import {
   canonicalJson,
   initializeProject,
@@ -18,7 +18,6 @@ import {
   withProjectLock,
 } from './project-v2.mjs';
 import { auditProfessionalProject } from './quality/index.mjs';
-import { registerDesignRender } from './render-v2.mjs';
 import {
   applySceneOperations,
   compileProjectScene,
@@ -30,7 +29,7 @@ const skillRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..
 const enginePolicy = loadInteriorEnginePolicy();
 const commandStartedAt = Date.now();
 const [command = 'help', maybeSubcommand, ...rest] = process.argv.slice(2);
-const hasSubcommand = command === 'project' || command === 'scene' || command === 'render';
+const hasSubcommand = command === 'project' || command === 'scene';
 const subcommand = hasSubcommand ? maybeSubcommand : null;
 const argv = hasSubcommand ? rest : [maybeSubcommand, ...rest].filter((value) => value !== undefined);
 const options = parse(argv);
@@ -38,7 +37,6 @@ const options = parse(argv);
 try {
   if (command === 'project') await projectCommand();
   else if (command === 'scene') await sceneCommand();
-  else if (command === 'render') await renderCommand();
   else if (command === 'page') await pageCommand();
   else emitHelp();
 } catch (error) {
@@ -145,55 +143,21 @@ async function sceneCommand() {
   if (result.project.quality.blockingCount > 0) process.exitCode = 5;
 }
 
-async function renderCommand() {
-  if (subcommand !== 'register') {
-    throw projectError('INVALID_COMMAND', 'render requires register', 2);
-  }
-  const context = resolveTrustedContext();
-  const projectDirInput = required(options['project-dir'], '--project-dir');
-  const baseRevision = integerOption(options['base-revision'], '--base-revision');
-  const resolved = resolveProjectDirectory(projectDirInput, context);
-  const result = await withProjectLock(resolved.projectDir, () => registerDesignRender({
-    projectDir: resolved.projectDir,
-    context,
-    input: required(options.input, '--input'),
-    reference: required(options.reference, '--reference'),
-    promptFile: required(options['prompt-file'], '--prompt-file'),
-    generator: required(options.generator, '--generator'),
-    baseRevision,
-  }));
-  recordEvent(result.projectDir, context, result.project, 'ok', {
-    sceneHash: result.metadata.sceneSha256,
-    renderHash: result.metadata.imageSha256,
-    promptHash: result.metadata.promptSha256,
-  });
-  emitProjectResult(result.project, {
-    render: {
-      image: result.metadata.imageRelativePath,
-      imageSha256: result.metadata.imageSha256,
-      referenceImageSha256: result.metadata.referenceImageSha256,
-      promptSha256: result.metadata.promptSha256,
-      generator: result.metadata.generator,
-    },
-  });
-}
-
 async function pageCommand() {
-  const currentTemplate = loadInteriorTemplateContract(skillRoot);
-  const requestedTemplate = options.template || currentTemplate.id;
-  if (requestedTemplate !== currentTemplate.id) throw projectError('INVALID_TEMPLATE', `--template must be ${currentTemplate.id}`, 2);
+  if (options.template) throw projectError('INVALID_ARGUMENT', '--template is retired; Page generation uses the current Agent delivery contract', 2);
+  const delivery = loadInteriorDeliveryContract(skillRoot);
   const context = resolveTrustedContext();
   const { projectDir, project } = readProject(required(options['project-dir'], '--project-dir'), context);
   const output = path.resolve(required(options.output, '--output'));
   const derivedRoot = path.resolve(projectDir, 'derived');
   if (!isInside(derivedRoot, output)) throw projectError('PROJECT_OUTPUT_VIOLATION', 'Page output must stay inside the project derived directory', 4);
-  const result = generateProfessionalPage({ projectDir, context, output, skillRoot, template: currentTemplate });
+  const result = generateProfessionalPage({ projectDir, context, output, skillRoot, delivery });
   recordEvent(projectDir, context, project, 'ok', { outputHash: result.manifest.files['index.html'].sha256 });
   emitProjectResult(project, {
     output: path.relative(projectDir, output),
     outputHash: result.manifest.files['index.html'].sha256,
     totalBytes: result.totalBytes,
-    template: result.verification,
+    delivery: result.verification,
     adapterVersion: project.scene.adapterVersion,
     pascal: {
       coreVersion: project.provenance.pascalCoreVersion,
@@ -248,7 +212,6 @@ function emitHelp() {
     'Usage:',
     '  interior project <init|validate|audit|recover> --project-dir <space-project-dir>',
     '  interior scene <compile|apply|undo|redo> --project-dir <space-project-dir> --base-revision <n>',
-    '  interior render register --project-dir <space-project-dir> --input <render-image> --reference <su-reference-image> --prompt-file <prompt-file> --generator imagegen --base-revision <n>',
     '  interior page --project-dir <space-project-dir> --output <project-derived-page-dir>',
     '',
   ].join('\n'));

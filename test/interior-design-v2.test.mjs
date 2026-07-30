@@ -9,7 +9,7 @@ import test from 'node:test';
 import { loadInteriorEnginePolicy } from '../skills/interior-design/scripts/engine-policy.mjs';
 import { calculateOrthographicZoom } from '../skills/interior-design/scripts/pascal-camera-framing.mjs';
 import { generateProfessionalPage, verifyProfessionalPageHtml } from '../skills/interior-design/scripts/generate-page-v2.mjs';
-import { loadInteriorTemplateContract, loadSourcePlanAsset } from '../skills/interior-design/scripts/page-assets.mjs';
+import { loadInteriorDeliveryContract, loadSourcePlanAsset } from '../skills/interior-design/scripts/page-assets.mjs';
 import { loadPascalRuntimeModule, PascalInteriorAdapter } from '../skills/interior-design/scripts/pascal-adapter.mjs';
 import {
   createProjectFromSeed,
@@ -23,7 +23,6 @@ import {
   writeProjectRevision,
 } from '../skills/interior-design/scripts/project-v2.mjs';
 import { auditProfessionalProject } from '../skills/interior-design/scripts/quality/index.mjs';
-import { registerDesignRender } from '../skills/interior-design/scripts/render-v2.mjs';
 import {
   applySceneOperations,
   compileProjectScene,
@@ -33,12 +32,9 @@ import {
 
 const root = path.resolve(import.meta.dirname, '..');
 const skillRoot = path.join(root, 'skills/interior-design');
-const exampleRoot = path.join(root, 'skills/interior-design/examples/professional-template');
+const exampleRoot = path.join(root, 'skills/interior-design/examples/professional-agent-example');
 const sourcePlanPath = path.join(exampleRoot, 'source-plan.png');
 const annotationPath = path.join(exampleRoot, 'agent-annotation.png');
-const renderPath = path.join(exampleRoot, 'su-design-render.png');
-const renderReferencePath = path.join(exampleRoot, 'su-design-reference.jpg');
-const renderPromptPath = path.join(exampleRoot, 'su-design-render-prompt.txt');
 const nativeSeedPath = path.join(exampleRoot, 'seed.json');
 const nativeSeed = JSON.parse(fs.readFileSync(nativeSeedPath, 'utf8'));
 
@@ -90,7 +86,6 @@ test('requires Pascal v2 as the only interior-design engine and rejects removed 
     'Usage:',
     '  interior project <init|validate|audit|recover> --project-dir <space-project-dir>',
     '  interior scene <compile|apply|undo|redo> --project-dir <space-project-dir> --base-revision <n>',
-    '  interior render register --project-dir <space-project-dir> --input <render-image> --reference <su-reference-image> --prompt-file <prompt-file> --generator imagegen --base-revision <n>',
     '  interior page --project-dir <space-project-dir> --output <project-derived-page-dir>',
     '',
   ].join('\n'));
@@ -133,43 +128,6 @@ test('ships a pinned, hash-verified Pascal runtime that works in-process without
   assert.doesNotMatch(fs.readFileSync(path.join(skillRoot, 'assets/pascal-headless.bundle'), 'utf8'), /bun:sqlite/);
 });
 
-test('registers an ImageGen SU render through the governed CLI and rejects a stale revision', async () => {
-  const harness = makeHarness('render-cli');
-  const compiled = await compileProjectScene(harness.projectDir, harness.context, { baseRevision: 1 });
-  const cli = path.join(skillRoot, 'scripts/cli.mjs');
-  const args = [
-    cli,
-    'render',
-    'register',
-    '--project-dir', harness.projectDir,
-    '--input', renderPath,
-    '--reference', renderReferencePath,
-    '--prompt-file', renderPromptPath,
-    '--generator', 'imagegen',
-    '--base-revision', String(compiled.project.revision),
-    '--json',
-  ];
-  const env = {
-    ...process.env,
-    PERSONAL_AGENT_SPACE_ROOT: harness.spaceRoot,
-    PERSONAL_AGENT_SPACE_ID: harness.context.spaceId,
-    PERSONAL_AGENT_OWNER_ID: harness.context.ownerId,
-  };
-  const registered = spawnSync(process.execPath, args, { encoding: 'utf8', env });
-  assert.equal(registered.status, 0, `${registered.stdout}\n${registered.stderr}`);
-  const payload = JSON.parse(registered.stdout);
-  assert.equal(payload.ok, true);
-  assert.equal(payload.render.generator, 'imagegen');
-  assert.match(payload.render.imageSha256, /^[a-f0-9]{64}$/);
-  assert.match(payload.render.referenceImageSha256, /^[a-f0-9]{64}$/);
-  assert.match(payload.render.promptSha256, /^[a-f0-9]{64}$/);
-
-  const staleArgs = args.map((value, index) => (args[index - 1] === '--base-revision' ? '1' : value));
-  const stale = spawnSync(process.execPath, staleArgs, { encoding: 'utf8', env });
-  assert.equal(stale.status, 4);
-  assert.equal(JSON.parse(stale.stdout).error.code, 'REVISION_CONFLICT');
-});
-
 test('governs native v2 project directories, ownership, symlinks, and SQLite identity', () => {
   const harness = makeHarness('security');
   const before = sha256(fs.readFileSync(nativeSeedPath));
@@ -195,7 +153,7 @@ test('governs native v2 project directories, ownership, symlinks, and SQLite ide
 
   const escapeTarget = fs.mkdtempSync(path.join(os.tmpdir(), 'pa-interior-escape-'));
   const symlink = path.join(harness.spaceRoot, 'projects', 'home-renovation-symlink');
-  fs.symlinkSync(escapeTarget, symlink, 'dir');
+  fs.symlinkSync(escapeTarget, symlink, process.platform === 'win32' ? 'junction' : 'dir');
   assert.throws(() => resolveProjectDirectory(symlink, harness.context), /symbolic links/);
 
   const database = new DatabaseSync(path.join(harness.projectDir, '.runtime/pascal.db'));
@@ -206,7 +164,7 @@ test('governs native v2 project directories, ownership, symlinks, and SQLite ide
   const runtimeSymlinkHarness = makeHarness('runtime-symlink');
   const externalRuntime = fs.mkdtempSync(path.join(os.tmpdir(), 'pa-interior-runtime-'));
   fs.rmSync(path.join(runtimeSymlinkHarness.projectDir, '.runtime'), { recursive: true });
-  fs.symlinkSync(externalRuntime, path.join(runtimeSymlinkHarness.projectDir, '.runtime'), 'dir');
+  fs.symlinkSync(externalRuntime, path.join(runtimeSymlinkHarness.projectDir, '.runtime'), process.platform === 'win32' ? 'junction' : 'dir');
   assert.throws(() => readProject(runtimeSymlinkHarness.projectDir, runtimeSymlinkHarness.context), /runtime directory.*symbolic link/);
 });
 
@@ -259,7 +217,7 @@ test('compiles a two-level scene with stair, void guardrail, and level controls'
     context: harness.context,
     output: pageDir,
     skillRoot,
-    template: loadInteriorTemplateContract(skillRoot),
+    delivery: loadInteriorDeliveryContract(skillRoot),
   });
   const duplexHtml = fs.readFileSync(page.indexPath, 'utf8');
   const fallbackPlan = duplexHtml.match(/<svg class="plan-svg" id="model-derived-plan"[\s\S]*?<\/svg>/)?.[0] || '';
@@ -408,33 +366,21 @@ test('generates a deterministic, private, offline Pascal Page v2 with accessible
   const harness = makeHarness('page');
   const compiled = await compileProjectScene(harness.projectDir, harness.context, { baseRevision: 1 });
   assert.equal(compiled.project.status, 'quality_gated');
-  const registeredRender = registerDesignRender({
-    projectDir: harness.projectDir,
-    context: harness.context,
-    input: renderPath,
-    reference: renderReferencePath,
-    promptFile: renderPromptPath,
-    generator: 'imagegen',
-    baseRevision: compiled.project.revision,
-    now: () => '2026-07-30T00:00:00.000Z',
-  });
-  assert.equal(registeredRender.metadata.sceneSha256, compiled.scene.sceneHash);
-  assert.equal(registeredRender.metadata.generator, 'imagegen');
-  const template = loadInteriorTemplateContract(skillRoot);
+  const delivery = loadInteriorDeliveryContract(skillRoot);
   const firstDir = path.join(harness.projectDir, 'derived', 'page-a');
   const secondDir = path.join(harness.projectDir, 'derived', 'page-b');
-  const first = generateProfessionalPage({ projectDir: harness.projectDir, context: harness.context, output: firstDir, skillRoot, template });
-  const second = generateProfessionalPage({ projectDir: harness.projectDir, context: harness.context, output: secondDir, skillRoot, template });
+  const first = generateProfessionalPage({ projectDir: harness.projectDir, context: harness.context, output: firstDir, skillRoot, delivery });
+  const second = generateProfessionalPage({ projectDir: harness.projectDir, context: harness.context, output: secondDir, skillRoot, delivery });
   const firstHtml = fs.readFileSync(first.indexPath, 'utf8');
   const secondHtml = fs.readFileSync(second.indexPath, 'utf8');
   assert.equal(sha256(firstHtml), sha256(secondHtml));
-  assert.deepEqual(verifyProfessionalPageHtml(firstHtml, template), first.verification);
+  assert.deepEqual(verifyProfessionalPageHtml(firstHtml, delivery), first.verification);
   assert.match(firstHtml, /data-engine="pascal-v2"/);
   assert.match(firstHtml, /id="model-derived-plan"/);
   assert.match(firstHtml, /data-level-mode="exploded"/);
   assert.match(firstHtml, /data-label-mode="visible"/);
   assert.match(firstHtml, /data:image\/png;base64/);
-  assert.match(firstHtml, /用户需求与户型依据/);
+  assert.match(firstHtml, /用户户型图与 Agent 标注/);
   assert.match(firstHtml, /用户原图是唯一户型依据/);
   assert.match(firstHtml, new RegExp(compiled.project.provenance.sourcePlanSha256));
   assert.match(firstHtml, /plan-source-image/);
@@ -443,45 +389,27 @@ test('generates a deterministic, private, offline Pascal Page v2 with accessible
   assert.match(firstHtml, /正在装配模型/);
   assert.match(firstHtml, /data-viewer-status/);
   assert.match(firstHtml, /data-layout-profile="su-design-classic"/);
-  assert.match(firstHtml, /data-presentation-panel="render"/);
-  assert.match(firstHtml, /data-presentation="render"/);
-  assert.match(firstHtml, /对应渲染稿/);
-  assert.match(firstHtml, /SU → PHOTOREAL RENDER/);
-  assert.match(firstHtml, /data-presentation-panel="render" data-image-viewer data-image-rotatable/);
-  assert.match(firstHtml, /data-image-zoom="out"/);
-  assert.match(firstHtml, /data-image-zoom="in"/);
-  assert.match(firstHtml, /data-image-rotate="left"/);
-  assert.match(firstHtml, /data-image-rotate="right"/);
-  assert.match(firstHtml, /data-image-rotation/);
-  assert.match(firstHtml, /data-image-reset/);
-  assert.match(firstHtml, /data-presentation-panel="requirements"[\s\S]*plan-source-image[\s\S]*plan-annotation-image/);
-  assert.doesNotMatch(firstHtml, /data-presentation="plan"/);
-  assert.match(firstHtml, /data-presentation="requirements"[\s\S]*class="active"[^>]+data-presentation="model"[^>]+aria-pressed="true"[\s\S]*data-presentation="render"/);
-  assert.match(firstHtml, /IMAGE_ZOOM_STEP=1\.1/);
-  assert.match(firstHtml, /IMAGE_WHEEL_SENSITIVITY=\.0008/);
-  assert.match(firstHtml, /IMAGE_PINCH_SENSITIVITY=\.72/);
-  assert.match(firstHtml, /Math\.exp\(-delta\*IMAGE_WHEEL_SENSITIVITY\)/);
   assert.match(firstHtml, /pascal-viewer-warmup/);
   assert.doesNotMatch(firstHtml, /space-page|owner-page|managedObjectId|file:\/\/|localhost|127\.0\.0\.1|sourceMappingURL/);
   assert.doesNotMatch(firstHtml, /renovation_|concept-open-living|req-continuous-circulation|decision-select-open-living|evidence-source/);
   assert.doesNotMatch(fs.readFileSync(path.join(firstDir, 'scene.json'), 'utf8'), /renovation_|projectId|ownerId|spaceId|sourceId/);
   assert.ok(first.totalBytes < 20 * 1024 * 1024);
-  assert.deepEqual(fs.readdirSync(firstDir).sort(), ['audit.json', 'index.html', 'manifest.json', 'scene.json', 'template.json']);
+  assert.deepEqual(fs.readdirSync(firstDir).sort(), ['audit.json', 'index.html', 'manifest.json', 'scene.json']);
   const preservedHash = sha256(fs.readFileSync(first.indexPath));
   const evidenceDirectory = path.join(harness.projectDir, 'evidence');
   const preservedEvidenceDirectory = path.join(harness.projectDir, 'evidence-preserved');
   const externalEvidenceDirectory = fs.mkdtempSync(path.join(os.tmpdir(), 'pa-interior-evidence-'));
   fs.copyFileSync(sourcePlanPath, path.join(externalEvidenceDirectory, 'source-plan.png'));
   fs.renameSync(evidenceDirectory, preservedEvidenceDirectory);
-  fs.symlinkSync(externalEvidenceDirectory, evidenceDirectory, 'dir');
-  assert.throws(() => generateProfessionalPage({ projectDir: harness.projectDir, context: harness.context, output: firstDir, skillRoot, template }), /evidence directory.*symbolic link/);
+  fs.symlinkSync(externalEvidenceDirectory, evidenceDirectory, process.platform === 'win32' ? 'junction' : 'dir');
+  assert.throws(() => generateProfessionalPage({ projectDir: harness.projectDir, context: harness.context, output: firstDir, skillRoot, delivery }), /evidence directory.*symbolic link/);
   fs.unlinkSync(evidenceDirectory);
   fs.renameSync(preservedEvidenceDirectory, evidenceDirectory);
   const sourcePlanProjectPath = path.join(evidenceDirectory, 'source-plan.png');
   const originalSourcePlan = fs.readFileSync(sourcePlanProjectPath);
   fs.copyFileSync(annotationPath, sourcePlanProjectPath);
   assert.throws(
-    () => generateProfessionalPage({ projectDir: harness.projectDir, context: harness.context, output: firstDir, skillRoot, template }),
+    () => generateProfessionalPage({ projectDir: harness.projectDir, context: harness.context, output: firstDir, skillRoot, delivery }),
     /share one verified model basis/,
   );
   fs.writeFileSync(sourcePlanProjectPath, originalSourcePlan);
@@ -490,7 +418,7 @@ test('generates a deterministic, private, offline Pascal Page v2 with accessible
   blockedAudit.ok = false;
   blockedAudit.blockingCount = 1;
   fs.writeFileSync(auditPath, `${JSON.stringify(blockedAudit, null, 2)}\n`);
-  assert.throws(() => generateProfessionalPage({ projectDir: harness.projectDir, context: harness.context, output: firstDir, skillRoot, template }), /complete project revision|manifest|quality report hash|quality gate blocks/);
+  assert.throws(() => generateProfessionalPage({ projectDir: harness.projectDir, context: harness.context, output: firstDir, skillRoot, delivery }), /complete project revision|manifest|quality report hash|quality gate blocks/);
   assert.equal(sha256(fs.readFileSync(first.indexPath)), preservedHash);
 });
 
@@ -577,7 +505,7 @@ test('keeps warm-cache schema, scene, audit, and Page work inside the v2 perform
     return performance.now() - started;
   });
   await compileProjectScene(harness.projectDir, harness.context, { baseRevision: 1 });
-  const template = loadInteriorTemplateContract(skillRoot);
+  const delivery = loadInteriorDeliveryContract(skillRoot);
   const pageDurations = Array.from({ length: 3 }, (_, index) => {
     const started = performance.now();
     generateProfessionalPage({
@@ -585,7 +513,7 @@ test('keeps warm-cache schema, scene, audit, and Page work inside the v2 perform
       context: harness.context,
       output: path.join(harness.projectDir, 'derived', `performance-page-${index}`),
       skillRoot,
-      template,
+      delivery,
     });
     return performance.now() - started;
   });
@@ -657,7 +585,7 @@ function baseSeed() {
   seed.decisions = [{
     decisionId: 'decision-select-compact-primary',
     summary: 'Select the stable compact fixture for deterministic tests.',
-    rationale: 'The shipping professional template remains free to increase in spatial and furnishing detail.',
+    rationale: 'The shipping professional Agent delivery remains free to increase in spatial and furnishing detail.',
     requirementIds: ['req-continuous-circulation', 'req-furniture-clearance'],
   }];
   return seed;
@@ -668,7 +596,7 @@ function compactRegressionConcept() {
     conceptId: 'concept-compact-primary',
     name: 'Compact primary test concept',
     summary: 'Stable two-room fixture used only by engine regression tests.',
-    tradeoffs: ['This compact fixture isolates deterministic engine behavior from the shipping template.'],
+    tradeoffs: ['This compact fixture isolates deterministic engine behavior from the shipping Agent delivery.'],
     budgetItems: [],
     levels: [{
       levelId: 'ground',

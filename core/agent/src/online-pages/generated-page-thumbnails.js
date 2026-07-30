@@ -8,11 +8,11 @@ const VARIANTS = {
 export async function createGeneratedPageThumbnails({
   title = "Untitled page",
   summary = "",
-  templateId = "",
+  sourceLabel = "",
 } = {}) {
   const [desktop, mobile] = await Promise.all([
-    createGeneratedPageThumbnail({ title, summary, templateId, variant: "desktop" }),
-    createGeneratedPageThumbnail({ title, summary, templateId, variant: "mobile" }),
+    createGeneratedPageThumbnail({ title, summary, sourceLabel, variant: "desktop" }),
+    createGeneratedPageThumbnail({ title, summary, sourceLabel, variant: "mobile" }),
   ]);
   return { desktop, mobile };
 }
@@ -20,7 +20,7 @@ export async function createGeneratedPageThumbnails({
 export async function createGeneratedPageThumbnail({
   title = "Untitled page",
   summary = "",
-  templateId = "",
+  sourceLabel = "",
   variant = "desktop",
 } = {}) {
   const layout = VARIANTS[variant];
@@ -29,7 +29,7 @@ export async function createGeneratedPageThumbnail({
   const safeSummary = normalized(summary, 280) || "由 Personal Agent 生成，视觉与交互效果等待用户打开页面验收。";
   const titleLines = wrap(safeTitle, variant === "mobile" ? 12 : 20, variant === "mobile" ? 3 : 2);
   const summaryLines = wrap(safeSummary, variant === "mobile" ? 22 : 38, variant === "mobile" ? 5 : 3);
-  const templateLabel = normalized(templateId, 64) || "personal-agent-page";
+  const pageLabel = normalized(sourceLabel, 64) || "personal-agent-page";
   const accentWidth = variant === "mobile" ? 210 : 290;
   const titleY = variant === "mobile" ? 315 : 255;
   const summaryY = titleY + titleLines.length * (layout.titleSize + 10) + 42;
@@ -43,7 +43,7 @@ export async function createGeneratedPageThumbnail({
   ${textLines(titleLines, layout.padding, titleY, layout.titleSize, layout.titleSize + 10, "#202521", 700)}
   ${textLines(summaryLines, layout.padding, summaryY, layout.summarySize, layout.summarySize + 13, "#697069", 400)}
   <line x1="${layout.padding}" y1="${footerY - 50}" x2="${layout.width - layout.padding}" y2="${footerY - 50}" stroke="#d4d5cf" stroke-width="2"/>
-  <text x="${layout.padding}" y="${footerY}" fill="#374039" font-family="Arial, sans-serif" font-size="18" font-weight="700">${escapeXml(templateLabel)}</text>
+  <text x="${layout.padding}" y="${footerY}" fill="#374039" font-family="Arial, sans-serif" font-size="18" font-weight="700">${escapeXml(pageLabel)}</text>
   <text x="${layout.width - layout.padding}" y="${footerY}" text-anchor="end" fill="#7b827c" font-family="Arial, sans-serif" font-size="18">打开页面后由用户验收</text>
 </svg>`;
   return sharp(Buffer.from(svg)).png().toBuffer();

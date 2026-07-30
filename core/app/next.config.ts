@@ -1,7 +1,8 @@
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import type { NextConfig } from "next";
 
-const repositoryRoot = path.resolve(__dirname, "../..");
+const repositoryRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 
 const nextConfig: NextConfig = {
   output: "standalone",
@@ -29,15 +30,15 @@ const nextConfig: NextConfig = {
         headers: [{ key: "Cache-Control", value: "private, no-store" }],
       },
       {
-        source: "/template-pages/:path*",
-        headers: [{ key: "Cache-Control", value: "private, no-store" }],
+        source: "/_next/static/:path*",
+        headers: [{ key: "Cache-Control", value: "public, max-age=31536000, immutable" }],
       },
       {
-        source: "/assets/templates/interior-design-delivery-v2/:path*",
+        source: "/assets/agents/:path*",
         headers: [{ key: "Cache-Control", value: "public, max-age=300, must-revalidate" }],
       },
       {
-        source: "/assets/templates/gift-advisor-report-v1/:path*",
+        source: "/assets/agent-examples/gift-advisor-report-v1/:path*",
         headers: [{ key: "Cache-Control", value: "public, max-age=300, must-revalidate" }],
       },
     ];

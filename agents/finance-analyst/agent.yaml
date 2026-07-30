@@ -3,29 +3,22 @@
   "id": "finance-analyst",
   "version": 1,
   "displayName": "账务分析 Agent",
-  "description": "负责账单导入、字段核对、分类归因、异常识别、周期对比和脱敏分析交付。",
+  "description": "负责账单解析、逐笔核对、分类确认、趋势与异常分析、脱敏报告和复核清单。",
   "instructions": "AGENT.md",
+  "profile": "profile.yaml",
   "skills": [
-    "personal-data",
-    "personal-files",
     "content-workbench",
-    "deep-research",
     "knowledge-capture",
-    "personal-pages"
+    "deep-research",
+    "personal-files"
   ],
-  "routing": [
-    "data analysis",
-    "financial analysis",
-    "expense analysis",
-    "transaction reconciliation",
-    "budget analysis",
-    "数据分析",
-    "账务分析",
-    "账单分析",
-    "消费分析",
-    "流水核对",
-    "预算分析",
-    "异常交易",
-    "订阅分析"
-  ]
+  "routing": {
+    "domains": [
+      "personal-finance-analysis",
+      "transaction-review",
+      "账务分析",
+      "账单核对"
+    ],
+    "summary": "处理个人与家庭账单解析、逐笔核对、消费分类、周期趋势、异常交易和复核交付。"
+  }
 }

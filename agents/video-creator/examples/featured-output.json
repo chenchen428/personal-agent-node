@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "id": "personal-agent-intro",
+  "source": "product-example",
+  "kind": "video",
+  "title": "Personal Agent 产品介绍视频",
+  "summary": "通过旅行规划、旅行视觉、家庭账务和家装设计展示微信里的私人 Agent。",
+  "sanitized": true,
+  "verified": true,
+  "presentation": {
+    "devices": ["desktop"],
+    "primaryView": "desktop"
+  }
+}

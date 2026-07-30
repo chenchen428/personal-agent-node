@@ -145,8 +145,7 @@ const labelsByLocale = {
   },
 };
 
-export function generateGiftAdvisorPage({ projectDir, output, template = GIFT_TEMPLATE_ID } = {}) {
-  if (template !== GIFT_TEMPLATE_ID) throw giftError("INVALID_TEMPLATE", `--template must be ${GIFT_TEMPLATE_ID}`);
+export function generateGiftAdvisorPage({ projectDir, output } = {}) {
   const resolvedProject = path.resolve(required(projectDir, "--project-dir"));
   const resolvedOutput = path.resolve(required(output, "--output"));
   const derivedRoot = path.join(resolvedProject, "derived");
@@ -1033,7 +1032,6 @@ if (directRun) {
     emit(generateGiftAdvisorPage({
       projectDir: options["project-dir"],
       output: options.output,
-      template: options.template || GIFT_TEMPLATE_ID,
     }));
   } catch (error) {
     emit({ ok: false, error: { code: error.code || "GIFT_ADVISOR_FAILED", message: error.message } });

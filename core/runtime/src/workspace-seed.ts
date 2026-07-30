@@ -10,7 +10,6 @@ export const PERSONAL_AGENT_SPLIT_SKILLS = [
   "personal-data",
   "personal-files",
   "personal-memory",
-  "personal-pages",
   "personal-product-development",
   "personal-runtime",
   "personal-schedules",
@@ -18,19 +17,21 @@ export const PERSONAL_AGENT_SPLIT_SKILLS = [
   "personal-updates",
 ] as const;
 
-const PRODUCT_MANAGED_PAGE_CAPABILITIES = [
+const PRODUCT_MANAGED_INTERIOR_DELIVERY_CAPABILITIES = [
   "skills/interior-design",
-  "skills/personal-pages",
   "registry/interior-design.json",
-  "registry/page-templates.json",
   "registry/skills.json",
 ] as const;
 
 const PRODUCT_MANAGED_AGENT_CAPABILITIES = [
-  "agents",
+  "agents/interior-designer",
+  "agents/poster-designer",
+  "agents/travel-planner",
+  "agents/finance-analyst",
   "registry/agents.json",
   "schemas/personal-agent/agents.schema.json",
-  "schemas/personal-agent/video-styles.schema.json",
+  "schemas/personal-agent/agent-profile.schema.json",
+  "scripts/agent-guard.mjs",
 ] as const;
 
 export function seedAgentWorkspace(config: {
@@ -48,25 +49,32 @@ export function seedAgentWorkspace(config: {
     ? path.join(seedRoot, "AGENTS.md")
     : path.join(releaseRoot, "AGENTS.md");
   let copied = copyMissingTree(nodeGuide, path.join(config.agentWorkspaceRoot, "AGENTS.md"));
-  for (const directory of ["skills", "agents", "workflows", "registry", "schemas"]) {
+  for (const directory of ["agents", "skills", "workflows", "registry", "schemas"]) {
     const source = fs.existsSync(path.join(seedRoot, directory))
       ? path.join(seedRoot, directory)
       : path.join(releaseRoot, directory);
     copied += copyMissingTree(source, path.join(config.agentWorkspaceRoot, directory));
   }
-  for (const script of ["skill-tree.mjs", "skill-guard.mjs", "agent-guard.mjs"]) {
+  for (const script of ["agent-guard.mjs", "skill-tree.mjs", "skill-guard.mjs"]) {
     const source = fs.existsSync(path.join(seedRoot, "scripts", script))
       ? path.join(seedRoot, "scripts", script)
       : path.join(releaseRoot, "scripts", script);
     copied += copyMissingTree(source, path.join(config.agentWorkspaceRoot, "scripts", script));
   }
-  const refreshedPaths = refreshProductManagedCapabilities(seedRoot, config.agentWorkspaceRoot);
-  const retiredSkills = retireSplitPersonalAgentSkill(config, seedRoot, now);
+  const refreshedPaths = [
+    ...refreshProductManagedInteriorDeliveryCapabilities(seedRoot, config.agentWorkspaceRoot),
+    ...refreshProductManagedAgentCapabilities(seedRoot, config.agentWorkspaceRoot),
+  ];
+  const retiredSkills = [
+    ...retireSplitPersonalAgentSkill(config, seedRoot, now),
+    ...retireRemovedProductSkill(config, seedRoot, "personal-pages", now),
+  ];
+  const retiredRegistries = retireRemovedProductRegistry(config, seedRoot, "page-templates.json", now);
   createDirectoryPointer(
     path.join(config.agentWorkspaceRoot, "skills"),
     path.join(config.agentWorkspaceRoot, ".codex", "skills"),
   );
-  return { copied, refreshed: refreshedPaths.length, refreshedPaths, retiredSkills };
+  return { copied, refreshed: refreshedPaths.length, refreshedPaths, retiredSkills, retiredRegistries };
 }
 
 export function copyMissingTree(source: string, target: string): number {
@@ -86,9 +94,47 @@ export function copyMissingTree(source: string, target: string): number {
   return copied;
 }
 
-function refreshProductManagedCapabilities(seedRoot: string, agentWorkspaceRoot: string) {
+function refreshProductManagedInteriorDeliveryCapabilities(seedRoot: string, agentWorkspaceRoot: string) {
   const refreshed: string[] = [];
-  for (const relative of [...PRODUCT_MANAGED_PAGE_CAPABILITIES, ...PRODUCT_MANAGED_AGENT_CAPABILITIES]) {
+  for (const relative of PRODUCT_MANAGED_INTERIOR_DELIVERY_CAPABILITIES) {
+    const source = path.join(seedRoot, ...relative.split("/"));
+    const target = path.join(agentWorkspaceRoot, ...relative.split("/"));
+    if (replaceManagedPath(source, target)) refreshed.push(relative);
+  }
+  return refreshed;
+}
+
+function retireRemovedProductSkill(config: {
+  agentWorkspaceRoot: string;
+  dataRoot: string;
+}, seedRoot: string, name: string, now: () => Date) {
+  const releaseSkill = path.join(seedRoot, "skills", name);
+  const activeSkill = path.join(config.agentWorkspaceRoot, "skills", name);
+  if (fs.existsSync(releaseSkill) || !fs.existsSync(activeSkill)) return [];
+  const archiveRoot = path.join(config.dataRoot, "runtime", "harness-migrations", "retired-skills");
+  fs.mkdirSync(archiveRoot, { recursive: true, mode: 0o700 });
+  const archive = uniquePath(path.join(archiveRoot, `${name}-${migrationTimestamp(now)}`));
+  movePath(activeSkill, archive);
+  return [path.relative(config.dataRoot, archive).split(path.sep).join("/")];
+}
+
+function retireRemovedProductRegistry(config: {
+  agentWorkspaceRoot: string;
+  dataRoot: string;
+}, seedRoot: string, name: string, now: () => Date) {
+  const releaseRegistry = path.join(seedRoot, "registry", name);
+  const activeRegistry = path.join(config.agentWorkspaceRoot, "registry", name);
+  if (fs.existsSync(releaseRegistry) || !fs.existsSync(activeRegistry)) return [];
+  const archiveRoot = path.join(config.dataRoot, "runtime", "harness-migrations", "retired-registries");
+  fs.mkdirSync(archiveRoot, { recursive: true, mode: 0o700 });
+  const archive = uniquePath(path.join(archiveRoot, `${path.basename(name, path.extname(name))}-${migrationTimestamp(now)}${path.extname(name)}`));
+  movePath(activeRegistry, archive);
+  return [path.relative(config.dataRoot, archive).split(path.sep).join("/")];
+}
+
+function refreshProductManagedAgentCapabilities(seedRoot: string, agentWorkspaceRoot: string) {
+  const refreshed: string[] = [];
+  for (const relative of PRODUCT_MANAGED_AGENT_CAPABILITIES) {
     const source = path.join(seedRoot, ...relative.split("/"));
     const target = path.join(agentWorkspaceRoot, ...relative.split("/"));
     if (replaceManagedPath(source, target)) refreshed.push(relative);
@@ -151,20 +197,24 @@ function retireSplitPersonalAgentSkill(config: {
   if (!splitIsComplete) return [];
   const archiveRoot = path.join(config.dataRoot, "runtime", "harness-migrations", "retired-skills");
   fs.mkdirSync(archiveRoot, { recursive: true, mode: 0o700 });
-  const timestamp = now().toISOString().replace(/\D/g, "").slice(0, 14);
-  const archive = uniquePath(path.join(archiveRoot, `personal-agent-${timestamp}`));
-  moveDirectory(legacySkill, archive);
+  const archive = uniquePath(path.join(archiveRoot, `personal-agent-${migrationTimestamp(now)}`));
+  movePath(legacySkill, archive);
   return [path.relative(config.dataRoot, archive).split(path.sep).join("/")];
 }
 
-function moveDirectory(source: string, target: string) {
+function movePath(source: string, target: string) {
   try {
     fs.renameSync(source, target);
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code !== "EXDEV") throw error;
-    fs.cpSync(source, target, { recursive: true, errorOnExist: true, force: false, preserveTimestamps: true });
+    const sourceStat = fs.statSync(source);
+    fs.cpSync(source, target, { recursive: sourceStat.isDirectory(), errorOnExist: true, force: false, preserveTimestamps: true });
     fs.rmSync(source, { recursive: true, force: true });
   }
+}
+
+function migrationTimestamp(now: () => Date) {
+  return now().toISOString().replace(/\D/g, "").slice(0, 14);
 }
 
 function uniquePath(candidate: string) {

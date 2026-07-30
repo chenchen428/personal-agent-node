@@ -1,2 +1,2 @@
-import { MobileMailDetail } from "@/components/mobile-current";
+import { MobileMailDetail } from "@/components/mobile-current/mail";
 export default async function MobileMailPage({ params }: { params: Promise<{ messageId: string }> }) { const { messageId } = await params; return <MobileMailDetail messageId={messageId} />; }

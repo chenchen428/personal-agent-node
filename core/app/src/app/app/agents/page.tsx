@@ -1,5 +1,5 @@
-import { AgentTeamPage } from "@/components/desktop-v627/agent-team-page";
+import { AgentsPage } from "@/components/agents/agents-page";
 
-export default function AgentsPage() {
-  return <AgentTeamPage />;
+export default function Page() {
+  return <AgentsPage />;
 }

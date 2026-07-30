@@ -5,7 +5,9 @@ import useScene from '@pascal-app/core/store';
 import { Viewer, useViewer } from '@pascal-app/viewer';
 import { ArchitectureEnvelope } from './pascal-architecture.jsx';
 import { ProjectCamera } from './pascal-project-camera.jsx';
+import { DeliveryRenderBudget } from './pascal-render-budget.jsx';
 import { showViewerFallback, ViewerLifecycle } from './pascal-viewer-lifecycle.jsx';
+
 class ViewerBoundary extends Component {
   constructor(props) {
     super(props);
@@ -192,6 +194,7 @@ function PascalScene({ payload }) {
         window.setTimeout(restoreCamera, 1_800);
       }}
     >
+      <DeliveryRenderBudget />
       <ViewerLifecycle />
       <ProjectCamera payload={payload} />
       <ArchitectureEnvelope payload={payload} />
@@ -217,7 +220,7 @@ function start() {
     useViewer.setState((state) => ({
       projectId: payload.projectId || null, renderContext: 'viewer',
       shading: 'rendered', shadingByContext: { ...state.shadingByContext, viewer: 'rendered' },
-      colorPreset: 'clay', edges: 'off', shadows: true, sceneTheme: 'studio',
+      colorPreset: 'clay', edges: 'off', shadows: false, sceneTheme: 'studio',
       transparentBackground: true, unit: 'metric', unitExplicit: true, textures: false,
       levelMode: 'stacked', wallMode: 'down', cameraMode: 'perspective',
     }));

@@ -5,8 +5,7 @@
   "displayName": "视频创作",
   "description": "负责产品介绍视频、功能演示、旅游素材剪辑和社交短视频变体。",
   "instructions": "AGENT.md",
-  "styleGuide": "STYLE-GUIDE.md",
-  "styleCatalog": "styles.json",
+  "profile": "profile.yaml",
   "skills": [
     "hyperframes-video",
     "media-toolkit",
@@ -15,17 +14,15 @@
     "deep-research",
     "personal-files"
   ],
-  "routing": [
-    "product video",
-    "product launch video",
-    "feature walkthrough",
-    "travel video",
-    "travel edit",
-    "产品介绍视频",
-    "产品演示",
-    "功能演示",
-    "旅游剪辑",
-    "旅行视频",
-    "短视频"
-  ]
+  "routing": {
+    "domains": [
+      "product-video",
+      "feature-walkthrough",
+      "travel-video",
+      "产品介绍视频",
+      "功能演示",
+      "旅行视频"
+    ],
+    "summary": "处理产品发布短片、功能演示、旅行素材剪辑、字幕、节奏与横竖屏视频变体。"
+  }
 }

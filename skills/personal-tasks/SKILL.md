@@ -7,6 +7,19 @@ description: Create, inspect, update, resume, and report Personal Agent child ta
 
 Use a child task for real multi-step work involving files, commands, research plus delivery, Pages, deployment, cross-module changes, multiple deliverables, or continued execution. Do not create a task for a greeting, clarification, simple answer, quick atomic action, schedule management, existing-result lookup, or task-status question.
 
+For a registered specialist Agent, identify a stable project key and search the
+current main session by the complete identity before creating work:
+
+```text
+pa-cli session list --parent <main-session-id> --agent <agent-id> --project-key <project-key> --all --json
+pa-cli session start --parent <main-session-id> --agent <agent-id> --project-key <project-key> --title "<title>" --description "<description>" --task-file <utf8-task-file> --json
+```
+
+Resume only the unique same-Agent, same-project match. `session resume` preserves
+the stored Agent ID, profile version, and project key and must never receive
+identity-changing options. Omit both `--agent` and `--project-key` for a generic
+Worker; never supply only one of them.
+
 Search current children first. Resume only an exact paused match:
 
 ```text

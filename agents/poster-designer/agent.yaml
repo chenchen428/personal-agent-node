@@ -3,8 +3,9 @@
   "id": "poster-designer",
   "version": 1,
   "displayName": "海报设计 Agent",
-  "description": "负责海报、社交卡片、轮播图和微信封面组合的概念、排版、渲染与系列化修改。",
+  "description": "负责传播信息提炼、视觉概念、海报、社交卡片、轮播图、封面组合和多规格渲染。",
   "instructions": "AGENT.md",
+  "profile": "profile.yaml",
   "skills": [
     "guizang-social-card-skill",
     "visual-content",
@@ -12,18 +13,13 @@
     "content-workbench",
     "personal-files"
   ],
-  "routing": [
-    "poster design",
-    "social card design",
-    "carousel design",
-    "wechat cover",
-    "brand visual",
-    "海报设计",
-    "社交卡片",
-    "轮播图",
-    "小红书配图",
-    "公众号封面",
-    "品牌视觉",
-    "活动物料"
-  ]
+  "routing": {
+    "domains": [
+      "poster-design",
+      "social-visual",
+      "海报",
+      "社交视觉"
+    ],
+    "summary": "处理海报、社交卡片、轮播图、公众号封面、视觉系列与多规格修订。"
+  }
 }

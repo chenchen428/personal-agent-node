@@ -7,7 +7,7 @@ test("generates distinct valid desktop and mobile gallery previews without a bro
   const generated = await createGeneratedPageThumbnails({
     title: "装修设计交付",
     summary: "由注册模板生成，视觉与交互效果等待用户验收。",
-    templateId: "interior-design-delivery",
+    sourceLabel: "interior-designer",
   });
   const desktop = decodePageThumbnail({
     fileName: "desktop.png",

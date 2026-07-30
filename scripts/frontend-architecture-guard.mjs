@@ -43,6 +43,12 @@ for (const [route, moduleName] of Object.entries(menuPages)) {
   });
 }
 
+const agentsPage = read("core/app/src/app/app/agents/page.tsx");
+checks.push({
+  name: "menu route owns a direct page component: /app/agents",
+  ok: agentsPage.includes("@/components/agents/agents-page"),
+});
+
 const shell = read("core/app/src/components/app-shell.tsx");
 const appCatalog = read("core/runtime/src/apps.ts");
 const appGuide = read("docs/personal-app-development.md");

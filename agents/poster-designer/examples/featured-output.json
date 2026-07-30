@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "id": "poster-city-observation-series",
+  "source": "product-example",
+  "kind": "image-series",
+  "title": "城市观察社交卡片",
+  "summary": "封面、信息页、节奏页和结尾行动页组成的脱敏视觉系列示例。",
+  "sanitized": true,
+  "verified": true,
+  "presentation": {
+    "devices": ["mobile"],
+    "primaryView": "mobile"
+  }
+}

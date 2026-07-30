@@ -89,13 +89,11 @@ test("publishes HTML with persisted desktop and mobile gallery screenshots", asy
   );
 });
 
-test("publishes a registered template only with verified persisted provenance", async () => {
-  const html = fs.readFileSync(path.resolve(import.meta.dirname, "../../app/public/assets/templates/interior-design-delivery-v2/index.html"));
-  const asset = await publishHtmlPage({
+test("new public Pages reject retired template provenance", async () => {
+  await assert.rejects(publishHtmlPage({
     fileName: "index.html",
-    folder: "published-template",
-    content: html.toString("base64"),
-    encoding: "base64",
+    folder: "retired-template",
+    content: "<h1>Page</h1>",
     title: "装修设计交付",
     template: { id: "interior-design-delivery" },
     desktopThumbnail: {
@@ -106,15 +104,7 @@ test("publishes a registered template only with verified persisted provenance", 
       fileName: "page-thumbnail-mobile.png",
       content: createPageThumbnailPng(750, 1200).toString("base64"),
     },
-  });
-  assert.deepEqual(asset.page.template, {
-    id: "interior-design-delivery",
-    version: 2,
-    contractDigest: asset.page.template.contractDigest,
-    artifactMarker: "personal-agent-page-template",
-    artifactSha256: crypto.createHash("sha256").update(html).digest("hex"),
-  });
-  assert.match(asset.page.template.contractDigest, /^[a-f0-9]{64}$/);
+  }), /Page templates are retired/);
 });
 
 test("publishes Site verification as a complete Pages gallery entry", async () => {

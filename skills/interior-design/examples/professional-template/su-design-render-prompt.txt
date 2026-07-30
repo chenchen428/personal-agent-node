@@ -1,9 +1,0 @@
-Image-edit taxonomy: sketch-to-render.
-
-Transform this exact SketchUp-style axonometric whole-home model into a polished photorealistic architectural cutaway rendering. Preserve the source geometry exactly: identical floor plan, room divisions, wall openings, balcony, windows and doors, furniture placement, scale, proportions, crop, and the same elevated three-quarter camera perspective.
-
-Render the existing design only; do not invent or remove rooms, walls, furniture, fixtures, openings, or decor. Use a contemporary warm-natural residential interior with light oak flooring and cabinetry, warm off-white walls, pale limestone accents, beige and oatmeal upholstery, restrained charcoal metal window frames, and subtle indoor greenery only where it already exists.
-
-Use soft late-morning natural daylight from the existing windows, realistic global illumination, balanced neutral exposure, fine material detail, and soft contact shadows. Show the complete apartment cutaway clearly against a clean warm-gray studio ground, with all rooms legible and no roof. The result should feel like a calm, credible premium architectural visualization rather than an overly glossy marketing image.
-
-Do not add people, text, labels, icons, watermarks, logos, borders, rooms, walls, furniture, fixtures, openings, or decor.

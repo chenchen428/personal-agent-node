@@ -50,15 +50,13 @@ test("private Page publishing stores desktop and mobile screenshots as first-cla
   assert.equal(fs.existsSync(store.resolve("private-report", "page-thumbnail-mobile.png").filePath), true);
 });
 
-test("private registered Page publication re-verifies and stores template provenance", () => {
+test("new private Pages reject retired template provenance", () => {
   const rootDir = fs.mkdtempSync(path.join(os.tmpdir(), "oab-private-template-page-"));
   const store = new PrivatePublicationStore({ rootDir });
-  const html = fs.readFileSync(path.resolve(import.meta.dirname, "../../app/public/assets/templates/interior-design-delivery-v2/index.html"));
-  const published = store.publish({
+  assert.throws(() => store.publish({
     publicationId: "private-template",
     fileName: "index.html",
-    content: html.toString("base64"),
-    encoding: "base64",
+    content: "<h1>Page</h1>",
     template: { id: "interior-design-delivery" },
     desktopThumbnail: {
       fileName: "page-thumbnail-desktop.png",
@@ -68,12 +66,5 @@ test("private registered Page publication re-verifies and stores template proven
       fileName: "page-thumbnail-mobile.png",
       content: createPageThumbnailPng(750, 1200).toString("base64"),
     },
-  });
-  assert.deepEqual(published.page.template, {
-    id: "interior-design-delivery",
-    version: 2,
-    contractDigest: published.page.template.contractDigest,
-    artifactMarker: "personal-agent-page-template",
-    artifactSha256: crypto.createHash("sha256").update(html).digest("hex"),
-  });
+  }), /Page templates are retired/);
 });

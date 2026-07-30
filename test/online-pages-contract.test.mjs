@@ -9,7 +9,7 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 test("Online Pages CLI, Skill, server, clients, and Activity share one dual-device contract", () => {
   const cli = read("core/agent/bin/pa-cli.mjs");
   const runtimeCli = read("core/runtime/bin/personal-agent.mjs");
-  const skill = read("skills/personal-pages/references/publishing.md");
+  const publishing = read("skills/personal-runtime/references/page-publishing.md");
   const server = read("core/agent/src/server/server.ts");
   const activity = read("core/agent/src/activity/store.js");
   const desktop = read("core/app/src/components/desktop-v627/shared.tsx");
@@ -19,11 +19,13 @@ test("Online Pages CLI, Skill, server, clients, and Activity share one dual-devi
   assert.match(cli, /omit both/);
   assert.match(cli, /desktopThumbnail:/);
   assert.match(cli, /mobileThumbnail:/);
-  assert.match(skill, /without opening a browser/);
-  assert.match(skill, /pending user acceptance/);
-  assert.match(skill, /page\.thumbnails\.desktop/);
-  assert.match(skill, /page\.thumbnails\.mobile/);
-  assert.match(skill, /--target-type page/);
+  assert.match(publishing, /without opening a browser/);
+  assert.match(publishing, /pending user acceptance/);
+  assert.match(publishing, /page\.thumbnails\.desktop/);
+  assert.match(publishing, /page\.thumbnails\.mobile/);
+  assert.match(publishing, /--target-type page/);
+  assert.match(publishing, /without `--template`/);
+  assert.match(publishing, /new publications do not write template provenance/);
   assert.match(runtimeCli, /Page Activity requires --target-type page and --target-id <page-id>/);
   assert.match(activity, /PAGE_TARGET_REQUIRED/);
   assert.match(server, /desktopThumbnailUrl:/);

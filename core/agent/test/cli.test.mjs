@@ -1,6 +1,5 @@
 import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
-import crypto from "node:crypto";
 import fs from "node:fs";
 import http from "node:http";
 import os from "node:os";
@@ -12,10 +11,6 @@ import { createPageThumbnailPng } from "./page-thumbnail-fixture.mjs";
 
 const execFileAsync = promisify(execFile);
 const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-
-function markedInteriorTemplateHtml(body = "<main>CLI Page</main>") {
-  return `<!doctype html><html><head><meta name="personal-agent-page-template" content="personal-agent-page-template"><meta name="personal-agent-page-template-id" content="interior-design-delivery"><meta name="personal-agent-page-template-version" content="2"></head><body data-template-marker="personal-agent-page-template" data-template-id="interior-design-delivery" data-template-version="2">${body}</body></html>`;
-}
 
 test("Memory CLI uses the ephemeral main-turn capability and content-only contract", async (t) => {
   let received = null;
@@ -185,83 +180,94 @@ test("session list scopes status reads to one parent session", async (t) => {
   assert.equal(JSON.parse(stdout).sessions[0].status, "running");
 });
 
-test("session CLI preserves specialist Agent and project identity", async (t) => {
+test("specialist Agent CLI exposes public catalog and project-scoped session options", async (t) => {
   const requests = [];
+  const publicAgent = {
+    id: "interior-designer",
+    displayName: "Interior Design Agent",
+    description: "Interior delivery.",
+    profile: { schemaVersion: 1, capabilities: ["layouts"] },
+    status: "available",
+  };
   const server = http.createServer(async (request, response) => {
     const chunks = [];
     for await (const chunk of request) chunks.push(chunk);
     const body = chunks.length ? JSON.parse(Buffer.concat(chunks).toString("utf8")) : {};
     requests.push({ method: request.method, url: request.url, body });
     response.writeHead(200, { "content-type": "application/json" });
-    if (request.method === "GET") {
-      response.end(JSON.stringify({
-        ok: true,
-        sessions: [{
-          id: "video-task",
-          role: "worker",
-          parentSessionId: "main-1",
-          status: "idle",
-          title: "制作介绍视频",
-          metadata: {
-            agentId: "video-creator",
-            agentProfileVersion: 1,
-            projectKey: "project_personal_agent_intro",
-          },
-        }],
-        nextCursor: "",
-        hasMore: false,
-      }));
+    if (request.url === "/api/agents") {
+      response.end(JSON.stringify({ ok: true, agents: [publicAgent] }));
+    } else if (request.url === "/api/agents/interior-designer") {
+      response.end(JSON.stringify({ ok: true, agent: publicAgent }));
+    } else if (request.method === "POST") {
+      response.end(JSON.stringify({ ok: true, session: {
+        id: "specialist-1",
+        role: "worker",
+        agentId: body.agentId,
+        agentProfileVersion: 1,
+        projectKey: body.projectKey,
+      } }));
     } else {
-      response.end(JSON.stringify({ ok: true, session: { id: "video-task" } }));
+      response.end(JSON.stringify({ ok: true, sessions: [{
+        id: "specialist-1",
+        role: "worker",
+        agentId: "interior-designer",
+        agentProfileVersion: 1,
+        projectKey: "project_design_001",
+      }], nextCursor: "", hasMore: false }));
     }
   });
   await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
   t.after(() => server.close());
   const address = server.address();
-  const env = {
-    ...process.env,
-    OPEN_AGENT_BRIDGE_API_BASE: `http://127.0.0.1:${address.port}`,
-    OPEN_AGENT_BRIDGE_API_TOKEN: "cli-test-token",
-  };
+  const env = { ...process.env, OPEN_AGENT_BRIDGE_API_BASE: `http://127.0.0.1:${address.port}` };
   const cli = path.join(projectRoot, "bin", "pa-cli.mjs");
 
-  await execFileAsync(process.execPath, [
+  const listedAgents = await execFileAsync(process.execPath, [cli, "agents", "list", "--json"], { cwd: projectRoot, env });
+  const inspectedAgent = await execFileAsync(process.execPath, [cli, "agents", "inspect", "--id", "interior-designer", "--json"], { cwd: projectRoot, env });
+  const started = await execFileAsync(process.execPath, [
     cli, "session", "start",
     "--parent", "main-1",
-    "--title", "制作介绍视频",
-    "--description", "使用 HyperFrames 制作 Personal Agent 介绍视频",
-    "--task", "完成产品介绍视频",
-    "--agent", "video-creator",
-    "--project-key", "project_personal_agent_intro",
+    "--agent", "interior-designer",
+    "--project-key", "project_design_001",
+    "--title", "Design",
+    "--description", "Create the design",
+    "--task", "Build the deliverable",
     "--json",
   ], { cwd: projectRoot, env });
-  const listed = await execFileAsync(process.execPath, [
+  const sessions = await execFileAsync(process.execPath, [
     cli, "session", "list",
     "--parent", "main-1",
-    "--agent", "video-creator",
-    "--project-key", "project_personal_agent_intro",
-    "--all",
+    "--agent", "interior-designer",
+    "--project-key", "project_design_001",
     "--json",
   ], { cwd: projectRoot, env });
 
-  assert.deepEqual(requests[0], {
-    method: "POST",
-    url: "/api/sessions",
-    body: {
-      task: "完成产品介绍视频",
-      title: "制作介绍视频",
-      description: "使用 HyperFrames 制作 Personal Agent 介绍视频",
-      parentSessionId: "main-1",
-      agentId: "video-creator",
-      projectKey: "project_personal_agent_intro",
-      createdBy: "pa-cli",
-    },
+  assert.deepEqual(JSON.parse(listedAgents.stdout), [publicAgent]);
+  assert.deepEqual(JSON.parse(inspectedAgent.stdout), publicAgent);
+  assert.equal(JSON.parse(started.stdout).agentId, "interior-designer");
+  assert.equal(JSON.parse(sessions.stdout).sessions[0].projectKey, "project_design_001");
+  assert.deepEqual(requests[2].body, {
+    task: "Build the deliverable",
+    title: "Design",
+    description: "Create the design",
+    parentSessionId: "main-1",
+    createdBy: "pa-cli",
+    agentId: "interior-designer",
+    projectKey: "project_design_001",
   });
-  const listUrl = new URL(requests[1].url, "http://127.0.0.1");
-  assert.equal(listUrl.searchParams.get("agent"), "video-creator");
-  assert.equal(listUrl.searchParams.get("project"), "project_personal_agent_intro");
-  assert.equal(JSON.parse(listed.stdout).sessions[0].agentId, "video-creator");
-  assert.equal(JSON.parse(listed.stdout).sessions[0].projectKey, "project_personal_agent_intro");
+  const listUrl = new URL(requests[3].url, "http://127.0.0.1");
+  assert.equal(listUrl.searchParams.get("agent"), "interior-designer");
+  assert.equal(listUrl.searchParams.get("project"), "project_design_001");
+  await assert.rejects(
+    execFileAsync(process.execPath, [
+      cli, "session", "resume",
+      "--session", "specialist-1",
+      "--task", "Continue",
+      "--agent", "poster-designer",
+    ], { cwd: projectRoot, env }),
+    (error) => /cannot change Agent or project identity/.test(error.stderr),
+  );
 });
 
 test("session CLI preserves the unavailable-domain notice instead of inventing a task URL", async (t) => {
@@ -460,38 +466,12 @@ test("confirmed channel login delegates QR delivery and monitoring to the bridge
   assert.doesNotMatch(stdout, /qrImage|base64/);
 });
 
-test("pages template CLI lists match metadata and inspects the full contract", async () => {
+test("pages template CLI is retired", async () => {
   const cli = path.join(projectRoot, "bin", "pa-cli.mjs");
-  const listed = await execFileAsync(process.execPath, [cli, "pages", "templates", "list", "--json"], {
-    cwd: projectRoot,
-    env: { ...process.env },
-  });
-  const list = JSON.parse(listed.stdout);
-  assert.equal(list.schemaVersion, 1);
-  assert.deepEqual(list.templates.map((template) => template.id), [
-    "interior-design-delivery",
-    "gift-advisor-report",
-  ]);
-  assert.equal(list.templates[0].skill, "interior-design");
-  assert.match(list.templates[0].useWhen, /户型/);
-  assert.match(list.templates[0].contractDigest, /^[a-f0-9]{64}$/);
-  assert.equal(list.templates[1].skill, "gift-advisor");
-  assert.match(list.templates[1].useWhen, /礼物/);
-  assert.match(list.templates[1].contractDigest, /^[a-f0-9]{64}$/);
-
-  const inspected = await execFileAsync(process.execPath, [
-    cli, "pages", "templates", "inspect", "--id", "interior-design-delivery", "--json",
-  ], { cwd: projectRoot, env: { ...process.env } });
-  const template = JSON.parse(inspected.stdout);
-  assert.equal(template.id, "interior-design-delivery");
-  assert.equal(template.contractDigest, list.templates[0].contractDigest);
-  assert.ok(template.fixedFramework.includes("肉眼可辨的等距 3D / 顶视正交平面视角"));
-  assert.ok(template.agentInstructions.some((item) => item.includes("interior-design")));
-
   await assert.rejects(execFileAsync(process.execPath, [
-    cli, "pages", "templates", "inspect", "--id", "missing", "--json",
+    cli, "pages", "templates", "list", "--json",
   ], { cwd: projectRoot, env: { ...process.env } }), (error) => {
-    assert.match(error.stderr, /Unknown Page template/);
+    assert.match(error.stderr, /Page templates have been retired/);
     return true;
   });
 });
@@ -556,7 +536,7 @@ test("pages publish sends HTML and explicit device thumbnails as one Page contra
 
 test("pages publish returns an explicit notice when no managed domain is accessible", async (t) => {
   const working = fs.mkdtempSync(path.join(os.tmpdir(), "pa-cli-pages-no-domain-"));
-  const html = markedInteriorTemplateHtml();
+  const html = "<!doctype html><html><body><main>CLI Page</main></body></html>";
   fs.writeFileSync(path.join(working, "index.html"), html);
   let received = null;
   const server = http.createServer(async (request, response) => {
@@ -582,7 +562,6 @@ test("pages publish returns an explicit notice when no managed domain is accessi
     "pages", "publish",
     "--file", "index.html",
     "--folder", "cli-page",
-    "--template", "interior-design-delivery",
     "--title", "无需浏览器验收的页面",
     "--summary", "CLI 自动生成桌面和移动端画廊预览。",
     "--json",
@@ -601,17 +580,10 @@ test("pages publish returns an explicit notice when no managed domain is accessi
   assert.ok(desktop.subarray(1, 4).equals(Buffer.from("PNG")));
   assert.ok(mobile.subarray(1, 4).equals(Buffer.from("PNG")));
   assert.equal(desktop.equals(mobile), false);
-  assert.deepEqual(received.template, {
-    id: "interior-design-delivery",
-    version: 2,
-    contractDigest: received.template.contractDigest,
-    artifactMarker: "personal-agent-page-template",
-    artifactSha256: crypto.createHash("sha256").update(html).digest("hex"),
-  });
-  assert.match(received.template.contractDigest, /^[a-f0-9]{64}$/);
+  assert.equal("template" in received, false);
 });
 
-test("pages publish rejects an unverified registered template before upload", async () => {
+test("pages publish rejects the retired template option before upload", async () => {
   const working = fs.mkdtempSync(path.join(os.tmpdir(), "pa-cli-pages-template-mismatch-"));
   fs.writeFileSync(path.join(working, "index.html"), "<h1>Unmarked Page</h1>");
   await assert.rejects(execFileAsync(process.execPath, [
@@ -625,7 +597,7 @@ test("pages publish rejects an unverified registered template before upload", as
     cwd: working,
     env: { ...process.env, OPEN_AGENT_BRIDGE_API_BASE: "http://127.0.0.1:1" },
   }), (error) => {
-    assert.match(error.stderr, /Page template artifact marker mismatch/);
+    assert.match(error.stderr, /--template has been retired/);
     assert.doesNotMatch(error.stderr, /ECONNREFUSED/);
     return true;
   });

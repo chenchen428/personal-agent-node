@@ -11,9 +11,16 @@ import { extractZipMember } from '../scripts/lib/zip-member.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 function run(command, args) { return spawnSync(command, args, { cwd: root, encoding: 'utf8' }); }
+function resolveBashCommand() {
+  if (process.platform !== 'win32') return 'bash';
+  const gitExecPath = spawnSync('git', ['--exec-path'], { cwd: root, encoding: 'utf8' });
+  if (gitExecPath.status !== 0) return 'bash';
+  const candidate = path.resolve(gitExecPath.stdout.trim(), '../../..', 'bin', 'bash.exe');
+  return fs.existsSync(candidate) ? candidate : 'bash';
+}
 
 test('customer Harness contains architecture registries and Agent guidance', () => {
-  for (const file of ['AGENTS.md', 'docs/adr/0001-node-product-boundary-freeze.md', 'registry/projects.json', 'registry/skills.json', 'registry/agents.json', 'registry/behavior-baselines.json', 'registry/capabilities.json', 'registry/routes.json', 'registry/extensions.json', 'registry/commands.json', 'registry/product-development.json', 'schemas/personal-agent/agents.schema.json', 'schemas/personal-agent/video-styles.schema.json', 'schemas/personal-agent/product-development.schema.json', 'scripts/agent-guard.mjs', 'agents/video-creator/agent.yaml', 'agents/video-creator/AGENT.md', 'agents/video-creator/STYLE-GUIDE.md', 'agents/video-creator/styles.json', 'agents/interior-designer/agent.yaml', 'agents/interior-designer/AGENT.md', 'agents/travel-planner/agent.yaml', 'agents/travel-planner/AGENT.md', 'agents/poster-designer/agent.yaml', 'agents/poster-designer/AGENT.md', 'agents/finance-analyst/agent.yaml', 'agents/finance-analyst/AGENT.md', 'core/app/public/assets/agent-examples/personal-agent-intro-v1/personal-agent-intro.mp4', 'core/app/public/assets/agent-examples/city-observer-social-cards-v1/xhs-01-cover.png', 'core/app/public/assets/agent-examples/travel-planning-fuzhou-v1/index.html', 'core/app/public/assets/agent-examples/monthly-finance-review-v1/finance-analysis.png', 'workflows/project-iteration.md', 'workflows/skill-iteration.md', 'workflows/product-development.md', 'skills/personal-product-development/references/product-development.md']) assert.equal(fs.existsSync(path.join(root, file)), true, file);
+  for (const file of ['AGENTS.md', 'agents', 'docs/adr/0001-node-product-boundary-freeze.md', 'registry/agents.json', 'registry/projects.json', 'registry/skills.json', 'registry/behavior-baselines.json', 'registry/capabilities.json', 'registry/routes.json', 'registry/extensions.json', 'registry/commands.json', 'registry/product-development.json', 'schemas/personal-agent/agents.schema.json', 'schemas/personal-agent/agent-profile.schema.json', 'schemas/personal-agent/product-development.schema.json', 'scripts/agent-guard.mjs', 'workflows/project-iteration.md', 'workflows/skill-iteration.md', 'workflows/product-development.md', 'skills/personal-product-development/references/product-development.md']) assert.equal(fs.existsSync(path.join(root, file)), true, file);
   const developerGuide = fs.readFileSync(path.join(root, 'AGENTS.md'), 'utf8');
   const customerGuide = fs.readFileSync(path.join(root, 'workspace/AGENTS.md'), 'utf8');
   for (const guide of [developerGuide, customerGuide]) {
@@ -23,6 +30,29 @@ test('customer Harness contains architecture registries and Agent guidance', () 
     assert.match(guide, /must not duplicate|do not[\s\S]*duplicate|不要.*重复/is);
     assert.match(guide, /progress.*final|进度.*最终/is);
   }
+});
+
+test('specialist Agent registry ships five complete public-safe source profiles', () => {
+  const delivery = JSON.parse(fs.readFileSync(path.join(root, 'registry/delivery.json'), 'utf8'));
+  for (const entry of ['AGENTS.md', 'agents', 'registry', 'schemas', 'scripts', 'skills', 'workflows']) {
+    assert.equal(delivery.workspace.harness.includes(entry), true, `delivery harness: ${entry}`);
+  }
+  const registry = JSON.parse(fs.readFileSync(path.join(root, 'registry/agents.json'), 'utf8'));
+  assert.deepEqual(registry.agents.map((entry) => entry.id), [
+    'interior-designer',
+    'poster-designer',
+    'travel-planner',
+    'finance-analyst',
+    'video-creator',
+  ]);
+  for (const entry of registry.agents) {
+    const directory = path.join(root, entry.directory);
+    for (const relative of ['agent.yaml', 'AGENT.md', 'profile.yaml', 'examples/featured-output.json']) {
+      assert.equal(fs.existsSync(path.join(directory, relative)), true, `${entry.id}/${relative}`);
+    }
+  }
+  const guard = run(process.execPath, ['scripts/agent-guard.mjs']);
+  assert.equal(guard.status, 0, `${guard.stdout}\n${guard.stderr}`);
 });
 
 test('installed product development is autonomous, private-root-only, and never targets current', () => {
@@ -66,9 +96,9 @@ test('customer Harness classifies and ships portable creation skills', () => {
     assert.equal(fs.existsSync(path.join(root, `skills/${name}/NOTICE.md`)), true, `${name} notice`);
   }
   const build = fs.readFileSync(path.join(root, 'scripts/build-private-site-node-dist.mjs'), 'utf8');
-  assert.match(build, /\["skills", "workspace\/skills"\]/);
   assert.match(build, /\["agents", "workspace\/agents"\]/);
-  assert.match(build, /\["schemas", "workspace\/schemas"\]/);
+  assert.match(build, /\["skills", "workspace\/skills"\]/);
+  assert.match(build, /"agent-guard\.mjs"/);
   assert.match(build, /copyDirectory\(publicRoot, path\.join\(outputRoot, "core", "app", "public"\)\)/);
 });
 
@@ -132,8 +162,8 @@ test('public dependency metadata uses only the public npm registry', () => {
   assert.match(fs.readFileSync(path.join(root, '.npmrc'), 'utf8'), /^registry=https:\/\/registry\.npmjs\.org\/$/m);
 });
 
-test('project, architecture, and skill guards pass', () => {
-  for (const file of ['scripts/project-guard.mjs', 'scripts/architecture-guard.mjs', 'scripts/skill-guard.mjs']) {
+test('project, architecture, Agent, and skill guards pass', () => {
+  for (const file of ['scripts/project-guard.mjs', 'scripts/architecture-guard.mjs', 'scripts/agent-guard.mjs', 'scripts/skill-guard.mjs']) {
     const result = run(process.execPath, [file, '--working']);
     assert.equal(result.status, 0, `${file}\n${result.stdout}\n${result.stderr}`);
   }
@@ -307,7 +337,7 @@ test('GitHub release builds one self-extracting Relay installer for a public Lin
     assert.match(source, /PERSONAL_AGENT_RELAY/);
     assert.match(source, /sudo bash personal-agent-relay-install\.sh <domain>/);
     assert.doesNotMatch(source, /core\/edge\/src\/self-hosted-relay\.ts/);
-    const syntax = run('bash', ['-n', asset]);
+    const syntax = run(resolveBashCommand(), ['-n', asset]);
     assert.equal(syntax.status, 0, `${syntax.stdout}\n${syntax.stderr}`);
   } finally {
     fs.rmSync(temporary, { recursive: true, force: true });

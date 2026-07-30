@@ -114,13 +114,11 @@ test("daily Token limit automatically replies on WeChat without starting the Age
   }
 });
 
-test("deterministically delegates a matched Page template before the main Agent runs", async () => {
+test("keeps Page routing with the main Agent after template forcing is retired", async () => {
   const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), "oab-orchestrator-page-routing-"));
   const store = new BridgeStore({ dataDir, consoleBaseUrl: "https://agent.example.test" });
   const main = store.getOrCreateDesktopMainSession({ workspaceRoot: dataDir });
   const calls = [];
-  let releaseWorker;
-  const workerGate = new Promise((resolve) => { releaseWorker = resolve; });
   const orchestrator = new SessionOrchestrator({
     store,
     hub: { broadcast: () => {} },
@@ -129,7 +127,6 @@ test("deterministically delegates a matched Page template before the main Agent 
     runner: {
       runAppServerCommand: async (input) => {
         calls.push(input);
-        if (calls.length === 1) await workerGate;
         return { ok: true };
       },
       stopAppServerCommand: () => false,
@@ -144,19 +141,11 @@ test("deterministically delegates a matched Page template before the main Agent 
     await waitFor(() => calls.length === 1);
 
     const children = store.listSessionsPage({ parentSessionId: main.id, limit: 20 }).sessions;
-    assert.equal(children.length, 1);
-    assert.equal(calls[0].sessionId, children[0].id);
-    assert.match(calls[0].stdin, /interior-design-delivery/);
-    assert.match(calls[0].stdin, /interior-design/);
-    assert.match(calls[0].stdin, /fixedFramework/);
-    assert.match(calls[0].stdin, /agentInstructions/);
+    assert.equal(children.length, 0);
+    assert.equal(calls[0].sessionId, main.id);
     assert.match(calls[0].stdin, /90平方米二手房/);
-
-    const messages = store.getSession(main.id).messages;
-    assert.equal(messages.filter((message) => message.role === "user" && message.content === request).length, 1);
-    assert.match(messages.findLast((message) => message.role === "assistant")?.content || "", /已开始处理.*处理中/);
+    assert.doesNotMatch(calls[0].appServerDeveloperInstructions, /pages templates|interior-design-delivery/);
   } finally {
-    releaseWorker?.();
     await waitFor(() => !orchestrator.running.size);
     orchestrator.stop();
     store.close();
@@ -266,63 +255,6 @@ test("main-Agent PATH prefers the stable CLI from the active installation", () =
   assert.equal(entries[0], cliBin);
   assert.equal(entries[1], path.join(installRoot, "bin"));
   assert.equal(entries.at(-1), inherited);
-});
-
-test("specialist Worker sessions persist identity and receive only the selected Agent profile", async () => {
-  const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), "oab-orchestrator-specialist-"));
-  const store = new BridgeStore({ dataDir, consoleBaseUrl: "https://agent.example.test" });
-  const main = store.getOrCreateDesktopMainSession({ workspaceRoot: dataDir });
-  const calls = [];
-  const orchestrator = new SessionOrchestrator({
-    store,
-    hub: { broadcast: () => {} },
-    channels: {},
-    progressTimerEnabled: false,
-    runner: {
-      runAppServerCommand: async (input) => {
-        calls.push(input);
-        return { ok: true };
-      },
-      stopAppServerCommand: () => false,
-    },
-  });
-  try {
-    const worker = await orchestrator.startWorkerSession({
-      parentSessionId: main.id,
-      title: "制作介绍视频",
-      description: "使用 HyperFrames 完成产品介绍短片",
-      task: "制作 Personal Agent 介绍视频",
-      agentId: "video-creator",
-      projectKey: "project_personal_agent_intro",
-    });
-    await waitFor(() => calls.length >= 2 && orchestrator.running.size === 0);
-
-    const stored = store.getSessionRecord(worker.id);
-    assert.equal(stored.metadata.agentId, "video-creator");
-    assert.equal(stored.metadata.agentProfileVersion, 2);
-    assert.equal(stored.metadata.projectKey, "project_personal_agent_intro");
-    assert.match(calls[0].appServerDeveloperInstructions, /专业子 Agent：视频创作（video-creator@2）/);
-    assert.match(calls[0].appServerDeveloperInstructions, /pa-continuous-product-story/);
-    assert.match(calls[0].appServerDeveloperInstructions, /vertical-travel-spark/);
-    assert.match(calls[0].appServerDeveloperInstructions, /产品介绍视频标准/);
-    assert.match(calls[0].appServerDeveloperInstructions, /旅游剪辑标准/);
-    assert.match(calls[1].appServerDeveloperInstructions, /当前安装已注册以下专业子 Agent/);
-    assert.match(calls[1].appServerDeveloperInstructions, /video-creator/);
-    assert.doesNotMatch(calls[1].appServerDeveloperInstructions, /你是 Personal Agent 的视频创作专业子 Agent/);
-
-    assert.throws(() => orchestrator.createWorkerSession({
-      parentSessionId: main.id,
-      title: "未知专业任务",
-      description: "未知专业 Agent 不得静默退回通用任务",
-      task: "work",
-      agentId: "missing-agent",
-      projectKey: "project_missing",
-    }), (error) => error.code === "AGENT_PROFILE_NOT_FOUND" && error.statusCode === 400);
-  } finally {
-    orchestrator.stop();
-    store.close();
-    fs.rmSync(dataDir, { recursive: true, force: true });
-  }
 });
 
 test("recalls current-Space Memory before each real main-Agent user turn only", async () => {
@@ -917,8 +849,11 @@ test("acknowledges WeChat immediately and queues the completed reply behind the 
   assert.match(calls[0].appServerDeveloperInstructions, /负责收集这些状态、向用户汇总有意义的进展/);
   assert.match(calls[0].appServerDeveloperInstructions, /询问任务、进度、完成情况.*禁止创建或续接任务/);
   assert.match(calls[0].appServerDeveloperInstructions, new RegExp(`pa-cli session list --parent ${session.id} --all --json`));
-  assert.match(calls[0].appServerDeveloperInstructions, /pa-cli pages templates list --json/);
-  assert.match(calls[0].appServerDeveloperInstructions, /interior-design-delivery/);
+  assert.match(calls[0].appServerDeveloperInstructions, /interior-designer/);
+  assert.doesNotMatch(calls[0].appServerDeveloperInstructions, /户型证据整理/);
+  assert.doesNotMatch(calls[0].appServerDeveloperInstructions, /项目连续性/);
+  assert.match(calls[0].appServerDeveloperInstructions, /--agent <agentId> --project-key <projectKey>/);
+  assert.doesNotMatch(calls[0].appServerDeveloperInstructions, /pa-cli pages templates list --json/);
   assert.match(calls[0].appServerDeveloperInstructions, /回复开头必须明确说‘任务已完成’或‘任务未完成’/);
   assert.doesNotMatch(calls[0].appServerDeveloperInstructions, /你好，在吗/);
   await waitFor(() => !orchestrator.running.has(session.id));

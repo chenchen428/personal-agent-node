@@ -1,6 +1,6 @@
-import { AgentProfilePage } from "@/components/desktop-v627/agent-profile-page";
+import { AgentProfilePage } from "@/components/agents/agent-profile-page";
 
-export default async function AgentDetailPage({ params }: { params: Promise<{ agentId: string }> }) {
+export default async function Page({ params }: { params: Promise<{ agentId: string }> }) {
   const { agentId } = await params;
-  return <AgentProfilePage agentId={decodeURIComponent(agentId)} />;
+  return <AgentProfilePage agentId={agentId} />;
 }

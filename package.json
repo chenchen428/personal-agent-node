@@ -13,15 +13,14 @@
   },
   "scripts": {
     "app:dev": "next dev core/app",
-    "app:build": "next build core/app",
+    "app:build": "next build core/app --webpack",
     "app:start": "HOSTNAME=127.0.0.1 PORT=8791 node core/app/.next/standalone/core/app/server.js",
     "app:typecheck": "tsc -p core/app/tsconfig.json --noEmit",
+    "test:e2e": "playwright test --config playwright.config.ts",
     "frontend:guard": "node scripts/frontend-architecture-guard.mjs",
     "interior:build-runtime": "node skills/interior-design/scripts/build-pascal-runtime.mjs",
-    "interior:build-template": "node skills/interior-design/scripts/build-template-example.mjs",
-    "interior:verify-template": "node skills/interior-design/scripts/build-template-example.mjs --check",
-    "gift:build-template": "node skills/gift-advisor/scripts/build-template-example.mjs",
-    "gift:verify-template": "node skills/gift-advisor/scripts/build-template-example.mjs --check",
+    "interior:build-agent-delivery": "node skills/interior-design/scripts/build-agent-delivery-example.mjs",
+    "interior:verify-agent-delivery": "node skills/interior-design/scripts/build-agent-delivery-example.mjs --check",
     "core:typecheck": "tsc -p tsconfig.core.json && tsc -p tsconfig.contracts.json",
     "doctor": "node scripts/workspace-doctor.mjs",
     "guard": "node scripts/project-guard.mjs --working && node scripts/architecture-guard.mjs && node scripts/frontend-architecture-guard.mjs && node scripts/skill-guard.mjs --working && node scripts/agent-guard.mjs --working",
@@ -78,6 +77,7 @@
     "zod": "^3.25.76"
   },
   "devDependencies": {
+    "@playwright/test": "^1.61.1",
     "@tailwindcss/postcss": "^4.3.2",
     "@tauri-apps/cli": "2.11.4",
     "@types/node": "^22.0.0",

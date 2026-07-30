@@ -3,10 +3,9 @@ import { NextResponse } from "next/server";
 import { isMobileRequest } from "./lib/request-device";
 
 export function proxy(request: NextRequest) {
-  if (isMobileRequest(request.headers)) {
-    return NextResponse.redirect(new URL("/app/mobile", request.url));
-  }
-  return NextResponse.next();
+  const requestHeaders = new Headers(request.headers);
+  requestHeaders.set("x-personal-agent-responsive-surface", isMobileRequest(request.headers) ? "mobile" : "desktop");
+  return NextResponse.next({ request: { headers: requestHeaders } });
 }
 
 export const config = { matcher: "/app" };

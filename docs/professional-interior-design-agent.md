@@ -2,7 +2,7 @@
 
 状态：已采用
 生产引擎：Pascal v2
-交付模板：`interior-design-delivery` v2
+代表交付：装修设计 Agent delivery v2
 视觉验收：用户负责
 
 ## 1. 方案结论
@@ -11,11 +11,11 @@ Personal Agent Node 的装修设计能力采用一条唯一的生产链路：
 
 `原始材料 → 受治理项目 → Pascal 建筑场景 → 专业质量审计 → 只读 Pages 交付 → 发布`
 
-项目数据、场景、审计和 Page 都属于同一 revision。模板列表中的封面和详情示例也由这条链路生成，不存在单独维护的演示模型、页面编辑器或第二套渲染实现。
+项目数据、场景、审计和 Page 都属于同一 revision。装修 Agent 介绍页中的封面和代表交付也由这条链路生成，不存在单独维护的演示模型、页面编辑器或第二套渲染实现。
 
 Pascal 提供结构化建筑场景、真实门窗节点、楼层与构件语义、确定性序列化和离线 Viewer。Personal Agent 负责证据治理、需求追踪、专业边界、版本控制、质量门禁、隐私、发布和用户会话。
 
-模板的专业质量底线不是“能显示平面图”或“节点数量达标”，而是完整的建筑剖切交付：连续房间地面、连续墙体围护、按真实门窗切开的洞口、阳台栏杆、密集软装和完整轴测构图必须同时成立。主视图固定采用 `professional-mesh-ink` 渲染档位，以 WebGPU 安全的实体建筑墨线、投影、材质层次与完整入镜构图保证稳定呈现，不能依赖可能把安装态画布变空的屏幕后处理。页面固定采用历史 `su-design-classic` 全画布结构：浅色无包边画布、悬浮顶栏、左下 `SU 设计稿 / 户型图 / 用户需求` 三项切换、底部居中视图工具和右下操作提示，不设置永久侧栏；质量审计保留在交付数据中，不增加第四个视觉导航入口。建筑表现层只能从当前 Pascal 场景节点确定性派生；任何退化为孤立墙线、散落家具、平直无层次的预览或只有平面图的产物都视为质量回归。
+代表交付的专业质量底线不是“能显示平面图”或“节点数量达标”，而是完整的建筑剖切交付：连续房间地面、连续墙体围护、按真实门窗切开的洞口、阳台栏杆、密集软装和完整轴测构图必须同时成立。主视图固定采用 `professional-mesh-ink` 渲染档位，以 WebGPU 安全的实体建筑墨线、投影、材质层次与完整入镜构图保证稳定呈现，不能依赖可能把安装态画布变空的屏幕后处理。页面固定采用历史 `su-design-classic` 全画布结构：浅色无包边画布、悬浮顶栏、左下 `SU 设计稿 / 户型图 / 用户需求` 三项切换、底部居中视图工具和右下操作提示，不设置永久侧栏；质量审计保留在交付数据中，不增加第四个视觉导航入口。建筑表现层只能从当前 Pascal 场景节点确定性派生；任何退化为孤立墙线、散落家具、平直无层次的预览或只有平面图的产物都视为质量回归。
 
 ## 2. 产品定位
 
@@ -75,7 +75,7 @@ flowchart LR
   A --> H["内存 Pascal Runtime"]
   H --> S["确定性 scene.json"]
   S --> Q["专业质量门禁"]
-  Q -->|通过| G["interior-design-delivery 生成器"]
+  Q -->|通过| G["装修 Agent 交付生成器"]
   G --> D["离线只读 Page"]
   D --> R["Personal Pages 发布"]
   U -->|修改反馈| O["受限结构化操作"]
@@ -258,7 +258,7 @@ Viewer 在冷启动时自动预热，并以首个有效 Canvas 帧作为 3D 就�
 - 场景和审计哈希一致；
 - 自动阻断数为 0；
 - 户型依据是项目内允许交付的脱敏副本；
-- 模板 ID、版本和 artifact marker 与注册表一致。
+- Agent 身份、代表示例 ID、交付版本和 Pascal 引擎与装修 Agent 的交付合同一致。
 
 输出：
 
@@ -267,41 +267,39 @@ derived/page/
 ├── index.html
 ├── scene.json
 ├── audit.json
-├── template.json
 └── manifest.json
 ```
 
 Page 使用严格 CSP，禁止网络、frame、对象、worker、媒体、外部字体和表单提交。HTML 不包含 Space、Owner、项目、证据、需求或决策的治理 ID。
 
-## 8. 模板与示例产物
+## 8. Agent 代表交付与示例产物
 
-模板注册表位于 `registry/page-templates.json`，只描述固定交付结构、Agent 可变范围、生成命令、验收归属和示例产物路径。
+代表交付合同位于 `agents/interior-designer/examples/featured-delivery.json`，描述固定交付结构、Agent 可变范围、生成命令、验收归属和示例产物路径。它用于介绍装修 Agent 的真实能力，不提供模板选择或复用。
 
 内置示例的生成链路：
 
 ```text
-examples/professional-template/seed.json
+examples/professional-agent-example/seed.json
   → initializeProject
   → compileProjectScene
   → auditProfessionalProject
   → generateProfessionalPage
   → renderProjectCoverSvg
   → manifest/hash verification
-  → core/app/public/assets/templates/interior-design-delivery-v2/
+  → core/app/public/assets/agents/interior-designer/featured/
 ```
 
-`build-template-example.mjs` 使用固定上下文与时间生成：
+`build-agent-delivery-example.mjs` 使用固定上下文与时间生成：
 
 - `index.html`：真实离线交付；
 - `scene.json`：脱敏 Pascal 场景；
 - `audit.json`：专业审计摘要；
-- `template.json`：注册模板合同；
 - `cover.svg`：由当前概念模型派生；
-- `manifest.json`：seed、证据、项目、场景、审计及每个文件的哈希。
+- `manifest.json`：Agent provenance、delivery provenance、seed、证据、项目、场景、审计及每个文件的哈希。
 
-`npm run interior:verify-template` 在临时 Space 中重新执行整条流水线，并逐字节比较提交产物。任何 seed、规则、Viewer、模板或生成器变化未同步更新示例时，检查直接失败。
+`npm run interior:verify-agent-delivery` 在临时 Space 中重新执行整条流水线，并逐字节比较提交产物。任何 seed、规则、Viewer、Agent 交付合同或生成器变化未同步更新示例时，检查直接失败。
 
-模板示例同时执行专业呈现质量下限，防止引擎或模板升级把完整住宅退化为玩具户型：
+代表交付同时执行专业呈现质量下限，防止引擎或交付链升级把完整住宅退化为玩具户型：
 
 - 至少 12 个可识别空间；
 - 至少 30 件由项目数据驱动的程序化家具、柜体与设备；
@@ -315,11 +313,11 @@ examples/professional-template/seed.json
 
 这些指标只约束内置质量基准，不要求客户项目虚构不存在的房间或家具。客户项目仍以真实证据、用户需求和质量门禁为准。
 
-模板目录与详情页只消费这些已验证文件：
+装修 Agent 详情页只消费这些已验证文件：
 
-- 列表卡片使用模型派生的轴测 `cover.svg`；
+- Agent 代表产物使用模型派生的轴测 `cover.svg`；
 - 详情 Web/移动预览在 sandboxed iframe 中加载 `index.html`；
-- “打开示例”路由重定向到同一 `index.html`；
+- 代表产物预览加载同一 `index.html`；
 - 页面中不存在另一份手写装修模型或专用 3D 预览。
 
 ## 9. CLI 合同
@@ -363,7 +361,6 @@ node skills/interior-design/scripts/cli.mjs \
 
 node skills/interior-design/scripts/cli.mjs \
   page \
-  --template interior-design-delivery \
   --project-dir <project-dir> \
   --output <project-dir>/derived/page \
   --json
@@ -407,8 +404,8 @@ node skills/interior-design/scripts/cli.mjs \
 - 专业质量规则覆盖证据、需求、几何、通行、净距、材料、预算、计划和高风险边界；
 - Page 产物离线、严格 CSP、无远程或 loopback 依赖；
 - Page 不暴露治理 ID；
-- 模板示例可重生成且逐字节无漂移；
-- 模板列表、详情和打开示例均消费同一产物；
+- Agent 代表交付可重生成且逐字节无漂移；
+- Agent 详情中的封面和代表交付消费同一产物；
 - 页面携带 `su-design-classic` 结构标记与自动首帧预热合同；
 - 前端组件满足单一职责与 300 行限制；
 - 路由、鉴权、发布和发布包完整。
@@ -431,7 +428,7 @@ node skills/interior-design/scripts/cli.mjs \
 关键文件：
 
 - `registry/interior-design.json`
-- `registry/page-templates.json`
+- `agents/interior-designer/examples/featured-delivery.json`
 - `skills/interior-design/SKILL.md`
 - `skills/interior-design/schemas/project-v2.schema.json`
 - `skills/interior-design/scripts/project-v2.mjs`
@@ -439,9 +436,8 @@ node skills/interior-design/scripts/cli.mjs \
 - `skills/interior-design/scripts/scene-v2.mjs`
 - `skills/interior-design/scripts/quality/`
 - `skills/interior-design/scripts/generate-page-v2.mjs`
-- `skills/interior-design/scripts/build-template-example.mjs`
-- `skills/interior-design/examples/professional-template/`
-- `core/app/public/assets/templates/interior-design-delivery-v2/`
-- `core/app/src/components/page-templates/`
+- `skills/interior-design/scripts/build-agent-delivery-example.mjs`
+- `skills/interior-design/examples/professional-agent-example/`
+- `core/app/public/assets/agents/interior-designer/featured/`
 
-本文件是装修设计 Agent 的当前完整设计基线。实现、模板、测试和发布产物都必须与它保持一致。
+本文件是装修设计 Agent 的当前完整设计基线。实现、Agent 交付合同、测试和发布产物都必须与它保持一致。

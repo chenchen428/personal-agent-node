@@ -49,6 +49,7 @@ test("V6.22 read-only client API is local, searchable and self-contained", async
       OPEN_AGENT_BRIDGE_SCHEDULER: "0",
       OPEN_AGENT_BRIDGE_ALLOW_LOCAL_ONLY_MANAGED_FILES: "1",
       PERSONAL_AGENT_VERSION: "",
+      PERSONAL_AGENT_HOME: "",
     },
     stdio: ["ignore", "pipe", "pipe"],
   });
@@ -73,6 +74,16 @@ test("V6.22 read-only client API is local, searchable and self-contained", async
   assert.equal(conversationSessions.totalSessions, 1);
   assert.equal(conversationSessions.sessions[0].id, conversation.session.id);
   assert.equal(conversationSessions.sessions.some((session) => session.role === "worker"), false);
+
+  const taskDetail = await get(port, token, `/api/node/v1/client/tasks/${encodeURIComponent(conversation.session.id)}`);
+  assert.equal(taskDetail.result.contractVersion, "personal-agent/task-detail-v1");
+  assert.equal(taskDetail.result.task.id, conversation.session.id);
+  assert.deepEqual(taskDetail.result.messages.items, []);
+  assert.equal(taskDetail.result.task.events, undefined);
+  const taskMessages = await get(port, token, `/api/node/v1/client/tasks/${encodeURIComponent(conversation.session.id)}/messages?limit=30`);
+  assert.deepEqual(taskMessages.result.items, []);
+  const legacyTaskDetail = await get(port, token, `/api/sessions/${encodeURIComponent(conversation.session.id)}`);
+  assert.equal(Array.isArray(legacyTaskDetail.session.events), true);
 
   const overviewStartedAt = Date.now();
   const overview = await get(port, token, "/api/node/v1/client/overview");
@@ -118,9 +129,9 @@ test("V6.22 read-only client API is local, searchable and self-contained", async
   assert.deepEqual(earlier.result.items.map((item) => item.sequence), [1, 2, 3, 4, 5]);
   assert.equal(earlier.result.hasEarlier, false);
   assert.equal(await status(port, token, `/api/mobile/tasks/${taskId}/display-events?before=${encodeURIComponent(`${displayTail.result.beforeCursor}x`)}`), 400);
-  const legacyTaskDetail = await get(port, token, `/api/mobile/tasks/${taskId}?messageLimit=20`);
-  assert.equal(legacyTaskDetail.result.session.messages.length, 20);
-  assert.equal(legacyTaskDetail.result.session.messages.at(-1).content, "display-25");
+  const mobileLegacyTaskDetail = await get(port, token, `/api/mobile/tasks/${taskId}?messageLimit=20`);
+  assert.equal(mobileLegacyTaskDetail.result.session.messages.length, 20);
+  assert.equal(mobileLegacyTaskDetail.result.session.messages.at(-1).content, "display-25");
 
   if (process.platform === "win32") {
     const personalWechatSetup = await get(port, token, "/api/connections/wechat-personal/setup");
