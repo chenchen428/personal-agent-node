@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "id": "poster-designer",
+  "version": 1,
+  "displayName": "海报设计 Agent",
+  "description": "负责传播信息提炼、视觉概念、海报、社交卡片、轮播图、封面组合和多规格渲染。",
+  "instructions": "AGENT.md",
+  "profile": "profile.yaml",
+  "skills": [
+    "guizang-social-card-skill",
+    "visual-content",
+    "media-toolkit",
+    "content-workbench",
+    "personal-files"
+  ],
+  "routing": {
+    "domains": [
+      "poster-design",
+      "social-visual",
+      "海报",
+      "社交视觉"
+    ],
+    "summary": "处理海报、社交卡片、轮播图、公众号封面、视觉系列与多规格修订。"
+  }
+}

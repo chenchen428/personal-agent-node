@@ -107,11 +107,11 @@ For each gate, name the decision owner, required input, evidence, acceptance cri
 
 ## Page Delivery
 
-When the user requests a装修设计 Page, an interactive floor-plan delivery, SketchUp/SU presentation, a multi-level model, or a professional home-design Agent, hand the governed project to `$interior-design` and publish through `$personal-pages`. New work uses the Space-owned project v2 workflow: classified evidence, calibrated or explicitly concept-only scale, requirements, assumptions, unknowns, professional verifications, at least two concepts or a single-option reason, Pascal scene compilation, deterministic professional audit, and `interior-design-delivery` v2. Never recreate a similar-looking Page or substitute the configured example.
+When the user requests a 装修设计 Page, an interactive floor-plan delivery, SketchUp/SU presentation, a multi-level model, or a professional home-design Agent, hand the governed project to `$interior-design` and publish through the generic `pa-cli pages publish` contract. New work uses the Space-owned project v2 workflow: classified evidence, calibrated or explicitly concept-only scale, requirements, assumptions, unknowns, professional verifications, at least two concepts or a single-option reason, Pascal scene compilation, deterministic professional audit, and the current interior-designer delivery contract. Never recreate a similar-looking Page or substitute the configured example.
 
 Keep budget, materials, construction stages, and safety hold points in `project.json`; do not move them into untraceable prose. A later user change becomes a structured revision with `baseRevision`, recompile, audit, and new immutable Page artifact. Keep v1 projects on their compatibility path unless a new non-destructive v2 project is requested.
 
-Use deterministic scope, schema, Pascal scene, geometry, OBB clearance, circulation, multi-level, requirement-trace, template-marker, privacy, and publication checks only. Do not open a browser, take screenshots, click through the result, or perform Agent-owned visual acceptance. Return the published Page and leave desktop, mobile, and interaction acceptance to the user.
+Use deterministic scope, schema, Pascal scene, geometry, OBB clearance, circulation, multi-level, requirement-trace, Agent delivery provenance, privacy, and publication checks only. Do not open a browser, take screenshots, click through the result, or perform Agent-owned visual acceptance. Return the published Page and leave desktop, mobile, and interaction acceptance to the user.
 
 ## Safety Boundary
 

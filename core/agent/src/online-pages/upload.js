@@ -5,7 +5,6 @@ import { config } from "../config.js";
 import { sha256Buffer } from "../managed-files/service.js";
 import { assertInside, nextAvailablePath, sanitizeFileName, todayPathSegment, toPublicUrl } from "./path-utils.js";
 import { decodePageThumbnail, pageProperties } from "./page-thumbnail.js";
-import { verifyPageTemplatePublication } from "./template-catalog.js";
 
 const TEXT_ENCODINGS = new Set(["utf8", "utf-8", "text", "plain"]);
 const BINARY_ENCODINGS = new Set(["base64"]);
@@ -128,11 +127,7 @@ export async function publishHtmlPage(input) {
   const desktopThumbnail = decodePageThumbnail(input.desktopThumbnail, { maxBytes: config.maxUploadBytes, variant: "desktop" });
   const mobileThumbnail = decodePageThumbnail(input.mobileThumbnail, { maxBytes: config.maxUploadBytes, variant: "mobile" });
   if (desktopThumbnail.buffer.equals(mobileThumbnail.buffer)) throw new Error("desktop and mobile Page thumbnails must be distinct images");
-  const pageBytes = String(input.encoding || "utf8").toLowerCase() === "base64"
-    ? Buffer.from(String(input.content || ""), "base64")
-    : Buffer.from(String(input.content || ""), "utf8");
-  const template = verifyPageTemplatePublication(input, pageBytes);
-  const properties = pageProperties({ ...input, template }, desktopThumbnail, mobileThumbnail);
+  const properties = pageProperties(input, desktopThumbnail, mobileThumbnail);
   const desktopThumbnailAsset = await uploadStaticAsset({
     fileName: desktopThumbnail.fileName,
     content: desktopThumbnail.buffer.toString("base64"),
@@ -162,7 +157,6 @@ export async function publishHtmlPage(input) {
     visibility: "public",
     thumbnail: desktopMetadata,
     thumbnails: { desktop: desktopMetadata, mobile: mobileMetadata },
-    ...(properties.template ? { template: properties.template } : {}),
     updatedAt,
   };
   await writePageManifest(folder, manifest);

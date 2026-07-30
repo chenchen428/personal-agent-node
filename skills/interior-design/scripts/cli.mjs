@@ -4,7 +4,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { generateProfessionalPage } from './generate-page-v2.mjs';
 import { loadInteriorEnginePolicy } from './engine-policy.mjs';
-import { loadInteriorTemplateContract } from './page-assets.mjs';
+import { loadInteriorDeliveryContract } from './page-assets.mjs';
 import {
   canonicalJson,
   initializeProject,
@@ -144,21 +144,20 @@ async function sceneCommand() {
 }
 
 async function pageCommand() {
-  const currentTemplate = loadInteriorTemplateContract(skillRoot);
-  const requestedTemplate = options.template || currentTemplate.id;
-  if (requestedTemplate !== currentTemplate.id) throw projectError('INVALID_TEMPLATE', `--template must be ${currentTemplate.id}`, 2);
+  if (options.template) throw projectError('INVALID_ARGUMENT', '--template is retired; Page generation uses the current Agent delivery contract', 2);
+  const delivery = loadInteriorDeliveryContract(skillRoot);
   const context = resolveTrustedContext();
   const { projectDir, project } = readProject(required(options['project-dir'], '--project-dir'), context);
   const output = path.resolve(required(options.output, '--output'));
   const derivedRoot = path.resolve(projectDir, 'derived');
   if (!isInside(derivedRoot, output)) throw projectError('PROJECT_OUTPUT_VIOLATION', 'Page output must stay inside the project derived directory', 4);
-  const result = generateProfessionalPage({ projectDir, context, output, skillRoot, template: currentTemplate });
+  const result = generateProfessionalPage({ projectDir, context, output, skillRoot, delivery });
   recordEvent(projectDir, context, project, 'ok', { outputHash: result.manifest.files['index.html'].sha256 });
   emitProjectResult(project, {
     output: path.relative(projectDir, output),
     outputHash: result.manifest.files['index.html'].sha256,
     totalBytes: result.totalBytes,
-    template: result.verification,
+    delivery: result.verification,
     adapterVersion: project.scene.adapterVersion,
     pascal: {
       coreVersion: project.provenance.pascalCoreVersion,

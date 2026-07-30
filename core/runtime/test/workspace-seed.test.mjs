@@ -35,41 +35,109 @@ test("copies new seed files without replacing existing user content", () => {
   }
 });
 
-test("refreshes product-managed page skills and registries without replacing user skills", () => {
+test("refreshes the interior delivery capability and retires the removed Page template product layer", () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "personal-agent-page-capability-seed-"));
   try {
     const releaseRoot = path.join(root, "release");
     const agentWorkspaceRoot = path.join(root, "space", "agent-workspace");
     const dataRoot = path.join(root, "space");
-    for (const skill of ["interior-design", "personal-pages"]) {
-      fs.mkdirSync(path.join(releaseRoot, "workspace", "skills", skill), { recursive: true });
-      fs.mkdirSync(path.join(agentWorkspaceRoot, "skills", skill), { recursive: true });
-      fs.writeFileSync(path.join(releaseRoot, "workspace", "skills", skill, "SKILL.md"), `new ${skill}\n`);
-      fs.writeFileSync(path.join(agentWorkspaceRoot, "skills", skill, "SKILL.md"), `old ${skill}\n`);
-      fs.writeFileSync(path.join(agentWorkspaceRoot, "skills", skill, "removed.txt"), "removed product file\n");
-    }
+    fs.mkdirSync(path.join(releaseRoot, "workspace", "skills", "interior-design"), { recursive: true });
+    fs.mkdirSync(path.join(agentWorkspaceRoot, "skills", "interior-design"), { recursive: true });
+    fs.mkdirSync(path.join(agentWorkspaceRoot, "skills", "personal-pages"), { recursive: true });
+    fs.writeFileSync(path.join(releaseRoot, "workspace", "skills", "interior-design", "SKILL.md"), "new interior-design\n");
+    fs.writeFileSync(path.join(agentWorkspaceRoot, "skills", "interior-design", "SKILL.md"), "old interior-design\n");
+    fs.writeFileSync(path.join(agentWorkspaceRoot, "skills", "interior-design", "removed.txt"), "removed product file\n");
+    fs.writeFileSync(path.join(agentWorkspaceRoot, "skills", "personal-pages", "SKILL.md"), "retired personal-pages\n");
     fs.mkdirSync(path.join(agentWorkspaceRoot, "skills", "user-skill"), { recursive: true });
     fs.writeFileSync(path.join(agentWorkspaceRoot, "skills", "user-skill", "SKILL.md"), "user skill\n");
     fs.mkdirSync(path.join(releaseRoot, "workspace", "registry"), { recursive: true });
     fs.mkdirSync(path.join(agentWorkspaceRoot, "registry"), { recursive: true });
-    for (const file of ["interior-design.json", "page-templates.json", "skills.json"]) {
+    for (const file of ["interior-design.json", "skills.json"]) {
       fs.writeFileSync(path.join(releaseRoot, "workspace", "registry", file), `new ${file}\n`);
       fs.writeFileSync(path.join(agentWorkspaceRoot, "registry", file), `old ${file}\n`);
     }
+    fs.writeFileSync(path.join(agentWorkspaceRoot, "registry", "page-templates.json"), "retired page templates\n");
 
-    const result = seedAgentWorkspace({ agentWorkspaceRoot, dataRoot }, { releaseRoot });
-    assert.equal(result.refreshed, 5);
+    const result = seedAgentWorkspace(
+      { agentWorkspaceRoot, dataRoot },
+      { releaseRoot, now: () => new Date("2026-07-30T01:02:03.000Z") },
+    );
+    assert.equal(result.refreshed, 3);
     assert.deepEqual(result.refreshedPaths, [
       "skills/interior-design",
-      "skills/personal-pages",
       "registry/interior-design.json",
-      "registry/page-templates.json",
       "registry/skills.json",
     ]);
     assert.equal(fs.readFileSync(path.join(agentWorkspaceRoot, "skills", "interior-design", "SKILL.md"), "utf8"), "new interior-design\n");
     assert.equal(fs.existsSync(path.join(agentWorkspaceRoot, "skills", "interior-design", "removed.txt")), false);
     assert.equal(fs.readFileSync(path.join(agentWorkspaceRoot, "skills", "user-skill", "SKILL.md"), "utf8"), "user skill\n");
-    assert.equal(fs.readFileSync(path.join(agentWorkspaceRoot, "registry", "page-templates.json"), "utf8"), "new page-templates.json\n");
+    assert.equal(fs.existsSync(path.join(agentWorkspaceRoot, "skills", "personal-pages")), false);
+    assert.equal(fs.existsSync(path.join(agentWorkspaceRoot, "registry", "page-templates.json")), false);
+    assert.equal(result.retiredSkills.length, 1);
+    assert.equal(result.retiredRegistries.length, 1);
+    assert.equal(fs.readFileSync(path.join(dataRoot, result.retiredSkills[0], "SKILL.md"), "utf8"), "retired personal-pages\n");
+    assert.equal(fs.readFileSync(path.join(dataRoot, result.retiredRegistries[0]), "utf8"), "retired page templates\n");
+
+    const repeated = seedAgentWorkspace({ agentWorkspaceRoot, dataRoot }, { releaseRoot });
+    assert.equal(repeated.refreshed, 0);
+    assert.deepEqual(repeated.refreshedPaths, []);
+    assert.deepEqual(repeated.retiredSkills, []);
+    assert.deepEqual(repeated.retiredRegistries, []);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("refreshes product-managed Agent sources, schemas, registry, and guard on upgrade", () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "personal-agent-agent-source-seed-"));
+  try {
+    const releaseRoot = path.join(root, "release");
+    const seedRoot = path.join(releaseRoot, "workspace");
+    const agentWorkspaceRoot = path.join(root, "space", "agent-workspace");
+    const dataRoot = path.join(root, "space");
+    const managedFiles = [
+      "registry/agents.json",
+      "schemas/personal-agent/agents.schema.json",
+      "schemas/personal-agent/agent-profile.schema.json",
+      "scripts/agent-guard.mjs",
+    ];
+
+    fs.mkdirSync(path.join(seedRoot, "agents", "interior-designer"), { recursive: true });
+    fs.mkdirSync(path.join(agentWorkspaceRoot, "agents", "interior-designer"), { recursive: true });
+    fs.mkdirSync(path.join(agentWorkspaceRoot, "agents", "custom-agent"), { recursive: true });
+    fs.writeFileSync(path.join(seedRoot, "agents", "interior-designer", "agent.yaml"), "new Agent config\n");
+    fs.writeFileSync(path.join(agentWorkspaceRoot, "agents", "interior-designer", "agent.yaml"), "old Agent config\n");
+    fs.writeFileSync(path.join(agentWorkspaceRoot, "agents", "interior-designer", "removed.txt"), "removed product file\n");
+    fs.writeFileSync(path.join(agentWorkspaceRoot, "agents", "custom-agent", "agent.yaml"), "user Agent config\n");
+    for (const agentId of ["poster-designer", "travel-planner", "finance-analyst"]) {
+      fs.mkdirSync(path.join(seedRoot, "agents", agentId), { recursive: true });
+      fs.writeFileSync(path.join(seedRoot, "agents", agentId, "agent.yaml"), `new ${agentId} config\n`);
+    }
+    for (const relative of managedFiles) {
+      fs.mkdirSync(path.dirname(path.join(seedRoot, relative)), { recursive: true });
+      fs.mkdirSync(path.dirname(path.join(agentWorkspaceRoot, relative)), { recursive: true });
+      fs.writeFileSync(path.join(seedRoot, relative), `new ${relative}\n`);
+      fs.writeFileSync(path.join(agentWorkspaceRoot, relative), `old ${relative}\n`);
+    }
+
+    const result = seedAgentWorkspace({ agentWorkspaceRoot, dataRoot }, { releaseRoot });
+    assert.equal(result.refreshed, 5);
+    assert.deepEqual(result.refreshedPaths, [
+      "agents/interior-designer",
+      "registry/agents.json",
+      "schemas/personal-agent/agents.schema.json",
+      "schemas/personal-agent/agent-profile.schema.json",
+      "scripts/agent-guard.mjs",
+    ]);
+    assert.equal(fs.readFileSync(path.join(agentWorkspaceRoot, "agents", "interior-designer", "agent.yaml"), "utf8"), "new Agent config\n");
+    assert.equal(fs.existsSync(path.join(agentWorkspaceRoot, "agents", "interior-designer", "removed.txt")), false);
+    assert.equal(fs.readFileSync(path.join(agentWorkspaceRoot, "agents", "custom-agent", "agent.yaml"), "utf8"), "user Agent config\n");
+    for (const agentId of ["poster-designer", "travel-planner", "finance-analyst"]) {
+      assert.equal(fs.readFileSync(path.join(agentWorkspaceRoot, "agents", agentId, "agent.yaml"), "utf8"), `new ${agentId} config\n`);
+    }
+    for (const relative of managedFiles) {
+      assert.equal(fs.readFileSync(path.join(agentWorkspaceRoot, relative), "utf8"), `new ${relative}\n`);
+    }
 
     const repeated = seedAgentWorkspace({ agentWorkspaceRoot, dataRoot }, { releaseRoot });
     assert.equal(repeated.refreshed, 0);

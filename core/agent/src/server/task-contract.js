@@ -1,3 +1,5 @@
+import { normalizeAgentId, normalizeProjectKey } from "../agents/catalog.js";
+
 export const TASK_TITLE_MAX_LENGTH = 20;
 export const TASK_DESCRIPTION_MAX_LENGTH = 100;
 
@@ -6,6 +8,8 @@ export function normalizeTaskCreate(input = {}) {
   const title = normalizeSingleLine(input.title);
   const description = normalizeSingleLine(input.description ?? input.taskDescription);
   const task = String(input.task || "").trim();
+  const agentId = normalizeAgentId(input.agentId ?? input.agent, { optional: true });
+  const projectKey = normalizeProjectKey(input.projectKey ?? input.project, { optional: true });
 
   if (parentSessionId && !title) throw taskInputError("创建子任务时必须设置标题");
   if (parentSessionId && !description) throw taskInputError("创建子任务时必须设置描述");
@@ -14,7 +18,10 @@ export function normalizeTaskCreate(input = {}) {
     validateTaskText(title, "任务标题", TASK_TITLE_MAX_LENGTH);
     validateTaskText(description, "任务描述", TASK_DESCRIPTION_MAX_LENGTH);
   }
-  return { parentSessionId, title, description, task };
+  if (Boolean(agentId) !== Boolean(projectKey)) {
+    throw taskInputError("专业任务必须同时提供 agentId 和 projectKey");
+  }
+  return { parentSessionId, title, description, task, agentId, projectKey };
 }
 
 export function normalizeTaskPatch(input = {}) {

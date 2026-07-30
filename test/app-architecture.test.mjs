@@ -82,7 +82,7 @@ test("Next.js owns the approved V6.39 mobile client and V7.3 desktop workspace",
   const conversationCss = read("core/app/src/app/desktop-v633-conversation.css");
   const mobileCss = read("core/app/src/app/mobile-current.css");
 
-  for (const route of ["/app/conversations", "/app/workers", "/app/mail", "/app/pages", "/app/data", "/app/connections", "/app/runtime", "/app/apps", "/app/settings", "/app/statistics/token-usage", "/app/update"]) {
+  for (const route of ["/app/conversations", "/app/workers", "/app/mail", "/app/pages", "/app/data", "/app/connections", "/app/agents", "/app/runtime", "/app/apps", "/app/settings", "/app/statistics/token-usage", "/app/update"]) {
     assert.match(desktopNavigationSource, new RegExp(route.replaceAll("/", "\\/")));
   }
   for (const route of ["/app/mobile", "/app/mobile/pages", "/app/mobile/workers", "/app/mobile/apps", "/app/mobile/about"]) {
@@ -458,7 +458,8 @@ test("gateway routes the approved client to Next and its read-only data to the l
   const routes = distribution.routing.paths;
   assert.equal(routes.find((route) => route.key === "app").targetKey, "console");
   assert.equal(routes.find((route) => route.key === "app-pages").targetKey, "console");
-  assert.deepEqual(routes.find((route) => route.key === "template-pages"), { key: "template-pages", prefix: "/template-pages", access: "authenticated", kind: "proxy", targetKey: "console", upstreamPath: "/template-pages" });
+  assert.deepEqual(routes.find((route) => route.key === "app-agents"), { key: "app-agents", prefix: "/app/agents", access: "authenticated", kind: "proxy", targetKey: "console", upstreamPath: "/app/agents" });
+  assert.equal(routes.some((route) => route.key === "template-pages"), false);
   assert.equal(routes.find((route) => route.key === "app-connections").targetKey, "console");
   assert.deepEqual(routes.find((route) => route.key === "app-schedules"), { key: "app-schedules", prefix: "/app/schedules", access: "authenticated", kind: "proxy", targetKey: "console", upstreamPath: "/app/schedules" });
   assert.equal(routes.find((route) => route.key === "api-node-v1").targetKey, "agent");
@@ -469,6 +470,8 @@ test("gateway routes the approved client to Next and its read-only data to the l
   assert.equal(routes.find((route) => route.key === "api-chat").targetKey, "agent");
   assert.deepEqual(routes.find((route) => route.key === "api-token-usage"), { key: "api-token-usage", prefix: "/api/token-usage", access: "authenticated", kind: "proxy", targetKey: "agent", upstreamPath: "/api/token-usage" });
   assert.deepEqual(routeRegistry.routes.find((route) => route.pattern === "/api/token-usage"), { pattern: "/api/token-usage", access: "authenticated", capability: "agent" });
+  assert.deepEqual(routes.find((route) => route.key === "api-agents"), { key: "api-agents", prefix: "/api/agents", access: "authenticated", kind: "proxy", targetKey: "agent", upstreamPath: "/api/agents" });
+  assert.deepEqual(routeRegistry.routes.find((route) => route.pattern === "/api/agents"), { pattern: "/api/agents", access: "authenticated", capability: "agent" });
   assert.deepEqual(routes.find((route) => route.key === "api-connections"), { key: "api-connections", prefix: "/api/connections", access: "authenticated", kind: "proxy", targetKey: "agent", upstreamPath: "/api/connections" });
   const homeRoute = routes.find((route) => route.key === "home");
   const homeHost = distribution.domain.standardHosts.find((host) => host.key === "home");

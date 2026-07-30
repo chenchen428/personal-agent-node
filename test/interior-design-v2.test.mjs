@@ -9,7 +9,7 @@ import test from 'node:test';
 import { loadInteriorEnginePolicy } from '../skills/interior-design/scripts/engine-policy.mjs';
 import { calculateOrthographicZoom } from '../skills/interior-design/scripts/pascal-camera-framing.mjs';
 import { generateProfessionalPage, verifyProfessionalPageHtml } from '../skills/interior-design/scripts/generate-page-v2.mjs';
-import { loadInteriorTemplateContract, loadSourcePlanAsset } from '../skills/interior-design/scripts/page-assets.mjs';
+import { loadInteriorDeliveryContract, loadSourcePlanAsset } from '../skills/interior-design/scripts/page-assets.mjs';
 import { loadPascalRuntimeModule, PascalInteriorAdapter } from '../skills/interior-design/scripts/pascal-adapter.mjs';
 import {
   createProjectFromSeed,
@@ -32,7 +32,7 @@ import {
 
 const root = path.resolve(import.meta.dirname, '..');
 const skillRoot = path.join(root, 'skills/interior-design');
-const exampleRoot = path.join(root, 'skills/interior-design/examples/professional-template');
+const exampleRoot = path.join(root, 'skills/interior-design/examples/professional-agent-example');
 const sourcePlanPath = path.join(exampleRoot, 'source-plan.png');
 const annotationPath = path.join(exampleRoot, 'agent-annotation.png');
 const nativeSeedPath = path.join(exampleRoot, 'seed.json');
@@ -153,7 +153,7 @@ test('governs native v2 project directories, ownership, symlinks, and SQLite ide
 
   const escapeTarget = fs.mkdtempSync(path.join(os.tmpdir(), 'pa-interior-escape-'));
   const symlink = path.join(harness.spaceRoot, 'projects', 'home-renovation-symlink');
-  fs.symlinkSync(escapeTarget, symlink, 'dir');
+  fs.symlinkSync(escapeTarget, symlink, process.platform === 'win32' ? 'junction' : 'dir');
   assert.throws(() => resolveProjectDirectory(symlink, harness.context), /symbolic links/);
 
   const database = new DatabaseSync(path.join(harness.projectDir, '.runtime/pascal.db'));
@@ -164,7 +164,7 @@ test('governs native v2 project directories, ownership, symlinks, and SQLite ide
   const runtimeSymlinkHarness = makeHarness('runtime-symlink');
   const externalRuntime = fs.mkdtempSync(path.join(os.tmpdir(), 'pa-interior-runtime-'));
   fs.rmSync(path.join(runtimeSymlinkHarness.projectDir, '.runtime'), { recursive: true });
-  fs.symlinkSync(externalRuntime, path.join(runtimeSymlinkHarness.projectDir, '.runtime'), 'dir');
+  fs.symlinkSync(externalRuntime, path.join(runtimeSymlinkHarness.projectDir, '.runtime'), process.platform === 'win32' ? 'junction' : 'dir');
   assert.throws(() => readProject(runtimeSymlinkHarness.projectDir, runtimeSymlinkHarness.context), /runtime directory.*symbolic link/);
 });
 
@@ -217,7 +217,7 @@ test('compiles a two-level scene with stair, void guardrail, and level controls'
     context: harness.context,
     output: pageDir,
     skillRoot,
-    template: loadInteriorTemplateContract(skillRoot),
+    delivery: loadInteriorDeliveryContract(skillRoot),
   });
   const duplexHtml = fs.readFileSync(page.indexPath, 'utf8');
   const fallbackPlan = duplexHtml.match(/<svg class="plan-svg" id="model-derived-plan"[\s\S]*?<\/svg>/)?.[0] || '';
@@ -366,15 +366,15 @@ test('generates a deterministic, private, offline Pascal Page v2 with accessible
   const harness = makeHarness('page');
   const compiled = await compileProjectScene(harness.projectDir, harness.context, { baseRevision: 1 });
   assert.equal(compiled.project.status, 'quality_gated');
-  const template = loadInteriorTemplateContract(skillRoot);
+  const delivery = loadInteriorDeliveryContract(skillRoot);
   const firstDir = path.join(harness.projectDir, 'derived', 'page-a');
   const secondDir = path.join(harness.projectDir, 'derived', 'page-b');
-  const first = generateProfessionalPage({ projectDir: harness.projectDir, context: harness.context, output: firstDir, skillRoot, template });
-  const second = generateProfessionalPage({ projectDir: harness.projectDir, context: harness.context, output: secondDir, skillRoot, template });
+  const first = generateProfessionalPage({ projectDir: harness.projectDir, context: harness.context, output: firstDir, skillRoot, delivery });
+  const second = generateProfessionalPage({ projectDir: harness.projectDir, context: harness.context, output: secondDir, skillRoot, delivery });
   const firstHtml = fs.readFileSync(first.indexPath, 'utf8');
   const secondHtml = fs.readFileSync(second.indexPath, 'utf8');
   assert.equal(sha256(firstHtml), sha256(secondHtml));
-  assert.deepEqual(verifyProfessionalPageHtml(firstHtml, template), first.verification);
+  assert.deepEqual(verifyProfessionalPageHtml(firstHtml, delivery), first.verification);
   assert.match(firstHtml, /data-engine="pascal-v2"/);
   assert.match(firstHtml, /id="model-derived-plan"/);
   assert.match(firstHtml, /data-level-mode="exploded"/);
@@ -394,22 +394,22 @@ test('generates a deterministic, private, offline Pascal Page v2 with accessible
   assert.doesNotMatch(firstHtml, /renovation_|concept-open-living|req-continuous-circulation|decision-select-open-living|evidence-source/);
   assert.doesNotMatch(fs.readFileSync(path.join(firstDir, 'scene.json'), 'utf8'), /renovation_|projectId|ownerId|spaceId|sourceId/);
   assert.ok(first.totalBytes < 20 * 1024 * 1024);
-  assert.deepEqual(fs.readdirSync(firstDir).sort(), ['audit.json', 'index.html', 'manifest.json', 'scene.json', 'template.json']);
+  assert.deepEqual(fs.readdirSync(firstDir).sort(), ['audit.json', 'index.html', 'manifest.json', 'scene.json']);
   const preservedHash = sha256(fs.readFileSync(first.indexPath));
   const evidenceDirectory = path.join(harness.projectDir, 'evidence');
   const preservedEvidenceDirectory = path.join(harness.projectDir, 'evidence-preserved');
   const externalEvidenceDirectory = fs.mkdtempSync(path.join(os.tmpdir(), 'pa-interior-evidence-'));
   fs.copyFileSync(sourcePlanPath, path.join(externalEvidenceDirectory, 'source-plan.png'));
   fs.renameSync(evidenceDirectory, preservedEvidenceDirectory);
-  fs.symlinkSync(externalEvidenceDirectory, evidenceDirectory, 'dir');
-  assert.throws(() => generateProfessionalPage({ projectDir: harness.projectDir, context: harness.context, output: firstDir, skillRoot, template }), /evidence directory.*symbolic link/);
+  fs.symlinkSync(externalEvidenceDirectory, evidenceDirectory, process.platform === 'win32' ? 'junction' : 'dir');
+  assert.throws(() => generateProfessionalPage({ projectDir: harness.projectDir, context: harness.context, output: firstDir, skillRoot, delivery }), /evidence directory.*symbolic link/);
   fs.unlinkSync(evidenceDirectory);
   fs.renameSync(preservedEvidenceDirectory, evidenceDirectory);
   const sourcePlanProjectPath = path.join(evidenceDirectory, 'source-plan.png');
   const originalSourcePlan = fs.readFileSync(sourcePlanProjectPath);
   fs.copyFileSync(annotationPath, sourcePlanProjectPath);
   assert.throws(
-    () => generateProfessionalPage({ projectDir: harness.projectDir, context: harness.context, output: firstDir, skillRoot, template }),
+    () => generateProfessionalPage({ projectDir: harness.projectDir, context: harness.context, output: firstDir, skillRoot, delivery }),
     /share one verified model basis/,
   );
   fs.writeFileSync(sourcePlanProjectPath, originalSourcePlan);
@@ -418,7 +418,7 @@ test('generates a deterministic, private, offline Pascal Page v2 with accessible
   blockedAudit.ok = false;
   blockedAudit.blockingCount = 1;
   fs.writeFileSync(auditPath, `${JSON.stringify(blockedAudit, null, 2)}\n`);
-  assert.throws(() => generateProfessionalPage({ projectDir: harness.projectDir, context: harness.context, output: firstDir, skillRoot, template }), /complete project revision|manifest|quality report hash|quality gate blocks/);
+  assert.throws(() => generateProfessionalPage({ projectDir: harness.projectDir, context: harness.context, output: firstDir, skillRoot, delivery }), /complete project revision|manifest|quality report hash|quality gate blocks/);
   assert.equal(sha256(fs.readFileSync(first.indexPath)), preservedHash);
 });
 
@@ -505,7 +505,7 @@ test('keeps warm-cache schema, scene, audit, and Page work inside the v2 perform
     return performance.now() - started;
   });
   await compileProjectScene(harness.projectDir, harness.context, { baseRevision: 1 });
-  const template = loadInteriorTemplateContract(skillRoot);
+  const delivery = loadInteriorDeliveryContract(skillRoot);
   const pageDurations = Array.from({ length: 3 }, (_, index) => {
     const started = performance.now();
     generateProfessionalPage({
@@ -513,7 +513,7 @@ test('keeps warm-cache schema, scene, audit, and Page work inside the v2 perform
       context: harness.context,
       output: path.join(harness.projectDir, 'derived', `performance-page-${index}`),
       skillRoot,
-      template,
+      delivery,
     });
     return performance.now() - started;
   });
@@ -585,7 +585,7 @@ function baseSeed() {
   seed.decisions = [{
     decisionId: 'decision-select-compact-primary',
     summary: 'Select the stable compact fixture for deterministic tests.',
-    rationale: 'The shipping professional template remains free to increase in spatial and furnishing detail.',
+    rationale: 'The shipping professional Agent delivery remains free to increase in spatial and furnishing detail.',
     requirementIds: ['req-continuous-circulation', 'req-furniture-clearance'],
   }];
   return seed;
@@ -596,7 +596,7 @@ function compactRegressionConcept() {
     conceptId: 'concept-compact-primary',
     name: 'Compact primary test concept',
     summary: 'Stable two-room fixture used only by engine regression tests.',
-    tradeoffs: ['This compact fixture isolates deterministic engine behavior from the shipping template.'],
+    tradeoffs: ['This compact fixture isolates deterministic engine behavior from the shipping Agent delivery.'],
     budgetItems: [],
     levels: [{
       levelId: 'ground',

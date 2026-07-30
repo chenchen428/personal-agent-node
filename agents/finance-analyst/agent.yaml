@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "id": "finance-analyst",
+  "version": 1,
+  "displayName": "账务分析 Agent",
+  "description": "负责账单解析、逐笔核对、分类确认、趋势与异常分析、脱敏报告和复核清单。",
+  "instructions": "AGENT.md",
+  "profile": "profile.yaml",
+  "skills": [
+    "content-workbench",
+    "knowledge-capture",
+    "deep-research",
+    "personal-files"
+  ],
+  "routing": {
+    "domains": [
+      "personal-finance-analysis",
+      "transaction-review",
+      "账务分析",
+      "账单核对"
+    ],
+    "summary": "处理个人与家庭账单解析、逐笔核对、消费分类、周期趋势、异常交易和复核交付。"
+  }
+}

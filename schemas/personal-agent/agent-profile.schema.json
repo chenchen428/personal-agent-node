@@ -1,0 +1,225 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://personal-agent.cn/schemas/agent-profile-v1.json",
+  "title": "Personal Agent public specialist Agent profile",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "overview",
+    "skillSummaries",
+    "capabilities",
+    "useWhen",
+    "notFor",
+    "requiredInputs",
+    "workflow",
+    "deliverables",
+    "examples",
+    "limitations",
+    "acceptance",
+    "visualIdentity"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": 1
+    },
+    "overview": {
+      "type": "object",
+      "required": ["role", "tagline"],
+      "properties": {
+        "role": {
+          "type": "string",
+          "minLength": 4,
+          "maxLength": 60
+        },
+        "tagline": {
+          "type": "string",
+          "minLength": 12,
+          "maxLength": 160
+        }
+      },
+      "additionalProperties": false
+    },
+    "skillSummaries": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 12,
+      "items": {
+        "$ref": "#/$defs/skillSummary"
+      }
+    },
+    "capabilities": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 8,
+      "items": {
+        "$ref": "#/$defs/titledDescription"
+      }
+    },
+    "useWhen": {
+      "$ref": "#/$defs/publicList"
+    },
+    "notFor": {
+      "$ref": "#/$defs/publicList"
+    },
+    "requiredInputs": {
+      "$ref": "#/$defs/publicList"
+    },
+    "workflow": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 8,
+      "items": {
+        "$ref": "#/$defs/titledDescription"
+      }
+    },
+    "deliverables": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 8,
+      "items": {
+        "$ref": "#/$defs/deliverable"
+      }
+    },
+    "examples": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 4,
+      "items": {
+        "$ref": "#/$defs/example"
+      }
+    },
+    "limitations": {
+      "$ref": "#/$defs/publicList"
+    },
+    "acceptance": {
+      "$ref": "#/$defs/publicList"
+    },
+    "visualIdentity": {
+      "type": "object",
+      "required": ["accent", "icon", "tone"],
+      "properties": {
+        "accent": {
+          "type": "string",
+          "pattern": "^#[0-9A-Fa-f]{6}$"
+        },
+        "icon": {
+          "type": "string",
+          "pattern": "^[A-Za-z][A-Za-z0-9]{1,39}$"
+        },
+        "tone": {
+          "type": "string",
+          "minLength": 4,
+          "maxLength": 80
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "$defs": {
+    "publicText": {
+      "type": "string",
+      "minLength": 4,
+      "maxLength": 180
+    },
+    "publicList": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 8,
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/publicText"
+      }
+    },
+    "titledDescription": {
+      "type": "object",
+      "required": ["title", "description"],
+      "properties": {
+        "title": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 60
+        },
+        "description": {
+          "type": "string",
+          "minLength": 8,
+          "maxLength": 200
+        }
+      },
+      "additionalProperties": false
+    },
+    "skillSummary": {
+      "type": "object",
+      "required": ["id", "label", "summary"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9-]{1,63}$"
+        },
+        "label": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 60
+        },
+        "summary": {
+          "type": "string",
+          "minLength": 8,
+          "maxLength": 160
+        }
+      },
+      "additionalProperties": false
+    },
+    "deliverable": {
+      "type": "object",
+      "required": ["kind", "title", "description"],
+      "properties": {
+        "kind": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 40
+        },
+        "title": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 80
+        },
+        "description": {
+          "type": "string",
+          "minLength": 8,
+          "maxLength": 200
+        }
+      },
+      "additionalProperties": false
+    },
+    "example": {
+      "type": "object",
+      "required": ["id", "title", "kind", "summary", "metadata"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9-]{2,63}$"
+        },
+        "title": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 80
+        },
+        "kind": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 40
+        },
+        "summary": {
+          "type": "string",
+          "minLength": 8,
+          "maxLength": 200
+        },
+        "metadata": {
+          "type": "string",
+          "pattern": "^examples/[a-z0-9][a-z0-9._-]{1,95}\\.json$"
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

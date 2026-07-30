@@ -2,19 +2,34 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 
-const TEMPLATE_ID = 'interior-design-delivery';
+const DELIVERY_ID = 'interior-c-layout-delivery';
 const MAX_IMAGE_PIXELS = 50_000_000;
 const MAX_IMAGE_DIMENSION = 20_000;
 const MAX_SVG_ELEMENTS = 20_000;
 
-export function loadInteriorTemplateContract(skillRoot) {
-  const registryPath = path.resolve(skillRoot, '..', '..', 'registry', 'page-templates.json');
-  const registry = JSON.parse(fs.readFileSync(registryPath, 'utf8'));
-  const template = registry.templates?.find((item) => item.id === TEMPLATE_ID);
-  if (!template) throw new Error(`registered Page template is missing: ${TEMPLATE_ID}`);
-  if (template.skill !== 'interior-design') throw new Error(`${TEMPLATE_ID} must be linked to interior-design`);
-  if (Number(template.implementation?.version) !== 2) throw new Error(`${TEMPLATE_ID} must use implementation version 2`);
-  return template;
+export function loadInteriorDeliveryContract(skillRoot) {
+  const contractPath = path.resolve(
+    skillRoot,
+    '..',
+    '..',
+    'agents',
+    'interior-designer',
+    'examples',
+    'featured-delivery.json',
+  );
+  const contract = JSON.parse(fs.readFileSync(contractPath, 'utf8'));
+  if (contract.id !== DELIVERY_ID) throw new Error(`representative Agent delivery is missing: ${DELIVERY_ID}`);
+  if (contract.agent?.id !== 'interior-designer' || Number(contract.agent?.version) !== 1) {
+    throw new Error(`${DELIVERY_ID} must belong to interior-designer version 1`);
+  }
+  if (Number(contract.delivery?.version) !== 2 || contract.delivery?.engine !== 'pascal-v2') {
+    throw new Error(`${DELIVERY_ID} must use Pascal delivery version 2`);
+  }
+  if (contract.delivery?.layoutProfile !== 'su-design-classic'
+    || contract.delivery?.renderProfile !== 'professional-mesh-ink') {
+    throw new Error(`${DELIVERY_ID} is missing its approved delivery profiles`);
+  }
+  return contract;
 }
 
 export function loadPlanImageAsset(filePath, { alt = '装修设计图纸' } = {}) {

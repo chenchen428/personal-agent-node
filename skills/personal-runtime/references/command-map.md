@@ -17,7 +17,7 @@ The runtime Skill owns `help`, `status`, `doctor`, `capabilities list|inspect`, 
 - Connections and mail: `$personal-connections`
 - Tasks: `$personal-tasks`
 - Schedules: `$personal-schedules`
-- Pages: `$personal-pages`
+- Pages: use `pa-cli pages` through the [generic Page publishing contract](page-publishing.md); no separate Page Skill or template selection exists.
 - Files: `$personal-files`
 - Data: `$personal-data`
 - Updates: `$personal-updates`

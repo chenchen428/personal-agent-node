@@ -1,6 +1,6 @@
 import type { ComponentType } from "react";
 import {
-  Activity, AppWindow, BarChart3, Bot, Cable, Database, FileText,
+  Activity, AppWindow, BarChart3, Bot, Cable, Database, FileText, Users,
   Gauge, Info, LayoutDashboard, Mail, MessageCircle, Settings,
 } from "lucide-react";
 
@@ -17,6 +17,7 @@ export const desktopNavigationGroups: NavigationGroup[] = [
     { label: "总览", href: "/app", icon: LayoutDashboard },
     { label: "对话", href: "/app/conversations", icon: MessageCircle },
     { label: "连接", href: "/app/connections", icon: Cable },
+    { label: "Agent 团队", href: "/app/agents", icon: Users },
   ] },
   { label: "Agent 组件", items: [
     { label: "任务", href: "/app/workers", icon: Bot },

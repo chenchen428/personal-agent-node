@@ -470,7 +470,16 @@ export class BridgeStore {
     `).all().map((row) => this.getSessionRecord(row.id)).filter(Boolean);
   }
 
-  listSessionsPage({ includeArchived = false, limit = 20, cursor = "", query = "", parentSessionId = "", hydrate = true } = {}) {
+  listSessionsPage({
+    includeArchived = false,
+    limit = 20,
+    cursor = "",
+    query = "",
+    parentSessionId = "",
+    agentId = "",
+    projectKey = "",
+    hydrate = true,
+  } = {}) {
     const pageSize = Math.min(Math.max(Number(limit) || 20, 1), 50);
     const search = String(query || "").trim().slice(0, 200);
     const where = [];
@@ -480,6 +489,16 @@ export class BridgeStore {
     if (parentId) {
       where.push("parent_session_id = ?");
       params.push(parentId);
+    }
+    const specialistAgentId = String(agentId || "").trim();
+    if (specialistAgentId) {
+      where.push("json_extract(metadata_json, '$.agentId') = ?");
+      params.push(specialistAgentId);
+    }
+    const specialistProjectKey = String(projectKey || "").trim();
+    if (specialistProjectKey) {
+      where.push("json_extract(metadata_json, '$.projectKey') = ?");
+      params.push(specialistProjectKey);
     }
     if (search) {
       const pattern = `%${escapeSqlLike(search)}%`;
@@ -507,7 +526,7 @@ export class BridgeStore {
     };
   }
 
-  countSessions({ includeArchived = false, parentSessionId = "" } = {}) {
+  countSessions({ includeArchived = false, parentSessionId = "", agentId = "", projectKey = "" } = {}) {
     const where = [];
     const params = [];
     if (!includeArchived) where.push("status != 'archived'");
@@ -515,6 +534,16 @@ export class BridgeStore {
     if (parentId) {
       where.push("parent_session_id = ?");
       params.push(parentId);
+    }
+    const specialistAgentId = String(agentId || "").trim();
+    if (specialistAgentId) {
+      where.push("json_extract(metadata_json, '$.agentId') = ?");
+      params.push(specialistAgentId);
+    }
+    const specialistProjectKey = String(projectKey || "").trim();
+    if (specialistProjectKey) {
+      where.push("json_extract(metadata_json, '$.projectKey') = ?");
+      params.push(specialistProjectKey);
     }
     const sql = `SELECT COUNT(*) AS count FROM sessions${where.length ? ` WHERE ${where.join(" AND ")}` : ""}`;
     return Number(this.db.prepare(sql).get(...params)?.count || 0);
@@ -3056,6 +3085,7 @@ function eventToMessage(event) {
 }
 
 function rowToSession(row) {
+  const metadata = fromJson(row.metadata_json, {});
   return {
     id: row.id,
     role: row.role,
@@ -3073,7 +3103,12 @@ function rowToSession(row) {
     cliSessionId: row.cli_session_id || null,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
-    metadata: fromJson(row.metadata_json, {}),
+    agentId: metadata.agentId || null,
+    agentProfileVersion: Number.isSafeInteger(Number(metadata.agentProfileVersion))
+      ? Number(metadata.agentProfileVersion)
+      : null,
+    projectKey: metadata.projectKey || null,
+    metadata,
   };
 }
 

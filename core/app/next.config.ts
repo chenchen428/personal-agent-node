@@ -30,15 +30,11 @@ const nextConfig: NextConfig = {
         headers: [{ key: "Cache-Control", value: "private, no-store" }],
       },
       {
-        source: "/template-pages/:path*",
-        headers: [{ key: "Cache-Control", value: "private, no-store" }],
-      },
-      {
         source: "/_next/static/:path*",
         headers: [{ key: "Cache-Control", value: "public, max-age=31536000, immutable" }],
       },
       {
-        source: "/assets/templates/interior-design-delivery-v2/:path*",
+        source: "/assets/agents/:path*",
         headers: [{ key: "Cache-Control", value: "public, max-age=300, must-revalidate" }],
       },
     ];
