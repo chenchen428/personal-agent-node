@@ -1,0 +1,242 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://personal-agent.local/schemas/personal-agent/agents.schema.json",
+  "title": "Personal Agent specialist agent registry",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "agents"],
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "schemaVersion": {
+      "const": 1
+    },
+    "agents": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "version",
+          "displayName",
+          "description",
+          "publicProfile",
+          "directory",
+          "instructions",
+          "skills",
+          "routing",
+          "example"
+        ],
+        "allOf": [
+          {
+            "if": { "required": ["styleGuide"] },
+            "then": { "required": ["styleCatalog"] }
+          },
+          {
+            "if": { "required": ["styleCatalog"] },
+            "then": { "required": ["styleGuide"] }
+          }
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+            "maxLength": 64
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "displayName": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 40
+          },
+          "description": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "publicProfile": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["role", "tagline", "capabilities", "inputs", "outputs", "boundaries"],
+            "properties": {
+              "role": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 80
+              },
+              "tagline": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 160
+              },
+              "capabilities": {
+                "$ref": "#/$defs/publicProfileItems"
+              },
+              "inputs": {
+                "$ref": "#/$defs/publicProfileItems"
+              },
+              "outputs": {
+                "$ref": "#/$defs/publicProfileItems"
+              },
+              "boundaries": {
+                "$ref": "#/$defs/publicProfileItems"
+              }
+            }
+          },
+          "directory": {
+            "type": "string",
+            "pattern": "^agents/[a-z0-9]+(?:-[a-z0-9]+)*$"
+          },
+          "instructions": {
+            "const": "AGENT.md"
+          },
+          "styleGuide": {
+            "const": "STYLE-GUIDE.md"
+          },
+          "styleCatalog": {
+            "const": "styles.json"
+          },
+          "skills": {
+            "type": "array",
+            "minItems": 1,
+            "uniqueItems": true,
+            "items": {
+              "type": "string",
+              "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+            }
+          },
+          "routing": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 32,
+            "uniqueItems": true,
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 80
+            }
+          },
+          "example": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["id", "kind", "eyebrow", "title", "description", "format", "devices", "meta"],
+            "properties": {
+              "id": {
+                "type": "string",
+                "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+              },
+              "kind": {
+                "enum": ["page", "gallery", "image", "video"]
+              },
+              "eyebrow": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 80
+              },
+              "title": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 100
+              },
+              "description": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 300
+              },
+              "format": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 100
+              },
+              "src": {
+                "$ref": "#/$defs/exampleAssetPath"
+              },
+              "poster": {
+                "$ref": "#/$defs/exampleAssetPath"
+              },
+              "items": {
+                "type": "array",
+                "minItems": 2,
+                "maxItems": 12,
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": ["src", "alt"],
+                  "properties": {
+                    "src": {
+                      "$ref": "#/$defs/exampleAssetPath"
+                    },
+                    "alt": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 160
+                    }
+                  }
+                }
+              },
+              "devices": {
+                "type": "array",
+                "minItems": 1,
+                "maxItems": 2,
+                "uniqueItems": true,
+                "items": {
+                  "enum": ["web", "mobile"]
+                }
+              },
+              "meta": {
+                "$ref": "#/$defs/publicProfileItems"
+              }
+            },
+            "allOf": [
+              {
+                "if": {
+                  "properties": { "kind": { "enum": ["page", "image"] } },
+                  "required": ["kind"]
+                },
+                "then": { "required": ["src"] }
+              },
+              {
+                "if": {
+                  "properties": { "kind": { "const": "video" } },
+                  "required": ["kind"]
+                },
+                "then": { "required": ["src", "poster"] }
+              },
+              {
+                "if": {
+                  "properties": { "kind": { "const": "gallery" } },
+                  "required": ["kind"]
+                },
+                "then": { "required": ["items"] }
+              }
+            ]
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "exampleAssetPath": {
+      "type": "string",
+      "pattern": "^/assets/(?:agent-examples|templates)/[A-Za-z0-9._/-]+$",
+      "maxLength": 240
+    },
+    "publicProfileItems": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 8,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 160
+      }
+    }
+  }
+}

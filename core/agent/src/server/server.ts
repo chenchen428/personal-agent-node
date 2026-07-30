@@ -58,6 +58,7 @@ import { authorizationSettings, readAuthorizationMode, withAuthorizationCliFlag,
 import { readDailyTokenLimit, writeDailyTokenLimit } from "../agent/daily-token-limit.ts";
 import { readCodexRuntimeSettings, writeCodexRuntimeSettings } from "../agent/codex-runtime-settings.ts";
 import { discoverAppServerDefaultModel, discoverAppServerModels } from "../agent/app-server-runner.ts";
+import { listAgentProfiles, serializeAgentProfile } from "../agents/registry.js";
 import { shutdownAppServerClient } from "../agent/app-server-client.ts";
 import { managedServiceReadiness } from "../../../runtime/src/cloud-resources.ts";
 import { readCustomDomainBindings } from "../../../runtime/src/custom-domain.ts";
@@ -1595,12 +1596,16 @@ async function handleRequest(request: http.IncomingMessage, response: http.Serve
   if (url.pathname === "/api/sessions" && request.method === "GET") {
     const query = url.searchParams.get("query") || "";
     const parentSessionId = url.searchParams.get("parent") || "";
+    const agentId = url.searchParams.get("agent") || "";
+    const projectKey = url.searchParams.get("project") || "";
     const page = store.listSessionsPage({
       includeArchived: url.searchParams.get("archived") === "1",
       limit: Number(url.searchParams.get("limit") || config.sessionPageSize),
       cursor: url.searchParams.get("cursor") || "",
       query,
       parentSessionId,
+      agentId,
+      projectKey,
       hydrate: false,
     });
     sendJson(response, 200, {
@@ -1609,8 +1614,18 @@ async function handleRequest(request: http.IncomingMessage, response: http.Serve
       totalSessions: store.countSessions({
         includeArchived: url.searchParams.get("archived") === "1",
         parentSessionId,
+        agentId,
+        projectKey,
       }),
       html: renderConsoleSessionsFragment(page.sessions, { empty: !page.sessions.length, search: Boolean(query) }),
+    });
+    return;
+  }
+
+  if (url.pathname === "/api/agents" && request.method === "GET") {
+    sendJson(response, 200, {
+      ok: true,
+      agents: listAgentProfiles(config.workspaceRoot).map(serializeAgentProfile),
     });
     return;
   }
@@ -1622,6 +1637,8 @@ async function handleRequest(request: http.IncomingMessage, response: http.Serve
       title: body.title,
       description: body.description,
       parentSessionId: body.parentSessionId || body.parent,
+      agentId: body.agentId || body.agent,
+      projectKey: body.projectKey || body.project,
       workspaceRoot: body.workspaceRoot || body.workspace,
       createdBy: body.createdBy || "api",
     });

@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "skill": "gift-advisor",
+  "title": "Recipient-first gift discovery and governed recommendation Page",
+  "prompt": "Help choose a birthday gift for a partner without asking for a product category first. Ask focused questions about observable behavior, keep unknown answers neutral, build a diverse in-budget recommendation portfolio, generate the registered gift-advisor-report Page from a Space-owned gift plan, and leave final visual acceptance to the user.",
+  "commands": [
+    "npm run gift:verify-template",
+    "pa-cli pages templates inspect --id gift-advisor-report --json"
+  ],
+  "artifacts": [
+    {
+      "path": "acceptance.md",
+      "label": "Gift advisor workflow and Page contract acceptance"
+    }
+  ]
+}

@@ -1,6 +1,6 @@
 ---
 name: travel-guidebook
-description: Create researched, printable travel guidebooks as self-contained HTML with optional PDF export. Use for 路书, 旅行指南, 行程手册, travel guidebook, trip planner, 自驾游攻略, multi-day itineraries, route books, or turning existing trip notes into a polished guide.
+description: Research, validate, and publish detailed travel itineraries as self-contained HTML with optional PDF export. Use for 旅游规划, 路书, 旅行指南, 行程手册, trip planner, 自驾游攻略, multi-day itineraries, route feasibility, map-backed daily schedules, or turning trip notes into an executable travel Page.
 ---
 
 # Travel Guidebook
@@ -13,6 +13,7 @@ Keep generated work under `publications/travel-guidebook-<slug>/` in the custome
 
 - Read [chapter templates](references/chapter-templates.md) before structuring the guide.
 - Read [layout CSS](references/layout-css.md) before writing HTML.
+- Read [the itinerary contract](references/itinerary-contract.md) before validating or writing a plan.
 - Use [report template](references/report-template.md) for a concise provenance and verification record.
 - Use [HTML-to-PDF script](scripts/html2pdf.mjs) only after the HTML checkpoint.
 
@@ -60,6 +61,13 @@ For every day, verify:
 - late arrival does not create an unsafe or impossible transfer;
 - high-altitude, heat, cold, driving, hiking, and accessibility constraints are handled conservatively.
 
+For travel in China, use `amap-travel-routing` when it is registered and a Web
+service Key is available. Resolve the exact POI before querying each adjacent
+walking, transit, driving, or cycling leg. Preserve normalized snapshots under
+the publication's `amap/` directory and add door-to-door buffers outside the
+provider duration. If the Skill, Key, or network is unavailable, list the exact
+pending queries and keep affected legs marked as estimates.
+
 Do not diagnose medical fitness. For altitude, pregnancy, chronic conditions, or strenuous activity, advise the traveler to seek qualified medical guidance and follow official local safety advice.
 
 Show the route outline when the user requested planning approval. Otherwise continue with reasonable assumptions and list them in the report.
@@ -77,12 +85,20 @@ Use five parts:
 Each day should make these items easy to scan:
 
 - start and end location;
-- transport legs with verified or clearly estimated duration;
+- a time-slot schedule with arrival, visit, departure, meals, rest, and return;
+- transport legs with mode, distance, provider duration, door-to-door duration,
+  query time, and verified or estimated status;
 - two or three priority stops;
-- meal and rest options;
+- selected POI identity, address, area, and a safe AMap search/navigation link;
+- meal and rest options with timing and nearby fallback;
 - booking or timing constraints;
 - fallback for bad weather or closure;
 - one short context paragraph explaining why the place matters.
+
+The complete Page must also include the overnight base, booking priorities,
+budget breakdown, unresolved decisions, and source-status legend. A photo
+journal or destination story without these planning details is not a valid
+representative itinerary.
 
 Write from the traveler's point of view. Keep recommendations selective and explain tradeoffs. Do not fabricate ratings, prices, quotations, history, or availability.
 
@@ -99,6 +115,10 @@ publications/travel-guidebook-<slug>/
 
 Start from the bundled CSS and chapter patterns. Keep CSS and decorative SVG in `index.html`. Remote fonts or icons are optional enhancements; the guide must remain readable when they fail. Use semantic headings, tables that fit print width, visible focus states, sufficient contrast, and print-safe page breaks.
 
+Never expose a Web service Key or call a private-key API from the generated
+browser page. Embed only normalized snapshots and public AMap URI links. The
+text itinerary must remain complete when maps or remote assets fail.
+
 Use the available file-editing tool. Do not construct large files through shell heredocs or command-string concatenation.
 
 ### 6. HTML checkpoint
@@ -107,6 +127,8 @@ Before PDF export:
 
 - verify the HTML opens locally;
 - check that every day, booking constraint, fallback, and source note is present;
+- check that every adjacent route leg has a source status and door-to-door buffer;
+- check that selected POIs are disambiguated and map links do not contain credentials;
 - verify no text is clipped and tables fit A4 width;
 - check links and remove private or local-only paths;
 - ask the user to review the HTML.

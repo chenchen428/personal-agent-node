@@ -268,6 +268,63 @@ test("main-Agent PATH prefers the stable CLI from the active installation", () =
   assert.equal(entries.at(-1), inherited);
 });
 
+test("specialist Worker sessions persist identity and receive only the selected Agent profile", async () => {
+  const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), "oab-orchestrator-specialist-"));
+  const store = new BridgeStore({ dataDir, consoleBaseUrl: "https://agent.example.test" });
+  const main = store.getOrCreateDesktopMainSession({ workspaceRoot: dataDir });
+  const calls = [];
+  const orchestrator = new SessionOrchestrator({
+    store,
+    hub: { broadcast: () => {} },
+    channels: {},
+    progressTimerEnabled: false,
+    runner: {
+      runAppServerCommand: async (input) => {
+        calls.push(input);
+        return { ok: true };
+      },
+      stopAppServerCommand: () => false,
+    },
+  });
+  try {
+    const worker = await orchestrator.startWorkerSession({
+      parentSessionId: main.id,
+      title: "制作介绍视频",
+      description: "使用 HyperFrames 完成产品介绍短片",
+      task: "制作 Personal Agent 介绍视频",
+      agentId: "video-creator",
+      projectKey: "project_personal_agent_intro",
+    });
+    await waitFor(() => calls.length >= 2 && orchestrator.running.size === 0);
+
+    const stored = store.getSessionRecord(worker.id);
+    assert.equal(stored.metadata.agentId, "video-creator");
+    assert.equal(stored.metadata.agentProfileVersion, 2);
+    assert.equal(stored.metadata.projectKey, "project_personal_agent_intro");
+    assert.match(calls[0].appServerDeveloperInstructions, /专业子 Agent：视频创作（video-creator@2）/);
+    assert.match(calls[0].appServerDeveloperInstructions, /pa-continuous-product-story/);
+    assert.match(calls[0].appServerDeveloperInstructions, /vertical-travel-spark/);
+    assert.match(calls[0].appServerDeveloperInstructions, /产品介绍视频标准/);
+    assert.match(calls[0].appServerDeveloperInstructions, /旅游剪辑标准/);
+    assert.match(calls[1].appServerDeveloperInstructions, /当前安装已注册以下专业子 Agent/);
+    assert.match(calls[1].appServerDeveloperInstructions, /video-creator/);
+    assert.doesNotMatch(calls[1].appServerDeveloperInstructions, /你是 Personal Agent 的视频创作专业子 Agent/);
+
+    assert.throws(() => orchestrator.createWorkerSession({
+      parentSessionId: main.id,
+      title: "未知专业任务",
+      description: "未知专业 Agent 不得静默退回通用任务",
+      task: "work",
+      agentId: "missing-agent",
+      projectKey: "project_missing",
+    }), (error) => error.code === "AGENT_PROFILE_NOT_FOUND" && error.statusCode === 400);
+  } finally {
+    orchestrator.stop();
+    store.close();
+    fs.rmSync(dataDir, { recursive: true, force: true });
+  }
+});
+
 test("recalls current-Space Memory before each real main-Agent user turn only", async () => {
   const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), "oab-orchestrator-memory-"));
   const store = new BridgeStore({ dataDir, consoleBaseUrl: "https://agent.example.test" });

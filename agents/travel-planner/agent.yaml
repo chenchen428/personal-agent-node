@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "id": "travel-planner",
+  "version": 1,
+  "displayName": "旅游规划 Agent",
+  "description": "负责旅行约束、POI 与路线核验、逐日可行性、预订节奏和完整规划 Page。",
+  "instructions": "AGENT.md",
+  "skills": [
+    "amap-travel-routing",
+    "travel-guidebook",
+    "deep-research",
+    "knowledge-capture",
+    "content-workbench",
+    "personal-files",
+    "personal-pages"
+  ],
+  "routing": [
+    "travel planning",
+    "trip planner",
+    "itinerary",
+    "route planning",
+    "AMap travel route",
+    "旅游规划",
+    "行程规划",
+    "旅行攻略",
+    "路书",
+    "高德地图查询",
+    "高德路线规划",
+    "亲子旅行",
+    "自驾游攻略"
+  ]
+}

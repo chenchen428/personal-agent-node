@@ -1,0 +1,328 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://personal-agent.local/schemas/personal-agent/video-styles.schema.json",
+  "title": "Personal Agent video creator style catalog",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "catalogVersion",
+    "defaultStyleId",
+    "selectionPolicy",
+    "researchSources",
+    "styles"
+  ],
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "schemaVersion": {
+      "const": 1
+    },
+    "catalogVersion": {
+      "type": "string",
+      "pattern": "^20[0-9]{2}\\.[0-9]{2}$"
+    },
+    "defaultStyleId": {
+      "$ref": "#/$defs/id"
+    },
+    "selectionPolicy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "primaryRequired",
+        "secondaryOptional",
+        "maxSecondarySharePercent",
+        "decisionRecordFields"
+      ],
+      "properties": {
+        "primaryRequired": {
+          "const": true
+        },
+        "secondaryOptional": {
+          "const": true
+        },
+        "maxSecondarySharePercent": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 30
+        },
+        "decisionRecordFields": {
+          "type": "array",
+          "minItems": 6,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    },
+    "researchSources": {
+      "type": "array",
+      "minItems": 5,
+      "items": {
+        "$ref": "#/$defs/researchSource"
+      }
+    },
+    "styles": {
+      "type": "array",
+      "minItems": 3,
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/style"
+      }
+    }
+  },
+  "$defs": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+      "maxLength": 80
+    },
+    "text": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 1000
+    },
+    "textList": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/text"
+      }
+    },
+    "numberRange": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 2,
+      "prefixItems": [
+        {
+          "type": "number",
+          "minimum": 0
+        },
+        {
+          "type": "number",
+          "exclusiveMinimum": 0
+        }
+      ]
+    },
+    "researchSource": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "title",
+        "publisher",
+        "url",
+        "appliedPrinciples"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "title": {
+          "$ref": "#/$defs/text"
+        },
+        "publisher": {
+          "$ref": "#/$defs/text"
+        },
+        "url": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500
+        },
+        "appliedPrinciples": {
+          "$ref": "#/$defs/textList"
+        }
+      }
+    },
+    "style": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "version",
+        "displayName",
+        "category",
+        "summary",
+        "useWhen",
+        "avoidWhen",
+        "referenceBasis",
+        "narrative",
+        "visual",
+        "motion",
+        "audio",
+        "format",
+        "acceptance"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "displayName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 60
+        },
+        "category": {
+          "enum": [
+            "product",
+            "travel",
+            "hybrid"
+          ]
+        },
+        "summary": {
+          "$ref": "#/$defs/text"
+        },
+        "useWhen": {
+          "$ref": "#/$defs/textList"
+        },
+        "avoidWhen": {
+          "$ref": "#/$defs/textList"
+        },
+        "referenceBasis": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/id"
+          }
+        },
+        "narrative": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "arc",
+            "proofRule"
+          ],
+          "properties": {
+            "arc": {
+              "$ref": "#/$defs/textList"
+            },
+            "proofRule": {
+              "$ref": "#/$defs/text"
+            }
+          }
+        },
+        "visual": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "tone",
+            "palette",
+            "typography",
+            "composition"
+          ],
+          "properties": {
+            "tone": {
+              "$ref": "#/$defs/text"
+            },
+            "palette": {
+              "$ref": "#/$defs/textList"
+            },
+            "typography": {
+              "$ref": "#/$defs/text"
+            },
+            "composition": {
+              "$ref": "#/$defs/text"
+            }
+          }
+        },
+        "motion": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "tempo",
+            "shotDurationSeconds",
+            "transitionDurationSeconds",
+            "camera",
+            "transitions",
+            "avoid"
+          ],
+          "properties": {
+            "tempo": {
+              "$ref": "#/$defs/text"
+            },
+            "shotDurationSeconds": {
+              "$ref": "#/$defs/numberRange"
+            },
+            "transitionDurationSeconds": {
+              "$ref": "#/$defs/numberRange"
+            },
+            "camera": {
+              "$ref": "#/$defs/text"
+            },
+            "transitions": {
+              "$ref": "#/$defs/text"
+            },
+            "avoid": {
+              "$ref": "#/$defs/text"
+            }
+          }
+        },
+        "audio": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "bpm",
+            "music",
+            "effects"
+          ],
+          "properties": {
+            "bpm": {
+              "$ref": "#/$defs/numberRange"
+            },
+            "music": {
+              "$ref": "#/$defs/text"
+            },
+            "effects": {
+              "$ref": "#/$defs/text"
+            }
+          }
+        },
+        "format": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "primaryAspect",
+            "durationSeconds",
+            "variants",
+            "captionRule"
+          ],
+          "properties": {
+            "primaryAspect": {
+              "enum": [
+                "16:9",
+                "9:16",
+                "1:1"
+              ]
+            },
+            "durationSeconds": {
+              "$ref": "#/$defs/numberRange"
+            },
+            "variants": {
+              "$ref": "#/$defs/textList"
+            },
+            "captionRule": {
+              "$ref": "#/$defs/text"
+            }
+          }
+        },
+        "acceptance": {
+          "type": "array",
+          "minItems": 3,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/text"
+          }
+        }
+      }
+    }
+  }
+}

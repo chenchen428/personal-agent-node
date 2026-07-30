@@ -1,0 +1,369 @@
+{
+  "$schema": "../schemas/personal-agent/agents.schema.json",
+  "schemaVersion": 1,
+  "agents": [
+    {
+      "id": "video-creator",
+      "version": 2,
+      "displayName": "视频创作",
+      "description": "负责产品介绍视频、功能演示、旅游素材剪辑和社交短视频变体。",
+      "publicProfile": {
+        "role": "影像内容专业 Agent",
+        "tagline": "从目标与素材出发，完成叙事、镜头、剪辑和多端版本的完整交付。",
+        "capabilities": [
+          "把产品能力整理成有证据的演示叙事与镜头脚本",
+          "依据治理后的风格目录选择主风格和必要的辅助风格",
+          "将旅行素材剪成节奏清晰、适配发布平台的短片"
+        ],
+        "inputs": [
+          "传播目标、目标受众与发布渠道",
+          "可用的产品截图、录屏、旅行照片或视频素材",
+          "品牌限制、时长要求与交付截止时间"
+        ],
+        "outputs": [
+          "创作简报、脚本、镜头表与素材清单",
+          "完成剪辑的视频母版及约定的平台变体",
+          "风格选型记录、字幕与交付验收说明"
+        ],
+        "boundaries": [
+          "不虚构产品事实、素材来源或未经验证的效果",
+          "最终审美、节奏与发布效果由用户验收"
+        ]
+      },
+      "directory": "agents/video-creator",
+      "instructions": "AGENT.md",
+      "styleGuide": "STYLE-GUIDE.md",
+      "styleCatalog": "styles.json",
+      "skills": [
+        "hyperframes-video",
+        "media-toolkit",
+        "visual-content",
+        "content-workbench",
+        "deep-research",
+        "personal-files"
+      ],
+      "routing": [
+        "product video",
+        "product launch video",
+        "feature walkthrough",
+        "travel video",
+        "travel edit",
+        "产品介绍视频",
+        "产品演示",
+        "功能演示",
+        "旅游剪辑",
+        "旅行视频",
+        "短视频"
+      ],
+      "example": {
+        "id": "personal-agent-intro",
+        "kind": "video",
+        "eyebrow": "代表产物 · HyperFrames 视频",
+        "title": "Personal Agent 介绍视频",
+        "description": "使用 HyperFrames 制作的 39 秒 16:9 产品介绍短片，展示微信入口、旅行视觉、家庭账务与 3D 家装场景。",
+        "format": "MP4 · 1920×1080 · 30 fps",
+        "src": "/assets/agent-examples/personal-agent-intro-v1/personal-agent-intro.mp4",
+        "poster": "/assets/agent-examples/personal-agent-intro-v1/poster.jpg",
+        "devices": ["web"],
+        "meta": [
+          "39 秒产品叙事",
+          "1920 × 1080 · 30 fps",
+          "工程、海报帧与成片"
+        ]
+      }
+    },
+    {
+      "id": "interior-designer",
+      "version": 1,
+      "displayName": "装修设计 Agent",
+      "description": "负责住宅户型证据、空间策略、可治理 SU 场景、对应概念渲染和专业装修交付。",
+      "publicProfile": {
+        "role": "住宅空间专业 Agent",
+        "tagline": "从户型证据和家庭约束出发，形成可核验、可继续深化的空间设计交付。",
+        "capabilities": [
+          "核对户型证据、家庭需求与关键尺寸约束",
+          "形成空间策略、动线、收纳和主要材料方向",
+          "建立可治理的 SU 场景并保持渲染与模型对应"
+        ],
+        "inputs": [
+          "户型图、现场照片与已有尺寸资料",
+          "家庭成员、生活习惯、预算与工期约束",
+          "风格偏好、保留项与明确不能改动的条件"
+        ],
+        "outputs": [
+          "证据清单、风险与待确认问题",
+          "空间方案、SU 设计稿和对应概念渲染",
+          "装修交付 Page、材料建议与验收说明"
+        ],
+        "boundaries": [
+          "不把未经测量或核验的尺寸当作施工依据",
+          "视觉、交互与最终空间方案由用户验收"
+        ]
+      },
+      "directory": "agents/interior-designer",
+      "instructions": "AGENT.md",
+      "skills": [
+        "home-renovation",
+        "interior-design",
+        "visual-content",
+        "media-toolkit",
+        "personal-files"
+      ],
+      "routing": [
+        "interior design",
+        "home renovation",
+        "floor plan",
+        "SketchUp design",
+        "SU design",
+        "装修设计",
+        "室内设计",
+        "户型改造",
+        "家居布局",
+        "SU 设计稿",
+        "装修渲染稿"
+      ],
+      "example": {
+        "id": "interior-design-delivery-v2",
+        "kind": "page",
+        "eyebrow": "代表产物 · 交互 Page",
+        "title": "C 户型空间设计交付",
+        "description": "把用户户型图、需求版本、可交互 SU 设计稿、对应概念渲染和专业复核说明组织在一个可持续修订的结果中。",
+        "format": "交互 Page · Web / 移动端",
+        "src": "/assets/templates/interior-design-delivery-v2/index.html",
+        "devices": ["web", "mobile"],
+        "meta": [
+          "需求内含户型依据",
+          "设计 / 渲染切换",
+          "场景与生成溯源"
+        ]
+      }
+    },
+    {
+      "id": "travel-planner",
+      "version": 1,
+      "displayName": "旅游规划 Agent",
+      "description": "负责旅行约束、POI 与路线核验、逐日可行性、预订节奏和完整规划 Page。",
+      "publicProfile": {
+        "role": "行程规划专业 Agent",
+        "tagline": "把目的地愿望转成经过地点、路线和节奏核验的可执行行程。",
+        "capabilities": [
+          "梳理同行人、日期、预算、交通与强制约束",
+          "核验 POI、开放信息、路线时间和逐日可行性",
+          "组织预订节奏、备选方案和可执行旅行路书"
+        ],
+        "inputs": [
+          "出发地、目的地、日期、人数与同行人特点",
+          "预算、交通偏好、必去地点与明确避开的安排",
+          "住宿基础、证件条件和已完成的预订"
+        ],
+        "outputs": [
+          "逐日行程、真实路线证据与时间预算",
+          "住宿区域、交通、预订与风险建议",
+          "完整旅行规划 Page 和出发前检查清单"
+        ],
+        "boundaries": [
+          "不使用手写直线或大致点位代替真实路线证据",
+          "价格、开放状态与页面体验以临行复核和用户验收为准"
+        ]
+      },
+      "directory": "agents/travel-planner",
+      "instructions": "AGENT.md",
+      "skills": [
+        "amap-travel-routing",
+        "travel-guidebook",
+        "deep-research",
+        "knowledge-capture",
+        "content-workbench",
+        "personal-files",
+        "personal-pages"
+      ],
+      "routing": [
+        "travel planning",
+        "trip planner",
+        "itinerary",
+        "route planning",
+        "AMap travel route",
+        "旅游规划",
+        "行程规划",
+        "旅行攻略",
+        "路书",
+        "高德地图查询",
+        "高德路线规划",
+        "亲子旅行",
+        "自驾游攻略"
+      ],
+      "example": {
+        "id": "travel-planning-fuzhou-v1",
+        "kind": "page",
+        "eyebrow": "代表产物 · 详细规划 Page",
+        "title": "福州老城水岸 3 晚 4 天",
+        "description": "从双城会合和固定酒店出发，把四个自然日、逐时活动、相邻路段、预订节奏、预算和梅雨季降级方案组织成一页可执行计划。",
+        "format": "历史规划 Page · Web / 移动端",
+        "src": "/assets/agent-examples/travel-planning-fuzhou-v1/index.html",
+        "devices": ["web", "mobile"],
+        "meta": [
+          "4 日逐时路线",
+          "POI 与路段状态",
+          "预算、预订与雨天降级"
+        ]
+      }
+    },
+    {
+      "id": "poster-designer",
+      "version": 1,
+      "displayName": "海报设计 Agent",
+      "description": "负责海报、社交卡片、轮播图和微信封面组合的概念、排版、渲染与系列化修改。",
+      "publicProfile": {
+        "role": "品牌与社交视觉专业 Agent",
+        "tagline": "把传播目标扩展成有辨识度、可跨渠道复用的视觉系列。",
+        "capabilities": [
+          "从长内容中提炼封面主张、阅读节奏与行动信息",
+          "建立与品牌、受众和渠道匹配的视觉概念与版式系统",
+          "在同一概念下完成海报、轮播、社交卡片和封面组合"
+        ],
+        "inputs": [
+          "传播目标、目标受众与发布渠道",
+          "文案、品牌资产、可用素材与目标规格",
+          "参考方向、必须保留的信息和明确禁区"
+        ],
+        "outputs": [
+          "视觉简报、系列结构与母版概念",
+          "目标渠道所需的海报、卡片、轮播和封面文件",
+          "素材来源、裁切策略、导出规格与验收说明"
+        ],
+        "boundaries": [
+          "不伪造人物或产品背书，不使用未获授权的品牌与人物素材",
+          "最终视觉、文字与渠道裁切效果由用户验收"
+        ]
+      },
+      "directory": "agents/poster-designer",
+      "instructions": "AGENT.md",
+      "skills": [
+        "guizang-social-card-skill",
+        "visual-content",
+        "media-toolkit",
+        "content-workbench",
+        "personal-files"
+      ],
+      "routing": [
+        "poster design",
+        "social card design",
+        "carousel design",
+        "wechat cover",
+        "brand visual",
+        "海报设计",
+        "社交卡片",
+        "轮播图",
+        "小红书配图",
+        "公众号封面",
+        "品牌视觉",
+        "活动物料"
+      ],
+      "example": {
+        "id": "city-observer-social-cards-v1",
+        "kind": "gallery",
+        "eyebrow": "代表产物 · 视觉系列",
+        "title": "城市观察社交卡片",
+        "description": "围绕同一个传播钩子，形成封面、信息页、节奏页和结尾行动页组成的完整视觉系列。",
+        "format": "PNG · 1080×1440 · 5 张",
+        "items": [
+          {
+            "src": "/assets/agent-examples/city-observer-social-cards-v1/xhs-01-cover.png",
+            "alt": "城市观察社交卡片第一张：沿着大西洋走了九天"
+          },
+          {
+            "src": "/assets/agent-examples/city-observer-social-cards-v1/xhs-02-route.png",
+            "alt": "城市观察社交卡片第二张：九天旅行路线"
+          },
+          {
+            "src": "/assets/agent-examples/city-observer-social-cards-v1/xhs-03-lisbon.png",
+            "alt": "城市观察社交卡片第三张：里斯本观察"
+          },
+          {
+            "src": "/assets/agent-examples/city-observer-social-cards-v1/xhs-04-people-and-places.png",
+            "alt": "城市观察社交卡片第四张：人与地点"
+          },
+          {
+            "src": "/assets/agent-examples/city-observer-social-cards-v1/xhs-05-closing.png",
+            "alt": "城市观察社交卡片第五张：旅程收束"
+          }
+        ],
+        "devices": ["mobile"],
+        "meta": [
+          "3:4 系列卡片",
+          "多渠道安全区",
+          "同一视觉母版"
+        ]
+      }
+    },
+    {
+      "id": "finance-analyst",
+      "version": 1,
+      "displayName": "账务分析 Agent",
+      "description": "负责账单导入、字段核对、分类归因、异常识别、周期对比和脱敏分析交付。",
+      "publicProfile": {
+        "role": "个人账务与数据分析专业 Agent",
+        "tagline": "把分散账单整理成可核对的流水、清楚的数据结构和可执行的行动。",
+        "capabilities": [
+          "归一账户、日期、币种、金额、交易方和来源字段",
+          "保留逐笔证据并识别重复、缺失、退款、分期和异常交易",
+          "按周期、类别和账户解释变化并形成复核与行动建议"
+        ],
+        "inputs": [
+          "账单、流水、脱敏表格或当前空间中的受治理数据",
+          "账户、币种、统计周期、分类规则与预算目标",
+          "需要重点核对的交易、变化或分析问题"
+        ],
+        "outputs": [
+          "保留来源映射和确认状态的标准化账本",
+          "汇总、结构、趋势、异常和驱动因素分析",
+          "脱敏分析 Page、复核清单与方法说明"
+        ],
+        "boundaries": [
+          "不替代持证会计、税务或投资意见，不承诺收益",
+          "不删除无法解释的证据，不在未授权时发起付款或退款"
+        ]
+      },
+      "directory": "agents/finance-analyst",
+      "instructions": "AGENT.md",
+      "skills": [
+        "personal-data",
+        "personal-files",
+        "content-workbench",
+        "deep-research",
+        "knowledge-capture",
+        "personal-pages"
+      ],
+      "routing": [
+        "data analysis",
+        "financial analysis",
+        "expense analysis",
+        "transaction reconciliation",
+        "budget analysis",
+        "数据分析",
+        "账务分析",
+        "账单分析",
+        "消费分析",
+        "流水核对",
+        "预算分析",
+        "异常交易",
+        "订阅分析"
+      ],
+      "example": {
+        "id": "monthly-finance-review-v1",
+        "kind": "image",
+        "eyebrow": "代表产物 · 分析 Page",
+        "title": "月度账务核对报告",
+        "description": "把账单来源、逐笔核对、分类结构、周期变化和异常行动项组织成可回溯的个人账务分析。",
+        "format": "脱敏分析 Page · Web / 移动端",
+        "src": "/assets/agent-examples/monthly-finance-review-v1/finance-analysis.png",
+        "devices": ["web", "mobile"],
+        "meta": [
+          "126 笔交易可追溯",
+          "分类与异常并列",
+          "敏感字段脱敏"
+        ]
+      }
+    }
+  ]
+}

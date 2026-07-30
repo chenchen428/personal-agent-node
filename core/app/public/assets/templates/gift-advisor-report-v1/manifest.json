@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "templateId": "gift-advisor-report",
+  "templateVersion": 1,
+  "artifactMarker": "personal-agent-page-template",
+  "source": {
+    "kind": "space-owned-gift-advisor-plan-v1",
+    "planSha256": "deea16d10d3ca40b6e9b3a7093ac996c9a70dac263daf3ab94d7df2bc2d83fcf",
+    "recommendationCount": 6,
+    "strategyCount": 3,
+    "locale": "zh-CN",
+    "visualAcceptance": "user"
+  },
+  "files": {
+    "index.html": {
+      "bytes": 51348,
+      "sha256": "d8c64051224c6ca54d0afb59b624ddf2c5e131a2d3b23084e2f14085d4359fa4"
+    },
+    "cover.svg": {
+      "bytes": 3693,
+      "sha256": "ffb3741214d7d0474517228f0667b27ba92b9464023c683b88a157671c9a2df0"
+    }
+  }
+}

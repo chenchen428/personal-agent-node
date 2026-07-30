@@ -1,0 +1,436 @@
+{
+  "schemaVersion": 1,
+  "title": "给知夏的生日礼物提案",
+  "subtitle": "六件真实可买、贴近日常，也保留共同记忆的礼物",
+  "generatedAt": "2026-07-28T10:00:00.000Z",
+  "locale": "zh-CN",
+  "recipient": {
+    "displayName": "知夏",
+    "relationship": "伴侣",
+    "occasion": "生日",
+    "location": "杭州",
+    "ageBand": "25–30 岁",
+    "occupation": "产品设计师",
+    "interests": [
+      "手冲咖啡",
+      "城市散步",
+      "胶片摄影",
+      "安静的周末"
+    ]
+  },
+  "budget": {
+    "currency": "CNY",
+    "min": 300,
+    "max": 800
+  },
+  "intent": "希望她打开礼物时感到你真的留意过她的日常，而不是只收到一件看起来昂贵的东西。",
+  "constraints": [
+    "不送浓香型产品",
+    "避免占地很大的摆件",
+    "不送需要长期订阅的服务",
+    "跨境商品须先确认运费、税费和到货时间"
+  ],
+  "portrait": {
+    "facts": [
+      "她每天早上会自己手冲咖啡，并记录不同豆子的参数",
+      "周末更喜欢两三个人的散步或短途活动",
+      "会保存旅行票根和拍坏但有故事的胶片",
+      "桌面物品不多，但会长期使用真正顺手的工具"
+    ],
+    "inferences": [
+      {
+        "preference": "重视参与过程",
+        "evidence": "会自己调磨豆、水温和冲煮时间",
+        "implication": "适合能让她继续探索、但不替她完成全部过程的礼物"
+      },
+      {
+        "preference": "纪念感偏低调",
+        "evidence": "保留票根和胶片，但很少公开展示",
+        "implication": "共同记忆可以做得私人、克制，不必把名字印在显眼位置"
+      },
+      {
+        "preference": "对日常摩擦敏感",
+        "evidence": "物品不多，却会持续使用真正顺手的工具",
+        "implication": "耐用、好收纳、减少步骤比花哨功能更重要"
+      }
+    ],
+    "unknowns": [
+      "是否已经有带流速显示的咖啡秤",
+      "常用相机的具体型号与背带接口",
+      "生日当天是否能安排完整半天的共同活动"
+    ],
+    "disclaimer": "这是一份基于可观察信息的送礼判断，不是心理诊断；不确定项在购买前仍需要自然确认。"
+  },
+  "strategies": [
+    {
+      "id": "daily-ritual",
+      "label": "日常仪式",
+      "tagline": "把每天都会做的小事变得更好",
+      "rationale": "回应她对过程和手感的投入，让礼物进入高频生活，而不是只在生日当天出现。"
+    },
+    {
+      "id": "shared-memory",
+      "label": "共同记录",
+      "tagline": "一起拍、一起走，再把经历留下来",
+      "rationale": "把摄影兴趣延伸为共同参与的过程，让纪念感发生在真实体验之后。"
+    },
+    {
+      "id": "quiet-surprise",
+      "label": "克制惊喜",
+      "tagline": "有一点意外，但不制造负担",
+      "rationale": "保留拆礼物的惊喜感，同时避开浓烈气味、大体积和复杂维护。"
+    }
+  ],
+  "recommendations": [
+    {
+      "id": "timemore-basic-2-scale",
+      "strategyId": "daily-ritual",
+      "rank": 1,
+      "title": "TIMEMORE 泰摩 Basic 2.0 咖啡秤",
+      "category": "咖啡器具",
+      "productFamily": "咖啡秤",
+      "price": {
+        "currency": "CNY",
+        "min": 390,
+        "max": 520
+      },
+      "summary": "把计时与流速提示放进她每天都在用的冲煮流程，既能减少记录摩擦，也保留自己调整参数的乐趣。",
+      "fitReasons": [
+        "直接对应每天手冲与记录参数的明确习惯",
+        "流速模式适合继续探索不同豆子的冲煮差异",
+        "体积小，不会增加明显收纳负担"
+      ],
+      "watchouts": [
+        "先确认现有咖啡秤是否已经具备流速显示",
+        "跨境下单前确认运费、税费和到货时间"
+      ],
+      "personalization": [
+        "附一张你整理的三组常用豆冲煮记录卡",
+        "把第一包豆子选成你们一起喝过的风味"
+      ],
+      "fitScore": 95,
+      "product": {
+        "brand": "TIMEMORE",
+        "model": "Basic 2.0 Electronic Espresso Scale",
+        "label": "前往 TIMEMORE 官方商品页",
+        "url": "https://www.timemore.com/products/timemore-basic-2-0-electronic-espresso-scale-with-timer",
+        "merchant": "TIMEMORE 官方商城",
+        "checkedAt": "2026-07-28",
+        "availability": "核验时可加入购物车",
+        "listedPrice": {
+          "currency": "USD",
+          "amount": 55,
+          "display": "US$55"
+        },
+        "priceNote": "人民币区间为页面美元标价的估算，运费和税费以结账页为准。",
+        "image": {
+          "url": "https://cdn.shopify.com/s/files/1/0642/9153/7138/files/basic2_6a5e72d4-4a6c-4965-af06-a229184744c3.png?v=1713174597",
+          "alt": "TIMEMORE Basic 2.0 黑色电子咖啡秤官方商品图",
+          "sourceUrl": "https://www.timemore.com/products/timemore-basic-2-0-electronic-espresso-scale-with-timer",
+          "checkedAt": "2026-07-28"
+        }
+      }
+    },
+    {
+      "id": "dji-osmo-mobile-7p",
+      "strategyId": "shared-memory",
+      "rank": 2,
+      "title": "DJI Osmo Mobile 7P 手机云台",
+      "category": "影像工具",
+      "productFamily": "手机云台",
+      "price": {
+        "currency": "CNY",
+        "min": 599,
+        "max": 599
+      },
+      "summary": "让城市散步中的随手记录更稳定，适合两个人轮流拍摄，也比安排一套固定体验更灵活。",
+      "fitReasons": [
+        "同时覆盖城市散步、影像记录和共同参与",
+        "可把普通周末变成持续发生的共同素材",
+        "折叠后便于随身携带"
+      ],
+      "watchouts": [
+        "确认她愿意用手机拍视频，而不只使用胶片相机",
+        "购买前检查手机尺寸与磁吸夹兼容性"
+      ],
+      "personalization": [
+        "附一张只有三个坐标的生日散步路线卡",
+        "散步后剪一段不超过一分钟的共同片段"
+      ],
+      "fitScore": 93,
+      "product": {
+        "brand": "DJI",
+        "model": "Osmo Mobile 7P",
+        "label": "前往 DJI 中国官方商城",
+        "url": "https://store.dji.com/cn/product/osmo-mobile-7?set_region=CN&vid=182991",
+        "merchant": "DJI 大疆商城",
+        "checkedAt": "2026-07-28",
+        "availability": "核验时页面显示可购买",
+        "listedPrice": {
+          "currency": "CNY",
+          "amount": 599,
+          "display": "¥599"
+        },
+        "priceNote": "官方页面标价，不含可能另购的配件。",
+        "image": {
+          "url": "https://se-cdn.djiits.com/stormsend/uploads/92e68e8491dff4b900bf9c9b3b92c27f.png?h=576&thumb=FwiCBQASWOZ%2BgGx0Z2iPtPcqB8h6hYZpSA%3D%3D&w=576",
+          "alt": "DJI Osmo Mobile 7P 灰色手机云台官方商品图",
+          "sourceUrl": "https://store.dji.com/cn/product/osmo-mobile-7?set_region=CN&vid=182991",
+          "checkedAt": "2026-07-28"
+        }
+      }
+    },
+    {
+      "id": "lomography-lomoapparat",
+      "strategyId": "shared-memory",
+      "rank": 3,
+      "title": "Lomography LomoApparat 21 mm 胶片相机",
+      "category": "胶片摄影",
+      "productFamily": "广角胶片相机",
+      "price": {
+        "currency": "CNY",
+        "min": 450,
+        "max": 620
+      },
+      "summary": "21 mm 广角和轻巧机身很适合街头散步，它带来的随机感也与她愿意保留“拍坏但有故事的胶片”一致。",
+      "fitReasons": [
+        "直接回应胶片摄影与城市散步两项明确兴趣",
+        "广角视野适合记录街景和两个人的环境合影",
+        "操作不追求完美，保留偶然性"
+      ],
+      "watchouts": [
+        "确认她能接受全新的胶片机，而不是只想升级现有系统",
+        "将一卷胶卷与冲扫成本计入完整预算"
+      ],
+      "personalization": [
+        "随礼物附一卷适合杭州阴天的高感胶卷",
+        "约定第一卷只拍同一条散步路线"
+      ],
+      "fitScore": 91,
+      "product": {
+        "brand": "Lomography",
+        "model": "LomoApparat 21 mm Wide-angle Camera",
+        "label": "前往 Lomography 官方商品页",
+        "url": "https://shop.lomography.com/us/lomoapparat-black-wide-angle-camera",
+        "merchant": "Lomography 官方商城",
+        "checkedAt": "2026-07-28",
+        "availability": "核验时有货",
+        "listedPrice": {
+          "currency": "USD",
+          "amount": 62.3,
+          "display": "US$62.30"
+        },
+        "priceNote": "人民币区间含一卷基础胶卷的余量；跨境运费、税费另行确认。",
+        "image": {
+          "url": "https://cdn.shop.lomography.com/media/catalog/product/cache/d48ee8365af56e523deee8f9725f2022/l/o/lomoapparat_accessories_still_bigger_on-grey_1.jpg",
+          "alt": "黑色 Lomography LomoApparat 21 mm 广角胶片相机及配件官方商品图",
+          "sourceUrl": "https://shop.lomography.com/us/lomoapparat-black-wide-angle-camera",
+          "checkedAt": "2026-07-28"
+        }
+      }
+    },
+    {
+      "id": "peak-design-everyday-sling",
+      "strategyId": "daily-ritual",
+      "rank": 4,
+      "title": "Peak Design Everyday Sling 3L 摄影包",
+      "category": "日常出行",
+      "productFamily": "摄影斜挎包",
+      "price": {
+        "currency": "CNY",
+        "min": 720,
+        "max": 800
+      },
+      "summary": "把相机、胶卷与日常小物收进一个轻巧斜挎包，适合她物品不多、但在意顺手与收纳秩序的使用方式。",
+      "fitReasons": [
+        "同时回应摄影携带与减少日常摩擦",
+        "3L 体积克制，适合城市散步而非重装出行",
+        "内部分隔可随器材调整"
+      ],
+      "watchouts": [
+        "先确认常用相机和镜头能放进 3L 版本",
+        "美元标价接近预算上限，运费税费可能导致超预算"
+      ],
+      "personalization": [
+        "在内袋放一张手写的散步清单",
+        "颜色优先选择她常穿外套能搭配的黑色"
+      ],
+      "fitScore": 87,
+      "product": {
+        "brand": "Peak Design",
+        "model": "Everyday Sling 3L Black",
+        "label": "前往 Peak Design 官方商品页",
+        "url": "https://www.peakdesign.com/products/everyday-sling?Color=Black&Size=3L",
+        "merchant": "Peak Design 官方商城",
+        "checkedAt": "2026-07-28",
+        "availability": "核验时黑色 3L 可加入购物车",
+        "listedPrice": {
+          "currency": "USD",
+          "amount": 99.95,
+          "display": "US$99.95"
+        },
+        "priceNote": "商品本体已接近预算上限；若跨境费用使总价超过 ¥800，应放弃该项。",
+        "image": {
+          "url": "https://cdn.shopify.com/s/files/1/2986/1172/files/everyday-sling-black-3-1.jpg?crop=center&height=1024&v=1762275667&width=1024",
+          "alt": "Peak Design Everyday Sling 3L 黑色摄影斜挎包官方商品图",
+          "sourceUrl": "https://www.peakdesign.com/products/everyday-sling?Color=Black&Size=3L",
+          "checkedAt": "2026-07-28"
+        }
+      }
+    },
+    {
+      "id": "dji-mic-mini",
+      "strategyId": "quiet-surprise",
+      "rank": 5,
+      "title": "DJI Mic Mini 一拖二无线麦克风套装",
+      "category": "影像配件",
+      "productFamily": "无线麦克风",
+      "price": {
+        "currency": "CNY",
+        "min": 449,
+        "max": 449
+      },
+      "summary": "如果她也愿意记录环境声或短视频，这套轻量麦克风能让散步影像多一层真实的声音记忆。",
+      "fitReasons": [
+        "为共同影像记录增加声音维度",
+        "两个发射器适合两个人同时收音",
+        "套装带充电盒，外出携带更完整"
+      ],
+      "watchouts": [
+        "先确认她确实有视频或声音记录需求",
+        "确认手机接口与接收器版本匹配"
+      ],
+      "personalization": [
+        "第一次使用时录下彼此讲同一张旧照片的故事",
+        "把设备标签写成日期，不使用显眼姓名"
+      ],
+      "fitScore": 82,
+      "product": {
+        "brand": "DJI",
+        "model": "DJI Mic Mini（两发一收，含充电盒）",
+        "label": "前往 DJI 中国官方商城",
+        "url": "https://store.dji.com/cn/product/dji-mic-mini?set_region=CN",
+        "merchant": "DJI 大疆商城",
+        "checkedAt": "2026-07-28",
+        "availability": "核验时中国商城显示可购买",
+        "listedPrice": {
+          "currency": "CNY",
+          "amount": 449,
+          "display": "¥449"
+        },
+        "priceNote": "官方中国商城套装页面标价。",
+        "image": {
+          "url": "https://se-cdn.djiits.com/tpc/uploads/spu/cover/cc67a84b8908fc97d07e5d607d4679b3%40small.png?format=webp",
+          "alt": "DJI Mic Mini 两发一收无线麦克风充电盒套装官方商品图",
+          "sourceUrl": "https://store.dji.com/cn/product/dji-mic-mini?set_region=CN",
+          "checkedAt": "2026-07-28"
+        }
+      }
+    },
+    {
+      "id": "lego-polaroid-onestep",
+      "strategyId": "quiet-surprise",
+      "rank": 6,
+      "title": "LEGO Ideas 宝丽来 OneStep SX-70 相机",
+      "category": "摄影主题收藏",
+      "productFamily": "摄影主题积木",
+      "price": {
+        "currency": "CNY",
+        "min": 580,
+        "max": 740
+      },
+      "summary": "它不是替代真实相机的工具，而是一份有明确摄影语境、又能一起完成的轻松惊喜。",
+      "fitReasons": [
+        "摄影主题与她的胶片兴趣直接相关",
+        "拼搭过程提供一次共同完成的安静周末",
+        "成品尺寸相对克制，可避免大型摆件负担"
+      ],
+      "watchouts": [
+        "确认她不排斥积木和最终摆放成品",
+        "跨境购买前确认运费、税费和送达时间"
+      ],
+      "personalization": [
+        "拼完后用她拍的一张照片做同框小卡",
+        "把包装里的留言写成“这台不用担心拍坏”"
+      ],
+      "fitScore": 79,
+      "product": {
+        "brand": "LEGO",
+        "model": "Ideas Polaroid OneStep SX-70 Camera 21345",
+        "label": "前往 LEGO 官方商品页",
+        "url": "https://www.lego.com/en-us/product/polaroid-onestep-sx-70-camera-21345",
+        "merchant": "LEGO 官方商城",
+        "checkedAt": "2026-07-28",
+        "availability": "核验时美国官方页面显示可购买",
+        "listedPrice": {
+          "currency": "USD",
+          "amount": 79.99,
+          "display": "US$79.99"
+        },
+        "priceNote": "人民币区间按页面美元标价估算，跨境运费与税费以结账页为准。",
+        "image": {
+          "url": "https://www.lego.com/cdn/cs/set/assets/bltb0d4865e1765d9bc/21345.png?dpr=1&fit=bounds&format=jpg&height=1500&quality=80&width=1500",
+          "alt": "LEGO Ideas 宝丽来 OneStep SX-70 相机 21345 官方商品图",
+          "sourceUrl": "https://www.lego.com/en-us/product/polaroid-onestep-sx-70-camera-21345",
+          "checkedAt": "2026-07-28"
+        }
+      }
+    }
+  ],
+  "deliveryPlan": [
+    {
+      "step": "01",
+      "title": "先排除重复与适配风险",
+      "detail": "自然确认她现有咖啡秤、手机接口和常用相机尺寸；不要用明显的购买式盘问。"
+    },
+    {
+      "step": "02",
+      "title": "结账前复核完整成本",
+      "detail": "重新打开官方商品页，核对库存、最终价格、运费、税费和到货日期；完整成本超过 ¥800 就换下一项。"
+    },
+    {
+      "step": "03",
+      "title": "把主礼物与一段话绑定",
+      "detail": "卡片只写一个你真正观察到的细节，例如她认真记下每次水温，而不是泛泛写“希望你喜欢”。"
+    }
+  ],
+  "sources": [
+    {
+      "title": "TIMEMORE Basic 2.0 Electronic Espresso Scale",
+      "url": "https://www.timemore.com/products/timemore-basic-2-0-electronic-espresso-scale-with-timer",
+      "publisher": "TIMEMORE",
+      "checkedAt": "2026-07-28"
+    },
+    {
+      "title": "DJI Osmo Mobile 7P",
+      "url": "https://store.dji.com/cn/product/osmo-mobile-7?set_region=CN&vid=182991",
+      "publisher": "DJI",
+      "checkedAt": "2026-07-28"
+    },
+    {
+      "title": "Lomography LomoApparat 21 mm Wide-angle Camera",
+      "url": "https://shop.lomography.com/us/lomoapparat-black-wide-angle-camera",
+      "publisher": "Lomography",
+      "checkedAt": "2026-07-28"
+    },
+    {
+      "title": "Peak Design Everyday Sling 3L Black",
+      "url": "https://www.peakdesign.com/products/everyday-sling?Color=Black&Size=3L",
+      "publisher": "Peak Design",
+      "checkedAt": "2026-07-28"
+    },
+    {
+      "title": "DJI Mic Mini（两发一收，含充电盒）",
+      "url": "https://store.dji.com/cn/product/dji-mic-mini?set_region=CN",
+      "publisher": "DJI",
+      "checkedAt": "2026-07-28"
+    },
+    {
+      "title": "LEGO Ideas Polaroid OneStep SX-70 Camera 21345",
+      "url": "https://www.lego.com/en-us/product/polaroid-onestep-sx-70-camera-21345",
+      "publisher": "LEGO",
+      "checkedAt": "2026-07-28"
+    }
+  ],
+  "capabilityNote": "商品页、官方图片、页面标价和可购买状态核验于 2026-07-28；跨境商品人民币区间为估算，付款前以结账页为准。"
+}

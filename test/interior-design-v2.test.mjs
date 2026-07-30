@@ -7,6 +7,7 @@ import path from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import test from 'node:test';
 import { loadInteriorEnginePolicy } from '../skills/interior-design/scripts/engine-policy.mjs';
+import { calculateOrthographicZoom } from '../skills/interior-design/scripts/pascal-camera-framing.mjs';
 import { generateProfessionalPage, verifyProfessionalPageHtml } from '../skills/interior-design/scripts/generate-page-v2.mjs';
 import { loadInteriorTemplateContract, loadSourcePlanAsset } from '../skills/interior-design/scripts/page-assets.mjs';
 import { loadPascalRuntimeModule, PascalInteriorAdapter } from '../skills/interior-design/scripts/pascal-adapter.mjs';
@@ -22,6 +23,7 @@ import {
   writeProjectRevision,
 } from '../skills/interior-design/scripts/project-v2.mjs';
 import { auditProfessionalProject } from '../skills/interior-design/scripts/quality/index.mjs';
+import { registerDesignRender } from '../skills/interior-design/scripts/render-v2.mjs';
 import {
   applySceneOperations,
   compileProjectScene,
@@ -34,8 +36,38 @@ const skillRoot = path.join(root, 'skills/interior-design');
 const exampleRoot = path.join(root, 'skills/interior-design/examples/professional-template');
 const sourcePlanPath = path.join(exampleRoot, 'source-plan.png');
 const annotationPath = path.join(exampleRoot, 'agent-annotation.png');
+const renderPath = path.join(exampleRoot, 'su-design-render.png');
+const renderReferencePath = path.join(exampleRoot, 'su-design-reference.jpg');
+const renderPromptPath = path.join(exampleRoot, 'su-design-render-prompt.txt');
 const nativeSeedPath = path.join(exampleRoot, 'seed.json');
 const nativeSeed = JSON.parse(fs.readFileSync(nativeSeedPath, 'utf8'));
+
+test('fits the orthographic floor plan to the available viewport', () => {
+  const projectCamera = fs.readFileSync(
+    path.join(root, 'skills/interior-design/scripts/pascal-project-camera.jsx'),
+    'utf8',
+  );
+  assert.equal(calculateOrthographicZoom({
+    boundsWidth: 15,
+    boundsDepth: 15,
+    viewportWidth: 2048,
+    viewportHeight: 1152,
+  }), 53.76);
+  assert.equal(calculateOrthographicZoom({
+    boundsWidth: 18,
+    boundsDepth: 10,
+    viewportWidth: 1200,
+    viewportHeight: 800,
+  }), 46.666666666666664);
+  assert.equal(calculateOrthographicZoom({
+    boundsWidth: 0,
+    boundsDepth: 0,
+    viewportWidth: 0,
+    viewportHeight: 0,
+  }), 0.7);
+  assert.match(projectCamera, /calculateOrthographicZoom/);
+  assert.match(projectCamera, /api\.zoomTo\(zoom, false\)/);
+});
 
 test('requires Pascal v2 as the only interior-design engine and rejects removed engine paths', () => {
   const current = loadInteriorEnginePolicy({ env: {} });
@@ -58,6 +90,7 @@ test('requires Pascal v2 as the only interior-design engine and rejects removed 
     'Usage:',
     '  interior project <init|validate|audit|recover> --project-dir <space-project-dir>',
     '  interior scene <compile|apply|undo|redo> --project-dir <space-project-dir> --base-revision <n>',
+    '  interior render register --project-dir <space-project-dir> --input <render-image> --reference <su-reference-image> --prompt-file <prompt-file> --generator imagegen --base-revision <n>',
     '  interior page --project-dir <space-project-dir> --output <project-derived-page-dir>',
     '',
   ].join('\n'));
@@ -98,6 +131,43 @@ test('ships a pinned, hash-verified Pascal runtime that works in-process without
     await runtime.close();
   }
   assert.doesNotMatch(fs.readFileSync(path.join(skillRoot, 'assets/pascal-headless.bundle'), 'utf8'), /bun:sqlite/);
+});
+
+test('registers an ImageGen SU render through the governed CLI and rejects a stale revision', async () => {
+  const harness = makeHarness('render-cli');
+  const compiled = await compileProjectScene(harness.projectDir, harness.context, { baseRevision: 1 });
+  const cli = path.join(skillRoot, 'scripts/cli.mjs');
+  const args = [
+    cli,
+    'render',
+    'register',
+    '--project-dir', harness.projectDir,
+    '--input', renderPath,
+    '--reference', renderReferencePath,
+    '--prompt-file', renderPromptPath,
+    '--generator', 'imagegen',
+    '--base-revision', String(compiled.project.revision),
+    '--json',
+  ];
+  const env = {
+    ...process.env,
+    PERSONAL_AGENT_SPACE_ROOT: harness.spaceRoot,
+    PERSONAL_AGENT_SPACE_ID: harness.context.spaceId,
+    PERSONAL_AGENT_OWNER_ID: harness.context.ownerId,
+  };
+  const registered = spawnSync(process.execPath, args, { encoding: 'utf8', env });
+  assert.equal(registered.status, 0, `${registered.stdout}\n${registered.stderr}`);
+  const payload = JSON.parse(registered.stdout);
+  assert.equal(payload.ok, true);
+  assert.equal(payload.render.generator, 'imagegen');
+  assert.match(payload.render.imageSha256, /^[a-f0-9]{64}$/);
+  assert.match(payload.render.referenceImageSha256, /^[a-f0-9]{64}$/);
+  assert.match(payload.render.promptSha256, /^[a-f0-9]{64}$/);
+
+  const staleArgs = args.map((value, index) => (args[index - 1] === '--base-revision' ? '1' : value));
+  const stale = spawnSync(process.execPath, staleArgs, { encoding: 'utf8', env });
+  assert.equal(stale.status, 4);
+  assert.equal(JSON.parse(stale.stdout).error.code, 'REVISION_CONFLICT');
 });
 
 test('governs native v2 project directories, ownership, symlinks, and SQLite identity', () => {
@@ -338,6 +408,18 @@ test('generates a deterministic, private, offline Pascal Page v2 with accessible
   const harness = makeHarness('page');
   const compiled = await compileProjectScene(harness.projectDir, harness.context, { baseRevision: 1 });
   assert.equal(compiled.project.status, 'quality_gated');
+  const registeredRender = registerDesignRender({
+    projectDir: harness.projectDir,
+    context: harness.context,
+    input: renderPath,
+    reference: renderReferencePath,
+    promptFile: renderPromptPath,
+    generator: 'imagegen',
+    baseRevision: compiled.project.revision,
+    now: () => '2026-07-30T00:00:00.000Z',
+  });
+  assert.equal(registeredRender.metadata.sceneSha256, compiled.scene.sceneHash);
+  assert.equal(registeredRender.metadata.generator, 'imagegen');
   const template = loadInteriorTemplateContract(skillRoot);
   const firstDir = path.join(harness.projectDir, 'derived', 'page-a');
   const secondDir = path.join(harness.projectDir, 'derived', 'page-b');
@@ -352,7 +434,7 @@ test('generates a deterministic, private, offline Pascal Page v2 with accessible
   assert.match(firstHtml, /data-level-mode="exploded"/);
   assert.match(firstHtml, /data-label-mode="visible"/);
   assert.match(firstHtml, /data:image\/png;base64/);
-  assert.match(firstHtml, /用户户型图与 Agent 标注/);
+  assert.match(firstHtml, /用户需求与户型依据/);
   assert.match(firstHtml, /用户原图是唯一户型依据/);
   assert.match(firstHtml, new RegExp(compiled.project.provenance.sourcePlanSha256));
   assert.match(firstHtml, /plan-source-image/);
@@ -361,6 +443,24 @@ test('generates a deterministic, private, offline Pascal Page v2 with accessible
   assert.match(firstHtml, /正在装配模型/);
   assert.match(firstHtml, /data-viewer-status/);
   assert.match(firstHtml, /data-layout-profile="su-design-classic"/);
+  assert.match(firstHtml, /data-presentation-panel="render"/);
+  assert.match(firstHtml, /data-presentation="render"/);
+  assert.match(firstHtml, /对应渲染稿/);
+  assert.match(firstHtml, /SU → PHOTOREAL RENDER/);
+  assert.match(firstHtml, /data-presentation-panel="render" data-image-viewer data-image-rotatable/);
+  assert.match(firstHtml, /data-image-zoom="out"/);
+  assert.match(firstHtml, /data-image-zoom="in"/);
+  assert.match(firstHtml, /data-image-rotate="left"/);
+  assert.match(firstHtml, /data-image-rotate="right"/);
+  assert.match(firstHtml, /data-image-rotation/);
+  assert.match(firstHtml, /data-image-reset/);
+  assert.match(firstHtml, /data-presentation-panel="requirements"[\s\S]*plan-source-image[\s\S]*plan-annotation-image/);
+  assert.doesNotMatch(firstHtml, /data-presentation="plan"/);
+  assert.match(firstHtml, /data-presentation="requirements"[\s\S]*class="active"[^>]+data-presentation="model"[^>]+aria-pressed="true"[\s\S]*data-presentation="render"/);
+  assert.match(firstHtml, /IMAGE_ZOOM_STEP=1\.1/);
+  assert.match(firstHtml, /IMAGE_WHEEL_SENSITIVITY=\.0008/);
+  assert.match(firstHtml, /IMAGE_PINCH_SENSITIVITY=\.72/);
+  assert.match(firstHtml, /Math\.exp\(-delta\*IMAGE_WHEEL_SENSITIVITY\)/);
   assert.match(firstHtml, /pascal-viewer-warmup/);
   assert.doesNotMatch(firstHtml, /space-page|owner-page|managedObjectId|file:\/\/|localhost|127\.0\.0\.1|sourceMappingURL/);
   assert.doesNotMatch(firstHtml, /renovation_|concept-open-living|req-continuous-circulation|decision-select-open-living|evidence-source/);

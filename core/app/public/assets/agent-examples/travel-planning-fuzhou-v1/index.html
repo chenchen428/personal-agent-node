@@ -1,0 +1,528 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>福州老城水岸 · 3 晚 4 天可执行行程</title>
+  <style>
+    :root {
+      --paper: #f5f4ef;
+      --surface: #ffffff;
+      --ink: #202522;
+      --muted: #65706a;
+      --line: #d8ddd8;
+      --green: #2f6b55;
+      --blue: #396b82;
+      --coral: #b44e3b;
+      --gold: #9a6a16;
+      --soft-green: #e8f0eb;
+      --soft-blue: #eaf1f4;
+      --soft-coral: #f5e9e6;
+      --soft-gold: #f5efdf;
+      --radius: 8px;
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      color: var(--ink);
+      background: var(--paper);
+      font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
+      font-size: 15px;
+      line-height: 1.65;
+      letter-spacing: 0;
+    }
+    a { color: inherit; }
+    button, a { -webkit-tap-highlight-color: transparent; }
+    button:focus-visible, a:focus-visible { outline: 3px solid rgba(57, 107, 130, .35); outline-offset: 3px; }
+    .shell { width: min(1180px, calc(100% - 40px)); margin: 0 auto; }
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      background: rgba(245, 244, 239, .96);
+      border-bottom: 1px solid var(--line);
+      backdrop-filter: blur(12px);
+    }
+    .topbar .shell { min-height: 56px; display: flex; align-items: center; justify-content: space-between; gap: 24px; }
+    .brand { display: flex; align-items: center; gap: 10px; text-decoration: none; font-weight: 750; }
+    .brand-mark { width: 28px; height: 28px; display: grid; place-items: center; border-radius: 6px; background: var(--ink); color: #fff; font-size: 11px; }
+    nav { display: flex; gap: 18px; color: var(--muted); font-size: 13px; }
+    nav a { text-decoration: none; }
+    nav a:hover { color: var(--ink); }
+
+    .masthead {
+      min-height: 410px;
+      display: grid;
+      grid-template-columns: minmax(0, 1.2fr) minmax(340px, .8fr);
+      align-items: stretch;
+      border-bottom: 1px solid var(--line);
+      background: var(--surface);
+    }
+    .mast-copy { padding: 58px max(28px, calc((100vw - 1180px) / 2)) 44px; padding-right: 48px; }
+    .eyebrow { display: block; margin-bottom: 16px; color: var(--coral); font-size: 12px; font-weight: 800; }
+    h1, h2, h3, p { margin-top: 0; }
+    h1 { max-width: 720px; margin-bottom: 18px; font-family: Georgia, "Songti SC", serif; font-size: 46px; line-height: 1.15; font-weight: 700; letter-spacing: 0; }
+    .lede { max-width: 700px; color: var(--muted); font-size: 17px; }
+    .mast-tags { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 28px; }
+    .tag { padding: 6px 9px; border: 1px solid var(--line); border-radius: 5px; background: var(--paper); color: var(--muted); font-size: 12px; }
+    .trip-facts { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px; margin-top: 38px; border: 1px solid var(--line); background: var(--line); }
+    .trip-facts div { padding: 15px; background: var(--surface); }
+    .trip-facts dt { color: var(--muted); font-size: 11px; }
+    .trip-facts dd { margin: 4px 0 0; font-size: 16px; font-weight: 750; }
+    .route-art {
+      position: relative;
+      min-height: 410px;
+      overflow: hidden;
+      background: #dfe9e4;
+      border-left: 1px solid var(--line);
+    }
+    .route-art svg { width: 100%; height: 100%; min-height: 410px; display: block; }
+    .route-caption {
+      position: absolute;
+      left: 20px;
+      right: 20px;
+      bottom: 18px;
+      padding: 12px 14px;
+      border: 1px solid rgba(255,255,255,.7);
+      border-radius: 6px;
+      background: rgba(255,255,255,.9);
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    main { padding: 54px 0 90px; }
+    .section { padding: 52px 0; border-bottom: 1px solid var(--line); }
+    .section:first-child { padding-top: 0; }
+    .section-heading { display: grid; grid-template-columns: 150px minmax(0, 1fr); gap: 24px; margin-bottom: 28px; }
+    .section-heading span { color: var(--muted); font-size: 12px; font-weight: 800; }
+    .section-heading h2 { margin-bottom: 8px; font-family: Georgia, "Songti SC", serif; font-size: 30px; line-height: 1.25; letter-spacing: 0; }
+    .section-heading p { max-width: 720px; margin-bottom: 0; color: var(--muted); }
+    .overview-grid { display: grid; grid-template-columns: 1.1fr .9fr; gap: 28px; }
+    .constraint-list { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+    .constraint {
+      min-height: 120px;
+      padding: 18px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--surface);
+    }
+    .constraint small { display: block; margin-bottom: 8px; color: var(--muted); font-size: 11px; font-weight: 800; }
+    .constraint strong { display: block; margin-bottom: 6px; font-size: 16px; }
+    .constraint p { margin: 0; color: var(--muted); font-size: 13px; }
+    .decision-list { margin: 0; padding: 0; list-style: none; border-top: 1px solid var(--line); }
+    .decision-list li { display: grid; grid-template-columns: 86px 1fr; gap: 14px; padding: 15px 0; border-bottom: 1px solid var(--line); }
+    .decision-list span { color: var(--coral); font-size: 12px; font-weight: 800; }
+    .decision-list strong { display: block; margin-bottom: 3px; }
+    .decision-list p { margin: 0; color: var(--muted); font-size: 13px; }
+
+    .day-tabs {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 1px;
+      margin-bottom: 24px;
+      border: 1px solid var(--line);
+      background: var(--line);
+    }
+    .day-tab {
+      min-height: 66px;
+      padding: 10px;
+      border: 0;
+      border-radius: 0;
+      background: var(--surface);
+      color: var(--muted);
+      cursor: pointer;
+      text-align: left;
+      font: inherit;
+    }
+    .day-tab span { display: block; font-size: 11px; font-weight: 800; }
+    .day-tab strong { display: block; margin-top: 3px; color: var(--ink); font-size: 14px; }
+    .day-tab[aria-selected="true"] { background: var(--ink); color: #ced7d2; }
+    .day-tab[aria-selected="true"] strong { color: #fff; }
+    .day-panel[hidden] { display: none; }
+    .day-hero { display: grid; grid-template-columns: 1fr auto; gap: 20px; align-items: end; margin-bottom: 20px; }
+    .day-hero small { color: var(--coral); font-weight: 800; }
+    .day-hero h3 { margin: 5px 0 6px; font-family: Georgia, "Songti SC", serif; font-size: 26px; letter-spacing: 0; }
+    .day-hero p { margin: 0; color: var(--muted); }
+    .load-badge { padding: 8px 10px; border-radius: 5px; background: var(--soft-green); color: var(--green); font-size: 12px; font-weight: 800; }
+    .day-layout { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(300px, .65fr); gap: 24px; align-items: start; }
+    .timeline { position: relative; padding-left: 30px; }
+    .timeline::before { content: ""; position: absolute; top: 8px; bottom: 8px; left: 9px; width: 1px; background: var(--line); }
+    .event { position: relative; display: grid; grid-template-columns: 78px minmax(0, 1fr); gap: 14px; padding: 0 0 22px; }
+    .event::before { content: ""; position: absolute; left: -26px; top: 7px; width: 9px; height: 9px; border: 3px solid var(--surface); border-radius: 50%; background: var(--coral); box-shadow: 0 0 0 1px var(--coral); }
+    .event time { color: var(--muted); font-size: 13px; font-variant-numeric: tabular-nums; }
+    .event-card { padding: 15px 16px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); }
+    .event-card header { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+    .event-card h4 { margin: 0; font-size: 15px; }
+    .kind { flex: none; padding: 3px 7px; border-radius: 4px; background: var(--soft-blue); color: var(--blue); font-size: 10px; font-weight: 800; }
+    .event-card p { margin: 8px 0 0; color: var(--muted); font-size: 13px; }
+    .event-meta { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 10px; }
+    .event-meta span { padding: 4px 7px; border-radius: 4px; background: var(--paper); color: var(--muted); font-size: 11px; }
+    .leg {
+      margin: -10px 0 18px 92px;
+      padding: 10px 12px;
+      border-left: 3px solid var(--blue);
+      background: var(--soft-blue);
+      color: #365564;
+      font-size: 12px;
+    }
+    .leg strong { color: var(--ink); }
+    .day-side { display: grid; gap: 14px; }
+    .side-block { padding: 17px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); }
+    .side-block h4 { margin: 0 0 10px; font-size: 14px; }
+    .side-block p { margin: 0; color: var(--muted); font-size: 12px; }
+    .side-block ul { margin: 10px 0 0; padding-left: 18px; color: var(--muted); font-size: 12px; }
+    .route-stack { display: grid; gap: 8px; margin-top: 12px; }
+    .route-stack div { display: grid; grid-template-columns: 68px 1fr auto; gap: 8px; align-items: center; padding-top: 8px; border-top: 1px solid var(--line); font-size: 11px; }
+    .route-stack b { color: var(--blue); }
+    .route-stack span { color: var(--muted); }
+    .status { padding: 3px 6px; border-radius: 4px; background: var(--soft-gold); color: var(--gold); font-size: 10px; font-weight: 800; }
+    .fallback { border-color: #ead0c9; background: var(--soft-coral); }
+
+    .table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); }
+    table { width: 100%; border-collapse: collapse; min-width: 760px; }
+    th, td { padding: 13px 14px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+    th { background: #eceeea; color: var(--muted); font-size: 11px; }
+    td { font-size: 12px; }
+    tr:last-child td { border-bottom: 0; }
+    td strong { display: block; font-size: 13px; }
+    td small { color: var(--muted); }
+    .map-link { display: inline-flex; align-items: center; gap: 5px; color: var(--blue); font-weight: 750; text-decoration: none; }
+    .map-link:hover { text-decoration: underline; }
+    .action-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+    .action-group { padding: 18px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); }
+    .action-group small { color: var(--coral); font-weight: 800; }
+    .action-group h3 { margin: 4px 0 12px; font-size: 16px; }
+    .action-group ul { margin: 0; padding-left: 18px; color: var(--muted); font-size: 13px; }
+    .budget-grid { display: grid; grid-template-columns: .8fr 1.2fr; gap: 24px; }
+    .budget-total { padding: 26px; background: var(--ink); color: #fff; border-radius: var(--radius); }
+    .budget-total small { color: #bdc6c1; }
+    .budget-total strong { display: block; margin: 6px 0 0; font-size: 36px; }
+    .budget-total p { margin: 10px 0 0; color: #bdc6c1; font-size: 12px; }
+    .budget-list { border-top: 1px solid var(--line); }
+    .budget-list div { display: grid; grid-template-columns: 1fr auto; padding: 12px 0; border-bottom: 1px solid var(--line); }
+    .budget-list span { color: var(--muted); }
+    .source-note { display: grid; grid-template-columns: 160px 1fr; gap: 20px; padding: 16px 0; border-top: 1px solid var(--line); }
+    .source-note strong { font-size: 12px; }
+    .source-note p { margin: 0; color: var(--muted); font-size: 12px; }
+    .legend { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 20px; }
+    .legend span { padding: 5px 8px; border-radius: 4px; font-size: 11px; }
+    .legend .historical { background: var(--soft-gold); color: var(--gold); }
+    .legend .estimate { background: var(--soft-blue); color: var(--blue); }
+    .legend .pending { background: var(--soft-coral); color: var(--coral); }
+    footer { padding: 30px 0 50px; color: var(--muted); font-size: 11px; }
+
+    @media (max-width: 900px) {
+      .masthead { grid-template-columns: 1fr; }
+      .mast-copy { padding: 38px 24px 32px; }
+      .route-art { min-height: 280px; border-left: 0; border-top: 1px solid var(--line); }
+      .route-art svg { min-height: 280px; }
+      h1 { font-size: 36px; }
+      .overview-grid, .day-layout, .budget-grid { grid-template-columns: 1fr; }
+      .action-grid { grid-template-columns: 1fr; }
+    }
+
+    @media (max-width: 640px) {
+      .shell { width: min(100% - 24px, 1180px); }
+      nav { display: none; }
+      .topbar .shell { min-height: 50px; }
+      .mast-copy { padding: 28px 18px; }
+      h1 { font-size: 31px; }
+      .lede { font-size: 15px; }
+      .trip-facts { grid-template-columns: repeat(2, 1fr); }
+      main { padding-top: 34px; }
+      .section { padding: 40px 0; }
+      .section-heading { grid-template-columns: 1fr; gap: 6px; }
+      .section-heading h2 { font-size: 25px; }
+      .constraint-list { grid-template-columns: 1fr; }
+      .day-tabs { grid-template-columns: repeat(2, 1fr); }
+      .day-hero { grid-template-columns: 1fr; align-items: start; }
+      .load-badge { width: max-content; }
+      .timeline { padding-left: 25px; }
+      .event { grid-template-columns: 58px minmax(0, 1fr); gap: 10px; }
+      .event::before { left: -21px; }
+      .leg { margin-left: 68px; }
+      .source-note { grid-template-columns: 1fr; gap: 4px; }
+    }
+
+    @media print {
+      .topbar, .day-tabs { display: none; }
+      .masthead { min-height: 0; grid-template-columns: 1fr; }
+      .route-art { display: none; }
+      .day-panel[hidden] { display: block; }
+      .section { break-inside: avoid; }
+      .event-card, .side-block, .constraint { break-inside: avoid; }
+      body { background: #fff; }
+      .shell { width: 100%; }
+    }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="shell">
+      <a class="brand" href="#overview"><span class="brand-mark">PA</span><span>福州行程</span></a>
+      <nav aria-label="页面目录">
+        <a href="#overview">旅行约束</a>
+        <a href="#itinerary">每日行程</a>
+        <a href="#places">地点核验</a>
+        <a href="#actions">预订计划</a>
+        <a href="#budget">预算</a>
+        <a href="#sources">来源状态</a>
+      </nav>
+    </div>
+  </header>
+
+  <header class="masthead">
+    <div class="mast-copy">
+      <span class="eyebrow">历史规划样例 · 路线需临行复核</span>
+      <h1>福州老城水岸<br>3 晚 4 天</h1>
+      <p class="lede">以南门兜为固定住宿基点，把西湖水系、三坊七巷、乌山、上下杭与烟台山排成两条不折返的城市路线。抵达夜和返程晨只保留必要动作，雨天优先保住室内与有廊道的停点。</p>
+      <div class="mast-tags" aria-label="行程标签">
+        <span class="tag">双城会合</span>
+        <span class="tag">固定酒店</span>
+        <span class="tag">老城步行</span>
+        <span class="tag">梅雨季备选</span>
+        <span class="tag">舒适节奏</span>
+      </div>
+      <dl class="trip-facts">
+        <div><dt>旅行日期</dt><dd>06/12–06/15</dd></div>
+        <div><dt>完整游玩日</dt><dd>2 天</dd></div>
+        <div><dt>住宿</dt><dd>南门兜 3 晚</dd></div>
+        <div><dt>两人预算</dt><dd>约 ¥5,808</dd></div>
+      </dl>
+    </div>
+    <div class="route-art" aria-label="福州行程路线示意">
+      <svg viewBox="0 0 520 520" role="img" aria-labelledby="map-title map-desc">
+        <title id="map-title">福州四日行程路线示意</title>
+        <desc id="map-desc">从福州站到南门兜住宿基点，第二日游览西湖和三坊七巷，第三日前往乌山、上下杭与烟台山。</desc>
+        <rect width="520" height="520" fill="#dfe9e4"/>
+        <path d="M-30 330 C90 260 160 410 285 328 S435 245 560 305" fill="none" stroke="#8fb7c3" stroke-width="38" opacity=".75"/>
+        <path d="M56 36 C130 122 162 204 155 332" fill="none" stroke="#bfd2c6" stroke-width="22"/>
+        <path d="M258 40 C210 120 224 210 305 260 C385 310 380 410 454 492" fill="none" stroke="#f0eee6" stroke-width="72"/>
+        <path d="M258 40 C210 120 224 210 305 260 C385 310 380 410 454 492" fill="none" stroke="#b6b9b2" stroke-width="2" stroke-dasharray="8 8"/>
+        <path d="M250 82 L242 225 L150 184 L222 308 L336 368 L398 314" fill="none" stroke="#b44e3b" stroke-width="5"/>
+        <path d="M242 225 L130 255 L150 184" fill="none" stroke="#396b82" stroke-width="5"/>
+        <g font-family="sans-serif" font-size="12" fill="#202522">
+          <g transform="translate(250 82)"><circle r="12" fill="#202522"/><text x="18" y="4">福州站</text></g>
+          <g transform="translate(242 225)"><circle r="14" fill="#fff" stroke="#b44e3b" stroke-width="5"/><text x="20" y="4">南门兜酒店</text></g>
+          <g transform="translate(130 255)"><circle r="10" fill="#396b82"/><text x="-2" y="-18">西湖</text></g>
+          <g transform="translate(150 184)"><circle r="10" fill="#396b82"/><text x="-45" y="-16">三坊七巷</text></g>
+          <g transform="translate(222 308)"><circle r="10" fill="#2f6b55"/><text x="-18" y="24">乌山</text></g>
+          <g transform="translate(336 368)"><circle r="10" fill="#2f6b55"/><text x="-22" y="24">上下杭</text></g>
+          <g transform="translate(398 314)"><circle r="10" fill="#2f6b55"/><text x="16" y="4">烟台山</text></g>
+        </g>
+      </svg>
+      <div class="route-caption"><strong>路线示意</strong>　红线为抵离与住宿基点，蓝线为老城水岸日，绿线为乌山至烟台山日；实际道路、距离和耗时以临行高德查询为准。</div>
+    </div>
+  </header>
+
+  <main class="shell">
+    <section class="section" id="overview">
+      <div class="section-heading">
+        <span>01 / TRIP BRIEF</span>
+        <div><h2>先锁定不会移动的条件</h2><p>这份安排围绕固定酒店、双城会合、梅雨季和早班返程组织。任何新增停点都必须先证明不破坏回酒店休息与返程缓冲。</p></div>
+      </div>
+      <div class="overview-grid">
+        <div class="constraint-list">
+          <article class="constraint"><small>住宿基点</small><strong>南门兜附近连住 3 晚</strong><p>不换酒店。老城核心区以步行或短打车解决，雨天可以随时回房换鞋休息。</p></article>
+          <article class="constraint"><small>抵达约束</small><strong>两位同行者在福州站会合</strong><p>抵达夜不跨江，不安排需要预约或长距离移动的项目。</p></article>
+          <article class="constraint"><small>体力节奏</small><strong>每天 2–3 个优先停点</strong><p>连续步行 90 分钟后安排坐下休息；山路与长街不放在同一时段。</p></article>
+          <article class="constraint"><small>天气假设</small><strong>阴雨为主，随时切换</strong><p>雷雨时取消乌山与福道；保留古厝、廊道、咖啡与水疗等近距离备选。</p></article>
+        </div>
+        <ol class="decision-list">
+          <li><span>已固定</span><div><strong>酒店位置与三晚连住</strong><p>所有日程以南门兜为起终点，避免换房和搬运行李。</p></div></li>
+          <li><span>优先保留</span><div><strong>西湖水系、三坊七巷、上下杭</strong><p>覆盖福州老城、水岸与闽商街区三条不同体验线。</p></div></li>
+          <li><span>可删减</span><div><strong>福道、远距离锅边、水疗</strong><p>雨大、晚点或早车过早时直接删除，不挤压核心路线。</p></div></li>
+          <li><span>待复核</span><div><strong>门店营业、游船班次、返程车次</strong><p>出发前 24 小时重新查询并更新 Page 状态。</p></div></li>
+        </ol>
+      </div>
+    </section>
+
+    <section class="section" id="itinerary">
+      <div class="section-heading">
+        <span>02 / DAY BY DAY</span>
+        <div><h2>四个自然日的完整时间轴</h2><p>每段活动都带停留、转场和删减规则。蓝色路段时间包含步行到上车点、等车、下车后找入口等门到门缓冲。</p></div>
+      </div>
+
+      <div class="day-tabs" role="tablist" aria-label="选择行程日期">
+        <button class="day-tab" id="tab-day-1" role="tab" aria-controls="day-1" aria-selected="true"><span>DAY 01 · 06/12</span><strong>会合与入住</strong></button>
+        <button class="day-tab" id="tab-day-2" role="tab" aria-controls="day-2" aria-selected="false"><span>DAY 02 · 06/13</span><strong>老城水岸</strong></button>
+        <button class="day-tab" id="tab-day-3" role="tab" aria-controls="day-3" aria-selected="false"><span>DAY 03 · 06/14</span><strong>商埠与山城</strong></button>
+        <button class="day-tab" id="tab-day-4" role="tab" aria-controls="day-4" aria-selected="false"><span>DAY 04 · 06/15</span><strong>返程</strong></button>
+      </div>
+
+      <article class="day-panel" id="day-1" role="tabpanel" aria-labelledby="tab-day-1" data-day>
+        <header class="day-hero"><div><small>06/12 · 抵达日</small><h3>福州站 → 南门兜 → 北大路</h3><p>总活动约 3.5 小时，今晚不追求打卡数量。</p></div><span class="load-badge">轻负荷</span></header>
+        <div class="day-layout">
+          <div class="timeline">
+            <div class="event" data-activity><time>18:30</time><article class="event-card"><header><h4>福州站会合</h4><span class="kind">交通</span></header><p>确认两人都已到站再离开站厅。若一方晚点超过 45 分钟，先到酒店办理入住，另一方自行前往。</p><div class="event-meta"><span>预留 20 分钟会合</span><span>行李随身</span></div></article></div>
+            <div class="leg" data-route-leg><strong>地铁 1 号线 / 打车</strong> · 约 6.5 km · 地图返回约 22 分钟 · 门到门预算 40 分钟 · <span class="status">历史估算</span></div>
+            <div class="event" data-activity><time>19:30</time><article class="event-card"><header><h4>酒店入住与短休</h4><span class="kind">住宿</span></header><p>确认门店为南门兜附近已订酒店。放下行李、补水、换防滑鞋，今晚只带轻便雨具出门。</p><div class="event-meta"><span>停留 45 分钟</span><span>连住 3 晚</span></div></article></div>
+            <div class="leg" data-route-leg><strong>短打车</strong> · 约 2.4 km · 地图返回约 10 分钟 · 门到门预算 20 分钟 · <span class="status">历史估算</span></div>
+            <div class="event" data-activity><time>20:35</time><article class="event-card"><header><h4>北大路轻宵夜</h4><span class="kind">用餐</span></header><p>优先一碗热汤类捞化或粉干，不安排重油大餐。排队超过 25 分钟就改酒店周边，不继续找远店。</p><div class="event-meta"><span>停留 70 分钟</span><span>两人约 ¥140</span><span>22:10 前回房</span></div></article></div>
+          </div>
+          <aside class="day-side">
+            <section class="side-block"><h4>路线核验摘要</h4><p>抵达日只核验车站、酒店与晚餐区域，避免同名酒店和错误门店。</p><div class="route-stack"><div><b>车站→酒店</b><span>6.5 km / 40 min</span><i class="status">历史估算</i></div><div><b>酒店→北大路</b><span>2.4 km / 20 min</span><i class="status">历史估算</i></div></div></section>
+            <section class="side-block fallback"><h4>晚点降级</h4><p>晚点 45–90 分钟：取消北大路，酒店周边吃热食。超过 90 分钟：只办理入住，第二天不补偿式早起。</p></section>
+          </aside>
+        </div>
+      </article>
+
+      <article class="day-panel" id="day-2" role="tabpanel" aria-labelledby="tab-day-2" data-day hidden>
+        <header class="day-hero"><div><small>06/13 · 完整游玩日</small><h3>西湖水系 → 老福洲 → 三坊七巷</h3><p>以水岸和老城为主，累计步行控制在 8 km 内。</p></div><span class="load-badge">中等负荷</span></header>
+        <div class="day-layout">
+          <div class="timeline">
+            <div class="event" data-activity><time>08:15</time><article class="event-card"><header><h4>酒店早餐与天气判断</h4><span class="kind">准备</span></header><p>查看 2 小时降雨趋势。中雨以上把游船延后 60–90 分钟，先去西湖廊亭或三坊七巷有檐空间。</p><div class="event-meta"><span>45 分钟</span><span>带伞与防滑鞋</span></div></article></div>
+            <div class="leg" data-route-leg><strong>打车</strong> · 约 4.1 km · 地图返回约 12 分钟 · 门到门预算 25 分钟 · <span class="status">历史估算</span></div>
+            <div class="event" data-activity><time>09:30</time><article class="event-card"><header><h4>西湖公园与水系游船</h4><span class="kind">优先景点</span></header><p>先走湖边廊亭，再按当日班次决定是否乘船至黎明湖或西水关。若停航，只保留 60 分钟湖边散步。</p><div class="event-meta"><span>建议 2 小时</span><span>门票两人约 ¥100</span><span>班次待复核</span></div></article></div>
+            <div class="leg" data-route-leg><strong>短打车</strong> · 约 2.8 km · 地图返回约 10 分钟 · 门到门预算 22 分钟 · <span class="status">历史估算</span></div>
+            <div class="event" data-activity><time>12:20</time><article class="event-card"><header><h4>老福洲午餐</h4><span class="kind">正餐</span></header><p>用一餐完成福州菜总览：荔枝肉、鱼丸或肉燕、粉干，按人数控制 3–4 道。优先离下午路线近的市区分店。</p><div class="event-meta"><span>75 分钟</span><span>两人约 ¥220</span><span>分店需消歧</span></div></article></div>
+            <div class="leg" data-route-leg><strong>步行</strong> · 约 900 m · 地图返回约 13 分钟 · 门到门预算 20 分钟 · <span class="status">历史估算</span></div>
+            <div class="event" data-activity><time>14:05</time><article class="event-card"><header><h4>三坊七巷南段慢游</h4><span class="kind">优先景点</span></header><p>只选一条主轴和两处院落，不把所有名人故居塞进同一下午。雨大时沿主街和室内展陈移动。</p><div class="event-meta"><span>2 小时</span><span>无统一大门票</span><span>院落开放待复核</span></div></article></div>
+            <div class="leg" data-route-leg><strong>步行</strong> · 约 1.3 km · 地图返回约 19 分钟 · 门到门预算 30 分钟 · <span class="status">历史估算</span></div>
+            <div class="event" data-activity><time>16:35</time><article class="event-card"><header><h4>朱紫坊与咖啡休息</h4><span class="kind">可选停点</span></header><p>体力良好再去朱紫坊；否则在三坊七巷直接坐下休息 60 分钟。这里是当天的弹性区，不反向补景点。</p><div class="event-meta"><span>60–90 分钟</span><span>两人约 ¥80</span></div></article></div>
+            <div class="event" data-activity><time>18:30</time><article class="event-card"><header><h4>达明路晚餐后步行回酒店</h4><span class="kind">用餐</span></header><p>选择排队短、回酒店顺路的店。20:30 前结束，回房处理湿衣与第二天雨具。</p><div class="event-meta"><span>90 分钟</span><span>两人约 ¥220</span><span>返程步行 20 分钟</span></div></article></div>
+          </div>
+          <aside class="day-side">
+            <section class="side-block"><h4>路线核验摘要</h4><p>西湖、午餐分店、三坊七巷南段和朱紫坊形成自北向南的单向路线。</p><div class="route-stack"><div><b>酒店→西湖</b><span>4.1 km / 25 min</span><i class="status">历史估算</i></div><div><b>西湖→午餐</b><span>2.8 km / 22 min</span><i class="status">历史估算</i></div><div><b>午餐→坊巷</b><span>.9 km / 20 min</span><i class="status">历史估算</i></div></div></section>
+            <section class="side-block fallback"><h4>持续中雨方案</h4><ul><li>游船改为西湖廊亭短走</li><li>三坊七巷只进入开放院落</li><li>取消朱紫坊，把 90 分钟还给休息</li></ul></section>
+          </aside>
+        </div>
+      </article>
+
+      <article class="day-panel" id="day-3" role="tabpanel" aria-labelledby="tab-day-3" data-day hidden>
+        <header class="day-hero"><div><small>06/14 · 完整游玩日</small><h3>乌山 → 上下杭 → 烟台山</h3><p>从老城山体走向闽商街区和仓山，户外段都可独立删除。</p></div><span class="load-badge">中高负荷</span></header>
+        <div class="day-layout">
+          <div class="timeline">
+            <div class="event" data-activity><time>08:20</time><article class="event-card"><header><h4>早餐与雷雨判断</h4><span class="kind">准备</span></header><p>若有雷电预警，直接取消乌山，10:00 再出发去午餐与上下杭，不用另找山地替代。</p><div class="event-meta"><span>40 分钟</span><span>轻装出发</span></div></article></div>
+            <div class="leg" data-route-leg><strong>步行</strong> · 约 1.2 km · 地图返回约 18 分钟 · 门到门预算 25 分钟 · <span class="status">历史估算</span></div>
+            <div class="event" data-activity><time>09:20</time><article class="event-card"><header><h4>乌山精华段</h4><span class="kind">优先景点</span></header><p>只走石刻、亭台和榕树密集的短线，不追求登高打满全山。台阶湿滑或雨势增强立即下撤。</p><div class="event-meta"><span>70 分钟</span><span>免费</span><span>雷雨取消</span></div></article></div>
+            <div class="leg" data-route-leg><strong>打车</strong> · 约 5.2 km · 地图返回约 16 分钟 · 门到门预算 30 分钟 · <span class="status">历史估算</span></div>
+            <div class="event" data-activity><time>11:15</time><article class="event-card"><header><h4>粉干与卤味午餐</h4><span class="kind">用餐</span></header><p>优先靠近上下杭的门店，减少横向移动。对内脏敏感就选瘦肉、鱼丸与青菜，不因“必吃”勉强点单。</p><div class="event-meta"><span>70 分钟</span><span>两人约 ¥140</span><span>门店待复核</span></div></article></div>
+            <div class="leg" data-route-leg><strong>步行</strong> · 约 900 m · 地图返回约 13 分钟 · 门到门预算 20 分钟 · <span class="status">历史估算</span></div>
+            <div class="event" data-activity><time>13:05</time><article class="event-card"><header><h4>上下杭历史街区</h4><span class="kind">优先景点</span></header><p>沿主街、会馆与水岸形成单向步行，不在支巷反复折返。15:00 必须坐下休息，不直接赶往烟台山。</p><div class="event-meta"><span>2 小时</span><span>免费</span><span>有檐路线优先</span></div></article></div>
+            <div class="event" data-activity><time>15:10</time><article class="event-card"><header><h4>茶饮与恢复</h4><span class="kind">休息</span></header><p>至少坐满 45 分钟，补水、处理湿鞋，复核烟台山与晚餐体力。此段不能被购物挤占。</p><div class="event-meta"><span>45–60 分钟</span><span>两人约 ¥70</span></div></article></div>
+            <div class="leg" data-route-leg><strong>打车</strong> · 约 3.6 km · 地图返回约 12 分钟 · 门到门预算 25 分钟 · <span class="status">历史估算</span></div>
+            <div class="event" data-activity><time>16:40</time><article class="event-card"><header><h4>烟台山傍晚散步</h4><span class="kind">优先景点</span></header><p>选择一条坡度温和、能在 18:20 前结束的路线。雨势增大则只看沿街建筑，不进入江边暴露区。</p><div class="event-meta"><span>90 分钟</span><span>免费</span><span>坡路湿滑</span></div></article></div>
+            <div class="leg" data-route-leg><strong>打车</strong> · 约 7.5 km · 地图返回约 22 分钟 · 门到门预算 35 分钟 · <span class="status">历史估算</span></div>
+            <div class="event" data-activity><time>19:05</time><article class="event-card"><header><h4>海鲜锅边或酒店周边热食</h4><span class="kind">用餐</span></header><p>只去市区顺路门店，不为“连江夜场”跨城往返。排队超过 30 分钟或雨大就回酒店周边。</p><div class="event-meta"><span>75 分钟</span><span>两人约 ¥180</span><span>20:45 前返程</span></div></article></div>
+          </div>
+          <aside class="day-side">
+            <section class="side-block"><h4>路线核验摘要</h4><p>乌山可独立删除；上下杭到烟台山跨江转场必须留够等车与雨天拥堵缓冲。</p><div class="route-stack"><div><b>酒店→乌山</b><span>1.2 km / 25 min</span><i class="status">历史估算</i></div><div><b>乌山→午餐</b><span>5.2 km / 30 min</span><i class="status">历史估算</i></div><div><b>上下杭→烟台山</b><span>3.6 km / 25 min</span><i class="status">历史估算</i></div></div></section>
+            <section class="side-block fallback"><h4>雷雨降级</h4><ul><li>取消乌山，10:00 后出发</li><li>保留上下杭主街与会馆</li><li>烟台山若仍降雨，改为酒店休息</li><li>晚餐锁定酒店 2 km 内</li></ul></section>
+          </aside>
+        </div>
+      </article>
+
+      <article class="day-panel" id="day-4" role="tabpanel" aria-labelledby="tab-day-4" data-day hidden>
+        <header class="day-hero"><div><small>06/15 · 返程日</small><h3>南门兜 → 福州站</h3><p>只保留早餐、退房和到站，不在返程晨补景点。</p></div><span class="load-badge">轻负荷</span></header>
+        <div class="day-layout">
+          <div class="timeline">
+            <div class="event" data-activity><time>06:35</time><article class="event-card"><header><h4>早餐、收纳与退房</h4><span class="kind">准备</span></header><p>前一晚完成大部分装包。把湿雨具单独密封，证件和车票信息由两人分别确认。</p><div class="event-meta"><span>50 分钟</span><span>早餐不绕路</span></div></article></div>
+            <div class="leg" data-route-leg><strong>地铁 1 号线 / 打车</strong> · 约 6.4 km · 地图返回约 23 分钟 · 门到门预算 45 分钟 · <span class="status">历史估算</span></div>
+            <div class="event" data-activity><time>07:30</time><article class="event-card"><header><h4>到达福州站，各自返程</h4><span class="kind">交通</span></header><p>至少按票面开车前 45 分钟到站；中到大雨再加 20 分钟。任何临时购物都不能占用到站缓冲。</p><div class="event-meta"><span>车次待 12306 复核</span><span>分开进站</span></div></article></div>
+          </div>
+          <aside class="day-side">
+            <section class="side-block"><h4>返程门禁</h4><ul><li>前夜确认车次与检票口信息</li><li>叫车失败时立即改地铁</li><li>到站缓冲少于 45 分钟时不再停留</li></ul></section>
+            <section class="side-block fallback"><h4>强降雨方案</h4><p>比常规计划提前 20–30 分钟离店；不在酒店等待雨变小。</p></section>
+          </aside>
+        </div>
+      </article>
+    </section>
+
+    <section class="section" id="places">
+      <div class="section-heading">
+        <span>03 / PLACE EVIDENCE</span>
+        <div><h2>地点身份与地图入口</h2><p>景区入口、酒店门店和餐厅分店必须逐个消歧。以下为历史样例状态，真实行程应在出发前用高德 Web 服务重新查询并保存 POI ID、坐标和路段快照。</p></div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>最终地点</th><th>区域 / 类型</th><th>规划用途</th><th>状态</th><th>地图</th></tr></thead>
+          <tbody>
+            <tr><td><strong>福州站</strong><small>晋安区 · 火车站</small></td><td>交通设施</td><td>双城会合与返程起点</td><td><span class="status">历史样例</span></td><td><a class="map-link" href="https://uri.amap.com/search?keyword=%E7%A6%8F%E5%B7%9E%E7%AB%99&city=%E7%A6%8F%E5%B7%9E&callnative=1" target="_blank" rel="noreferrer">高德搜索 ↗</a></td></tr>
+            <tr><td><strong>南门兜住宿基点</strong><small>鼓楼区 · 南门兜地铁站周边</small></td><td>住宿服务</td><td>三晚固定起终点</td><td><span class="status">门店待确认</span></td><td><a class="map-link" href="https://uri.amap.com/search?keyword=%E5%8D%97%E9%97%A8%E5%85%9C%E9%85%92%E5%BA%97&city=%E7%A6%8F%E5%B7%9E&callnative=1" target="_blank" rel="noreferrer">高德搜索 ↗</a></td></tr>
+            <tr><td><strong>福州西湖公园</strong><small>鼓楼区 · 湖滨路</small></td><td>风景名胜</td><td>Day 2 水岸主停点</td><td><span class="status">历史样例</span></td><td><a class="map-link" href="https://uri.amap.com/search?keyword=%E7%A6%8F%E5%B7%9E%E8%A5%BF%E6%B9%96%E5%85%AC%E5%9B%AD&city=%E7%A6%8F%E5%B7%9E&callnative=1" target="_blank" rel="noreferrer">高德搜索 ↗</a></td></tr>
+            <tr><td><strong>三坊七巷历史文化街区</strong><small>鼓楼区 · 南后街</small></td><td>风景名胜</td><td>Day 2 老城主停点</td><td><span class="status">历史样例</span></td><td><a class="map-link" href="https://uri.amap.com/search?keyword=%E4%B8%89%E5%9D%8A%E4%B8%83%E5%B7%B7&city=%E7%A6%8F%E5%B7%9E&callnative=1" target="_blank" rel="noreferrer">高德搜索 ↗</a></td></tr>
+            <tr><td><strong>乌山历史风貌区</strong><small>鼓楼区 · 乌山路</small></td><td>风景名胜</td><td>Day 3 可删减山地段</td><td><span class="status">历史样例</span></td><td><a class="map-link" href="https://uri.amap.com/search?keyword=%E7%A6%8F%E5%B7%9E%E4%B9%8C%E5%B1%B1&city=%E7%A6%8F%E5%B7%9E&callnative=1" target="_blank" rel="noreferrer">高德搜索 ↗</a></td></tr>
+            <tr><td><strong>上下杭历史文化街区</strong><small>台江区 · 三通路</small></td><td>风景名胜</td><td>Day 3 闽商街区主停点</td><td><span class="status">历史样例</span></td><td><a class="map-link" href="https://uri.amap.com/search?keyword=%E4%B8%8A%E4%B8%8B%E6%9D%AD%E5%8E%86%E5%8F%B2%E6%96%87%E5%8C%96%E8%A1%97%E5%8C%BA&city=%E7%A6%8F%E5%B7%9E&callnative=1" target="_blank" rel="noreferrer">高德搜索 ↗</a></td></tr>
+            <tr><td><strong>烟台山历史风貌区</strong><small>仓山区 · 梅坞路周边</small></td><td>风景名胜</td><td>Day 3 傍晚主停点</td><td><span class="status">历史样例</span></td><td><a class="map-link" href="https://uri.amap.com/search?keyword=%E7%83%9F%E5%8F%B0%E5%B1%B1%E5%8E%86%E5%8F%B2%E9%A3%8E%E8%B2%8C%E5%8C%BA&city=%E7%A6%8F%E5%B7%9E&callnative=1" target="_blank" rel="noreferrer">高德搜索 ↗</a></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="section" id="actions">
+      <div class="section-heading">
+        <span>04 / ACTION PLAN</span>
+        <div><h2>按时间排序的预订与复核</h2><p>行程完成不等于所有事实永久有效。需要锁价、预约或临行确认的事项分开处理。</p></div>
+      </div>
+      <div class="action-grid">
+        <section class="action-group"><small>立即处理</small><h3>锁定硬约束</h3><ul><li>确认南门兜酒店具体门店与三晚订单</li><li>确认两位同行者抵达福州站的时间差</li><li>锁定返程最晚可接受到站时间</li></ul></section>
+        <section class="action-group"><small>出发前 7 天</small><h3>核验动态事实</h3><ul><li>查询游船运营与购票方式</li><li>核对院落、会馆的开放日与停止入场</li><li>用高德重新跑全部 POI 和相邻路段</li></ul></section>
+        <section class="action-group"><small>出发前 24 小时</small><h3>切换到执行态</h3><ul><li>12306 核对车次、开车时间与晚点</li><li>查看逐小时降雨和雷电预警</li><li>确认餐厅分店营业与排队情况</li></ul></section>
+      </div>
+    </section>
+
+    <section class="section" id="budget">
+      <div class="section-heading">
+        <span>05 / BUDGET</span>
+        <div><h2>舒适档预算，不靠压缩休息省钱</h2><p>预算用于判断取舍，不是价格承诺。酒店、车票和餐厅都需要用实际订单替换历史估算。</p></div>
+      </div>
+      <div class="budget-grid">
+        <div class="budget-total"><small>两人总预算</small><strong>¥5,808</strong><p>约 ¥2,904 / 人，含往返大交通历史参考、三晚住宿、餐饮、市内交通、门票与机动金。</p></div>
+        <div class="budget-list">
+          <div><span>双城往返大交通</span><strong>¥1,118</strong></div>
+          <div><span>南门兜住宿 3 晚</span><strong>¥1,950</strong></div>
+          <div><span>餐饮与茶歇</span><strong>¥1,380</strong></div>
+          <div><span>市内交通</span><strong>¥360</strong></div>
+          <div><span>游船 / 夜间备选</span><strong>¥500</strong></div>
+          <div><span>伴手礼与机动</span><strong>¥500</strong></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="sources">
+      <div class="section-heading">
+        <span>06 / PROVENANCE</span>
+        <div><h2>来源、时间与不确定项</h2><p>本页是脱敏的历史规划代表产物，不应被当作当前福州出行建议。实际任务必须按旅行日期重新检索。</p></div>
+      </div>
+      <div class="source-note"><strong>地图与路线</strong><p>高德 POI 搜索与路径规划是正式任务的核验来源；当前展示的是历史样例估算，未附可复核的实时 Web 服务快照，所有路段均需临行重跑。</p></div>
+      <div class="source-note"><strong>车票与班次</strong><p>以中国铁路 12306 当日查询和订单为准；历史预算只用于展示双城会合的成本结构。</p></div>
+      <div class="source-note"><strong>开放与预约</strong><p>景区、游船、会馆和院落应以各自官方渠道为准；本页把尚未核验的运营信息保留为待复核，不写成确定事实。</p></div>
+      <div class="source-note"><strong>天气与安全</strong><p>出发前 24 小时使用官方预警和逐小时预报；雷雨时取消山地与江边暴露段，不用“雨天也能走”替代安全判断。</p></div>
+      <div class="legend" aria-label="来源状态图例">
+        <span class="historical">历史样例：仅展示规划结构</span>
+        <span class="estimate">估算：用于节奏或预算</span>
+        <span class="pending">待复核：出发前必须更新</span>
+      </div>
+    </section>
+
+    <footer>Personal Agent · 旅游规划 Agent 代表产物 · 脱敏历史样例 · 2026-07-30 更新规划结构</footer>
+  </main>
+
+  <script>
+    const tabs = [...document.querySelectorAll('[role="tab"]')];
+    const panels = [...document.querySelectorAll('[role="tabpanel"]')];
+    function selectDay(tab) {
+      tabs.forEach((item) => item.setAttribute("aria-selected", String(item === tab)));
+      panels.forEach((panel) => { panel.hidden = panel.id !== tab.getAttribute("aria-controls"); });
+    }
+    tabs.forEach((tab, index) => {
+      tab.addEventListener("click", () => selectDay(tab));
+      tab.addEventListener("keydown", (event) => {
+        if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
+        event.preventDefault();
+        let next = index;
+        if (event.key === "ArrowLeft") next = (index - 1 + tabs.length) % tabs.length;
+        if (event.key === "ArrowRight") next = (index + 1) % tabs.length;
+        if (event.key === "Home") next = 0;
+        if (event.key === "End") next = tabs.length - 1;
+        tabs[next].focus();
+        selectDay(tabs[next]);
+      });
+    });
+  </script>
+</body>
+</html>

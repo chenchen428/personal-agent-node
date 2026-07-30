@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "version": 9,
-  "updatedAt": "2026-07-23",
+  "version": 11,
+  "updatedAt": "2026-07-30",
   "categories": [
     {
       "id": "research-knowledge",
@@ -258,6 +258,43 @@
       ]
     },
     {
+      "name": "hyperframes-video",
+      "directory": "skills/hyperframes-video",
+      "category": "visual-media",
+      "maturity": "beta",
+      "risks": [
+        "network-read",
+        "local-write"
+      ],
+      "security": {
+        "network": "read",
+        "dataClass": "mixed",
+        "outboundData": "none",
+        "externalWrite": false,
+        "requiresAuthorization": true,
+        "untrustedContent": true
+      },
+      "origin": {
+        "kind": "adapted",
+        "repository": "https://github.com/heygen-com/hyperframes",
+        "revision": "5244dde5f10c221221924985aa4651d89fb7c98a",
+        "license": "Apache-2.0"
+      },
+      "cli": [
+        "video"
+      ],
+      "examples": [
+        "test/fixtures/skill-cases/hyperframes-video/case.json"
+      ],
+      "caseRequired": true,
+      "related": [
+        "media-toolkit",
+        "visual-content",
+        "frontend-design",
+        "content-workbench"
+      ]
+    },
+    {
       "name": "guizang-social-card-skill",
       "directory": "skills/guizang-social-card-skill",
       "category": "visual-media",
@@ -330,6 +367,37 @@
       ]
     },
     {
+      "name": "amap-travel-routing",
+      "directory": "skills/amap-travel-routing",
+      "category": "travel-location",
+      "maturity": "beta",
+      "risks": [
+        "network-read",
+        "local-write"
+      ],
+      "security": {
+        "network": "read",
+        "dataClass": "mixed",
+        "outboundData": "query",
+        "externalWrite": false,
+        "requiresAuthorization": true,
+        "untrustedContent": true
+      },
+      "origin": {
+        "kind": "workspace",
+        "license": "Apache-2.0"
+      },
+      "cli": [],
+      "examples": [
+        "test/fixtures/skill-cases/amap-travel-routing/case.json"
+      ],
+      "caseRequired": true,
+      "related": [
+        "travel-guidebook",
+        "deep-research"
+      ]
+    },
+    {
       "name": "travel-guidebook",
       "directory": "skills/travel-guidebook",
       "category": "travel-location",
@@ -359,6 +427,7 @@
       ],
       "caseRequired": true,
       "related": [
+        "amap-travel-routing",
         "deep-research",
         "content-workbench",
         "guizang-social-card-skill"
@@ -430,6 +499,39 @@
         "personal-pages",
         "frontend-design",
         "ui-ux-pro-max"
+      ]
+    },
+    {
+      "name": "gift-advisor",
+      "directory": "skills/gift-advisor",
+      "category": "research-knowledge",
+      "maturity": "beta",
+      "risks": [
+        "network-read",
+        "local-write"
+      ],
+      "security": {
+        "network": "read",
+        "dataClass": "mixed",
+        "outboundData": "query",
+        "externalWrite": false,
+        "requiresAuthorization": true,
+        "untrustedContent": true
+      },
+      "origin": {
+        "kind": "workspace",
+        "license": "Apache-2.0"
+      },
+      "cli": [],
+      "examples": [
+        "test/fixtures/skill-cases/gift-advisor/case.json"
+      ],
+      "caseRequired": true,
+      "related": [
+        "deep-research",
+        "personal-pages",
+        "content-workbench",
+        "visual-content"
       ]
     },
     {
@@ -597,7 +699,7 @@
       "cli": ["pa-cli-pages"],
       "examples": ["test/fixtures/skill-cases/personal-pages/case.json"],
       "caseRequired": true,
-      "related": ["personal-tasks","personal-activity","personal-files","interior-design","content-workbench","visual-content"]
+      "related": ["personal-tasks","personal-activity","personal-files","interior-design","gift-advisor","content-workbench","visual-content"]
     },
     {
       "name": "personal-files",
@@ -729,14 +831,24 @@
       "description": "Inspect and compress raster or SVG assets with local tools."
     },
     {
+      "name": "video",
+      "category": "visual-media",
+      "owner": "hyperframes-video",
+      "kind": "skill-script",
+      "entrypoint": "skills/hyperframes-video/scripts/cli.mjs",
+      "command": "node skills/hyperframes-video/scripts/cli.mjs <doctor|check|snapshot|render>",
+      "workspaceCommand": "node scripts/skill-tree.mjs video <doctor|check|snapshot|render>",
+      "description": "Check, snapshot, and locally render deterministic HTML video compositions with a pinned HyperFrames toolchain."
+    },
+    {
       "name": "interior",
       "category": "home-living",
       "owner": "interior-design",
       "kind": "skill-script",
       "entrypoint": "skills/interior-design/scripts/cli.mjs",
-      "command": "node skills/interior-design/scripts/cli.mjs <project|scene|page>",
+      "command": "node skills/interior-design/scripts/cli.mjs <project|scene|render|page>",
       "workspaceCommand": "node scripts/skill-tree.mjs interior <project|scene|page>",
-      "description": "Operate governed Pascal v2 renovation projects: evidence, requirements, revisions, deterministic building scenes, professional quality gates, and offline interior-design-delivery Pages."
+      "description": "Operate governed Pascal v2 renovation projects: evidence, requirements, revisions, deterministic building scenes, professional quality gates, revision-bound SU render registration, and offline interior-design-delivery Pages."
     },
     {
       "name": "personal-agent",
@@ -1108,6 +1220,70 @@
           "targets": [
             "travel-guidebook"
           ]
+        }
+      ]
+    },
+    {
+      "id": "hyperframes",
+      "repository": "https://github.com/heygen-com/hyperframes",
+      "revision": "5244dde5f10c221221924985aa4651d89fb7c98a",
+      "license": "Apache-2.0",
+      "retrievedAt": "2026-07-30",
+      "mappings": [
+        {
+          "source": "skills/hyperframes",
+          "decision": "merged",
+          "targets": [
+            "hyperframes-video"
+          ]
+        },
+        {
+          "source": "skills/hyperframes-core",
+          "decision": "merged",
+          "targets": [
+            "hyperframes-video"
+          ]
+        },
+        {
+          "source": "skills/hyperframes-animation",
+          "decision": "merged",
+          "targets": [
+            "hyperframes-video"
+          ]
+        },
+        {
+          "source": "skills/hyperframes-creative",
+          "decision": "merged",
+          "targets": [
+            "hyperframes-video"
+          ]
+        },
+        {
+          "source": "skills/hyperframes-cli",
+          "decision": "merged",
+          "targets": [
+            "hyperframes-video"
+          ]
+        },
+        {
+          "source": "skills/media-use",
+          "decision": "merged",
+          "targets": [
+            "hyperframes-video"
+          ]
+        },
+        {
+          "source": "skills/product-launch-video",
+          "decision": "merged",
+          "targets": [
+            "hyperframes-video"
+          ]
+        },
+        {
+          "source": "cloud-and-account-capabilities",
+          "decision": "excluded",
+          "targets": [],
+          "reason": "The built-in skill is local-only; account, publishing, cloud rendering, feedback, and remote generation need separate privacy and external-write decisions."
         }
       ]
     },

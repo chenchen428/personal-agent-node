@@ -229,6 +229,9 @@ test("paginates and searches chat sessions with a stable cursor", () => {
         parentSessionId: index === 1 ? "main-b" : "main-a",
         title: index === 1 ? "Needle conversation" : `Conversation ${index}`,
         workspaceRoot: dataDir,
+        metadata: index === 2
+          ? { agentId: "video-creator", agentProfileVersion: 1, projectKey: "project_intro" }
+          : {},
         createdAt: `2026-07-10T0${index}:00:00.000Z`,
         updatedAt: `2026-07-10T0${index}:00:00.000Z`,
       });
@@ -246,6 +249,18 @@ test("paginates and searches chat sessions with a stable cursor", () => {
     const children = store.listSessionsPage({ parentSessionId: "main-a", limit: 20 });
     assert.deepEqual(children.sessions.map((session) => session.id), ["session-2", "session-0"]);
     assert.equal(store.countSessions({ parentSessionId: "main-a" }), 2);
+    const specialist = store.listSessionsPage({
+      parentSessionId: "main-a",
+      agentId: "video-creator",
+      projectKey: "project_intro",
+      limit: 20,
+    });
+    assert.deepEqual(specialist.sessions.map((session) => session.id), ["session-2"]);
+    assert.equal(store.countSessions({
+      parentSessionId: "main-a",
+      agentId: "video-creator",
+      projectKey: "project_intro",
+    }), 1);
   } finally {
     store.close();
   }

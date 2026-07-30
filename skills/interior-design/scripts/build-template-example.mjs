@@ -14,6 +14,7 @@ import {
   sha256,
 } from './project-v2.mjs';
 import { loadInteriorTemplateContract } from './page-assets.mjs';
+import { registerDesignRender } from './render-v2.mjs';
 
 const scriptDirectory = path.dirname(fileURLToPath(import.meta.url));
 const skillRoot = path.resolve(scriptDirectory, '..');
@@ -47,12 +48,25 @@ export async function buildTemplateExample({ check = false } = {}) {
     const seedBytes = fs.readFileSync(path.join(exampleRoot, 'seed.json'));
     const sourceBytes = fs.readFileSync(path.join(exampleRoot, 'source-plan.png'));
     const annotationBytes = fs.readFileSync(path.join(exampleRoot, 'agent-annotation.png'));
+    const renderBytes = fs.readFileSync(path.join(exampleRoot, 'su-design-render.png'));
+    const renderReferenceBytes = fs.readFileSync(path.join(exampleRoot, 'su-design-reference.jpg'));
+    const renderPromptBytes = fs.readFileSync(path.join(exampleRoot, 'su-design-render-prompt.txt'));
     const seed = JSON.parse(seedBytes.toString('utf8'));
     const initialized = initializeProject(projectDir, seed, context, { now: () => fixedTime });
     fs.copyFileSync(path.join(exampleRoot, 'source-plan.png'), path.join(projectDir, 'evidence', 'source-plan.png'));
     fs.copyFileSync(path.join(exampleRoot, 'agent-annotation.png'), path.join(projectDir, 'evidence', 'agent-annotation.png'));
     const compiled = await compileProjectScene(projectDir, context, {
       baseRevision: initialized.project.revision,
+      now: () => fixedTime,
+    });
+    const registeredRender = registerDesignRender({
+      projectDir,
+      context,
+      input: path.join(exampleRoot, 'su-design-render.png'),
+      reference: path.join(exampleRoot, 'su-design-reference.jpg'),
+      promptFile: path.join(exampleRoot, 'su-design-render-prompt.txt'),
+      generator: 'imagegen',
+      baseRevision: compiled.project.revision,
       now: () => fixedTime,
     });
     const template = loadInteriorTemplateContract(skillRoot);
@@ -73,6 +87,7 @@ export async function buildTemplateExample({ check = false } = {}) {
         'project-v2-seed',
         'pascal-scene-compile',
         'professional-quality-audit',
+        'imagegen-render-register',
         'page-v2-generate',
         'artifact-hash-verify',
       ],
@@ -80,6 +95,10 @@ export async function buildTemplateExample({ check = false } = {}) {
       evidenceSha256: sha256(sourceBytes),
       modelBasisSha256: compiled.scene.modelBasis.sha256,
       annotationSha256: sha256(annotationBytes),
+      renderSha256: sha256(renderBytes),
+      renderReferenceSha256: sha256(renderReferenceBytes),
+      renderPromptSha256: sha256(renderPromptBytes),
+      renderMetadataSha256: sha256(canonicalJson(registeredRender.metadata)),
       projectSha256: sha256(canonicalJson(readProject(projectDir, context).project)),
       sceneSha256: compiled.scene.sceneHash,
       auditSha256: compiled.project.quality.sha256,
@@ -119,7 +138,7 @@ export function verifyTemplateExample(directory = targetRoot) {
     throw new Error('built-in template manifest is not a native Pascal v2 artifact');
   }
   if (!Array.isArray(manifest.source.pipeline)
-    || manifest.source.pipeline.join('>') !== 'project-v2-seed>pascal-scene-compile>professional-quality-audit>page-v2-generate>artifact-hash-verify') {
+    || manifest.source.pipeline.join('>') !== 'project-v2-seed>pascal-scene-compile>professional-quality-audit>imagegen-render-register>page-v2-generate>artifact-hash-verify') {
     throw new Error('built-in template manifest pipeline is incomplete');
   }
   if (manifest.source.renderProfile !== 'professional-mesh-ink') {
@@ -127,6 +146,12 @@ export function verifyTemplateExample(directory = targetRoot) {
   }
   if (manifest.source.layoutProfile !== 'su-design-classic') {
     throw new Error('built-in template classic SU layout profile is missing');
+  }
+  if (manifest.render?.generator !== 'imagegen'
+    || manifest.render?.imageSha256 !== manifest.source.renderSha256
+    || manifest.render?.referenceImageSha256 !== manifest.source.renderReferenceSha256
+    || manifest.render?.promptSha256 !== manifest.source.renderPromptSha256) {
+    throw new Error('built-in template governed SU render provenance is missing');
   }
   for (const [name, expected] of Object.entries(manifest.files || {})) {
     const target = path.join(directory, name);
@@ -169,6 +194,18 @@ export function verifyTemplateExample(directory = targetRoot) {
     || !html.includes('pascal-wall-cap')
     || !html.includes('professional-mesh-ink')
     || !html.includes('data-layout-profile="su-design-classic"')
+    || !html.includes('data-presentation-panel="render"')
+    || !html.includes('data-presentation="render"')
+    || !html.includes('data-presentation-panel="render" data-image-viewer data-image-rotatable')
+    || !html.includes('data-image-zoom="in"')
+    || !html.includes('data-image-zoom="out"')
+    || !html.includes('data-image-rotate="left"')
+    || !html.includes('data-image-rotate="right"')
+    || !html.includes('data-image-reset')
+    || !html.includes('可旋转、缩放查看对应渲染稿')
+    || !html.includes('可缩放查看户型图')
+    || html.includes('data-presentation="plan"')
+    || !html.includes('对应渲染稿')
     || !html.includes('pascal-viewer-warmup')
     || !html.includes('CameraControls')
     || !html.includes('setLookAt')) {

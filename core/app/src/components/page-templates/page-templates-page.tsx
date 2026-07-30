@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { ArrowUpRight, Eye, Monitor, Smartphone } from "lucide-react";
 import { Badge, PageHeader, PageSurface } from "@/components/desktop-v72/primitives";
-import { pageTemplates } from "./catalog";
+import { pageTemplates, presentationFor } from "./catalog";
 import { TemplateCardArtwork } from "./template-card-artwork";
 
 export function PageTemplatesPage() {
@@ -14,14 +14,19 @@ export function PageTemplatesPage() {
     <section className="template-card-grid" aria-label="发布页模板列表">
       {pageTemplates.map((template) => <article className="template-mini-card" key={template.id}>
         <Link aria-label={`查看${template.name}`} className="template-mini-preview" href={`/app/pages/templates/${template.id}`} prefetch>
-          <TemplateCardArtwork coverPath={template.exampleArtifact.coverPath} />
+          <TemplateCardArtwork
+            alt={presentationFor(template).coverAlt}
+            badge={presentationFor(template).coverBadge}
+            coverPath={template.exampleArtifact.coverPath}
+            footer={presentationFor(template).coverFooter}
+          />
           <span><Eye aria-hidden="true" />进入详情</span>
         </Link>
         <div className="template-mini-body">
           <header><Badge tone="success">已内置</Badge><span>{template.category}</span></header>
           <h2>{template.name}</h2>
           <p>{template.summary}</p>
-          <div className="template-mini-devices"><span><Monitor aria-hidden="true" />Web</span><span><Smartphone aria-hidden="true" />移动横屏</span></div>
+          <div className="template-mini-devices"><span><Monitor aria-hidden="true" />Web</span><span><Smartphone aria-hidden="true" />{template.mobileLandscape ? "移动横屏" : "移动端"}</span></div>
           <Link href={`/app/pages/templates/${template.id}`} prefetch>查看模板<ArrowUpRight aria-hidden="true" /></Link>
         </div>
       </article>)}

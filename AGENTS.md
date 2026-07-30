@@ -6,14 +6,16 @@ This repository is both the public, local-first Personal Agent runtime and the c
 
 1. Read `registry/projects.json` before changing a project, route, port, or runtime.
 2. Read `registry/skills.json` before changing a skill or skill-owned CLI.
-3. Read `registry/behavior-baselines.json` before changing installation, login, conversation, WeChat, Xiaohongshu, Pages, backup, or rollback behavior.
-4. Run `node scripts/discover-projects.mjs list`.
-5. Run `node scripts/workspace-doctor.mjs`.
-6. Run `node scripts/project-guard.mjs --working` before project or runtime layout changes.
-7. Run `node scripts/skill-guard.mjs --working` before skill or fixture changes.
-8. Run `bash scripts/setup-agent-bridge.sh --check` when Agent compatibility links matter.
-9. Run `bash scripts/install-hooks.sh --check` when repository hooks matter.
-10. Read a subproject's `AGENTS.md` when present.
+3. Read `registry/agents.json` before changing a specialist Agent profile, its routing, or project-scoped Worker identity.
+4. Read `registry/behavior-baselines.json` before changing installation, login, conversation, WeChat, Xiaohongshu, Pages, backup, or rollback behavior.
+5. Run `node scripts/discover-projects.mjs list`.
+6. Run `node scripts/workspace-doctor.mjs`.
+7. Run `node scripts/project-guard.mjs --working` before project or runtime layout changes.
+8. Run `node scripts/skill-guard.mjs --working` before skill or fixture changes.
+9. Run `node scripts/agent-guard.mjs --working` after changing specialist Agents or their registry.
+10. Run `bash scripts/setup-agent-bridge.sh --check` when Agent compatibility links matter.
+11. Run `bash scripts/install-hooks.sh --check` when repository hooks matter.
+12. Read a subproject's `AGENTS.md` when present.
 
 ## Boundaries
 
@@ -64,6 +66,15 @@ final answer.
   author global Activity or Memory, or select final-reply attachments.
 - User-facing replies describe the task and its status without exposing Worker,
   hook, subprocess, or orchestration terminology.
+- When a registered specialist owns the substantive domain, select it from
+  `registry/agents.json` and preserve its project identity with both `--agent`
+  and `--project-key`. A specialist is still a Worker and does not gain broader
+  permissions. Unknown Agent IDs fail closed instead of silently becoming a
+  generic task.
+- When the selected specialist declares `styleGuide` and `styleCatalog`, require
+  it to record one primary style and at most one bounded secondary style before
+  storyboarding or implementation. A style is a narrative, visual, motion,
+  audio, format, and acceptance contract—not a loose mood label.
 
 ## Agent-Owned Activity
 
@@ -156,6 +167,7 @@ When changing Activity or Memory behavior, update the capability and route regis
 ```bash
 npm run doctor
 npm run guard
+node scripts/agent-guard.mjs --working
 npm run baseline:verify
 node scripts/skill-tree.mjs cases verify
 npm run frontend:guard

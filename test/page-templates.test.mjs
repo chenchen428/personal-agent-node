@@ -10,12 +10,13 @@ const root = path.resolve(import.meta.dirname, "..");
 const read = (relative) => fs.readFileSync(path.join(root, relative), "utf8");
 const artifactRoot = path.join(root, "core/app/public/assets/templates/interior-design-delivery-v2");
 
-test("Pages registers one Pascal v2 renovation template with a generated example artifact", () => {
+test("Pages registers the Pascal renovation and gift advisor templates with generated artifacts", () => {
   const registry = JSON.parse(read("registry/page-templates.json"));
   const pageSkill = read("skills/personal-pages/SKILL.md");
   assert.equal(registry.schemaVersion, 2);
-  assert.equal(registry.templates.length, 1);
-  const template = registry.templates[0];
+  assert.equal(registry.templates.length, 2);
+  const template = registry.templates.find((item) => item.id === "interior-design-delivery");
+  const giftTemplate = registry.templates.find((item) => item.id === "gift-advisor-report");
   assert.equal(template.id, "interior-design-delivery");
   assert.equal(template.skill, "interior-design");
   assert.equal(template.mobileLandscape, true);
@@ -32,6 +33,13 @@ test("Pages registers one Pascal v2 renovation template with a generated example
   });
   assert.equal(fs.existsSync(path.join(root, `skills/personal-pages/references/templates/${template.id}.md`)), true);
   assert.match(pageSkill, new RegExp(`${template.id}\\.md`));
+  assert.equal(giftTemplate.skill, "gift-advisor");
+  assert.equal(giftTemplate.implementation.version, 1);
+  assert.equal(giftTemplate.exampleArtifact.source, "space-owned-gift-advisor-plan-v1");
+  assert.equal(giftTemplate.exampleArtifact.pagePath, "/assets/templates/gift-advisor-report-v1/index.html");
+  assert.equal(giftTemplate.acceptance.agentBrowserReview, false);
+  assert.equal(fs.existsSync(path.join(root, `skills/personal-pages/references/templates/${giftTemplate.id}.md`)), true);
+  assert.match(pageSkill, new RegExp(`${giftTemplate.id}\\.md`));
 });
 
 test("the committed example is the byte-stable output of the governed native v2 pipeline", async () => {
@@ -44,6 +52,7 @@ test("the committed example is the byte-stable output of the governed native v2 
     "project-v2-seed",
     "pascal-scene-compile",
     "professional-quality-audit",
+    "imagegen-render-register",
     "page-v2-generate",
     "artifact-hash-verify",
   ]);
@@ -75,15 +84,33 @@ test("the committed example is the byte-stable output of the governed native v2 
   assert.match(html, /id="pascal-scene"/);
   assert.match(html, /id="model-derived-plan"/);
   assert.match(html, /id="viewer-loading"/);
-  assert.match(html, /用户户型图与 Agent 标注/);
+  assert.match(html, /用户需求与户型依据/);
   assert.match(html, /plan-source-image/);
   assert.match(html, /plan-annotation-image/);
   assert.match(html, /data-plan-mode="annotation"/);
   assert.match(html, /data-presentation-panel="review"/);
   assert.doesNotMatch(html, /data-presentation="review"/);
+  assert.match(html, /data-presentation-panel="render"/);
+  assert.match(html, /对应渲染稿/);
+  assert.match(html, /data-presentation-panel="render" data-image-viewer data-image-rotatable/);
+  assert.match(html, /data-image-zoom="out"/);
+  assert.match(html, /data-image-zoom="in"/);
+  assert.match(html, /data-image-rotate="left"/);
+  assert.match(html, /data-image-rotate="right"/);
+  assert.match(html, /data-image-rotation/);
+  assert.match(html, /data-image-reset/);
+  assert.match(html, /可旋转、缩放查看对应渲染稿/);
+  assert.match(html, /可缩放查看户型图/);
+  assert.match(html, /addEventListener\('wheel'/);
+  assert.match(html, /addEventListener\('dblclick'/);
+  assert.match(html, /addEventListener\('pointermove'/);
+  assert.match(html, /IMAGE_WHEEL_SENSITIVITY=\.0008/);
+  assert.match(html, /IMAGE_PINCH_SENSITIVITY=\.72/);
   assert.match(html, /C 户型 · 三房两厅两卫开放联厅/);
   assert.match(html, /方案 A · 拆墙开放联厅/);
-  assert.match(html, /<nav class="presentation-switch"[\s\S]*SU 设计稿[\s\S]*户型图[\s\S]*用户需求[\s\S]*<\/nav>/);
+  assert.match(html, /data-presentation-panel="requirements"[\s\S]*plan-source-image[\s\S]*plan-annotation-image/);
+  assert.doesNotMatch(html, /data-presentation="plan"/);
+  assert.match(html, /<nav class="presentation-switch"[\s\S]*data-presentation="requirements"[\s\S]*用户需求[\s\S]*class="active"[^>]+data-presentation="model"[^>]+aria-pressed="true"[\s\S]*设计稿[\s\S]*data-presentation="render"[\s\S]*渲染稿[\s\S]*<\/nav>/);
   assert.match(html, /pascal-room-label/);
   assert.match(html, /pascal-highlight/);
   assert.match(html, /professional-mesh-ink/);
@@ -101,6 +128,10 @@ test("the committed example is the byte-stable output of the governed native v2 
   assert.ok(scene.furniture.length >= 30);
   assert.equal(scene.sourcePlanSha256, "23eab735dd2dcd2190264f93b3aad274b08a68b822c4a6f597a377afdc763542");
   assert.equal(manifest.source.annotationSha256, "2a8a7f8486409aee8e0252adb47f5c33c5e7d935b0b24a172bd6dcec579e48d1");
+  assert.equal(manifest.render.generator, "imagegen");
+  assert.equal(manifest.render.imageSha256, manifest.source.renderSha256);
+  assert.equal(manifest.render.referenceImageSha256, manifest.source.renderReferenceSha256);
+  assert.equal(manifest.render.promptSha256, manifest.source.renderPromptSha256);
   assert.ok(roomNames.includes("餐厅联厅 · 拆墙区"));
   assert.ok(roomNames.includes("开放家庭厅 · 原卧室二"));
   assert.ok(roomNames.includes("生活阳台一 · 开放洗烘"));
@@ -150,6 +181,7 @@ test("template catalog and example route consume only the verified generated art
   assert.match(exampleRoute, /redirect\(template\.exampleArtifact\.pagePath\)/);
   assert.match(styles, /\.template-artifact-frame/);
   assert.match(nextConfig, /interior-design-delivery-v2/);
+  assert.match(nextConfig, /gift-advisor-report-v1/);
   assert.match(nextConfig, /max-age=300, must-revalidate/);
   assert.match(runtimeBuild, /\['import\.meta\.url', 'document\.baseURI'\]/);
   assert.match(projectCamera, /function ProjectCamera/);
@@ -199,7 +231,7 @@ test("template catalog and example route consume only the verified generated art
 test("Agent template catalog lists matching metadata and inspects the execution contract", () => {
   const registry = readPageTemplateRegistry();
   const templates = listPageTemplates({ registry });
-  assert.deepEqual(templates.map((template) => template.id), ["interior-design-delivery"]);
+  assert.deepEqual(templates.map((template) => template.id), ["interior-design-delivery", "gift-advisor-report"]);
   assert.equal(templates[0].skill, "interior-design");
   assert.equal(templates[0].implementation.version, 2);
   assert.equal(templates[0].acceptance.agentBrowserReview, false);
@@ -208,6 +240,11 @@ test("Agent template catalog lists matching metadata and inspects the execution 
   assert.ok(template.fixedFramework.length >= 8);
   assert.ok(template.agentInstructions.some((item) => item.includes("子任务")));
   assert.equal(template.contractDigest, templates[0].contractDigest);
+  const giftTemplate = inspectPageTemplate("gift-advisor-report", { registry });
+  assert.equal(giftTemplate.skill, "gift-advisor");
+  assert.ok(giftTemplate.fixedFramework.some((item) => item.includes("事实")));
+  assert.ok(giftTemplate.agentInstructions.some((item) => item.includes("gift-plan.json")));
+  assert.match(giftTemplate.contractDigest, /^[a-f0-9]{64}$/);
   assert.equal(inspectPageTemplate("missing-template", { registry }), null);
 });
 

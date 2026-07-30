@@ -12,6 +12,11 @@ import { formatMarkdown, renderMarkdownDocument } from '../skills/content-workbe
 import { validateResearchProject } from '../skills/deep-research/scripts/research.mjs';
 import { isPrivateOrReservedAddress } from '../skills/knowledge-capture/scripts/capture.mjs';
 import { inspectMedia } from '../skills/media-toolkit/scripts/media.mjs';
+import {
+  HYPERFRAMES_PACKAGE,
+  buildInvocation,
+  resolveWithinProject,
+} from '../skills/hyperframes-video/scripts/hyperframes.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -44,6 +49,37 @@ test('media inspection reads deterministic SVG dimensions', () => {
     const result = inspectMedia(file);
     assert.equal(result.width, 800); assert.equal(result.height, 500); assert.equal(result.aspectRatio, 1.6);
   } finally { fs.rmSync(directory, { recursive: true, force: true }); }
+});
+
+test('HyperFrames wrapper pins the package and confines generated outputs', () => {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'skill-tree-video-'));
+  const outside = fs.mkdtempSync(path.join(os.tmpdir(), 'skill-tree-video-outside-'));
+  try {
+    fs.writeFileSync(path.join(directory, 'index.html'), '<div data-composition-id="main"></div>');
+    const invocation = buildInvocation('render', {
+      project: directory,
+      output: 'renders/demo.mp4',
+      quality: 'high',
+      strict: true,
+    });
+    assert.equal(HYPERFRAMES_PACKAGE, 'hyperframes@0.7.82');
+    assert.equal(invocation.command.includes('npx'), true);
+    assert.deepEqual(invocation.args.slice(0, 4), ['--yes', HYPERFRAMES_PACKAGE, 'render', '--output']);
+    assert.equal(invocation.args.includes('--skill'), true);
+    assert.equal(invocation.args.includes('hyperframes-video'), true);
+    assert.throws(
+      () => resolveWithinProject(directory, '../outside.mp4'),
+      /must stay inside/,
+    );
+    fs.symlinkSync(outside, path.join(directory, 'linked-output'));
+    assert.throws(
+      () => resolveWithinProject(directory, 'linked-output/demo.mp4'),
+      /must not traverse a symbolic link/,
+    );
+  } finally {
+    fs.rmSync(directory, { recursive: true, force: true });
+    fs.rmSync(outside, { recursive: true, force: true });
+  }
 });
 
 test('research results cannot escape their project directory', () => {

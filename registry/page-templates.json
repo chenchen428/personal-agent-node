@@ -26,7 +26,7 @@
         "verifyArtifactBeforePublish": true,
         "persistProvenance": true
       },
-      "summary": "把证据、需求、方案选择、Pascal 建筑场景、专业质量审计和版本脉络组织成可追溯、离线可查看的专业装修设计交付页。",
+      "summary": "把证据、需求、方案选择、Pascal 建筑场景、对应概念渲染、专业质量审计和版本脉络组织成可追溯、离线可查看的专业装修设计交付页。",
       "useWhen": "用户要求根据户型图、室内空间或居住需求制作装修设计、户型改造、家居布局或可交互装修交付页时使用。",
       "matchTerms": [
         "装修设计",
@@ -40,8 +40,10 @@
       "desktop": true,
       "mobileLandscape": true,
       "fixedFramework": [
-        "su-design-classic 历史全画布交付骨架：浅色无包边画布、悬浮顶栏、左下 SU 设计稿 / 户型图 / 用户需求三项切换、底部居中视图工具和右下操作提示；质量审计保留在交付数据中",
-        "用户上传户型原图 / Agent 上传标注图 / Pascal 设计模型切换；两张图均为普通图片，页面不重绘标注",
+        "su-design-classic 历史全画布交付骨架：浅色无包边画布、悬浮顶栏、左下用户需求 / 设计稿 / 可选受治理渲染稿切换、底部居中视图工具和右下操作提示；设计稿始终默认展示，户型依据并入用户需求，渲染稿与设计稿使用同一无滚动固定舞台，质量审计保留在交付数据中",
+        "渲染稿必须由当前 SU 参考图进行结构保持型生成，绑定当前项目修订、Pascal 场景、模型依据、参考图、提示词和图像哈希，并明确标识为概念效果",
+        "户型图和渲染稿复用同一低灵敏图片查看器：支持约 10% 细步进、连续滚轮与双击缩放、放大后拖动、阻尼触控双指缩放和一键适配，缩放范围固定为 100%–400% 且不产生页面滚动；渲染稿额外支持左右 90° 旋转、角度反馈以及方向/比例/位置统一复位",
+        "用户需求视图内切换用户上传户型原图 / Agent 上传标注图，并同时展示需求、专业边界和版本脉络；两张图均为普通图片，页面不重绘标注",
         "用户原图 SHA-256、项目 provenance、每个 concept、Pascal scene modelBasis 与 Page payload 必须同源；3D、正交平面、标签和方案说明不得套用示例或通用户型",
         "用户需求核心点与迭代脉络",
         "设计模型按用户实际提供的图纸切换楼层",
@@ -65,6 +67,7 @@
         "墙体、门窗与空间几何",
         "阳台、栏杆与生活区构件",
         "家具、柜体和生活物件",
+        "经用户明确授权后，使用生图工具生成并注册当前 SU 设计稿对应的概念渲染稿",
         "细节标注内容"
       ],
       "agentInstructions": [
@@ -77,9 +80,98 @@
         "把模板 ID、关联技能、用户原始材料、约束和验收标准完整写入子任务执行说明。",
         "没有用户户型图或关键尺寸时，把缺失项记录为未知或专业核验，不得把示例户型冒充用户方案或宣称施工精度。",
         "用户上传的 structure-reference 是唯一户型依据；Agent 标注图只能补充沟通信息，不能替换模型依据。来源 ID 或哈希不一致时必须停止编译和发布。",
+        "只有在用户明确授权把选定的 SU 派生参考图交给生图工具后，才生成渲染稿；生成时保持户型、开口、房间、家具、比例、裁切和机位，禁止静默增删设计元素。接受结果后必须通过 interior render register 绑定当前修订，场景修订后不得沿用旧渲染。",
+        "切换按钮必须按用户需求 / 设计稿 / 渲染稿排序，进入页面时默认展示设计稿；用户原图、Agent 标注图、需求、专业边界和版本脉络统一放在用户需求视图，禁止增加独立户型图 Tab；存在当前受治理渲染稿时，渲染视图不得出现内部滚动条或裁掉主体，并必须持续显示概念效果与专业边界。",
+        "渲染稿必须复用户型依据的低灵敏缩放与平移体验，提供可见的缩小、比例、放大和适配控件，并额外提供左右 90° 旋转与角度反馈；按钮使用约 10% 细步进，滚轮连续缩放，双指缩放带阻尼，适配同时复位方向、比例和位置，所有变化只发生在固定舞台内。",
         "发布必须使用 pa-cli pages publish --template interior-design-delivery；CLI 与 Node 必须复核模板标识、ID、版本、契约摘要和 HTML 哈希，并把 page.template 溯源写入公开或私有 Page 清单。",
         "只运行确定性的模型审计与模板契约校验；不得打开浏览器、自行截图走查或宣称视觉验收通过，视觉与交互验收交给用户。"
       ]
+    },
+    {
+      "id": "gift-advisor-report",
+      "name": "礼物顾问推荐页模板",
+      "category": "生活决策",
+      "skill": "gift-advisor",
+      "status": "built-in",
+      "implementation": {
+        "version": 1,
+        "generator": "node skills/gift-advisor/scripts/generate-page.mjs --template gift-advisor-report --project-dir <space-owned-gift-project> --output <space-owned-gift-project>/derived/page --json",
+        "artifactMarker": "personal-agent-page-template"
+      },
+      "exampleArtifact": {
+        "source": "space-owned-gift-advisor-plan-v1",
+        "pagePath": "/assets/templates/gift-advisor-report-v1/index.html",
+        "manifestPath": "/assets/templates/gift-advisor-report-v1/manifest.json",
+        "coverPath": "/assets/templates/gift-advisor-report-v1/cover.svg"
+      },
+      "acceptance": {
+        "visualOwner": "user",
+        "agentBrowserReview": false
+      },
+      "publicationContract": {
+        "verifyArtifactBeforePublish": true,
+        "persistProvenance": true
+      },
+      "summary": "先通过多轮对话理解收礼者，再把事实、谨慎推断、送礼策略、预算内推荐、避坑与表达方式组织成一份精美、可比较的送礼提案。",
+      "useWhen": "用户不知道送什么、需要生日/纪念日/节日/感谢礼物建议、希望按预算和对象偏好挑礼物，或要求生成礼物清单与送礼推荐 Page 时使用。",
+      "matchTerms": [
+        "礼物",
+        "送礼",
+        "生日礼物",
+        "礼物推荐",
+        "送什么",
+        "gift"
+      ],
+      "desktop": true,
+      "mobileLandscape": true,
+      "fixedFramework": [
+        "先理解收礼者、后推荐商品的两阶段流程",
+        "收礼者、关系、场合、预算与送礼意图首屏摘要",
+        "可观察事实、谨慎推断与未知项严格分层",
+        "明确声明人物画像不是心理诊断",
+        "两到四条价值不同的送礼策略",
+        "三到九项预算内、多商品族推荐组合",
+        "每项推荐的契合证据、购买前确认项与个性化表达",
+        "策略筛选、契合度/价格排序、详情展开和备选复制",
+        "礼物确认、包装、表达与交付步骤",
+        "每项推荐的真实商品图、精确购买链接、页面标价与核验日期",
+        "仅加载已核验商品图片、无远程代码、字体、样式、分析或 API 依赖的只读 Page",
+        "Web 与移动端独立可读布局"
+      ],
+      "agentFreedom": [
+        "根据对话动态选择下一道可观察行为问题",
+        "决定何时信息已经足够并停止追问",
+        "按对象、关系与场合组织送礼策略",
+        "研究并筛选有真实商品页、真实商品图与可核验标价的当前可购买商品",
+        "决定推荐数量、顺序、理由、避坑与表达方式",
+        "按用户语言、国家、文化习惯和币种呈现内容"
+      ],
+      "agentInstructions": [
+        "先调用并遵循 gift-advisor 技能；不要在人物画像不足时直接进入商品搜索。",
+        "在主对话中一次只追问一个高信息量问题，只询问送礼者能观察到的行为，并为选择题保留且只保留一个不太清楚选项。",
+        "未知回答不产生偏好信号；事实、谨慎推断与未知项必须分开，不能使用心理诊断或敏感属性推断。",
+        "信息足够后先生成两到四条价值不同的送礼策略，再选择三到九个不同商品族或体验形态组成互补组合。",
+        "预算、禁忌、已拥有物品、过敏与场合分寸是硬约束；数值价格超出预算时必须停止生成并修正 gift-plan.json。",
+        "每项推荐必须有核验过的 HTTPS 商品页、来自该页的真实商品图、页面标价、库存说明和检查日期；不得编造品牌、商家、图片、价格、评价或 URL。",
+        "把用户材料整理成 Space 内 gift-plan.json，并使用 implementation.generator 生成页面；不得手写相似 HTML 冒充模板产物。",
+        "生成后校验模板标识、模板 ID、版本、预算、多样性、商品页/图片/来源/日期一致性、语义 HTML、隐私、CSP、远程代码和文件哈希。",
+        "发布必须使用 pa-cli pages publish --template gift-advisor-report；CLI 与 Node 必须复核模板溯源并持久化精确 HTML SHA-256。",
+        "正常技能执行不自行打开浏览器、截图或宣称视觉验收；视觉与交互验收由用户拥有。"
+      ],
+      "presentation": {
+        "coverAlt": "由礼物顾问示例画像与推荐组合生成的送礼提案封面",
+        "coverBadge": "画像先行",
+        "coverFooter": "礼物顾问推荐页",
+        "detailHeading": "先理解一个人，再认真挑一份礼物",
+        "detailDescription": "把可观察的日常、关系分寸、预算与雷区整理成清晰画像，再用多条送礼策略和互补推荐帮助用户做决定。",
+        "principleTitle": "不问想买什么，先理解对方",
+        "principleDescription": "每次只追问一条能改变判断的可观察信息；未知不参与排序，所有推断都说明证据和不确定性。",
+        "webEyebrow": "VERIFIED GIFT PROPOSAL",
+        "webLabel": "Web · 送礼提案真实产物",
+        "mobileEyebrow": "MOBILE GIFT PROPOSAL",
+        "mobileLabel": "移动端 · 横屏推荐页",
+        "previewTitle": "礼物顾问推荐页"
+      }
     }
   ]
 }

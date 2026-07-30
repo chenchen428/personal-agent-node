@@ -1,7 +1,8 @@
 # ADR 0010：项目级专业子 Agent 配置
 
-- 状态：提议
+- 状态：已采纳（基础运行时与五个专业配置已实现）
 - 日期：2026-07-29
+- 实现更新：2026-07-30
 - 范围：Personal Agent Node 主 Agent 委派、Worker 会话、可移植 Skill 与用户 Workspace
 - 相关文档：ADR 0003 Core/Workspace 交付、`AGENTS.md` 中主 Agent 与 Worker 委派约定
 
@@ -24,12 +25,15 @@ Personal Agent 应在不替换现有主 Agent、Worker、Skill、Page、文件�
 
 目标是让专业子 Agent 专注处理自己的垂直领域工作，同时保持当前产品结构，尽量减少改造范围。
 
-第一批专业子 Agent 包括：
+规划中的领域专业子 Agent 包括：
 
 1. 装修设计；
 2. PPT 设计；
 3. 海报与社交视觉设计；
-4. 旅游规划。
+4. 旅游规划；
+5. 个人账务与数据分析。
+
+当前正式注册并随 Node 交付的配置包括“视频创作”“装修设计”“旅游规划”“海报设计”和“账务分析”。PPT 设计只有在说明、测试与代表产物完整后才进入注册表。
 
 满足以下条件即视为方案成功：
 
@@ -95,16 +99,19 @@ Personal Agent Node 已经具备所需的执行基础：
 
 ```text
 agents/
+├── video-creator/
+│   ├── agent.yaml
+│   └── AGENT.md
 ├── interior-designer/
 │   ├── agent.yaml
 │   └── AGENT.md
-├── presentation-designer/
+├── travel-planner/
 │   ├── agent.yaml
 │   └── AGENT.md
 ├── poster-designer/
 │   ├── agent.yaml
 │   └── AGENT.md
-└── travel-planner/
+└── finance-analyst/
     ├── agent.yaml
     └── AGENT.md
 
@@ -359,9 +366,8 @@ Worker 会话同时保存：
 - `visual-content`
 - `media-toolkit`
 - `personal-files`
-- `personal-pages`
 
-负责装修需求、户型证据、布局与概念方案、受治理场景生成、修改、审计和装修交付 Page。
+负责装修需求、户型证据、布局与概念方案、受治理场景生成、修改、审计、经授权的 SU 对应渲染和装修交付 Page。
 
 ### PPT 设计 Agent
 
@@ -401,6 +407,32 @@ Worker 会话同时保存：
 - `personal-pages`
 
 负责旅行限制、最新资料调研、行程可行性、攻略生成、修改、发布和可选 PDF 导出。
+
+### 账务分析 Agent
+
+主要 Skill：
+
+- `personal-data`
+- `personal-files`
+- `content-workbench`
+- `deep-research`
+- `knowledge-capture`
+- `personal-pages`
+
+负责个人与家庭账单、交易流水和脱敏表格的字段归一、逐笔核对、异常识别、周期分析与脱敏 Page 交付；保持计算可追溯，不替代持证会计、税务或投资意见。
+
+### 视频创作 Agent
+
+主要 Skill：
+
+- `hyperframes-video`
+- `media-toolkit`
+- `visual-content`
+- `content-workbench`
+- `deep-research`
+- `personal-files`
+
+负责产品介绍、功能演示、旅游素材剪辑、横竖屏变体、HyperFrames 确定性合成、快照检查和本地成片交付。代表案例为 Personal Agent 介绍视频。
 
 ## 运行时与 API 方案
 
@@ -580,7 +612,7 @@ scripts/agent-guard.mjs
 
 - 增加 `registry/agents.json`；
 - 增加 Agent 清单 Schema 与守卫脚本；
-- 增加四个专业子 Agent 目录；
+- 增加经过完整说明与测试的专业子 Agent 目录；首个交付目录为 `video-creator`；
 - 支持按 ID 加载并校验 Agent 配置；
 - 将 Agent 配置源文件加入 Workspace 初始化与打包；
 - `agentId` 缺失时保持所有现有运行时行为不变。
@@ -668,7 +700,7 @@ npm test
 npm run check
 ```
 
-当前只采纳这份提议状态的 ADR，并不表示 Agent 注册表或运行时行为已经实现。
+截至 2026-07-30，注册表、Schema、守卫、安装态分发、会话元数据、CLI/API 过滤、专业提示组合、主 Agent 精简目录，以及 `video-creator`、`interior-designer`、`travel-planner`、`poster-designer` 和 `finance-analyst` 配置已经实现。`video-creator@2` 包含版本化视频风格合同：从现有 Personal Agent 成片沉淀默认产品介绍风格，并注册产品演示、文字发布、人物纪实、电影感旅程、旅行明信片和竖屏旅行等可选风格。`interior-designer@1` 使用受治理项目与 Pascal v2 作为空间事实，并在用户明确授权后用生图工具生成结构保持型 SU 对应渲染；渲染注册会绑定当前修订、场景、模型依据、参考图、提示词与图片哈希，交付页提供同舞台切换。`travel-planner@1` 使用独立编写的 `amap-travel-routing` 核验中国境内 POI 与相邻路段，把 provider 时长与门到门缓冲、开放预约来源、逐日备选和完整规划 Page 绑定在同一交付链路中。`poster-designer@1` 组合社交卡片、视觉内容、媒体处理和内容工作台能力，交付可追溯素材与多渠道规格。`finance-analyst@1` 通过受治理数据与文件能力完成可追溯的账务归一、复核、分析和脱敏 Page。PPT 配置仍是后续候选，不得因为本 ADR 中存在示例就宣称已经注册。
 
 ## 兼容与回滚
 

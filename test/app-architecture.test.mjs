@@ -82,7 +82,7 @@ test("Next.js owns the approved V6.39 mobile client and V7.3 desktop workspace",
   const conversationCss = read("core/app/src/app/desktop-v633-conversation.css");
   const mobileCss = read("core/app/src/app/mobile-current.css");
 
-  for (const route of ["/app/conversations", "/app/workers", "/app/mail", "/app/pages", "/app/data", "/app/connections", "/app/runtime", "/app/apps", "/app/settings", "/app/statistics/token-usage", "/app/update"]) {
+  for (const route of ["/app/conversations", "/app/workers", "/app/mail", "/app/pages", "/app/data", "/app/connections", "/app/agents", "/app/runtime", "/app/apps", "/app/settings", "/app/statistics/token-usage", "/app/update"]) {
     assert.match(desktopNavigationSource, new RegExp(route.replaceAll("/", "\\/")));
   }
   for (const route of ["/app/mobile", "/app/mobile/pages", "/app/mobile/workers", "/app/mobile/apps", "/app/mobile/about"]) {
@@ -152,6 +152,7 @@ test("Next.js owns the approved V6.39 mobile client and V7.3 desktop workspace",
   assert.match(shell, /desktopNavigationGroups/);
   assert.ok(navigation.indexOf('label: "Agent 组件"') < navigation.indexOf('href: "\/app\/workers"'));
   assert.match(navigation, /label: "核心功能"/);
+  assert.match(navigation, /label: "Agent 团队", href: "\/app\/agents"/);
   assert.doesNotMatch(navigation, /用户参与|Agent 工作/);
   assert.match(shell, /PanelLeftClose/);
   assert.doesNotMatch(shell, /window-dots|phone-status|9:41/);
@@ -429,7 +430,7 @@ test("Next.js owns the approved V6.39 mobile client and V7.3 desktop workspace",
 test("all finalized client routes have independently buildable Next pages", () => {
   const pages = [
     "app/page.tsx", "app/conversations/page.tsx", "app/workers/page.tsx", "app/workers/schedules/page.tsx", "app/schedules/page.tsx", "app/automations/page.tsx", "app/mail/page.tsx",
-    "app/pages/page.tsx", "app/pages/[pageId]/page.tsx", "app/data/page.tsx", "app/apps/page.tsx", "app/apps/[appId]/page.tsx",
+    "app/pages/page.tsx", "app/pages/[pageId]/page.tsx", "app/data/page.tsx", "app/apps/page.tsx", "app/apps/[appId]/page.tsx", "app/agents/page.tsx", "app/agents/[agentId]/page.tsx",
     "app/connections/page.tsx", "app/connections/wechat-personal/page.tsx", "app/channels/page.tsx", "app/skills/page.tsx", "app/statistics/token-usage/page.tsx", "app/setup/page.tsx", "app/runtime/page.tsx", "app/settings/page.tsx", "app/settings/memory/page.tsx", "app/update/page.tsx",
     "app/mobile/page.tsx", "app/mobile/pages/page.tsx", "app/mobile/pages/[pageId]/page.tsx",
     "app/mobile/workers/page.tsx", "app/mobile/workers/[sessionId]/page.tsx",

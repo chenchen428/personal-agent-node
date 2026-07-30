@@ -185,6 +185,85 @@ test("session list scopes status reads to one parent session", async (t) => {
   assert.equal(JSON.parse(stdout).sessions[0].status, "running");
 });
 
+test("session CLI preserves specialist Agent and project identity", async (t) => {
+  const requests = [];
+  const server = http.createServer(async (request, response) => {
+    const chunks = [];
+    for await (const chunk of request) chunks.push(chunk);
+    const body = chunks.length ? JSON.parse(Buffer.concat(chunks).toString("utf8")) : {};
+    requests.push({ method: request.method, url: request.url, body });
+    response.writeHead(200, { "content-type": "application/json" });
+    if (request.method === "GET") {
+      response.end(JSON.stringify({
+        ok: true,
+        sessions: [{
+          id: "video-task",
+          role: "worker",
+          parentSessionId: "main-1",
+          status: "idle",
+          title: "制作介绍视频",
+          metadata: {
+            agentId: "video-creator",
+            agentProfileVersion: 1,
+            projectKey: "project_personal_agent_intro",
+          },
+        }],
+        nextCursor: "",
+        hasMore: false,
+      }));
+    } else {
+      response.end(JSON.stringify({ ok: true, session: { id: "video-task" } }));
+    }
+  });
+  await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
+  t.after(() => server.close());
+  const address = server.address();
+  const env = {
+    ...process.env,
+    OPEN_AGENT_BRIDGE_API_BASE: `http://127.0.0.1:${address.port}`,
+    OPEN_AGENT_BRIDGE_API_TOKEN: "cli-test-token",
+  };
+  const cli = path.join(projectRoot, "bin", "pa-cli.mjs");
+
+  await execFileAsync(process.execPath, [
+    cli, "session", "start",
+    "--parent", "main-1",
+    "--title", "制作介绍视频",
+    "--description", "使用 HyperFrames 制作 Personal Agent 介绍视频",
+    "--task", "完成产品介绍视频",
+    "--agent", "video-creator",
+    "--project-key", "project_personal_agent_intro",
+    "--json",
+  ], { cwd: projectRoot, env });
+  const listed = await execFileAsync(process.execPath, [
+    cli, "session", "list",
+    "--parent", "main-1",
+    "--agent", "video-creator",
+    "--project-key", "project_personal_agent_intro",
+    "--all",
+    "--json",
+  ], { cwd: projectRoot, env });
+
+  assert.deepEqual(requests[0], {
+    method: "POST",
+    url: "/api/sessions",
+    body: {
+      task: "完成产品介绍视频",
+      title: "制作介绍视频",
+      description: "使用 HyperFrames 制作 Personal Agent 介绍视频",
+      parentSessionId: "main-1",
+      agentId: "video-creator",
+      projectKey: "project_personal_agent_intro",
+      createdBy: "pa-cli",
+    },
+  });
+  const listUrl = new URL(requests[1].url, "http://127.0.0.1");
+  assert.equal(listUrl.searchParams.get("agent"), "video-creator");
+  assert.equal(listUrl.searchParams.get("project"), "project_personal_agent_intro");
+  assert.equal(JSON.parse(listed.stdout).sessions[0].agentId, "video-creator");
+  assert.equal(JSON.parse(listed.stdout).sessions[0].projectKey, "project_personal_agent_intro");
+});
+
 test("session CLI preserves the unavailable-domain notice instead of inventing a task URL", async (t) => {
   const server = http.createServer(async (request, response) => {
     for await (const _chunk of request) {}
@@ -389,10 +468,16 @@ test("pages template CLI lists match metadata and inspects the full contract", a
   });
   const list = JSON.parse(listed.stdout);
   assert.equal(list.schemaVersion, 1);
-  assert.deepEqual(list.templates.map((template) => template.id), ["interior-design-delivery"]);
+  assert.deepEqual(list.templates.map((template) => template.id), [
+    "interior-design-delivery",
+    "gift-advisor-report",
+  ]);
   assert.equal(list.templates[0].skill, "interior-design");
   assert.match(list.templates[0].useWhen, /户型/);
   assert.match(list.templates[0].contractDigest, /^[a-f0-9]{64}$/);
+  assert.equal(list.templates[1].skill, "gift-advisor");
+  assert.match(list.templates[1].useWhen, /礼物/);
+  assert.match(list.templates[1].contractDigest, /^[a-f0-9]{64}$/);
 
   const inspected = await execFileAsync(process.execPath, [
     cli, "pages", "templates", "inspect", "--id", "interior-design-delivery", "--json",

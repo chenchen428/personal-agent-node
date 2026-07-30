@@ -1,0 +1,248 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://personal-agent.cn/schemas/gift-plan-v1.json",
+  "title": "Personal Agent Gift Advisor Plan",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "title",
+    "subtitle",
+    "generatedAt",
+    "locale",
+    "recipient",
+    "budget",
+    "intent",
+    "constraints",
+    "portrait",
+    "strategies",
+    "recommendations",
+    "deliveryPlan",
+    "sources"
+  ],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "title": { "type": "string", "minLength": 1, "maxLength": 100 },
+    "subtitle": { "type": "string", "minLength": 1, "maxLength": 180 },
+    "generatedAt": { "type": "string", "format": "date-time" },
+    "locale": { "type": "string", "enum": ["zh-CN", "en-US", "ja-JP"] },
+    "recipient": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["displayName", "relationship", "occasion", "interests"],
+      "properties": {
+        "displayName": { "type": "string", "minLength": 1, "maxLength": 60 },
+        "relationship": { "type": "string", "minLength": 1, "maxLength": 40 },
+        "occasion": { "type": "string", "minLength": 1, "maxLength": 50 },
+        "location": { "type": "string", "maxLength": 80 },
+        "ageBand": { "type": "string", "maxLength": 40 },
+        "occupation": { "type": "string", "maxLength": 80 },
+        "interests": {
+          "type": "array",
+          "maxItems": 12,
+          "items": { "type": "string", "minLength": 1, "maxLength": 60 }
+        }
+      }
+    },
+    "budget": { "$ref": "#/$defs/moneyRange" },
+    "intent": { "type": "string", "minLength": 1, "maxLength": 400 },
+    "constraints": {
+      "type": "array",
+      "maxItems": 16,
+      "items": { "type": "string", "minLength": 1, "maxLength": 120 }
+    },
+    "portrait": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["facts", "inferences", "unknowns", "disclaimer"],
+      "properties": {
+        "facts": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 16,
+          "items": { "type": "string", "minLength": 1, "maxLength": 180 }
+        },
+        "inferences": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 12,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["preference", "evidence", "implication"],
+            "properties": {
+              "preference": { "type": "string", "minLength": 1, "maxLength": 80 },
+              "evidence": { "type": "string", "minLength": 1, "maxLength": 180 },
+              "implication": { "type": "string", "minLength": 1, "maxLength": 180 }
+            }
+          }
+        },
+        "unknowns": {
+          "type": "array",
+          "maxItems": 12,
+          "items": { "type": "string", "minLength": 1, "maxLength": 160 }
+        },
+        "disclaimer": { "type": "string", "minLength": 1, "maxLength": 240 }
+      }
+    },
+    "strategies": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 4,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "label", "tagline", "rationale"],
+        "properties": {
+          "id": { "type": "string", "pattern": "^[a-z][a-z0-9-]{1,39}$" },
+          "label": { "type": "string", "minLength": 1, "maxLength": 32 },
+          "tagline": { "type": "string", "minLength": 1, "maxLength": 80 },
+          "rationale": { "type": "string", "minLength": 1, "maxLength": 180 }
+        }
+      }
+    },
+    "recommendations": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 9,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "strategyId",
+          "rank",
+          "title",
+          "category",
+          "productFamily",
+          "price",
+          "summary",
+          "fitReasons",
+          "watchouts",
+          "personalization",
+          "fitScore",
+          "product"
+        ],
+        "properties": {
+          "id": { "type": "string", "pattern": "^[a-z][a-z0-9-]{1,59}$" },
+          "strategyId": { "type": "string", "pattern": "^[a-z][a-z0-9-]{1,39}$" },
+          "rank": { "type": "integer", "minimum": 1, "maximum": 9 },
+          "title": { "type": "string", "minLength": 1, "maxLength": 90 },
+          "category": { "type": "string", "minLength": 1, "maxLength": 50 },
+          "productFamily": { "type": "string", "minLength": 1, "maxLength": 50 },
+          "price": { "$ref": "#/$defs/moneyRange" },
+          "summary": { "type": "string", "minLength": 1, "maxLength": 260 },
+          "fitReasons": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 4,
+            "items": { "type": "string", "minLength": 1, "maxLength": 140 }
+          },
+          "watchouts": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 4,
+            "items": { "type": "string", "minLength": 1, "maxLength": 140 }
+          },
+          "personalization": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 4,
+            "items": { "type": "string", "minLength": 1, "maxLength": 140 }
+          },
+          "fitScore": { "type": "integer", "minimum": 0, "maximum": 100 },
+          "product": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "brand",
+              "model",
+              "label",
+              "url",
+              "merchant",
+              "checkedAt",
+              "availability",
+              "listedPrice",
+              "priceNote",
+              "image"
+            ],
+            "properties": {
+              "brand": { "type": "string", "minLength": 1, "maxLength": 60 },
+              "model": { "type": "string", "minLength": 1, "maxLength": 100 },
+              "label": { "type": "string", "minLength": 1, "maxLength": 50 },
+              "url": { "type": "string", "format": "uri", "pattern": "^https://" },
+              "merchant": { "type": "string", "minLength": 1, "maxLength": 80 },
+              "checkedAt": { "type": "string", "format": "date" },
+              "availability": { "type": "string", "minLength": 1, "maxLength": 80 },
+              "listedPrice": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["currency", "amount", "display"],
+                "properties": {
+                  "currency": { "type": "string", "pattern": "^[A-Z]{3}$" },
+                  "amount": { "type": "number", "minimum": 0 },
+                  "display": { "type": "string", "minLength": 1, "maxLength": 40 }
+                }
+              },
+              "priceNote": { "type": "string", "minLength": 1, "maxLength": 160 },
+              "image": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["url", "alt", "sourceUrl", "checkedAt"],
+                "properties": {
+                  "url": { "type": "string", "format": "uri", "pattern": "^https://" },
+                  "alt": { "type": "string", "minLength": 1, "maxLength": 180 },
+                  "sourceUrl": { "type": "string", "format": "uri", "pattern": "^https://" },
+                  "checkedAt": { "type": "string", "format": "date" }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "deliveryPlan": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 6,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["step", "title", "detail"],
+        "properties": {
+          "step": { "type": "string", "minLength": 1, "maxLength": 8 },
+          "title": { "type": "string", "minLength": 1, "maxLength": 70 },
+          "detail": { "type": "string", "minLength": 1, "maxLength": 220 }
+        }
+      }
+    },
+    "sources": {
+      "type": "array",
+      "maxItems": 20,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["title", "url", "publisher", "checkedAt"],
+        "properties": {
+          "title": { "type": "string", "minLength": 1, "maxLength": 140 },
+          "url": { "type": "string", "format": "uri", "pattern": "^https://" },
+          "publisher": { "type": "string", "minLength": 1, "maxLength": 80 },
+          "checkedAt": { "type": "string", "format": "date" }
+        }
+      }
+    },
+    "capabilityNote": { "type": "string", "maxLength": 240 }
+  },
+  "$defs": {
+    "moneyRange": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["currency", "min", "max"],
+      "properties": {
+        "currency": { "type": "string", "pattern": "^[A-Z]{3}$" },
+        "min": { "type": "number", "minimum": 0 },
+        "max": { "type": "number", "minimum": 0 }
+      }
+    }
+  }
+}

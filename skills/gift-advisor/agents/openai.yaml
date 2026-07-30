@@ -1,0 +1,4 @@
+interface:
+  display_name: "礼物顾问"
+  short_description: "先理解收礼者，再生成有依据、可比较的精美礼物推荐页"
+  default_prompt: "Use $gift-advisor to understand who I am buying for through focused questions, research fitting options, and create a polished Personal Agent Page with explainable gift recommendations."

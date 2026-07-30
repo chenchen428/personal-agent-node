@@ -7,9 +7,11 @@ import type { TemplatePreviewDevice } from "./template-device-preview";
 export function TemplateArtifactPreview({
   artifactPath,
   device,
+  title,
 }: {
   artifactPath: string;
   device: TemplatePreviewDevice;
+  title: string;
 }) {
   const [loaded, setLoaded] = useState(false);
 
@@ -24,7 +26,7 @@ export function TemplateArtifactPreview({
       referrerPolicy="no-referrer"
       sandbox="allow-scripts allow-same-origin"
       src={artifactPath}
-      title={`Pascal v2 装修设计交付页${device === "mobile" ? "移动横屏" : "Web"}预览`}
+      title={`${title}${device === "mobile" ? "移动横屏" : "Web"}预览`}
     />
   </>;
 }

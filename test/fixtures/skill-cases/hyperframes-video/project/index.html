@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1920, height=1080" />
+    <title>HyperFrames Video Skill Case</title>
+    <style>
+      * { box-sizing: border-box; }
+      html, body { width: 1920px; height: 1080px; margin: 0; overflow: hidden; }
+      body {
+        display: grid;
+        place-items: center;
+        background: #0a0b10;
+        color: #f8fafc;
+        font-family: Arial, sans-serif;
+      }
+      #root { position: relative; width: 1920px; height: 1080px; }
+      .card {
+        position: absolute;
+        inset: 240px 300px;
+        display: grid;
+        place-items: center;
+        border: 1px solid #2f3545;
+        border-radius: 36px;
+        background: #121520;
+      }
+      h1 { margin: 0; font-size: 88px; letter-spacing: -0.05em; }
+      p { margin: 24px 0 0; color: #aab2c8; font-size: 34px; }
+    </style>
+  </head>
+  <body>
+    <div
+      id="root"
+      data-composition-id="main"
+      data-start="0"
+      data-duration="8"
+      data-width="1920"
+      data-height="1080"
+      data-fps="30"
+    >
+      <section class="card">
+        <div>
+          <h1>Local by default.</h1>
+          <p>Deterministic product video · 8 seconds</p>
+        </div>
+      </section>
+    </div>
+  </body>
+</html>

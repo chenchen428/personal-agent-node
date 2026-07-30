@@ -16,12 +16,17 @@ Compare every template's `useWhen` and `matchTerms`. Inspect every semantic matc
 
 For `interior-design-delivery` v2, pass the trusted Space-owned `home-renovation-<slug>` project rather than loose model JSON. Generation requires the current Pascal scene and deterministic audit to match the current revision with no automatic blocker. Only a redacted evidence copy may enter the artifact. Require the returned engine, template version, artifact marker, artifact hash, and `visualAcceptance: user`; never accept a local path, guessed URL, or unverified Page. Publish with `--template interior-design-delivery`: the CLI must reject unknown, unmarked, wrong-ID, or wrong-version HTML before upload, then persist the verified template ID, version, contract digest, marker, and exact artifact SHA-256 in the Page manifest.
 
+For `gift-advisor-report` v1, keep recipient discovery in the main conversation until relationship, occasion, budget, observed preferences, intended emotional effect, and important exclusions are known or explicitly unknown. Then pass the Space-owned `gift-plan.json` to `gift-advisor`. Require separated facts/inferences/unknowns, at least two strategies, three to nine distinct product families, budget compliance, one verified HTTPS product page and real product image per recommendation, visible listed prices and check dates, the registered generator, and `visualAcceptance: user`. Publish with `--template gift-advisor-report`; never let the example recipient or example recommendations enter a customer Page.
+
 Each built-in template has one description file under `references/templates/`. Read the matching file after inspecting the runtime contract:
 
 - [interior-design-delivery.md](references/templates/interior-design-delivery.md)
+- [gift-advisor-report.md](references/templates/gift-advisor-report.md)
 
 Use a generic Page workflow only when no registered template matches. Never use template example content as user data.
 
 Read [publishing.md](references/publishing.md) for asset upload, deterministic dual-device gallery previews, publication, link safety, user-owned visual acceptance, and Page Activity targeting.
 
 When a user asks to revise a published professional interior Page, route the request back through `interior-design` structured scene operations, optimistic revision control, re-audit, and a new immutable Page artifact. Do not mutate or turn the delivery Page into an editor.
+
+When revising a gift Page, return to the newest user evidence and constraints, update the Space-owned gift plan, regenerate, and publish a new immutable Page artifact. Do not edit the generated HTML directly.

@@ -1,7 +1,7 @@
 import type { ComponentType } from "react";
 import {
   Activity, AppWindow, BarChart3, Bot, Cable, Database, FileText,
-  Gauge, Info, LayoutDashboard, Mail, MessageCircle, Settings,
+  Gauge, Info, LayoutDashboard, Mail, MessageCircle, Settings, UsersRound,
 } from "lucide-react";
 
 export type NavigationItem = {
@@ -17,6 +17,7 @@ export const desktopNavigationGroups: NavigationGroup[] = [
     { label: "总览", href: "/app", icon: LayoutDashboard },
     { label: "对话", href: "/app/conversations", icon: MessageCircle },
     { label: "连接", href: "/app/connections", icon: Cable },
+    { label: "Agent 团队", href: "/app/agents", icon: UsersRound },
   ] },
   { label: "Agent 组件", items: [
     { label: "任务", href: "/app/workers", icon: Bot },

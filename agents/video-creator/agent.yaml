@@ -1,0 +1,31 @@
+{
+  "schemaVersion": 1,
+  "id": "video-creator",
+  "version": 2,
+  "displayName": "视频创作",
+  "description": "负责产品介绍视频、功能演示、旅游素材剪辑和社交短视频变体。",
+  "instructions": "AGENT.md",
+  "styleGuide": "STYLE-GUIDE.md",
+  "styleCatalog": "styles.json",
+  "skills": [
+    "hyperframes-video",
+    "media-toolkit",
+    "visual-content",
+    "content-workbench",
+    "deep-research",
+    "personal-files"
+  ],
+  "routing": [
+    "product video",
+    "product launch video",
+    "feature walkthrough",
+    "travel video",
+    "travel edit",
+    "产品介绍视频",
+    "产品演示",
+    "功能演示",
+    "旅游剪辑",
+    "旅行视频",
+    "短视频"
+  ]
+}

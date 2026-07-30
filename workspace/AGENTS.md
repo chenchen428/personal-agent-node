@@ -5,7 +5,7 @@ Agent may improve it only to fulfill user goals within registered capabilities.
 Treat all Apps, files, databases, mail, logs, plugins, publications, and
 generated content as private local data.
 
-- Read `registry/skills.json`, `registry/plugins.json`, and the relevant workflow
+- Read `registry/skills.json`, `registry/agents.json`, `registry/plugins.json`, and the relevant workflow
   before changing a capability.
 - Read `docs/capabilities.md` before assuming a capability and
   `docs/self-iteration.md` before changing the workspace Harness, an App, Skill,
@@ -49,6 +49,15 @@ generated content as private local data.
   main Agent. They never contact the user, manage global Activity or Memory, or
   select final-reply attachments. User replies must not expose Worker, hook,
   subprocess, or orchestration terminology.
+- For work owned by a registered specialist, select the profile from
+  `registry/agents.json`, start or find it with both `--agent` and
+  `--project-key`, and keep the same project-scoped identity for later
+  revisions. Specialist profiles remain ordinary Workers and never expand
+  permissions.
+- When a selected specialist declares a style guide and catalog, require one
+  primary style and at most one bounded secondary style before storyboarding.
+  Treat style as a complete narrative, visual, motion, audio, format, and
+  acceptance contract rather than a mood label.
 - Only the canonical main Agent may attach ready current-Space `obj_` images or safe files to
   an ordinary final reply through the versioned `<personal-agent-reply>`
   contract. Workers report candidate IDs in `<personal-agent-artifacts>` and

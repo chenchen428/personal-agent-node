@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="680" viewBox="0 0 1200 680" role="img" aria-labelledby="title desc">
+  <title id="title">给知夏的生日礼物提案</title>
+  <desc id="desc">六件真实可买、贴近日常，也保留共同记忆的礼物</desc>
+  <defs>
+    <linearGradient id="paper" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#fffaf2"/><stop offset="1" stop-color="#efe4d7"/></linearGradient>
+    <radialGradient id="rose" cx=".5" cy=".35" r=".7"><stop stop-color="#d88d87"/><stop offset="1" stop-color="#a95168"/></radialGradient>
+    <filter id="shadow"><feDropShadow dx="0" dy="24" stdDeviation="26" flood-color="#4b2938" flood-opacity=".18"/></filter>
+  </defs>
+  <rect width="1200" height="680" fill="url(#paper)"/>
+  <circle cx="1008" cy="118" r="240" fill="#b76876" opacity=".07"/>
+  <circle cx="104" cy="612" r="220" fill="#75816d" opacity=".08"/>
+  <g font-family="Avenir Next,PingFang SC,sans-serif" fill="#30262d">
+    <g transform="translate(72 64)"><rect width="44" height="44" rx="22" fill="#65354e"/><text x="22" y="29" fill="#fff9ef" text-anchor="middle" font-family="Songti SC,serif" font-size="22">礼</text><text x="59" y="27" font-size="14" font-weight="700" letter-spacing="3">GIFT ADVISOR</text></g>
+    <text x="72" y="178" fill="#b25e6c" font-size="14" font-weight="700" letter-spacing="4">A CONSIDERED GIFT PROPOSAL</text>
+    <text x="72" y="250" font-family="Songti SC,serif" font-size="52" font-weight="600">给知夏的生日礼物提案</text>
+    <text x="72" y="304" fill="#6f6269" font-family="Songti SC,serif" font-size="22">六件真实可买、贴近日常，也保留共同记忆的礼物</text>
+    <g transform="translate(72 368)">
+      <g data-cover-item="daily-ritual" transform="translate(0 0)"><text y="0" fill="#b25e6c" font-size="12">01</text><line x1="0" y1="18" x2="180" y2="18" stroke="#d8c9be"/><text y="50" font-family="Songti SC,serif" font-size="23">日常仪式</text><text y="80" fill="#7c7075" font-size="13">把每天都会做的小事变得…</text></g><g data-cover-item="shared-memory" transform="translate(218 0)"><text y="0" fill="#b25e6c" font-size="12">02</text><line x1="0" y1="18" x2="180" y2="18" stroke="#d8c9be"/><text y="50" font-family="Songti SC,serif" font-size="23">共同记录</text><text y="80" fill="#7c7075" font-size="13">一起拍、一起走，再把经…</text></g><g data-cover-item="quiet-surprise" transform="translate(436 0)"><text y="0" fill="#b25e6c" font-size="12">03</text><line x1="0" y1="18" x2="180" y2="18" stroke="#d8c9be"/><text y="50" font-family="Songti SC,serif" font-size="23">克制惊喜</text><text y="80" fill="#7c7075" font-size="13">有一点意外，但不制造负担</text></g>
+    </g>
+    <g transform="translate(72 574)"><text fill="#80737a" font-size="12">伴侣 · 生日</text><text x="280" fill="#80737a" font-size="12">¥300–¥800</text></g>
+  </g>
+  <g transform="translate(835 215)" filter="url(#shadow)">
+    <ellipse cx="128" cy="318" rx="184" ry="42" fill="#5d3345" opacity=".1"/>
+    <rect x="7" y="72" width="242" height="230" rx="20" fill="url(#rose)"/>
+    <rect x="-11" y="47" width="278" height="58" rx="14" fill="#c97278"/>
+    <rect x="109" y="47" width="39" height="255" fill="#c39a54"/>
+    <rect x="7" y="164" width="242" height="34" fill="#c39a54"/>
+    <path d="M129 52C87 40 63 8 78-12c17-22 57 11 51 64Z" fill="none" stroke="#c39a54" stroke-width="24"/>
+    <path d="M129 52c42-12 66-44 51-64-17-22-57 11-51 64Z" fill="none" stroke="#c39a54" stroke-width="24"/>
+    <text x="282" y="52" fill="#bd8b45" font-size="38">✦</text>
+    <text x="-76" y="106" fill="#a95b6b" font-size="28">◇</text>
+  </g>
+  </svg>

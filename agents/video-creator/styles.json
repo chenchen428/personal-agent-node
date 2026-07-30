@@ -1,0 +1,638 @@
+{
+  "$schema": "../../schemas/personal-agent/video-styles.schema.json",
+  "schemaVersion": 1,
+  "catalogVersion": "2026.07",
+  "defaultStyleId": "pa-continuous-product-story",
+  "selectionPolicy": {
+    "primaryRequired": true,
+    "secondaryOptional": true,
+    "maxSecondarySharePercent": 25,
+    "decisionRecordFields": [
+      "primaryStyleId",
+      "secondaryStyleId",
+      "selectionReason",
+      "intentionalDeviations",
+      "targetAspectRatio",
+      "targetDurationSeconds"
+    ]
+  },
+  "researchSources": [
+    {
+      "id": "local-personal-agent-intro",
+      "title": "Personal Agent 介绍视频现有工程",
+      "publisher": "Personal Agent",
+      "url": "local:projects/prototype/videos/personal-agent-intro",
+      "appliedPrinciples": [
+        "深色连续产品画布",
+        "真实产品证据",
+        "单镜头单主信息",
+        "克制、可信、温暖"
+      ]
+    },
+    {
+      "id": "apple-motion",
+      "title": "Motion",
+      "publisher": "Apple Human Interface Guidelines",
+      "url": "https://developer.apple.com/design/human-interface-guidelines/motion",
+      "appliedPrinciples": [
+        "动效必须服务理解",
+        "反馈动画短促精确",
+        "不能只靠动效传达信息"
+      ]
+    },
+    {
+      "id": "material-choreography",
+      "title": "Choreography",
+      "publisher": "Material Design",
+      "url": "https://m1.material.io/motion/choreography.html",
+      "appliedPrinciples": [
+        "复杂转场维持一个清晰焦点",
+        "共享对象维持场景连续性",
+        "多个对象按单一方向错峰进入"
+      ]
+    },
+    {
+      "id": "vimeo-product-demo",
+      "title": "How to create software demo videos",
+      "publisher": "Vimeo",
+      "url": "https://vimeo.com/blog/post/software-video-demos",
+      "appliedPrinciples": [
+        "从真实问题进入",
+        "界面是主角",
+        "短而聚焦",
+        "用标注引导注意但不过度装饰"
+      ]
+    },
+    {
+      "id": "vimeo-storytelling",
+      "title": "How to use video storytelling to connect with your audience",
+      "publisher": "Vimeo",
+      "url": "https://vimeo.com/blog/post/video-storytelling",
+      "appliedPrinciples": [
+        "故事先于推销",
+        "先明确受众和观看后的行动",
+        "用人物与情境建立真实感"
+      ]
+    },
+    {
+      "id": "adobe-editing",
+      "title": "Introduction to video editing",
+      "publisher": "Adobe",
+      "url": "https://www.adobe.com/creativecloud/video/discover/edit-a-video.html",
+      "appliedPrinciples": [
+        "剪辑优先级依次考虑情绪、故事、节奏和视线",
+        "完整观看并整理素材",
+        "社交短片前两三秒建立钩子"
+      ]
+    },
+    {
+      "id": "adobe-b-roll",
+      "title": "What is B-roll footage and why is it important",
+      "publisher": "Adobe",
+      "url": "https://www.adobe.com/creativecloud/video/discover/b-roll.html",
+      "appliedPrinciples": [
+        "B-roll 必须支持主线",
+        "用建立镜头、细节与切出镜头说明地点和关系",
+        "拍摄前建立 shot list"
+      ]
+    },
+    {
+      "id": "adobe-travel",
+      "title": "Create a travel video from start to finish",
+      "publisher": "Adobe Learn",
+      "url": "https://www.adobe.com/learn/premiere-pro/web/create-travel-video",
+      "appliedPrinciples": [
+        "先概念、分镜和 shot list",
+        "统一考虑构图、帧率、焦段、颜色和镜头运动",
+        "用真实素材完成从初剪到输出的闭环"
+      ]
+    },
+    {
+      "id": "adobe-text-animation",
+      "title": "Animate text in After Effects",
+      "publisher": "Adobe Learn",
+      "url": "https://www.adobe.com/learn/after-effects/web/creating-animating-text",
+      "appliedPrinciples": [
+        "文字动效负责吸引注意和引导视线",
+        "对齐、层级、对比和平衡先于动画花样",
+        "运动必须推动信息而非装饰"
+      ]
+    },
+    {
+      "id": "w3c-av",
+      "title": "Audio Content and Video Content",
+      "publisher": "W3C Web Accessibility Initiative",
+      "url": "https://www.w3.org/WAI/media/av/av-content/",
+      "appliedPrinciples": [
+        "字幕和叠字必须有足够对比度",
+        "避免每秒三次以上闪烁",
+        "关键信息不能只依赖视觉或声音",
+        "有人声时背景音保持明显更低"
+      ]
+    },
+    {
+      "id": "youtube-shorts",
+      "title": "YouTube Shorts upload tips",
+      "publisher": "YouTube Help",
+      "url": "https://support.google.com/youtube/answer/12921536?hl=en",
+      "appliedPrinciples": [
+        "竖屏或方形短视频按移动端观看设计",
+        "平台版本在交付前单独校验",
+        "先用测试发布验证规格和隐私设置"
+      ]
+    }
+  ],
+  "styles": [
+    {
+      "id": "pa-continuous-product-story",
+      "version": 1,
+      "displayName": "PA 连续产品叙事",
+      "category": "product",
+      "summary": "从 Personal Agent 当前介绍片沉淀的默认产品风格：深色连续画布、真实界面证据、不同场景逐级推进、温暖而克制。",
+      "useWhen": [
+        "需要建立完整产品认知和可信感",
+        "产品包含多个真实使用场景",
+        "无旁白也必须完整理解"
+      ],
+      "avoidWhen": [
+        "只有一个极短功能操作需要讲清",
+        "目标是高能竖屏社交传播",
+        "素材主体是人物纪实采访"
+      ],
+      "referenceBasis": [
+        "local-personal-agent-intro",
+        "apple-motion",
+        "material-choreography",
+        "vimeo-product-demo",
+        "w3c-av"
+      ],
+      "narrative": {
+        "arc": [
+          "一句话建立产品和使用入口",
+          "每个场景按需要、支持、可见结果展开",
+          "成果快速回顾",
+          "品牌主张与真实制作证据收束"
+        ],
+        "proofRule": "所有能力主张必须由真实界面、真实素材或真实产物支撑，一次只展示一件主要事情。"
+      },
+      "visual": {
+        "tone": "克制、可信、温暖、连续",
+        "palette": [
+          "Ink #090b0f",
+          "Canvas #0d1016",
+          "Surface #131720",
+          "Primary text #f7f5ef",
+          "Muted text #aeb6c4",
+          "Sage #9fc5a8",
+          "Travel #7aa9d8",
+          "Finance #e7bb67",
+          "Interior #dc8062"
+        ],
+        "typography": "系统无衬线；短句、大层级、底部克制字幕轨；正文和时间标记不得使用低对比灰。",
+        "composition": "统一无框工作画布，结果对象通过遮罩、空间层级和共享对象连续变形，不使用规则截图墙。"
+      },
+      "motion": {
+        "tempo": "稳中有进，案例内部清楚，案例之间短促",
+        "shotDurationSeconds": [1.5, 6],
+        "transitionDurationSeconds": [0.4, 0.55],
+        "camera": "二维画布以平移、缩放和有限景深为主；3D 只使用真实检查视角。",
+        "transitions": "优先共享对象、位移、缩放、遮罩和交叉淡化；复杂转场始终维持一个焦点。",
+        "avoid": "浏览器壳堆叠、无意义光效、随机漂浮、频繁旋转、同权重多卡并排。"
+      },
+      "audio": {
+        "bpm": [92, 100],
+        "music": "暖色和弦、低频软鼓和圆润中低频卡点，场景边界连续交叉淡化。",
+        "effects": "只为关键发送、确认和转场提供低音量反馈，不模拟密集系统通知。"
+      },
+      "format": {
+        "primaryAspect": "16:9",
+        "durationSeconds": [30, 60],
+        "variants": ["9:16 精简版", "1:1 摘要版"],
+        "captionRule": "字幕位于底部安全区，一屏一句核心信息，并与主内容保持至少 4.5:1 的常规文本对比度。"
+      },
+      "acceptance": [
+        "前三秒说清产品是什么或如何进入",
+        "每个能力均有真实证据",
+        "场景转场保持一个清晰焦点",
+        "无声音时仍可理解",
+        "最终画面稳定可读"
+      ]
+    },
+    {
+      "id": "ui-proof-walkthrough",
+      "version": 1,
+      "displayName": "界面证据演示",
+      "category": "product",
+      "summary": "让真实界面成为主角，以问题、操作、反馈和结果构成一条短而清楚的产品证明。",
+      "useWhen": [
+        "需要演示一个功能或一条完整工作流",
+        "产品界面已经可用且信息真实",
+        "观众关心怎样完成任务"
+      ],
+      "avoidWhen": [
+        "产品还没有可信界面",
+        "核心价值主要来自人物情绪",
+        "需要一次讲完大量互不相关功能"
+      ],
+      "referenceBasis": [
+        "vimeo-product-demo",
+        "apple-motion",
+        "material-choreography",
+        "w3c-av"
+      ],
+      "narrative": {
+        "arc": [
+          "用真实问题开场",
+          "进入界面并明确当前目标",
+          "每拍完成一个关键动作",
+          "展示反馈、结果和下一步"
+        ],
+        "proofRule": "鼠标、触点、标注和字幕只负责引导注意，不能遮住或替代真实界面状态。"
+      },
+      "visual": {
+        "tone": "清晰、理性、准确、轻量",
+        "palette": [
+          "以真实产品主题为基准",
+          "单一品牌强调色",
+          "中性遮罩",
+          "高对比标注"
+        ],
+        "typography": "产品字体优先；说明句不超过两行；数字和状态词使用等宽或清晰的 tabular 数字。",
+        "composition": "一个主界面加有限局部放大；保留操作前后空间关系；不同时开多个同权重窗口。"
+      },
+      "motion": {
+        "tempo": "从容但不拖沓，给观众读取界面的时间",
+        "shotDurationSeconds": [1.2, 5],
+        "transitionDurationSeconds": [0.2, 0.45],
+        "camera": "以界面内焦点移动和局部放大为主，避免无来源镜头运动。",
+        "transitions": "操作点到结果区域建立清楚路径，优先共享元素和焦点接力。",
+        "avoid": "过量箭头、荧光描边、连续缩放、为了快而跳过关键反馈。"
+      },
+      "audio": {
+        "bpm": [80, 110],
+        "music": "低密度节拍或轻电子底色，为界面读取留空间。",
+        "effects": "点击、完成和错误只在信息重要时出现，并与画面反馈同步。"
+      },
+      "format": {
+        "primaryAspect": "16:9",
+        "durationSeconds": [20, 75],
+        "variants": ["9:16 单功能版", "1:1 功能摘要"],
+        "captionRule": "字幕不复述整个界面，只解释当前目的、关键反馈和结果。"
+      },
+      "acceptance": [
+        "每个操作有明确起点和结果",
+        "界面文案在目标尺寸可读",
+        "光标或触点不抢主层级",
+        "没有跳过关键状态",
+        "演示范围与真实产品一致"
+      ]
+    },
+    {
+      "id": "kinetic-type-launch",
+      "version": 1,
+      "displayName": "动势文字发布",
+      "category": "product",
+      "summary": "以少量强文案、文字层级和节奏变化制造发布感，适合观点鲜明、界面素材有限的短片。",
+      "useWhen": [
+        "核心卖点可以压缩成少量有力短句",
+        "需要发布预告、活动开场或社交 teaser",
+        "品牌字体和语气已经明确"
+      ],
+      "avoidWhen": [
+        "需要详细证明复杂操作",
+        "文案尚未确认",
+        "目标受众需要从容阅读大量信息"
+      ],
+      "referenceBasis": [
+        "adobe-text-animation",
+        "adobe-editing",
+        "youtube-shorts",
+        "w3c-av"
+      ],
+      "narrative": {
+        "arc": [
+          "一个矛盾或主张钩住注意",
+          "两到四个短句逐层推进",
+          "穿插一至两个真实产品证据",
+          "一句行动或品牌承诺收束"
+        ],
+        "proofRule": "文字可以成为角色，但至少保留一处真实产品或真实结果，不能让口号替代事实。"
+      },
+      "visual": {
+        "tone": "有力、鲜明、现代、直接",
+        "palette": [
+          "高对比背景",
+          "一主一辅强调色",
+          "不超过三种同时可见文字颜色"
+        ],
+        "typography": "一个主字体家族、最多三个字重；通过字号、字距、分行和遮罩建立节奏，不使用效果堆砌。",
+        "composition": "文字是主要构图对象，产品证据作为停顿和转义；始终保留清晰阅读顺序。"
+      },
+      "motion": {
+        "tempo": "短促、有停顿、强弱分明",
+        "shotDurationSeconds": [0.5, 2.5],
+        "transitionDurationSeconds": [0.18, 0.4],
+        "camera": "主要由文字自身位移、缩放和遮罩完成，不额外叠加虚拟镜头。",
+        "transitions": "词义、句法或声音重音驱动切换；同一时间只强调一个关键词。",
+        "avoid": "逐字乱飞、连续闪烁、每个字不同动画、长段落高速滚动。"
+      },
+      "audio": {
+        "bpm": [110, 135],
+        "music": "节拍清楚、留有停顿，重音支持句义。",
+        "effects": "只为关键词切换提供少量低频或纸张质感反馈。"
+      },
+      "format": {
+        "primaryAspect": "9:16",
+        "durationSeconds": [10, 35],
+        "variants": ["16:9 发布会开场", "1:1 社交版本"],
+        "captionRule": "主文案本身承担字幕功能；每屏控制一个语义单元，禁止闪烁超过每秒三次。"
+      },
+      "acceptance": [
+        "静音时完整成立",
+        "前两秒建立主张",
+        "每屏阅读时间充足",
+        "字体层级稳定",
+        "至少一个产品事实可验证"
+      ]
+    },
+    {
+      "id": "human-case-documentary",
+      "version": 1,
+      "displayName": "人物案例纪实",
+      "category": "hybrid",
+      "summary": "以真实人物、真实环境和一个具体变化为主线，让产品退到支持者的位置。",
+      "useWhen": [
+        "有真实用户、创作者或团队故事",
+        "目标是建立信任和共鸣",
+        "产品价值需要放进生活或工作情境"
+      ],
+      "avoidWhen": [
+        "没有人物授权或可信素材",
+        "只需快速说明一个功能",
+        "试图用演员伪装真实用户"
+      ],
+      "referenceBasis": [
+        "vimeo-storytelling",
+        "adobe-editing",
+        "adobe-b-roll",
+        "w3c-av"
+      ],
+      "narrative": {
+        "arc": [
+          "人物和环境",
+          "具体阻力或愿望",
+          "产品介入但不喧宾夺主",
+          "可观察的变化",
+          "人物自己的结论"
+        ],
+        "proofRule": "区分真实引语、事实和创作性重建；产品镜头只出现在它实际改变事情的位置。"
+      },
+      "visual": {
+        "tone": "真诚、有人味、观察式、不过度修饰",
+        "palette": [
+          "自然肤色",
+          "真实环境主色",
+          "低饱和品牌强调",
+          "克制字幕底"
+        ],
+        "typography": "采访姓名、地点和时间使用安静的下三分之一字幕；品牌字体不压过人物。",
+        "composition": "人物中近景为 A-roll，环境、手部、工具、细节和结果为 B-roll，保持地点和时间可理解。"
+      },
+      "motion": {
+        "tempo": "由人物情绪和语句呼吸决定",
+        "shotDurationSeconds": [2, 8],
+        "transitionDurationSeconds": [0.35, 0.8],
+        "camera": "固定、轻微手持或缓慢移动；不制造与人物情绪冲突的炫技运镜。",
+        "transitions": "动作匹配、环境声桥接和有意义的切出镜头优先。",
+        "avoid": "假纪录片滤镜、无来源慢动作、把所有停顿剪掉、过量品牌动画。"
+      },
+      "audio": {
+        "bpm": [68, 96],
+        "music": "低密度、支持情绪但不替人物表演；保留有意义的现场声。",
+        "effects": "避免装饰性提示音，人声存在时背景音乐明显降低。"
+      },
+      "format": {
+        "primaryAspect": "16:9",
+        "durationSeconds": [45, 150],
+        "variants": ["9:16 人物摘录", "1:1 案例摘要"],
+        "captionRule": "完整提供对白字幕；姓名、地点、时间和重建说明清楚可读。"
+      },
+      "acceptance": [
+        "人物身份和授权明确",
+        "故事围绕一个具体变化",
+        "A-roll 与 B-roll 语义一致",
+        "人声始终清楚",
+        "没有把推断写成事实"
+      ]
+    },
+    {
+      "id": "cinematic-journey",
+      "version": 1,
+      "displayName": "电影感旅程",
+      "category": "travel",
+      "summary": "以地点、移动、停留和细节建立旅程弧线，让空间变化、现场声和镜头呼吸共同讲故事。",
+      "useWhen": [
+        "素材覆盖出发、途中、抵达和停留",
+        "需要兼顾地点信息与情绪",
+        "有足够长的稳定镜头和现场声"
+      ],
+      "avoidWhen": [
+        "素材极少且来源混乱",
+        "目标是十秒内高能种草",
+        "地点、日期或人物关系无法确认"
+      ],
+      "referenceBasis": [
+        "adobe-travel",
+        "adobe-editing",
+        "adobe-b-roll",
+        "w3c-av"
+      ],
+      "narrative": {
+        "arc": [
+          "建立地点与出发原因",
+          "移动中的方向和变化",
+          "抵达后的第一感受",
+          "人物、食物、建筑或自然细节",
+          "一次停顿或高点",
+          "带着变化离开"
+        ],
+        "proofRule": "地点、日期、交通和人物关系必须来自素材或用户确认；漂亮空镜不能取代旅程主线。"
+      },
+      "visual": {
+        "tone": "沉浸、真实、有呼吸、空间明确",
+        "palette": [
+          "保留当地自然色",
+          "统一白平衡",
+          "有限电影感对比",
+          "不套用重滤镜掩盖素材差异"
+        ],
+        "typography": "地点和日期像路标一样简洁；不在风景上堆叠大段抒情文案。",
+        "composition": "建立镜头、中景、人物动作、近景细节和环境纹理交替；维护方向、视线和动作连续性。"
+      },
+      "motion": {
+        "tempo": "移动段有推进，停留段允许呼吸",
+        "shotDurationSeconds": [1.5, 7],
+        "transitionDurationSeconds": [0.3, 0.8],
+        "camera": "尊重原始运镜；稳定只修正干扰，速度变化必须有叙事原因。",
+        "transitions": "动作匹配、方向匹配、环境声桥和自然遮挡优先，地点变化允许直接切。",
+        "avoid": "每拍卡点、无意义速度坡、过量无人机空镜、所有镜头同一长度。"
+      },
+      "audio": {
+        "bpm": [70, 105],
+        "music": "随旅程段落推进，给现场声和人物片段留空间。",
+        "effects": "保留交通、街道、海浪、风、餐馆等地点声音，避免用素材库音效伪造事实。"
+      },
+      "format": {
+        "primaryAspect": "16:9",
+        "durationSeconds": [45, 150],
+        "variants": ["9:16 旅程摘要", "1:1 地点章节"],
+        "captionRule": "地点、日期和必要对白保持高对比；字幕不遮挡人物面部与关键地标。"
+      },
+      "acceptance": [
+        "旅程方向和地点关系可理解",
+        "每个空镜都支持时间、地点或情绪",
+        "色彩和声音在地点切换时连续",
+        "没有伪造地点事实",
+        "开场与结尾形成呼应"
+      ]
+    },
+    {
+      "id": "postcard-memory-collage",
+      "version": 1,
+      "displayName": "旅行明信片拼贴",
+      "category": "travel",
+      "summary": "用照片、短视频、票据、地图和手写式注释构成有日期感的旅行记忆，适合素材混合但事实清楚的项目。",
+      "useWhen": [
+        "照片多于视频",
+        "需要保留日期、地点和同行者记忆",
+        "希望产出温暖的个人旅行回顾"
+      ],
+      "avoidWhen": [
+        "需要写实连续的空间体验",
+        "素材授权不清",
+        "文字和装饰会遮住关键人物"
+      ],
+      "referenceBasis": [
+        "adobe-editing",
+        "adobe-b-roll",
+        "adobe-text-animation",
+        "w3c-av"
+      ],
+      "narrative": {
+        "arc": [
+          "一张代表性记忆开场",
+          "按日期或地点翻看片段",
+          "用两三个细节建立人物关系",
+          "用票据、路线或一句话补足事实",
+          "以回望或下一次出发收束"
+        ],
+        "proofRule": "日期、地点、人物和票据信息只使用已确认素材；注释表达感受，不编造事件。"
+      },
+      "visual": {
+        "tone": "温暖、个人、触感、轻松",
+        "palette": [
+          "纸张暖白",
+          "墨水深灰",
+          "邮戳红或海蓝单一强调",
+          "素材自身颜色"
+        ],
+        "typography": "清晰无衬线承担事实，手写式字体只用于短注释且不超过一行。",
+        "composition": "不同尺寸素材形成前后层级；旋转角度有限；地图、票据和日期只在支持叙事时出现。"
+      },
+      "motion": {
+        "tempo": "翻页般轻快，重要记忆适当停留",
+        "shotDurationSeconds": [1.2, 4.5],
+        "transitionDurationSeconds": [0.35, 0.7],
+        "camera": "轻微推近、平移和视差，保持照片本身清楚。",
+        "transitions": "纸张遮罩、叠放、翻页和位置匹配；同屏同时运动对象不超过三个。",
+        "avoid": "过度胶带贴纸、强烈纸张噪点、随机旋转、所有素材同时漂浮。"
+      },
+      "audio": {
+        "bpm": [82, 112],
+        "music": "温暖原声、轻打击或柔和电子，避免廉价怀旧音色。",
+        "effects": "少量纸张、相机或环境声，必须低于主音乐和对白。"
+      },
+      "format": {
+        "primaryAspect": "1:1",
+        "durationSeconds": [20, 75],
+        "variants": ["9:16 旅行日记", "16:9 家庭回顾"],
+        "captionRule": "事实标签统一位置和字号；手写注释不承担唯一关键信息。"
+      },
+      "acceptance": [
+        "时间和地点顺序一致",
+        "人物不被装饰遮挡",
+        "拼贴有明确视觉中心",
+        "注释与事实区分清楚",
+        "素材来源和授权可追溯"
+      ]
+    },
+    {
+      "id": "vertical-travel-spark",
+      "version": 1,
+      "displayName": "竖屏旅行火花",
+      "category": "travel",
+      "summary": "为移动端设计的高密度旅行短片：前两秒给出最强地点或动作，以节奏、对比和清晰地名快速推进。",
+      "useWhen": [
+        "目标渠道是 Shorts、Reels 或竖屏信息流",
+        "有多个强动作、人物反应或地点亮点",
+        "希望从长片拆出独立传播版本"
+      ],
+      "avoidWhen": [
+        "素材只有缓慢空镜",
+        "需要完整解释复杂行程",
+        "音乐或素材的社交发布授权不清"
+      ],
+      "referenceBasis": [
+        "youtube-shorts",
+        "adobe-editing",
+        "adobe-text-animation",
+        "w3c-av"
+      ],
+      "narrative": {
+        "arc": [
+          "零到两秒给出最强画面和地点",
+          "三到五个亮点按动作或情绪推进",
+          "一次节奏停顿补充人物或细节",
+          "用地点、路线或一句感受收束"
+        ],
+        "proofRule": "钩子必须来自片内真实旅程；不使用与实际地点无关的素材或夸张标题。"
+      },
+      "visual": {
+        "tone": "直接、鲜活、移动优先、可静音观看",
+        "palette": [
+          "以素材高饱和局部为主",
+          "统一高对比字幕底",
+          "单一强调色"
+        ],
+        "typography": "大字号短句和地名，避开平台界面遮挡区；一屏不超过两个层级。",
+        "composition": "优先人物、动作和垂直空间；横屏素材裁切前先确定主体安全区，禁止机械居中裁切。"
+      },
+      "motion": {
+        "tempo": "前快、中间一次停顿、结尾利落",
+        "shotDurationSeconds": [0.35, 2.2],
+        "transitionDurationSeconds": [0.12, 0.35],
+        "camera": "尊重原始运动方向，裁切和稳定围绕主体，不叠加无来源抖动。",
+        "transitions": "动作匹配、方向切、遮挡切和少量硬切；特效转场只在地点或章节变化时使用。",
+        "avoid": "持续高速、每镜头转场特效、闪烁字幕、主体落入平台控件区。"
+      },
+      "audio": {
+        "bpm": [108, 140],
+        "music": "节拍鲜明但保留一次呼吸段，发布前核对平台和地区授权。",
+        "effects": "动作和地点变化只加少量同步音；静音版本依靠字幕仍完整。"
+      },
+      "format": {
+        "primaryAspect": "9:16",
+        "durationSeconds": [10, 45],
+        "variants": ["1:1 动态摘要", "16:9 teaser"],
+        "captionRule": "字幕保持大字号和高对比，避开顶部标题区和底部操作区；每屏最多一条核心句。"
+      },
+      "acceptance": [
+        "前两秒出现真实亮点",
+        "静音时仍可理解地点和主线",
+        "主体未被裁切或平台控件遮挡",
+        "没有每秒三次以上闪烁",
+        "音乐和素材授权适配发布渠道"
+      ]
+    }
+  ]
+}

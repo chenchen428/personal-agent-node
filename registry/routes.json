@@ -31,6 +31,7 @@
     { "pattern": "/api/app/schedules/*", "access": "authenticated", "capability": "agent" },
     { "pattern": "/api/app/*", "access": "authenticated", "capability": "console" },
     { "pattern": "/api/chat/*", "access": "authenticated", "capability": "agent" },
+    { "pattern": "/api/agents", "access": "authenticated", "capability": "agent" },
     { "pattern": "/api/token-usage", "access": "authenticated", "capability": "agent" },
     { "pattern": "/api/app/mail/*", "access": "authenticated", "capability": "mail" },
     { "pattern": "/api/node/v1/*", "access": "authenticated", "capability": "apps" },

@@ -12,6 +12,7 @@ const skillEntrypoints = {
   capture: 'skills/knowledge-capture/scripts/cli.mjs',
   content: 'skills/content-workbench/scripts/cli.mjs',
   media: 'skills/media-toolkit/scripts/cli.mjs',
+  video: 'skills/hyperframes-video/scripts/cli.mjs',
   interior: 'skills/interior-design/scripts/cli.mjs',
 };
 
@@ -30,6 +31,10 @@ Usage:
   skill-tree content html --input <file.md> --output <file.html>
   skill-tree media inspect --input <image>
   skill-tree media compress --input <image> --output <image.webp> [--quality 80]
+  skill-tree video doctor [--json]
+  skill-tree video check --project <dir> [--strict] [--json]
+  skill-tree video snapshot --project <dir> [--at 0,4,8] [--output snapshots/review] [--force]
+  skill-tree video render --project <dir> --output renders/final.mp4 [--quality high] [--strict] [--force]
   skill-tree interior validate --input <model.json>
   skill-tree interior normalize --input <model.json> --output <normalized.json>
   skill-tree interior page --input <normalized.json> --output <page-dir>

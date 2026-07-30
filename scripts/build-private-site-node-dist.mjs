@@ -44,7 +44,7 @@ async function main() {
 function copySupportFiles() {
   for (const relative of [
     "AGENTS.md", "DESIGN.md", "README.md", "README.en.md", "LICENSE", "SECURITY.md", "CONTRIBUTING.md", "TRADEMARKS.md", "THIRD_PARTY_NOTICES.md",
-    "package.json", ".gitignore", ".githooks", "registry", "schemas", "skills", "workflows", "docs", "scripts", "test/fixtures",
+    "package.json", ".gitignore", ".githooks", "registry", "schemas", "skills", "agents", "workflows", "docs", "scripts", "test/fixtures",
     "core/apps", "core/channels", "core/plugins", "core/runtime/contracts", "core/runtime/native", "core/runtime/README.md", "core/agent/public", "core/agent/README.md",
     "infra/edge/install-self-hosted-relay.sh",
     "infra/edge/install-self-hosted-mail.sh",
@@ -60,10 +60,12 @@ function assembleWorkspaceSeed() {
   fs.rmSync(path.join(outputRoot, "workspace", "apps"), { recursive: true, force: true });
   for (const [source, target] of [
     ["skills", "workspace/skills"],
+    ["agents", "workspace/agents"],
     ["workflows", "workspace/workflows"],
     ["registry", "workspace/registry"],
+    ["schemas", "workspace/schemas"],
   ]) copyTo(source, target);
-  for (const script of ["skill-tree.mjs", "skill-guard.mjs", "setup-agent-bridge.sh"]) copyTo(`scripts/${script}`, `workspace/scripts/${script}`);
+  for (const script of ["skill-tree.mjs", "skill-guard.mjs", "agent-guard.mjs", "setup-agent-bridge.sh"]) copyTo(`scripts/${script}`, `workspace/scripts/${script}`);
   for (const directory of ["apps", "plugins", "files", "publications", "databases", "mail", "backups", "config", "secrets", "runtime", "logs", "data"]) {
     fs.mkdirSync(path.join(outputRoot, "workspace", directory), { recursive: true });
     fs.writeFileSync(path.join(outputRoot, "workspace", directory, ".gitkeep"), "");
@@ -173,7 +175,15 @@ function writeManifest(openCliRuntime) {
     browserExecutors: { opencli: openCliRuntime },
     pluginApi: { version: "personal-agent/v1", manifest: "core/plugins/schema/personal-agent.plugin.schema.json", installRoot: "workspace/plugins" },
     appApi: { version: "personal-agent/app-v1", nodeApiMajors: ["1"], manifest: "core/apps/schema/personal-agent.app.schema.json", installRoot: "workspace/apps", cloudRequired: false },
-    harness: { owner: "workspace", supportedAgentRuntime: "codex", root: "workspace", catalog: "workspace/registry/skills.json", workflows: "workspace/workflows" },
+    harness: {
+      owner: "workspace",
+      supportedAgentRuntime: "codex",
+      root: "workspace",
+      catalog: "workspace/registry/skills.json",
+      agentCatalog: "workspace/registry/agents.json",
+      agents: "workspace/agents",
+      workflows: "workspace/workflows",
+    },
     excluded: ["projects", "examples", "preinstalled-personal-apps", "credentials", "environment-files", "runtime-data", "customer-content"],
   };
   fs.writeFileSync(path.join(outputRoot, "release-manifest.json"), `${JSON.stringify(manifest, null, 2)}\n`);

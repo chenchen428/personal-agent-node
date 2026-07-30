@@ -1,7 +1,17 @@
-export function TemplateCardArtwork({ coverPath }: { coverPath: string }) {
-  return <div className="template-card-artwork" aria-label="装修设计交付页 Pascal 专业模型截图">
-    <img alt="由内置 Pascal v2 项目生成的专业装修概念模型轴测封面" decoding="async" fetchPriority="high" loading="eager" src={coverPath} />
-    <span className="template-artwork-live"><i />Pascal 模型</span>
-    <footer><span>装修设计交付页</span><b>真实产物</b></footer>
+export function TemplateCardArtwork({
+  alt,
+  badge,
+  coverPath,
+  footer,
+}: {
+  alt: string;
+  badge: string;
+  coverPath: string;
+  footer: string;
+}) {
+  return <div className="template-card-artwork" aria-label={alt}>
+    <img alt={alt} decoding="async" fetchPriority="high" loading="eager" src={coverPath} />
+    <span className="template-artwork-live"><i />{badge}</span>
+    <footer><span>{footer}</span><b>真实产物</b></footer>
   </div>;
 }

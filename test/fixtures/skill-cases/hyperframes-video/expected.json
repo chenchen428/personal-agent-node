@@ -1,0 +1,9 @@
+{
+  "package": "hyperframes@0.7.82",
+  "localOnly": true,
+  "telemetryDisabled": true,
+  "width": 1920,
+  "height": 1080,
+  "duration": 8,
+  "fps": 30
+}

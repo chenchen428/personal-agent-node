@@ -1,0 +1,4 @@
+interface:
+  display_name: "HyperFrames Video"
+  short_description: "Create, inspect, and render deterministic HTML videos"
+  default_prompt: "Use $hyperframes-video to turn this product brief into a checked HyperFrames video."

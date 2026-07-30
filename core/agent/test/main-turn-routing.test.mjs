@@ -20,6 +20,16 @@ test("matches an actionable renovation Page request to the built-in template", (
   assert.match(task, /用户原始请求：\n制作装修设计 Page/);
 });
 
+test("keeps gift discovery conversational and delegates only an actionable gift Page request", () => {
+  assert.equal(matchPageTemplateRequest("我想给女朋友送生日礼物，但完全没有头绪"), null);
+  const template = matchPageTemplateRequest("请根据我们刚才的沟通生成一份礼物顾问推荐 Page");
+  assert.equal(template?.id, "gift-advisor-report");
+  assert.equal(template?.skill, "gift-advisor");
+  const task = buildPageTemplateTask({ request: "生成礼物推荐 Page", template });
+  assert.match(task, /gift-plan\.json/);
+  assert.match(task, /gift-advisor\/scripts\/generate-page\.mjs/);
+});
+
 test("keeps template discovery questions and task status questions on the main Agent", () => {
   assert.equal(matchPageTemplateRequest("装修设计 Page 有哪些模板？"), null);
   assert.equal(matchPageTemplateRequest("刚才的装修设计页面做到哪一步了？"), null);

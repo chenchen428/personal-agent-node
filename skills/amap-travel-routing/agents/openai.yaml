@@ -1,0 +1,4 @@
+interface:
+  display_name: "高德旅行路线查询"
+  short_description: "查询并保存高德 POI、地点身份与旅行路段的可追溯规划快照"
+  default_prompt: "Use $amap-travel-routing to verify the POIs and travel legs in this itinerary."

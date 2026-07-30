@@ -18,6 +18,7 @@ import {
   withProjectLock,
 } from './project-v2.mjs';
 import { auditProfessionalProject } from './quality/index.mjs';
+import { registerDesignRender } from './render-v2.mjs';
 import {
   applySceneOperations,
   compileProjectScene,
@@ -29,7 +30,7 @@ const skillRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..
 const enginePolicy = loadInteriorEnginePolicy();
 const commandStartedAt = Date.now();
 const [command = 'help', maybeSubcommand, ...rest] = process.argv.slice(2);
-const hasSubcommand = command === 'project' || command === 'scene';
+const hasSubcommand = command === 'project' || command === 'scene' || command === 'render';
 const subcommand = hasSubcommand ? maybeSubcommand : null;
 const argv = hasSubcommand ? rest : [maybeSubcommand, ...rest].filter((value) => value !== undefined);
 const options = parse(argv);
@@ -37,6 +38,7 @@ const options = parse(argv);
 try {
   if (command === 'project') await projectCommand();
   else if (command === 'scene') await sceneCommand();
+  else if (command === 'render') await renderCommand();
   else if (command === 'page') await pageCommand();
   else emitHelp();
 } catch (error) {
@@ -143,6 +145,39 @@ async function sceneCommand() {
   if (result.project.quality.blockingCount > 0) process.exitCode = 5;
 }
 
+async function renderCommand() {
+  if (subcommand !== 'register') {
+    throw projectError('INVALID_COMMAND', 'render requires register', 2);
+  }
+  const context = resolveTrustedContext();
+  const projectDirInput = required(options['project-dir'], '--project-dir');
+  const baseRevision = integerOption(options['base-revision'], '--base-revision');
+  const resolved = resolveProjectDirectory(projectDirInput, context);
+  const result = await withProjectLock(resolved.projectDir, () => registerDesignRender({
+    projectDir: resolved.projectDir,
+    context,
+    input: required(options.input, '--input'),
+    reference: required(options.reference, '--reference'),
+    promptFile: required(options['prompt-file'], '--prompt-file'),
+    generator: required(options.generator, '--generator'),
+    baseRevision,
+  }));
+  recordEvent(result.projectDir, context, result.project, 'ok', {
+    sceneHash: result.metadata.sceneSha256,
+    renderHash: result.metadata.imageSha256,
+    promptHash: result.metadata.promptSha256,
+  });
+  emitProjectResult(result.project, {
+    render: {
+      image: result.metadata.imageRelativePath,
+      imageSha256: result.metadata.imageSha256,
+      referenceImageSha256: result.metadata.referenceImageSha256,
+      promptSha256: result.metadata.promptSha256,
+      generator: result.metadata.generator,
+    },
+  });
+}
+
 async function pageCommand() {
   const currentTemplate = loadInteriorTemplateContract(skillRoot);
   const requestedTemplate = options.template || currentTemplate.id;
@@ -213,6 +248,7 @@ function emitHelp() {
     'Usage:',
     '  interior project <init|validate|audit|recover> --project-dir <space-project-dir>',
     '  interior scene <compile|apply|undo|redo> --project-dir <space-project-dir> --base-revision <n>',
+    '  interior render register --project-dir <space-project-dir> --input <render-image> --reference <su-reference-image> --prompt-file <prompt-file> --generator imagegen --base-revision <n>',
     '  interior page --project-dir <space-project-dir> --output <project-derived-page-dir>',
     '',
   ].join('\n'));

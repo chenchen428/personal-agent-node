@@ -42,7 +42,7 @@ export function readPageTemplateRegistry(registryPath = defaultRegistryPath) {
       || template.publicationContract?.persistProvenance !== true) {
       throw new Error(`invalid Page template publication contract: ${id}`);
     }
-    if (template.exampleArtifact?.source !== "native-governed-pascal-v2-project"
+    if (!/^[a-z][a-z0-9-]{2,80}$/.test(String(template.exampleArtifact?.source || ""))
       || !["pagePath", "manifestPath", "coverPath"].every((field) => String(template.exampleArtifact?.[field] || "").startsWith("/assets/templates/"))) {
       throw new Error(`invalid Page template example artifact: ${id}`);
     }
@@ -52,6 +52,17 @@ export function readPageTemplateRegistry(registryPath = defaultRegistryPath) {
       }
     }
     if (!String(template.useWhen || "").trim()) throw new Error(`missing Page template useWhen: ${id}`);
+    if (template.presentation !== undefined) {
+      const presentationFields = [
+        "coverAlt", "coverBadge", "coverFooter", "detailHeading", "detailDescription",
+        "principleTitle", "principleDescription", "webEyebrow", "webLabel", "mobileEyebrow",
+        "mobileLabel", "previewTitle",
+      ];
+      if (!template.presentation || typeof template.presentation !== "object"
+        || presentationFields.some((field) => !String(template.presentation[field] || "").trim())) {
+        throw new Error(`invalid Page template presentation: ${id}`);
+      }
+    }
     ids.add(id);
   }
   return parsed;

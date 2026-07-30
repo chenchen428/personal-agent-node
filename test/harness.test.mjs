@@ -13,7 +13,7 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 function run(command, args) { return spawnSync(command, args, { cwd: root, encoding: 'utf8' }); }
 
 test('customer Harness contains architecture registries and Agent guidance', () => {
-  for (const file of ['AGENTS.md', 'docs/adr/0001-node-product-boundary-freeze.md', 'registry/projects.json', 'registry/skills.json', 'registry/behavior-baselines.json', 'registry/capabilities.json', 'registry/routes.json', 'registry/extensions.json', 'registry/commands.json', 'registry/product-development.json', 'schemas/personal-agent/product-development.schema.json', 'workflows/project-iteration.md', 'workflows/skill-iteration.md', 'workflows/product-development.md', 'skills/personal-product-development/references/product-development.md']) assert.equal(fs.existsSync(path.join(root, file)), true, file);
+  for (const file of ['AGENTS.md', 'docs/adr/0001-node-product-boundary-freeze.md', 'registry/projects.json', 'registry/skills.json', 'registry/agents.json', 'registry/behavior-baselines.json', 'registry/capabilities.json', 'registry/routes.json', 'registry/extensions.json', 'registry/commands.json', 'registry/product-development.json', 'schemas/personal-agent/agents.schema.json', 'schemas/personal-agent/video-styles.schema.json', 'schemas/personal-agent/product-development.schema.json', 'scripts/agent-guard.mjs', 'agents/video-creator/agent.yaml', 'agents/video-creator/AGENT.md', 'agents/video-creator/STYLE-GUIDE.md', 'agents/video-creator/styles.json', 'agents/interior-designer/agent.yaml', 'agents/interior-designer/AGENT.md', 'agents/travel-planner/agent.yaml', 'agents/travel-planner/AGENT.md', 'agents/poster-designer/agent.yaml', 'agents/poster-designer/AGENT.md', 'agents/finance-analyst/agent.yaml', 'agents/finance-analyst/AGENT.md', 'core/app/public/assets/agent-examples/personal-agent-intro-v1/personal-agent-intro.mp4', 'core/app/public/assets/agent-examples/city-observer-social-cards-v1/xhs-01-cover.png', 'core/app/public/assets/agent-examples/travel-planning-fuzhou-v1/index.html', 'core/app/public/assets/agent-examples/monthly-finance-review-v1/finance-analysis.png', 'workflows/project-iteration.md', 'workflows/skill-iteration.md', 'workflows/product-development.md', 'skills/personal-product-development/references/product-development.md']) assert.equal(fs.existsSync(path.join(root, file)), true, file);
   const developerGuide = fs.readFileSync(path.join(root, 'AGENTS.md'), 'utf8');
   const customerGuide = fs.readFileSync(path.join(root, 'workspace/AGENTS.md'), 'utf8');
   for (const guide of [developerGuide, customerGuide]) {
@@ -45,6 +45,7 @@ test('customer Harness classifies and ships portable creation skills', () => {
   const skills = new Map(catalog.skills.map((entry) => [entry.name, entry]));
   for (const category of ['writing-content', 'visual-media', 'travel-location', 'product-engineering']) assert.equal(categories.has(category), true, category);
   const expected = {
+    'hyperframes-video': ['visual-media', 'Apache-2.0'],
     'guizang-social-card-skill': ['visual-media', 'AGPL-3.0-only'],
     'guizang-ppt-skill': ['visual-media', 'AGPL-3.0-only'],
     'travel-guidebook': ['travel-location', 'MIT'],
@@ -66,6 +67,8 @@ test('customer Harness classifies and ships portable creation skills', () => {
   }
   const build = fs.readFileSync(path.join(root, 'scripts/build-private-site-node-dist.mjs'), 'utf8');
   assert.match(build, /\["skills", "workspace\/skills"\]/);
+  assert.match(build, /\["agents", "workspace\/agents"\]/);
+  assert.match(build, /\["schemas", "workspace\/schemas"\]/);
   assert.match(build, /copyDirectory\(publicRoot, path\.join\(outputRoot, "core", "app", "public"\)\)/);
 });
 

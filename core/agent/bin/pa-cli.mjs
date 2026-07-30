@@ -43,7 +43,12 @@ try {
   } else if (command === "session" && (subcommand === "list" || subcommand === "search")) {
     const query = args.query || args.q || (subcommand === "search" ? args._.slice(2).join(" ") : "");
     if (subcommand === "search" && !query) throw new Error("--query is required");
-    print(await listSessions({ query, parentSessionId: args.parent || "" }));
+    print(await listSessions({
+      query,
+      parentSessionId: args.parent || "",
+      agentId: args.agent || "",
+      projectKey: args["project-key"] || args.project || "",
+    }));
   } else if (command === "session" && subcommand === "start") {
     const task = readTaskArgument({
       inline: args.task || args.t,
@@ -56,12 +61,16 @@ try {
       title: args.title,
       description: args.description || args.desc,
       task,
+      agentId: args.agent,
+      projectKey: args["project-key"] || args.project,
     });
     const result = await post("/api/sessions", {
       task: metadata.task,
       title: metadata.title || undefined,
       description: metadata.description || undefined,
       parentSessionId: metadata.parentSessionId || undefined,
+      agentId: metadata.agentId || undefined,
+      projectKey: metadata.projectKey || undefined,
       workspaceRoot: args.workspace,
       createdBy: "pa-cli",
     });
@@ -612,7 +621,7 @@ function delay(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-async function listSessions({ query = "", parentSessionId = "" } = {}) {
+async function listSessions({ query = "", parentSessionId = "", agentId = "", projectKey = "" } = {}) {
   const limit = Math.min(Math.max(Number.parseInt(args.limit || "20", 10) || 20, 1), 50);
   let cursor = args.cursor || "";
   const sessions = [];
@@ -621,6 +630,8 @@ async function listSessions({ query = "", parentSessionId = "" } = {}) {
     const params = new URLSearchParams({ limit: String(limit), summary: "1" });
     if (query) params.set("query", query);
     if (parentSessionId) params.set("parent", parentSessionId);
+    if (agentId) params.set("agent", agentId);
+    if (projectKey) params.set("project", projectKey);
     if (cursor) params.set("cursor", cursor);
     if (args.archived) params.set("archived", "1");
     const page = await get(`/api/sessions?${params}`);
@@ -641,6 +652,9 @@ function sessionSummary(session) {
     title: session.title,
     taskDescription: session.taskDescription,
     summary: session.summary,
+    agentId: session.metadata?.agentId || "",
+    agentProfileVersion: Number(session.metadata?.agentProfileVersion || 0),
+    projectKey: session.metadata?.projectKey || "",
     workspaceRoot: session.workspaceRoot,
     hasResumeThread: Boolean(session.cliSessionId),
     createdAt: session.createdAt,
@@ -773,9 +787,9 @@ function help() {
   pa-cli memory create (--content <text>|--content-file <utf8-file>) --capability <ephemeral> [--json]
   pa-cli memory update --id <memory-id> (--content <text>|--content-file <utf8-file>) --expected-revision <n> --capability <ephemeral> [--json]
   pa-cli memory delete --id <memory-id> --expected-revision <n> --capability <ephemeral> [--json]
-  pa-cli session start (--task "..."|--task-file <utf8-file>) [--parent <session> --title "..." --description "..."] [--workspace <path>] [--json]
+  pa-cli session start (--task "..."|--task-file <utf8-file>) [--parent <session> --title "..." --description "..."] [--agent <agent-id> --project-key <key>] [--workspace <path>] [--json]
   pa-cli session update --session <id> [--title "..."] [--description "..."] [--json]
-  pa-cli session list [--query "..."] [--parent <main-session>] [--limit <n>] [--cursor <cursor>] [--all] [--json]
+  pa-cli session list [--query "..."] [--parent <main-session>] [--agent <agent-id> --project-key <key>] [--limit <n>] [--cursor <cursor>] [--all] [--json]
   pa-cli session search --query "..." [--all] [--json]
   pa-cli session input --session <id> --text "..." [--notify-wechat]
   pa-cli session resume --session <id> (--task "..."|--task-file <utf8-file>)

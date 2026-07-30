@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "skill": "amap-travel-routing",
+  "title": "Traceable AMap POI and route request",
+  "prompt": "Resolve a city-scoped POI and verify the walking leg to the next stop without exposing the Web service key.",
+  "commands": [
+    "node skills/amap-travel-routing/scripts/query.mjs poi --keywords 三坊七巷 --city 福州 --city-limit true --dry-run",
+    "node skills/amap-travel-routing/scripts/query.mjs route --mode walking --origin 119.296494,26.078061 --destination 119.294362,26.075787 --dry-run"
+  ],
+  "artifacts": [
+    {
+      "path": "query-contract.json",
+      "label": "Expected normalized request boundary"
+    }
+  ],
+  "verifiedAt": "2026-07-30",
+  "note": "The fixture uses dry-run mode so CI never needs or prints an AMap key."
+}

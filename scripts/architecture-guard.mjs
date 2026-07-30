@@ -26,7 +26,8 @@ checks.push({ name: 'project registry has target schema version', ok: projects.s
 checks.push({ name: 'historical projects directory is absent', ok: !exists('projects') });
 checks.push({ name: 'Next.js application is the unified Web surface', ok: exists('core/app/next.config.ts') && exists('core/app/src/app/app/layout.tsx') });
 checks.push({ name: 'delivery separates immutable core from mutable workspace', ok: delivery.schemaVersion === 1 && delivery.core?.path === 'core' && delivery.core?.mutable === false && delivery.workspace?.path === 'workspace' && delivery.workspace?.mutable === true && delivery.workspace?.preserveOnUninstall === true });
-checks.push({ name: 'workspace carries the customer Harness contract', ok: ['AGENTS.md', 'registry', 'skills', 'workflows'].every((entry) => delivery.workspace?.harness?.includes(entry)) && exists('workspace/AGENTS.md') });
+checks.push({ name: 'workspace carries the customer Harness contract', ok: ['AGENTS.md', 'registry', 'schemas', 'skills', 'agents', 'workflows'].every((entry) => delivery.workspace?.harness?.includes(entry)) && exists('workspace/AGENTS.md') });
+checks.push({ name: 'specialist Agent registry is versioned and guarded', ok: exists('registry/agents.json') && exists('schemas/personal-agent/agents.schema.json') && exists('schemas/personal-agent/video-styles.schema.json') && exists('scripts/agent-guard.mjs') && exists('agents/video-creator/AGENT.md') && exists('agents/video-creator/STYLE-GUIDE.md') && exists('agents/video-creator/styles.json') && exists('agents/interior-designer/AGENT.md') && exists('agents/interior-designer/agent.yaml') && exists('agents/travel-planner/AGENT.md') && exists('agents/travel-planner/agent.yaml') });
 checks.push({
   name: 'installed product development clones the registered private root outside immutable current',
   ok: productDevelopment.schemaVersion === 1

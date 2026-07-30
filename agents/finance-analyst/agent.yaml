@@ -1,0 +1,31 @@
+{
+  "schemaVersion": 1,
+  "id": "finance-analyst",
+  "version": 1,
+  "displayName": "账务分析 Agent",
+  "description": "负责账单导入、字段核对、分类归因、异常识别、周期对比和脱敏分析交付。",
+  "instructions": "AGENT.md",
+  "skills": [
+    "personal-data",
+    "personal-files",
+    "content-workbench",
+    "deep-research",
+    "knowledge-capture",
+    "personal-pages"
+  ],
+  "routing": [
+    "data analysis",
+    "financial analysis",
+    "expense analysis",
+    "transaction reconciliation",
+    "budget analysis",
+    "数据分析",
+    "账务分析",
+    "账单分析",
+    "消费分析",
+    "流水核对",
+    "预算分析",
+    "异常交易",
+    "订阅分析"
+  ]
+}

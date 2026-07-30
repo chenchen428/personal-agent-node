@@ -36,6 +36,10 @@ const nextConfig: NextConfig = {
         source: "/assets/templates/interior-design-delivery-v2/:path*",
         headers: [{ key: "Cache-Control", value: "public, max-age=300, must-revalidate" }],
       },
+      {
+        source: "/assets/templates/gift-advisor-report-v1/:path*",
+        headers: [{ key: "Cache-Control", value: "public, max-age=300, must-revalidate" }],
+      },
     ];
   },
 };

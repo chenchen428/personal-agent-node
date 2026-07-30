@@ -4,10 +4,19 @@
   "templateVersion": 2,
   "artifactMarker": "personal-agent-page-template",
   "visualAcceptance": "user",
+  "render": {
+    "kind": "su-design-render",
+    "revision": 2,
+    "sceneSha256": "97a78dda8f5a774d439d543c06f2d3cbf4c14ee41fbd2cad9e14a41e65ca5061",
+    "imageSha256": "d4f4d0a69646b4ea15c60336baf980cb27612c7fcbe4ac22eed9f367c64f01fd",
+    "referenceImageSha256": "a0048ea39e561a586597680100938b1b92fba92a6dabb26e5b82589fd388992e",
+    "promptSha256": "66456dcd5bc9cdf1dd5b633f8a902de7927b87dfcf9b65d349d7ad65ec9e8681",
+    "generator": "imagegen"
+  },
   "files": {
     "index.html": {
-      "bytes": 3803453,
-      "sha256": "7c12214331772481f69907f7e017e8e6cd4819261205083ea59d4f212db41a53"
+      "bytes": 6783685,
+      "sha256": "977135386a942f3db17a7d7e92528c5b53249dd3ae4b18c1262b885e9137875c"
     },
     "scene.json": {
       "bytes": 64502,
@@ -18,8 +27,8 @@
       "sha256": "15e8f3176018b47687c31b3f190b40e92c75a862f9076f17ada3a6d47a03628f"
     },
     "template.json": {
-      "bytes": 5601,
-      "sha256": "4351340e41fc1c98cca699b49ab2485de68a1d768ffd2dce56a717401282da23"
+      "bytes": 7527,
+      "sha256": "608e87fe610e0740ba83f0d8a3d1df70c59a8de95f6bef8da2e263a653b085f8"
     },
     "cover.svg": {
       "bytes": 23265,
@@ -32,6 +41,7 @@
       "project-v2-seed",
       "pascal-scene-compile",
       "professional-quality-audit",
+      "imagegen-render-register",
       "page-v2-generate",
       "artifact-hash-verify"
     ],
@@ -39,6 +49,10 @@
     "evidenceSha256": "23eab735dd2dcd2190264f93b3aad274b08a68b822c4a6f597a377afdc763542",
     "modelBasisSha256": "23eab735dd2dcd2190264f93b3aad274b08a68b822c4a6f597a377afdc763542",
     "annotationSha256": "2a8a7f8486409aee8e0252adb47f5c33c5e7d935b0b24a172bd6dcec579e48d1",
+    "renderSha256": "d4f4d0a69646b4ea15c60336baf980cb27612c7fcbe4ac22eed9f367c64f01fd",
+    "renderReferenceSha256": "a0048ea39e561a586597680100938b1b92fba92a6dabb26e5b82589fd388992e",
+    "renderPromptSha256": "66456dcd5bc9cdf1dd5b633f8a902de7927b87dfcf9b65d349d7ad65ec9e8681",
+    "renderMetadataSha256": "2a53e4df4c140b4ebc5aae92c7c7a32f7715645640c28c12d88ef6c798560895",
     "projectSha256": "3918249d16116e5ac3ea26c9f43f0dd4ae8f4dc7c5606d4a9881e93bdf31e001",
     "sceneSha256": "97a78dda8f5a774d439d543c06f2d3cbf4c14ee41fbd2cad9e14a41e65ca5061",
     "auditSha256": "9bbc91482ecb983de3d5214ae1d214eb7cc0a2125877eae0f8f934785fecd785",

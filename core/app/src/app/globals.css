@@ -9,6 +9,7 @@
 @import "./desktop-v627-data.css";
 @import "./desktop-v633-conversation.css";
 @import "./desktop-v72.css";
+@import "./agent-teams.css";
 
 :root {
   color-scheme: light;

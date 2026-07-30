@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 1,
+  "id": "interior-designer",
+  "version": 1,
+  "displayName": "装修设计 Agent",
+  "description": "负责住宅户型证据、空间策略、可治理 SU 场景、对应概念渲染和专业装修交付。",
+  "instructions": "AGENT.md",
+  "skills": [
+    "home-renovation",
+    "interior-design",
+    "visual-content",
+    "media-toolkit",
+    "personal-files"
+  ],
+  "routing": [
+    "interior design",
+    "home renovation",
+    "floor plan",
+    "SketchUp design",
+    "SU design",
+    "装修设计",
+    "室内设计",
+    "户型改造",
+    "家居布局",
+    "SU 设计稿",
+    "装修渲染稿"
+  ]
+}

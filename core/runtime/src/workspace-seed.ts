@@ -26,6 +26,13 @@ const PRODUCT_MANAGED_PAGE_CAPABILITIES = [
   "registry/skills.json",
 ] as const;
 
+const PRODUCT_MANAGED_AGENT_CAPABILITIES = [
+  "agents",
+  "registry/agents.json",
+  "schemas/personal-agent/agents.schema.json",
+  "schemas/personal-agent/video-styles.schema.json",
+] as const;
+
 export function seedAgentWorkspace(config: {
   agentWorkspaceRoot: string;
   dataRoot: string;
@@ -41,19 +48,19 @@ export function seedAgentWorkspace(config: {
     ? path.join(seedRoot, "AGENTS.md")
     : path.join(releaseRoot, "AGENTS.md");
   let copied = copyMissingTree(nodeGuide, path.join(config.agentWorkspaceRoot, "AGENTS.md"));
-  for (const directory of ["skills", "workflows", "registry"]) {
+  for (const directory of ["skills", "agents", "workflows", "registry", "schemas"]) {
     const source = fs.existsSync(path.join(seedRoot, directory))
       ? path.join(seedRoot, directory)
       : path.join(releaseRoot, directory);
     copied += copyMissingTree(source, path.join(config.agentWorkspaceRoot, directory));
   }
-  for (const script of ["skill-tree.mjs", "skill-guard.mjs"]) {
+  for (const script of ["skill-tree.mjs", "skill-guard.mjs", "agent-guard.mjs"]) {
     const source = fs.existsSync(path.join(seedRoot, "scripts", script))
       ? path.join(seedRoot, "scripts", script)
       : path.join(releaseRoot, "scripts", script);
     copied += copyMissingTree(source, path.join(config.agentWorkspaceRoot, "scripts", script));
   }
-  const refreshedPaths = refreshProductManagedPageCapabilities(seedRoot, config.agentWorkspaceRoot);
+  const refreshedPaths = refreshProductManagedCapabilities(seedRoot, config.agentWorkspaceRoot);
   const retiredSkills = retireSplitPersonalAgentSkill(config, seedRoot, now);
   createDirectoryPointer(
     path.join(config.agentWorkspaceRoot, "skills"),
@@ -79,9 +86,9 @@ export function copyMissingTree(source: string, target: string): number {
   return copied;
 }
 
-function refreshProductManagedPageCapabilities(seedRoot: string, agentWorkspaceRoot: string) {
+function refreshProductManagedCapabilities(seedRoot: string, agentWorkspaceRoot: string) {
   const refreshed: string[] = [];
-  for (const relative of PRODUCT_MANAGED_PAGE_CAPABILITIES) {
+  for (const relative of [...PRODUCT_MANAGED_PAGE_CAPABILITIES, ...PRODUCT_MANAGED_AGENT_CAPABILITIES]) {
     const source = path.join(seedRoot, ...relative.split("/"));
     const target = path.join(agentWorkspaceRoot, ...relative.split("/"));
     if (replaceManagedPath(source, target)) refreshed.push(relative);

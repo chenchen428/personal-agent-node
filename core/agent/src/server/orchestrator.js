@@ -5,6 +5,7 @@ import { runAppServerCommand, steerActiveTurn, stopAppServerCommand } from "../a
 import { authorizationSettings, readAuthorizationMode, withAuthorizationCliFlag } from "../agent/authorization-mode.ts";
 import { dailyTokenLimitError, dailyTokenLimitExceeded, readDailyTokenLimit } from "../agent/daily-token-limit.ts";
 import { readCodexRuntimeSettings } from "../agent/codex-runtime-settings.ts";
+import { buildAgentCatalogInstructions, buildSpecialistAgentInstructions, resolveAgentProfile } from "../agents/registry.js";
 import { buildActivityResultHook, containsActivityControl, executeActivityCommand, isStreamingActivityControl, processActivityControl, stripActivityControls } from "../activity/control.js";
 import { config } from "../config.js";
 import { containsFinalReplyControl, isStreamingFinalReplyControl, processFinalReplyControl, recoverFinalReplyText } from "../final-reply/control.js";
@@ -218,6 +219,7 @@ export class SessionOrchestrator {
 
   createWorkerSession(input) {
     const metadata = normalizeTaskCreate(input);
+    const agentProfile = metadata.agentId ? resolveAgentProfile(config.workspaceRoot, metadata.agentId) : null;
     const session = this.store.createSession({
       role: "worker",
       parentSessionId: metadata.parentSessionId || null,
@@ -227,7 +229,14 @@ export class SessionOrchestrator {
       channel: input.channel || null,
       senderId: input.senderId || null,
       senderName: input.senderName || null,
-      metadata: { createdBy: input.createdBy || "cli" },
+      metadata: {
+        createdBy: input.createdBy || "cli",
+        ...(agentProfile ? {
+          agentId: agentProfile.id,
+          agentProfileVersion: agentProfile.version,
+          projectKey: metadata.projectKey,
+        } : {}),
+      },
     });
     const displayItem = this.store.appendTaskDisplayEvent(session.id, {
       sourceEventId: `task-description:${session.id}`,
@@ -1422,6 +1431,7 @@ function buildMainAgentInstructions(session) {
     "需要主动维护长期事实、稳定偏好或持续约束时，使用 pa-cli memory。create 只写记忆内容；update 会更新内容并让已遗忘记忆重新生效；delete 是永久删除，只能在用户明确要求且先查询到唯一目标后执行。不要记录密钥、一次性状态、工具流水、内部路径或未经用户确认的推断。",
     "记忆读取可使用 list、search、show、stats；写入只使用 create、update、delete。更新和删除必须使用读取结果里的 expectedRevision。记忆一年未创建、更新或命中会自动遗忘，遗忘记忆不会被自动召回。",
     "你是 Personal Agent 的唯一主 Agent。先判断用户是在聊天，还是要求执行实际工作。",
+    buildAgentCatalogInstructions(config.workspaceRoot),
     "你的首要职责是面向用户沟通：理解目标、在必要时澄清、拆分任务、主动调度执行者、立即反馈已开始处理、收集受治理的进度和完成结果，并统一给用户状态更新与最终答复。要让主会话保持可响应，不要把它当成包办全部执行工作的进程。",
     "寒暄、确认、简单问答、澄清问题，以及只需一次快速只读查询或一次原子操作即可完成的请求，由你直接处理；不要创建子任务。定时计划管理、既有成果检索和子任务状态查询也始终由你直接处理。",
     "凡是需要读写文件、运行多步命令、检索后产出、生成或修改 Page、部署、跨模块修改、多个交付物或持续执行的实质工作，都必须进入任务调度，并至少创建或续接一个当前主会话名下的子任务；主 Agent 不得自己执行这些实质步骤。",
@@ -1515,6 +1525,7 @@ function redactMemoryCapability(event, capability) {
 function buildWorkerAgentInstructions(session) {
   if (session.role !== "worker" || !session.parentSessionId) return "";
   const workReference = JSON.stringify({ id: session.id, title: truncateTitle(session.title) });
+  const specialistInstructions = buildSpecialistAgentInstructions(config.workspaceRoot, session.metadata);
   return [
     "你不是主 Agent。不得创建、查询、更新、隐藏或恢复全局动态，不得读取或维护长期记忆，也不得输出 <personal-agent-activity> 控制信封。把值得向用户说明的结果返回给主 Agent，由主 Agent 判断是否更新动态或记忆。",
     "你负责完成分配的任务并把结果返回给主 Agent。",
@@ -1524,6 +1535,7 @@ function buildWorkerAgentInstructions(session) {
     `本 Work 的稳定引用是 ${workReference}。最终聊天回复必须先输出一段产物信息，再输出精简结论。产物信息格式为：<personal-agent-artifacts>{"schemaVersion":1,"work":{"id":"任务ID","title":"任务标题"},"summary":"面向用户的结果摘要","artifacts":[{"kind":"page|file|data|mail|app|other","id":"受治理对象的稳定ID，没有则为空","name":"产物名称","summary":"产物用途或结果","url":"CLI 返回的可访问 URL，没有则为空","objectIds":["obj_托管对象ID"]}]}</personal-agent-artifacts>。work 必须使用上方稳定引用。`,
     "产物信息只记录真实存在且已经验证的结果。Page 的 id 使用 pa-cli pages publish 返回的 pageId；文件附件只在已经得到 obj_ 托管对象 ID 时写入 objectIds；不要把 URL、文件夹、绝对路径或猜测的客户端路由当作稳定 ID。没有独立产物时 artifacts 使用空数组，仍然保留 work 引用和结果摘要。",
     "工作期间保持最终输出精简，只给出产物信息、结论、交付物链接和主 Agent 必须知道的失败原因。不要在产物信息之前输出长篇内容，避免完成回执截断关键关联信息。",
+    specialistInstructions,
   ].join("\n");
 }
 

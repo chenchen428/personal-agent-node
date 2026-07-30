@@ -33,6 +33,46 @@ test("task metadata updates preserve the same length contract", () => {
   assert.throws(() => normalizeTaskPatch({ title: "" }), /标题不能为空/);
 });
 
+test("specialist tasks require a parent-scoped Agent and project identity", () => {
+  assert.deepEqual(normalizeTaskCreate({
+    parentSessionId: "main-1",
+    title: "制作产品介绍视频",
+    description: "使用 HyperFrames 完成产品介绍短片",
+    task: "制作 Personal Agent 介绍视频",
+    agentId: "video-creator",
+    projectKey: "project_personal_agent_intro",
+  }), {
+    parentSessionId: "main-1",
+    title: "制作产品介绍视频",
+    description: "使用 HyperFrames 完成产品介绍短片",
+    task: "制作 Personal Agent 介绍视频",
+    agentId: "video-creator",
+    projectKey: "project_personal_agent_intro",
+  });
+  assert.throws(() => normalizeTaskCreate({
+    parentSessionId: "main-1",
+    title: "视频",
+    description: "制作视频",
+    task: "work",
+    agentId: "video-creator",
+  }), /同时设置/);
+  assert.throws(() => normalizeTaskCreate({
+    title: "视频",
+    description: "制作视频",
+    task: "work",
+    agentId: "video-creator",
+    projectKey: "project_video",
+  }), /属于一个主会话/);
+  assert.throws(() => normalizeTaskCreate({
+    parentSessionId: "main-1",
+    title: "视频",
+    description: "制作视频",
+    task: "work",
+    agentId: "../video",
+    projectKey: "project_video",
+  }), /ID 格式无效/);
+});
+
 test("child task execution prompts preserve quoted and multiline requirements", () => {
   const task = "请创建一次性提醒：\n时间：2026-07-19 09:00 Asia/Shanghai\n提醒内容：\"买黄皮寄回家\"";
   const normalized = normalizeTaskCreate({

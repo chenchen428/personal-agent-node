@@ -1,0 +1,39 @@
+{
+  "schemaVersion": 1,
+  "provider": "amap",
+  "credential": {
+    "input": "--key-file",
+    "storage": "ignored customer Workspace secrets directory",
+    "persisted": false
+  },
+  "poi": {
+    "endpoint": "https://restapi.amap.com/v3/place/text",
+    "required": [
+      "keywords or types"
+    ],
+    "scope": [
+      "city",
+      "citylimit"
+    ]
+  },
+  "route": {
+    "modes": [
+      "walking",
+      "transit",
+      "driving",
+      "bicycling"
+    ],
+    "required": [
+      "origin",
+      "destination"
+    ],
+    "transitRequired": [
+      "city"
+    ]
+  },
+  "output": [
+    "queriedAt",
+    "request without key",
+    "normalized result"
+  ]
+}

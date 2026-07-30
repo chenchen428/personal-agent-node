@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "skill": "hyperframes-video",
+  "title": "本地确定性产品介绍视频",
+  "prompt": "把产品能力说明整理成一个 8 秒、1920×1080 的本地产品介绍视频，先检查确定性和布局，再输出关键帧与 MP4。",
+  "commands": [
+    "node skills/hyperframes-video/scripts/cli.mjs check --project test/fixtures/skill-cases/hyperframes-video/project --strict --json",
+    "node skills/hyperframes-video/scripts/cli.mjs snapshot --project test/fixtures/skill-cases/hyperframes-video/project --at 0,4,7.8 --output snapshots/review --force",
+    "node skills/hyperframes-video/scripts/cli.mjs render --project test/fixtures/skill-cases/hyperframes-video/project --output renders/intro.mp4 --quality high --strict --force"
+  ],
+  "artifacts": [
+    {
+      "path": "project/index.html",
+      "label": "Deterministic composition source"
+    },
+    {
+      "path": "expected.json",
+      "label": "Expected composition and execution contract"
+    }
+  ],
+  "verifiedAt": "2026-07-30"
+}

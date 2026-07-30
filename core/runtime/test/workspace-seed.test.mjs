@@ -79,6 +79,48 @@ test("refreshes product-managed page skills and registries without replacing use
   }
 });
 
+test("refreshes product-managed specialist Agent profiles and registry", () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "personal-agent-profile-seed-"));
+  try {
+    const releaseRoot = path.join(root, "release");
+    const agentWorkspaceRoot = path.join(root, "space", "agent-workspace");
+    const dataRoot = path.join(root, "space");
+    for (const base of [path.join(releaseRoot, "workspace"), agentWorkspaceRoot]) {
+      fs.mkdirSync(path.join(base, "agents", "video-creator"), { recursive: true });
+      fs.mkdirSync(path.join(base, "registry"), { recursive: true });
+      fs.mkdirSync(path.join(base, "schemas", "personal-agent"), { recursive: true });
+    }
+    fs.writeFileSync(path.join(releaseRoot, "workspace", "agents", "video-creator", "AGENT.md"), "new Agent\n");
+    fs.writeFileSync(path.join(agentWorkspaceRoot, "agents", "video-creator", "AGENT.md"), "old Agent\n");
+    fs.writeFileSync(path.join(releaseRoot, "workspace", "agents", "video-creator", "STYLE-GUIDE.md"), "new styles\n");
+    fs.writeFileSync(path.join(agentWorkspaceRoot, "agents", "video-creator", "STYLE-GUIDE.md"), "old styles\n");
+    fs.writeFileSync(path.join(releaseRoot, "workspace", "agents", "video-creator", "styles.json"), "{\"defaultStyleId\":\"new\"}\n");
+    fs.writeFileSync(path.join(agentWorkspaceRoot, "agents", "video-creator", "styles.json"), "{\"defaultStyleId\":\"old\"}\n");
+    fs.writeFileSync(path.join(releaseRoot, "workspace", "registry", "agents.json"), "{\"schemaVersion\":1,\"agents\":[\"new\"]}\n");
+    fs.writeFileSync(path.join(agentWorkspaceRoot, "registry", "agents.json"), "{\"schemaVersion\":1,\"agents\":[\"old\"]}\n");
+    fs.writeFileSync(path.join(releaseRoot, "workspace", "schemas", "personal-agent", "agents.schema.json"), "{\"title\":\"new\"}\n");
+    fs.writeFileSync(path.join(agentWorkspaceRoot, "schemas", "personal-agent", "agents.schema.json"), "{\"title\":\"old\"}\n");
+    fs.writeFileSync(path.join(releaseRoot, "workspace", "schemas", "personal-agent", "video-styles.schema.json"), "{\"title\":\"new video styles\"}\n");
+    fs.writeFileSync(path.join(agentWorkspaceRoot, "schemas", "personal-agent", "video-styles.schema.json"), "{\"title\":\"old video styles\"}\n");
+
+    const result = seedAgentWorkspace({ agentWorkspaceRoot, dataRoot }, { releaseRoot });
+    assert.deepEqual(result.refreshedPaths, [
+      "agents",
+      "registry/agents.json",
+      "schemas/personal-agent/agents.schema.json",
+      "schemas/personal-agent/video-styles.schema.json",
+    ]);
+    assert.equal(fs.readFileSync(path.join(agentWorkspaceRoot, "agents", "video-creator", "AGENT.md"), "utf8"), "new Agent\n");
+    assert.equal(fs.readFileSync(path.join(agentWorkspaceRoot, "agents", "video-creator", "STYLE-GUIDE.md"), "utf8"), "new styles\n");
+    assert.match(fs.readFileSync(path.join(agentWorkspaceRoot, "agents", "video-creator", "styles.json"), "utf8"), /new/);
+    assert.match(fs.readFileSync(path.join(agentWorkspaceRoot, "registry", "agents.json"), "utf8"), /new/);
+    assert.match(fs.readFileSync(path.join(agentWorkspaceRoot, "schemas", "personal-agent", "agents.schema.json"), "utf8"), /new/);
+    assert.match(fs.readFileSync(path.join(agentWorkspaceRoot, "schemas", "personal-agent", "video-styles.schema.json"), "utf8"), /new video styles/);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
 test("seeds split skills and recoverably retires the legacy personal-agent skill", () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "personal-agent-seed-upgrade-"));
   try {
