@@ -47,10 +47,16 @@ export async function buildAgentDeliveryExample({ check = false } = {}) {
     const seedBytes = fs.readFileSync(path.join(exampleRoot, 'seed.json'));
     const sourceBytes = fs.readFileSync(path.join(exampleRoot, 'source-plan.png'));
     const annotationBytes = fs.readFileSync(path.join(exampleRoot, 'agent-annotation.png'));
+    const conceptRenderBytes = fs.readFileSync(path.join(exampleRoot, 'concept-render.png'));
     const seed = JSON.parse(seedBytes.toString('utf8'));
+    const conceptRenderEvidence = seed.evidence.find((entry) => entry.classification === 'concept-render');
+    if (!conceptRenderEvidence || conceptRenderEvidence.contentHash !== sha256(conceptRenderBytes)) {
+      throw new Error('representative concept render does not match the governed seed');
+    }
     const initialized = initializeProject(projectDir, seed, context, { now: () => fixedTime });
     fs.copyFileSync(path.join(exampleRoot, 'source-plan.png'), path.join(projectDir, 'evidence', 'source-plan.png'));
     fs.copyFileSync(path.join(exampleRoot, 'agent-annotation.png'), path.join(projectDir, 'evidence', 'agent-annotation.png'));
+    fs.copyFileSync(path.join(exampleRoot, 'concept-render.png'), path.join(projectDir, 'evidence', 'concept-render.png'));
     const compiled = await compileProjectScene(projectDir, context, {
       baseRevision: initialized.project.revision,
       now: () => fixedTime,
@@ -64,6 +70,8 @@ export async function buildAgentDeliveryExample({ check = false } = {}) {
       delivery,
     });
     normalizeGeneratedHtml(path.join(output, 'index.html'));
+    fs.copyFileSync(path.join(exampleRoot, 'source-plan.png'), path.join(output, 'source-plan.png'));
+    fs.copyFileSync(path.join(exampleRoot, 'agent-annotation.png'), path.join(output, 'agent-annotation.png'));
     fs.writeFileSync(path.join(output, 'cover.svg'), renderProjectCoverSvg(selectedConcept(compiled.project)), { mode: 0o600 });
     const manifestPath = path.join(output, 'manifest.json');
     const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
@@ -80,6 +88,12 @@ export async function buildAgentDeliveryExample({ check = false } = {}) {
       evidenceSha256: sha256(sourceBytes),
       modelBasisSha256: compiled.scene.modelBasis.sha256,
       annotationSha256: sha256(annotationBytes),
+      conceptRender: {
+        generator: conceptRenderEvidence.generation.generator,
+        imageSha256: conceptRenderEvidence.contentHash,
+        referenceImageSha256: conceptRenderEvidence.generation.referenceImageSha256,
+        promptSha256: conceptRenderEvidence.generation.promptSha256,
+      },
       projectSha256: sha256(canonicalJson(readProject(projectDir, context).project)),
       sceneSha256: compiled.scene.sceneHash,
       auditSha256: compiled.project.quality.sha256,
@@ -89,6 +103,8 @@ export async function buildAgentDeliveryExample({ check = false } = {}) {
     };
     manifest.files['index.html'] = fileRecord(path.join(output, 'index.html'));
     manifest.files['cover.svg'] = fileRecord(path.join(output, 'cover.svg'));
+    manifest.files['source-plan.png'] = fileRecord(path.join(output, 'source-plan.png'));
+    manifest.files['agent-annotation.png'] = fileRecord(path.join(output, 'agent-annotation.png'));
     fs.writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`, { mode: 0o600 });
     const verification = verifyAgentDeliveryExample(output);
     if (check) {
@@ -134,6 +150,13 @@ export function verifyAgentDeliveryExample(directory = targetRoot) {
   if (manifest.source.layoutProfile !== 'su-design-classic') {
     throw new Error('representative interior-designer delivery classic SU layout profile is missing');
   }
+  const render = manifest.source.conceptRender;
+  if (render?.generator !== 'imagegen'
+    || !/^[a-f0-9]{64}$/.test(render.imageSha256 || '')
+    || !/^[a-f0-9]{64}$/.test(render.referenceImageSha256 || '')
+    || !/^[a-f0-9]{64}$/.test(render.promptSha256 || '')) {
+    throw new Error('representative interior-designer delivery concept render provenance is missing');
+  }
   for (const [name, expected] of Object.entries(manifest.files || {})) {
     const target = path.join(directory, name);
     if (!fs.existsSync(target)) throw new Error(`representative interior-designer delivery is missing ${name}`);
@@ -146,6 +169,26 @@ export function verifyAgentDeliveryExample(directory = targetRoot) {
   if (!html.includes('data-engine="pascal-v2"')
     || /data-engine="(?!pascal-v2)[^"]+"|<(?:script|link|iframe)[^>]+(?:src|href)=["']https?:\/\/|127\.0\.0\.1|localhost/i.test(html)) {
     throw new Error('representative interior-designer delivery is not exclusively Pascal v2');
+  }
+  for (const marker of [
+    'data-presentation="requirements"',
+    'data-presentation="model"',
+    'data-presentation="render"',
+    'data-presentation-panel="render"',
+    'data-image-rotatable',
+    '用户需求与户型依据',
+    '对应渲染稿',
+    '概念效果不替代施工图或材料实样',
+  ]) {
+    if (!html.includes(marker)) throw new Error(`representative interior-designer delivery is missing ${marker}`);
+  }
+  const expectedEmbeddedImages = [
+    ['基于当前 SU 设计稿生成的概念渲染稿', render.imageSha256],
+    ['用户上传并脱敏的原始户型图', manifest.files['source-plan.png']?.sha256],
+    ['Agent 上传的户型分析标注图', manifest.files['agent-annotation.png']?.sha256],
+  ];
+  for (const [alt, expectedHash] of expectedEmbeddedImages) {
+    if (embeddedPngHash(html, alt) !== expectedHash) throw new Error(`representative interior-designer delivery embedded image hash mismatch: ${alt}`);
   }
   const scene = JSON.parse(fs.readFileSync(path.join(directory, 'scene.json'), 'utf8'));
   const nodes = Object.values(scene.scene?.nodes || {});
@@ -197,6 +240,12 @@ function fileRecord(file) {
     bytes: value.length,
     sha256: crypto.createHash('sha256').update(value).digest('hex'),
   };
+}
+
+function embeddedPngHash(html, alt) {
+  const tag = [...html.matchAll(/<img\b[^>]*>/g)].map(([value]) => value).find((value) => value.includes(`alt="${alt}"`));
+  const payload = tag?.match(/src="data:image\/png;base64,([^"]+)"/)?.[1];
+  return payload ? sha256(Buffer.from(payload, 'base64')) : '';
 }
 
 function compareDirectories(actualRoot, expectedRoot) {

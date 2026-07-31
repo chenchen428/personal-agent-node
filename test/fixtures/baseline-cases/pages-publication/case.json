@@ -17,6 +17,6 @@
     "Page publication returns a stable pageId and Page Activity must target that id so the Activity card opens Page detail",
     "Page Activity uses the stored mobile thumbnail as representative feed media without scraping Page HTML",
     "The authenticated Pages module remains a searchable result library without a template catalog, template detail route, or template selection entry point",
-    "The interior-designer representative delivery v2 is regenerated from a native trusted-Space seed by the Agent-owned Pascal v2 implementation; its manifest records Agent and delivery provenance plus seed, evidence, project, scene, audit and file hashes, contains no retired template fields or template.json, embeds both redacted evidence images and a sanitized deterministic Pascal scene, preserves professional interaction and offline safety, and leaves visual acceptance to the user"
+    "The interior-designer representative delivery v2 is a self-contained public artifact with user requirements, design draft and corresponding render entry points; its manifest records the governed Pascal project and concept-render provenance plus exact hashes for every declared file, the embedded redacted source plan and Agent annotation match their standalone evidence hashes, remote runtime dependencies and loopback references are absent, and visual acceptance remains owned by the user"
   ]
 }

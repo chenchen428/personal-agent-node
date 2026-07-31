@@ -139,7 +139,7 @@
         "evidenceId": { "$ref": "#/$defs/id" },
         "managedObjectId": { "type": "string", "pattern": "^obj_[a-f0-9]{24}$" },
         "relativePath": { "type": "string", "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$)).+$" },
-        "classification": { "enum": ["structure-reference", "revision-annotation", "style-reference", "edit-target", "site-photo", "measurement"] },
+        "classification": { "enum": ["structure-reference", "revision-annotation", "concept-render", "style-reference", "edit-target", "site-photo", "measurement"] },
         "orientation": { "type": "string", "minLength": 1, "maxLength": 120 },
         "calibration": {
           "type": "object",
@@ -160,6 +160,16 @@
         "observations": { "type": "array", "items": { "type": "string", "maxLength": 2000 } },
         "inferences": { "type": "array", "items": { "type": "string", "maxLength": 2000 } },
         "redactionStatus": { "enum": ["not-required", "redacted", "private-only"] },
+        "generation": {
+          "type": "object",
+          "required": ["generator", "referenceImageSha256", "promptSha256"],
+          "properties": {
+            "generator": { "const": "imagegen" },
+            "referenceImageSha256": { "$ref": "#/$defs/sha256" },
+            "promptSha256": { "$ref": "#/$defs/sha256" }
+          },
+          "additionalProperties": false
+        },
         "contentHash": { "$ref": "#/$defs/sha256" }
       }
     },

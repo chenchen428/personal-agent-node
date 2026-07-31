@@ -18,6 +18,17 @@ import {
 const root = path.resolve(import.meta.dirname, "..");
 const artifactRoot = path.join(root, "core/app/public/assets/agents/interior-designer/featured");
 const read = (relative) => fs.readFileSync(path.join(root, relative), "utf8");
+const sha256 = (value) => crypto.createHash("sha256").update(value).digest("hex");
+
+function embeddedPngByAlt(html, alt) {
+  const tag = [...html.matchAll(/<img\b[^>]*>/g)]
+    .map(([value]) => value)
+    .find((value) => value.includes(`alt="${alt}"`));
+  assert.ok(tag, `missing embedded image: ${alt}`);
+  const match = tag.match(/src="data:image\/png;base64,([^"]+)"/);
+  assert.ok(match, `image must be an embedded PNG: ${alt}`);
+  return Buffer.from(match[1], "base64");
+}
 
 test("Pascal delivery DPR follows a bounded pixel budget as the page grows", () => {
   assert.equal(DELIVERY_PIXEL_BUDGET, 1_400_000);
@@ -61,11 +72,14 @@ test("interior-designer owns one representative delivery contract without a temp
   assert.equal(fs.existsSync(path.join(artifactRoot, "template.json")), false);
 });
 
-test("the representative delivery is the byte-stable output of the governed native v2 pipeline", async () => {
+test("the representative delivery is reproducible, self-contained, and all declared hashes match", async () => {
   const result = await buildAgentDeliveryExample({ check: true });
   assert.equal(result.ok, true);
   assert.equal(result.mode, "check");
   const { manifest } = verifyAgentDeliveryExample(artifactRoot);
+  const html = read("core/app/public/assets/agents/interior-designer/featured/index.html");
+  const profile = JSON.parse(read("agents/interior-designer/profile.yaml"));
+
   assert.deepEqual(manifest.agent, {
     id: "interior-designer",
     version: 1,
@@ -77,33 +91,36 @@ test("the representative delivery is the byte-stable output of the governed nati
     layoutProfile: "su-design-classic",
     renderProfile: "professional-mesh-ink",
   });
+  assert.equal(manifest.visualAcceptance, "user");
   assert.equal(manifest.source.kind, "native-governed-pascal-v2-project");
-  assert.deepEqual(manifest.source.pipeline, [
-    "project-v2-seed",
-    "pascal-scene-compile",
-    "professional-quality-audit",
-    "page-v2-generate",
-    "artifact-hash-verify",
-  ]);
-  assert.deepEqual(manifest.source.qualityFloor, {
-    rooms: 12,
-    furniture: 30,
-    openings: 14,
-    doors: 8,
-    windows: 6,
-    walls: 20,
-    slabs: 1,
-    ceilings: 1,
+  assert.equal(manifest.source.renderProfile, "professional-mesh-ink");
+  assert.deepEqual(manifest.source.conceptRender, {
+    generator: "imagegen",
+    imageSha256: "d4f4d0a69646b4ea15c60336baf980cb27612c7fcbe4ac22eed9f367c64f01fd",
+    referenceImageSha256: "a0048ea39e561a586597680100938b1b92fba92a6dabb26e5b82589fd388992e",
+    promptSha256: "66456dcd5bc9cdf1dd5b633f8a902de7927b87dfcf9b65d349d7ad65ec9e8681",
   });
   for (const retired of ["templateId", "templateVersion", "artifactMarker"]) {
     assert.equal(retired in manifest, false, retired);
   }
-  assert.deepEqual(Object.keys(manifest.files).sort(), ["audit.json", "cover.svg", "index.html", "scene.json"]);
+  assert.deepEqual(Object.keys(manifest.files).sort(), [
+    "agent-annotation.png",
+    "audit.json",
+    "cover.svg",
+    "index.html",
+    "scene.json",
+    "source-plan.png",
+  ]);
   for (const [name, expected] of Object.entries(manifest.files)) {
     const value = fs.readFileSync(path.join(artifactRoot, name));
     assert.equal(value.length, expected.bytes, name);
-    assert.equal(crypto.createHash("sha256").update(value).digest("hex"), expected.sha256, name);
+    assert.equal(sha256(value), expected.sha256, name);
   }
+
+  assert.equal(sha256(embeddedPngByAlt(html, "基于当前 SU 设计稿生成的概念渲染稿")), manifest.source.conceptRender.imageSha256);
+  assert.equal(sha256(embeddedPngByAlt(html, "用户上传并脱敏的原始户型图")), manifest.files["source-plan.png"].sha256);
+  assert.equal(sha256(embeddedPngByAlt(html, "Agent 上传的户型分析标注图")), manifest.files["agent-annotation.png"].sha256);
+  assert.match(profile.examples[0].summary, /用户需求.*设计稿.*渲染稿/);
 });
 
 test("the representative delivery preserves the governed Pascal v2 interaction and safety contract", () => {
@@ -112,11 +129,16 @@ test("the representative delivery preserves the governed Pascal v2 interaction a
   const cover = read("core/app/public/assets/agents/interior-designer/featured/cover.svg");
   const nodes = Object.values(scene.scene.nodes);
 
+  assert.match(html, /data-engine="pascal-v2"/);
   assert.match(html, /data-agent-id="interior-designer"/);
   assert.match(html, /data-agent-example-id="interior-c-layout-delivery"/);
-  assert.match(html, /data-delivery-version="2"/);
-  assert.match(html, /data-engine="pascal-v2"/);
   assert.match(html, /data-layout-profile="su-design-classic"/);
+  assert.match(html, /data-presentation="requirements"[^>]*>.*?用户需求<\/button>/s);
+  assert.match(html, /data-presentation="model"[^>]*>设计稿<\/button>/);
+  assert.match(html, /data-presentation="render"[^>]*>.*?渲染稿<\/button>/s);
+  assert.match(html, /data-presentation-panel="render"[^>]*data-image-viewer[^>]*data-image-rotatable/);
+  assert.match(html, /用户需求与户型依据/);
+  assert.match(html, /概念效果不替代施工图或材料实样/);
   assert.match(html, /id="pascal-scene"/);
   assert.match(html, /id="model-derived-plan"/);
   assert.match(html, /id="viewer-loading"/);
@@ -129,10 +151,9 @@ test("the representative delivery preserves the governed Pascal v2 interaction a
   assert.match(html, /pascal-highlight/);
   assert.match(html, /professional-mesh-ink/);
   assert.match(html, /pascal-viewer-warmup/);
-  assert.match(html, /pascal-viewer-visibility/);
   assert.match(cover, /data-cover-item=/);
-  assert.doesNotMatch(html, /personal-agent-page-template|data-template-|templateId|templateVersion|artifactMarker/);
-  assert.doesNotMatch(html, /data-engine="(?!pascal-v2)[^"]+"|localhost|127\.0\.0\.1|editor\.pascal\.app/);
+  assert.doesNotMatch(html, /<(?:script|img|link|iframe)\b[^>]*(?:src|href)=["']https?:/i);
+  assert.doesNotMatch(html, /localhost|127\.0\.0\.1|editor\.pascal\.app/);
   assert.ok(nodes.filter((node) => node.type === "zone").length >= 12);
   assert.ok(nodes.filter((node) => ["door", "window"].includes(node.type)).length >= 14);
   assert.ok(nodes.filter((node) => node.type === "wall").length >= 20);

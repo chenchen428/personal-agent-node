@@ -35,6 +35,7 @@ const skillRoot = path.join(root, 'skills/interior-design');
 const exampleRoot = path.join(root, 'skills/interior-design/examples/professional-agent-example');
 const sourcePlanPath = path.join(exampleRoot, 'source-plan.png');
 const annotationPath = path.join(exampleRoot, 'agent-annotation.png');
+const conceptRenderPath = path.join(exampleRoot, 'concept-render.png');
 const nativeSeedPath = path.join(exampleRoot, 'seed.json');
 const nativeSeed = JSON.parse(fs.readFileSync(nativeSeedPath, 'utf8'));
 
@@ -380,8 +381,13 @@ test('generates a deterministic, private, offline Pascal Page v2 with accessible
   assert.match(firstHtml, /data-level-mode="exploded"/);
   assert.match(firstHtml, /data-label-mode="visible"/);
   assert.match(firstHtml, /data:image\/png;base64/);
-  assert.match(firstHtml, /用户户型图与 Agent 标注/);
+  assert.match(firstHtml, /用户需求与户型依据/);
   assert.match(firstHtml, /用户原图是唯一户型依据/);
+  assert.match(firstHtml, /data-presentation="requirements"/);
+  assert.match(firstHtml, /data-presentation="model"/);
+  assert.match(firstHtml, /data-presentation="render"/);
+  assert.match(firstHtml, /data-presentation-panel="render"/);
+  assert.match(firstHtml, /概念效果不替代施工图或材料实样/);
   assert.match(firstHtml, new RegExp(compiled.project.provenance.sourcePlanSha256));
   assert.match(firstHtml, /plan-source-image/);
   assert.match(firstHtml, /plan-annotation-image/);
@@ -410,7 +416,7 @@ test('generates a deterministic, private, offline Pascal Page v2 with accessible
   fs.copyFileSync(annotationPath, sourcePlanProjectPath);
   assert.throws(
     () => generateProfessionalPage({ projectDir: harness.projectDir, context: harness.context, output: firstDir, skillRoot, delivery }),
-    /share one verified model basis/,
+    /share one verified model basis|evidence hash does not match/,
   );
   fs.writeFileSync(sourcePlanProjectPath, originalSourcePlan);
   const auditPath = path.join(harness.projectDir, 'derived', 'audit.json');
@@ -446,6 +452,7 @@ test('formal v2 schema and runtime validator reject oversized or structurally in
   assert.equal(schema.properties.schemaVersion.const, 2);
   assert.equal(schema.additionalProperties, false);
   assert.ok(schema.$defs.evidence.properties.classification.enum.includes('revision-annotation'));
+  assert.ok(schema.$defs.evidence.properties.classification.enum.includes('concept-render'));
   assert.ok(schema.$defs.concept.required.includes('sourcePlanEvidenceId'));
   assert.ok(schema.$defs.provenance.required.includes('sourcePlanSha256'));
   const project = createProjectFromSeed(baseSeed(), { spaceRoot: '/tmp', spaceId: 'schema-space', ownerId: 'schema-owner' }, { now: () => '2026-07-27T00:00:00.000Z' });
@@ -460,6 +467,9 @@ test('formal v2 schema and runtime validator reject oversized or structurally in
   const unrelatedModelBasis = structuredClone(project);
   unrelatedModelBasis.provenance.sourcePlanSha256 = '0'.repeat(64);
   assert.match(validateProjectV2(unrelatedModelBasis).join('\n'), /sourcePlanSha256 must match/);
+  const governedRender = createProjectFromSeed(nativeSeed, { spaceRoot: '/tmp', spaceId: 'render-space', ownerId: 'render-owner' }, { now: () => '2026-07-27T00:00:00.000Z' });
+  delete governedRender.evidence.find((entry) => entry.classification === 'concept-render').generation.promptSha256;
+  assert.match(validateProjectV2(governedRender).join('\n'), /generation\.promptSha256 must be sha256/);
   const tooManyLevels = structuredClone(project);
   tooManyLevels.concepts[0].levels.push(structuredClone(tooManyLevels.concepts[0].levels[0]), structuredClone(tooManyLevels.concepts[0].levels[0]));
   assert.match(validateProjectV2(tooManyLevels).join('\n'), /at most 2 levels/);
@@ -541,6 +551,7 @@ function makeHarness(name, { multiLevel = false, alternatives = true } = {}) {
   initializeProject(projectDir, seed, context, { now: () => '2026-07-27T00:00:00.000Z' });
   fs.copyFileSync(sourcePlanPath, path.join(projectDir, 'evidence', 'source-plan.png'));
   fs.copyFileSync(annotationPath, path.join(projectDir, 'evidence', 'agent-annotation.png'));
+  fs.copyFileSync(conceptRenderPath, path.join(projectDir, 'evidence', 'concept-render.png'));
   return { runtimeRoot, spaceRoot, context, projectDir };
 }
 

@@ -14,8 +14,8 @@
   "visualAcceptance": "user",
   "files": {
     "index.html": {
-      "bytes": 3805259,
-      "sha256": "894b2ec802a8682803b92d5db17f06246d63387a9b89851852cf7dd371f44e52"
+      "bytes": 6781702,
+      "sha256": "91dd11e0f2df40f5b783d8290bcd11069e0e97d5c8c7261e5a863ac9b1bbe346"
     },
     "scene.json": {
       "bytes": 64502,
@@ -28,6 +28,14 @@
     "cover.svg": {
       "bytes": 23265,
       "sha256": "18722d13845f4b7782760a9e22202884bb84f7ebcc0a54589ebd2ab8a3cbe4b0"
+    },
+    "source-plan.png": {
+      "bytes": 282955,
+      "sha256": "23eab735dd2dcd2190264f93b3aad274b08a68b822c4a6f597a377afdc763542"
+    },
+    "agent-annotation.png": {
+      "bytes": 545551,
+      "sha256": "2a8a7f8486409aee8e0252adb47f5c33c5e7d935b0b24a172bd6dcec579e48d1"
     }
   },
   "source": {
@@ -39,11 +47,17 @@
       "page-v2-generate",
       "artifact-hash-verify"
     ],
-    "seedSha256": "249d0331b0a5ef49435c7ba571a000552ae0ac8a8ce763150d7cea22db261d05",
+    "seedSha256": "ef8e9f3d9dfe371e4deec4621d066d0a79c12b0eea95abe59b5eb471ee19514e",
     "evidenceSha256": "23eab735dd2dcd2190264f93b3aad274b08a68b822c4a6f597a377afdc763542",
     "modelBasisSha256": "23eab735dd2dcd2190264f93b3aad274b08a68b822c4a6f597a377afdc763542",
     "annotationSha256": "2a8a7f8486409aee8e0252adb47f5c33c5e7d935b0b24a172bd6dcec579e48d1",
-    "projectSha256": "09c78835196772d25949a2c4886cb06106c2ebb38e42c6a48c113c1a13cea1d0",
+    "conceptRender": {
+      "generator": "imagegen",
+      "imageSha256": "d4f4d0a69646b4ea15c60336baf980cb27612c7fcbe4ac22eed9f367c64f01fd",
+      "referenceImageSha256": "a0048ea39e561a586597680100938b1b92fba92a6dabb26e5b82589fd388992e",
+      "promptSha256": "66456dcd5bc9cdf1dd5b633f8a902de7927b87dfcf9b65d349d7ad65ec9e8681"
+    },
+    "projectSha256": "8df1e8b22c9b02144aaf86e4fc0aaa8cf4177e7ba2ac68e464efda199fe410d9",
     "sceneSha256": "58b9fade97393812210e7e29a721e9d76d14eefed02ad6e142355fcdce61d78f",
     "auditSha256": "5f93a3c93da08df77d31de976b858e0a0b588812344a2404d02f520acd23b809",
     "renderProfile": "professional-mesh-ink",

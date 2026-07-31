@@ -71,7 +71,11 @@ test('HyperFrames wrapper pins the package and confines generated outputs', () =
       () => resolveWithinProject(directory, '../outside.mp4'),
       /must stay inside/,
     );
-    fs.symlinkSync(outside, path.join(directory, 'linked-output'));
+    fs.symlinkSync(
+      outside,
+      path.join(directory, 'linked-output'),
+      process.platform === 'win32' ? 'junction' : 'dir',
+    );
     assert.throws(
       () => resolveWithinProject(directory, 'linked-output/demo.mp4'),
       /must not traverse a symbolic link/,

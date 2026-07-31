@@ -107,7 +107,7 @@
       "id": "interior-c-layout-delivery",
       "title": "C 户型空间设计交付",
       "kind": "交互页面",
-      "summary": "展示户型证据、空间策略、可交互场景、标注和修订说明。",
+      "summary": "以用户需求、设计稿和对应渲染稿三类入口，展示脱敏户型证据、可交互场景、标注和修订说明。",
       "metadata": "examples/featured-output.json"
     }
   ],

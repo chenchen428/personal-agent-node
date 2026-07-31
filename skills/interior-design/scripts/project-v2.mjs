@@ -28,7 +28,7 @@ export const PROJECT_STATUSES = new Set([
   'archived',
 ]);
 
-const EVIDENCE_CLASSES = new Set(['structure-reference', 'revision-annotation', 'style-reference', 'edit-target', 'site-photo', 'measurement']);
+const EVIDENCE_CLASSES = new Set(['structure-reference', 'revision-annotation', 'concept-render', 'style-reference', 'edit-target', 'site-photo', 'measurement']);
 const CONFIDENCE = new Set(['verified', 'specified', 'estimated', 'unknown']);
 const PRIORITIES = new Set(['must', 'should', 'prefer', 'avoid']);
 const REQUIREMENT_STATUSES = new Set(['unresolved', 'satisfied', 'partially-satisfied', 'blocked', 'rejected-with-reason']);
@@ -141,6 +141,15 @@ export function validateProjectV2(project, { context } = {}) {
     if (typeof evidence.contentHash !== 'string' || !/^[a-f0-9]{64}$/.test(evidence.contentHash)) errors.push(`evidence ${evidence.evidenceId}: contentHash must be sha256`);
     if (evidence.redactionStatus !== 'not-required' && evidence.redactionStatus !== 'redacted' && evidence.redactionStatus !== 'private-only') {
       errors.push(`evidence ${evidence.evidenceId}: redactionStatus is invalid`);
+    }
+    if (evidence.classification === 'concept-render') {
+      if (!evidence.allowedUses?.includes('delivery')) errors.push(`evidence ${evidence.evidenceId}: concept render must allow delivery`);
+      if (!plainObject(evidence.generation) || evidence.generation.generator !== 'imagegen') {
+        errors.push(`evidence ${evidence.evidenceId}: concept render generation provenance is required`);
+      }
+      for (const field of ['referenceImageSha256', 'promptSha256']) {
+        if (!/^[a-f0-9]{64}$/.test(evidence.generation?.[field] || '')) errors.push(`evidence ${evidence.evidenceId}: generation.${field} must be sha256`);
+      }
     }
   }
 

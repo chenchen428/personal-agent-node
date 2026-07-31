@@ -45,6 +45,32 @@
       "inferences": [],
       "redactionStatus": "redacted",
       "contentHash": "2a8a7f8486409aee8e0252adb47f5c33c5e7d935b0b24a172bd6dcec579e48d1"
+    },
+    {
+      "evidenceId": "evidence-concept-render-governed",
+      "relativePath": "evidence/concept-render.png",
+      "classification": "concept-render",
+      "orientation": "landscape-perspective",
+      "calibration": {
+        "basis": "unknown"
+      },
+      "confidence": "estimated",
+      "allowedUses": [
+        "delivery"
+      ],
+      "observations": [
+        "基于当前 SU 设计稿与场景修订生成的概念渲染稿，用于表达空间氛围与材料方向。"
+      ],
+      "inferences": [
+        "渲染效果不代表最终材料实样、施工尺寸、光照计算或现场完成效果。"
+      ],
+      "redactionStatus": "not-required",
+      "generation": {
+        "generator": "imagegen",
+        "referenceImageSha256": "a0048ea39e561a586597680100938b1b92fba92a6dabb26e5b82589fd388992e",
+        "promptSha256": "66456dcd5bc9cdf1dd5b633f8a902de7927b87dfcf9b65d349d7ad65ec9e8681"
+      },
+      "contentHash": "d4f4d0a69646b4ea15c60336baf980cb27612c7fcbe4ac22eed9f367c64f01fd"
     }
   ],
   "brief": {
