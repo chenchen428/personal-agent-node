@@ -4,7 +4,7 @@
   "source": "product-example",
   "kind": "interactive-page",
   "title": "C 户型空间设计交付",
-  "summary": "户型证据、空间策略、可交互场景、标注和修订说明的脱敏示例。",
+  "summary": "以主体装修设计册汇总户型证据、空间策略、效果图、材料与预算范围、过程确认和专业边界，并关联独立 3D Page 的脱敏示例。",
   "sanitized": true,
   "verified": true,
   "presentation": {

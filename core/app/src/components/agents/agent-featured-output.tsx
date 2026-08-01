@@ -1,10 +1,9 @@
 "use client";
 
-import Link from "next/link";
 import { useState } from "react";
-import { Expand, FileText, Image as ImageIcon, Monitor, Smartphone } from "lucide-react";
+import { ExternalLink, FileText, Image as ImageIcon, Monitor, Smartphone } from "lucide-react";
 import { AgentExampleMedia } from "./agent-example-media";
-import { agentExampleHref, resolveAgentExamplePresentation } from "./agent-example-presentation";
+import { resolveAgentExamplePresentation } from "./agent-example-presentation";
 import type { AgentExample } from "./types";
 
 export function AgentFeaturedOutput({ agentId, examples }: { agentId: string; examples: AgentExample[] }) {
@@ -34,7 +33,7 @@ export function AgentFeaturedOutput({ agentId, examples }: { agentId: string; ex
         <div><span>{selected.kind || "专业交付示例"}</span><strong>{selected.title}</strong></div>
         <div className="agent-example-stage-actions">
           <span className="agent-example-device">{mobile ? <Smartphone aria-hidden="true" /> : <Monitor aria-hidden="true" />}{mobile ? "移动端作品" : "桌面端作品"}</span>
-          <Link href={agentExampleHref(agentId, presentation.exampleId)}><Expand aria-hidden="true" />沉浸查看</Link>
+          {presentation.preview ? <a href={presentation.preview} target="_blank" rel="noreferrer" aria-label={`在默认浏览器中查看${selected.title}`}><ExternalLink aria-hidden="true" />浏览器查看</a> : null}
         </div>
       </header>
       <div className="agent-example-canvas">

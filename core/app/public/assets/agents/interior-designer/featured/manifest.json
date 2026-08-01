@@ -6,16 +6,27 @@
     "exampleId": "interior-c-layout-delivery"
   },
   "delivery": {
-    "version": 2,
+    "version": 3,
     "engine": "pascal-v2",
-    "layoutProfile": "su-design-classic",
-    "renderProfile": "professional-mesh-ink"
+    "layoutProfile": "renovation-booklet",
+    "renderProfile": "professional-mesh-ink",
+    "specialistPages": {
+      "threeD": {
+        "path": "3d/index.html",
+        "layoutProfile": "su-design-classic",
+        "engine": "pascal-v2"
+      }
+    }
   },
   "visualAcceptance": "user",
   "files": {
     "index.html": {
-      "bytes": 2731823,
-      "sha256": "10cdfbc9f1c585bd5ab276a2215c004df8c4761f1d09e49c22febed0aae7f289"
+      "bytes": 37261,
+      "sha256": "49a5fe64cdf926a4d67f52c3d35d506a7401a579789997e54e376bf254f76cd5"
+    },
+    "3d/index.html": {
+      "bytes": 2717560,
+      "sha256": "9136142e62b744f57095c3804a2998c8d8b64957f6d8adefe01a2ab465041155"
     },
     "scene.json": {
       "bytes": 83623,
@@ -63,7 +74,7 @@
       "render-storyboard",
       "pascal-scene-compile",
       "professional-quality-audit",
-      "page-v2-generate",
+      "page-v3-generate",
       "artifact-hash-verify"
     ],
     "seedSha256": "1d5c802d45a28e34aa6981ef7f458e6041040a9f90b8ff150b2f9a0aa6f96093",
@@ -116,7 +127,14 @@
     "sceneSha256": "163e8998fdabbe7d3309431edd342795db61a9daa4e0939f7d1ee2be22f0d686",
     "auditSha256": "87352309c5310b5cfc7133e5be02815446a0c00c57ad80166402767faaaa992a",
     "renderProfile": "professional-mesh-ink",
-    "layoutProfile": "su-design-classic",
+    "layoutProfile": "renovation-booklet",
+    "specialistPages": {
+      "threeD": {
+        "path": "3d/index.html",
+        "layoutProfile": "su-design-classic",
+        "engine": "pascal-v2"
+      }
+    },
     "qualityFloor": {
       "rooms": 12,
       "furniture": 30,

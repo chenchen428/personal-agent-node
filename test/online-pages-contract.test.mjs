@@ -36,8 +36,10 @@ test("Online Pages CLI, Skill, server, clients, and Activity share one dual-devi
   const interiorSkill = read("skills/interior-design/SKILL.md");
   const interiorDelivery = read("skills/interior-design/references/delivery-v2.md");
   assert.match(interiorSkill, /do not compress the desktop coordinate system until essential labels fall below 12 CSS px/);
-  assert.match(interiorDelivery, /must not use `width: 100%` shrinkage/);
-  assert.match(interiorDelivery, /Raster evidence must provide at least twice/);
+  assert.match(interiorDelivery, /`index\.html` is the primary delivery/);
+  assert.match(interiorDelivery, /`3d\/index\.html`/);
+  assert.match(interiorDelivery, /target="_blank"/);
+  assert.match(interiorDelivery, /Only this specialist Page uses the forced mobile-landscape contract/);
   assert.match(runtimeCli, /Page Activity requires --target-type page and --target-id <page-id>/);
   assert.match(activity, /PAGE_TARGET_REQUIRED/);
   assert.match(server, /desktopThumbnailUrl:/);

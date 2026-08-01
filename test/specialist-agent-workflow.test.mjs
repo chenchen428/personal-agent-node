@@ -98,10 +98,38 @@ test("interior render gates enforce one style sample and at least fifteen entran
   const workflow = readDefinition("interior-designer");
   const sample = workflow.stages.find((stage) => stage.id === "render-style-sample");
   const full = workflow.stages.find((stage) => stage.id === "full-render-set");
-  assert.deepEqual(sample.factRules, [{ key: "sample-render-count", operator: "equals", value: 1 }]);
+  assert.ok(sample.factRules.some((rule) => rule.key === "sample-render-count" && rule.operator === "equals" && rule.value === 1));
+  assert.ok(sample.factRules.some((rule) => rule.key === "render-geometry-invariants-checked" && rule.operator === "equals" && rule.value === true));
   assert.ok(full.factRules.some((rule) => rule.key === "render-count" && rule.operator === "min-number" && rule.value === 15));
   assert.ok(full.factRules.some((rule) => rule.key === "view-sequence" && rule.operator === "min-items" && rule.value === 15));
   assert.ok(full.factRules.some((rule) => rule.key === "entrance-first" && rule.operator === "equals" && rule.value === true));
+  assert.ok(full.factRules.some((rule) => rule.key === "render-requirement-coverage-complete" && rule.operator === "equals" && rule.value === true));
+  assert.ok(full.factRules.some((rule) => rule.key === "render-set-consistency-checked" && rule.operator === "equals" && rule.value === true));
+});
+
+test("interior fact ledger, traceability, and delivery manifest gates fail closed", () => {
+  const workflow = readDefinition("interior-designer");
+  assert.equal(workflow.version, 4);
+  for (const [stageId, requiredKeys] of Object.entries({
+    "initial-requirements": ["fact-status-ledger-complete", "scope-exclusions-recorded"],
+    "floorplan-adjustment": ["source-plan-invariants-locked", "site-verification-items-recorded"],
+    "three-d-design-review": ["fixed-element-traceability-complete", "design-budget-scope-consistent"],
+    "final-delivery": ["main-delivery-page-primary", "specialist-page-links-verified", "delivery-manifest-verified", "delivery-consistency-matrix-complete", "unresolved-boundaries-visible"],
+  })) {
+    const stage = workflow.stages.find((entry) => entry.id === stageId);
+    for (const key of requiredKeys) {
+      assert.ok(stage.factRules.some((rule) => rule.key === key && rule.operator === "equals" && rule.value === true), `${stageId} must fail closed on ${key}`);
+    }
+  }
+
+  const progress = publication("private-workflow-interior-designer-project_home_trace");
+  const state = createSpecialistWorkflowState(workflow, { projectKey: "project_home_trace", progressPage: progress });
+  const firstStage = workflow.stages[0];
+  assert.throws(() => advanceSpecialistWorkflow(workflow, state, {
+    baseRevision: 0,
+    facts: { ...stageFacts(firstStage), "fact-status-ledger-complete": false },
+    confirmation: { confirmed: true, summary: "确认初步需求", surface: "text" },
+  }), { code: "WORKFLOW_FACT_RULE_FAILED" });
 });
 
 test("interior recommended mode only batches floorplan and 3D at the 3D Page checkpoint", () => {

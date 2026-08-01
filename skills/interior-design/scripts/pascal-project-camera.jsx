@@ -3,6 +3,7 @@ import { CameraControls } from '@react-three/drei';
 import { useThree } from '@react-three/fiber';
 import { useViewer } from '@pascal-app/viewer';
 import { calculateOrthographicZoom } from './pascal-camera-framing.mjs';
+import { useLandscapeCameraInput } from './pascal-landscape-camera-input.jsx';
 
 export function ProjectCamera({ payload }) {
   const controls = useRef(null);
@@ -131,15 +132,17 @@ export function ProjectCamera({ payload }) {
     };
   }, [camera, cameraMode, frame, invalidate, payload]);
 
-  const markUserCameraPose = () => {
+  const markUserCameraPose = React.useCallback(() => {
     hasUserCameraPose.current = true;
     settleTimers.current.forEach(window.clearTimeout);
     settleTimers.current = [];
-  };
+  }, []);
+  const forcedLandscape = useLandscapeCameraInput({ controls, markUserCameraPose });
 
   return <CameraControls
     camera={camera}
     dollyToCursor
+    enabled={!forcedLandscape}
     key={cameraMode}
     makeDefault
     maxDistance={frame.span * 5}

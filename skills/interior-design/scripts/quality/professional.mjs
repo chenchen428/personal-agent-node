@@ -71,6 +71,16 @@ export function auditProfessional(project, concept) {
   }
   for (const level of concept.levels) {
     for (const room of level.rooms) {
+      if (!Array.isArray(room.requirementIds) || !room.requirementIds.length) {
+        findings.push(issue(project, 'trace.room-unmapped', 'blocking', `${room.name} is not linked to a recorded design requirement.`, {
+          nodeIds: [room.roomId],
+          levelIds: [level.levelId],
+          measurement: { requirementLinks: 0 },
+          threshold: { minimumRequirementLinks: 1 },
+          thresholdSource: 'product-concept-default',
+          fix: 'Link the room to at least one stable requirement ID or explicitly remove it from the selected concept scope.',
+        }));
+      }
       if (room.materialId && !materialById.has(room.materialId)) {
         findings.push(issue(project, 'materials.intent-missing', 'blocking', `${room.name} references material intent that is not defined.`, {
           nodeIds: [room.roomId],
@@ -100,6 +110,26 @@ export function auditProfessional(project, concept) {
       }
     }
     for (const item of level.items) {
+      if (!Array.isArray(item.requirementIds) || !item.requirementIds.length) {
+        findings.push(issue(project, 'trace.fixed-element-unmapped', 'blocking', `${item.name} is not linked to a recorded design requirement.`, {
+          nodeIds: [item.itemId],
+          levelIds: [level.levelId],
+          measurement: { requirementLinks: 0 },
+          threshold: { minimumRequirementLinks: 1 },
+          thresholdSource: 'product-concept-default',
+          fix: 'Link the fixed element to at least one stable requirement ID or explicitly remove it from the selected concept scope.',
+        }));
+      }
+      if (!item.materialId) {
+        findings.push(issue(project, 'trace.fixed-element-material-unmapped', 'blocking', `${item.name} has no governed material link.`, {
+          nodeIds: [item.itemId],
+          levelIds: [level.levelId],
+          measurement: { materialLinks: 0 },
+          threshold: { minimumMaterialLinks: 1 },
+          thresholdSource: 'product-concept-default',
+          fix: 'Assign a governed material intent to the fixed element before design delivery.',
+        }));
+      }
       if (item.materialId && !materialById.has(item.materialId)) {
         findings.push(issue(project, 'materials.intent-missing', 'blocking', `${item.name} references material intent that is not defined.`, {
           nodeIds: [item.itemId],

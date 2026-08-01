@@ -23,9 +23,9 @@ const ICONS = Object.freeze({
 export function generateProfessionalPage({ projectDir: projectDirInput, context, output, skillRoot, delivery = loadInteriorDeliveryContract(skillRoot) }) {
   if (delivery.id !== DELIVERY_ID
     || delivery.agent?.id !== 'interior-designer'
-    || Number(delivery.delivery?.version) !== 2
+    || Number(delivery.delivery?.version) !== 3
     || delivery.delivery?.engine !== 'pascal-v2') {
-    throw new Error(`${DELIVERY_ID} for interior-designer delivery version 2 is required`);
+    throw new Error(`${DELIVERY_ID} for interior-designer delivery version 3 is required`);
   }
   const { projectDir, project } = readProject(projectDirInput, context);
   const scenePayload = readJson(path.join(projectDir, 'scene.json'), 10 * 1024 * 1024);
@@ -48,15 +48,10 @@ export function generateProfessionalPage({ projectDir: projectDirInput, context,
   const { payload: pagePayload, pageMappings } = new PascalInteriorAdapter().exportForPage(scenePayload);
   const conceptMappings = Object.fromEntries(project.concepts.map((entry, index) => [entry.conceptId, `page-concept-${String(index + 1).padStart(2, '0')}`]));
   const fallbackSvg = renderProjectPlan(concept, 'model-derived-plan');
-  const style = fs.readFileSync(path.join(skillRoot, 'assets', 'interior-viewer-v2.css'), 'utf8');
+  const viewerStyle = fs.readFileSync(path.join(skillRoot, 'assets', 'interior-viewer-v2.css'), 'utf8');
+  const reportStyle = fs.readFileSync(path.join(skillRoot, 'assets', 'interior-delivery-report.css'), 'utf8');
   const viewer = fs.readFileSync(path.join(skillRoot, 'assets', 'pascal-viewer.bundle'), 'utf8');
   const title = escapeHtml(project.title);
-  const requirements = renderRequirements(project, pageMappings);
-  const issues = renderIssues(audit, pageMappings);
-  const concepts = renderConcepts(project, conceptMappings);
-  const designQualitySummary = renderDesignQuality(pagePayload.designQuality);
-  const assumptions = renderAssumptions(project);
-  const revisions = renderRevisions(project);
   const declaredArea = project.evidence.map((entry) => entry.calibration?.knownAreaSquareMetres).find(Number.isFinite);
   const displayTitle = title.replace(/全屋改造$/u, '');
   const rooms = concept.levels.flatMap((level) => level.rooms);
@@ -67,34 +62,20 @@ export function generateProfessionalPage({ projectDir: projectDirInput, context,
   const levelButtons = concept.levels.map((level, index) => `<button${concept.levels.length === 1 ? ' class="active"' : ''} type="button" data-level-id="${escapeAttr(pageMappings[level.levelId] || '')}">${index + 1} 层</button>`).join('');
   const allLevelButton = concept.levels.length > 1 ? '<button class="active" type="button" data-level-id="">全部</button>' : '';
   const conceptPicker = `<label class="concept-control${project.concepts.length === 1 ? ' is-single' : ''}"><span>设计方案</span><select class="concept-picker" id="concept-picker" aria-label="比较设计方案">${project.concepts.map((entry) => `<option value="${escapeAttr(conceptMappings[entry.conceptId])}"${entry.conceptId === project.selectedConceptId ? ' selected' : ''}>${escapeHtml(entry.name)}</option>`).join('')}</select></label>`;
-  const renderPanel = conceptRenders.length ? renderConceptPanel(conceptRenders) : '';
-  const evidencePanel = conceptRenders.length
-    ? renderRequirementsAndEvidencePanel({ planAssets, requirements, assumptions, revisions })
-    : `<article class="presentation-panel document-panel plan-panel" data-presentation-panel="plan" hidden><header><div><small>DESIGN EVIDENCE</small><h2>用户户型图与 Agent 标注</h2></div><p>用户原图是唯一户型依据；Agent 标注、结构化空间、3D、平面和标签均由同一原图生成。</p></header><div class="document-grid"><figure class="card plan-card" data-plan-mode="source"><div class="card-head"><strong>户型依据</strong><span class="segmented"><button class="active" type="button" data-plan-mode="source">用户原图</button><button type="button" data-plan-mode="annotation">Agent 标注图</button></span></div><img class="plan-reference-image plan-source-image" src="media/source-plan${path.extname(planAssets.source.evidence.relativePath).toLowerCase()}" alt="${escapeAttr(planAssets.source.alt)}"><img class="plan-reference-image plan-annotation-image" src="media/agent-annotation${path.extname(planAssets.annotation.evidence.relativePath).toLowerCase()}" alt="${escapeAttr(planAssets.annotation.alt)}"><figcaption class="plan-caption">图片用于概念设计沟通，不替代现场测绘、施工图、结构鉴定或所在地法规审核。</figcaption></figure><aside class="card"><div class="card-head"><strong>版本脉络</strong></div><div class="stack">${revisions}</div></aside></div></article>
-<article class="presentation-panel document-panel" data-presentation-panel="requirements" hidden><header><div><small>REQUIREMENT TRACE</small><h2>需求与专业边界</h2></div><p>点击有模型关联的需求，可在 3D 场景中定位对应构件。</p></header><div class="document-grid"><section class="card"><div class="card-head"><strong>需求状态</strong></div><div class="requirement-list">${requirements}</div></section><aside class="card"><div class="card-head"><strong>假设、未知与专业核验</strong></div><div class="stack">${assumptions}</div></aside></div></article>`;
-  const presentationNavigation = conceptRenders.length
-    ? `<nav class="presentation-switch" aria-label="装修设计资料切换"><button type="button" data-presentation="requirements" aria-pressed="false">${ICONS.requirements}需求</button><button class="active" type="button" data-presentation="model" aria-pressed="true">设计稿</button><button type="button" data-presentation="render" aria-pressed="false">${ICONS.render}效果图</button></nav>`
-    : `<nav class="presentation-switch" aria-label="装修设计资料切换"><button class="active" type="button" data-presentation="model">SU 设计稿</button><button type="button" data-presentation="plan">${ICONS.plan}户型图</button><button type="button" data-presentation="requirements">${ICONS.requirements}用户需求</button></nav>`;
-  const html = `<!doctype html>
-<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src 'self' data:; style-src 'unsafe-inline'; script-src 'unsafe-inline'; connect-src 'none'; worker-src 'none'; frame-src 'none'; font-src 'none'; media-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'"><meta name="color-scheme" content="light"><meta name="personal-agent-id" content="${escapeAttr(delivery.agent.id)}"><meta name="personal-agent-example-id" content="${escapeAttr(delivery.id)}"><meta name="personal-agent-delivery-version" content="${escapeAttr(String(delivery.delivery.version))}"><meta name="personal-agent-interior-engine" content="pascal-v2"><title>${title} · 专业装修设计</title><style>${style}</style></head>
-<body data-agent-id="${escapeAttr(delivery.agent.id)}" data-agent-example-id="${escapeAttr(delivery.id)}" data-delivery-version="${escapeAttr(String(delivery.delivery.version))}" data-engine="pascal-v2" data-layout-profile="su-design-classic" data-viewer-state="loading"><main id="app">
-<header class="top"><span class="brand"><span class="mark">PA</span><b>Pages</b></span><div class="identity"><small>PERSONAL AGENT · SU DESIGN</small><strong>${displayTitle}</strong><span>${escapeHtml(subtitle)}</span></div><span class="status" data-viewer-status><i></i><span>正在装配模型</span></span></header>
-<section class="stage">
-<section class="presentation-panel presentation-model" data-presentation-panel="model"><div class="viewport"><div id="scene" role="img" aria-label="${title} 可旋转的 Pascal 建筑场景"></div><div id="viewer-loading" role="status" aria-live="polite"><div class="loading-card"><span class="loading-mark"><i></i><i></i><i></i></span><small>PERSONAL AGENT · SU DESIGN</small><strong>正在构建设计模型</strong><p>正在装配空间、材质、家具与标注</p><span class="loading-line"><i></i></span></div></div><div id="fallback" hidden><figure>${fallbackSvg}<figcaption><span>3D 暂时不可用</span><span>已切换到模型派生平面图</span></figcaption></figure></div><div class="viewer-tools" role="group" aria-label="SU 设计稿查看工具">${conceptPicker}<span class="tool-label">${ICONS.layers}设计层</span><span class="level-tools">${allLevelButton}${levelButtons}</span><span class="divider"></span><span class="tool-label">${ICONS.view}视角</span><button class="active" type="button" data-camera-mode="perspective">3D</button><button type="button" data-camera-mode="orthographic">平面</button><span class="advanced-tools" data-level-count="${concept.levels.length}"><button class="active" type="button" data-level-mode="stacked">堆叠</button><button type="button" data-level-mode="exploded">分解</button><button type="button" data-level-mode="solo">单层</button></span><span class="divider"></span><button class="active icon-button" type="button" data-label-mode="visible" aria-label="隐藏细节标注" aria-pressed="true">${ICONS.label}</button><button class="icon-button" type="button" data-reset-view aria-label="复位 SU 设计稿">${ICONS.reset}</button></div><span class="gesture">拖动旋转 · 缩放 · 平移</span></div></section>
-${renderPanel}${evidencePanel}
-<article class="presentation-panel document-panel" data-presentation-panel="review" hidden><header><div><small>QUALITY GATE</small><h2>质量报告与方案比较</h2></div><p>${audit.blockingCount} 个阻断 · ${audit.warningCount} 个警告 · 规则集 ${escapeHtml(audit.ruleSet)}</p></header><div class="document-grid"><section class="card"><div class="card-head"><strong>审计结果</strong></div><div class="issue-list">${issues}</div></section><aside class="card"><div class="card-head"><strong>同场景质量</strong></div><div class="stack">${designQualitySummary}</div><div class="card-head"><strong>方案比较</strong></div><div class="stack">${concepts}</div></aside></div></article>
-${presentationNavigation}
-</section><script id="pascal-scene" type="application/json">${safeJson(pagePayload)}</script><script>${mobileLandscapeController()}${pageController()}</script><script>${viewer}</script></main></body></html>`;
-  verifyNoGovernanceIdentifiers(html, project);
-  const verification = verifyProfessionalPageHtml(html, delivery);
+  const threeDHtml = renderThreeDPage({ delivery, displayTitle, fallbackSvg, pagePayload, subtitle, title, viewer, viewerStyle, conceptPicker, levelButtons, allLevelButton, concept });
+  const html = renderDeliveryBooklet({ audit, concept, conceptRenders, delivery, displayTitle, fallbackSvg, planAssets, project, reportStyle, subtitle });
+  verifyNoGovernanceIdentifiers(`${html}\n${threeDHtml}`, project);
+  const verification = verifyProfessionalPageHtml({ html, threeDHtml }, delivery);
   fs.mkdirSync(path.dirname(output), { recursive: true, mode: 0o700 });
   const staging = path.join(path.dirname(output), `.${path.basename(output)}.${process.pid}.${crypto.randomBytes(4).toString('hex')}.tmp`);
   fs.mkdirSync(staging, { mode: 0o700 });
+  fs.mkdirSync(path.join(staging, '3d'), { recursive: true, mode: 0o700 });
   const indexPath = path.join(staging, 'index.html');
   fs.writeFileSync(indexPath, html, { mode: 0o600 });
+  fs.writeFileSync(path.join(staging, '3d', 'index.html'), threeDHtml, { mode: 0o600 });
   fs.writeFileSync(path.join(staging, 'scene.json'), `${JSON.stringify(pagePayload, null, 2)}\n`, { mode: 0o600 });
   fs.writeFileSync(path.join(staging, 'audit.json'), `${JSON.stringify(sanitizeAudit(audit, pageMappings), null, 2)}\n`, { mode: 0o600 });
-  const files = ['index.html', 'scene.json', 'audit.json'];
+  const files = ['index.html', '3d/index.html', 'scene.json', 'audit.json'];
   const mediaAssets = writePageMediaAssets(staging, { planAssets, conceptRenders });
   files.push(...mediaAssets);
   const manifest = {
@@ -109,6 +90,7 @@ ${presentationNavigation}
       engine: delivery.delivery.engine,
       layoutProfile: delivery.delivery.layoutProfile,
       renderProfile: delivery.delivery.renderProfile,
+      specialistPages: delivery.delivery.specialistPages,
     },
     visualAcceptance: 'user',
     files: Object.fromEntries(files.map((name) => {
@@ -119,13 +101,89 @@ ${presentationNavigation}
   fs.writeFileSync(path.join(staging, 'manifest.json'), `${JSON.stringify(manifest, null, 2)}\n`, { mode: 0o600 });
   const totalBytes = [...files, 'manifest.json'].reduce((sum, name) => sum + fs.statSync(path.join(staging, name)).size, 0);
   const entryBytes = fs.statSync(indexPath).size;
-  const oversized = mediaAssets.find((name) => fs.statSync(path.join(staging, name)).size > PAGE_ASSET_LIMIT);
-  if (entryBytes > PAGE_ENTRY_LIMIT || oversized) {
+  const oversizedEntry = ['index.html', '3d/index.html'].find((name) => fs.statSync(path.join(staging, name)).size > PAGE_ENTRY_LIMIT);
+  const oversized = files.find((name) => !name.endsWith('.html') && fs.statSync(path.join(staging, name)).size > PAGE_ASSET_LIMIT);
+  if (oversizedEntry || oversized) {
     fs.rmSync(staging, { recursive: true, force: true });
-    throw new Error(oversized ? `generated Page asset exceeds ${PAGE_ASSET_LIMIT} bytes: ${oversized}` : `generated Page entry exceeds ${PAGE_ENTRY_LIMIT} bytes`);
+    throw new Error(oversized ? `generated Page asset exceeds ${PAGE_ASSET_LIMIT} bytes: ${oversized}` : `generated Page entry exceeds ${PAGE_ENTRY_LIMIT} bytes: ${oversizedEntry}`);
   }
   commitDirectory(staging, output);
-  return { indexPath: path.join(output, 'index.html'), totalBytes, entryBytes, manifest, verification };
+  return { indexPath: path.join(output, 'index.html'), specialistPages: { threeD: path.join(output, '3d', 'index.html') }, totalBytes, entryBytes, manifest, verification };
+}
+
+function renderThreeDPage({ delivery, displayTitle, fallbackSvg, pagePayload, subtitle, title, viewer, viewerStyle, conceptPicker, levelButtons, allLevelButton, concept }) {
+  return `<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src 'self' data:; style-src 'unsafe-inline'; script-src 'unsafe-inline'; connect-src 'none'; worker-src 'none'; frame-src 'none'; font-src 'none'; media-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'"><meta name="color-scheme" content="light"><meta name="personal-agent-id" content="${escapeAttr(delivery.agent.id)}"><meta name="personal-agent-example-id" content="${escapeAttr(delivery.id)}"><meta name="personal-agent-delivery-version" content="${escapeAttr(String(delivery.delivery.version))}"><meta name="personal-agent-interior-engine" content="pascal-v2"><title>${title} · 交互式 3D 设计</title><style>${viewerStyle}</style></head>
+<body data-agent-id="${escapeAttr(delivery.agent.id)}" data-agent-example-id="${escapeAttr(delivery.id)}" data-delivery-version="${escapeAttr(String(delivery.delivery.version))}" data-engine="pascal-v2" data-layout-profile="su-design-classic" data-specialist-page="three-d" data-viewer-state="loading"><main id="app">
+<header class="top"><a class="brand" href="../index.html"><span class="mark">PA</span><b>返回设计册</b></a><div class="identity"><small>PERSONAL AGENT · INTERACTIVE 3D</small><strong>${displayTitle}</strong><span>${escapeHtml(subtitle)}</span></div><span class="status" data-viewer-status><i></i><span>正在装配模型</span></span></header>
+<section class="stage"><section class="presentation-panel presentation-model"><div class="viewport"><div id="scene" role="img" aria-label="${title} 可旋转的 Pascal 建筑场景"></div><div id="viewer-loading" role="status" aria-live="polite"><div class="loading-card"><span class="loading-mark"><i></i><i></i><i></i></span><small>PERSONAL AGENT · SU DESIGN</small><strong>正在构建设计模型</strong><p>正在装配空间、材质、家具与标注</p><span class="loading-line"><i></i></span></div></div><div id="fallback" hidden><figure>${fallbackSvg}<figcaption><span>3D 暂时不可用</span><span>已切换到模型派生平面图</span></figcaption></figure></div><div class="viewer-tools" role="group" aria-label="SU 设计稿查看工具">${conceptPicker}<span class="tool-label">${ICONS.layers}设计层</span><span class="level-tools">${allLevelButton}${levelButtons}</span><span class="divider"></span><span class="tool-label">${ICONS.view}视角</span><button class="active" type="button" data-camera-mode="perspective">3D</button><button type="button" data-camera-mode="orthographic">平面</button><span class="advanced-tools" data-level-count="${concept.levels.length}"><button class="active" type="button" data-level-mode="stacked">堆叠</button><button type="button" data-level-mode="exploded">分解</button><button type="button" data-level-mode="solo">单层</button></span><span class="divider"></span><button class="active icon-button" type="button" data-label-mode="visible" aria-label="隐藏细节标注" aria-pressed="true">${ICONS.label}</button><button class="icon-button" type="button" data-reset-view aria-label="复位 SU 设计稿">${ICONS.reset}</button></div><span class="gesture">拖动旋转 · 缩放 · 平移</span></div></section></section>
+<script id="pascal-scene" type="application/json">${safeJson(pagePayload)}</script><script>${mobileLandscapeController()}${viewerPageController()}</script><script>${viewer}</script></main></body></html>`;
+}
+
+function renderDeliveryBooklet({ audit, concept, conceptRenders, delivery, displayTitle, fallbackSvg, planAssets, project, reportStyle, subtitle }) {
+  const sourceExtension = path.extname(planAssets.source.evidence.relativePath).toLowerCase();
+  const annotationExtension = path.extname(planAssets.annotation.evidence.relativePath).toLowerCase();
+  const requirements = project.brief.requirements.map((entry) => `<article class="requirement-card"><header><b>${escapeHtml(entry.priority)}</b><em>${escapeHtml(entry.status)}</em></header><p>${escapeHtml(entry.summary)}</p></article>`).join('');
+  const renderCards = conceptRenders.length
+    ? conceptRenders.map((render) => `<figure class="render-card"><img src="${escapeAttr(render.dataUrl)}" alt="${escapeAttr(render.alt)}"><figcaption><b>${String(render.record.sequence).padStart(2, '0')} · ${escapeHtml(render.shot.space)}</b><span>${escapeHtml(render.shot.purpose)} · 概念效果不替代施工图或材料实样</span></figcaption></figure>`).join('')
+    : '<p class="empty-state">当前项目没有纳入交付的效果图；主体设计册仍保留效果图章节和边界说明。</p>';
+  const materialRows = (project.designIntent?.materials || []).map((material) => `<tr><td><span class="material-swatch" style="background:${escapeAttr(material.color)}"></span>${escapeHtml(material.name)}</td><td>${escapeHtml(material.category)}</td><td>${escapeHtml(String(material.roughness))}</td><td>${escapeHtml(material.wetAreaSuitability || '不适用/待核验')}</td><td>${escapeHtml(material.maintenance || '采购前核验样板与技术资料')}</td></tr>`).join('');
+  const budgetRows = concept.budgetItems?.length
+    ? concept.budgetItems.map((item) => `<tr><td>${escapeHtml(item.category)}</td><td>${escapeHtml(item.name || item.summary || '范围分配')}</td><td>${escapeHtml(item.confidence)}</td><td>${escapeHtml(`${project.brief.budget.currency} ${(item.amountMinor / 100).toLocaleString('zh-CN')}`)}</td></tr>`).join('')
+    : `<tr><td colspan="4">当前预算为“${escapeHtml(project.brief.budget.confidence)}”，尚未形成报价分配。主体设计册只记录预算边界，不通过填充金额强行闭合。</td></tr>`;
+  const process = renderBookletProcess(project);
+  const consistencyRows = renderConsistencyMatrix(project, concept, conceptRenders);
+  const boundaries = [
+    ...project.assumptions.map((entry) => ['估算与假设', entry.summary, entry.confidence]),
+    ...project.unknowns.map((entry) => ['待确认', entry.summary, 'site-measure-required']),
+    ...project.professionalVerifications.map((entry) => ['专业复核', entry.summary, entry.status]),
+  ].map(([label, summary, status]) => `<article class="boundary-card"><b>${escapeHtml(label)}</b><strong>${escapeHtml(status || '待处理')}</strong><p>${escapeHtml(summary)}</p></article>`).join('');
+  const householdCount = project.brief.household.reduce((sum, entry) => sum + Number(entry.count || 0), 0);
+  const verifiedRequirements = project.brief.requirements.filter((entry) => entry.status === 'satisfied').length;
+  const selectedDecision = project.decisions.at(-1);
+  const styleLabel = project.demandWorkflow?.styleProfile?.primary?.label || project.designIntent?.style?.join(' · ') || '视觉方向待确认';
+  return `<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src 'self' data:; style-src 'unsafe-inline'; script-src 'none'; connect-src 'none'; worker-src 'none'; frame-src 'none'; font-src 'none'; media-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'"><meta name="color-scheme" content="light"><meta name="personal-agent-id" content="${escapeAttr(delivery.agent.id)}"><meta name="personal-agent-example-id" content="${escapeAttr(delivery.id)}"><meta name="personal-agent-delivery-version" content="${escapeAttr(String(delivery.delivery.version))}"><title>${escapeHtml(project.title)} · 装修项目设计册</title><style>${reportStyle}</style></head>
+<body data-agent-id="${escapeAttr(delivery.agent.id)}" data-agent-example-id="${escapeAttr(delivery.id)}" data-delivery-version="${escapeAttr(String(delivery.delivery.version))}" data-engine="pascal-v2" data-layout-profile="renovation-booklet" data-primary-delivery="true"><main class="book-shell">
+<header class="book-cover" id="cover"><div><span class="book-mark"><i>PA</i> Personal Agent · Renovation Booklet</span><h1>${displayTitle}<br>前置设计交付</h1><p class="lead">以项目过程和确认记录为主线，把户型证据、空间策略、平面方案、效果图、材料与预算范围及专业边界整理成一份可持续修订的设计册。</p><div class="book-cover-meta"><span>Revision ${project.revision}</span><span>${escapeHtml(subtitle)}</span><span>用户视觉验收待确认</span></div></div><aside class="cover-side"><small>Delivery overview</small><strong>主体设计册 Page</strong><dl><div><dt>当前方案</dt><dd>${escapeHtml(concept.name)}</dd></div><div><dt>项目成员</dt><dd>${householdCount} 人</dd></div><div><dt>需求覆盖</dt><dd>${verifiedRequirements} / ${project.brief.requirements.length}</dd></div><div><dt>效果图</dt><dd>${conceptRenders.length} 张</dd></div><div><dt>自动阻断</dt><dd>${audit.blockingCount}</dd></div></dl></aside></header>
+<nav class="book-nav" aria-label="设计册目录"><a href="#summary">项目摘要</a><a href="#analysis">户型分析</a><a href="#design">设计说明</a><a href="#plan">平面方案</a><a href="#renders">效果图</a><a href="#materials">材料预算</a><a href="#consistency">一致性</a><a href="#process">过程确认</a><a href="#boundaries">边界复尺</a></nav>
+${bookSection('01', 'summary', '项目摘要与需求', '把生活方式、范围和优先级放在视觉表达之前。', `<div class="metric-grid"><article class="metric"><strong>${project.brief.requirements.length}</strong><span>条设计需求</span></article><article class="metric"><strong>${concept.levels.length}</strong><span>个楼层</span></article><article class="metric"><strong>${concept.levels.flatMap((level) => level.rooms).length}</strong><span>个空间</span></article><article class="metric"><strong>${audit.warningCount}</strong><span>条可见警告</span></article></div><div class="requirement-grid">${requirements}</div>`)}
+${bookSection('02', 'analysis', '户型分析', '用户原图是唯一户型依据；标注图只表达本轮分析和调整建议。', `<div class="evidence-grid"><figure class="evidence-card"><img class="plan-source-image" src="media/source-plan${sourceExtension}" alt="${escapeAttr(planAssets.source.alt)}"><figcaption><b>原始户型依据</b><span>结构与尺寸仍须现场复核</span></figcaption></figure><figure class="evidence-card"><img class="plan-annotation-image" src="media/agent-annotation${annotationExtension}" alt="${escapeAttr(planAssets.annotation.alt)}"><figcaption><b>Agent 分析标注</b><span>拟调整、保留与待核验项</span></figcaption></figure></div>`)}
+${bookSection('03', 'design', '完整设计说明', `当前视觉方向：${styleLabel}`, `<div class="design-grid"><article class="design-statement"><small>SELECTED CONCEPT</small><h3>${escapeHtml(concept.name)}</h3><p>${escapeHtml(concept.summary)}</p><ul class="plain-list">${concept.tradeoffs.map((item) => `<li>${escapeHtml(item)}</li>`).join('')}</ul></article><div><article class="report-card"><h3>关键决策</h3><p>${escapeHtml(selectedDecision?.summary || '当前方案尚未记录最终选择。')}</p>${selectedDecision?.rationale ? `<p>${escapeHtml(selectedDecision.rationale)}</p>` : ''}</article><a class="specialist-card" href="3d/index.html" target="_blank" rel="noreferrer" aria-label="在新的浏览器页面打开交互式 3D 设计"><span><small>PROFESSIONAL PAGE · 3D</small><strong>浏览器查看交互式 3D 设计</strong><p>楼层、3D/平面、标注与复位工具在独立 Page 中运行。</p></span><i>↗</i></a></div></div>`)}
+${bookSection('04', 'plan', '平面设计方案', '模型派生平面用于核对空间关系，不替代现场测绘或施工图。', `<div class="plan-sheet">${fallbackSvg}</div>`)}
+${bookSection('05', 'renders', '各空间效果图', '按照确认过的镜头脚本呈现；每张图都保留空间、目的与概念边界。', `<div class="render-grid">${renderCards}</div>`)}
+${bookSection('06', 'materials', '材料清单与预算范围', '材料信息用于设计和采购沟通；价格、批次、性能与供货在实施前重新核验。', `<div class="table-wrap"><table><thead><tr><th>材料</th><th>类别</th><th>粗糙度</th><th>湿区适用</th><th>维护/采购核验</th></tr></thead><tbody>${materialRows}</tbody></table></div><div class="table-wrap" style="margin-top:18px"><table><thead><tr><th>预算类别</th><th>范围</th><th>置信度</th><th>金额</th></tr></thead><tbody>${budgetRows}</tbody></table></div>`)}
+${bookSection('07', 'consistency', '设计一致性检查', '逐项核对需求、场景节点、材质、效果图和验证状态，避免漂亮图片与真实方案断链。', `<div class="table-wrap"><table><thead><tr><th>需求</th><th>状态</th><th>场景节点</th><th>关联材质</th><th>效果图覆盖</th><th>验证方式</th></tr></thead><tbody>${consistencyRows}</tbody></table></div>`)}
+${bookSection('08', 'process', '设计过程与确认点', '记录每次阶段推进、项目 revision 和用户确认范围；修改会回到最早受影响阶段。', `<div class="process-list">${process}</div>`)}
+${bookSection('09', 'boundaries', '排除项、落地顺序与复尺清单', '本 Agent 的终点是前置设计稿，不以概念页面冒充施工图、报价或专业签章。', `<div class="boundary-grid">${boundaries || '<p class="empty-state">当前没有登记未决边界。</p>'}</div><div class="handoff-grid" style="margin-top:18px"><article class="report-card"><h3>不在本次交付范围</h3><p>施工图、结构结论、机电深化、消防审查、合同、采购付款和现场执行。</p></article><article class="report-card"><h3>建议落地顺序</h3><p>现场复尺与专业核验 → 深化设计与工程协调 → 报价和样板确认 → 施工与分阶段验收。</p></article></div>`)}
+<footer class="book-footer"><p><strong>交付说明：</strong>主体设计册与独立 3D Page 来自同一项目 revision、场景和 manifest。视觉与内容验收归用户；结构、机电、防水、消防和现场尺寸由相应专业人员负责。</p><strong>Revision ${project.revision} · ${escapeHtml(audit.ruleSet)}</strong></footer>
+</main></body></html>`;
+}
+
+function bookSection(number, id, title, detail, content) {
+  return `<section class="book-section" id="${id}"><header class="section-head"><span class="section-number">${number}</span><div><small class="section-kicker">Renovation delivery</small><h2>${escapeHtml(title)}</h2></div><p>${escapeHtml(detail)}</p></header>${content}</section>`;
+}
+
+function renderBookletProcess(project) {
+  const confirmations = new Map((project.demandWorkflow?.confirmations || []).map((entry) => [entry.confirmationId, entry]));
+  const transitions = project.demandWorkflow?.transitions || [];
+  if (!transitions.length) return '<p class="empty-state">当前项目文件尚未附带阶段确认快照；最终交付前必须从工作流状态补齐。</p>';
+  return transitions.map((entry, index) => {
+    const confirmation = confirmations.get(entry.confirmationId);
+    const scope = confirmation?.scope?.map((item) => `<li>${escapeHtml(item)}</li>`).join('') || '<li>确认范围未记录</li>';
+    return `<article class="process-item"><header><strong>${String(index + 1).padStart(2, '0')} · ${escapeHtml(entry.summary || `${entry.from} → ${entry.to}`)}</strong><small>Revision ${entry.projectRevision}</small></header><p>${escapeHtml(entry.from)} → ${escapeHtml(entry.to)}</p><ul>${scope}</ul></article>`;
+  }).join('');
+}
+
+function renderConsistencyMatrix(project, concept, conceptRenders) {
+  const materials = new Map((project.designIntent?.materials || []).map((entry) => [entry.materialId, entry.name]));
+  const nodes = concept.levels.flatMap((level) => [...level.rooms, ...level.items]);
+  return project.brief.requirements.map((requirement) => {
+    const linkedNodes = nodes.filter((node) => node.requirementIds?.includes(requirement.requirementId));
+    const linkedMaterials = [...new Set(linkedNodes.map((node) => materials.get(node.materialId)).filter(Boolean))];
+    const linkedRenders = conceptRenders.filter((render) => render.shot.requirementIds?.includes(requirement.requirementId));
+    return `<tr><td>${escapeHtml(requirement.summary)}</td><td class="${requirement.status === 'satisfied' ? 'status-ok' : 'status-pending'}">${escapeHtml(requirement.status)}</td><td>${linkedNodes.length}</td><td>${escapeHtml(linkedMaterials.join('、') || '不适用/待补齐')}</td><td>${escapeHtml(linkedRenders.map((render) => render.shot.space).join('、') || '未纳入当前效果图组')}</td><td>${escapeHtml(`${requirement.verification?.method || '待定义'} · ${requirement.verification?.result || '待验证'}`)}</td></tr>`;
+  }).join('');
 }
 
 function writePageMediaAssets(staging, { planAssets, conceptRenders }) {
@@ -160,53 +218,67 @@ function verifyNoGovernanceIdentifiers(html, project) {
   if (exposed) throw new Error('generated Page contains a governed project identifier');
 }
 
-export function verifyProfessionalPageHtml(html, delivery) {
-  const required = [
+export function verifyProfessionalPageHtml({ html, threeDHtml }, delivery) {
+  const requiredMain = [
     `name="personal-agent-id" content="${delivery.agent.id}"`,
     `name="personal-agent-example-id" content="${delivery.id}"`,
     `data-agent-id="${delivery.agent.id}"`,
     `data-agent-example-id="${delivery.id}"`,
-    'data-delivery-version="2"',
+    'data-delivery-version="3"',
+    'data-layout-profile="renovation-booklet"',
+    'data-primary-delivery="true"',
+    'href="3d/index.html"',
+    'target="_blank"',
+    '项目摘要与需求',
+    '户型分析',
+    '完整设计说明',
+    '平面设计方案',
+    '各空间效果图',
+    '材料清单与预算范围',
+    '设计一致性检查',
+    '设计过程与确认点',
+    '排除项、落地顺序与复尺清单',
+    'plan-source-image',
+    'plan-annotation-image',
+    "script-src 'none'",
+  ];
+  const requiredThreeD = [
+    `name="personal-agent-id" content="${delivery.agent.id}"`,
+    `name="personal-agent-example-id" content="${delivery.id}"`,
+    `data-agent-id="${delivery.agent.id}"`,
+    `data-agent-example-id="${delivery.id}"`,
+    'data-delivery-version="3"',
     'data-engine="pascal-v2"',
     'data-layout-profile="su-design-classic"',
+    'data-specialist-page="three-d"',
     'data-mobile-layout',
     'forced-landscape',
     'virtual-landscape',
+    'landscape-mapped',
     'pascal-layout-change',
     '--landscape-viewport-width',
     'id="pascal-scene"',
     'id="viewer-loading"',
     'id="model-derived-plan"',
-    'plan-source-image',
-    'plan-annotation-image',
     'data-level-mode="stacked"',
     'data-level-mode="exploded"',
     'data-level-mode="solo"',
     'data-label-mode="visible"',
     'data-label-layout',
-    'data-presentation="model"',
-    'data-presentation="requirements"',
-    'data-presentation-panel="review"',
     "connect-src 'none'",
     'data-viewer-status',
     '正在装配模型',
   ];
-  if (html.includes('data-presentation-panel="render"')) {
-    required.push(
-      'data-presentation="render"',
-      'data-render-select=',
-      '用户需求与户型依据',
-      '概念效果不替代施工图或材料实样',
-    );
-  } else {
-    required.push('data-presentation="plan"');
+  const missingMain = requiredMain.filter((marker) => !html.includes(marker));
+  const missingThreeD = requiredThreeD.filter((marker) => !threeDHtml.includes(marker));
+  if (missingMain.length || missingThreeD.length) throw new Error(`generated Page does not match ${delivery.id} v3: main[${missingMain.join(', ')}] 3d[${missingThreeD.join(', ')}]`);
+  if (/<iframe\b/i.test(html)) throw new Error('primary renovation booklet must link specialist Pages instead of embedding them');
+  for (const page of [html, threeDHtml]) {
+    if (/<(?:script|link|iframe)[^>]+(?:src|href)=["']https?:\/\//i.test(page)) throw new Error('generated Page contains a remote executable asset');
+    if (/editor\.pascal\.app|cdn\.jsdelivr\.net|127\.0\.0\.1|localhost|file:\/\//i.test(page)) throw new Error('generated Page contains a forbidden remote or local runtime reference');
+    if (/sourceMappingURL|\/Users\/|\/home\/[a-z0-9._-]+\/|[A-Z]:\\Users\\/i.test(page)) throw new Error('generated Page contains a development path or source-map reference');
   }
-  const missing = required.filter((marker) => !html.includes(marker));
-  if (missing.length) throw new Error(`generated Page does not match ${delivery.id} v2: ${missing.join(', ')}`);
-  if (/<(?:script|link|iframe)[^>]+(?:src|href)=["']https?:\/\//i.test(html)) throw new Error('generated Page contains a remote executable asset');
-  if (/editor\.pascal\.app|cdn\.jsdelivr\.net|127\.0\.0\.1|localhost|file:\/\//i.test(html)) throw new Error('generated Page contains a forbidden remote or local runtime reference');
-  if (/sourceMappingURL|\/Users\/|\/home\/[a-z0-9._-]+\/|[A-Z]:\\Users\\/i.test(html)) throw new Error('generated Page contains a development path or source-map reference');
-  const embeddedPayload = html.match(/<script id="pascal-scene" type="application\/json">([\s\S]*?)<\/script>/)?.[1] || '';
+  const embeddedPayload = threeDHtml.match(/<script id="pascal-scene" type="application\/json">([\s\S]*?)<\/script>/)?.[1] || '';
   if (/"(?:spaceId|ownerId|managedObjectId|projectId|sourceId|requirementIds|decisionIds|evidenceIds)"\s*:/i.test(embeddedPayload)) {
     throw new Error('generated Page contains private project identity or trace fields');
   }
@@ -217,6 +289,8 @@ export function verifyProfessionalPageHtml(html, delivery) {
     exampleId: delivery.id,
     deliveryVersion: delivery.delivery.version,
     engine: delivery.delivery.engine,
+    primaryLayout: delivery.delivery.layoutProfile,
+    specialistPages: delivery.delivery.specialistPages,
     visualAcceptance: 'user',
   };
 }
@@ -285,24 +359,6 @@ function loadProjectPlanAsset(projectDir, evidence, alt) {
   const asset = loadPlanImageAsset(target, { alt });
   if (asset.sha256 !== evidence.contentHash) throw new Error(`Page evidence hash does not match governed evidence: ${evidence.classification}`);
   return { ...asset, evidence, filePath: realTarget };
-}
-
-function imageViewerControls({ label, rotatable = false }) {
-  const rotation = rotatable
-    ? `<button class="image-rotate-button" type="button" data-image-rotate="left" aria-label="向左旋转${label}" title="向左旋转 90°">${ICONS.reset}</button><output class="image-rotation-output" data-image-rotation aria-live="polite">0°</output><button class="image-rotate-button" type="button" data-image-rotate="right" aria-label="向右旋转${label}" title="向右旋转 90°">${ICONS.rotateRight}</button><span class="image-control-divider" aria-hidden="true"></span>`
-    : '';
-  return `<div class="image-viewer-controls" role="group" aria-label="${label}查看工具">${rotation}<button type="button" data-image-zoom="out" aria-label="缩小${label}">−</button><output data-image-scale aria-live="polite">100%</output><button type="button" data-image-zoom="in" aria-label="放大${label}">+</button><button type="button" data-image-reset>适配</button></div>`;
-}
-
-function renderConceptPanel(renders) {
-  const featured = renders[0];
-  const images = renders.map((render, index) => `<img${index ? ' hidden' : ''} data-render-image="${escapeAttr(render.record.renderId)}" src="${escapeAttr(render.dataUrl)}" alt="${escapeAttr(render.alt)}" draggable="false">`).join('');
-  const thumbnails = renders.map((render, index) => `<button${index ? '' : ' class="active"'} type="button" data-render-select="${escapeAttr(render.record.renderId)}" aria-pressed="${index ? 'false' : 'true'}"><img src="${escapeAttr(render.dataUrl)}" alt=""><span><b>${String(render.record.sequence).padStart(2, '0')}</b><strong>${escapeHtml(render.shot.space)}</strong><small>${escapeHtml(render.shot.purpose)}</small></span></button>`).join('');
-  return `<figure class="presentation-panel render-panel render-story" data-presentation-panel="render" data-image-viewer hidden><div class="image-viewer-viewport" data-image-viewport aria-label="可缩放查看装修概念效果图组"><div class="image-viewer-canvas" data-image-canvas>${images}</div></div><aside class="render-story-strip" aria-label="效果图叙事顺序"><header><small>RENDER STORY · ${renders.length} VIEWS</small><strong>从公共全景到私密空间</strong></header>${thumbnails}</aside>${imageViewerControls({ label: '效果图' })}<figcaption><span><small>DESIGN → CONCEPT RENDER</small><strong data-render-caption>${escapeHtml(featured.shot.space)}</strong></span><span>按空间关系、材质近景与私密空间依次查看 · 概念效果不替代施工图或材料实样</span></figcaption></figure>`;
-}
-
-function renderRequirementsAndEvidencePanel({ planAssets, requirements, assumptions, revisions }) {
-  return `<article class="presentation-panel document-panel requirements-panel" data-presentation-panel="requirements" hidden><header><div><small>REQUIREMENT &amp; EVIDENCE</small><h2>用户需求与户型依据</h2></div><p>用户原图是唯一户型依据；Agent 标注、结构化空间、3D、平面和标签均由同一原图生成。</p></header><div class="requirements-workspace"><figure class="card plan-card requirements-plan" data-plan-mode="source"><div class="card-head"><strong>户型依据</strong><span class="segmented"><button class="active" type="button" data-plan-mode="source">用户原图</button><button type="button" data-plan-mode="annotation">Agent 标注图</button></span></div><div class="plan-image-viewer" data-image-viewer><div class="image-viewer-viewport plan-image-viewport" data-image-viewport aria-label="可缩放查看户型图"><div class="image-viewer-canvas" data-image-canvas><img class="plan-reference-image plan-source-image" src="media/source-plan${path.extname(planAssets.source.evidence.relativePath).toLowerCase()}" alt="${escapeAttr(planAssets.source.alt)}" draggable="false"><img class="plan-reference-image plan-annotation-image" src="media/agent-annotation${path.extname(planAssets.annotation.evidence.relativePath).toLowerCase()}" alt="${escapeAttr(planAssets.annotation.alt)}" draggable="false"></div></div>${imageViewerControls({ label: '户型图' })}</div><figcaption class="plan-caption">图片用于概念设计沟通，不替代现场测绘、施工图、结构鉴定或所在地法规审核。</figcaption></figure><div class="requirements-details"><section class="card"><div class="card-head"><strong>需求状态</strong></div><div class="requirement-list">${requirements}</div></section><aside class="card"><div class="card-head"><strong>假设、未知与专业核验</strong></div><div class="stack">${assumptions}</div></aside><aside class="card"><div class="card-head"><strong>版本脉络</strong></div><div class="stack">${revisions}</div></aside></div></div></article>`;
 }
 
 function sanitizeAudit(audit, mappings) {
@@ -479,64 +535,12 @@ function renderIsometricFurniture(item, project, svgPoints) {
   return `<g data-cover-item="${escapeAttr(item.kind)}"><polygon points="${svgPoints([bottom[1], bottom[2], top[2], top[1]])}" fill="${darker}" opacity=".9"/><polygon points="${svgPoints([bottom[2], bottom[3], top[3], top[2]])}" fill="${darker}" opacity=".72"/><polygon points="${svgPoints(top)}" fill="${color}" stroke="#ffffff" stroke-opacity=".68" stroke-width="1.2"/></g>`;
 }
 
-function renderRequirements(project, mappings) {
-  if (!project.brief.requirements.length) return '<p class="empty">当前项目未记录需求。</p>';
-  return project.brief.requirements.map((entry) => {
-    const ids = (entry.sceneNodeIds || []).map((id) => mappings[id]).filter(Boolean);
-    return `<button type="button" data-highlight="${escapeAttr(ids.join(','))}"><span class="badge">${escapeHtml(entry.priority)}</span><strong>${escapeHtml(entry.summary || '未命名需求')}</strong><em>${escapeHtml(entry.status)}</em></button>`;
-  }).join('');
-}
-
-function renderIssues(audit, mappings) {
-  if (!audit.findings.length) return '<p class="empty">确定性质量门禁未发现问题。</p>';
-  return audit.findings.map((entry) => {
-    const ids = entry.nodeIds.map((id) => mappings[id]).filter(Boolean);
-    return `<button type="button" data-highlight="${escapeAttr(ids.join(','))}"><span class="badge ${escapeAttr(entry.severity)}">${escapeHtml(entry.severity)}</span><strong>${escapeHtml(entry.message)}</strong><em>${escapeHtml(entry.ruleId)}</em></button>`;
-  }).join('');
-}
-
-function renderConcepts(project, conceptMappings) {
-  return project.concepts.map((entry) => `<article class="concept-card" data-concept-id="${escapeAttr(conceptMappings[entry.conceptId])}"${entry.conceptId === project.selectedConceptId ? '' : ' hidden'}><b>${entry.conceptId === project.selectedConceptId ? 'SELECTED' : 'OPTION'}</b><strong>${escapeHtml(entry.name)}</strong><p>${escapeHtml(entry.summary)}</p><p>${escapeHtml(entry.tradeoffs.join(' · '))}</p></article>`).join('');
-}
-
-function renderDesignQuality(quality) {
-  const rendering = quality?.rendering || {};
-  const entries = [
-    ['材质系统', `${quality?.materials?.length || 0} 种 PBR 材质`, '颜色、粗糙度与金属度进入同一场景'],
-    ['照明方案', `${quality?.lights?.length || 0} 组可执行灯光`, `曝光 ${rendering.exposure || 1}`],
-    ['交付镜头', `${quality?.cameras?.length || 0} 个固定镜头`, '位置、目标与视场角可复现'],
-    ['几何一致性', rendering.geometryLocked ? '已锁定' : '未锁定', rendering.aiEnhancement === 'controlled' ? '受控增强' : '不使用增强'],
-  ];
-  return entries.map(([label, summary, detail]) => `<article><b>${escapeHtml(label)}</b><strong>${escapeHtml(summary)}</strong><p>${escapeHtml(detail)}</p></article>`).join('');
-}
-
-function renderAssumptions(project) {
-  const budget = project.brief.budget;
-  const budgetText = budget.totalMinor
-    ? `${budget.currency} ${(budget.totalMinor / 100).toLocaleString('zh-CN')} · ${budget.confidence}`
-    : `预算未校准 · ${budget.confidence}`;
-  const scheduleText = project.brief.schedule.phases?.length
-    ? `${project.brief.schedule.phases.length} 个阶段 · ${project.brief.schedule.confidence}`
-    : `阶段计划待深化 · ${project.brief.schedule.confidence}`;
-  const entries = [
-    ['项目范围', project.brief.scope.join(' · ') || '范围待确认', `${budgetText}；${scheduleText}`],
-    ...project.assumptions.map((entry) => ['假设', entry.summary, entry.confidence || '']),
-    ...project.unknowns.map((entry) => ['未知', entry.summary, '']),
-    ...project.professionalVerifications.map((entry) => ['需专业核验', entry.summary, entry.status]),
-  ];
-  return entries.map(([label, summary, detail]) => `<article><b>${escapeHtml(label)}</b><strong>${escapeHtml(summary)}</strong>${detail ? `<p>${escapeHtml(detail)}</p>` : ''}</article>`).join('');
-}
-
-function renderRevisions(project) {
-  return project.decisions.length ? project.decisions.slice(-12).reverse().map((entry, index) => `<article><b>R${Math.max(1, project.revision - index)}</b><strong>${escapeHtml(entry.summary)}</strong><p>${escapeHtml(entry.rationale)}</p></article>`).join('') : '<p class="empty">当前是首个设计 revision。</p>';
-}
-
 export function mobileLandscapeController() {
   return `(function(){const body=document.body;const root=document.documentElement;const ua=navigator.userAgent||'';const query=typeof location==='object'?location.search||'':'';const previewMobile=/(?:^|[?&])agent-output=1(?:&|$)/.test(query)&&/(?:^|[?&])device=mobile(?:&|$)/.test(query);const mobileUa=/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(ua);const touchScreen=Number(navigator.maxTouchPoints||0)>0&&Math.min(screen.width||innerWidth,screen.height||innerHeight)<=1024;const mobile=previewMobile||Boolean(navigator.userAgentData?.mobile)||mobileUa||touchScreen;if(!body.dataset.labels)body.dataset.labels=mobile?'hidden':'visible';function apply(){const portrait=innerHeight>innerWidth;body.dataset.mobileLayout=mobile?(portrait?'forced-landscape':'landscape'):'desktop';root.style.setProperty('--portrait-viewport-width',innerWidth+'px');root.style.setProperty('--landscape-viewport-width',(portrait?innerHeight:innerWidth)+'px');root.style.setProperty('--landscape-viewport-height',(portrait?innerWidth:innerHeight)+'px');window.dispatchEvent(new CustomEvent('pascal-layout-change'));window.dispatchEvent(new CustomEvent('pascal-viewer-visibility'))}apply();window.addEventListener('resize',apply);window.visualViewport?.addEventListener('resize',apply)})();`;
 }
 
-function pageController() {
-  return `(function(){const one=(s,r=document)=>r.querySelector(s),all=(s,r=document)=>[...r.querySelectorAll(s)];const clamp=(v,min,max)=>Math.min(max,Math.max(min,v));function active(group,target){all(group).forEach(b=>{const on=b===target;b.classList.toggle('active',on);b.setAttribute('aria-pressed',String(on))})}function call(name,value){const api=window.PersonalAgentPascalViewer;return Boolean(api&&typeof api[name]==='function'&&api[name](value))}function restoreModelView(){call('resetCamera');call('warmup')}function installImageViewer(viewer){const viewport=one('[data-image-viewport]',viewer),canvas=one('[data-image-canvas]',viewer),output=one('[data-image-scale]',viewer),rotationOutput=one('[data-image-rotation]',viewer),rotatable=viewer.hasAttribute('data-image-rotatable');if(!viewport||!canvas||!output)return;const state={scale:1,x:0,y:0,rotation:0,drag:null};function apply(){const maxX=Math.max(0,(state.scale-1)*viewport.clientWidth/2),maxY=Math.max(0,(state.scale-1)*viewport.clientHeight/2);state.x=clamp(state.x,-maxX,maxX);state.y=clamp(state.y,-maxY,maxY);canvas.style.transform='translate3d('+state.x+'px,'+state.y+'px,0) scale('+state.scale+')';const quarter=rotatable&&state.rotation%180!==0;all('img',canvas).forEach(image=>{image.style.width=quarter?viewport.clientHeight+'px':'100%';image.style.height=quarter?viewport.clientWidth+'px':'100%';image.style.transform='translate(-50%,-50%) rotate('+state.rotation+'deg)'});viewer.classList.toggle('is-zoomed',state.scale>1);output.value=Math.round(state.scale*100)+'%';output.textContent=output.value;if(rotationOutput){rotationOutput.value=state.rotation+'°';rotationOutput.textContent=rotationOutput.value}const out=one('[data-image-zoom="out"]',viewer),inside=one('[data-image-zoom="in"]',viewer);if(out)out.disabled=state.scale<=1;if(inside)inside.disabled=state.scale>=4}function setScale(value){state.scale=clamp(Math.round(value*1000)/1000,1,4);if(state.scale===1){state.x=0;state.y=0}apply()}function reset(){state.scale=1;state.x=0;state.y=0;state.rotation=0;apply()}all('[data-image-zoom]',viewer).forEach(button=>button.addEventListener('click',()=>setScale(state.scale*(button.dataset.imageZoom==='in'?1.1:1/1.1))));all('[data-image-rotate]',viewer).forEach(button=>button.addEventListener('click',()=>{state.rotation=(state.rotation+(button.dataset.imageRotate==='right'?90:-90)+360)%360;state.x=0;state.y=0;apply()}));const resetButton=one('[data-image-reset]',viewer);if(resetButton)resetButton.addEventListener('click',reset);viewport.addEventListener('wheel',event=>{event.preventDefault();setScale(state.scale*Math.exp(-event.deltaY*.0008))},{passive:false});viewport.addEventListener('dblclick',event=>{event.preventDefault();state.scale>1?reset():setScale(1.5)});viewport.addEventListener('pointerdown',event=>{event.preventDefault();viewport.setPointerCapture(event.pointerId);state.drag={id:event.pointerId,x:event.clientX,y:event.clientY};viewer.classList.add('is-dragging')});viewport.addEventListener('pointermove',event=>{if(!state.drag||state.drag.id!==event.pointerId||state.scale<=1)return;state.x+=event.clientX-state.drag.x;state.y+=event.clientY-state.drag.y;state.drag.x=event.clientX;state.drag.y=event.clientY;apply()});function release(event){if(state.drag?.id===event.pointerId){state.drag=null;viewer.classList.remove('is-dragging')}}viewport.addEventListener('pointerup',release);viewport.addEventListener('pointercancel',release);viewer.resetImageViewer=reset;viewer.refreshImageViewer=apply;window.addEventListener('resize',apply);apply()}all('[data-image-viewer]').forEach(installImageViewer);all('[data-render-select]').forEach(b=>b.addEventListener('click',()=>{const panel=b.closest('.render-panel');all('[data-render-image]',panel).forEach(image=>image.hidden=image.dataset.renderImage!==b.dataset.renderSelect);active('[data-render-select]',b);const caption=one('[data-render-caption]',panel),label=one('strong',b);if(caption&&label)caption.textContent=label.textContent;panel.resetImageViewer()}));all('[data-presentation]').forEach(b=>b.addEventListener('click',()=>{all('[data-presentation-panel]').forEach(p=>p.hidden=p.dataset.presentationPanel!==b.dataset.presentation);window.dispatchEvent(new CustomEvent('pascal-viewer-visibility'));active('[data-presentation]',b);const panel=one('[data-presentation-panel="'+b.dataset.presentation+'"]'),imageViewer=panel&&(panel.matches('[data-image-viewer]')?panel:one('[data-image-viewer]',panel));if(imageViewer)requestAnimationFrame(()=>imageViewer.refreshImageViewer());if(b.dataset.presentation==='model'){requestAnimationFrame(()=>{restoreModelView();requestAnimationFrame(restoreModelView)});setTimeout(restoreModelView,180);setTimeout(restoreModelView,520);setTimeout(restoreModelView,1100)}}));all('[data-plan-mode]').forEach(b=>b.addEventListener('click',()=>{const card=b.closest('.plan-card');if(!card)return;card.dataset.planMode=b.dataset.planMode;active('[data-plan-mode]',b);const viewer=one('[data-image-viewer]',card);if(viewer)viewer.resetImageViewer()}));all('[data-level-mode]').forEach(b=>b.addEventListener('click',()=>{if(call('setLevelMode',b.dataset.levelMode))active('[data-level-mode]',b)}));all('[data-camera-mode]').forEach(b=>b.addEventListener('click',()=>{if(call('setCameraMode',b.dataset.cameraMode))active('[data-camera-mode]',b)}));const labelButton=one('[data-label-mode]');if(labelButton){const hidden=document.body.dataset.labels==='hidden';labelButton.classList.toggle('active',!hidden);labelButton.setAttribute('aria-pressed',String(!hidden));labelButton.setAttribute('aria-label',hidden?'显示细节标注':'隐藏细节标注')}all('[data-label-mode]').forEach(b=>b.addEventListener('click',()=>{const hidden=document.body.dataset.labels==='hidden';document.body.dataset.labels=hidden?'visible':'hidden';b.classList.toggle('active',hidden);b.setAttribute('aria-pressed',String(hidden));b.setAttribute('aria-label',hidden?'隐藏细节标注':'显示细节标注')}));all('[data-level-id]').forEach(b=>b.addEventListener('click',()=>{call('setLevel',b.dataset.levelId);active('[data-level-id]',b)}));all('[data-reset-view]').forEach(b=>b.addEventListener('click',()=>{call('resetCamera');const camera=one('[data-camera-mode="perspective"]');if(camera)active('[data-camera-mode]',camera)}));all('[data-highlight]').forEach(b=>b.addEventListener('click',()=>{const ids=b.dataset.highlight.split(',').filter(Boolean);call('highlight',ids);if(ids.length)one('[data-presentation="model"]').click()}));const picker=one('#concept-picker');if(picker)picker.addEventListener('change',()=>all('[data-concept-id]').forEach(card=>card.hidden=card.dataset.conceptId!==picker.value));document.addEventListener('keydown',event=>{if(event.key==='Escape')call('highlight',[])});})();`;
+function viewerPageController() {
+  return `(function(){const one=(s,r=document)=>r.querySelector(s),all=(s,r=document)=>[...r.querySelectorAll(s)];function active(group,target){all(group).forEach(b=>{const on=b===target;b.classList.toggle('active',on);b.setAttribute('aria-pressed',String(on))})}function call(name,value){const api=window.PersonalAgentPascalViewer;return Boolean(api&&typeof api[name]==='function'&&api[name](value))}all('[data-level-mode]').forEach(b=>b.addEventListener('click',()=>{if(call('setLevelMode',b.dataset.levelMode))active('[data-level-mode]',b)}));all('[data-camera-mode]').forEach(b=>b.addEventListener('click',()=>{if(call('setCameraMode',b.dataset.cameraMode))active('[data-camera-mode]',b)}));const labelButton=one('[data-label-mode]');if(labelButton){const hidden=document.body.dataset.labels==='hidden';labelButton.classList.toggle('active',!hidden);labelButton.setAttribute('aria-pressed',String(!hidden));labelButton.setAttribute('aria-label',hidden?'显示细节标注':'隐藏细节标注')}all('[data-label-mode]').forEach(b=>b.addEventListener('click',()=>{const hidden=document.body.dataset.labels==='hidden';document.body.dataset.labels=hidden?'visible':'hidden';b.classList.toggle('active',hidden);b.setAttribute('aria-pressed',String(hidden));b.setAttribute('aria-label',hidden?'隐藏细节标注':'显示细节标注')}));all('[data-level-id]').forEach(b=>b.addEventListener('click',()=>{call('setLevel',b.dataset.levelId);active('[data-level-id]',b)}));all('[data-reset-view]').forEach(b=>b.addEventListener('click',()=>{call('resetCamera');const camera=one('[data-camera-mode="perspective"]');if(camera)active('[data-camera-mode]',camera)}));document.addEventListener('keydown',event=>{if(event.key==='Escape')call('highlight',[])});})();`;
 }
 
 function safeJson(value) { return JSON.stringify(value).replaceAll('<', '\\u003c'); }

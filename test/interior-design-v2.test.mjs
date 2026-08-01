@@ -8,6 +8,12 @@ import { DatabaseSync } from 'node:sqlite';
 import test from 'node:test';
 import { loadInteriorEnginePolicy } from '../skills/interior-design/scripts/engine-policy.mjs';
 import { calculateOrthographicZoom } from '../skills/interior-design/scripts/pascal-camera-framing.mjs';
+import {
+  calculateForcedLandscapeOrbit,
+  calculatePinchScale,
+  mapForcedLandscapeDrag,
+  resolveLandscapeCameraInput,
+} from '../skills/interior-design/scripts/pascal-landscape-gesture.mjs';
 import { generateProfessionalPage, verifyProfessionalPageHtml } from '../skills/interior-design/scripts/generate-page-v2.mjs';
 import { loadInteriorDeliveryContract, loadSourcePlanAsset } from '../skills/interior-design/scripts/page-assets.mjs';
 import { loadPascalRuntimeModule, PascalInteriorAdapter } from '../skills/interior-design/scripts/pascal-adapter.mjs';
@@ -64,6 +70,26 @@ test('fits the orthographic floor plan to the available viewport', () => {
   }), 0.7);
   assert.match(projectCamera, /calculateOrthographicZoom/);
   assert.match(projectCamera, /api\.zoomTo\(zoom, false\)/);
+});
+
+test('maps portrait-device gestures into the forced-landscape camera axes', () => {
+  assert.equal(resolveLandscapeCameraInput('forced-landscape'), 'landscape-mapped');
+  assert.equal(resolveLandscapeCameraInput('landscape'), 'native');
+  assert.equal(resolveLandscapeCameraInput('desktop'), 'native');
+  assert.deepEqual(mapForcedLandscapeDrag(0, 24), { x: 24, y: 0 });
+  assert.deepEqual(mapForcedLandscapeDrag(24, 0), { x: 0, y: -24 });
+  const orbit = calculateForcedLandscapeOrbit({
+    deltaX: 30,
+    deltaY: 60,
+    viewportHeight: 300,
+    azimuthSpeed: 1,
+    polarSpeed: 0.5,
+  });
+  assert.equal(orbit.azimuth, Math.PI * 0.4);
+  assert.equal(orbit.polar, -Math.PI * 0.1);
+  assert.equal(calculatePinchScale(100, 120), 1.2);
+  assert.equal(calculatePinchScale(0, 120), 1);
+  assert.equal(calculatePinchScale(100, 200), 1.35);
 });
 
 test('requires Pascal v2 as the only interior-design engine and rejects removed engine paths', () => {
@@ -366,6 +392,15 @@ test('professional gates deterministically expose geometry, clearance, evidence,
     delete selectedLevel(project).items[0].assetProfile;
   }).includes('assets.profile-incomplete'));
   assert.ok(rulesFor((project) => {
+    selectedLevel(project).rooms[0].requirementIds = [];
+  }).includes('trace.room-unmapped'));
+  assert.ok(rulesFor((project) => {
+    selectedLevel(project).items[0].requirementIds = [];
+  }).includes('trace.fixed-element-unmapped'));
+  assert.ok(rulesFor((project) => {
+    delete selectedLevel(project).items[0].materialId;
+  }).includes('trace.fixed-element-material-unmapped'));
+  assert.ok(rulesFor((project) => {
     project.brief.budget = { currency: 'CNY', totalMinor: 1_000_000, confidence: 'estimated' };
     project.concepts.find((concept) => concept.conceptId === project.selectedConceptId).budgetItems = [];
   }).includes('budget.scope-unallocated'));
@@ -392,7 +427,7 @@ test('professional gates deterministically expose geometry, clearance, evidence,
   assert.ok(blockers.every((entry) => entry.nodeIds.length && entry.measurement && entry.fix));
 });
 
-test('generates a deterministic, private, offline Pascal Page v2 with accessible fallback', async () => {
+test('generates a deterministic renovation booklet with a separate private offline Pascal 3D Page', async () => {
   const harness = makeHarness('page');
   const compiled = await compileProjectScene(harness.projectDir, harness.context, { baseRevision: 1 });
   assert.equal(compiled.project.status, 'quality_gated');
@@ -403,37 +438,43 @@ test('generates a deterministic, private, offline Pascal Page v2 with accessible
   const second = generateProfessionalPage({ projectDir: harness.projectDir, context: harness.context, output: secondDir, skillRoot, delivery });
   const firstHtml = fs.readFileSync(first.indexPath, 'utf8');
   const secondHtml = fs.readFileSync(second.indexPath, 'utf8');
+  const firstThreeD = fs.readFileSync(first.specialistPages.threeD, 'utf8');
+  const secondThreeD = fs.readFileSync(second.specialistPages.threeD, 'utf8');
   assert.equal(sha256(firstHtml), sha256(secondHtml));
-  assert.deepEqual(verifyProfessionalPageHtml(firstHtml, delivery), first.verification);
+  assert.equal(sha256(firstThreeD), sha256(secondThreeD));
+  assert.deepEqual(verifyProfessionalPageHtml({ html: firstHtml, threeDHtml: firstThreeD }, delivery), first.verification);
   assert.match(firstHtml, /data-engine="pascal-v2"/);
-  assert.match(firstHtml, /id="model-derived-plan"/);
-  assert.match(firstHtml, /data-level-mode="exploded"/);
-  assert.match(firstHtml, /data-label-mode="visible"/);
-  assert.doesNotMatch(firstHtml, /data-camera-shot/);
-  assert.match(firstHtml, /同场景质量/);
-  assert.match(firstHtml, /PBR 材质/);
-  assert.match(firstHtml, /几何一致性/);
+  assert.match(firstHtml, /data-layout-profile="renovation-booklet"/);
+  assert.match(firstHtml, /href="3d\/index.html"[^>]*target="_blank"/);
+  assert.match(firstHtml, /项目摘要与需求/);
+  assert.match(firstHtml, /完整设计说明/);
+  assert.match(firstHtml, /材料清单与预算范围/);
+  assert.match(firstHtml, /设计一致性检查/);
+  assert.match(firstHtml, /设计过程与确认点/);
+  assert.match(firstHtml, /排除项、落地顺序与复尺清单/);
+  assert.doesNotMatch(firstHtml, /<iframe\b|id="pascal-scene"|pascal-viewer-warmup/);
   assert.match(firstHtml, /media\/source-plan\.png/);
-  assert.match(firstHtml, /用户需求与户型依据/);
   assert.match(firstHtml, /用户原图是唯一户型依据/);
-  assert.match(firstHtml, /data-presentation="requirements"/);
-  assert.match(firstHtml, /data-presentation="model"/);
-  assert.match(firstHtml, /data-presentation="render"/);
-  assert.match(firstHtml, /data-presentation-panel="render"/);
   assert.match(firstHtml, /概念效果不替代施工图或材料实样/);
-  assert.match(firstHtml, new RegExp(compiled.project.provenance.sourcePlanSha256));
   assert.match(firstHtml, /plan-source-image/);
   assert.match(firstHtml, /plan-annotation-image/);
-  assert.match(firstHtml, /connect-src 'none'/);
-  assert.match(firstHtml, /正在装配模型/);
-  assert.match(firstHtml, /data-viewer-status/);
-  assert.match(firstHtml, /data-layout-profile="su-design-classic"/);
-  assert.match(firstHtml, /pascal-viewer-warmup/);
-  assert.doesNotMatch(firstHtml, /space-page|owner-page|managedObjectId|file:\/\/|localhost|127\.0\.0\.1|sourceMappingURL/);
-  assert.doesNotMatch(firstHtml, /renovation_|concept-open-living|req-continuous-circulation|decision-select-open-living|evidence-source/);
+  assert.match(firstThreeD, /id="model-derived-plan"/);
+  assert.match(firstThreeD, /data-level-mode="exploded"/);
+  assert.match(firstThreeD, /data-label-mode="visible"/);
+  assert.doesNotMatch(firstThreeD, /data-camera-shot/);
+  assert.match(firstThreeD, /connect-src 'none'/);
+  assert.match(firstThreeD, /正在装配模型/);
+  assert.match(firstThreeD, /data-viewer-status/);
+  assert.match(firstThreeD, /data-layout-profile="su-design-classic"/);
+  assert.match(firstThreeD, /data-specialist-page="three-d"/);
+  assert.match(firstThreeD, /pascal-viewer-warmup/);
+  assert.match(firstThreeD, /landscape-mapped/);
+  assert.doesNotMatch(`${firstHtml}\n${firstThreeD}`, /space-page|owner-page|managedObjectId|file:\/\/|localhost|127\.0\.0\.1|sourceMappingURL/);
+  assert.doesNotMatch(`${firstHtml}\n${firstThreeD}`, /renovation_|concept-open-living|req-continuous-circulation|decision-select-open-living|evidence-source/);
   assert.doesNotMatch(fs.readFileSync(path.join(firstDir, 'scene.json'), 'utf8'), /renovation_|projectId|ownerId|spaceId|sourceId/);
   assert.ok(first.entryBytes < 10 * 1024 * 1024);
   assert.ok(fs.readdirSync(firstDir).includes('media'));
+  assert.equal(fs.existsSync(path.join(firstDir, '3d', 'index.html')), true);
   const preservedHash = sha256(fs.readFileSync(first.indexPath));
   const evidenceDirectory = path.join(harness.projectDir, 'evidence');
   const preservedEvidenceDirectory = path.join(harness.projectDir, 'evidence-preserved');

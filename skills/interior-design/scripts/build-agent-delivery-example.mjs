@@ -36,7 +36,7 @@ const DELIVERY_QUALITY_FLOOR = Object.freeze({
 });
 
 export async function buildAgentDeliveryExample({ check = false } = {}) {
-  const temporaryRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'personal-agent-interior-delivery-v2-'));
+  const temporaryRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'personal-agent-interior-delivery-v3-'));
   try {
     const spaceRoot = path.join(temporaryRoot, 'space');
     const projectDir = path.join(spaceRoot, 'projects', 'home-renovation-agent-example');
@@ -113,6 +113,7 @@ export async function buildAgentDeliveryExample({ check = false } = {}) {
       delivery,
     });
     normalizeGeneratedHtml(path.join(output, 'index.html'));
+    normalizeGeneratedHtml(path.join(output, '3d', 'index.html'));
     fs.writeFileSync(path.join(output, 'cover.svg'), renderProjectCoverSvg(selectedConcept(compiled.project)), { mode: 0o600 });
     const manifestPath = path.join(output, 'manifest.json');
     const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
@@ -125,7 +126,7 @@ export async function buildAgentDeliveryExample({ check = false } = {}) {
         'render-storyboard',
         'pascal-scene-compile',
         'professional-quality-audit',
-        'page-v2-generate',
+        'page-v3-generate',
         'artifact-hash-verify',
       ],
       seedSha256: sha256(seedBytes),
@@ -152,10 +153,14 @@ export async function buildAgentDeliveryExample({ check = false } = {}) {
       sceneSha256: compiled.scene.sceneHash,
       auditSha256: compiled.project.quality.sha256,
       renderProfile: 'professional-mesh-ink',
-      layoutProfile: 'su-design-classic',
+      layoutProfile: 'renovation-booklet',
+      specialistPages: {
+        threeD: { path: '3d/index.html', layoutProfile: 'su-design-classic', engine: 'pascal-v2' },
+      },
       qualityFloor: DELIVERY_QUALITY_FLOOR,
     };
     manifest.files['index.html'] = fileRecord(path.join(output, 'index.html'));
+    manifest.files['3d/index.html'] = fileRecord(path.join(output, '3d', 'index.html'));
     manifest.files['cover.svg'] = fileRecord(path.join(output, 'cover.svg'));
     fs.writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`, { mode: 0o600 });
     const verification = verifyAgentDeliveryExample(output);
@@ -170,6 +175,7 @@ export async function buildAgentDeliveryExample({ check = false } = {}) {
       mode: check ? 'check' : 'write',
       target: path.relative(repositoryRoot, targetRoot),
       pageSha256: verification.manifest.files['index.html'].sha256,
+      threeDPageSha256: verification.manifest.files['3d/index.html'].sha256,
       sceneSha256: compiled.scene.sceneHash,
       auditSha256: compiled.project.quality.sha256,
       files: verification.files,
@@ -184,7 +190,7 @@ export function verifyAgentDeliveryExample(directory = targetRoot) {
   if (manifest.agent?.id !== 'interior-designer'
     || manifest.agent?.version !== 1
     || manifest.agent?.exampleId !== 'interior-c-layout-delivery'
-    || manifest.delivery?.version !== 2
+    || manifest.delivery?.version !== 3
     || manifest.delivery?.engine !== 'pascal-v2'
     || manifest.source?.kind !== 'native-governed-pascal-v2-project') {
     throw new Error('representative interior-designer delivery manifest is not a native Pascal v2 artifact');
@@ -193,14 +199,16 @@ export function verifyAgentDeliveryExample(directory = targetRoot) {
     throw new Error('representative interior-designer delivery still carries retired template provenance');
   }
   if (!Array.isArray(manifest.source.pipeline)
-    || manifest.source.pipeline.join('>') !== 'project-v2-seed>demand-workflow-v1>style-calibration>render-storyboard>pascal-scene-compile>professional-quality-audit>page-v2-generate>artifact-hash-verify') {
+    || manifest.source.pipeline.join('>') !== 'project-v2-seed>demand-workflow-v1>style-calibration>render-storyboard>pascal-scene-compile>professional-quality-audit>page-v3-generate>artifact-hash-verify') {
     throw new Error('representative interior-designer delivery pipeline is incomplete');
   }
   if (manifest.source.renderProfile !== 'professional-mesh-ink') {
     throw new Error('representative interior-designer delivery professional render profile is missing');
   }
-  if (manifest.source.layoutProfile !== 'su-design-classic') {
-    throw new Error('representative interior-designer delivery classic SU layout profile is missing');
+  if (manifest.source.layoutProfile !== 'renovation-booklet'
+    || manifest.source.specialistPages?.threeD?.path !== '3d/index.html'
+    || manifest.source.specialistPages?.threeD?.layoutProfile !== 'su-design-classic') {
+    throw new Error('representative interior-designer booklet or specialist 3D Page profile is missing');
   }
   const renders = manifest.source.renderSet;
   if (!Array.isArray(renders) || renders.length < 4 || renders.some((render) => render?.generator !== 'imagegen'
@@ -222,29 +230,29 @@ export function verifyAgentDeliveryExample(directory = targetRoot) {
     }
   }
   const html = fs.readFileSync(path.join(directory, 'index.html'), 'utf8');
-  if (!html.includes('data-engine="pascal-v2"')
-    || /data-engine="(?!pascal-v2)[^"]+"|<(?:script|link|iframe)[^>]+(?:src|href)=["']https?:\/\/|127\.0\.0\.1|localhost/i.test(html)) {
-    throw new Error('representative interior-designer delivery is not exclusively Pascal v2');
+  const threeDHtml = fs.readFileSync(path.join(directory, '3d', 'index.html'), 'utf8');
+  if (!html.includes('data-layout-profile="renovation-booklet"')
+    || !threeDHtml.includes('data-engine="pascal-v2"')
+    || /data-engine="(?!pascal-v2)[^"]+"|<(?:script|link|iframe)[^>]+(?:src|href)=["']https?:\/\/|127\.0\.0\.1|localhost/i.test(`${html}\n${threeDHtml}`)) {
+    throw new Error('representative interior-designer delivery is not a governed booklet plus Pascal v2 specialist Page');
   }
   for (const marker of [
-    'data-presentation="requirements"',
-    'data-presentation="model"',
-    'data-presentation="render"',
-    'data-presentation-panel="render"',
-    'data-render-select=',
-    '用户需求与户型依据',
+    'data-primary-delivery="true"',
+    'href="3d/index.html"',
+    '项目摘要与需求',
+    '户型分析',
+    '完整设计说明',
+    '平面设计方案',
+    '各空间效果图',
+    '材料清单与预算范围',
+    '设计一致性检查',
+    '设计过程与确认点',
+    '排除项、落地顺序与复尺清单',
     '概念效果不替代施工图或材料实样',
   ]) {
     if (!html.includes(marker)) throw new Error(`representative interior-designer delivery is missing ${marker}`);
   }
-  for (const marker of [
-    'data-presentation="workflow"',
-    'data-presentation-panel="workflow"',
-    '案例流程',
-    '历史案例的需求到设计稿投影',
-  ]) {
-    if (html.includes(marker)) throw new Error(`representative interior-designer delivery exposes internal workflow content: ${marker}`);
-  }
+  if (/<iframe\b/i.test(html)) throw new Error('representative booklet embeds a specialist Page instead of linking it');
   const expectedReferencedImages = [
     ...renders.map((render, index) => [[
       '公共区全景概念效果图',
@@ -279,16 +287,16 @@ export function verifyAgentDeliveryExample(directory = targetRoot) {
   const cover = fs.readFileSync(path.join(directory, 'cover.svg'), 'utf8');
   if (!cover.includes('模型派生轴测封面')
     || !cover.includes('data-cover-item=')
-    || !html.includes('pascal-room-label')
-    || !html.includes('pascal-highlight')
-    || !html.includes('personal-agent-architecture-envelope')
-    || !html.includes('pascal-room-surface')
-    || !html.includes('pascal-wall-cap')
-    || !html.includes('professional-mesh-ink')
-    || !html.includes('data-layout-profile="su-design-classic"')
-    || !html.includes('pascal-viewer-warmup')
-    || !html.includes('CameraControls')
-    || !html.includes('setLookAt')) {
+    || !threeDHtml.includes('pascal-room-label')
+    || !threeDHtml.includes('pascal-highlight')
+    || !threeDHtml.includes('personal-agent-architecture-envelope')
+    || !threeDHtml.includes('pascal-room-surface')
+    || !threeDHtml.includes('pascal-wall-cap')
+    || !threeDHtml.includes('professional-mesh-ink')
+    || !threeDHtml.includes('data-layout-profile="su-design-classic"')
+    || !threeDHtml.includes('pascal-viewer-warmup')
+    || !threeDHtml.includes('CameraControls')
+    || !threeDHtml.includes('setLookAt')) {
     throw new Error('representative interior-designer delivery lost its model-derived cover, labels, highlighting, or automatic camera framing');
   }
   return { files: Object.keys(manifest.files).sort(), manifest };

@@ -22,12 +22,14 @@ export function loadInteriorDeliveryContract(skillRoot) {
   if (contract.agent?.id !== 'interior-designer' || Number(contract.agent?.version) !== 1) {
     throw new Error(`${DELIVERY_ID} must belong to interior-designer version 1`);
   }
-  if (Number(contract.delivery?.version) !== 2 || contract.delivery?.engine !== 'pascal-v2') {
-    throw new Error(`${DELIVERY_ID} must use Pascal delivery version 2`);
+  if (Number(contract.delivery?.version) !== 3 || contract.delivery?.engine !== 'pascal-v2') {
+    throw new Error(`${DELIVERY_ID} must use Pascal delivery version 3`);
   }
-  if (contract.delivery?.layoutProfile !== 'su-design-classic'
+  if (contract.delivery?.layoutProfile !== 'renovation-booklet'
+    || contract.delivery?.specialistPages?.threeD?.path !== '3d/index.html'
+    || contract.delivery?.specialistPages?.threeD?.layoutProfile !== 'su-design-classic'
     || contract.delivery?.renderProfile !== 'professional-mesh-ink') {
-    throw new Error(`${DELIVERY_ID} is missing its approved delivery profiles`);
+    throw new Error(`${DELIVERY_ID} is missing its approved booklet or specialist Page profiles`);
   }
   return contract;
 }

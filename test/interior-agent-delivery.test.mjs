@@ -117,14 +117,20 @@ test("interior-designer owns one representative delivery contract without a temp
   const contract = JSON.parse(read("agents/interior-designer/examples/featured-delivery.json"));
   assert.equal(contract.id, "interior-c-layout-delivery");
   assert.deepEqual(contract.agent, { id: "interior-designer", version: 1 });
-  assert.equal(contract.delivery.version, 2);
+  assert.equal(contract.delivery.version, 3);
   assert.equal(contract.delivery.engine, "pascal-v2");
-  assert.equal(contract.delivery.layoutProfile, "su-design-classic");
+  assert.equal(contract.delivery.layoutProfile, "renovation-booklet");
+  assert.deepEqual(contract.delivery.specialistPages.threeD, {
+    path: "3d/index.html",
+    layoutProfile: "su-design-classic",
+    engine: "pascal-v2",
+  });
   assert.equal(contract.delivery.renderProfile, "professional-mesh-ink");
   assert.match(contract.delivery.generator, /cli\.mjs page --project-dir/);
   assert.doesNotMatch(contract.delivery.generator, /--template/);
   assert.equal(contract.asset.basePath, "/assets/agents/interior-designer/featured");
-  assert.ok(contract.fixedFramework.length >= 6);
+  assert.equal(contract.asset.threeDPagePath, "/assets/agents/interior-designer/featured/3d/index.html");
+  assert.ok(contract.fixedFramework.length >= 7);
   assert.ok(contract.agentFreedom.length >= 3);
 
   assert.equal(fs.existsSync(path.join(root, "registry/page-templates.json")), false);
@@ -147,10 +153,13 @@ test("the representative delivery is reproducible, self-contained, and all decla
     exampleId: "interior-c-layout-delivery",
   });
   assert.deepEqual(manifest.delivery, {
-    version: 2,
+    version: 3,
     engine: "pascal-v2",
-    layoutProfile: "su-design-classic",
+    layoutProfile: "renovation-booklet",
     renderProfile: "professional-mesh-ink",
+    specialistPages: {
+      threeD: { path: "3d/index.html", layoutProfile: "su-design-classic", engine: "pascal-v2" },
+    },
   });
   assert.equal(manifest.visualAcceptance, "user");
   assert.equal(manifest.source.kind, "native-governed-pascal-v2-project");
@@ -164,6 +173,7 @@ test("the representative delivery is reproducible, self-contained, and all decla
   }
   assert.ok(Object.keys(manifest.files).includes("media/render-living-overview.webp"));
   assert.ok(Object.keys(manifest.files).includes("media/render-primary-bedroom.webp"));
+  assert.ok(Object.keys(manifest.files).includes("3d/index.html"));
   for (const [name, expected] of Object.entries(manifest.files)) {
     const value = fs.readFileSync(path.join(artifactRoot, name));
     assert.equal(value.length, expected.bytes, name);
@@ -173,11 +183,12 @@ test("the representative delivery is reproducible, self-contained, and all decla
   assert.equal(sha256(referencedImageByAlt(html, "公共区全景概念效果图")), manifest.source.renderSet[0].deliveryImageSha256);
   assert.equal(sha256(referencedImageByAlt(html, "用户上传并脱敏的原始户型图")), manifest.files["media/source-plan.png"].sha256);
   assert.equal(sha256(referencedImageByAlt(html, "Agent 上传的户型分析标注图")), manifest.files["media/agent-annotation.png"].sha256);
-  assert.match(profile.examples[0].summary, /历史代表案例.*需求.*设计稿.*效果图.*一张样张.*十五张以上/);
+  assert.match(profile.examples[0].summary, /历史代表案例.*装修项目设计册.*浏览器新页面.*独立 3D Page.*一张样张.*十五张以上/);
 });
 
 test("the representative delivery preserves the governed Pascal v2 interaction and safety contract", () => {
   const html = read("core/app/public/assets/agents/interior-designer/featured/index.html");
+  const threeDHtml = read("core/app/public/assets/agents/interior-designer/featured/3d/index.html");
   const scene = JSON.parse(read("core/app/public/assets/agents/interior-designer/featured/scene.json"));
   const cover = read("core/app/public/assets/agents/interior-designer/featured/cover.svg");
   const nodes = Object.values(scene.scene.nodes);
@@ -185,38 +196,41 @@ test("the representative delivery preserves the governed Pascal v2 interaction a
   assert.match(html, /data-engine="pascal-v2"/);
   assert.match(html, /data-agent-id="interior-designer"/);
   assert.match(html, /data-agent-example-id="interior-c-layout-delivery"/);
-  assert.match(html, /data-layout-profile="su-design-classic"/);
-  assert.match(html, /data-mobile-layout/);
-  assert.match(html, /forced-landscape/);
-  assert.match(html, /--landscape-viewport-width/);
-  assert.match(html, /transform: rotate\(90deg\)/);
-  assert.doesNotMatch(html, /orientation-hint|横屏查看空间更完整/);
-  assert.match(html, /data-presentation="requirements"[^>]*>.*?需求<\/button>/s);
-  assert.match(html, /data-presentation="model"[^>]*>设计稿<\/button>/);
-  assert.match(html, /data-presentation="render"[^>]*>.*?效果图<\/button>/s);
-  assert.doesNotMatch(html, /data-presentation="workflow"/);
-  assert.doesNotMatch(html, /data-presentation-panel="workflow"/);
-  assert.doesNotMatch(html, /案例流程|历史案例的需求到设计稿投影/);
-  assert.match(html, /data-presentation-panel="render"[^>]*data-image-viewer/);
-  assert.match(html, /data-render-select="render-living-overview"/);
-  assert.match(html, /用户需求与户型依据/);
+  assert.match(html, /data-layout-profile="renovation-booklet"/);
+  assert.match(html, /data-primary-delivery="true"/);
+  assert.match(html, /href="3d\/index.html"[^>]*target="_blank"/);
+  assert.doesNotMatch(html, /<iframe\b|id="pascal-scene"|pascal-viewer-warmup/);
+  assert.match(html, /项目摘要与需求/);
+  assert.match(html, /完整设计说明/);
+  assert.match(html, /材料清单与预算范围/);
+  assert.match(html, /设计一致性检查/);
+  assert.match(html, /设计过程与确认点/);
+  assert.match(html, /排除项、落地顺序与复尺清单/);
+  assert.match(threeDHtml, /data-layout-profile="su-design-classic"/);
+  assert.match(threeDHtml, /data-specialist-page="three-d"/);
+  assert.match(threeDHtml, /data-mobile-layout/);
+  assert.match(threeDHtml, /forced-landscape/);
+  assert.match(threeDHtml, /--landscape-viewport-width/);
+  assert.match(threeDHtml, /transform: rotate\(90deg\)/);
+  assert.doesNotMatch(threeDHtml, /orientation-hint|横屏查看空间更完整/);
+  assert.doesNotMatch(threeDHtml, /data-presentation=|data-presentation-panel=/);
   assert.match(html, /概念效果不替代施工图或材料实样/);
-  assert.match(html, /id="pascal-scene"/);
-  assert.match(html, /id="model-derived-plan"/);
-  assert.match(html, /id="viewer-loading"/);
+  assert.match(threeDHtml, /id="pascal-scene"/);
+  assert.match(threeDHtml, /id="model-derived-plan"/);
+  assert.match(threeDHtml, /id="viewer-loading"/);
   assert.match(html, /plan-source-image/);
   assert.match(html, /plan-annotation-image/);
-  assert.match(html, /data-level-mode="stacked"/);
-  assert.match(html, /data-level-mode="exploded"/);
-  assert.match(html, /data-level-mode="solo"/);
-  assert.doesNotMatch(html, /data-camera-shot/);
-  assert.match(html, /pascal-room-label/);
-  assert.match(html, /pascal-highlight/);
-  assert.match(html, /professional-mesh-ink/);
-  assert.match(html, /pascal-viewer-warmup/);
+  assert.match(threeDHtml, /data-level-mode="stacked"/);
+  assert.match(threeDHtml, /data-level-mode="exploded"/);
+  assert.match(threeDHtml, /data-level-mode="solo"/);
+  assert.doesNotMatch(threeDHtml, /data-camera-shot/);
+  assert.match(threeDHtml, /pascal-room-label/);
+  assert.match(threeDHtml, /pascal-highlight/);
+  assert.match(threeDHtml, /professional-mesh-ink/);
+  assert.match(threeDHtml, /pascal-viewer-warmup/);
   assert.match(cover, /data-cover-item=/);
-  assert.doesNotMatch(html, /<(?:script|img|link|iframe)\b[^>]*(?:src|href)=["']https?:/i);
-  assert.doesNotMatch(html, /localhost|127\.0\.0\.1|editor\.pascal\.app/);
+  assert.doesNotMatch(`${html}\n${threeDHtml}`, /<(?:script|img|link|iframe)\b[^>]*(?:src|href)=["']https?:/i);
+  assert.doesNotMatch(`${html}\n${threeDHtml}`, /localhost|127\.0\.0\.1|editor\.pascal\.app/);
   assert.ok(nodes.filter((node) => node.type === "zone").length >= 12);
   assert.ok(nodes.filter((node) => ["door", "window"].includes(node.type)).length >= 14);
   assert.ok(nodes.filter((node) => node.type === "wall").length >= 20);

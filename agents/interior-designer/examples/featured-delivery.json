@@ -6,17 +6,25 @@
     "version": 1
   },
   "delivery": {
-    "version": 2,
+    "version": 3,
     "engine": "pascal-v2",
-    "layoutProfile": "su-design-classic",
+    "layoutProfile": "renovation-booklet",
     "renderProfile": "professional-mesh-ink",
+    "specialistPages": {
+      "threeD": {
+        "path": "3d/index.html",
+        "layoutProfile": "su-design-classic",
+        "engine": "pascal-v2"
+      }
+    },
     "generator": "node skills/interior-design/scripts/cli.mjs page --project-dir <space-owned-project-dir> --output <page-dir> --json"
   },
   "asset": {
     "basePath": "/assets/agents/interior-designer/featured",
     "pagePath": "/assets/agents/interior-designer/featured/index.html",
     "manifestPath": "/assets/agents/interior-designer/featured/manifest.json",
-    "coverPath": "/assets/agents/interior-designer/featured/cover.svg"
+    "coverPath": "/assets/agents/interior-designer/featured/cover.svg",
+    "threeDPagePath": "/assets/agents/interior-designer/featured/3d/index.html"
   },
   "acceptance": {
     "visualOwner": "user",
@@ -24,7 +32,8 @@
     "verifyArtifactBeforePublish": true
   },
   "fixedFramework": [
-    "Full-canvas offline delivery with a compact floating header, user requirements, design draft and corresponding render presentation modes, bottom view controls, and a dedicated mobile-landscape layout; a detected mobile portrait viewport is rotated into that landscape canvas instead of rendering a portrait alternative.",
+    "The primary delivery is a responsive renovation-booklet Page covering the project summary, evidence, analysis, design narrative, plan, renders, materials and budget scope, consistency matrix, confirmation history, exclusions, and site-verification list.",
+    "Complex interactive 3D is a separate same-revision Page linked from the booklet and opened in a new browser page; only that specialist Page uses the su-design-classic mobile-landscape canvas.",
     "The user-uploaded source plan, Agent annotation, governed project, Pascal scene model basis, and Page payload must resolve to the same evidence hash.",
     "The Pascal scene remains the only production 3D engine and supplies the model-derived SVG failure fallback.",
     "A dedicated loading state precedes automatic first-frame 3D warmup; Canvas visibility must not depend on a click or drag.",

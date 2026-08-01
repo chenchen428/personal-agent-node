@@ -51,8 +51,10 @@ test("each profile presents the public professional contract without internal in
   assert.match(delivery, /profile\.workflow/);
   assert.match(delivery, /profile\.deliverables/);
   assert.match(delivery, /profile\.acceptance/);
-  assert.match(featured, /agentExampleHref\(agentId, presentation\.exampleId\)/);
-  assert.match(featured, /沉浸查看/);
+  assert.match(featured, /target="_blank"/);
+  assert.match(featured, /浏览器查看/);
+  assert.match(featured, /presentation\.preview/);
+  assert.doesNotMatch(featured, /沉浸查看/);
   assert.match(immersive, /返回 Agent 详情/);
   assert.match(immersive, /找不到该代表产物/);
   assert.match(immersive, /AgentExampleMedia presentation=\{presentation\} immersive/);
