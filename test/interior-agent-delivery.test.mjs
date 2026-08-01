@@ -20,14 +20,14 @@ const artifactRoot = path.join(root, "core/app/public/assets/agents/interior-des
 const read = (relative) => fs.readFileSync(path.join(root, relative), "utf8");
 const sha256 = (value) => crypto.createHash("sha256").update(value).digest("hex");
 
-function embeddedPngByAlt(html, alt) {
+function referencedImageByAlt(html, alt) {
   const tag = [...html.matchAll(/<img\b[^>]*>/g)]
     .map(([value]) => value)
     .find((value) => value.includes(`alt="${alt}"`));
-  assert.ok(tag, `missing embedded image: ${alt}`);
-  const match = tag.match(/src="data:image\/png;base64,([^"]+)"/);
-  assert.ok(match, `image must be an embedded PNG: ${alt}`);
-  return Buffer.from(match[1], "base64");
+  assert.ok(tag, `missing image: ${alt}`);
+  const source = tag.match(/src="([^"]+)"/)?.[1] || "";
+  assert.ok(source && !source.startsWith("data:"), `image must use a relative Page asset: ${alt}`);
+  return fs.readFileSync(path.join(artifactRoot, source));
 }
 
 test("Pascal delivery DPR follows a bounded pixel budget as the page grows", () => {
@@ -94,33 +94,25 @@ test("the representative delivery is reproducible, self-contained, and all decla
   assert.equal(manifest.visualAcceptance, "user");
   assert.equal(manifest.source.kind, "native-governed-pascal-v2-project");
   assert.equal(manifest.source.renderProfile, "professional-mesh-ink");
-  assert.deepEqual(manifest.source.conceptRender, {
-    generator: "imagegen",
-    imageSha256: "d4f4d0a69646b4ea15c60336baf980cb27612c7fcbe4ac22eed9f367c64f01fd",
-    referenceImageSha256: "a0048ea39e561a586597680100938b1b92fba92a6dabb26e5b82589fd388992e",
-    promptSha256: "66456dcd5bc9cdf1dd5b633f8a902de7927b87dfcf9b65d349d7ad65ec9e8681",
-  });
+  assert.equal(manifest.source.demandWorkflow.stage, "delivered");
+  assert.equal(manifest.source.demandWorkflow.transitionCount, 7);
+  assert.equal(manifest.source.renderSet.length, 4);
+  assert.ok(manifest.source.renderSet.every((entry) => entry.generator === "imagegen"));
   for (const retired of ["templateId", "templateVersion", "artifactMarker"]) {
     assert.equal(retired in manifest, false, retired);
   }
-  assert.deepEqual(Object.keys(manifest.files).sort(), [
-    "agent-annotation.png",
-    "audit.json",
-    "cover.svg",
-    "index.html",
-    "scene.json",
-    "source-plan.png",
-  ]);
+  assert.ok(Object.keys(manifest.files).includes("media/render-living-overview.webp"));
+  assert.ok(Object.keys(manifest.files).includes("media/render-primary-bedroom.webp"));
   for (const [name, expected] of Object.entries(manifest.files)) {
     const value = fs.readFileSync(path.join(artifactRoot, name));
     assert.equal(value.length, expected.bytes, name);
     assert.equal(sha256(value), expected.sha256, name);
   }
 
-  assert.equal(sha256(embeddedPngByAlt(html, "基于当前 SU 设计稿生成的概念渲染稿")), manifest.source.conceptRender.imageSha256);
-  assert.equal(sha256(embeddedPngByAlt(html, "用户上传并脱敏的原始户型图")), manifest.files["source-plan.png"].sha256);
-  assert.equal(sha256(embeddedPngByAlt(html, "Agent 上传的户型分析标注图")), manifest.files["agent-annotation.png"].sha256);
-  assert.match(profile.examples[0].summary, /用户需求.*设计稿.*渲染稿/);
+  assert.equal(sha256(referencedImageByAlt(html, "公共区全景概念效果图")), manifest.source.renderSet[0].deliveryImageSha256);
+  assert.equal(sha256(referencedImageByAlt(html, "用户上传并脱敏的原始户型图")), manifest.files["media/source-plan.png"].sha256);
+  assert.equal(sha256(referencedImageByAlt(html, "Agent 上传的户型分析标注图")), manifest.files["media/agent-annotation.png"].sha256);
+  assert.match(profile.examples[0].summary, /历史代表案例.*需求.*设计稿.*效果图.*一张样张.*十五张以上/);
 });
 
 test("the representative delivery preserves the governed Pascal v2 interaction and safety contract", () => {
@@ -133,10 +125,12 @@ test("the representative delivery preserves the governed Pascal v2 interaction a
   assert.match(html, /data-agent-id="interior-designer"/);
   assert.match(html, /data-agent-example-id="interior-c-layout-delivery"/);
   assert.match(html, /data-layout-profile="su-design-classic"/);
-  assert.match(html, /data-presentation="requirements"[^>]*>.*?用户需求<\/button>/s);
+  assert.match(html, /data-presentation="requirements"[^>]*>.*?需求<\/button>/s);
   assert.match(html, /data-presentation="model"[^>]*>设计稿<\/button>/);
-  assert.match(html, /data-presentation="render"[^>]*>.*?渲染稿<\/button>/s);
-  assert.match(html, /data-presentation-panel="render"[^>]*data-image-viewer[^>]*data-image-rotatable/);
+  assert.match(html, /data-presentation="render"[^>]*>.*?效果图<\/button>/s);
+  assert.match(html, /data-presentation="workflow"/);
+  assert.match(html, /data-presentation-panel="render"[^>]*data-image-viewer/);
+  assert.match(html, /data-render-select="render-living-overview"/);
   assert.match(html, /用户需求与户型依据/);
   assert.match(html, /概念效果不替代施工图或材料实样/);
   assert.match(html, /id="pascal-scene"/);

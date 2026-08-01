@@ -74,20 +74,44 @@
   ],
   "workflow": [
     {
-      "title": "锁定叙事与规格",
-      "description": "明确入口、场景、节奏、画幅和最终交付，排除会穿帮或无法验证的表达。"
+      "title": "项目建档",
+        "description": "确认受众、平台、核心承诺、时长、比例、交付规格和禁止表达。",
+        "surface": "text"
     },
     {
-      "title": "组织镜头证据",
-      "description": "让每个功能主张由真实界面、真实素材或真实产物支撑。"
+      "title": "素材核验",
+        "description": "通过 Page 盘点真实素材、来源、授权状态和证据缺口。",
+        "surface": "page"
     },
     {
-      "title": "完成确定性合成",
-      "description": "建立可重复寻址的时间线，统一字幕、动效、转场和视觉层级。"
+      "title": "叙事简报",
+        "description": "通过 Page 冻结叙事、证据、转折、收束和主张证明方式。",
+        "surface": "page"
     },
     {
-      "title": "检查并导出",
-      "description": "检查关键帧、转场和结尾，核对分辨率、帧率、时长、编码与文件大小。"
+      "title": "风格校准",
+        "description": "通过 Page 确认主风格、选型理由和主动偏离项，并记录辅助风格与视听禁区。",
+        "surface": "page"
+    },
+    {
+      "title": "分镜确认",
+        "description": "通过移动端分镜 Page 逐镜确认目的、素材、时长、字幕和声音。",
+        "surface": "page"
+    },
+    {
+      "title": "粗剪审阅",
+        "description": "通过时间线和关键快照 Page 复核信息、节奏和修改清单。",
+        "surface": "page"
+    },
+    {
+      "title": "成片复核",
+        "description": "在最终 Page 检查成片、音轨、编码、字幕、封面和工程。",
+        "surface": "page"
+    },
+    {
+      "title": "视频交付",
+        "description": "同步最终进度 Page，保留成片、工程、技术检查和 revision。",
+        "surface": "terminal"
     }
   ],
   "deliverables": [
@@ -122,6 +146,7 @@
     "平台压缩、第三方播放器和终端性能可能影响最终播放效果。"
   ],
   "acceptance": [
+      "工作流启动即建立移动端进度 Page，分镜、粗剪和成片均通过 Page 确认。",
     "无旁白播放时，核心产品价值仍能通过画面和字幕理解。",
     "每个功能主张都有真实界面、素材或成果支撑，不出现穿帮内容。",
     "成片规格、素材来源、授权状态和仍需确认的事项清楚可查。"

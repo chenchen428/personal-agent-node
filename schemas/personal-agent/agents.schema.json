@@ -50,6 +50,7 @@
         "description",
         "instructions",
         "profile",
+        "workflow",
         "skills",
         "routing"
       ],
@@ -80,6 +81,9 @@
         },
         "profile": {
           "const": "profile.yaml"
+        },
+        "workflow": {
+          "const": "workflow.json"
         },
         "skills": {
           "type": "array",

@@ -6,12 +6,18 @@ import {
   recordProjectIndexRevision,
   verifyProjectIndex,
 } from './project-index.mjs';
+import { createDemandWorkflow, validateDemandWorkflow } from './demand-workflow-v1.mjs';
 
 export const PROJECT_SCHEMA_VERSION = 2;
 export const PROJECT_STATUSES = new Set([
   'intake',
   'evidence_classified',
   'calibrated',
+  'functional_discovery',
+  'layout_review',
+  'style_calibration',
+  'render_storyboard',
+  'render_review',
   'brief_frozen',
   'concept_options',
   'selected_concept',
@@ -187,6 +193,7 @@ export function validateProjectV2(project, { context } = {}) {
     if (!requirement.source) errors.push(`requirement ${requirement.requirementId}: source is required`);
     if (!plainObject(requirement.verification)) errors.push(`requirement ${requirement.requirementId}: verification must be an object`);
   }
+  for (const error of validateDemandWorkflow(project.demandWorkflow, { evidenceIds, requirementIds })) errors.push(error);
 
   for (const name of ['assumptions', 'unknowns', 'professionalVerifications', 'concepts', 'decisions']) array(project[name], name, errors);
   uniqueIds(project.assumptions, 'assumptionId', 'assumptions', errors);
@@ -312,6 +319,7 @@ export function createProjectFromSeed(seed, context, { now = () => new Date().to
     assumptions: seed.assumptions || [],
     unknowns: seed.unknowns || [],
     professionalVerifications: seed.professionalVerifications || [],
+    demandWorkflow: createDemandWorkflow(seed.demandWorkflow),
     concepts: list(seed.concepts).map((concept) => ({
       ...concept,
       sourcePlanEvidenceId: concept?.sourcePlanEvidenceId || sourcePlanEvidenceId,

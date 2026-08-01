@@ -215,10 +215,17 @@
 
 .agent-delivery-system { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr); gap: 28px 36px; }
 .agent-workflow ol { margin: 0; padding: 0; list-style: none; border-top: 1px solid var(--agent-line); }
-.agent-workflow li { display: grid; grid-template-columns: 38px minmax(0, 1fr); gap: 12px; border-bottom: 1px solid var(--agent-line); padding: 15px 0; }
-.agent-workflow li > span { color: var(--agent-color); font: 600 10px/1.5 var(--mono); }
+.agent-workflow li { border-bottom: 1px solid var(--agent-line); }
+.agent-workflow li button { width: 100%; display: grid; grid-template-columns: 38px minmax(0, 1fr); gap: 12px; border: 0; padding: 15px 10px; background: transparent; color: inherit; text-align: left; cursor: pointer; transition: background .16s ease; }
+.agent-workflow li button:hover, .agent-workflow li button:focus-visible { background: color-mix(in srgb, var(--agent-color) 6%, transparent); outline: none; }
+.agent-workflow li button[aria-pressed="true"] { background: color-mix(in srgb, var(--agent-color) 10%, transparent); box-shadow: inset 3px 0 var(--agent-color); }
+.agent-workflow li button > span { color: var(--agent-color); font: 600 10px/1.5 var(--mono); }
 .agent-workflow strong { font-size: 12px; }
 .agent-workflow p { margin: 5px 0 0; color: var(--agent-muted); font-size: 11px; line-height: 1.6; }
+.agent-workflow-gate { display: grid; gap: 6px; margin-top: 14px; border: 1px solid color-mix(in srgb, var(--agent-color) 22%, var(--agent-line)); border-radius: 9px; padding: 14px; background: color-mix(in srgb, var(--agent-color) 6%, white); }
+.agent-workflow-gate small { color: var(--agent-color); font: 600 9px/1.4 var(--mono); letter-spacing: .08em; }
+.agent-workflow-gate strong { font-size: 12px; }
+.agent-workflow-gate p { margin: 0; }
 .agent-deliverables > div { display: grid; gap: 8px; }
 .agent-deliverables article { display: grid; grid-template-columns: 24px minmax(0, 1fr); gap: 10px; border-bottom: 1px solid var(--agent-line); padding: 10px 0; }
 .agent-deliverables svg { width: 16px; color: var(--agent-color); }

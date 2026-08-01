@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 2,
+  "id": "finance-analysis-workflow",
+  "agentId": "finance-analyst",
+  "version": 2,
+  "goal": "通过文字范围确认和逐级 Page 复核，把分散账单变成移动端可审阅、可追溯的个人账务交付。",
+  "progressPage": { "required": true, "visibility": "private", "mobileFirst": true, "refreshPolicy": "every-transition", "folderPattern": "workflow-{agentId}-{projectKey}" },
+  "interaction": { "maxQuestionsPerTurn": 3, "confirmationPolicy": "surface-aware-required", "revisionPolicy": "optimistic", "feedbackPolicy": "reopen-earliest-affected-stage", "recommendedCheckpoint": null },
+  "stages": [
+    { "id": "intake", "title": "分析建档", "purpose": "用文字确认统计周期、账户、币种、分析问题、隐私边界和交付范围。", "review": { "surface": "text", "artifactKind": null }, "requiredFacts": ["period", "accounts", "currencies", "analysis-question", "privacy-boundary"], "factRules": [], "requiredArtifacts": [], "confirmationPrompt": "请确认分析范围、账户、周期和希望回答的问题。", "next": "source-inventory" },
+    { "id": "source-inventory", "title": "来源盘点", "purpose": "用 Page 登记账单、覆盖周期、账户归属、完整性、重复风险和脱敏边界。", "review": { "surface": "page", "artifactKind": "source-inventory-page" }, "requiredFacts": ["source-completeness", "coverage-gaps", "sensitive-fields"], "factRules": [], "requiredArtifacts": ["source-inventory-page"], "confirmationPrompt": "请在来源盘点 Page 中确认覆盖范围、缺失区间和脱敏字段。", "next": "ledger-normalization" },
+    { "id": "ledger-normalization", "title": "账本归一", "purpose": "通过分页表格 Page 展示日期、金额、币种、账户、交易方和原始来源映射。", "review": { "surface": "page", "artifactKind": "normalized-ledger-page" }, "requiredFacts": ["normalization-rules", "reconciliation-status", "duplicate-policy"], "factRules": [], "requiredArtifacts": ["normalized-ledger-page"], "confirmationPrompt": "请在账本 Page 中确认归一、平衡、重复和退款处理规则。", "next": "classification-review" },
+    { "id": "classification-review", "title": "分类确认", "purpose": "用 Page 区分用户确认、规则推断和待确认交易，不强行归类未知项。", "review": { "surface": "page", "artifactKind": "classification-review-page" }, "requiredFacts": ["classification-rules", "unresolved-transactions", "confirmation-status"], "factRules": [], "requiredArtifacts": ["classification-review-page"], "confirmationPrompt": "请在分类 Page 中确认规则和关键待确认交易。", "next": "analysis-plan" },
+    { "id": "analysis-plan", "title": "分析口径", "purpose": "通过 Page 确认指标、比较基线、异常阈值及一次性和持续性变化。", "review": { "surface": "page", "artifactKind": "analysis-plan-page" }, "requiredFacts": ["metrics", "comparison-basis", "exception-thresholds"], "factRules": [], "requiredArtifacts": ["analysis-plan-page"], "confirmationPrompt": "请在分析口径 Page 中确认指标、比较周期和异常规则。", "next": "findings-review" },
+    { "id": "findings-review", "title": "发现复核", "purpose": "用图表和逐笔证据 Page 解释主要变化、异常、订阅和退款进度。", "review": { "surface": "page", "artifactKind": "findings-review-page" }, "requiredFacts": ["confirmed-findings", "exceptions", "action-priorities"], "factRules": [], "requiredArtifacts": ["findings-review-page"], "confirmationPrompt": "请在发现复核 Page 中确认主要结论、例外和行动优先级。", "next": "delivery-review" },
+    { "id": "delivery-review", "title": "报告复核", "purpose": "在最终 Page 检查数字追溯、脱敏、专业边界、表格一致性和待办。", "review": { "surface": "page", "artifactKind": "finance-delivery-page" }, "requiredFacts": ["redaction-status", "professional-boundary", "visual-acceptance-owner"], "factRules": [], "requiredArtifacts": ["finance-delivery-page"], "confirmationPrompt": "请确认最终分析 Page 的范围、数字和脱敏结果。", "next": "delivered" },
+    { "id": "delivered", "title": "分析交付", "purpose": "保持最终 Page 可访问，并保留账本、分类和分析口径 revision。", "review": { "surface": "terminal", "artifactKind": null }, "requiredFacts": [], "factRules": [], "requiredArtifacts": [], "confirmationPrompt": null, "next": null }
+  ]
+}

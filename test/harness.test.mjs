@@ -20,7 +20,7 @@ function resolveBashCommand() {
 }
 
 test('customer Harness contains architecture registries and Agent guidance', () => {
-  for (const file of ['AGENTS.md', 'agents', 'docs/adr/0001-node-product-boundary-freeze.md', 'registry/agents.json', 'registry/projects.json', 'registry/skills.json', 'registry/behavior-baselines.json', 'registry/capabilities.json', 'registry/routes.json', 'registry/extensions.json', 'registry/commands.json', 'registry/product-development.json', 'schemas/personal-agent/agents.schema.json', 'schemas/personal-agent/agent-profile.schema.json', 'schemas/personal-agent/product-development.schema.json', 'scripts/agent-guard.mjs', 'workflows/project-iteration.md', 'workflows/skill-iteration.md', 'workflows/product-development.md', 'skills/personal-product-development/references/product-development.md']) assert.equal(fs.existsSync(path.join(root, file)), true, file);
+  for (const file of ['AGENTS.md', 'agents', 'core/agent/src/agents/workflow.js', 'core/agent/src/agents/workflow-page.js', 'docs/adr/0001-node-product-boundary-freeze.md', 'docs/adr/0012-specialist-agent-workflow-contract.md', 'registry/agents.json', 'registry/projects.json', 'registry/skills.json', 'registry/behavior-baselines.json', 'registry/capabilities.json', 'registry/routes.json', 'registry/extensions.json', 'registry/commands.json', 'registry/product-development.json', 'schemas/personal-agent/agents.schema.json', 'schemas/personal-agent/agent-profile.schema.json', 'schemas/personal-agent/agent-workflow.schema.json', 'schemas/personal-agent/product-development.schema.json', 'scripts/agent-guard.mjs', 'scripts/specialist-workflow.mjs', 'workflows/project-iteration.md', 'workflows/skill-iteration.md', 'workflows/product-development.md', 'skills/personal-product-development/references/product-development.md']) assert.equal(fs.existsSync(path.join(root, file)), true, file);
   const developerGuide = fs.readFileSync(path.join(root, 'AGENTS.md'), 'utf8');
   const customerGuide = fs.readFileSync(path.join(root, 'workspace/AGENTS.md'), 'utf8');
   for (const guide of [developerGuide, customerGuide]) {
@@ -47,7 +47,7 @@ test('specialist Agent registry ships five complete public-safe source profiles'
   ]);
   for (const entry of registry.agents) {
     const directory = path.join(root, entry.directory);
-    for (const relative of ['agent.yaml', 'AGENT.md', 'profile.yaml', 'examples/featured-output.json']) {
+    for (const relative of ['agent.yaml', 'AGENT.md', 'profile.yaml', 'workflow.json', 'examples/featured-output.json']) {
       assert.equal(fs.existsSync(path.join(directory, relative)), true, `${entry.id}/${relative}`);
     }
   }

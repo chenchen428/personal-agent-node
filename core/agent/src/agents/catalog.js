@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
+import { validateSpecialistWorkflow } from "./workflow.js";
 
 const AGENT_ID_PATTERN = /^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/;
 const PROJECT_KEY_PATTERN = /^project_[a-z0-9][a-z0-9_-]{5,95}$/;
@@ -114,14 +115,16 @@ function loadAgentRecord(root, entry, id) {
   try {
     const agentPath = path.join(directory, "agent.yaml");
     const profilePath = path.join(directory, "profile.yaml");
+    const workflowPath = path.join(directory, "workflow.json");
     const instructionsPath = path.join(directory, "AGENT.md");
-    for (const filePath of [agentPath, profilePath, instructionsPath]) {
+    for (const filePath of [agentPath, profilePath, workflowPath, instructionsPath]) {
       if (!fs.statSync(filePath, { throwIfNoEntry: false })?.isFile()) {
         throw new Error(`missing ${path.basename(filePath)}`);
       }
     }
     const agent = parseYaml(fs.readFileSync(agentPath, "utf8"));
     const profile = parseYaml(fs.readFileSync(profilePath, "utf8"));
+    const workflow = parseYaml(fs.readFileSync(workflowPath, "utf8"));
     const instructions = fs.readFileSync(instructionsPath, "utf8").trim();
     if (normalizeAgentId(agent.id) !== id) throw new Error("agent.yaml id mismatch");
     const version = Number(agent.version);
@@ -129,6 +132,8 @@ function loadAgentRecord(root, entry, id) {
     if (Number(agent.schemaVersion) !== 1 || Number(profile.schemaVersion) !== 1) {
       throw new Error("unsupported Agent schema version");
     }
+    const workflowValidation = validateSpecialistWorkflow(workflow, { agentId: id });
+    if (!workflowValidation.ok || agent.workflow !== "workflow.json") throw new Error("invalid Agent workflow");
     if (!instructions) throw new Error("empty Agent instructions");
     const skills = Array.isArray(agent.skills) ? agent.skills.map((skill) => String(skill).trim()).filter(Boolean) : [];
     if (!skills.length || skills.some((skill) => !hasSkill(root, skill))) throw new Error("unknown Agent Skill");
@@ -155,6 +160,7 @@ function loadAgentRecord(root, entry, id) {
         skills,
         instructions,
         profile: clone(profile),
+        workflow: clone(workflow),
       } : null,
     };
   } catch {

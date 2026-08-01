@@ -476,22 +476,29 @@ test("pages template CLI is retired", async () => {
   });
 });
 
-test("pages publish sends HTML and explicit device thumbnails as one Page contract", async (t) => {
+test("pages publish uploads referenced assets individually before the Page contract", async (t) => {
   const working = fs.mkdtempSync(path.join(os.tmpdir(), "pa-cli-pages-"));
   fs.writeFileSync(path.join(working, "index.html"), "<h1>CLI Page</h1>");
+  fs.mkdirSync(path.join(working, "media"));
+  fs.writeFileSync(path.join(working, "media", "room.webp"), Buffer.from("room-image"));
   fs.writeFileSync(path.join(working, "desktop.png"), createPageThumbnailPng());
   fs.writeFileSync(path.join(working, "mobile.png"), createPageThumbnailPng(750, 1200));
-  let received = null;
+  const received = [];
   const server = http.createServer(async (request, response) => {
     const chunks = [];
     for await (const chunk of request) chunks.push(chunk);
-    received = { url: request.url, body: JSON.parse(Buffer.concat(chunks).toString("utf8")) };
+    const body = JSON.parse(Buffer.concat(chunks).toString("utf8"));
+    received.push({ url: request.url, body });
     response.writeHead(200, { "content-type": "application/json" });
+    if (request.url === "/api/pages/upload") {
+      response.end(JSON.stringify({ ok: true, asset: { url: `/public/uploads/${body.folder}/${body.fileName}` } }));
+      return;
+    }
     response.end(JSON.stringify({
       ok: true,
       asset: {
         url: "/public/uploads/cli-page/index.html",
-        page: { pageId: "public-cli-page", title: received.body.title, thumbnails: { desktop: { fileName: received.body.desktopThumbnail.fileName }, mobile: { fileName: received.body.mobileThumbnail.fileName } } },
+        page: { pageId: "public-cli-page", title: body.title, thumbnails: { desktop: { fileName: body.desktopThumbnail.fileName }, mobile: { fileName: body.mobileThumbnail.fileName } } },
       },
       access: {
         internalUrl: "/public/uploads/cli-page/index.html",
@@ -521,11 +528,21 @@ test("pages publish sends HTML and explicit device thumbnails as one Page contra
     env: { ...process.env, OPEN_AGENT_BRIDGE_API_BASE: `http://127.0.0.1:${address.port}`, OPEN_AGENT_BRIDGE_API_TOKEN: "cli-test-token" },
   });
 
-  assert.equal(received.url, "/api/pages/publish");
-  assert.equal(received.body.folder, "cli-page");
-  assert.equal(received.body.desktopThumbnail.alt, "CLI Page desktop overview");
-  assert.equal(received.body.mobileThumbnail.alt, "CLI Page mobile overview");
-  assert.ok(Buffer.from(received.body.desktopThumbnail.content, "base64").subarray(1, 4).equals(Buffer.from("PNG")));
+  assert.deepEqual(received.map((request) => request.url), ["/api/pages/upload", "/api/pages/upload", "/api/pages/upload", "/api/pages/publish"]);
+  assert.equal(received[0].body.folder, "cli-page/media");
+  assert.equal(received[0].body.fileName, "room.webp");
+  assert.equal(Buffer.from(received[0].body.content, "base64").toString("utf8"), "room-image");
+  assert.equal(received[1].body.fileName, "page-thumbnail-desktop.png");
+  assert.equal(received[2].body.fileName, "page-thumbnail-mobile.png");
+  assert.ok(Buffer.from(received[1].body.content, "base64").subarray(1, 4).equals(Buffer.from("PNG")));
+  assert.ok(Buffer.from(received[2].body.content, "base64").subarray(1, 4).equals(Buffer.from("PNG")));
+  assert.equal(received[3].body.folder, "cli-page");
+  assert.deepEqual(received[3].body.assetPaths, ["media/room.webp"]);
+  assert.equal("assets" in received[3].body, false);
+  assert.equal(received[3].body.desktopThumbnail.alt, "CLI Page desktop overview");
+  assert.equal(received[3].body.mobileThumbnail.alt, "CLI Page mobile overview");
+  assert.equal("content" in received[3].body.desktopThumbnail, false);
+  assert.equal("content" in received[3].body.mobileThumbnail, false);
   const output = JSON.parse(stdout);
   assert.equal(output.page.pageId, "public-cli-page");
   assert.equal(output.page.thumbnails.mobile.fileName, "page-thumbnail-mobile.png");
@@ -538,11 +555,11 @@ test("pages publish returns an explicit notice when no managed domain is accessi
   const working = fs.mkdtempSync(path.join(os.tmpdir(), "pa-cli-pages-no-domain-"));
   const html = "<!doctype html><html><body><main>CLI Page</main></body></html>";
   fs.writeFileSync(path.join(working, "index.html"), html);
-  let received = null;
+  const received = [];
   const server = http.createServer(async (request, response) => {
     const chunks = [];
     for await (const chunk of request) chunks.push(chunk);
-    received = JSON.parse(Buffer.concat(chunks).toString("utf8"));
+    received.push(JSON.parse(Buffer.concat(chunks).toString("utf8")));
     response.writeHead(200, { "content-type": "application/json" });
     response.end(JSON.stringify({
       ok: true,
@@ -575,12 +592,14 @@ test("pages publish returns an explicit notice when no managed domain is accessi
     internalUrl: "/public/uploads/cli-page/index.html",
     linkNotice: "暂未配置可访问的域名链接，无法直接访问页面",
   });
-  const desktop = Buffer.from(received.desktopThumbnail.content, "base64");
-  const mobile = Buffer.from(received.mobileThumbnail.content, "base64");
+  const desktop = Buffer.from(received[0].content, "base64");
+  const mobile = Buffer.from(received[1].content, "base64");
   assert.ok(desktop.subarray(1, 4).equals(Buffer.from("PNG")));
   assert.ok(mobile.subarray(1, 4).equals(Buffer.from("PNG")));
   assert.equal(desktop.equals(mobile), false);
-  assert.equal("template" in received, false);
+  assert.equal("template" in received[2], false);
+  assert.equal("content" in received[2].desktopThumbnail, false);
+  assert.equal("content" in received[2].mobileThumbnail, false);
 });
 
 test("pages publish rejects the retired template option before upload", async () => {

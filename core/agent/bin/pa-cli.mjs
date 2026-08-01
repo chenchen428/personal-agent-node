@@ -420,6 +420,11 @@ try {
     }
     const resolved = path.resolve(file);
     if (!/\.html?$/i.test(resolved)) throw new Error("pages publish requires an HTML file");
+    const bundleRoot = path.resolve(args.bundle || path.dirname(resolved));
+    const relativeEntry = path.relative(bundleRoot, resolved);
+    if (!relativeEntry || relativeEntry.startsWith(`..${path.sep}`) || relativeEntry === ".." || path.isAbsolute(relativeEntry)) {
+      throw new Error("Page entry must stay inside --bundle or its own directory");
+    }
     const content = fs.readFileSync(resolved);
     const title = args.title || path.basename(resolved, path.extname(resolved));
     const summary = args.summary || "";
@@ -441,6 +446,27 @@ try {
       desktopThumbnail = generated.desktop;
       mobileThumbnail = generated.mobile;
     }
+    const bundleAssets = discoverPageBundleAssets(bundleRoot, resolved, [desktopThumbnailFile, mobileThumbnailFile].filter(Boolean).map((entry) => path.resolve(entry)));
+    const assetPaths = await uploadPageBundleAssets(bundleAssets, {
+      folder,
+      privatePublication: args.private === true,
+    });
+    const desktopThumbnailName = args["desktop-thumbnail-name"] || "page-thumbnail-desktop.png";
+    const mobileThumbnailName = args["mobile-thumbnail-name"] || "page-thumbnail-mobile.png";
+    await uploadPageFile({
+      content: desktopThumbnail,
+      relativePath: desktopThumbnailName,
+      mimeType: "image/png",
+      folder,
+      privatePublication: args.private === true,
+    });
+    await uploadPageFile({
+      content: mobileThumbnail,
+      relativePath: mobileThumbnailName,
+      mimeType: "image/png",
+      folder,
+      privatePublication: args.private === true,
+    });
     const result = await post(args.private ? "/api/publications/publish" : "/api/pages/publish", {
       fileName: args.name || path.basename(resolved),
       content: content.toString("base64"),
@@ -451,18 +477,13 @@ try {
       overwrite: Boolean(args.overwrite),
       title,
       summary,
+      assetPaths,
       desktopThumbnail: {
-        fileName: args["desktop-thumbnail-name"] || "page-thumbnail-desktop.png",
-        content: desktopThumbnail.toString("base64"),
-        encoding: "base64",
-        mimeType: "image/png",
+        fileName: desktopThumbnailName,
         alt: args["desktop-thumbnail-alt"] || "",
       },
       mobileThumbnail: {
-        fileName: args["mobile-thumbnail-name"] || "page-thumbnail-mobile.png",
-        content: mobileThumbnail.toString("base64"),
-        encoding: "base64",
-        mimeType: "image/png",
+        fileName: mobileThumbnailName,
         alt: args["mobile-thumbnail-alt"] || "",
       },
     });
@@ -866,7 +887,7 @@ function help() {
   pa-cli file gc [--dry-run] [--execute] [--json]
   pa-cli file verify-storage [--execute] [--json]
   pa-cli file reconcile --root <allowlisted-dir> --source <source> --visibility public|private [--prefix <path>] [--exclude-manifest <json>] [--execute] [--json]
-  pa-cli pages publish --file <index.html> --folder <stable-name> [--desktop-thumbnail <desktop.png> --mobile-thumbnail <mobile.png>] [--title <text>] [--summary <text>] [--desktop-thumbnail-alt <text>] [--mobile-thumbnail-alt <text>] [--private] [--overwrite] [--json]
+  pa-cli pages publish --file <index.html> --folder <stable-name> [--bundle <page-directory>] [--desktop-thumbnail <desktop.png> --mobile-thumbnail <mobile.png>] [--title <text>] [--summary <text>] [--desktop-thumbnail-alt <text>] [--mobile-thumbnail-alt <text>] [--private] [--overwrite] [--json]
   pa-cli pages upload --file <asset.css|asset.js|image> [--folder <name>] [--private] [--json]`);
 }
 
@@ -884,6 +905,71 @@ function readResourceExclusions(filePath) {
     throw new Error("exclude manifest must contain a files array of relative paths");
   }
   return files;
+}
+
+function discoverPageBundleAssets(bundleRoot, entryFile, excludedFiles = []) {
+  const assets = [];
+  const excluded = new Set([entryFile, ...excludedFiles]);
+  const walk = (directory) => {
+    for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
+      const absolute = path.join(directory, entry.name);
+      if (entry.isSymbolicLink()) throw new Error("Page bundle must not contain symbolic links");
+      if (entry.isDirectory()) walk(absolute);
+      else if (entry.isFile() && !excluded.has(absolute) && !entry.name.startsWith(".")) {
+        const relativePath = path.relative(bundleRoot, absolute).split(path.sep).join("/");
+        if (!relativePath || relativePath.split("/").some((segment) => !segment || segment === "." || segment === "..")) throw new Error("Page bundle contains an unsafe asset path");
+        assets.push({ relativePath, absolutePath: absolute, mimeType: pageBundleMime(absolute) });
+      }
+    }
+  };
+  walk(bundleRoot);
+  if (assets.length > 256) throw new Error("Page bundle exceeds 256 assets");
+  return assets.sort((a, b) => a.relativePath.localeCompare(b.relativePath));
+}
+
+async function uploadPageBundleAssets(assets, { folder, privatePublication }) {
+  const uploaded = [];
+  for (const asset of assets) {
+    await uploadPageFile({
+      content: fs.readFileSync(asset.absolutePath),
+      relativePath: asset.relativePath,
+      mimeType: asset.mimeType,
+      folder,
+      privatePublication,
+    });
+    uploaded.push(asset.relativePath);
+  }
+  return uploaded;
+}
+
+async function uploadPageFile({ content, relativePath, mimeType, folder, privatePublication }) {
+  const segments = relativePath.split("/");
+  const fileName = privatePublication ? relativePath : segments.at(-1);
+  const targetFolder = privatePublication
+    ? folder
+    : [folder, ...segments.slice(0, -1)].join("/");
+  await post(privatePublication ? "/api/publications/upload" : "/api/pages/upload", {
+    fileName,
+    content: content.toString("base64"),
+    encoding: "base64",
+    folder: targetFolder,
+    publicationId: folder,
+    mimeType,
+    overwrite: true,
+  });
+}
+
+function pageBundleMime(file) {
+  return ({
+    ".css": "text/css; charset=utf-8",
+    ".js": "text/javascript; charset=utf-8",
+    ".json": "application/json; charset=utf-8",
+    ".png": "image/png",
+    ".jpg": "image/jpeg",
+    ".jpeg": "image/jpeg",
+    ".webp": "image/webp",
+    ".svg": "image/svg+xml",
+  })[path.extname(file).toLowerCase()] || "application/octet-stream";
 }
 
 function loadServiceEnv(filePath) {

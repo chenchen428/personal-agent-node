@@ -5,6 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { generateProfessionalPage, renderProjectCoverSvg } from './generate-page-v2.mjs';
+import { advanceProjectDemandWorkflow } from './demand-workflow-project.mjs';
 import { compileProjectScene } from './scene-v2.mjs';
 import {
   canonicalJson,
@@ -12,6 +13,7 @@ import {
   readProject,
   selectedConcept,
   sha256,
+  writeProjectRevision,
 } from './project-v2.mjs';
 import { loadInteriorDeliveryContract } from './page-assets.mjs';
 
@@ -21,6 +23,7 @@ const repositoryRoot = path.resolve(skillRoot, '..', '..');
 const exampleRoot = path.join(skillRoot, 'examples', 'professional-agent-example');
 const targetRoot = path.join(repositoryRoot, 'core', 'app', 'public', 'assets', 'agents', 'interior-designer', 'featured');
 const fixedTime = '2026-07-27T00:00:00.000Z';
+const generatedImageRoot = path.join('evidence', 'renders');
 const DELIVERY_QUALITY_FLOOR = Object.freeze({
   rooms: 12,
   furniture: 30,
@@ -47,18 +50,58 @@ export async function buildAgentDeliveryExample({ check = false } = {}) {
     const seedBytes = fs.readFileSync(path.join(exampleRoot, 'seed.json'));
     const sourceBytes = fs.readFileSync(path.join(exampleRoot, 'source-plan.png'));
     const annotationBytes = fs.readFileSync(path.join(exampleRoot, 'agent-annotation.png'));
-    const conceptRenderBytes = fs.readFileSync(path.join(exampleRoot, 'concept-render.png'));
     const seed = JSON.parse(seedBytes.toString('utf8'));
-    const conceptRenderEvidence = seed.evidence.find((entry) => entry.classification === 'concept-render');
-    if (!conceptRenderEvidence || conceptRenderEvidence.contentHash !== sha256(conceptRenderBytes)) {
-      throw new Error('representative concept render does not match the governed seed');
+    const promptSetBytes = fs.readFileSync(path.join(exampleRoot, 'render-prompts.json'));
+    const promptSet = JSON.parse(promptSetBytes.toString('utf8'));
+    const workflowEventsBytes = fs.readFileSync(path.join(exampleRoot, 'workflow-events.json'));
+    const workflowEvents = JSON.parse(workflowEventsBytes.toString('utf8'));
+    const renderEvidenceById = new Map(seed.evidence.filter((entry) => entry.classification === 'concept-render').map((entry) => [entry.evidenceId, entry]));
+    seed.evidence = seed.evidence.filter((entry) => entry.classification !== 'concept-render');
+    seed.demandWorkflow = {
+      ...seed.demandWorkflow,
+      renderSet: [],
+    };
+    if (renderEvidenceById.size !== promptSet.renders.length) throw new Error('representative render evidence and prompt set differ');
+    for (const render of promptSet.renders) {
+      const evidence = [...renderEvidenceById.values()].find((entry) => entry.contentHash === render.imageSha256);
+      const bytes = fs.readFileSync(path.join(exampleRoot, render.file));
+      if (!evidence || sha256(bytes) !== render.imageSha256 || evidence.generation?.promptSha256 !== render.promptSha256) {
+        throw new Error(`representative render does not match governed prompt set: ${render.renderId}`);
+      }
     }
     const initialized = initializeProject(projectDir, seed, context, { now: () => fixedTime });
     fs.copyFileSync(path.join(exampleRoot, 'source-plan.png'), path.join(projectDir, 'evidence', 'source-plan.png'));
     fs.copyFileSync(path.join(exampleRoot, 'agent-annotation.png'), path.join(projectDir, 'evidence', 'agent-annotation.png'));
-    fs.copyFileSync(path.join(exampleRoot, 'concept-render.png'), path.join(projectDir, 'evidence', 'concept-render.png'));
+    let workflowProject = initialized.project;
+    for (const rawEvent of workflowEvents) {
+      const event = structuredClone(rawEvent);
+      if (event.targetStage === 'brief-frozen') {
+        const imported = [];
+        for (const render of event.patch.renderSet) {
+          const source = renderEvidenceById.get(render.evidenceId);
+          const relativePath = path.join(generatedImageRoot, `${render.renderId}.webp`).replaceAll('\\', '/');
+          const target = path.join(projectDir, relativePath);
+          fs.mkdirSync(path.dirname(target), { recursive: true, mode: 0o700 });
+          await writeDeliveryRender(path.join(exampleRoot, promptSet.renders.find((entry) => entry.renderId === render.renderId).file), target);
+          imported.push({ ...source, relativePath, contentHash: sha256(fs.readFileSync(target)) });
+        }
+        const current = readProject(projectDir, context).project;
+        const importedProject = writeProjectRevision(projectDir, current, {
+          ...structuredClone(current),
+          baseRevision: current.revision,
+          evidence: [...current.evidence, ...imported],
+        }, { now: () => fixedTime });
+        workflowProject = importedProject;
+      }
+      const result = advanceProjectDemandWorkflow(projectDir, context, event, {
+        baseRevision: workflowProject.revision,
+        now: () => fixedTime,
+        allowLegacyRepresentative: true,
+      });
+      workflowProject = result.project;
+    }
     const compiled = await compileProjectScene(projectDir, context, {
-      baseRevision: initialized.project.revision,
+      baseRevision: workflowProject.revision,
       now: () => fixedTime,
     });
     const delivery = loadInteriorDeliveryContract(skillRoot);
@@ -70,8 +113,6 @@ export async function buildAgentDeliveryExample({ check = false } = {}) {
       delivery,
     });
     normalizeGeneratedHtml(path.join(output, 'index.html'));
-    fs.copyFileSync(path.join(exampleRoot, 'source-plan.png'), path.join(output, 'source-plan.png'));
-    fs.copyFileSync(path.join(exampleRoot, 'agent-annotation.png'), path.join(output, 'agent-annotation.png'));
     fs.writeFileSync(path.join(output, 'cover.svg'), renderProjectCoverSvg(selectedConcept(compiled.project)), { mode: 0o600 });
     const manifestPath = path.join(output, 'manifest.json');
     const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
@@ -79,21 +120,34 @@ export async function buildAgentDeliveryExample({ check = false } = {}) {
       kind: 'native-governed-pascal-v2-project',
       pipeline: [
         'project-v2-seed',
+        'demand-workflow-v1',
+        'style-calibration',
+        'render-storyboard',
         'pascal-scene-compile',
         'professional-quality-audit',
         'page-v2-generate',
         'artifact-hash-verify',
       ],
       seedSha256: sha256(seedBytes),
+      workflowEventsSha256: sha256(workflowEventsBytes),
+      renderPromptSetSha256: sha256(promptSetBytes),
       evidenceSha256: sha256(sourceBytes),
       modelBasisSha256: compiled.scene.modelBasis.sha256,
       annotationSha256: sha256(annotationBytes),
-      conceptRender: {
-        generator: conceptRenderEvidence.generation.generator,
-        imageSha256: conceptRenderEvidence.contentHash,
-        referenceImageSha256: conceptRenderEvidence.generation.referenceImageSha256,
-        promptSha256: conceptRenderEvidence.generation.promptSha256,
+      demandWorkflow: {
+        version: compiled.project.demandWorkflow.version,
+        stage: compiled.project.demandWorkflow.stage,
+        transitionCount: compiled.project.demandWorkflow.transitions.length,
+        confirmationCount: compiled.project.demandWorkflow.confirmations.length,
       },
+      renderSet: promptSet.renders.map((render) => ({
+        renderId: render.renderId,
+        generator: promptSet.generator,
+        sourceImageSha256: render.imageSha256,
+        deliveryImageSha256: compiled.project.evidence.find((entry) => entry.evidenceId === `evidence-${render.renderId}`)?.contentHash,
+        referenceSetSha256: promptSet.referenceSetSha256,
+        promptSha256: render.promptSha256,
+      })),
       projectSha256: sha256(canonicalJson(readProject(projectDir, context).project)),
       sceneSha256: compiled.scene.sceneHash,
       auditSha256: compiled.project.quality.sha256,
@@ -103,8 +157,6 @@ export async function buildAgentDeliveryExample({ check = false } = {}) {
     };
     manifest.files['index.html'] = fileRecord(path.join(output, 'index.html'));
     manifest.files['cover.svg'] = fileRecord(path.join(output, 'cover.svg'));
-    manifest.files['source-plan.png'] = fileRecord(path.join(output, 'source-plan.png'));
-    manifest.files['agent-annotation.png'] = fileRecord(path.join(output, 'agent-annotation.png'));
     fs.writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`, { mode: 0o600 });
     const verification = verifyAgentDeliveryExample(output);
     if (check) {
@@ -141,7 +193,7 @@ export function verifyAgentDeliveryExample(directory = targetRoot) {
     throw new Error('representative interior-designer delivery still carries retired template provenance');
   }
   if (!Array.isArray(manifest.source.pipeline)
-    || manifest.source.pipeline.join('>') !== 'project-v2-seed>pascal-scene-compile>professional-quality-audit>page-v2-generate>artifact-hash-verify') {
+    || manifest.source.pipeline.join('>') !== 'project-v2-seed>demand-workflow-v1>style-calibration>render-storyboard>pascal-scene-compile>professional-quality-audit>page-v2-generate>artifact-hash-verify') {
     throw new Error('representative interior-designer delivery pipeline is incomplete');
   }
   if (manifest.source.renderProfile !== 'professional-mesh-ink') {
@@ -150,13 +202,17 @@ export function verifyAgentDeliveryExample(directory = targetRoot) {
   if (manifest.source.layoutProfile !== 'su-design-classic') {
     throw new Error('representative interior-designer delivery classic SU layout profile is missing');
   }
-  const render = manifest.source.conceptRender;
-  if (render?.generator !== 'imagegen'
-    || !/^[a-f0-9]{64}$/.test(render.imageSha256 || '')
-    || !/^[a-f0-9]{64}$/.test(render.referenceImageSha256 || '')
-    || !/^[a-f0-9]{64}$/.test(render.promptSha256 || '')) {
-    throw new Error('representative interior-designer delivery concept render provenance is missing');
+  const renders = manifest.source.renderSet;
+  if (!Array.isArray(renders) || renders.length < 4 || renders.some((render) => render?.generator !== 'imagegen'
+    || !/^[a-f0-9]{64}$/.test(render.sourceImageSha256 || '')
+    || !/^[a-f0-9]{64}$/.test(render.deliveryImageSha256 || '')
+    || !/^[a-f0-9]{64}$/.test(render.referenceSetSha256 || '')
+    || !/^[a-f0-9]{64}$/.test(render.promptSha256 || ''))) {
+    throw new Error('representative interior-designer delivery render-set provenance is missing');
   }
+  if (manifest.source.demandWorkflow?.stage !== 'delivered'
+    || manifest.source.demandWorkflow?.transitionCount !== 7
+    || manifest.source.demandWorkflow?.confirmationCount !== 7) throw new Error('representative demand workflow is incomplete');
   for (const [name, expected] of Object.entries(manifest.files || {})) {
     const target = path.join(directory, name);
     if (!fs.existsSync(target)) throw new Error(`representative interior-designer delivery is missing ${name}`);
@@ -174,21 +230,27 @@ export function verifyAgentDeliveryExample(directory = targetRoot) {
     'data-presentation="requirements"',
     'data-presentation="model"',
     'data-presentation="render"',
+    'data-presentation="workflow"',
     'data-presentation-panel="render"',
-    'data-image-rotatable',
+    'data-render-select=',
     '用户需求与户型依据',
-    '对应渲染稿',
+    '历史案例的需求到设计稿投影',
     '概念效果不替代施工图或材料实样',
   ]) {
     if (!html.includes(marker)) throw new Error(`representative interior-designer delivery is missing ${marker}`);
   }
-  const expectedEmbeddedImages = [
-    ['基于当前 SU 设计稿生成的概念渲染稿', render.imageSha256],
-    ['用户上传并脱敏的原始户型图', manifest.files['source-plan.png']?.sha256],
-    ['Agent 上传的户型分析标注图', manifest.files['agent-annotation.png']?.sha256],
+  const expectedReferencedImages = [
+    ...renders.map((render, index) => [[
+      '公共区全景概念效果图',
+      '客厅媒体墙概念效果图',
+      '餐厨衔接概念效果图',
+      '主卧氛围概念效果图',
+    ][index], render.deliveryImageSha256]),
+    ['用户上传并脱敏的原始户型图', manifest.files['media/source-plan.png']?.sha256],
+    ['Agent 上传的户型分析标注图', manifest.files['media/agent-annotation.png']?.sha256],
   ];
-  for (const [alt, expectedHash] of expectedEmbeddedImages) {
-    if (embeddedPngHash(html, alt) !== expectedHash) throw new Error(`representative interior-designer delivery embedded image hash mismatch: ${alt}`);
+  for (const [alt, expectedHash] of expectedReferencedImages) {
+    if (referencedImageHash(html, alt, directory) !== expectedHash) throw new Error(`representative interior-designer delivery image reference hash mismatch: ${alt}`);
   }
   const scene = JSON.parse(fs.readFileSync(path.join(directory, 'scene.json'), 'utf8'));
   const nodes = Object.values(scene.scene?.nodes || {});
@@ -242,10 +304,17 @@ function fileRecord(file) {
   };
 }
 
-function embeddedPngHash(html, alt) {
+async function writeDeliveryRender(source, target) {
+  const { default: sharp } = await import('sharp');
+  await sharp(source).resize({ width: 1440, height: 810, fit: 'cover' }).webp({ quality: 78, effort: 6 }).toFile(target);
+}
+
+function referencedImageHash(html, alt, directory) {
   const tag = [...html.matchAll(/<img\b[^>]*>/g)].map(([value]) => value).find((value) => value.includes(`alt="${alt}"`));
-  const payload = tag?.match(/src="data:image\/png;base64,([^"]+)"/)?.[1];
-  return payload ? sha256(Buffer.from(payload, 'base64')) : '';
+  const src = tag?.match(/src="([^"]+)"/)?.[1] || '';
+  if (src.startsWith('data:image/')) return '';
+  const target = src && !src.includes('..') ? path.join(directory, src) : '';
+  return target && fs.existsSync(target) ? sha256(fs.readFileSync(target)) : '';
 }
 
 function compareDirectories(actualRoot, expectedRoot) {

@@ -29,7 +29,7 @@ const skillRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..
 const enginePolicy = loadInteriorEnginePolicy();
 const commandStartedAt = Date.now();
 const [command = 'help', maybeSubcommand, ...rest] = process.argv.slice(2);
-const hasSubcommand = command === 'project' || command === 'scene';
+const hasSubcommand = command === 'project' || command === 'scene' || command === 'workflow';
 const subcommand = hasSubcommand ? maybeSubcommand : null;
 const argv = hasSubcommand ? rest : [maybeSubcommand, ...rest].filter((value) => value !== undefined);
 const options = parse(argv);
@@ -37,6 +37,7 @@ const options = parse(argv);
 try {
   if (command === 'project') await projectCommand();
   else if (command === 'scene') await sceneCommand();
+  else if (command === 'workflow') await workflowCommand();
   else if (command === 'page') await pageCommand();
   else emitHelp();
 } catch (error) {
@@ -143,6 +144,14 @@ async function sceneCommand() {
   if (result.project.quality.blockingCount > 0) process.exitCode = 5;
 }
 
+async function workflowCommand() {
+  throw projectError(
+    'LEGACY_WORKFLOW_RETIRED',
+    'interior workflow advance is retired; use scripts/specialist-workflow.mjs with agents/interior-designer/workflow.json so progress Pages and Page-bound confirmations are enforced',
+    2,
+  );
+}
+
 async function pageCommand() {
   if (options.template) throw projectError('INVALID_ARGUMENT', '--template is retired; Page generation uses the current Agent delivery contract', 2);
   const delivery = loadInteriorDeliveryContract(skillRoot);
@@ -211,6 +220,7 @@ function emitHelp() {
   process.stdout.write([
     'Usage:',
     '  interior project <init|validate|audit|recover> --project-dir <space-project-dir>',
+    '  Workflow: use scripts/specialist-workflow.mjs --agent interior-designer (Page-led v2 contract)',
     '  interior scene <compile|apply|undo|redo> --project-dir <space-project-dir> --base-revision <n>',
     '  interior page --project-dir <space-project-dir> --output <project-derived-page-dir>',
     '',

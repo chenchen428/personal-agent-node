@@ -6,6 +6,8 @@ import { authorizationSettings, readAuthorizationMode, withAuthorizationCliFlag 
 import { dailyTokenLimitError, dailyTokenLimitExceeded, readDailyTokenLimit } from "../agent/daily-token-limit.ts";
 import { readCodexRuntimeSettings } from "../agent/codex-runtime-settings.ts";
 import { createAgentCatalog } from "../agents/catalog.js";
+import { specialistWorkflowGuide } from "../agents/workflow.js";
+import { initializeSpecialistWorkflowRuntime, specialistWorkflowRuntimeGuide } from "../agents/workflow-runtime.js";
 import { buildActivityResultHook, containsActivityControl, executeActivityCommand, isStreamingActivityControl, processActivityControl, stripActivityControls } from "../activity/control.js";
 import { config } from "../config.js";
 import { containsFinalReplyControl, isStreamingFinalReplyControl, processFinalReplyControl, recoverFinalReplyText } from "../final-reply/control.js";
@@ -33,6 +35,7 @@ export class SessionOrchestrator {
     activityStore,
     memoryStore,
     agentCatalog,
+    privatePublications = null,
     progressIntervalMs = config.longTaskProgressIntervalMs,
     progressTimerEnabled = true,
     attachmentBatchQuietMs = config.attachmentBatchQuietMs,
@@ -55,6 +58,7 @@ export class SessionOrchestrator {
     this.managedFiles = managedFiles || null;
     this.activityStore = activityStore || null;
     this.memoryStore = memoryStore || null;
+    this.privatePublications = privatePublications;
     this.agentCatalog = agentCatalog || createAgentCatalog({
       workspaceRoot: config.workspaceRoot,
       releaseRoot: config.releaseRoot,
@@ -274,8 +278,9 @@ export class SessionOrchestrator {
     return session;
   }
 
-  startWorkerSession(input) {
-    const session = this.createWorkerSession(input);
+  async startWorkerSession(input) {
+    let session = this.createWorkerSession(input);
+    session = await this.requireSpecialistWorkflowSession(session);
     const task = buildWorkerTaskInput({
       store: this.store,
       parentSessionId: session.parentSessionId,
@@ -287,6 +292,72 @@ export class SessionOrchestrator {
       this.appendAndBroadcast(session.id, "session.error", { content: error.message, level: "error" });
     });
     return session;
+  }
+
+  async initializeSpecialistWorkflowSession(session) {
+    if (!session?.agentId || session.metadata?.specialistWorkflowState) return session;
+    const specialist = this.agentCatalog.inspectInternal(session.agentId, {
+      profileVersion: session.agentProfileVersion,
+    });
+    const initialized = await initializeSpecialistWorkflowRuntime({
+      definition: specialist.workflow,
+      projectKey: session.projectKey,
+      displayName: specialist.displayName,
+      privatePublications: this.privatePublications,
+      managedFiles: this.managedFiles,
+      externalAccess: this.externalAccess,
+    });
+    const updated = this.store.updateSession(session.id, {
+      metadata: {
+        ...(session.metadata || {}),
+        specialistWorkflowState: initialized.state,
+      },
+    });
+    const progress = initialized.state.progressPage;
+    const access = progress.url || progress.internalUrl || progress.linkNotice;
+    const content = `已创建工作流进度 Page：${access}`;
+    const displayItem = this.store.appendTaskDisplayEvent(session.id, {
+      sourceEventId: `specialist-workflow-progress:${session.id}`,
+      kind: "message",
+      role: "assistant",
+      content,
+    });
+    if (displayItem) {
+      this.broadcastTaskDisplayProjection({ type: "event", taskId: session.id, item: displayItem });
+    }
+    if (session.parentSessionId) {
+      const parent = this.store.getSessionRecord(session.parentSessionId);
+      if (parent) {
+        this.appendAndBroadcast(parent.id, "session.status", {
+          content,
+          level: "info",
+          metadata: {
+            eventType: "specialist-workflow/initialized",
+            childSessionId: session.id,
+            pageId: progress.pageId,
+            internalUrl: progress.internalUrl,
+            url: progress.url,
+            linkNotice: progress.linkNotice,
+            revision: initialized.state.revision,
+          },
+        });
+      }
+    }
+    return updated;
+  }
+
+  async requireSpecialistWorkflowSession(session) {
+    try {
+      return await this.initializeSpecialistWorkflowSession(session);
+    } catch (error) {
+      this.store.updateSession(session.id, { status: "paused" });
+      this.appendAndBroadcast(session.id, "session.error", {
+        content: `Specialist workflow initialization failed: ${error.message}`,
+        level: "error",
+        metadata: { eventType: "specialist-workflow/initialization-failed", code: error.code || "WORKFLOW_INITIALIZATION_FAILED" },
+      });
+      throw error;
+    }
   }
 
   updateWorkerSessionMetadata(sessionId, input) {
@@ -305,13 +376,14 @@ export class SessionOrchestrator {
   }
 
   async resumeSession(sessionId, content, options = {}) {
-    const session = this.store.getSessionRecord(sessionId);
+    let session = this.store.getSessionRecord(sessionId);
     if (!session) throw new Error(`unknown session: ${sessionId}`);
     assertResumeIdentity(session, options);
     if (session.agentId) {
       this.agentCatalog.inspectInternal(session.agentId, {
         profileVersion: session.agentProfileVersion,
       });
+      session = await this.requireSpecialistWorkflowSession(session);
     }
     const alreadyRunning = this.running.has(sessionId);
     if (!alreadyRunning && session.role === "worker") this.beginWorkerHooks(session);
@@ -378,6 +450,7 @@ export class SessionOrchestrator {
   }
 
   async recoverInterruptedWorker(session) {
+    session = await this.requireSpecialistWorkflowSession(session);
     const recoveryStartedAt = new Date(this.now()).toISOString();
     const attempt = Number(session.metadata?.workerRecoveryAttempt || 0) + 1;
     this.store.updateSession(session.id, {
@@ -1543,6 +1616,8 @@ function buildWorkerAgentInstructions(session, agentCatalog) {
   return [
     baseInstructions,
     specialist.instructions,
+    specialistWorkflowGuide(specialist.workflow),
+    specialistWorkflowRuntimeGuide(session.metadata?.specialistWorkflowState),
     skillGuide,
   ].join("\n\n");
 }

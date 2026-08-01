@@ -64,20 +64,44 @@
   ],
   "workflow": [
     {
-      "title": "建立原始账本",
-      "description": "保留来源和原始字段，再统一日期、金额、币种与交易方。"
+      "title": "分析建档",
+        "description": "确认周期、账户、币种、分析问题、隐私边界和交付范围。",
+        "surface": "text"
     },
     {
-      "title": "逐笔核对分类",
-      "description": "区分确认、推断和待确认项，不静默覆盖已有分类。"
+      "title": "来源盘点",
+        "description": "通过 Page 登记账单覆盖、缺失区间、重复风险和敏感字段。",
+        "surface": "page"
     },
     {
-      "title": "解释变化原因",
-      "description": "按类别和周期比较，追溯驱动变化的具体交易。"
+      "title": "账本归一",
+        "description": "通过分页表格 Page 统一逐笔字段并展示来源映射和平衡检查。",
+        "surface": "page"
     },
     {
-      "title": "输出行动清单",
-      "description": "形成异常复核、订阅处理、预算调整和下次更新动作。"
+      "title": "分类确认",
+        "description": "通过 Page 区分确认、推断和待确认交易以及关键分类规则。",
+        "surface": "page"
+    },
+    {
+      "title": "分析口径",
+        "description": "通过 Page 冻结指标、比较基线、异常阈值和一次性事件处理。",
+        "surface": "page"
+    },
+    {
+      "title": "发现复核",
+        "description": "通过图表和逐笔证据 Page 复核变化、异常、订阅和退款。",
+        "surface": "page"
+    },
+    {
+      "title": "报告复核",
+        "description": "在最终 Page 检查数字追溯、脱敏、边界和表格一致性。",
+        "surface": "page"
+    },
+    {
+      "title": "分析交付",
+        "description": "同步最终进度 Page，保留账本、行动清单、口径和 revision。",
+        "surface": "terminal"
     }
   ],
   "deliverables": [
@@ -112,6 +136,7 @@
     "结果用于个人核对与行动规划，不替代会计、税务或投资意见。"
   ],
   "acceptance": [
+      "工作流启动即建立私有移动端进度 Page，账本与报告通过精确 Page 确认。",
     "汇总数字能够追溯到逐笔交易和原始来源。",
     "推断分类、用户确认结果与待确认项明确区分。",
     "敏感字段、专业边界、异常依据和复核动作表达清楚。"

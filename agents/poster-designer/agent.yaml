@@ -6,6 +6,7 @@
   "description": "负责传播信息提炼、视觉概念、海报、社交卡片、轮播图、封面组合和多规格渲染。",
   "instructions": "AGENT.md",
   "profile": "profile.yaml",
+  "workflow": "workflow.json",
   "skills": [
     "guizang-social-card-skill",
     "visual-content",

@@ -25,6 +25,7 @@
     "selectedConceptId",
     "designIntent",
     "decisions",
+    "demandWorkflow",
     "scene",
     "quality",
     "publication",
@@ -76,6 +77,7 @@
       "maxItems": 500,
       "items": { "$ref": "#/$defs/decision" }
     },
+    "demandWorkflow": { "$ref": "#/$defs/demandWorkflow" },
     "scene": { "$ref": "#/$defs/scene" },
     "quality": { "$ref": "#/$defs/quality" },
     "publication": { "type": "object" },
@@ -100,6 +102,11 @@
         "intake",
         "evidence_classified",
         "calibrated",
+        "functional_discovery",
+        "layout_review",
+        "style_calibration",
+        "render_storyboard",
+        "render_review",
         "brief_frozen",
         "concept_options",
         "selected_concept",
@@ -115,6 +122,129 @@
         "superseded",
         "archived"
       ]
+    },
+    "demandWorkflow": {
+      "description": "Read-only legacy projection retained solely for deterministic regeneration of the committed representative delivery. Current workflow authority is agents/interior-designer/workflow.json schema v2.",
+      "deprecated": true,
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["version", "purpose", "stage", "status", "openQuestions", "confirmations", "transitions", "styleProfile", "renderStoryboard", "renderSet", "staleArtifacts"],
+      "properties": {
+        "version": { "const": 1 },
+        "purpose": { "const": "requirements-discovery" },
+        "stage": { "$ref": "#/$defs/demandWorkflowStage" },
+        "status": { "enum": ["awaiting-user", "in-progress", "confirmed", "user-visual-acceptance-pending"] },
+        "openQuestions": { "type": "array", "maxItems": 100, "items": { "$ref": "#/$defs/demandQuestion" } },
+        "confirmations": { "type": "array", "maxItems": 100, "items": { "$ref": "#/$defs/demandConfirmation" } },
+        "transitions": { "type": "array", "maxItems": 7, "items": { "$ref": "#/$defs/demandTransition" } },
+        "styleProfile": { "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/styleProfile" }] },
+        "renderStoryboard": { "type": "array", "maxItems": 30, "items": { "$ref": "#/$defs/renderShot" } },
+        "renderSet": { "type": "array", "maxItems": 60, "items": { "$ref": "#/$defs/conceptRenderRecord" } },
+        "staleArtifacts": { "type": "array", "maxItems": 100, "items": { "type": "string", "minLength": 1, "maxLength": 160 } }
+      }
+    },
+    "demandWorkflowStage": {
+      "enum": ["intake", "functional-discovery", "layout-review", "style-calibration", "render-storyboard", "render-review", "brief-frozen", "delivered"]
+    },
+    "demandQuestion": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["questionId", "stage", "prompt", "required", "status"],
+      "properties": {
+        "questionId": { "$ref": "#/$defs/id" },
+        "stage": { "$ref": "#/$defs/demandWorkflowStage" },
+        "prompt": { "type": "string", "minLength": 1, "maxLength": 1000 },
+        "required": { "type": "boolean" },
+        "status": { "enum": ["open", "answered", "deferred"] },
+        "answer": { "type": "string", "maxLength": 2000 }
+      }
+    },
+    "demandConfirmation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["confirmationId", "stage", "projectRevision", "source", "scope", "confirmedAt"],
+      "properties": {
+        "confirmationId": { "$ref": "#/$defs/id" },
+        "stage": { "$ref": "#/$defs/demandWorkflowStage" },
+        "projectRevision": { "type": "integer", "minimum": 1 },
+        "source": { "const": "user" },
+        "scope": { "type": "array", "minItems": 1, "maxItems": 30, "items": { "type": "string", "minLength": 1, "maxLength": 500 } },
+        "confirmedAt": { "type": "string", "format": "date-time" }
+      }
+    },
+    "demandTransition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["from", "to", "projectRevision", "confirmationId", "at", "summary"],
+      "properties": {
+        "from": { "$ref": "#/$defs/demandWorkflowStage" },
+        "to": { "$ref": "#/$defs/demandWorkflowStage" },
+        "projectRevision": { "type": "integer", "minimum": 2 },
+        "confirmationId": { "$ref": "#/$defs/id" },
+        "at": { "type": "string", "format": "date-time" },
+        "summary": { "type": "string", "maxLength": 1000 }
+      }
+    },
+    "styleProfile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "primary", "secondary"],
+      "properties": {
+        "status": { "enum": ["candidate", "confirmed"] },
+        "primary": { "$ref": "#/$defs/styleDirection" },
+        "secondary": { "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/styleDirection" }] }
+      }
+    },
+    "styleDirection": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["styleId", "label", "observable", "borrow", "avoid"],
+      "properties": {
+        "styleId": { "$ref": "#/$defs/id" },
+        "label": { "type": "string", "minLength": 1, "maxLength": 120 },
+        "observable": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["contrast", "woodTone", "surface", "lighting", "visualDensity"],
+          "properties": {
+            "contrast": { "type": "string", "minLength": 1, "maxLength": 300 },
+            "woodTone": { "type": "string", "minLength": 1, "maxLength": 300 },
+            "surface": { "type": "string", "minLength": 1, "maxLength": 300 },
+            "lighting": { "type": "string", "minLength": 1, "maxLength": 300 },
+            "visualDensity": { "type": "string", "minLength": 1, "maxLength": 300 }
+          }
+        },
+        "borrow": { "type": "array", "maxItems": 20, "items": { "type": "string", "minLength": 1, "maxLength": 300 } },
+        "avoid": { "type": "array", "maxItems": 20, "items": { "type": "string", "minLength": 1, "maxLength": 300 } }
+      }
+    },
+    "renderShot": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["shotId", "sequence", "space", "role", "purpose", "requirementIds", "status"],
+      "properties": {
+        "shotId": { "$ref": "#/$defs/id" },
+        "sequence": { "type": "integer", "minimum": 1 },
+        "space": { "type": "string", "minLength": 1, "maxLength": 120 },
+        "role": { "enum": ["room-context", "supporting-view", "private-space", "detail"] },
+        "purpose": { "type": "string", "minLength": 1, "maxLength": 1000 },
+        "requirementIds": { "type": "array", "maxItems": 30, "items": { "$ref": "#/$defs/id" } },
+        "status": { "enum": ["planned", "approved", "rendered", "stale"] }
+      }
+    },
+    "conceptRenderRecord": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["renderId", "shotId", "evidenceId", "sequence", "status", "promptSha256", "referenceSetSha256"],
+      "properties": {
+        "renderId": { "$ref": "#/$defs/id" },
+        "shotId": { "$ref": "#/$defs/id" },
+        "evidenceId": { "$ref": "#/$defs/id" },
+        "sequence": { "type": "integer", "minimum": 1 },
+        "status": { "enum": ["candidate", "selected", "rejected", "stale"] },
+        "promptSha256": { "$ref": "#/$defs/sha256" },
+        "referenceSetSha256": { "$ref": "#/$defs/sha256" }
+      }
     },
     "evidence": {
       "type": "object",

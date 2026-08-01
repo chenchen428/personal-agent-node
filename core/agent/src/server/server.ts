@@ -146,7 +146,7 @@ const mailScanner = new MailConnectionScanner({
     return mailTasks.ingest(message, { dispatch: !domainBindingVerification?.acceptsMail(message) });
   },
 });
-const privatePublications = new PrivatePublicationStore({ rootDir: config.privatePublicationsDir, baseUrl: config.consoleBaseUrl });
+const privatePublications = new PrivatePublicationStore({ rootDir: config.privatePublicationsDir, maxUploadBytes: config.maxUploadBytes });
 domainBindingVerification = new DomainBindingVerification({
   dataRoot: config.siteDataRoot,
   services: () => managedServiceReadiness({ dataRoot: config.siteDataRoot }),
@@ -188,7 +188,7 @@ const channelLoginCoordinator = {
     return await cloudBinding.consumeWechatMessage(message) || await xiaohongshuLogin.consumeWechatMessage(message);
   },
 };
-const orchestrator = new SessionOrchestrator({ store, hub, channels: { wechat, "wechat-personal": wechatQianxun, dingtalk }, managedFiles, activityStore, memoryStore, channelLoginCoordinator, agentCatalog });
+const orchestrator = new SessionOrchestrator({ store, hub, channels: { wechat, "wechat-personal": wechatQianxun, dingtalk }, managedFiles, activityStore, memoryStore, channelLoginCoordinator, agentCatalog, privatePublications });
 const scheduledTasks = new ScheduledTaskRunner({ store, broker: agentBridgeBroker, channels: { wechat }, logger });
 wechat.attach(orchestrator);
 if (personalWechatSupported) wechatQianxun.attach((message) => orchestrator.handleChannelMessage("wechat-personal", message));
@@ -1289,7 +1289,7 @@ async function handleRequest(request: http.IncomingMessage, response: http.Serve
 
   if (url.pathname === "/api/publications/upload" && request.method === "POST") {
     if (!isAgentWriteAuthorized(request)) return sendForbidden(response);
-    const body = await readJsonBody(request);
+    const body = await readJsonBody(request, singleFileRequestLimit());
     const publication = privatePublications.upload({
       publicationId: body.publicationId || body.folder,
       fileName: body.fileName || body.name,
@@ -1311,7 +1311,7 @@ async function handleRequest(request: http.IncomingMessage, response: http.Serve
 
   if (url.pathname === "/api/publications/publish" && request.method === "POST") {
     if (!isAgentWriteAuthorized(request)) return sendForbidden(response);
-    const body = await readJsonBody(request);
+    const body = await readJsonBody(request, singleFileRequestLimit());
     const publication = privatePublications.publish({
       publicationId: body.publicationId || body.folder,
       fileName: body.fileName,
@@ -1324,6 +1324,7 @@ async function handleRequest(request: http.IncomingMessage, response: http.Serve
       template: body.template,
       desktopThumbnail: body.desktopThumbnail,
       mobileThumbnail: body.mobileThumbnail,
+      assetPaths: body.assetPaths,
     });
     const managed = await managedFiles.reconcileLocalTree({
       root: path.join(config.privatePublicationsDir, publication.publicationId),
@@ -1798,13 +1799,13 @@ async function handleRequest(request: http.IncomingMessage, response: http.Serve
   }
 
   if (url.pathname === "/api/pages/upload" && request.method === "POST") {
-    const body = await readJsonBody(request);
+    const body = await readJsonBody(request, singleFileRequestLimit());
     sendJson(response, 200, { ok: true, asset: await uploadStaticAsset(body) });
     return;
   }
 
   if (url.pathname === "/api/pages/publish" && request.method === "POST") {
-    const body = await readJsonBody(request);
+    const body = await readJsonBody(request, singleFileRequestLimit());
     const asset = await publishHtmlPage(body);
     sendJson(response, 200, {
       ok: true,
@@ -2861,6 +2862,10 @@ async function readJsonBody(request: http.IncomingMessage, maximumBytes = Number
   }
   const text = Buffer.concat(chunks).toString("utf8");
   return text ? JSON.parse(text) : {};
+}
+
+function singleFileRequestLimit() {
+  return Math.ceil(config.maxUploadBytes * 4 / 3) + 1024 * 1024;
 }
 
 async function persistDesktopAttachments(input: unknown, sessionId: string) {

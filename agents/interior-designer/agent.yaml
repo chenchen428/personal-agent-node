@@ -6,6 +6,7 @@
   "description": "负责户型证据、空间策略、布局、室内概念、可治理三维场景、修订和专业交付。",
   "instructions": "AGENT.md",
   "profile": "profile.yaml",
+  "workflow": "workflow.json",
   "skills": [
     "home-renovation",
     "interior-design",

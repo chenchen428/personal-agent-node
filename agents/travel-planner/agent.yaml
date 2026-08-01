@@ -6,6 +6,7 @@
   "description": "负责旅行限制梳理、最新资料调研、交通与预约核对、可行行程、攻略页面和执行清单。",
   "instructions": "AGENT.md",
   "profile": "profile.yaml",
+  "workflow": "workflow.json",
   "skills": [
     "travel-guidebook",
     "deep-research",

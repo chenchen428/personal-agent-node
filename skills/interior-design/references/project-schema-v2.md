@@ -28,6 +28,12 @@ Keep assumptions, unknowns, and professional verifications independent. Concepts
 
 The selected concept supports at most two levels, 30 rooms, and 500 modeled elements in the v2 baseline. Each level owns footprint, rooms/zones, walls, openings, items, stairs, voids, and guardrails. IDs are stable semantic IDs, not render-order IDs.
 
+## Demand workflow
+
+`demandWorkflow` version 1 is a deprecated, read-only presentation snapshot retained only to reproduce the committed historical representative delivery. It is not authorization state for customer work and its CLI advance command is retired. The current conversation and confirmation authority is `agents/interior-designer/workflow.json` schema v2, operated through `scripts/specialist-workflow.mjs`: a private mobile-first progress Page is mandatory, short requirements use text confirmation, and every substantial design artifact uses an exact-`pageId` Page confirmation. Its fixed route is initial requirements → annotated floor-plan adjustments → 3D design → exactly one style sample → at least 15 entrance-first ordered views → final delivery → delivered. Only explicit “按推荐走” authorization may combine the floor-plan and 3D gates into one 3D Page checkpoint.
+
+Inside the deprecated representative snapshot, `styleProfile` contains one confirmed primary direction and at most one secondary direction. `renderStoryboard` and `renderSet` retain the old Page's image provenance so the historical artifact can be reproduced. These legacy fields do not satisfy the current workflow's one-sample or 15-view gates; those gates are evaluated exclusively from the v2 specialist workflow state and its Page artifacts.
+
 ## Revision contract
 
-Every compile or apply produces a new immutable revision and audit. Structured operations may select a concept, update requirement state or material intent, and add, remove, or update bounded scene elements. Undo and redo restore design state into a new revision. Publication never mutates an earlier artifact.
+Every workflow transition, compile, or apply produces a new immutable revision. Structured operations may select a concept, update requirement state or material intent, and add, remove, or update bounded scene elements. Undo and redo restore design state into a new revision. Publication never mutates an earlier artifact.

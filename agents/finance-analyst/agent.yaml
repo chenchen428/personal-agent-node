@@ -6,6 +6,7 @@
   "description": "负责账单解析、逐笔核对、分类确认、趋势与异常分析、脱敏报告和复核清单。",
   "instructions": "AGENT.md",
   "profile": "profile.yaml",
+  "workflow": "workflow.json",
   "skills": [
     "content-workbench",
     "knowledge-capture",

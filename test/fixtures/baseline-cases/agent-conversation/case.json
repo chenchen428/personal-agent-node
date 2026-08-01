@@ -13,6 +13,7 @@
     "Child tasks require an Agent-generated title of at most 20 characters and description of at most 100 characters, and both fields remain updateable through the Personal Agent CLI",
     "The main Agent proactively delegates substantive work, splits independent branches when useful, stays available for user-facing status and final replies, and never duplicates delegated implementation",
     "Matched specialist requests route through the registered Agent profile and project identity while generic Page creation remains a normal Worker capability without template interception",
+    "Starting a registered specialist Worker publishes one private mobile-first progress Page before Agent execution, persists its stable pageId and revision-zero workflow state on the session, exposes the Page in the task ledger, reuses it after recovery, and fails closed without running the Worker when publication is unavailable",
     "Child task execution preserves the complete latest visible parent request and all delegated prompt text, including content split by nested shell quotes",
     "Internal worker hook inputs never appear in user conversation history",
     "Mobile task detail reads only the Space-local display-event ledger: it opens on the latest 20 visible events at the absolute bottom, pages earlier events with a task-bound opaque cursor while preserving the reading anchor, follows sanitized live updates only when pinned to the tail, and never scans or falls back to raw Codex execution history",

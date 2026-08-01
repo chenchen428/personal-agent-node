@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowLeft, Brush, ChartNoAxesCombined, Map, Sofa } from "lucide-react";
+import { ArrowLeft, Brush, ChartNoAxesCombined, Clapperboard, Map, Sofa } from "lucide-react";
 import { Badge, PageSurface } from "@/components/desktop-v72/primitives";
 import { LoadingState } from "@/components/desktop-v72/loading-state";
 import { useJson } from "@/components/desktop-v627/shared";
@@ -17,6 +17,7 @@ const icons = {
   "interior-designer": Sofa,
   "poster-designer": Brush,
   "travel-planner": Map,
+  "video-creator": Clapperboard,
 };
 
 export function AgentProfilePage({ agentId }: { agentId: string }) {

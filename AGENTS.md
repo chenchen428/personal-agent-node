@@ -75,6 +75,14 @@ final answer.
   it to record one primary style and at most one bounded secondary style before
   storyboarding or implementation. A style is a narrative, visual, motion,
   audio, format, and acceptance contract—not a loose mood label.
+- Every registered specialist owns `workflow.json`. The runtime publishes its private,
+  mobile-first progress Page before Worker execution and persists revision-zero state; refresh the same stable Page
+  after every transition, and do not advance while the Page revision is stale. Use
+  text confirmation only for short text decisions; publish design drafts, images,
+  tables, long material and other intermediate artifacts as private Pages and bind
+  confirmation to the exact `pageId`. Missing facts, missing Pages, wrong confirmation
+  surfaces, stage skips, stale revisions and unsynchronized progress Pages fail closed.
+  Feedback reopens the earliest affected stage instead of silently rewriting confirmed work.
 
 ## Agent-Owned Activity
 

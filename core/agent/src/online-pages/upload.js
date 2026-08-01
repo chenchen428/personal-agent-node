@@ -123,11 +123,13 @@ export async function publishHtmlPage(input) {
   const fileName = sanitizeFileName(input.fileName || "index.html");
   if (!/\.html?$/i.test(fileName)) throw new Error("pages publish requires an HTML entry file");
   if (!input.folder) throw new Error("pages publish requires a stable folder");
+  if (Array.isArray(input.assets) && input.assets.length) throw new Error("Page assets must be uploaded individually and referenced with assetPaths");
   const folder = sanitizeFolder(input.folder);
-  const desktopThumbnail = decodePageThumbnail(input.desktopThumbnail, { maxBytes: config.maxUploadBytes, variant: "desktop" });
-  const mobileThumbnail = decodePageThumbnail(input.mobileThumbnail, { maxBytes: config.maxUploadBytes, variant: "mobile" });
+  const desktopThumbnail = decodePageThumbnail(await resolvePublicThumbnailInput(folder, input.desktopThumbnail), { maxBytes: config.maxUploadBytes, variant: "desktop" });
+  const mobileThumbnail = decodePageThumbnail(await resolvePublicThumbnailInput(folder, input.mobileThumbnail), { maxBytes: config.maxUploadBytes, variant: "mobile" });
   if (desktopThumbnail.buffer.equals(mobileThumbnail.buffer)) throw new Error("desktop and mobile Page thumbnails must be distinct images");
   const properties = pageProperties(input, desktopThumbnail, mobileThumbnail);
+  const referencedAssets = await resolvePageAssetReferences(folder, normalizePageAssetPaths(input.assetPaths));
   const desktopThumbnailAsset = await uploadStaticAsset({
     fileName: desktopThumbnail.fileName,
     content: desktopThumbnail.buffer.toString("base64"),
@@ -157,6 +159,7 @@ export async function publishHtmlPage(input) {
     visibility: "public",
     thumbnail: desktopMetadata,
     thumbnails: { desktop: desktopMetadata, mobile: mobileMetadata },
+    assets: referencedAssets,
     updatedAt,
   };
   await writePageManifest(folder, manifest);
@@ -167,6 +170,57 @@ export async function publishHtmlPage(input) {
     thumbnailUrl: pageThumbnailUrl(manifest, "desktop"),
     desktopThumbnailUrl: pageThumbnailUrl(manifest, "desktop"),
     mobileThumbnailUrl: pageThumbnailUrl(manifest, "mobile"),
+  };
+}
+
+function normalizePageAssetPaths(input) {
+  const assets = Array.isArray(input) ? input : [];
+  if (assets.length > 256) throw new Error("Page bundle exceeds 256 assets");
+  const seen = new Set();
+  return assets.map((entry) => {
+    const relativePath = String(entry || "").replace(/\\/g, "/").replace(/^\/+/, "");
+    const segments = relativePath.split("/");
+    if (!relativePath || segments.some((segment) => !segment || segment === "." || segment === "..")) throw new Error("Page bundle contains an unsafe asset path");
+    if (seen.has(relativePath)) throw new Error(`Page bundle asset is duplicated: ${relativePath}`);
+    seen.add(relativePath);
+    return segments.map((segment) => sanitizeFileName(segment)).join("/");
+  });
+}
+
+async function resolvePageAssetReferences(folder, assetPaths) {
+  const root = path.join(config.uploadsDir, folder);
+  const references = [];
+  for (const relativePath of assetPaths) {
+    const target = path.resolve(root, ...relativePath.split("/"));
+    assertInside(root, target);
+    const stat = await fs.lstat(target).catch(() => null);
+    if (!stat?.isFile() || stat.isSymbolicLink()) throw new Error(`Page asset reference was not uploaded: ${relativePath}`);
+    if (stat.size > config.maxUploadBytes) throw new Error(`upload exceeds ${config.maxUploadBytes} bytes`);
+    const normalizedPath = path.join("uploads", folder, relativePath).split(path.sep).join("/");
+    references.push({
+      fileName: relativePath,
+      publicPath: `/${normalizedPath}`,
+      mimeType: mime.lookup(target) || "application/octet-stream",
+      bytes: stat.size,
+    });
+  }
+  return references;
+}
+
+async function resolvePublicThumbnailInput(folder, input) {
+  if (!input) return input;
+  if (String(input?.content || "")) return input;
+  const fileName = sanitizeFileName(input?.fileName || "");
+  const root = path.join(config.uploadsDir, folder);
+  const target = path.resolve(root, fileName);
+  assertInside(root, target);
+  const stat = await fs.lstat(target).catch(() => null);
+  if (!stat?.isFile() || stat.isSymbolicLink()) throw new Error(`Page thumbnail reference was not uploaded: ${fileName}`);
+  if (stat.size > config.maxUploadBytes) throw new Error(`upload exceeds ${config.maxUploadBytes} bytes`);
+  return {
+    ...input,
+    content: (await fs.readFile(target)).toString("base64"),
+    encoding: "base64",
   };
 }
 

@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 2,
+  "id": "video-creation-workflow",
+  "agentId": "video-creator",
+  "version": 2,
+  "goal": "通过文字建档和逐级 Page 审片，把真实素材组织为用户确认、可持续修订的视频交付。",
+  "progressPage": { "required": true, "visibility": "private", "mobileFirst": true, "refreshPolicy": "every-transition", "folderPattern": "workflow-{agentId}-{projectKey}" },
+  "interaction": { "maxQuestionsPerTurn": 3, "confirmationPolicy": "surface-aware-required", "revisionPolicy": "optimistic", "feedbackPolicy": "reopen-earliest-affected-stage", "recommendedCheckpoint": null },
+  "stages": [
+    { "id": "intake", "title": "项目建档", "purpose": "用文字确认受众、平台、核心承诺、时长、比例、规格和禁止表达。", "review": { "surface": "text", "artifactKind": null }, "requiredFacts": ["audience", "platform", "core-promise", "duration", "aspect-ratio", "delivery-specs"], "factRules": [], "requiredArtifacts": [], "confirmationPrompt": "请确认观众、平台、核心承诺和最终交付规格。", "next": "material-audit" },
+    { "id": "material-audit", "title": "素材核验", "purpose": "通过 Page 按镜头用途登记界面、视频、图片、音频、授权、日期和缺口。", "review": { "surface": "page", "artifactKind": "material-audit-page" }, "requiredFacts": ["asset-coverage", "rights-status", "proof-gaps"], "factRules": [], "requiredArtifacts": ["material-audit-page"], "confirmationPrompt": "请在素材 Page 中确认可用素材、授权和证据缺口。", "next": "narrative-brief" },
+    { "id": "narrative-brief", "title": "叙事简报", "purpose": "用 Page 确认开场、推进、证据、转折、收束和每项主张的证明方式。", "review": { "surface": "page", "artifactKind": "narrative-brief-page" }, "requiredFacts": ["narrative-arc", "proof-points", "script-status"], "factRules": [], "requiredArtifacts": ["narrative-brief-page"], "confirmationPrompt": "请在叙事 Page 中确认故事主线和事实主张。", "next": "style-calibration" },
+    { "id": "style-calibration", "title": "风格校准", "purpose": "通过 Page 确认主风格、辅助风格、构图、运动、声音和禁区。", "review": { "surface": "page", "artifactKind": "video-style-page" }, "requiredFacts": ["primary-style", "secondary-style", "active-deviations", "avoid-list"], "factRules": [], "requiredArtifacts": ["video-style-page"], "confirmationPrompt": "请在风格 Page 中确认叙事、画面、运动和声音合同。", "next": "storyboard-review" },
+    { "id": "storyboard-review", "title": "分镜确认", "purpose": "用移动端分镜 Page 逐镜确认目的、素材、状态、时长、字幕、转场和声音。", "review": { "surface": "page", "artifactKind": "storyboard-page" }, "requiredFacts": ["shot-plan", "audio-plan", "variant-plan"], "factRules": [], "requiredArtifacts": ["storyboard-page"], "confirmationPrompt": "请在分镜 Page 中确认镜头、节奏、字幕和音频。", "next": "rough-cut-review" },
+    { "id": "rough-cut-review", "title": "粗剪审阅", "purpose": "通过可寻址时间线和关键快照 Page 复核信息、节奏、转场、字幕与声音。", "review": { "surface": "page", "artifactKind": "rough-cut-page" }, "requiredFacts": ["timing-status", "revision-notes", "variant-scope"], "factRules": [], "requiredArtifacts": ["rough-cut-page"], "confirmationPrompt": "请在粗剪 Page 中确认结构和修改清单。", "next": "delivery-review" },
+    { "id": "delivery-review", "title": "成片复核", "purpose": "在最终 Page 检查成片、音轨、时长、帧率、编码、字幕、封面、版权和工程。", "review": { "surface": "page", "artifactKind": "video-delivery-page" }, "requiredFacts": ["technical-check", "rights-check", "visual-acceptance-owner"], "factRules": [], "requiredArtifacts": ["video-delivery-page"], "confirmationPrompt": "请确认最终视频交付 Page、成片和交付范围。", "next": "delivered" },
+    { "id": "delivered", "title": "视频交付", "purpose": "保持最终 Page 可访问，并保留脚本、分镜、粗剪和成片 revision。", "review": { "surface": "terminal", "artifactKind": null }, "requiredFacts": [], "factRules": [], "requiredArtifacts": [], "confirmationPrompt": null, "next": null }
+  ]
+}

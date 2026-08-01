@@ -1,0 +1,111 @@
+{
+  "schemaVersion": 2,
+  "id": "interior-design-workflow",
+  "agentId": "interior-designer",
+  "version": 2,
+  "goal": "通过文字需求、标注户型、三维设计和分阶段效果图确认，收敛并交付用户认可的前置设计稿。",
+  "progressPage": {
+    "required": true,
+    "visibility": "private",
+    "mobileFirst": true,
+    "refreshPolicy": "every-transition",
+    "folderPattern": "workflow-{agentId}-{projectKey}"
+  },
+  "interaction": {
+    "maxQuestionsPerTurn": 3,
+    "confirmationPolicy": "surface-aware-required",
+    "revisionPolicy": "optimistic",
+    "feedbackPolicy": "reopen-earliest-affected-stage",
+    "recommendedCheckpoint": {
+      "authorizationFact": "recommended-mode-authorized",
+      "stages": ["floorplan-adjustment", "three-d-design-review"],
+      "next": "render-style-sample",
+      "requiredArtifacts": ["three-d-design-page"],
+      "reviewArtifactKind": "three-d-design-page",
+      "confirmationPrompt": "请在三维设计 Page 中同时核对户型调整、家具、材质和细节；确认后才进入效果图样张。"
+    }
+  },
+  "stages": [
+    {
+      "id": "initial-requirements",
+      "title": "初步需求",
+      "purpose": "用简明文字确认居住成员、生活方式、功能优先级、预算和设计边界。",
+      "review": { "surface": "text", "artifactKind": null },
+      "requiredFacts": ["project-scope", "household", "functional-priorities", "budget-boundary", "recommended-mode-authorized"],
+      "factRules": [],
+      "requiredArtifacts": [],
+      "confirmationPrompt": "请确认这份初步需求描述；即使选择按推荐走，本次文字需求确认也不能省略。",
+      "next": "floorplan-adjustment"
+    },
+    {
+      "id": "floorplan-adjustment",
+      "title": "户型调整",
+      "purpose": "在户型图上标注拆改、保留、门洞、动线、收纳和所有待结构专业复核的位置。",
+      "review": { "surface": "page", "artifactKind": "annotated-floorplan-page" },
+      "requiredFacts": ["current-plan-boundary", "wall-changes", "structure-unknowns", "route-storage-plan"],
+      "factRules": [],
+      "requiredArtifacts": ["annotated-floorplan-page"],
+      "confirmationPrompt": "请在标注户型 Page 中确认拆改与空间关系；未确认不得进入三维设计。",
+      "next": "three-d-design-review"
+    },
+    {
+      "id": "three-d-design-review",
+      "title": "三维设计稿",
+      "purpose": "通过可移动端查看的三维设计 Page 确认家具、尺度关系、材质、灯光与关键细节。",
+      "review": { "surface": "page", "artifactKind": "three-d-design-page" },
+      "requiredFacts": ["furniture-plan", "material-plan", "lighting-plan", "detail-decisions", "unresolved-details"],
+      "factRules": [],
+      "requiredArtifacts": ["three-d-design-page"],
+      "confirmationPrompt": "请确认三维设计稿中的家具、材质、灯光和细节；未确认不得生成效果图样张。",
+      "next": "render-style-sample"
+    },
+    {
+      "id": "render-style-sample",
+      "title": "效果图样张",
+      "purpose": "只生成一张代表效果图，用同一空间验证风格、材质、光线和真实感。",
+      "review": { "surface": "page", "artifactKind": "style-sample-page" },
+      "requiredFacts": ["sample-render-count", "sample-style-contract", "sample-view"],
+      "factRules": [{ "key": "sample-render-count", "operator": "equals", "value": 1 }],
+      "requiredArtifacts": ["style-sample-page"],
+      "confirmationPrompt": "请在样张 Page 中确认这一张图的风格；未确认不得批量生成其他视角。",
+      "next": "full-render-set"
+    },
+    {
+      "id": "full-render-set",
+      "title": "全量效果图",
+      "purpose": "从入户门开始按空间行走顺序补齐全屋视角，生成并排版不少于十五张一致效果图。",
+      "review": { "surface": "page", "artifactKind": "full-render-gallery-page" },
+      "requiredFacts": ["render-count", "view-sequence", "entrance-first", "consistency-check", "render-limitations"],
+      "factRules": [
+        { "key": "render-count", "operator": "min-number", "value": 15 },
+        { "key": "view-sequence", "operator": "min-items", "value": 15 },
+        { "key": "entrance-first", "operator": "equals", "value": true }
+      ],
+      "requiredArtifacts": ["full-render-gallery-page"],
+      "confirmationPrompt": "请在多图 Page 中按入户到各空间的顺序核对不少于十五张效果图及一致性。",
+      "next": "final-delivery"
+    },
+    {
+      "id": "final-delivery",
+      "title": "最终交付",
+      "purpose": "汇总已确认需求、标注户型、三维设计、样张、全量效果图、版本和专业边界。",
+      "review": { "surface": "page", "artifactKind": "final-delivery-page" },
+      "requiredFacts": ["final-scope", "decision-record", "visual-acceptance-owner"],
+      "factRules": [],
+      "requiredArtifacts": ["final-delivery-page"],
+      "confirmationPrompt": "请确认最终交付 Page 完整覆盖所有已确认内容和专业边界。",
+      "next": "delivered"
+    },
+    {
+      "id": "delivered",
+      "title": "交付完成",
+      "purpose": "保持最终 Page 可访问，并保留完整 revision、确认与回退记录。",
+      "review": { "surface": "terminal", "artifactKind": null },
+      "requiredFacts": [],
+      "factRules": [],
+      "requiredArtifacts": [],
+      "confirmationPrompt": null,
+      "next": null
+    }
+  ]
+}

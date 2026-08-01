@@ -1,6 +1,6 @@
 {
   "name": "personal-agent-node",
-  "version": "0.2.0-beta.45",
+  "version": "0.2.0-beta.46",
   "private": true,
   "license": "Apache-2.0",
   "type": "module",
@@ -18,6 +18,7 @@
     "app:typecheck": "tsc -p core/app/tsconfig.json --noEmit",
     "test:e2e": "playwright test --config playwright.config.ts",
     "frontend:guard": "node scripts/frontend-architecture-guard.mjs",
+    "agent:workflow": "node scripts/specialist-workflow.mjs",
     "interior:build-runtime": "node skills/interior-design/scripts/build-pascal-runtime.mjs",
     "interior:build-agent-delivery": "node skills/interior-design/scripts/build-agent-delivery-example.mjs",
     "interior:verify-agent-delivery": "node skills/interior-design/scripts/build-agent-delivery-example.mjs --check",

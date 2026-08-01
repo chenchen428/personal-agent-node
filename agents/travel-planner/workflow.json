@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 2,
+  "id": "travel-planning-workflow",
+  "agentId": "travel-planner",
+  "version": 2,
+  "goal": "通过文字约束确认和移动端 Page 路线审阅，把旅行偏好与动态事实收敛为可执行行程包。",
+  "progressPage": { "required": true, "visibility": "private", "mobileFirst": true, "refreshPolicy": "every-transition", "folderPattern": "workflow-{agentId}-{projectKey}" },
+  "interaction": { "maxQuestionsPerTurn": 3, "confirmationPolicy": "surface-aware-required", "revisionPolicy": "optimistic", "feedbackPolicy": "reopen-earliest-affected-stage", "recommendedCheckpoint": null },
+  "stages": [
+    { "id": "intake", "title": "旅行建档", "purpose": "用文字确认日期、出发地、目的地、同行成员、预算和当前订单。", "review": { "surface": "text", "artifactKind": null }, "requiredFacts": ["dates", "origin", "destinations", "travelers", "budget"], "factRules": [], "requiredArtifacts": [], "confirmationPrompt": "请确认旅行范围、人员、日期和预算。", "next": "constraint-freeze" },
+    { "id": "constraint-freeze", "title": "约束冻结", "purpose": "用简短文字冻结不可移动订单、必去地点、节奏、饮食、体力和行动限制。", "review": { "surface": "text", "artifactKind": null }, "requiredFacts": ["fixed-bookings", "must-visit", "pace", "dietary-needs", "mobility-needs"], "factRules": [], "requiredArtifacts": [], "confirmationPrompt": "请确认硬约束和优先级，后续路线不得静默冲掉订单。", "next": "research-plan" },
+    { "id": "research-plan", "title": "调研计划", "purpose": "用 Page 展示待核对的开放、交通、预约、天气、季节性事实和来源优先级。", "review": { "surface": "page", "artifactKind": "research-plan-page" }, "requiredFacts": ["dynamic-facts", "source-priority", "research-cutoff"], "factRules": [], "requiredArtifacts": ["research-plan-page"], "confirmationPrompt": "请在调研计划 Page 中确认重点事实和核对截止时间。", "next": "fact-verification" },
+    { "id": "fact-verification", "title": "事实核验", "purpose": "通过 Page 汇总地点消歧、来源、核对时间、适用条件和相邻路段状态。", "review": { "surface": "page", "artifactKind": "fact-verification-page" }, "requiredFacts": ["poi-status", "route-status", "source-times", "open-questions"], "factRules": [], "requiredArtifacts": ["fact-verification-page"], "confirmationPrompt": "请在事实核验 Page 中确认地点选择、动态事实和未知项。", "next": "itinerary-draft" },
+    { "id": "itinerary-draft", "title": "行程草案", "purpose": "用移动端逐日 Page 展示路线、开放窗口、交通、用餐、休息和缓冲。", "review": { "surface": "page", "artifactKind": "itinerary-draft-page" }, "requiredFacts": ["lodging-base", "daily-rhythm", "buffer-policy", "contingency-scope"], "factRules": [], "requiredArtifacts": ["itinerary-draft-page"], "confirmationPrompt": "请在逐日行程 Page 中确认路线、强度和主要停点。", "next": "itinerary-review" },
+    { "id": "itinerary-review", "title": "路线复核", "purpose": "通过 Page 逐段检查移动、停留、开放、餐饮、体力及雨天或晚点备选。", "review": { "surface": "page", "artifactKind": "itinerary-review-page" }, "requiredFacts": ["selected-route", "contingency-preference", "booking-priority"], "factRules": [], "requiredArtifacts": ["itinerary-review-page"], "confirmationPrompt": "请确认路线复核 Page 中的主路线和备选策略。", "next": "delivery-review" },
+    { "id": "delivery-review", "title": "执行包复核", "purpose": "在最终 Page 汇总日程、预订优先级、预算、来源、待办和再次核验时间。", "review": { "surface": "page", "artifactKind": "travel-delivery-page" }, "requiredFacts": ["recheck-dates", "execution-owner", "visual-acceptance-owner"], "factRules": [], "requiredArtifacts": ["travel-delivery-page"], "confirmationPrompt": "请确认最终旅行执行 Page 和责任边界。", "next": "delivered" },
+    { "id": "delivered", "title": "行程交付", "purpose": "保持最终 Page 可访问，并保留动态事实与路线 revision。", "review": { "surface": "terminal", "artifactKind": null }, "requiredFacts": [], "factRules": [], "requiredArtifacts": [], "confirmationPrompt": null, "next": null }
+  ]
+}

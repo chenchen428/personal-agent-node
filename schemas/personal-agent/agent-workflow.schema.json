@@ -1,0 +1,102 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://personal-agent.cn/schemas/agent-workflow-v2.json",
+  "title": "Personal Agent specialist workflow definition",
+  "type": "object",
+  "required": ["schemaVersion", "id", "agentId", "version", "goal", "progressPage", "interaction", "stages"],
+  "properties": {
+    "schemaVersion": { "const": 2 },
+    "id": { "$ref": "#/$defs/id" },
+    "agentId": { "$ref": "#/$defs/id" },
+    "version": { "type": "integer", "minimum": 2 },
+    "goal": { "type": "string", "minLength": 8, "maxLength": 240 },
+    "progressPage": {
+      "type": "object",
+      "required": ["required", "visibility", "mobileFirst", "refreshPolicy", "folderPattern"],
+      "properties": {
+        "required": { "const": true },
+        "visibility": { "const": "private" },
+        "mobileFirst": { "const": true },
+        "refreshPolicy": { "const": "every-transition" },
+        "folderPattern": { "const": "workflow-{agentId}-{projectKey}" }
+      },
+      "additionalProperties": false
+    },
+    "interaction": {
+      "type": "object",
+      "required": ["maxQuestionsPerTurn", "confirmationPolicy", "revisionPolicy", "feedbackPolicy", "recommendedCheckpoint"],
+      "properties": {
+        "maxQuestionsPerTurn": { "type": "integer", "minimum": 1, "maximum": 3 },
+        "confirmationPolicy": { "const": "surface-aware-required" },
+        "revisionPolicy": { "const": "optimistic" },
+        "feedbackPolicy": { "const": "reopen-earliest-affected-stage" },
+        "recommendedCheckpoint": {
+          "oneOf": [
+            { "type": "null" },
+            { "$ref": "#/$defs/recommendedCheckpoint" }
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "stages": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 8,
+      "items": { "$ref": "#/$defs/stage" }
+    }
+  },
+  "$defs": {
+    "id": { "type": "string", "pattern": "^[a-z][a-z0-9-]{1,63}$" },
+    "idList": { "type": "array", "uniqueItems": true, "items": { "$ref": "#/$defs/id" } },
+    "review": {
+      "type": "object",
+      "required": ["surface", "artifactKind"],
+      "properties": {
+        "surface": { "enum": ["text", "page", "terminal"] },
+        "artifactKind": { "oneOf": [{ "$ref": "#/$defs/id" }, { "type": "null" }] }
+      },
+      "additionalProperties": false
+    },
+    "factRule": {
+      "type": "object",
+      "required": ["key", "operator", "value"],
+      "properties": {
+        "key": { "$ref": "#/$defs/id" },
+        "operator": { "enum": ["equals", "min-number", "min-items"] },
+        "value": { "type": ["string", "number", "integer", "boolean"] }
+      },
+      "additionalProperties": false
+    },
+    "recommendedCheckpoint": {
+      "type": "object",
+      "required": ["authorizationFact", "stages", "next", "requiredArtifacts", "reviewArtifactKind", "confirmationPrompt"],
+      "properties": {
+        "authorizationFact": { "$ref": "#/$defs/id" },
+        "stages": { "$ref": "#/$defs/idList" },
+        "next": { "$ref": "#/$defs/id" },
+        "requiredArtifacts": { "$ref": "#/$defs/idList" },
+        "reviewArtifactKind": { "$ref": "#/$defs/id" },
+        "confirmationPrompt": { "type": "string", "minLength": 8, "maxLength": 200 }
+      },
+      "additionalProperties": false
+    },
+    "stage": {
+      "type": "object",
+      "required": ["id", "title", "purpose", "review", "requiredFacts", "factRules", "requiredArtifacts", "confirmationPrompt", "next"],
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "title": { "type": "string", "minLength": 2, "maxLength": 60 },
+        "purpose": { "type": "string", "minLength": 8, "maxLength": 200 },
+        "review": { "$ref": "#/$defs/review" },
+        "requiredFacts": { "$ref": "#/$defs/idList" },
+        "factRules": { "type": "array", "items": { "$ref": "#/$defs/factRule" } },
+        "requiredArtifacts": { "$ref": "#/$defs/idList" },
+        "confirmationPrompt": { "type": ["string", "null"] },
+        "next": { "anyOf": [{ "$ref": "#/$defs/id" }, { "type": "null" }] }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

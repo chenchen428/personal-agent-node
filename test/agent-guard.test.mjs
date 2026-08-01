@@ -27,6 +27,11 @@ test("rejects duplicate ids, missing files, unknown Skills, traversal, and dange
     assertFailure(root, /profile.*real file|profile.*missing/i);
   }));
 
+  await t.test("missing workflow file", () => withFixture((root) => {
+    fs.rmSync(path.join(root, "agents", "poster-designer", "workflow.json"));
+    assertFailure(root, /workflow.*real file|workflow.*missing/i);
+  }));
+
   await t.test("unknown Skill", () => withFixture((root) => {
     const config = readJson(root, "agents/interior-designer/agent.yaml");
     config.skills[0] = "unknown-specialist-skill";
@@ -57,7 +62,7 @@ function withFixture(run) {
     fs.copyFileSync(path.join(sourceRoot, "registry", "agents.json"), path.join(root, "registry", "agents.json"));
     fs.copyFileSync(path.join(sourceRoot, "registry", "skills.json"), path.join(root, "registry", "skills.json"));
     fs.mkdirSync(path.join(root, "schemas", "personal-agent"), { recursive: true });
-    for (const file of ["agents.schema.json", "agent-profile.schema.json"]) {
+    for (const file of ["agents.schema.json", "agent-profile.schema.json", "agent-workflow.schema.json"]) {
       fs.copyFileSync(path.join(sourceRoot, "schemas", "personal-agent", file), path.join(root, "schemas", "personal-agent", file));
     }
     return run(root);

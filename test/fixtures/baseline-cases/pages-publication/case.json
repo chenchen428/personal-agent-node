@@ -12,11 +12,12 @@
     "Internal Page and thumbnail URLs remain relative to the current desktop or mobile origin",
     "pa-cli pages publish returns the managed-tunnel HTTPS URL alongside the canonical internalUrl, or an explicit unavailable-domain notice when no accessible domain exists",
     "Public shareUrl is separate and never replaces the managed delivery URL or internal URL",
+    "Page bundle assets are uploaded through independent per-file requests, the final publish request carries only verified relative-path references instead of embedded bundle bytes, and no aggregate 20 MiB limit is applied to the Page directory",
     "Every new Page persists different desktop and mobile thumbnails and each client renders its matching thumbnail; when omitted, the CLI generates distinct device gallery previews without browser capture",
     "Generic Page publication accepts governed Page artifacts without a template selector and new Page metadata does not contain template provenance",
     "Page publication returns a stable pageId and Page Activity must target that id so the Activity card opens Page detail",
     "Page Activity uses the stored mobile thumbnail as representative feed media without scraping Page HTML",
     "The authenticated Pages module remains a searchable result library without a template catalog, template detail route, or template selection entry point",
-    "The interior-designer representative delivery v2 is a self-contained public artifact with user requirements, design draft and corresponding render entry points; its manifest records the governed Pascal project and concept-render provenance plus exact hashes for every declared file, the embedded redacted source plan and Agent annotation match their standalone evidence hashes, remote runtime dependencies and loopback references are absent, and visual acceptance remains owned by the user"
+    "The interior-designer representative delivery v2 is a self-contained public artifact with user requirements, design draft and corresponding render entry points; its manifest records the governed Pascal project and concept-render provenance plus exact hashes for every declared file, the separately referenced redacted source plan and Agent annotation match their standalone evidence hashes, remote runtime dependencies and loopback references are absent, and visual acceptance remains owned by the user"
   ]
 }

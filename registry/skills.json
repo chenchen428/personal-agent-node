@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "version": 11,
-  "updatedAt": "2026-07-30",
+  "version": 12,
+  "updatedAt": "2026-08-01",
   "categories": [
     {
       "id": "research-knowledge",
@@ -831,9 +831,18 @@
       "owner": "interior-design",
       "kind": "skill-script",
       "entrypoint": "skills/interior-design/scripts/cli.mjs",
-      "command": "node skills/interior-design/scripts/cli.mjs <project|scene|render|page>",
+      "command": "node skills/interior-design/scripts/cli.mjs <project|scene|page>",
       "workspaceCommand": "node scripts/skill-tree.mjs interior <project|scene|page>",
       "description": "Operate governed Pascal v2 renovation projects: evidence, requirements, revisions, deterministic building scenes, professional quality gates, and offline interior-designer Pages."
+    },
+    {
+      "name": "agent-workflow",
+      "category": "publishing-automation",
+      "owner": "workspace",
+      "kind": "workspace-cli",
+      "entrypoint": "scripts/specialist-workflow.mjs",
+      "command": "node scripts/specialist-workflow.mjs <validate|accept|page|init|advance|reopen|sync|status>",
+      "description": "Operate the Page-led, revision-safe confirmation workflows shared by all registered specialist Agents."
     },
     {
       "name": "personal-agent",

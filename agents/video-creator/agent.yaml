@@ -6,6 +6,7 @@
   "description": "负责产品介绍视频、功能演示、旅游素材剪辑和社交短视频变体。",
   "instructions": "AGENT.md",
   "profile": "profile.yaml",
+  "workflow": "workflow.json",
   "skills": [
     "hyperframes-video",
     "media-toolkit",

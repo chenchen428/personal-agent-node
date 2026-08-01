@@ -388,7 +388,8 @@ node skills/interior-design/scripts/cli.mjs \
 | 单项目 Pascal 编译 p95 | ≤ 2 s |
 | 专业审计 p95 | ≤ 1 s |
 | Page 生成 p95 | ≤ 3 s |
-| Page 目录 | < 20 MiB |
+| Page HTML 入口 | < 10 MiB；图片等资源使用同源相对路径独立发布 |
+| Page 单个资源 | < 20 MiB；Page bundle 不设置错误的聚合 20 MiB 上限 |
 | revision 写入 | 原子且可恢复 |
 | 场景与示例 | 确定性哈希 |
 

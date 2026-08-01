@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 2,
+  "id": "poster-design-workflow",
+  "agentId": "poster-designer",
+  "version": 2,
+  "goal": "通过文字建档和逐级 Page 审稿，把传播内容、素材和视觉方向收敛为用户确认的成套视觉交付。",
+  "progressPage": { "required": true, "visibility": "private", "mobileFirst": true, "refreshPolicy": "every-transition", "folderPattern": "workflow-{agentId}-{projectKey}" },
+  "interaction": { "maxQuestionsPerTurn": 3, "confirmationPolicy": "surface-aware-required", "revisionPolicy": "optimistic", "feedbackPolicy": "reopen-earliest-affected-stage", "recommendedCheckpoint": null },
+  "stages": [
+    { "id": "intake", "title": "任务建档", "purpose": "用文字确认传播目标、受众、渠道、规格、数量、截止时间和禁区。", "review": { "surface": "text", "artifactKind": null }, "requiredFacts": ["communication-goal", "audience", "channels", "formats", "deadline"], "factRules": [], "requiredArtifacts": [], "confirmationPrompt": "请确认本轮传播目标、受众、渠道和交付规格。", "next": "content-brief" },
+    { "id": "content-brief", "title": "内容简报", "purpose": "通过 Page 确认核心主张、事实边界、信息层级、系列节奏和行动信息。", "review": { "surface": "page", "artifactKind": "content-brief-page" }, "requiredFacts": ["key-message", "message-hierarchy", "facts-to-keep", "call-to-action"], "factRules": [], "requiredArtifacts": ["content-brief-page"], "confirmationPrompt": "请在内容简报 Page 中确认文案事实与信息顺序。", "next": "asset-audit" },
+    { "id": "asset-audit", "title": "素材核验", "purpose": "用 Page 汇总品牌、人物、产品、图片来源、授权状态和素材缺口。", "review": { "surface": "page", "artifactKind": "asset-audit-page" }, "requiredFacts": ["asset-coverage", "rights-status", "brand-constraints"], "factRules": [], "requiredArtifacts": ["asset-audit-page"], "confirmationPrompt": "请在素材核验 Page 中确认可用素材、授权边界和缺口。", "next": "visual-direction" },
+    { "id": "visual-direction", "title": "视觉方向", "purpose": "通过概念 Page 比较构图、字体、色彩、图像语言和明确避免项。", "review": { "surface": "page", "artifactKind": "visual-direction-page" }, "requiredFacts": ["primary-style", "visual-rules", "avoid-list"], "factRules": [], "requiredArtifacts": ["visual-direction-page"], "confirmationPrompt": "请在视觉方向 Page 中选定母版方向和避免项。", "next": "representative-review" },
+    { "id": "representative-review", "title": "代表页确认", "purpose": "先用封面或关键页面验证主张、阅读层级、视觉语言和目标尺寸。", "review": { "surface": "page", "artifactKind": "representative-page" }, "requiredFacts": ["selected-concept", "copy-status", "representative-role"], "factRules": [], "requiredArtifacts": ["representative-page"], "confirmationPrompt": "请确认代表页，可以据此扩展整套系列。", "next": "series-production" },
+    { "id": "series-production", "title": "系列审稿", "purpose": "用多图 Page 按阅读和渠道顺序展示完整系列、比例和变体。", "review": { "surface": "page", "artifactKind": "series-review-page" }, "requiredFacts": ["target-set", "page-order", "variant-rules"], "factRules": [], "requiredArtifacts": ["series-review-page"], "confirmationPrompt": "请在系列 Page 中确认页面顺序、内容覆盖和渠道变体。", "next": "delivery-review" },
+    { "id": "delivery-review", "title": "交付复核", "purpose": "通过最终 Page 检查文字、裁切、安全区、对比度、规格、来源和版本。", "review": { "surface": "page", "artifactKind": "poster-delivery-page" }, "requiredFacts": ["export-specs", "rights-check", "visual-acceptance-owner"], "factRules": [], "requiredArtifacts": ["poster-delivery-page"], "confirmationPrompt": "请确认最终视觉交付 Page 和交付范围。", "next": "delivered" },
+    { "id": "delivered", "title": "视觉交付", "purpose": "保持交付 Page 可访问，并保留内容、素材和视觉 revision 记录。", "review": { "surface": "terminal", "artifactKind": null }, "requiredFacts": [], "factRules": [], "requiredArtifacts": [], "confirmationPrompt": null, "next": null }
+  ]
+}

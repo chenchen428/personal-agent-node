@@ -53,22 +53,29 @@ test("keeps the internal page link but omits the share link when remote access i
 test("publishes HTML with persisted desktop and mobile gallery screenshots", async () => {
   const desktopThumbnail = createPageThumbnailPng();
   const mobileThumbnail = createPageThumbnailPng(750, 1200);
+  await uploadStaticAsset({
+    fileName: "room.webp",
+    folder: "published-report/media",
+    content: Buffer.from("room-image").toString("base64"),
+    encoding: "base64",
+    mimeType: "image/webp",
+    overwrite: true,
+  });
+  await uploadStaticAsset({ fileName: "page-thumbnail-desktop.png", folder: "published-report", content: desktopThumbnail.toString("base64"), encoding: "base64", mimeType: "image/png", overwrite: true });
+  await uploadStaticAsset({ fileName: "page-thumbnail-mobile.png", folder: "published-report", content: mobileThumbnail.toString("base64"), encoding: "base64", mimeType: "image/png", overwrite: true });
   const asset = await publishHtmlPage({
     fileName: "index.html",
     folder: "published-report",
     content: "<h1>Published report</h1>",
     title: "Published report",
     summary: "A stable Pages gallery entry.",
+    assetPaths: ["media/room.webp"],
     desktopThumbnail: {
       fileName: "page-thumbnail-desktop.png",
-      content: desktopThumbnail.toString("base64"),
-      encoding: "base64",
       alt: "Published report desktop overview",
     },
     mobileThumbnail: {
       fileName: "page-thumbnail-mobile.png",
-      content: mobileThumbnail.toString("base64"),
-      encoding: "base64",
       alt: "Published report mobile overview",
     },
   });
@@ -83,10 +90,24 @@ test("publishes HTML with persisted desktop and mobile gallery screenshots", asy
   assert.equal(asset.desktopThumbnailUrl, asset.thumbnailUrl);
   assert.equal(asset.mobileThumbnailUrl, "/public/uploads/published-report/page-thumbnail-mobile.png");
   assert.equal(fs.existsSync(path.join(config.uploadsDir, "published-report", ".page.json")), true);
+  assert.equal(fs.readFileSync(path.join(config.uploadsDir, "published-report", "media", "room.webp"), "utf8"), "room-image");
+  assert.equal(asset.page.assets[0].publicPath, "/uploads/published-report/media/room.webp");
   assert.deepEqual(
     (await listUploadedAssets()).find((item) => item.fileName === "index.html")?.page,
     asset.page,
   );
+});
+
+test("public Page publishing accepts only previously uploaded asset references", async () => {
+  const input = {
+    fileName: "index.html",
+    folder: "reference-contract",
+    content: "<h1>References only</h1>",
+    desktopThumbnail: { fileName: "desktop.png", content: createPageThumbnailPng().toString("base64") },
+    mobileThumbnail: { fileName: "mobile.png", content: createPageThumbnailPng(750, 1200).toString("base64") },
+  };
+  await assert.rejects(publishHtmlPage({ ...input, assets: [{ relativePath: "media/embedded.png", content: "AA==" }] }), /uploaded individually/);
+  await assert.rejects(publishHtmlPage({ ...input, assetPaths: ["media/missing.png"] }), /was not uploaded/);
 });
 
 test("new public Pages reject retired template provenance", async () => {

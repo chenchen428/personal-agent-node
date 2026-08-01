@@ -35,7 +35,7 @@ const skillRoot = path.join(root, 'skills/interior-design');
 const exampleRoot = path.join(root, 'skills/interior-design/examples/professional-agent-example');
 const sourcePlanPath = path.join(exampleRoot, 'source-plan.png');
 const annotationPath = path.join(exampleRoot, 'agent-annotation.png');
-const conceptRenderPath = path.join(exampleRoot, 'concept-render.png');
+const renderPromptSet = JSON.parse(fs.readFileSync(path.join(exampleRoot, 'render-prompts.json'), 'utf8'));
 const nativeSeedPath = path.join(exampleRoot, 'seed.json');
 const nativeSeed = JSON.parse(fs.readFileSync(nativeSeedPath, 'utf8'));
 
@@ -86,10 +86,15 @@ test('requires Pascal v2 as the only interior-design engine and rejects removed 
   assert.equal(removedResult.stdout, [
     'Usage:',
     '  interior project <init|validate|audit|recover> --project-dir <space-project-dir>',
+    '  Workflow: use scripts/specialist-workflow.mjs --agent interior-designer (Page-led v2 contract)',
     '  interior scene <compile|apply|undo|redo> --project-dir <space-project-dir> --base-revision <n>',
     '  interior page --project-dir <space-project-dir> --output <project-derived-page-dir>',
     '',
   ].join('\n'));
+  const retiredWorkflow = spawnSync(process.execPath, [cli, 'workflow', 'advance'], { encoding: 'utf8', env: process.env });
+  assert.equal(retiredWorkflow.status, 2);
+  assert.match(retiredWorkflow.stdout, /LEGACY_WORKFLOW_RETIRED/);
+  assert.match(retiredWorkflow.stdout, /specialist-workflow\.mjs/);
 });
 
 test('ships a pinned, hash-verified Pascal runtime that works in-process without Bun or vision tools', async () => {
@@ -380,7 +385,7 @@ test('generates a deterministic, private, offline Pascal Page v2 with accessible
   assert.match(firstHtml, /id="model-derived-plan"/);
   assert.match(firstHtml, /data-level-mode="exploded"/);
   assert.match(firstHtml, /data-label-mode="visible"/);
-  assert.match(firstHtml, /data:image\/png;base64/);
+  assert.match(firstHtml, /media\/source-plan\.png/);
   assert.match(firstHtml, /用户需求与户型依据/);
   assert.match(firstHtml, /用户原图是唯一户型依据/);
   assert.match(firstHtml, /data-presentation="requirements"/);
@@ -399,8 +404,8 @@ test('generates a deterministic, private, offline Pascal Page v2 with accessible
   assert.doesNotMatch(firstHtml, /space-page|owner-page|managedObjectId|file:\/\/|localhost|127\.0\.0\.1|sourceMappingURL/);
   assert.doesNotMatch(firstHtml, /renovation_|concept-open-living|req-continuous-circulation|decision-select-open-living|evidence-source/);
   assert.doesNotMatch(fs.readFileSync(path.join(firstDir, 'scene.json'), 'utf8'), /renovation_|projectId|ownerId|spaceId|sourceId/);
-  assert.ok(first.totalBytes < 20 * 1024 * 1024);
-  assert.deepEqual(fs.readdirSync(firstDir).sort(), ['audit.json', 'index.html', 'manifest.json', 'scene.json']);
+  assert.ok(first.entryBytes < 10 * 1024 * 1024);
+  assert.ok(fs.readdirSync(firstDir).includes('media'));
   const preservedHash = sha256(fs.readFileSync(first.indexPath));
   const evidenceDirectory = path.join(harness.projectDir, 'evidence');
   const preservedEvidenceDirectory = path.join(harness.projectDir, 'evidence-preserved');
@@ -551,7 +556,12 @@ function makeHarness(name, { multiLevel = false, alternatives = true } = {}) {
   initializeProject(projectDir, seed, context, { now: () => '2026-07-27T00:00:00.000Z' });
   fs.copyFileSync(sourcePlanPath, path.join(projectDir, 'evidence', 'source-plan.png'));
   fs.copyFileSync(annotationPath, path.join(projectDir, 'evidence', 'agent-annotation.png'));
-  fs.copyFileSync(conceptRenderPath, path.join(projectDir, 'evidence', 'concept-render.png'));
+  for (const render of renderPromptSet.renders) {
+    const evidence = seed.evidence.find((entry) => entry.contentHash === render.imageSha256);
+    const target = path.join(projectDir, evidence.relativePath);
+    fs.mkdirSync(path.dirname(target), { recursive: true });
+    fs.copyFileSync(path.join(exampleRoot, render.file), target);
+  }
   return { runtimeRoot, spaceRoot, context, projectDir };
 }
 

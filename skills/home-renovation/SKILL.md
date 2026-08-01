@@ -15,6 +15,7 @@ Generated plans belong under the customer Workspace, for example `projects/home-
 - Read [planning and budget](references/planning-and-budget.md) for phasing, schedules, quotations, or cost decisions.
 - Read [materials and quality](references/materials-and-quality.md) for selection, substitutions, samples, and acceptance.
 - Read [visual references](references/visual-references.md) for Pinterest, 小红书, Houzz, image search, mood boards, or style exploration.
+- Read [demand discovery workflow](references/demand-discovery-workflow.md) for a whole-home front-end design conversation, style calibration, render storyboard, or interior-designer Agent handoff.
 - Read [safety and compliance](references/safety-and-compliance.md) whenever structural work, fire separation, electrical service, gas, plumbing, waterproofing, hazardous materials, permits, or building-management approval may be involved.
 
 ## Choose The Work Mode
@@ -27,6 +28,7 @@ Generated plans belong under the customer Workspace, for example `projects/home-
 | Budget or quotation comparison | normalized scope and like-for-like comparison |
 | Materials or product choice | requirement matrix, samples, evidence, and acceptance checks |
 | Inspiration or style references | bounded, traceable candidate board |
+| Front-end interior-design project | Page-led gated workflow plus confirmed brief, annotated plan, 3D draft, sample render and full render set |
 | Active-site problem | observed symptom, immediate risk boundary, evidence request, and escalation path |
 
 Do not force a complete project pack for one narrow question. Answer the immediate decision first, then identify only the next dependency that matters.
@@ -110,6 +112,8 @@ For each gate, name the decision owner, required input, evidence, acceptance cri
 When the user requests a 装修设计 Page, an interactive floor-plan delivery, SketchUp/SU presentation, a multi-level model, or a professional home-design Agent, hand the governed project to `$interior-design` and publish through the generic `pa-cli pages publish` contract. New work uses the Space-owned project v2 workflow: classified evidence, calibrated or explicitly concept-only scale, requirements, assumptions, unknowns, professional verifications, at least two concepts or a single-option reason, Pascal scene compilation, deterministic professional audit, and the current interior-designer delivery contract. Never recreate a similar-looking Page or substitute the configured example.
 
 Keep budget, materials, construction stages, and safety hold points in `project.json`; do not move them into untraceable prose. A later user change becomes a structured revision with `baseRevision`, recompile, audit, and new immutable Page artifact. Keep v1 projects on their compatibility path unless a new non-destructive v2 project is requested.
+
+For the interior-designer Agent, the main Agent owns user conversation and applies the Page-led workflow in [demand discovery workflow](references/demand-discovery-workflow.md). Publish a private mobile-first progress Page before initializing the specialist state and overwrite the same stable Page after every transition. Confirm only the short initial requirements in chat. Review the annotated floor plan, 3D design, one style sample, the entrance-first full render set, and the final delivery through their exact private Page IDs. Do not generate the full set before the one-image style sample is confirmed. The full set contains at least 15 logically ordered views. The terminal scope is a front-end design draft awaiting user visual and content acceptance, not construction execution.
 
 Use deterministic scope, schema, Pascal scene, geometry, OBB clearance, circulation, multi-level, requirement-trace, Agent delivery provenance, privacy, and publication checks only. Do not open a browser, take screenshots, click through the result, or perform Agent-owned visual acceptance. Return the published Page and leave desktop, mobile, and interaction acceptance to the user.
 

@@ -69,20 +69,44 @@
   ],
   "workflow": [
     {
-      "title": "锁定硬约束",
-      "description": "把不可移动的日期、订单、成员限制和预算放在首位。"
+      "title": "旅行建档",
+        "description": "确认日期、出发地、目的地、同行成员、预算和当前订单。",
+        "surface": "text"
     },
     {
-      "title": "核对动态事实",
-      "description": "用当前来源验证开放、交通、预约和季节性风险。"
+      "title": "约束冻结",
+        "description": "冻结订单、必去地点、节奏、饮食、体力和行动限制。",
+        "surface": "text"
     },
     {
-      "title": "编排每日节奏",
-      "description": "减少折返，保留用餐、休息、天气和突发变化缓冲。"
+      "title": "调研计划",
+        "description": "通过 Page 确认需核对的动态事实、来源优先级和截止时间。",
+        "surface": "page"
     },
     {
-      "title": "形成可执行包",
-      "description": "交付日程、地图线索、预订优先级、备选项和待确认事项。"
+      "title": "事实核验",
+        "description": "通过 Page 消歧地点，记录来源、时间、条件和相邻路段状态。",
+        "surface": "page"
+    },
+    {
+      "title": "行程草案",
+        "description": "用移动端逐日 Page 编排路线、交通、用餐、休息与缓冲。",
+        "surface": "page"
+    },
+    {
+      "title": "路线复核",
+        "description": "通过 Page 确认主路线、活动强度、预订优先级和晚点备选。",
+        "surface": "page"
+    },
+    {
+      "title": "执行包复核",
+        "description": "在最终 Page 汇总预算、来源、出发前动作和再次核验节点。",
+        "surface": "page"
+    },
+    {
+      "title": "行程交付",
+        "description": "同步最终进度 Page，保留行程、事实账本、备选和 revision。",
+        "surface": "terminal"
     }
   ],
   "deliverables": [
@@ -117,6 +141,7 @@
     "没有完整成员与订单信息时，只能先形成带未知项的候选计划。"
   ],
   "acceptance": [
+      "工作流启动即建立移动端进度 Page，动态事实和路线通过 Page 确认。",
     "关键动态事实附有来源、核对时间和适用条件。",
     "每日移动、开放窗口、用餐和体力节奏具有可执行性。",
     "备选方案、预订优先级和仍需用户确认的事项清晰。"

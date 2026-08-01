@@ -7,6 +7,7 @@ export type AgentProfileItem = {
 
 export type AgentWorkflowStep = AgentProfileItem & {
   step?: string;
+  surface?: "text" | "page" | "terminal";
 };
 
 export type AgentExample = AgentProfileItem & {

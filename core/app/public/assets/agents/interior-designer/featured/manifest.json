@@ -14,52 +14,107 @@
   "visualAcceptance": "user",
   "files": {
     "index.html": {
-      "bytes": 6781702,
-      "sha256": "91dd11e0f2df40f5b783d8290bcd11069e0e97d5c8c7261e5a863ac9b1bbe346"
+      "bytes": 2720414,
+      "sha256": "036899299e386f4731b349361a5a855604f5840a49607d744994ec46a5ad1bd2"
     },
     "scene.json": {
-      "bytes": 64502,
-      "sha256": "39a7d3007c25fb64042286cd4b603d0837e0f266b332eefb27880dc034272957"
+      "bytes": 64503,
+      "sha256": "63d7ddf5a7489547e0277732636f329f76d845b7f31583b129d128ee7471fd41"
     },
     "audit.json": {
-      "bytes": 2093,
-      "sha256": "15e8f3176018b47687c31b3f190b40e92c75a862f9076f17ada3a6d47a03628f"
+      "bytes": 2094,
+      "sha256": "60a358e19780a70e5165b078bc24e0a60dfb47029eeb2e8ad42e8f35ec5d9afa"
+    },
+    "media/source-plan.png": {
+      "bytes": 282955,
+      "sha256": "23eab735dd2dcd2190264f93b3aad274b08a68b822c4a6f597a377afdc763542"
+    },
+    "media/agent-annotation.png": {
+      "bytes": 545551,
+      "sha256": "2a8a7f8486409aee8e0252adb47f5c33c5e7d935b0b24a172bd6dcec579e48d1"
+    },
+    "media/render-living-overview.webp": {
+      "bytes": 71042,
+      "sha256": "beb7126786051a10de63c3bb893c98f0eb51d17f4f6f1023574103d490247d6c"
+    },
+    "media/render-living-media-wall.webp": {
+      "bytes": 75646,
+      "sha256": "dc40d844d876c083957fd18e89e8af983e66f4a7041774171314c7a291950a35"
+    },
+    "media/render-dining-kitchen.webp": {
+      "bytes": 50614,
+      "sha256": "9a3a8b9306d875556aae69365a4c2096bfaa2757fe9bab0c0957b7e766439895"
+    },
+    "media/render-primary-bedroom.webp": {
+      "bytes": 62990,
+      "sha256": "0f4526082ef07db8281b1bad14b20177979d1dd085812e0790139cacb696dda2"
     },
     "cover.svg": {
       "bytes": 23265,
       "sha256": "18722d13845f4b7782760a9e22202884bb84f7ebcc0a54589ebd2ab8a3cbe4b0"
-    },
-    "source-plan.png": {
-      "bytes": 282955,
-      "sha256": "23eab735dd2dcd2190264f93b3aad274b08a68b822c4a6f597a377afdc763542"
-    },
-    "agent-annotation.png": {
-      "bytes": 545551,
-      "sha256": "2a8a7f8486409aee8e0252adb47f5c33c5e7d935b0b24a172bd6dcec579e48d1"
     }
   },
   "source": {
     "kind": "native-governed-pascal-v2-project",
     "pipeline": [
       "project-v2-seed",
+      "demand-workflow-v1",
+      "style-calibration",
+      "render-storyboard",
       "pascal-scene-compile",
       "professional-quality-audit",
       "page-v2-generate",
       "artifact-hash-verify"
     ],
-    "seedSha256": "ef8e9f3d9dfe371e4deec4621d066d0a79c12b0eea95abe59b5eb471ee19514e",
+    "seedSha256": "9e6d9138a1a45bdb023ec456ac32ee67f4244e487b3fee523183a726c1b11782",
+    "workflowEventsSha256": "f28b7a715d1937eaf4decd7878f7b127120ad9218d3020a5ea4d9ec19eec9d1a",
+    "renderPromptSetSha256": "02425c8a153a0fb4117588eca10b39380a2fd6bffb467f443a2bfa28febcbec7",
     "evidenceSha256": "23eab735dd2dcd2190264f93b3aad274b08a68b822c4a6f597a377afdc763542",
     "modelBasisSha256": "23eab735dd2dcd2190264f93b3aad274b08a68b822c4a6f597a377afdc763542",
     "annotationSha256": "2a8a7f8486409aee8e0252adb47f5c33c5e7d935b0b24a172bd6dcec579e48d1",
-    "conceptRender": {
-      "generator": "imagegen",
-      "imageSha256": "d4f4d0a69646b4ea15c60336baf980cb27612c7fcbe4ac22eed9f367c64f01fd",
-      "referenceImageSha256": "a0048ea39e561a586597680100938b1b92fba92a6dabb26e5b82589fd388992e",
-      "promptSha256": "66456dcd5bc9cdf1dd5b633f8a902de7927b87dfcf9b65d349d7ad65ec9e8681"
+    "demandWorkflow": {
+      "version": 1,
+      "stage": "delivered",
+      "transitionCount": 7,
+      "confirmationCount": 7
     },
-    "projectSha256": "8df1e8b22c9b02144aaf86e4fc0aaa8cf4177e7ba2ac68e464efda199fe410d9",
+    "renderSet": [
+      {
+        "renderId": "render-living-overview",
+        "generator": "imagegen",
+        "sourceImageSha256": "1bc3195b402350049c462c02f8c17c47fdd0d02b963f47094679809ba935d135",
+        "deliveryImageSha256": "beb7126786051a10de63c3bb893c98f0eb51d17f4f6f1023574103d490247d6c",
+        "referenceSetSha256": "c7875017e6c76b469c765d909944c0a247a14babb9f5f385d9e58e7f3334682e",
+        "promptSha256": "418c301a6a90fb3669fa744f1afb645b03326886b8256124949f1cdc6ed0aa94"
+      },
+      {
+        "renderId": "render-living-media-wall",
+        "generator": "imagegen",
+        "sourceImageSha256": "5ca715716bfbb41cc7b789be0c203f403d5297199758de41376e4a3c05ef1fc7",
+        "deliveryImageSha256": "dc40d844d876c083957fd18e89e8af983e66f4a7041774171314c7a291950a35",
+        "referenceSetSha256": "c7875017e6c76b469c765d909944c0a247a14babb9f5f385d9e58e7f3334682e",
+        "promptSha256": "720851cef9f41a2823c064c84cdf67eb9830a00b4b11529ad9c644009c0a90f9"
+      },
+      {
+        "renderId": "render-dining-kitchen",
+        "generator": "imagegen",
+        "sourceImageSha256": "72818576e1f8a7aff72a80b7d326016ad83f828c259f4a5c089ee0b9ecd5421b",
+        "deliveryImageSha256": "9a3a8b9306d875556aae69365a4c2096bfaa2757fe9bab0c0957b7e766439895",
+        "referenceSetSha256": "c7875017e6c76b469c765d909944c0a247a14babb9f5f385d9e58e7f3334682e",
+        "promptSha256": "f165bcc2a6a0b09f77e2a924edbab049e21d2ce8a5372fdec8fdcdf364f15ce3"
+      },
+      {
+        "renderId": "render-primary-bedroom",
+        "generator": "imagegen",
+        "sourceImageSha256": "b29ae45fbd690e5e0de9c745d9d327970eb029ffc17003011dcd31bccbcdb66a",
+        "deliveryImageSha256": "0f4526082ef07db8281b1bad14b20177979d1dd085812e0790139cacb696dda2",
+        "referenceSetSha256": "c7875017e6c76b469c765d909944c0a247a14babb9f5f385d9e58e7f3334682e",
+        "promptSha256": "2f5908a4d11f0ece9a7a569bf12ab714affd9cf906fb9e8b486ba68437c379a2"
+      }
+    ],
+    "projectSha256": "8b3c377d0878e33762ac589e56cdb14156756b69f4cee9e8d82b584b0125e7a4",
     "sceneSha256": "58b9fade97393812210e7e29a721e9d76d14eefed02ad6e142355fcdce61d78f",
-    "auditSha256": "5f93a3c93da08df77d31de976b858e0a0b588812344a2404d02f520acd23b809",
+    "auditSha256": "12eccc7c86f01533fd80ba14579ab8bf224c2f2721565de946ac9b9bee8d2c00",
     "renderProfile": "professional-mesh-ink",
     "layoutProfile": "su-design-classic",
     "qualityFloor": {

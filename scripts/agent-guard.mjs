@@ -2,6 +2,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { validateSpecialistWorkflow } from "../core/agent/src/agents/workflow.js";
 
 const scriptFile = fileURLToPath(import.meta.url);
 const defaultRoot = path.resolve(path.dirname(scriptFile), "..");
@@ -32,13 +33,17 @@ export function validateAgentRegistry({ rootDir = defaultRoot } = {}) {
   const skillRegistry = readStructured(path.join(root, "registry", "skills.json"), "Skill registry", errors);
   const agentsSchema = readStructured(path.join(root, "schemas", "personal-agent", "agents.schema.json"), "Agent schema", errors);
   const profileSchema = readStructured(path.join(root, "schemas", "personal-agent", "agent-profile.schema.json"), "Agent profile schema", errors);
-  if (!registry || !skillRegistry || !agentsSchema || !profileSchema) return result(errors, 0);
+  const workflowSchema = readStructured(path.join(root, "schemas", "personal-agent", "agent-workflow.schema.json"), "Agent workflow schema", errors);
+  if (!registry || !skillRegistry || !agentsSchema || !profileSchema || !workflowSchema) return result(errors, 0);
 
   if (agentsSchema.$id !== "https://personal-agent.cn/schemas/agents-v1.json") {
     errors.push("Agent schema has an unsupported $id");
   }
   if (profileSchema.$id !== "https://personal-agent.cn/schemas/agent-profile-v1.json") {
     errors.push("Agent profile schema has an unsupported $id");
+  }
+  if (workflowSchema.$id !== "https://personal-agent.cn/schemas/agent-workflow-v2.json") {
+    errors.push("Agent workflow schema has an unsupported $id");
   }
   if (registry.schemaVersion !== 1 || !Array.isArray(registry.agents)) {
     errors.push("Agent registry must use schemaVersion 1 and contain an agents array");
@@ -104,7 +109,7 @@ function validateAgentConfig(config, context) {
   }
   exactKeys(config, [
     "schemaVersion", "id", "version", "displayName", "description", "instructions",
-    "profile", "skills", "routing",
+    "profile", "workflow", "skills", "routing",
   ], label, errors);
   if (config.schemaVersion !== 1) errors.push(`${label} has an unsupported schemaVersion`);
   if (config.id !== id) errors.push(`${label} id does not match registry id ${id}`);
@@ -117,9 +122,11 @@ function validateAgentConfig(config, context) {
   if (displayName) displayNames.add(displayName);
   if (config.instructions !== "AGENT.md") errors.push(`${label}.instructions must be AGENT.md`);
   if (config.profile !== "profile.yaml") errors.push(`${label}.profile must be profile.yaml`);
+  if (config.workflow !== "workflow.json") errors.push(`${label}.workflow must be workflow.json`);
 
   const instructionsPath = safePath(agentDirectory, agentDirectory, config.instructions, `${label}.instructions`, errors);
   const profilePath = safePath(agentDirectory, agentDirectory, config.profile, `${label}.profile`, errors);
+  const workflowPath = safePath(agentDirectory, agentDirectory, config.workflow, `${label}.workflow`, errors);
   if (instructionsPath) {
     if (!regularFile(instructionsPath, `${label}.instructions`, errors)) {
       // regularFile records the failure.
@@ -161,6 +168,14 @@ function validateAgentConfig(config, context) {
     const profile = readStructured(profilePath, `${id} profile.yaml`, errors);
     if (profile) validateProfile(profile, { id, agentDirectory, configuredSkills: skills, errors });
   }
+  if (workflowPath && regularFile(workflowPath, `${label}.workflow`, errors)) {
+    const workflow = readStructured(workflowPath, `${id} workflow.json`, errors);
+    if (workflow) {
+      const validation = validateSpecialistWorkflow(workflow, { agentId: id });
+      for (const error of validation.errors) errors.push(`${id} workflow.json: ${error}`);
+      scanPublicText(workflow, `${id} workflow.json`, errors);
+    }
+  }
 }
 
 function validateProfile(profile, { id, agentDirectory, configuredSkills, errors }) {
@@ -199,7 +214,7 @@ function validateProfile(profile, { id, agentDirectory, configuredSkills, errors
   validatePublicList(profile.useWhen, `${label}.useWhen`, errors);
   validatePublicList(profile.notFor, `${label}.notFor`, errors);
   validatePublicList(profile.requiredInputs, `${label}.requiredInputs`, errors);
-  validateTitledDescriptions(profile.workflow, `${label}.workflow`, 3, 8, errors);
+  validateWorkflowDescriptions(profile.workflow, `${label}.workflow`, errors);
 
   const deliverables = objectArray(profile.deliverables, `${label}.deliverables`, 2, 8, errors);
   for (const [index, item] of deliverables.entries()) {
@@ -281,6 +296,17 @@ function validateTitledDescriptions(value, label, minimum, maximum, errors) {
     exactKeys(item, ["title", "description"], itemLabel, errors);
     requiredText(item.title, `${itemLabel}.title`, 2, 60, errors);
     requiredText(item.description, `${itemLabel}.description`, 8, 200, errors);
+  }
+}
+
+function validateWorkflowDescriptions(value, label, errors) {
+  const items = objectArray(value, label, 3, 8, errors);
+  for (const [index, item] of items.entries()) {
+    const itemLabel = `${label}[${index}]`;
+    exactKeys(item, ["title", "description", "surface"], itemLabel, errors);
+    requiredText(item.title, `${itemLabel}.title`, 2, 60, errors);
+    requiredText(item.description, `${itemLabel}.description`, 8, 200, errors);
+    if (!["text", "page", "terminal"].includes(item.surface)) errors.push(`${itemLabel}.surface is invalid`);
   }
 }
 
