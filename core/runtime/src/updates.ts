@@ -251,7 +251,9 @@ async function downloadArtifactWithPlatformClient(url) {
   try {
     const invocation = process.platform === "win32" ? powershellDownload(url, target, directory) : curlDownload(url, target);
     await executeDownload(invocation.command, invocation.args);
-    if (!fs.statSync(target, { throwIfNoEntry: false })?.isFile()) throw new Error("System downloader did not create an artifact");
+    const artifact = fs.statSync(target, { throwIfNoEntry: false });
+    if (!artifact?.isFile()) throw new Error("System downloader did not create an artifact");
+    if (artifact.size > MAX_ARTIFACT_BYTES) throw new Error("System downloader created an oversized artifact");
     return fs.readFileSync(target);
   } finally {
     fs.rmSync(directory, { recursive: true, force: true });
