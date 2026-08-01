@@ -108,7 +108,31 @@ test("update manager still rejects a platform-downloaded artifact with the wrong
   }
 });
 
-function createDownloadFixture({ downloadFallbackImpl }) {
+test("update manager falls back for release and checksum metadata transport failures", async () => {
+  const fallbackUrls = [];
+  const fixture = createDownloadFixture({
+    apiFetchFails: true,
+    sumsFetchFails: true,
+    artifactFetchFails: false,
+    downloadFallbackImpl: async (url, context) => {
+      fallbackUrls.push(url);
+      if (url.includes("api.github.com")) return Buffer.from(JSON.stringify([context.release]));
+      if (url.endsWith("SHA256SUMS")) return Buffer.from(`${context.digest}  ${context.assetName}\n`);
+      throw new Error("Unexpected fallback URL");
+    },
+  });
+  try {
+    const checked = await fixture.manager.check();
+    assert.equal(checked.available.version, "0.2.0-beta.52");
+    assert.equal(fallbackUrls.length, 2);
+    assert.match(fallbackUrls[0], /^https:\/\/api\.github\.com\/repos\//);
+    assert.match(fallbackUrls[1], /\/SHA256SUMS$/);
+  } finally {
+    fixture.cleanup();
+  }
+});
+
+function createDownloadFixture({ downloadFallbackImpl, apiFetchFails = false, sumsFetchFails = false, artifactFetchFails = true }) {
   const homeRoot = fs.mkdtempSync(path.join(os.tmpdir(), "pa-update-fallback-test-"));
   const dataRoot = path.join(homeRoot, "workspace");
   const installRoot = path.join(homeRoot, "core");
@@ -119,7 +143,7 @@ function createDownloadFixture({ downloadFallbackImpl }) {
   fs.writeFileSync(launcher, "launcher", { mode: 0o700 });
   const candidate = Buffer.from("fallback candidate bytes");
   const digest = crypto.createHash("sha256").update(candidate).digest("hex");
-  const tag = "v0.2.0-beta.51";
+  const tag = "v0.2.0-beta.52";
   const assetName = updateInternals.updaterAssetName(tag);
   const assetUrl = `https://github.com/chenchen428/personal-agent-node/releases/download/${tag}/${assetName}`;
   const release = { tag_name: tag, draft: false, prerelease: true, assets: [
@@ -127,15 +151,17 @@ function createDownloadFixture({ downloadFallbackImpl }) {
     { name: "SHA256SUMS", browser_download_url: `https://github.com/chenchen428/personal-agent-node/releases/download/${tag}/SHA256SUMS` },
   ] };
   const fetchImpl = async (url) => {
-    if (String(url).includes("api.github.com")) return Response.json([release]);
-    if (String(url).endsWith("SHA256SUMS")) return new Response(`${digest}  ${assetName}\n`);
-    throw new TypeError("fetch failed");
+    if (String(url).includes("api.github.com")) { if (apiFetchFails) throw new TypeError("fetch failed"); return Response.json([release]); }
+    if (String(url).endsWith("SHA256SUMS")) { if (sumsFetchFails) throw new TypeError("fetch failed"); return new Response(`${digest}  ${assetName}\n`); }
+    if (artifactFetchFails) throw new TypeError("fetch failed");
+    return new Response(candidate, { headers: { "content-length": String(candidate.length) } });
   };
+  const fallback = (url) => downloadFallbackImpl(url, { release, digest, assetName, candidate });
   const manager = createUpdateManager({
     config: { homeRoot, dataRoot, runtimeDir: path.join(dataRoot, "runtime") },
     operations: createOperationStore({ dataRoot }),
     fetchImpl,
-    downloadFallbackImpl,
+    downloadFallbackImpl: fallback,
     spawnImpl() { return { unref() {} }; },
   });
   return { manager, candidate, assetUrl, cleanup: () => fs.rmSync(homeRoot, { recursive: true, force: true }) };
