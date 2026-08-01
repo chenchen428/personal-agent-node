@@ -4,6 +4,7 @@ import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import test from "node:test";
+import vm from "node:vm";
 
 import {
   buildAgentDeliveryExample,
@@ -14,6 +15,7 @@ import {
   DELIVERY_PIXEL_BUDGET,
   resolveDeliveryDpr,
 } from "../skills/interior-design/scripts/pascal-render-budget.mjs";
+import { mobileLandscapeController } from "../skills/interior-design/scripts/generate-page-v2.mjs";
 
 const root = path.resolve(import.meta.dirname, "..");
 const artifactRoot = path.join(root, "core/app/public/assets/agents/interior-designer/featured");
@@ -29,6 +31,46 @@ function referencedImageByAlt(html, alt) {
   assert.ok(source && !source.startsWith("data:"), `image must use a relative Page asset: ${alt}`);
   return fs.readFileSync(path.join(artifactRoot, source));
 }
+
+function evaluateMobileLayout({ width, height, userAgent, mobile = false, maxTouchPoints = 0, screenWidth = width, screenHeight = height }) {
+  const properties = new Map();
+  const listeners = new Map();
+  const window = {
+    innerWidth: width,
+    innerHeight: height,
+    addEventListener: (name, listener) => listeners.set(name, listener),
+    dispatchEvent: () => true,
+    visualViewport: { addEventListener: (name, listener) => listeners.set(`visual-${name}`, listener) },
+  };
+  const context = {
+    CustomEvent: class CustomEvent {},
+    document: {
+      body: { dataset: {} },
+      documentElement: { style: { setProperty: (name, value) => properties.set(name, value) } },
+    },
+    innerWidth: width,
+    innerHeight: height,
+    navigator: { maxTouchPoints, userAgent, userAgentData: { mobile } },
+    screen: { width: screenWidth, height: screenHeight },
+    window,
+  };
+  vm.runInNewContext(mobileLandscapeController(), context);
+  return { layout: context.document.body.dataset.mobileLayout, properties };
+}
+
+test("mobile portrait is forced into the landscape canvas without rotating narrow desktop windows", () => {
+  const portrait = evaluateMobileLayout({ width: 390, height: 844, userAgent: "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X)", mobile: true, maxTouchPoints: 5 });
+  assert.equal(portrait.layout, "forced-landscape");
+  assert.equal(portrait.properties.get("--portrait-viewport-width"), "390px");
+  assert.equal(portrait.properties.get("--landscape-viewport-width"), "844px");
+  assert.equal(portrait.properties.get("--landscape-viewport-height"), "390px");
+
+  const landscape = evaluateMobileLayout({ width: 844, height: 390, userAgent: "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X)", mobile: true, maxTouchPoints: 5 });
+  assert.equal(landscape.layout, "landscape");
+
+  const desktop = evaluateMobileLayout({ width: 430, height: 900, userAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64)", screenWidth: 1920, screenHeight: 1080 });
+  assert.equal(desktop.layout, "desktop");
+});
 
 test("Pascal delivery DPR follows a bounded pixel budget as the page grows", () => {
   assert.equal(DELIVERY_PIXEL_BUDGET, 1_400_000);
@@ -125,6 +167,11 @@ test("the representative delivery preserves the governed Pascal v2 interaction a
   assert.match(html, /data-agent-id="interior-designer"/);
   assert.match(html, /data-agent-example-id="interior-c-layout-delivery"/);
   assert.match(html, /data-layout-profile="su-design-classic"/);
+  assert.match(html, /data-mobile-layout/);
+  assert.match(html, /forced-landscape/);
+  assert.match(html, /--landscape-viewport-width/);
+  assert.match(html, /transform: rotate\(90deg\)/);
+  assert.doesNotMatch(html, /orientation-hint|横屏查看空间更完整/);
   assert.match(html, /data-presentation="requirements"[^>]*>.*?需求<\/button>/s);
   assert.match(html, /data-presentation="model"[^>]*>设计稿<\/button>/);
   assert.match(html, /data-presentation="render"[^>]*>.*?效果图<\/button>/s);
@@ -170,6 +217,8 @@ test("render budget and Page generator keep the accepted Pascal v2 implementatio
   assert.match(renderBudget, /IntersectionObserver/);
   assert.match(renderBudget, /pascal-viewer-visibility/);
   assert.match(generator, /new CustomEvent\('pascal-viewer-visibility'\)/);
+  assert.match(generator, /function mobileLandscapeController\(\)/);
+  assert.match(generator, /navigator\.userAgentData\?\.mobile/);
   assert.doesNotMatch(generator, /template\.json|artifactMarker|data-template-id|data-template-version/);
 });
 

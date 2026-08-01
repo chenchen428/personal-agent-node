@@ -87,7 +87,7 @@ export function generateProfessionalPage({ projectDir: projectDirInput, context,
 ${renderPanel}${evidencePanel}
 <article class="presentation-panel document-panel" data-presentation-panel="review" hidden><header><div><small>QUALITY GATE</small><h2>质量报告与方案比较</h2></div><p>${audit.blockingCount} 个阻断 · ${audit.warningCount} 个警告 · 规则集 ${escapeHtml(audit.ruleSet)}</p></header><div class="document-grid"><section class="card"><div class="card-head"><strong>审计结果</strong></div><div class="issue-list">${issues}</div></section><aside class="card"><div class="card-head"><strong>同场景质量</strong></div><div class="stack">${designQualitySummary}</div><div class="card-head"><strong>方案比较</strong></div><div class="stack">${concepts}</div></aside></div></article>
 ${presentationNavigation}
-</section><p class="orientation-hint">横屏查看空间更完整</p><script id="pascal-scene" type="application/json">${safeJson(pagePayload)}</script><script>${pageController()}${cameraShotController()}</script><script>${viewer}</script></main></body></html>`;
+</section><script id="pascal-scene" type="application/json">${safeJson(pagePayload)}</script><script>${mobileLandscapeController()}${pageController()}${cameraShotController()}</script><script>${viewer}</script></main></body></html>`;
   verifyNoGovernanceIdentifiers(html, project);
   const verification = verifyProfessionalPageHtml(html, delivery);
   fs.mkdirSync(path.dirname(output), { recursive: true, mode: 0o700 });
@@ -172,6 +172,9 @@ export function verifyProfessionalPageHtml(html, delivery) {
     'data-delivery-version="2"',
     'data-engine="pascal-v2"',
     'data-layout-profile="su-design-classic"',
+    'data-mobile-layout',
+    'forced-landscape',
+    '--landscape-viewport-width',
     'id="pascal-scene"',
     'id="viewer-loading"',
     'id="model-derived-plan"',
@@ -530,6 +533,10 @@ function renderRevisions(project) {
 
 function cameraShotController() {
   return `(function(){const picker=document.querySelector('[data-camera-shot]');if(!picker)return;picker.addEventListener('change',()=>{const api=window.PersonalAgentPascalViewer;if(!api||typeof api.setCameraShot!=='function')return;api.setCameraShot(picker.value);document.querySelectorAll('[data-camera-mode]').forEach(button=>button.classList.toggle('active',button.dataset.cameraMode==='perspective'))})})();`;
+}
+
+export function mobileLandscapeController() {
+  return `(function(){const body=document.body;const root=document.documentElement;const ua=navigator.userAgent||'';const mobileUa=/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(ua);const touchScreen=Number(navigator.maxTouchPoints||0)>0&&Math.min(screen.width||innerWidth,screen.height||innerHeight)<=1024;const mobile=Boolean(navigator.userAgentData?.mobile)||mobileUa||touchScreen;function apply(){const portrait=innerHeight>innerWidth;body.dataset.mobileLayout=mobile?(portrait?'forced-landscape':'landscape'):'desktop';root.style.setProperty('--portrait-viewport-width',innerWidth+'px');root.style.setProperty('--landscape-viewport-width',(portrait?innerHeight:innerWidth)+'px');root.style.setProperty('--landscape-viewport-height',(portrait?innerWidth:innerHeight)+'px');window.dispatchEvent(new CustomEvent('pascal-viewer-visibility'))}apply();window.addEventListener('resize',apply);window.visualViewport?.addEventListener('resize',apply)})();`;
 }
 
 function pageController() {
