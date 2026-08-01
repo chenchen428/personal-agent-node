@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 1,
+  "skill": "personal-runtime",
+  "title": "Mobile-friendly generic Page authoring and publication",
+  "prompt": "Create and publish a governed Page containing an annotated floor plan. The primary content must remain readable and operable at 360 and 430 CSS px without treating the phone as a uniformly scaled desktop canvas. Apply the generic Pages mobile authoring contract before publication, keep visual acceptance user-owned, and do not run browser or screenshot acceptance unless explicitly requested.",
+  "commands": [
+    "pa-cli pages publish --file <project>/derived/page/index.html --bundle <project>/derived/page --folder <page-folder> --title <title> --summary <summary> --json"
+  ],
+  "artifacts": [
+    { "path": "expected.json", "label": "Generic Page mobile authoring expectation" }
+  ]
+}

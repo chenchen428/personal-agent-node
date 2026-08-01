@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "mobileContract": {
+    "representativeCssWidths": [360, 430],
+    "desktopScaleOnly": false,
+    "ordinaryTextMinCssPx": 16,
+    "essentialDiagramLabelMinCssPx": 12,
+    "interactiveTargetMinCssPx": 44,
+    "rasterMinDeviceScale": 2,
+    "denseDiagramStrategies": [
+      "mobile-specific-layout",
+      "detail-crops-with-semantic-legend",
+      "component-scoped-pan-zoom-or-horizontal-scroll"
+    ],
+    "pageWideHorizontalOverflow": false,
+    "browserZoomRestricted": false,
+    "visualAcceptance": "user"
+  }
+}

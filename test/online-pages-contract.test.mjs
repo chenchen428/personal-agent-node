@@ -26,6 +26,18 @@ test("Online Pages CLI, Skill, server, clients, and Activity share one dual-devi
   assert.match(publishing, /--target-type page/);
   assert.match(publishing, /without `--template`/);
   assert.match(publishing, /new publications do not write template provenance/);
+  assert.match(publishing, /360-430 CSS px/);
+  assert.match(publishing, /not the desktop composition merely scaled/);
+  assert.match(publishing, /essential diagram or annotation labels at least 12 CSS px/);
+  assert.match(publishing, /Do not use `user-scalable=no` or a restrictive `maximum-scale`/);
+  assert.match(publishing, /intrinsic width must be at least twice/);
+  assert.match(publishing, /bounded pan\/zoom or horizontal-scroll surface/);
+  assert.match(publishing, /mobile gallery preview is not visual or interaction acceptance/);
+  const interiorSkill = read("skills/interior-design/SKILL.md");
+  const interiorDelivery = read("skills/interior-design/references/delivery-v2.md");
+  assert.match(interiorSkill, /do not compress the desktop coordinate system until essential labels fall below 12 CSS px/);
+  assert.match(interiorDelivery, /must not use `width: 100%` shrinkage/);
+  assert.match(interiorDelivery, /Raster evidence must provide at least twice/);
   assert.match(runtimeCli, /Page Activity requires --target-type page and --target-id <page-id>/);
   assert.match(activity, /PAGE_TARGET_REQUIRED/);
   assert.match(server, /desktopThumbnailUrl:/);

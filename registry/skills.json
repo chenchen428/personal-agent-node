@@ -654,7 +654,7 @@
       "security": {"network":"none","dataClass":"private","outboundData":"none","externalWrite":false,"requiresAuthorization":false,"untrustedContent":true},
       "origin": {"kind":"workspace","license":"Apache-2.0"},
       "cli": ["personal-agent","pa-cli-pages"],
-      "examples": ["test/fixtures/skill-cases/personal-runtime/case.json"],
+      "examples": ["test/fixtures/skill-cases/personal-runtime/case.json", "test/fixtures/skill-cases/personal-runtime-pages/case.json"],
       "caseRequired": true,
       "related": ["personal-connectivity","personal-updates","personal-acceptance"]
     },

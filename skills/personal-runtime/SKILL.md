@@ -1,6 +1,6 @@
 ---
 name: personal-runtime
-description: Inspect and diagnose the local Personal Agent runtime through the stable personal-agent CLI. Use for runtime status, capability and command discovery, doctor checks, backup status, unavailable-command reporting, or choosing implemented versus preview command surfaces.
+description: Inspect and diagnose the local Personal Agent runtime and apply the generic governed Pages contract. Use for runtime status, capability and command discovery, doctor checks, backup status, unavailable-command reporting, choosing implemented versus preview command surfaces, or authoring and publishing a Personal Agent Page with mobile-friendly content.
 ---
 
 # Personal Runtime
@@ -21,4 +21,4 @@ Treat `implemented`, `preview`, and `planned` as different contracts. Opt into p
 
 Use JSON output and report only redacted facts. Do not call internal HTTP ports, inspect product databases, use `private-site`, or recreate removed CLI aliases.
 
-Read [command-map.md](references/command-map.md) for command discovery and [safety-and-confirmation.md](references/safety-and-confirmation.md) before any non-read-only operation.
+Read [command-map.md](references/command-map.md) for command discovery and [safety-and-confirmation.md](references/safety-and-confirmation.md) before any non-read-only operation. Before authoring or publishing any Page, read and satisfy the mobile authoring and publishing requirements in [page-publishing.md](references/page-publishing.md).
