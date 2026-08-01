@@ -112,27 +112,27 @@ function auditFurniture(project, level) {
           fix: 'Move, rotate, resize, or remove one of the colliding items.',
         }));
       }
-      const expansion = useClearance(current.item.kind);
+      const expansion = operatingClearance(current.item);
       if (expansion > 0 && obbOverlaps(itemObb(current.item, expansion), other.box)) {
         findings.push(issue(project, 'spatial.operating-clearance', 'blocking', `${other.item.name} blocks the operating or maintenance clearance of ${current.item.name}.`, {
           nodeIds: [current.item.itemId, other.item.itemId],
           levelIds: [level.levelId],
           measurement: { clearanceMetres: expansion },
           threshold: { minimumClearanceMetres: expansion },
-          thresholdSource: 'product-concept-default',
+          thresholdSource: current.item.assetProfile ? 'asset-profile' : 'product-concept-default',
           fix: 'Separate the items so cabinet doors, drawers, appliances, or required maintenance faces can operate.',
         }));
       }
     }
     if (room && !current.item.clearanceExempt) {
-      const expansion = useClearance(current.item.kind);
+      const expansion = operatingClearance(current.item);
       if (expansion > 0 && !obbCorners(itemObb(current.item, expansion)).every((point) => pointInPolygon(point, room.polygon))) {
         findings.push(issue(project, 'spatial.use-clearance', 'blocking', `${current.item.name} lacks its conceptual use clearance.`, {
           nodeIds: [current.item.itemId, room.roomId],
           levelIds: [level.levelId],
           measurement: { clearanceMetres: expansion },
           threshold: { minimumClearanceMetres: expansion },
-          thresholdSource: 'product-concept-default',
+          thresholdSource: current.item.assetProfile ? 'asset-profile' : 'product-concept-default',
           fix: 'Move or resize the item, or record a project-specific clearance requirement.',
         }));
       }
@@ -602,4 +602,10 @@ function useClearance(kind = '') {
   if (/toilet|wash|sink|卫浴|马桶/i.test(kind)) return 0.45;
   if (/cabinet|fridge|appliance|柜|冰箱/i.test(kind)) return 0.35;
   return 0;
+}
+
+function operatingClearance(item) {
+  const envelope = item.assetProfile?.operatingClearance;
+  if (!envelope) return useClearance(item.kind);
+  return Math.max(0, ...['front', 'back', 'left', 'right'].map((key) => Number(envelope[key]) || 0));
 }

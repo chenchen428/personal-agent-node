@@ -1,6 +1,7 @@
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
+import { withDefaultAssetProfiles } from './design-quality.mjs';
 import {
   initializeProjectIndex,
   recordProjectIndexRevision,
@@ -267,6 +268,7 @@ export function validateProjectV2(project, { context } = {}) {
 
   if (!plainObject(project.designIntent)) errors.push('designIntent must be an object');
   for (const name of ['style', 'materials', 'lighting', 'maintenance']) array(project.designIntent?.[name], `designIntent.${name}`, errors);
+  if (project.designIntent?.rendering !== undefined && !plainObject(project.designIntent.rendering)) errors.push('designIntent.rendering must be an object');
   if (!plainObject(project.scene)) errors.push('scene must be an object');
   if (!plainObject(project.quality)) errors.push('quality must be an object');
   if (!plainObject(project.publication)) errors.push('publication must be an object');
@@ -320,10 +322,10 @@ export function createProjectFromSeed(seed, context, { now = () => new Date().to
     unknowns: seed.unknowns || [],
     professionalVerifications: seed.professionalVerifications || [],
     demandWorkflow: createDemandWorkflow(seed.demandWorkflow),
-    concepts: list(seed.concepts).map((concept) => ({
+    concepts: withDefaultAssetProfiles(list(seed.concepts).map((concept) => ({
       ...concept,
       sourcePlanEvidenceId: concept?.sourcePlanEvidenceId || sourcePlanEvidenceId,
-    })),
+    }))),
     selectedConceptId: seed.selectedConceptId || seed.concepts?.[0]?.conceptId || '',
     designIntent: { style: [], materials: [], lighting: [], maintenance: [], ...(seed.designIntent || {}) },
     decisions: seed.decisions || [],

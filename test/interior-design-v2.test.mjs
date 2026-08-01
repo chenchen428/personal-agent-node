@@ -187,6 +187,11 @@ test('compiles deterministic single-level Pascal scenes with real doors, windows
   assert.equal(first.sceneHash, second.sceneHash);
   assert.deepEqual(first.scene, second.scene);
   assert.deepEqual(first.furniture, second.furniture);
+  assert.equal(first.designQuality.materials.length, 6);
+  assert.equal(first.designQuality.lights.length, 3);
+  assert.equal(first.designQuality.cameras.length, 3);
+  assert.equal(first.designQuality.rendering.geometryLocked, true);
+  assert.ok(first.furniture.every((item) => item.assetProfile?.assetId && item.materialId));
   const types = Object.values(first.scene.nodes).map((node) => node.type);
   assert.ok(types.includes('door'));
   assert.ok(types.includes('window'));
@@ -198,6 +203,7 @@ test('compiles deterministic single-level Pascal scenes with real doors, windows
   assert.equal((await adapter.queryScene({ snapshot: first, sourceIds: ['entry'] })).nodes[0].type, 'door');
   const { payload: pagePayload, pageMappings } = adapter.exportForPage(first);
   assert.equal(pagePayload.sourcePlanSha256, project.provenance.sourcePlanSha256);
+  assert.deepEqual(pagePayload.designQuality, first.designQuality);
   assert.doesNotMatch(JSON.stringify(pagePayload), /projectId|ownerId|sourceId|requirementIds/);
   assert.doesNotMatch(JSON.stringify(pagePayload), /renovation_/);
   assert.match(pageMappings.entry, /^page-door-/);
@@ -342,6 +348,24 @@ test('professional gates deterministically expose geometry, clearance, evidence,
     selectedLevel(project).rooms[0].materialId = 'missing-material-intent';
   }).includes('materials.intent-missing'));
   assert.ok(rulesFor((project) => {
+    delete project.designIntent.materials[0].roughness;
+  }).includes('materials.render-contract-incomplete'));
+  assert.ok(rulesFor((project) => {
+    project.designIntent.lighting = [];
+  }).includes('design.lighting-unspecified'));
+  assert.ok(rulesFor((project) => {
+    project.designIntent.rendering.cameras = [];
+  }).includes('design.camera-missing'));
+  assert.ok(rulesFor((project) => {
+    project.designIntent.rendering.geometryLocked = false;
+  }).includes('render.geometry-unlocked'));
+  assert.ok(rulesFor((project) => {
+    project.designIntent.rendering.controlPasses = ['depth'];
+  }).includes('render.control-passes-missing'));
+  assert.ok(rulesFor((project) => {
+    delete selectedLevel(project).items[0].assetProfile;
+  }).includes('assets.profile-incomplete'));
+  assert.ok(rulesFor((project) => {
     project.brief.budget = { currency: 'CNY', totalMinor: 1_000_000, confidence: 'estimated' };
     project.concepts.find((concept) => concept.conceptId === project.selectedConceptId).budgetItems = [];
   }).includes('budget.scope-unallocated'));
@@ -385,6 +409,10 @@ test('generates a deterministic, private, offline Pascal Page v2 with accessible
   assert.match(firstHtml, /id="model-derived-plan"/);
   assert.match(firstHtml, /data-level-mode="exploded"/);
   assert.match(firstHtml, /data-label-mode="visible"/);
+  assert.match(firstHtml, /data-camera-shot/);
+  assert.match(firstHtml, /同场景质量/);
+  assert.match(firstHtml, /PBR 材质/);
+  assert.match(firstHtml, /几何一致性/);
   assert.match(firstHtml, /media\/source-plan\.png/);
   assert.match(firstHtml, /用户需求与户型依据/);
   assert.match(firstHtml, /用户原图是唯一户型依据/);

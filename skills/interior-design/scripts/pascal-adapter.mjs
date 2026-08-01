@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { canonicalJson, initializeProject, projectError, selectedConcept, sha256 } from './project-v2.mjs';
+import { compileDesignQuality } from './design-quality.mjs';
 import { compiledSceneHash } from './scene-hash.mjs';
 
 const PASCAL_CORE_VERSION = '0.9.2';
@@ -123,6 +124,7 @@ export class PascalInteriorAdapter {
             label: room.name,
             properties: {
               roomKind: room.kind,
+              materialId: room.materialId,
               sourceId: room.roomId,
               requiredAccess: room.requiredAccess !== false,
             },
@@ -201,6 +203,8 @@ export class PascalInteriorAdapter {
             rotation: item.rotation,
             elevation: level.elevation,
             color: item.color,
+            materialId: item.materialId,
+            assetProfile: item.assetProfile,
             requirementIds: item.requirementIds || [],
           });
         }
@@ -225,7 +229,8 @@ export class PascalInteriorAdapter {
         await verifier.close();
       }
       const sortedFurniture = pageFurniture.sort((a, b) => a.id.localeCompare(b.id));
-      const sceneHash = compiledSceneHash(canonical, sortedFurniture);
+      const designQuality = compileDesignQuality(project);
+      const sceneHash = compiledSceneHash(canonical, sortedFurniture, designQuality);
       const mappings = [
         ...[...sourceMap.values()].map((entry) => [entry.sourceId, stableId(entry.type, entry.sourceId, project.projectId)]),
         ...pageFurniture.map((entry) => [entry.sourceId, entry.id]),
@@ -243,6 +248,7 @@ export class PascalInteriorAdapter {
         },
         sceneHash,
         scene: canonical,
+        designQuality,
         mappings: Object.fromEntries(mappings.sort(([a], [b]) => a.localeCompare(b))),
         furniture: sortedFurniture,
       };
@@ -321,14 +327,16 @@ export class PascalInteriorAdapter {
     }
     stripPagePrivateFields(scene);
     const furniture = orderedFurniture.map(({ sourceId, roomId, requirementIds, ...entry }) => replaceIds(entry, idMap));
+    const designQuality = structuredClone(snapshot.designQuality || {});
     const payload = {
       schemaVersion: 1,
       engine: 'pascal-v2',
       revision: snapshot.revision,
       sourcePlanSha256: snapshot.modelBasis?.sha256,
-      sceneHash: sha256(canonicalJson({ scene, furniture })),
+      sceneHash: sha256(canonicalJson({ scene, furniture, designQuality })),
       scene,
       furniture,
+      designQuality,
     };
     const pageMappings = Object.fromEntries(Object.entries(snapshot.mappings || {})
       .map(([sourceId, canonicalId]) => [sourceId, idMap.get(canonicalId)])

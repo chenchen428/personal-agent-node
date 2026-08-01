@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { describeWechatLoginError, readWechatLoginPayload, WechatLoginRequestError } from "@/components/wechat-login-error";
+import { syncWechatConnectionAfterLogin } from "@/components/wechat-login-sync";
 
 export type WechatLogin = {
   session: string;
@@ -88,7 +89,10 @@ export function useWechatLogin({ connected, onConnected, autoStart = false, reco
           terminal = true;
           setPhase("connected");
           setMessage("微信连接成功。现在可以继续在微信中与 PA 沟通。");
-          await onConnected();
+          const synchronized = await syncWechatConnectionAfterLogin(onConnected);
+          if (!cancelled && !synchronized) {
+            setMessage("微信连接已成功，连接列表正在同步，无需重新扫码。");
+          }
         } else if (payload.status === "scanned") {
           setPhase("scanned");
           setMessage("二维码已扫描，请在微信中确认连接。");

@@ -129,6 +129,46 @@ test("desktop conversation repairs managed desktop image preview URLs", () => {
   assert.equal(attachment.downloadUrl, "/app/files/raw/desktop/main/%E6%88%B7%E5%9E%8B%E5%9B%BE.png?download=1");
 });
 
+test("desktop conversation repairs inbound WeChat image URLs and removes private storage fields", () => {
+  const managedObjectId = "obj_0123456789abcdef01234567";
+  const session = {
+    id: "wechat-main",
+    role: "main",
+    channel: "wechat",
+    events: [],
+    childSessions: [],
+    messages: [{
+      id: "wechat-image",
+      role: "user",
+      content: "微信图片-20260801-053626.jpg",
+      metadata: {
+        channel: "wechat",
+        attachments: [{
+          kind: "image",
+          fileName: "微信图片-20260801-053626.jpg",
+          sizeBytes: 256,
+          path: "C:\\private\\wechat-image.jpg",
+          managedObjectId,
+          managedObjectKey: "private-object-key",
+          relativePath: "wechat/user-1/2026-08-01/微信图片-20260801-053626.jpg",
+          previewUrl: "/app/files/view/wechat/user-1/2026-08-01/%E5%BE%AE%E4%BF%A1%E5%9B%BE%E7%89%87-20260801-053626.jpg",
+        }],
+      },
+    }],
+  };
+
+  const attachment = buildDesktopConversationView(session).messages[0].metadata.attachments[0];
+  assert.equal(attachment.objectId, managedObjectId);
+  assert.equal(attachment.name, "微信图片-20260801-053626.jpg");
+  assert.equal(attachment.mimeType, "image/jpeg");
+  assert.equal(attachment.alt, "微信图片-20260801-053626.jpg");
+  assert.equal(attachment.previewUrl, "/app/files/raw/wechat/user-1/2026-08-01/%E5%BE%AE%E4%BF%A1%E5%9B%BE%E7%89%87-20260801-053626.jpg");
+  assert.equal(attachment.viewUrl, "/app/files/view/wechat/user-1/2026-08-01/%E5%BE%AE%E4%BF%A1%E5%9B%BE%E7%89%87-20260801-053626.jpg");
+  assert.equal("path" in attachment, false);
+  assert.equal("managedObjectKey" in attachment, false);
+  assert.equal("managedObjectId" in attachment, false);
+});
+
 test("desktop conversation merges desktop and WeChat main history with source labels", () => {
   const desktop = {
     id: "desktop-main",

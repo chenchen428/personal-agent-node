@@ -1,4 +1,5 @@
 import { issue } from './issues.mjs';
+import { REQUIRED_CONTROL_PASSES, validHexColor } from '../design-quality.mjs';
 
 export function auditProfessional(project, concept) {
   const findings = [];
@@ -11,14 +12,61 @@ export function auditProfessional(project, concept) {
     }));
   }
   if (!Array.isArray(designIntent.lighting) || !designIntent.lighting.length) {
-    findings.push(issue(project, 'design.lighting-unspecified', 'warning', 'No lighting intent is recorded for the selected concept.', {
-      fix: 'Record daylight, ambient, task, and accent-lighting intent before detailed design.',
+    findings.push(issue(project, 'design.lighting-unspecified', 'blocking', 'No executable lighting plan is recorded for the selected concept.', {
+      fix: 'Record stable ambient, daylight, task, or accent lights with intensity and color temperature.',
     }));
   }
   if (!Array.isArray(designIntent.maintenance) || !designIntent.maintenance.length) {
     findings.push(issue(project, 'materials.maintenance-unspecified', 'warning', 'No material maintenance intent is recorded.', {
       fix: 'Record cleaning, replacement, finish durability, and supplier-verification expectations.',
       professionalVerification: true,
+    }));
+  }
+  for (const material of materials) {
+    const invalid = !material.materialId || !material.name || !material.category
+      || !validHexColor(material.color)
+      || !Number.isFinite(material.roughness) || material.roughness < 0 || material.roughness > 1
+      || !Number.isFinite(material.metalness) || material.metalness < 0 || material.metalness > 1;
+    if (invalid) findings.push(issue(project, 'materials.render-contract-incomplete', 'blocking', `${material.name || material.materialId || 'Material'} lacks a complete PBR render contract.`, {
+      nodeIds: [material.materialId].filter(Boolean),
+      fix: 'Record a stable ID, name, category, six-digit hex color, roughness, and metalness.',
+    }));
+  }
+  for (const light of Array.isArray(designIntent.lighting) ? designIntent.lighting : []) {
+    const positioned = ['directional', 'point', 'spot', 'area', 'daylight'].includes(light?.kind);
+    const invalid = !light?.lightId || !['ambient', 'hemisphere', 'directional', 'point', 'spot', 'area', 'daylight'].includes(light?.kind)
+      || !Number.isFinite(light?.intensity) || light.intensity <= 0
+      || !Number.isFinite(light?.colorTemperatureKelvin)
+      || light.colorTemperatureKelvin < 1500 || light.colorTemperatureKelvin > 10000
+      || (positioned && (!vector3(light.position) || (['directional', 'spot', 'area', 'daylight'].includes(light.kind) && !vector3(light.target))));
+    if (invalid) findings.push(issue(project, 'design.lighting-contract-incomplete', 'blocking', `${light?.name || light?.lightId || 'Light'} cannot be reproduced by the delivery renderer.`, {
+      nodeIds: [light?.lightId].filter(Boolean),
+      fix: 'Record a supported kind, positive intensity, valid color temperature, and required position and target.',
+    }));
+  }
+  const rendering = designIntent.rendering || {};
+  const cameras = Array.isArray(rendering.cameras) ? rendering.cameras : [];
+  if (!cameras.length) findings.push(issue(project, 'design.camera-missing', 'blocking', 'No reproducible delivery camera is defined.', {
+    fix: 'Define at least one camera with a stable ID, position, target, field of view, and sequence.',
+  }));
+  for (const camera of cameras) {
+    if (!camera?.cameraId || !camera?.name || !vector3(camera.position) || !vector3(camera.target)
+      || sameVector(camera.position, camera.target) || !Number.isFinite(camera.fov) || camera.fov < 20 || camera.fov > 90) {
+      findings.push(issue(project, 'design.camera-invalid', 'blocking', `${camera?.name || camera?.cameraId || 'Camera'} is not a valid reproducible shot.`, {
+        nodeIds: [camera?.cameraId].filter(Boolean),
+        fix: 'Use distinct finite position and target vectors with a 20-90 degree field of view.',
+      }));
+    }
+  }
+  if (rendering.geometryLocked !== true) findings.push(issue(project, 'render.geometry-unlocked', 'blocking', 'Final design expression is not geometry locked.', {
+    fix: 'Enable geometryLocked so enhanced renders cannot silently change the approved layout.',
+  }));
+  if (rendering.aiEnhancement === 'controlled') {
+    const passes = new Set(Array.isArray(rendering.controlPasses) ? rendering.controlPasses : []);
+    const missing = REQUIRED_CONTROL_PASSES.filter((name) => !passes.has(name));
+    if (missing.length) findings.push(issue(project, 'render.control-passes-missing', 'blocking', 'Controlled render enhancement lacks required geometry control passes.', {
+      measurement: { missing },
+      fix: 'Record depth, normal, semantic, and object-id control passes before enhanced rendering.',
     }));
   }
   for (const level of concept.levels) {
@@ -60,6 +108,18 @@ export function auditProfessional(project, concept) {
           threshold: { requiredDefined: true },
           thresholdSource: 'product-concept-default',
           fix: 'Define the referenced material intent or assign a governed material to the item.',
+        }));
+      }
+      const profile = item.assetProfile;
+      const clearance = profile?.operatingClearance;
+      if (!profile?.assetId || !Number.isInteger(profile?.version) || profile.version < 1
+        || !['floor', 'wall', 'ceiling'].includes(profile?.anchor)
+        || !['fixed', 'bounded-proportional'].includes(profile?.scalePolicy)
+        || !clearance || ['front', 'back', 'left', 'right', 'top'].some((key) => !Number.isFinite(clearance[key]) || clearance[key] < 0)) {
+        findings.push(issue(project, 'assets.profile-incomplete', 'blocking', `${item.name} lacks a governed asset and operating-clearance profile.`, {
+          nodeIds: [item.itemId],
+          levelIds: [level.levelId],
+          fix: 'Assign a stable asset ID and version, anchor, scale policy, and non-negative clearance envelope.',
         }));
       }
     }
@@ -166,4 +226,12 @@ function coversScope(item, scope) {
 
 function normalizeScope(value) {
   return String(value || '').trim().toLowerCase().replace(/[\s_-]+/g, '');
+}
+
+function vector3(value) {
+  return Array.isArray(value) && value.length === 3 && value.every(Number.isFinite);
+}
+
+function sameVector(first, second) {
+  return first.every((value, index) => Math.abs(value - second[index]) < 1e-6);
 }

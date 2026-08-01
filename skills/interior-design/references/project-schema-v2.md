@@ -28,6 +28,16 @@ Keep assumptions, unknowns, and professional verifications independent. Concepts
 
 The selected concept supports at most two levels, 30 rooms, and 500 modeled elements in the v2 baseline. Each level owns footprint, rooms/zones, walls, openings, items, stairs, voids, and guardrails. IDs are stable semantic IDs, not render-order IDs.
 
+## Scene-bound design quality
+
+`designIntent.materials` is an executable PBR palette, not a mood-board label list. Every referenced material records a stable ID, name, category, six-digit base color, roughness, metalness, optional opacity, maintenance requirements, and wet-area suitability where applicable.
+
+`designIntent.lighting` records bounded local lights with stable IDs, supported kinds, intensity, color temperature, color, and the position/target required by that kind. `designIntent.rendering` records real-time and final profiles, exposure, geometry lock, AI-enhancement policy, control passes, and ordered delivery cameras. A camera has a stable ID, name, role, optional room, finite position and target, 20-90 degree field of view, and sequence.
+
+Every new item receives an `assetProfile` with a stable local asset ID, version, floor/wall/ceiling anchor, fixed or bounded-proportional scale policy, and non-negative front/back/left/right/top operating clearance. Asset profiles are part of the project revision and may not be fetched from a remote runtime library.
+
+The compiled `scene.json` carries a sanitized `designQuality` projection. Its scene hash covers Pascal geometry, furniture and asset instances, materials, lighting, cameras, and rendering policy. Any quality change therefore invalidates the prior compiled scene and Page even when wall geometry is unchanged.
+
 ## Demand workflow
 
 `demandWorkflow` version 1 is a deprecated, read-only presentation snapshot retained only to reproduce the committed historical representative delivery. It is not authorization state for customer work and its CLI advance command is retired. The current conversation and confirmation authority is `agents/interior-designer/workflow.json` schema v2, operated through `scripts/specialist-workflow.mjs`: a private mobile-first progress Page is mandatory, short requirements use text confirmation, and every substantial design artifact uses an exact-`pageId` Page confirmation. Its fixed route is initial requirements → annotated floor-plan adjustments → 3D design → exactly one style sample → at least 15 entrance-first ordered views → final delivery → delivered. Only explicit “按推荐走” authorization may combine the floor-plan and 3D gates into one 3D Page checkpoint.

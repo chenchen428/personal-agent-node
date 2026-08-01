@@ -14,16 +14,16 @@
   "visualAcceptance": "user",
   "files": {
     "index.html": {
-      "bytes": 2714798,
-      "sha256": "1b8260704ec7ae48932ffe60e04d8040ba4ebe0d3634da85ebe3cd5c6cc91d25"
+      "bytes": 2729863,
+      "sha256": "3a8ca78fa8b53b32a72c8dd574a2262156aa83740b8139bae805d85792f4cce7"
     },
     "scene.json": {
-      "bytes": 64503,
-      "sha256": "63d7ddf5a7489547e0277732636f329f76d845b7f31583b129d128ee7471fd41"
+      "bytes": 83623,
+      "sha256": "bfe25571e0c80cd59a74cd276f2f680c90469716dc86bd6290a9dc09ef329a68"
     },
     "audit.json": {
       "bytes": 2094,
-      "sha256": "60a358e19780a70e5165b078bc24e0a60dfb47029eeb2e8ad42e8f35ec5d9afa"
+      "sha256": "4830919f6b707dd33f5295446ef2ba648cb85246b0931af4a6b5ebc6ab56262c"
     },
     "media/source-plan.png": {
       "bytes": 282955,
@@ -66,7 +66,7 @@
       "page-v2-generate",
       "artifact-hash-verify"
     ],
-    "seedSha256": "9e6d9138a1a45bdb023ec456ac32ee67f4244e487b3fee523183a726c1b11782",
+    "seedSha256": "1d5c802d45a28e34aa6981ef7f458e6041040a9f90b8ff150b2f9a0aa6f96093",
     "workflowEventsSha256": "f28b7a715d1937eaf4decd7878f7b127120ad9218d3020a5ea4d9ec19eec9d1a",
     "renderPromptSetSha256": "02425c8a153a0fb4117588eca10b39380a2fd6bffb467f443a2bfa28febcbec7",
     "evidenceSha256": "23eab735dd2dcd2190264f93b3aad274b08a68b822c4a6f597a377afdc763542",
@@ -112,9 +112,9 @@
         "promptSha256": "2f5908a4d11f0ece9a7a569bf12ab714affd9cf906fb9e8b486ba68437c379a2"
       }
     ],
-    "projectSha256": "8b3c377d0878e33762ac589e56cdb14156756b69f4cee9e8d82b584b0125e7a4",
-    "sceneSha256": "58b9fade97393812210e7e29a721e9d76d14eefed02ad6e142355fcdce61d78f",
-    "auditSha256": "12eccc7c86f01533fd80ba14579ab8bf224c2f2721565de946ac9b9bee8d2c00",
+    "projectSha256": "ed7e06db3b189128940b3c2a35f8b1a88622da5e20a2f7141416b3b8eec22b3a",
+    "sceneSha256": "163e8998fdabbe7d3309431edd342795db61a9daa4e0939f7d1ee2be22f0d686",
+    "auditSha256": "87352309c5310b5cfc7133e5be02815446a0c00c57ad80166402767faaaa992a",
     "renderProfile": "professional-mesh-ink",
     "layoutProfile": "su-design-classic",
     "qualityFloor": {

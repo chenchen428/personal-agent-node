@@ -36,7 +36,7 @@ export function generateProfessionalPage({ projectDir: projectDirInput, context,
   if (recordedAuditHash !== computedAuditHash || project.quality.sha256 !== recordedAuditHash) throw new Error('quality report hash does not match the governed project');
   if (!audit.ok || audit.blockingCount > 0) throw new Error(`quality gate blocks Page generation with ${audit.blockingCount} issue(s)`);
   if (scenePayload.projectId !== project.projectId || scenePayload.revision !== project.revision || scenePayload.sceneHash !== project.scene.sha256) throw new Error('compiled scene does not match the current project');
-  if (compiledSceneHash(scenePayload.scene, scenePayload.furniture || []) !== scenePayload.sceneHash) throw new Error('compiled scene hash does not match its content');
+  if (compiledSceneHash(scenePayload.scene, scenePayload.furniture || [], scenePayload.designQuality || {}) !== scenePayload.sceneHash) throw new Error('compiled scene hash does not match its content');
   const planAssets = loadProjectPlanAssets(projectDir, project);
   const conceptRenders = loadProjectConceptRenders(projectDir, project);
   if (planAssets.source.sha256 !== project.provenance.sourcePlanSha256
@@ -54,6 +54,7 @@ export function generateProfessionalPage({ projectDir: projectDirInput, context,
   const requirements = renderRequirements(project, pageMappings);
   const issues = renderIssues(audit, pageMappings);
   const concepts = renderConcepts(project, conceptMappings);
+  const designQualitySummary = renderDesignQuality(pagePayload.designQuality);
   const assumptions = renderAssumptions(project);
   const revisions = renderRevisions(project);
   const declaredArea = project.evidence.map((entry) => entry.calibration?.knownAreaSquareMetres).find(Number.isFinite);
@@ -66,6 +67,9 @@ export function generateProfessionalPage({ projectDir: projectDirInput, context,
   const levelButtons = concept.levels.map((level, index) => `<button${concept.levels.length === 1 ? ' class="active"' : ''} type="button" data-level-id="${escapeAttr(pageMappings[level.levelId] || '')}">${index + 1} 层</button>`).join('');
   const allLevelButton = concept.levels.length > 1 ? '<button class="active" type="button" data-level-id="">全部</button>' : '';
   const conceptPicker = `<label class="concept-control${project.concepts.length === 1 ? ' is-single' : ''}"><span>设计方案</span><select class="concept-picker" id="concept-picker" aria-label="比较设计方案">${project.concepts.map((entry) => `<option value="${escapeAttr(conceptMappings[entry.conceptId])}"${entry.conceptId === project.selectedConceptId ? ' selected' : ''}>${escapeHtml(entry.name)}</option>`).join('')}</select></label>`;
+  const cameraPicker = (pagePayload.designQuality?.cameras || []).length > 1
+    ? `<select data-camera-shot aria-label="交付镜头">${pagePayload.designQuality.cameras.map((camera) => `<option value="${escapeAttr(camera.cameraId)}">${escapeHtml(camera.name)}</option>`).join('')}</select>`
+    : '';
   const renderPanel = conceptRenders.length ? renderConceptPanel(conceptRenders) : '';
   const evidencePanel = conceptRenders.length
     ? renderRequirementsAndEvidencePanel({ planAssets, requirements, assumptions, revisions })
@@ -79,11 +83,11 @@ export function generateProfessionalPage({ projectDir: projectDirInput, context,
 <body data-agent-id="${escapeAttr(delivery.agent.id)}" data-agent-example-id="${escapeAttr(delivery.id)}" data-delivery-version="${escapeAttr(String(delivery.delivery.version))}" data-engine="pascal-v2" data-layout-profile="su-design-classic" data-viewer-state="loading"><main id="app">
 <header class="top"><span class="brand"><span class="mark">PA</span><b>Pages</b></span><div class="identity"><small>PERSONAL AGENT · SU DESIGN</small><strong>${displayTitle}</strong><span>${escapeHtml(subtitle)}</span></div><span class="status" data-viewer-status><i></i><span>正在装配模型</span></span></header>
 <section class="stage">
-<section class="presentation-panel presentation-model" data-presentation-panel="model"><div class="viewport"><div id="scene" role="img" aria-label="${title} 可旋转的 Pascal 建筑场景"></div><div id="viewer-loading" role="status" aria-live="polite"><div class="loading-card"><span class="loading-mark"><i></i><i></i><i></i></span><small>PERSONAL AGENT · SU DESIGN</small><strong>正在构建设计模型</strong><p>正在装配空间、材质、家具与标注</p><span class="loading-line"><i></i></span></div></div><div id="fallback" hidden><figure>${fallbackSvg}<figcaption><span>3D 暂时不可用</span><span>已切换到模型派生平面图</span></figcaption></figure></div><div class="viewer-tools" role="group" aria-label="SU 设计稿查看工具">${conceptPicker}<span class="tool-label">${ICONS.layers}设计层</span><span class="level-tools">${allLevelButton}${levelButtons}</span><span class="divider"></span><span class="tool-label">${ICONS.view}视角</span><button class="active" type="button" data-camera-mode="perspective">3D</button><button type="button" data-camera-mode="orthographic">平面</button><span class="advanced-tools" data-level-count="${concept.levels.length}"><button class="active" type="button" data-level-mode="stacked">堆叠</button><button type="button" data-level-mode="exploded">分解</button><button type="button" data-level-mode="solo">单层</button></span><span class="divider"></span><button class="active icon-button" type="button" data-label-mode="visible" aria-label="隐藏细节标注" aria-pressed="true">${ICONS.label}</button><button class="icon-button" type="button" data-reset-view aria-label="复位 SU 设计稿">${ICONS.reset}</button></div><span class="gesture">拖动旋转 · 缩放 · 平移</span></div></section>
+<section class="presentation-panel presentation-model" data-presentation-panel="model"><div class="viewport"><div id="scene" role="img" aria-label="${title} 可旋转的 Pascal 建筑场景"></div><div id="viewer-loading" role="status" aria-live="polite"><div class="loading-card"><span class="loading-mark"><i></i><i></i><i></i></span><small>PERSONAL AGENT · SU DESIGN</small><strong>正在构建设计模型</strong><p>正在装配空间、材质、家具与标注</p><span class="loading-line"><i></i></span></div></div><div id="fallback" hidden><figure>${fallbackSvg}<figcaption><span>3D 暂时不可用</span><span>已切换到模型派生平面图</span></figcaption></figure></div><div class="viewer-tools" role="group" aria-label="SU 设计稿查看工具">${conceptPicker}<span class="tool-label">${ICONS.layers}设计层</span><span class="level-tools">${allLevelButton}${levelButtons}</span><span class="divider"></span><span class="tool-label">${ICONS.view}视角</span><button class="active" type="button" data-camera-mode="perspective">3D</button><button type="button" data-camera-mode="orthographic">平面</button>${cameraPicker}<span class="advanced-tools" data-level-count="${concept.levels.length}"><button class="active" type="button" data-level-mode="stacked">堆叠</button><button type="button" data-level-mode="exploded">分解</button><button type="button" data-level-mode="solo">单层</button></span><span class="divider"></span><button class="active icon-button" type="button" data-label-mode="visible" aria-label="隐藏细节标注" aria-pressed="true">${ICONS.label}</button><button class="icon-button" type="button" data-reset-view aria-label="复位 SU 设计稿">${ICONS.reset}</button></div><span class="gesture">拖动旋转 · 缩放 · 平移</span></div></section>
 ${renderPanel}${evidencePanel}
-<article class="presentation-panel document-panel" data-presentation-panel="review" hidden><header><div><small>QUALITY GATE</small><h2>质量报告与方案比较</h2></div><p>${audit.blockingCount} 个阻断 · ${audit.warningCount} 个警告 · 规则集 ${escapeHtml(audit.ruleSet)}</p></header><div class="document-grid"><section class="card"><div class="card-head"><strong>审计结果</strong></div><div class="issue-list">${issues}</div></section><aside class="card"><div class="card-head"><strong>方案比较</strong></div><div class="stack">${concepts}</div></aside></div></article>
+<article class="presentation-panel document-panel" data-presentation-panel="review" hidden><header><div><small>QUALITY GATE</small><h2>质量报告与方案比较</h2></div><p>${audit.blockingCount} 个阻断 · ${audit.warningCount} 个警告 · 规则集 ${escapeHtml(audit.ruleSet)}</p></header><div class="document-grid"><section class="card"><div class="card-head"><strong>审计结果</strong></div><div class="issue-list">${issues}</div></section><aside class="card"><div class="card-head"><strong>同场景质量</strong></div><div class="stack">${designQualitySummary}</div><div class="card-head"><strong>方案比较</strong></div><div class="stack">${concepts}</div></aside></div></article>
 ${presentationNavigation}
-</section><p class="orientation-hint">横屏查看空间更完整</p><script id="pascal-scene" type="application/json">${safeJson(pagePayload)}</script><script>${pageController()}</script><script>${viewer}</script></main></body></html>`;
+</section><p class="orientation-hint">横屏查看空间更完整</p><script id="pascal-scene" type="application/json">${safeJson(pagePayload)}</script><script>${pageController()}${cameraShotController()}</script><script>${viewer}</script></main></body></html>`;
   verifyNoGovernanceIdentifiers(html, project);
   const verification = verifyProfessionalPageHtml(html, delivery);
   fs.mkdirSync(path.dirname(output), { recursive: true, mode: 0o700 });
@@ -492,6 +496,17 @@ function renderConcepts(project, conceptMappings) {
   return project.concepts.map((entry) => `<article class="concept-card" data-concept-id="${escapeAttr(conceptMappings[entry.conceptId])}"${entry.conceptId === project.selectedConceptId ? '' : ' hidden'}><b>${entry.conceptId === project.selectedConceptId ? 'SELECTED' : 'OPTION'}</b><strong>${escapeHtml(entry.name)}</strong><p>${escapeHtml(entry.summary)}</p><p>${escapeHtml(entry.tradeoffs.join(' · '))}</p></article>`).join('');
 }
 
+function renderDesignQuality(quality) {
+  const rendering = quality?.rendering || {};
+  const entries = [
+    ['材质系统', `${quality?.materials?.length || 0} 种 PBR 材质`, '颜色、粗糙度与金属度进入同一场景'],
+    ['照明方案', `${quality?.lights?.length || 0} 组可执行灯光`, `曝光 ${rendering.exposure || 1}`],
+    ['交付镜头', `${quality?.cameras?.length || 0} 个固定镜头`, '位置、目标与视场角可复现'],
+    ['几何一致性', rendering.geometryLocked ? '已锁定' : '未锁定', rendering.aiEnhancement === 'controlled' ? '受控增强' : '不使用增强'],
+  ];
+  return entries.map(([label, summary, detail]) => `<article><b>${escapeHtml(label)}</b><strong>${escapeHtml(summary)}</strong><p>${escapeHtml(detail)}</p></article>`).join('');
+}
+
 function renderAssumptions(project) {
   const budget = project.brief.budget;
   const budgetText = budget.totalMinor
@@ -511,6 +526,10 @@ function renderAssumptions(project) {
 
 function renderRevisions(project) {
   return project.decisions.length ? project.decisions.slice(-12).reverse().map((entry, index) => `<article><b>R${Math.max(1, project.revision - index)}</b><strong>${escapeHtml(entry.summary)}</strong><p>${escapeHtml(entry.rationale)}</p></article>`).join('') : '<p class="empty">当前是首个设计 revision。</p>';
+}
+
+function cameraShotController() {
+  return `(function(){const picker=document.querySelector('[data-camera-shot]');if(!picker)return;picker.addEventListener('change',()=>{const api=window.PersonalAgentPascalViewer;if(!api||typeof api.setCameraShot!=='function')return;api.setCameraShot(picker.value);document.querySelectorAll('[data-camera-mode]').forEach(button=>button.classList.toggle('active',button.dataset.cameraMode==='perspective'))})})();`;
 }
 
 function pageController() {

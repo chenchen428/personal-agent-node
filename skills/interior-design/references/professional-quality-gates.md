@@ -14,12 +14,15 @@ Every finding records stable issue ID, rule/version, severity, affected nodes/le
 - Stair connection, conceptual width/headroom, void guardrail coverage, and multi-level continuity.
 - Unresolved or untraceable `must` requirements.
 - Missing room/item material intent, known wet-area contradiction, target budget without complete scope/category/confidence allocation, known schedule without phases, and unsupported scene capacity.
+- Missing or invalid PBR material parameters, executable lights, reproducible delivery cameras, governed asset profiles, or asset operating-clearance envelopes.
+- Final expression without geometry lock, or controlled enhancement without depth, normal, semantic, and object-ID control-pass declarations.
+- A compiled `designQuality` projection that differs from the current project material, lighting, camera, asset, or rendering policy.
 - High-risk scope without matching professional verification.
 - Agent identity, delivery version and engine provenance, CSP, self-contained assets, redacted evidence, privacy fields, loopback/development paths, size, and offline fallback.
 
 Warnings expose unknown scale, explicit blocked requirements, unverified wet-area material, unknown budget, and concept allocation beyond the target. Warnings remain in the Page; they are not silently waived.
 
-`brief.qualityThresholds.minimumPassageWidthMetres` may replace the 0.75 m fallback only with an explicit `user-requirement`, `jurisdiction-rule`, `product-concept-default`, or `comfort-guidance` source and a visible reference when applicable.
+`brief.qualityThresholds.minimumPassageWidthMetres` may replace the 0.75 m fallback only with an explicit `user-requirement`, `jurisdiction-rule`, `product-concept-default`, or `comfort-guidance` source and a visible reference when applicable. Furniture operating clearance comes from the governed asset profile when present; the product concept fallback is used only for legacy instances.
 
 ## Human professional review
 

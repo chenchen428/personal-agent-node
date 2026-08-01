@@ -12,6 +12,7 @@ import {
   readWechatLoginPayload,
   WechatLoginRequestError,
 } from "../core/app/src/components/wechat-login-error.ts";
+import { syncWechatConnectionAfterLogin } from "../core/app/src/components/wechat-login-sync.ts";
 
 const officialQrUrl = "https://ilinkai.weixin.qq.com/ilink/bot/get_bot_qrcode?bot_type=3";
 
@@ -104,4 +105,9 @@ test("the browser keeps actionable safe WeChat errors", async () => {
 
   const redacted = new WechatLoginRequestError(503, "WECHAT_REQUEST_FAILED", "Bearer private-token qrcode=private");
   assert.equal(describeWechatLoginError(redacted), "暂时无法生成二维码，请稍后重试。");
+});
+
+test("a confirmed WeChat login stays successful when the connection catalog refresh is temporarily unavailable", async () => {
+  assert.equal(await syncWechatConnectionAfterLogin(async () => {}), true);
+  assert.equal(await syncWechatConnectionAfterLogin(async () => { throw new Error("temporary refresh failure"); }), false);
 });

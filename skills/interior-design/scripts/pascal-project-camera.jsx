@@ -7,6 +7,7 @@ import { calculateOrthographicZoom } from './pascal-camera-framing.mjs';
 export function ProjectCamera({ payload }) {
   const controls = useRef(null);
   const activeMode = useRef('perspective');
+  const activeShot = useRef(payload.designQuality?.cameras?.[0]?.cameraId || null);
   const hasUserCameraPose = useRef(false);
   const settleTimers = useRef([]);
   const camera = useThree((state) => state.camera);
@@ -51,6 +52,7 @@ export function ProjectCamera({ payload }) {
         ? currentViewport.width / currentViewport.height
         : 16 / 9;
       const narrowViewportScale = Math.max(1, 1.5 / aspect);
+      const shot = payload.designQuality?.cameras?.find((entry) => entry.cameraId === activeShot.current);
       if (mode === 'orthographic') {
         const zoom = calculateOrthographicZoom({
           boundsWidth: frame.width,
@@ -68,6 +70,12 @@ export function ProjectCamera({ payload }) {
           false,
         );
         await api.zoomTo(zoom, false);
+      } else if (shot?.position && shot?.target) {
+        if ('fov' in camera) {
+          camera.fov = shot.fov || 50;
+          camera.updateProjectionMatrix();
+        }
+        await api.setLookAt(...shot.position, ...shot.target, false);
       } else {
         await api.setLookAt(
           frame.centerX + frame.span * 1.12 * narrowViewportScale,
@@ -98,6 +106,13 @@ export function ProjectCamera({ payload }) {
         void applyPose(mode);
       }
     };
+    const changeShot = (event) => {
+      if (!payload.designQuality?.cameras?.some((entry) => entry.cameraId === event.detail)) return;
+      activeShot.current = event.detail;
+      hasUserCameraPose.current = false;
+      clearSettleTimers();
+      void applyPose('perspective');
+    };
     activeMode.current = cameraMode;
     void applyPose();
     settleTimers.current = [160, 520, 1_100, 1_900, 2_800]
@@ -107,12 +122,14 @@ export function ProjectCamera({ payload }) {
       ));
     window.addEventListener('pascal-reset-camera', reset);
     window.addEventListener('pascal-camera-mode', changeMode);
+    window.addEventListener('pascal-camera-shot', changeShot);
     return () => {
       clearSettleTimers();
       window.removeEventListener('pascal-reset-camera', reset);
       window.removeEventListener('pascal-camera-mode', changeMode);
+      window.removeEventListener('pascal-camera-shot', changeShot);
     };
-  }, [cameraMode, frame, invalidate]);
+  }, [camera, cameraMode, frame, invalidate, payload]);
 
   const markUserCameraPose = () => {
     hasUserCameraPose.current = true;

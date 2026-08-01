@@ -38,13 +38,13 @@ export function ArchitectureEnvelope({ payload }) {
       position={[architecture.center[0], -0.06, architecture.center[1]]}
       size={[architecture.size[0] + 5.4, 0.12, architecture.size[1] + 5.4]}
     />
-    {architecture.rooms.map((room) => <RoomSurface key={room.id} room={room} />)}
+    {architecture.rooms.map((room) => <RoomSurface key={room.id} materials={payload.designQuality?.materials || []} room={room} />)}
     {architecture.wallPieces.map((piece) => <WallShell key={piece.id} piece={piece} />)}
     {architecture.railings.map((railing) => <BalconyRailing key={railing.id} railing={railing} />)}
   </group>;
 }
 
-function RoomSurface({ room }) {
+function RoomSurface({ materials, room }) {
   const shape = useMemo(() => {
     const next = new Shape();
     room.polygon.forEach(([x, z], index) => {
@@ -54,6 +54,7 @@ function RoomSurface({ room }) {
     next.closePath();
     return next;
   }, [room]);
+  const finish = materials.find((material) => material.materialId === room.materialId);
   return <mesh
     name={`pascal-room-surface:${room.id}`}
     position={[0, 0.112, 0]}
@@ -62,9 +63,10 @@ function RoomSurface({ room }) {
   >
     <shapeGeometry args={[shape]} />
     <meshStandardMaterial
-      color={FLOOR_COLORS[room.kind] || '#b4a58e'}
-      metalness={0}
-      roughness={0.9}
+      color={finish?.baseColor || FLOOR_COLORS[room.kind] || '#b4a58e'}
+      metalness={finish?.metalness || 0}
+      opacity={finish?.opacity || 1}
+      roughness={finish?.roughness || 0.9}
       side={DoubleSide}
     />
   </mesh>;
@@ -138,6 +140,7 @@ function buildArchitecture(nodes) {
     .map((node) => ({
       id: node.id,
       kind: String(node.metadata?.roomKind || ''),
+      materialId: String(node.metadata?.materialId || ''),
       polygon: node.polygon,
     }));
   const points = rooms.flatMap((room) => room.polygon);

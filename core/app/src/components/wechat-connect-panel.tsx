@@ -23,7 +23,7 @@ export function WechatConnectPanel({ connected, onConnected, autoStart = false, 
 
   if (compact && !autoStart && !login?.qrSvg) return <div className="wechat-connect-compact"><button className="pa-button primary" type="button" onClick={() => void startLogin()} disabled={working}>{working ? "正在生成" : "开始扫码"}</button><small role="status">{working ? message : ""}</small></div>;
 
-  const succeeded = connected && phase === "connected";
+  const succeeded = phase === "connected";
   const failed = phase === "error" || phase === "expired";
   const cancel = () => { cancelLogin(); onCancel?.(); };
   const generatePanel = <div className="wechat-connect-panel"><div className="domain-human-guide" role="status"><strong>{failed ? "本次二维码未能继续" : "正在生成一次性二维码"}</strong><p>{failed ? message : "二维码生成后会进入扫码节点；整个过程只用于本次连接。"}</p></div><div className="wechat-connect-controls"><Button type="button" onClick={() => void startLogin()} disabled={working}>{working ? <LoaderCircle className="connection-spinner size-4" /> : <QrCode className="size-4" />}{working ? "生成中" : "重新生成二维码"}</Button>{active ? <Button type="button" variant="outline" onClick={cancel}><X className="size-4" />取消连接</Button> : null}</div></div>;

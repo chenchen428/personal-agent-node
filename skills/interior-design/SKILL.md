@@ -26,7 +26,7 @@ Customer projects belong only under the trusted Space at `projects/home-renovati
 
    The project-local `demandWorkflow` v1 field exists only so the committed historical representative delivery can be reproduced byte-for-byte. Its old `workflow advance` command is retired. New work advances only through `scripts/specialist-workflow.mjs` and `agents/interior-designer/workflow.json`.
 
-5. Read [pascal-integration.md](references/pascal-integration.md), then compile the selected concept:
+5. Before compiling, implement the scene-bound output-quality contract from `docs/adr/0013-scene-bound-interior-output-quality.md`: define a bounded PBR material table, executable lighting, governed asset profiles with operating clearance, and reproducible delivery cameras. Final expression must be geometry locked. When controlled enhancement is selected, record the `depth`, `normal`, `semantic`, and `object-id` control-pass contract. Then read [pascal-integration.md](references/pascal-integration.md) and compile the selected concept:
 
    `node skills/interior-design/scripts/cli.mjs scene compile --project-dir <project-dir> --base-revision <revision> --json`
 
@@ -50,7 +50,7 @@ Customer projects belong only under the trusted Space at `projects/home-renovati
 
 ## Design and safety rules
 
-- Support apartments, duplexes, and houses with at most two levels: levels, zones, walls, real door/window openings, slabs, ceilings, stairs, voids, guardrails, procedural furniture, cabinets, major equipment, material intent, and lighting intent.
+- Support apartments, duplexes, and houses with at most two levels: levels, zones, walls, real door/window openings, slabs, ceilings, stairs, voids, guardrails, governed asset instances, cabinets, major equipment, PBR materials, executable lighting, and reproducible delivery cameras.
 - Keep the read-only delivery model full-canvas with the approved floating SU-design controls. Never require a click, drag, or mode switch to reveal 3D; keep labels hidden until the first valid Canvas frame, and use the model-derived SVG only for real loading failure.
 - Preserve user-uploaded source-plan image, Agent-uploaded revision-annotation image, model, requirement, concept, audit, assumption, unknown, professional-verification, budget, and revision provenance. Scene compilation and Page generation must fail when the concept, scene model basis, project provenance, and source image hash do not all resolve to the same user upload.
 - Do not infer load-bearing status, hidden services, exact area, fabrication dimensions, permits, or local compliance from a raster plan.
@@ -65,6 +65,7 @@ Customer projects belong only under the trusted Space at `projects/home-renovati
 - [pascal-integration.md](references/pascal-integration.md): single adapter boundary, supported scene semantics, build/runtime restrictions, and failure behavior.
 - [professional-quality-gates.md](references/professional-quality-gates.md): deterministic automatic gates and professional-review boundary.
 - [delivery-v2.md](references/delivery-v2.md): Page v2, privacy, offline packaging, publication, and user acceptance.
+- `docs/adr/0013-scene-bound-interior-output-quality.md`: accepted same-scene material, lighting, camera, asset, render, and acceptance contract.
 - `schemas/project-v2.schema.json`: formal project contract.
 - `scripts/cli.mjs`: governed project, scene, audit, recovery, and Page command surface.
 - `examples/professional-agent-example/seed.json`: synthetic representative Agent example seed used by the same production pipeline.

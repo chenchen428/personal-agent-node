@@ -1,4 +1,5 @@
 import { canonicalJson, selectedConcept, sha256, validateProjectV2 } from '../project-v2.mjs';
+import { compileDesignQuality } from '../design-quality.mjs';
 import { compiledSceneHash } from '../scene-hash.mjs';
 import { auditEvidenceAndRequirements } from './evidence.mjs';
 import { issue } from './issues.mjs';
@@ -34,7 +35,10 @@ export function auditProfessionalProject(project, scenePayload = null) {
         fix: 'Rebuild the structured concept and Pascal scene from the governed user-uploaded source plan.',
       }));
     }
-    if (scenePayload.sceneHash !== compiledSceneHash(scenePayload.scene, scenePayload.furniture || [])) findings.push(issue(project, 'scene.hash-mismatch', 'blocking', 'The compiled scene hash does not match its content.', {
+    if (canonicalJson(scenePayload.designQuality || {}) !== canonicalJson(compileDesignQuality(project))) findings.push(issue(project, 'scene.design-quality-mismatch', 'blocking', 'The compiled scene does not carry the current material, lighting, camera, and render contract.', {
+      fix: 'Recompile the scene after every design-quality change.',
+    }));
+    if (scenePayload.sceneHash !== compiledSceneHash(scenePayload.scene, scenePayload.furniture || [], scenePayload.designQuality || {})) findings.push(issue(project, 'scene.hash-mismatch', 'blocking', 'The compiled scene hash does not match its content.', {
       fix: 'Restore the last valid manifest or recompile the scene.',
     }));
     const sceneNodeCount = Object.keys(scenePayload.scene?.nodes || {}).length + (scenePayload.furniture?.length || 0);
@@ -53,7 +57,7 @@ export function auditProfessionalProject(project, scenePayload = null) {
     projectId: project.projectId,
     revision: project.revision,
     ruleSet: 'professional-interior-v2',
-    ruleSetVersion: 1,
+    ruleSetVersion: 2,
     ok: blockingCount === 0,
     blockingCount,
     warningCount,

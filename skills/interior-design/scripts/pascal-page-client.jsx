@@ -1,9 +1,10 @@
-import React, { Component, useEffect, useMemo, useState } from 'react';
+import React, { Component, createContext, useContext, useEffect, useMemo, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { Html } from '@react-three/drei';
 import useScene from '@pascal-app/core/store';
 import { Viewer, useViewer } from '@pascal-app/viewer';
 import { ArchitectureEnvelope } from './pascal-architecture.jsx';
+import { DesignLighting } from './pascal-design-lighting.jsx';
 import { ProjectCamera } from './pascal-project-camera.jsx';
 import { DeliveryRenderBudget } from './pascal-render-budget.jsx';
 import { showViewerFallback, ViewerLifecycle } from './pascal-viewer-lifecycle.jsx';
@@ -27,13 +28,16 @@ class ViewerBoundary extends Component {
   }
 }
 
-function Finish({ color, selected = false, metalness = 0.02, roughness = 0.76 }) {
+const FinishProfile = createContext(null);
+
+function Finish({ color, selected = false, metalness, roughness }) {
+  const profile = useContext(FinishProfile);
   return <meshStandardMaterial
     color={selected ? '#c96f4a' : color}
     emissive={selected ? '#7a2f18' : '#000000'}
     emissiveIntensity={selected ? 0.28 : 0}
-    metalness={metalness}
-    roughness={roughness}
+    metalness={metalness ?? profile?.metalness ?? 0.02}
+    roughness={roughness ?? profile?.roughness ?? 0.76}
   />;
 }
 
@@ -51,10 +55,11 @@ function CylinderPart({ args, position, color, selected, rotation = [0, 0, 0] })
   </mesh>;
 }
 
-function FurnitureItem({ item, selected }) {
+function FurnitureItem({ item, materials, selected }) {
   const [width, depth, height] = item.size;
   const [x, z] = item.position;
-  const color = item.color || '#d8c9b6';
+  const finish = materials.find((material) => material.materialId === item.materialId);
+  const color = finish?.baseColor || item.color || '#d8c9b6';
   const pale = '#f2efe7';
   const dark = '#4b554f';
   const kind = String(item.kind || '').toLowerCase();
@@ -128,11 +133,13 @@ function FurnitureItem({ item, selected }) {
     </>;
   }
 
-  return <group name={item.id} position={[x, item.elevation || 0, z]} rotation={[0, angle, 0]}>{content}</group>;
+  return <FinishProfile.Provider value={finish}>
+    <group name={item.id} position={[x, item.elevation || 0, z]} rotation={[0, angle, 0]}>{content}</group>
+  </FinishProfile.Provider>;
 }
 
-function ProceduralFurniture({ items, highlighted }) {
-  return items.filter((item) => item?.size?.length === 3).map((item) => <FurnitureItem item={item} key={item.id} selected={highlighted.has(item.id)} />);
+function ProceduralFurniture({ items, highlighted, materials }) {
+  return items.filter((item) => item?.size?.length === 3).map((item) => <FurnitureItem item={item} key={item.id} materials={materials} selected={highlighted.has(item.id)} />);
 }
 
 function SceneLabels({ payload }) {
@@ -196,9 +203,10 @@ function PascalScene({ payload }) {
     >
       <DeliveryRenderBudget />
       <ViewerLifecycle />
+      <DesignLighting payload={payload} />
       <ProjectCamera payload={payload} />
       <ArchitectureEnvelope payload={payload} />
-      <ProceduralFurniture highlighted={highlighted} items={payload.furniture || []} />
+      <ProceduralFurniture highlighted={highlighted} items={payload.furniture || []} materials={payload.designQuality?.materials || []} />
       <SceneLabels payload={payload} />
     </Viewer>
   </ViewerBoundary>;
@@ -239,6 +247,12 @@ function start() {
         if (!['perspective', 'orthographic'].includes(mode)) return false;
         useViewer.getState().setCameraMode(mode);
         window.dispatchEvent(new CustomEvent('pascal-camera-mode', { detail: mode }));
+        return true;
+      },
+      setCameraShot(cameraId) {
+        if (!payload.designQuality?.cameras?.some((entry) => entry.cameraId === cameraId)) return false;
+        useViewer.getState().setCameraMode('perspective');
+        window.dispatchEvent(new CustomEvent('pascal-camera-shot', { detail: cameraId }));
         return true;
       },
       resetCamera() {

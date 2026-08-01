@@ -1,4 +1,5 @@
 import { buildPrivateAttachmentUrls } from "../private-files/attachments.js";
+import mime from "mime-types";
 
 const VISIBLE_ROLES = new Set(["user", "assistant", "error"]);
 const ACTIVE_STATUSES = new Set(["start", "running"]);
@@ -143,9 +144,25 @@ function withConversationSource(message, session) {
 function normalizeDesktopAttachments(attachments) {
   if (!Array.isArray(attachments) || !attachments.length) return null;
   return attachments.map((attachment) => {
+    const {
+      path: _localPath,
+      managedObjectKey: _managedObjectKey,
+      managedObjectId,
+      fileName,
+      ...safeAttachment
+    } = attachment || {};
     const relativePath = String(attachment?.relativePath || "").replace(/\\/g, "/").replace(/^\/+/, "");
-    if (!relativePath.startsWith("desktop/")) return attachment;
-    return { ...attachment, ...buildPrivateAttachmentUrls(relativePath) };
+    const privateUrls = relativePath ? buildPrivateAttachmentUrls(relativePath) : null;
+    const name = String(attachment?.name || fileName || "附件").trim() || "附件";
+    return {
+      ...safeAttachment,
+      ...(managedObjectId && !safeAttachment.objectId ? { objectId: managedObjectId } : {}),
+      name,
+      mimeType: String(safeAttachment.mimeType || mime.lookup(name) || "application/octet-stream"),
+      sizeBytes: Number(safeAttachment.sizeBytes || 0),
+      ...(safeAttachment.kind === "image" && !safeAttachment.alt ? { alt: name } : {}),
+      ...(privateUrls?.previewUrl ? privateUrls : {}),
+    };
   });
 }
 

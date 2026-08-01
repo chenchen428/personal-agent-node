@@ -1,6 +1,6 @@
 import crypto from 'node:crypto';
 
-export function compiledSceneHash(scene, furniture = []) {
+export function compiledSceneHash(scene, furniture = [], designQuality = {}) {
   const normalizedScene = structuredClone(scene);
   for (const node of Object.values(normalizedScene.nodes || {})) {
     const provenance = node.metadata?.personalAgent;
@@ -10,7 +10,7 @@ export function compiledSceneHash(scene, furniture = []) {
     if (!Object.keys(provenance).length) delete node.metadata.personalAgent;
     if (node.metadata && !Object.keys(node.metadata).length) delete node.metadata;
   }
-  return crypto.createHash('sha256').update(canonicalJson({ scene: normalizedScene, furniture })).digest('hex');
+  return crypto.createHash('sha256').update(canonicalJson({ scene: normalizedScene, furniture, designQuality })).digest('hex');
 }
 
 function canonicalJson(value) {

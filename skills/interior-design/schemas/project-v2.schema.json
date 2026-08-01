@@ -533,10 +533,34 @@
         "rotation": { "type": "number" },
         "materialId": { "$ref": "#/$defs/id" },
         "color": { "type": "string", "maxLength": 40 },
+        "assetProfile": { "$ref": "#/$defs/assetProfile" },
         "clearanceExempt": { "type": "boolean" },
         "requirementIds": { "type": "array", "items": { "$ref": "#/$defs/id" } }
       },
       "additionalProperties": true
+    },
+    "assetProfile": {
+      "type": "object",
+      "required": ["assetId", "version", "anchor", "scalePolicy", "operatingClearance"],
+      "properties": {
+        "assetId": { "$ref": "#/$defs/id" },
+        "version": { "type": "integer", "minimum": 1 },
+        "anchor": { "enum": ["floor", "wall", "ceiling"] },
+        "scalePolicy": { "enum": ["fixed", "bounded-proportional"] },
+        "operatingClearance": {
+          "type": "object",
+          "required": ["front", "back", "left", "right", "top"],
+          "properties": {
+            "front": { "type": "number", "minimum": 0, "maximum": 5 },
+            "back": { "type": "number", "minimum": 0, "maximum": 5 },
+            "left": { "type": "number", "minimum": 0, "maximum": 5 },
+            "right": { "type": "number", "minimum": 0, "maximum": 5 },
+            "top": { "type": "number", "minimum": 0, "maximum": 5 }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
     },
     "stair": {
       "type": "object",
@@ -580,8 +604,36 @@
       "required": ["style", "materials", "lighting", "maintenance"],
       "properties": {
         "style": { "type": "array", "items": {} },
-        "materials": { "type": "array", "items": { "type": "object" } },
-        "lighting": { "type": "array", "items": {} },
+        "materials": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "materialId": { "$ref": "#/$defs/id" },
+              "name": { "type": "string", "minLength": 1, "maxLength": 160 },
+              "category": { "type": "string", "minLength": 1, "maxLength": 80 },
+              "color": { "type": "string", "pattern": "^#[0-9A-Fa-f]{6}$" },
+              "roughness": { "type": "number", "minimum": 0, "maximum": 1 },
+              "metalness": { "type": "number", "minimum": 0, "maximum": 1 },
+              "opacity": { "type": "number", "exclusiveMinimum": 0, "maximum": 1 }
+            },
+            "additionalProperties": true
+          }
+        },
+        "lighting": { "type": "array", "items": { "type": "object" } },
+        "rendering": {
+          "type": "object",
+          "properties": {
+            "realtimeProfile": { "type": "string", "minLength": 1, "maxLength": 120 },
+            "finalProfile": { "type": "string", "minLength": 1, "maxLength": 120 },
+            "geometryLocked": { "type": "boolean" },
+            "aiEnhancement": { "enum": ["off", "controlled"] },
+            "controlPasses": { "type": "array", "items": { "enum": ["depth", "normal", "semantic", "object-id"] }, "uniqueItems": true },
+            "exposure": { "type": "number", "minimum": 0.2, "maximum": 3 },
+            "cameras": { "type": "array", "items": { "type": "object" } }
+          },
+          "additionalProperties": true
+        },
         "maintenance": { "type": "array", "items": {} }
       },
       "additionalProperties": true

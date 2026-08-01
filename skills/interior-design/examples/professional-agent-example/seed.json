@@ -2310,47 +2310,180 @@
       {
         "materialId": "warm-oak",
         "name": "暖橡木",
+        "category": "wood",
         "color": "#C9A77B",
+        "roughness": 0.68,
+        "metalness": 0,
+        "opacity": 1,
         "maintenance": "采购前核验样板、耐磨等级和保养说明。"
       },
       {
         "materialId": "warm-white",
         "name": "暖白织物",
+        "category": "fabric",
         "color": "#E9E6DE",
+        "roughness": 0.92,
+        "metalness": 0,
+        "opacity": 1,
         "maintenance": "核验可拆洗性、耐污等级与替换周期。"
       },
       {
         "materialId": "oak-dark",
         "name": "深色橡木",
+        "category": "wood",
         "color": "#80664D",
+        "roughness": 0.62,
+        "metalness": 0,
+        "opacity": 1,
         "maintenance": "核验涂装体系、耐热性与日常清洁方式。"
       },
       {
         "materialId": "warm-stone",
         "name": "暖灰防滑石材",
+        "category": "stone",
         "color": "#A8A49A",
+        "roughness": 0.84,
+        "metalness": 0,
+        "opacity": 1,
         "wetAreaSuitability": "specified",
         "maintenance": "湿区采购前核验防滑等级、吸水率、铺贴系统和清洁说明。"
       },
       {
         "materialId": "stone-grey",
         "name": "低反光金属灰",
+        "category": "metal",
         "color": "#8F9591",
+        "roughness": 0.48,
+        "metalness": 0.72,
+        "opacity": 1,
         "maintenance": "核验设备饰面耐指纹性能和厂商清洁要求。"
       },
       {
         "materialId": "forest-fabric",
         "name": "森林绿织物",
+        "category": "fabric",
         "color": "#47705B",
+        "roughness": 0.9,
+        "metalness": 0,
+        "opacity": 1,
         "maintenance": "核验耐磨、色牢度、可拆洗性与替换周期。"
       }
     ],
     "lighting": [
       {
-        "mode": "daylight-plus-ambient",
-        "intent": "优先利用北向自然光，并以均匀环境光补足公共区。"
+        "lightId": "ambient-warm-fill",
+        "name": "全屋暖色环境补光",
+        "kind": "ambient",
+        "intensity": 0.72,
+        "colorTemperatureKelvin": 3600,
+        "color": "#FFF2DF"
+      },
+      {
+        "lightId": "daylight-north",
+        "name": "北向自然主光",
+        "kind": "directional",
+        "position": [
+          4.2,
+          10.5,
+          1.2
+        ],
+        "target": [
+          6.1,
+          0.8,
+          6.3
+        ],
+        "intensity": 2.4,
+        "colorTemperatureKelvin": 5600,
+        "color": "#F3F7FF"
+      },
+      {
+        "lightId": "living-accent",
+        "name": "客厅重点照明",
+        "kind": "point",
+        "roomId": "living",
+        "position": [
+          5.1,
+          2.55,
+          8.2
+        ],
+        "target": [
+          5.1,
+          0.8,
+          8.2
+        ],
+        "intensity": 42,
+        "colorTemperatureKelvin": 3200,
+        "color": "#FFDDB8"
       }
     ],
+    "rendering": {
+      "realtimeProfile": "pascal-pbr-preview-v1",
+      "finalProfile": "scene-bound-photoreal-v1",
+      "geometryLocked": true,
+      "aiEnhancement": "controlled",
+      "controlPasses": [
+        "depth",
+        "normal",
+        "semantic",
+        "object-id"
+      ],
+      "exposure": 1.05,
+      "cameras": [
+        {
+          "cameraId": "overview-isometric",
+          "name": "全屋轴测",
+          "role": "primary",
+          "position": [
+            17.5,
+            11.2,
+            17.2
+          ],
+          "target": [
+            6.2,
+            1.05,
+            6.3
+          ],
+          "fov": 48,
+          "sequence": 0
+        },
+        {
+          "cameraId": "living-overview",
+          "name": "客厅全景",
+          "role": "hero",
+          "roomId": "living",
+          "position": [
+            8.9,
+            1.65,
+            10.8
+          ],
+          "target": [
+            4.9,
+            1.15,
+            7.4
+          ],
+          "fov": 54,
+          "sequence": 1
+        },
+        {
+          "cameraId": "dining-kitchen",
+          "name": "餐厨衔接",
+          "role": "supporting",
+          "roomId": "dining",
+          "position": [
+            2.6,
+            1.55,
+            5.7
+          ],
+          "target": [
+            1.6,
+            1.05,
+            2.5
+          ],
+          "fov": 58,
+          "sequence": 2
+        }
+      ]
+    },
     "maintenance": [
       "最终材料、灯具和家具必须在采购前核验实物样板与供应商技术资料。"
     ]
