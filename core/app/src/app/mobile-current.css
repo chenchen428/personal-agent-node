@@ -1049,8 +1049,25 @@
 .mobile-task-avatar.user { background: #e7ece9; color: #3f4644; box-shadow: inset 0 0 0 1px rgba(91,122,114,.12); }
 .mobile-task-message > div { min-width: 0; max-width: calc(100% - 41px); }
 .mobile-task-message-body { color: #4b4843; font: 400 14px/1.75 var(--pa-sans); letter-spacing: .005em; }
+.mobile-task-message-body { min-width: 0; overflow-wrap: anywhere; }
+.mobile-task-message-body > :first-child { margin-top: 0; }
+.mobile-task-message-body > :last-child { margin-bottom: 0; }
 .mobile-task-message-body p { margin: 0 0 12px; }
-.mobile-task-message-body ul { margin: 12px 0 0; padding-left: 20px; color: #5b5751; }
+.mobile-task-message-body h1, .mobile-task-message-body h2, .mobile-task-message-body h3, .mobile-task-message-body h4 { margin: 16px 0 8px; color: #35322e; font-weight: 650; line-height: 1.4; }
+.mobile-task-message-body h1 { font-size: 18px; }
+.mobile-task-message-body h2 { font-size: 16px; }
+.mobile-task-message-body h3, .mobile-task-message-body h4 { font-size: 14px; }
+.mobile-task-message-body ul, .mobile-task-message-body ol { margin: 10px 0 12px; padding-left: 21px; color: #5b5751; }
+.mobile-task-message-body li { margin: 4px 0; }
+.mobile-task-message-body blockquote { margin: 10px 0; padding: 2px 0 2px 11px; border-left: 3px solid #c7c2b9; color: #77726b; }
+.mobile-task-message-body code { border-radius: 5px; padding: 2px 5px; background: #e9e6df; color: #393631; font: 11px/1.6 ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace; }
+.mobile-task-message-body pre { max-width: 100%; overflow-x: auto; margin: 10px 0; border-radius: 8px; padding: 11px; background: #272724; color: #f4f2ed; }
+.mobile-task-message-body pre code { padding: 0; background: transparent; color: inherit; white-space: pre; }
+.mobile-task-message-body a { color: #356a77; text-decoration: underline; text-decoration-color: rgba(53,106,119,.35); text-underline-offset: 2px; }
+.mobile-task-message-body hr { margin: 14px 0; border: 0; border-top: 1px solid #d9d5ce; }
+.mobile-task-message-body table { width: 100%; display: block; overflow-x: auto; margin: 10px 0; border-collapse: collapse; font-size: 11px; }
+.mobile-task-message-body th, .mobile-task-message-body td { border: 1px solid #d9d5ce; padding: 6px 7px; text-align: left; }
+.mobile-task-message-body th { background: #e9e6df; color: #3f3b36; }
 .mobile-task-message.user .mobile-task-message-body { padding: 12px 14px; border-radius: 17px; background: #eeece6; color: #57534d; }
 .mobile-task-message time { display: block; margin-top: 7px; color: #aaa59e; font-size: 8px; }
 .mobile-task-message.user time { text-align: right; }

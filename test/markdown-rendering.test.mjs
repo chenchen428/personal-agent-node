@@ -3,7 +3,7 @@ import test from "node:test";
 import { renderMarkdown } from "../core/app/src/lib/markdown.ts";
 import { localTaskDetailHref } from "../core/app/src/components/desktop-v627/conversation-links.ts";
 
-test("desktop task and conversation markdown renders common content", () => {
+test("shared task and conversation markdown renders common content", () => {
   const html = renderMarkdown("## 进度\n\n- 已完成\n- `npm test`\n\n[查看](https://example.com)");
   assert.match(html, /<h2>进度<\/h2>/);
   assert.match(html, /<ul>/);
@@ -12,7 +12,14 @@ test("desktop task and conversation markdown renders common content", () => {
   assert.match(html, /target="_blank"/);
 });
 
-test("desktop markdown escapes raw HTML and rejects executable links", () => {
+test("shared task markdown renders ordered lists, quotes, and tables", () => {
+  const html = renderMarkdown("1. first\n2. second\n\n> note\n\n| A | B |\n| - | - |\n| 1 | 2 |");
+  assert.match(html, /<ol>/);
+  assert.match(html, /<blockquote>/);
+  assert.match(html, /<table>/);
+});
+
+test("shared markdown escapes raw HTML and rejects executable links", () => {
   const html = renderMarkdown('<script>alert(1)</script>\n\n[x](javascript:alert(1))');
   assert.doesNotMatch(html, /<script>/);
   assert.match(html, /&lt;script&gt;/);

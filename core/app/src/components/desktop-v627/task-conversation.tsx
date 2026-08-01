@@ -2,7 +2,7 @@
 
 import { Check, Circle, LoaderCircle, RotateCcw } from "lucide-react";
 import type { Session } from "./types";
-import { MarkdownContent } from "./markdown-content";
+import { MarkdownContent } from "../markdown-content";
 import { formatTime } from "./shared";
 import { isWorkerRunning } from "./use-worker-sessions";
 import { workerStatusLabel } from "./worker-status";

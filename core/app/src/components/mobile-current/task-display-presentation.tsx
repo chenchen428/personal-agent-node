@@ -2,7 +2,8 @@
 
 import { AlertCircle, Inbox } from "lucide-react";
 import type { ReactNode } from "react";
-import { firstCharacter, formatDateTime, relativeTaskTime, richText } from "./data";
+import { MarkdownContent } from "../markdown-content";
+import { firstCharacter, formatDateTime, relativeTaskTime } from "./data";
 import type { ChatAttachment, PlanStep, TaskDisplayEvent } from "./types";
 
 export function TaskConversationContent({
@@ -36,7 +37,7 @@ export function TaskConversationContent({
 function TaskMessage({ item, userName }: { item: TaskDisplayEvent; userName: string }) {
   const user = item.role === "user";
   const content = <div>
-    {item.content?.trim() ? <div className="mobile-task-message-body">{richText(item.content)}</div> : null}
+    {item.content?.trim() ? <MarkdownContent className="mobile-task-message-body" content={item.content} /> : null}
     <TaskMessageAttachments attachments={item.metadata?.attachments || []} />
     <time dateTime={item.createdAt} title={formatDateTime(item.createdAt)}>{relativeTaskTime(item.createdAt)}</time>
   </div>;

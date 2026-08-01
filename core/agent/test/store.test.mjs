@@ -330,6 +330,48 @@ test("mobile task display ledger opens at the tail and paginates earlier events 
   }
 });
 
+test("task display startup migration restores explicit legacy user input without exposing the delegated prompt", () => {
+  const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), "pa-store-display-user-backfill-"));
+  let store = new BridgeStore({ dataDir, consoleBaseUrl: "https://agent.example.test" });
+  try {
+    const session = store.createSession({ role: "worker", title: "Legacy task", taskDescription: "visible requirement", workspaceRoot: dataDir });
+    store.appendEvent(session.id, "session.user_message", {
+      content: "internal delegated prompt",
+      source: "agent-bridge-appserver",
+      createdAt: "2026-07-20T10:00:00.000Z",
+    });
+    store.appendEvent(session.id, "session.user_message", {
+      content: "visible follow-up",
+      source: "agent-bridge-appserver",
+      createdAt: "2026-07-20T10:01:00.000Z",
+    });
+    const assistant = store.appendEvent(session.id, "session.assistant_message", {
+      content: "visible result",
+      metadata: { streamState: "completed" },
+      createdAt: "2026-07-20T10:02:00.000Z",
+    });
+    store.projectTaskDisplayEvent(assistant);
+    store.db.prepare("DELETE FROM store_migrations WHERE id = ?").run("task-display-visible-user-events-v1");
+    store.close();
+
+    store = new BridgeStore({ dataDir, consoleBaseUrl: "https://agent.example.test" });
+    assert.deepEqual(store.listTaskDisplayEvents(session.id, { limit: 20 }).items.map((item) => item.content), [
+      "visible requirement",
+      "visible follow-up",
+      "visible result",
+    ]);
+    store.close();
+
+    store = new BridgeStore({ dataDir, consoleBaseUrl: "https://agent.example.test" });
+    const items = store.listTaskDisplayEvents(session.id, { limit: 20 }).items;
+    assert.equal(items.length, 3);
+    assert.equal(items.some((item) => item.content === "internal delegated prompt"), false);
+  } finally {
+    store.close();
+    fs.rmSync(dataDir, { recursive: true, force: true });
+  }
+});
+
 test("task display projection stores only completed visible worker content and remains independent of raw history volume", () => {
   const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), "pa-store-display-projection-"));
   const store = new BridgeStore({ dataDir, consoleBaseUrl: "https://agent.example.test" });
@@ -347,6 +389,12 @@ test("task display projection stores only completed visible worker content and r
     assert.equal(project("session.tool_result", "secret command output"), null);
     assert.equal(project("session.reasoning", "private reasoning"), null);
     assert.equal(project("session.assistant_message", "partial", { streamState: "streaming" }), null);
+    assert.equal(project("session.user_message", "unmarked delegated prompt"), null);
+    const visibleUser = project("session.user_message", "visible follow-up", { taskDisplayVisible: true }, "user-1");
+    assert.equal(visibleUser.item.role, "user");
+    assert.equal(visibleUser.item.kind, "message");
+    assert.equal(visibleUser.item.content, "visible follow-up");
+    assert.equal(project("session.user_message", "visible follow-up", { taskDisplayVisible: true }, "user-1").item.displayEventId, visibleUser.item.displayEventId);
     assert.equal(project("session.assistant_message", "[worker-hook:internal] hidden", { streamState: "completed" }), null);
     assert.equal(project("session.error", "retry transport detail", { willRetry: true }), null);
     const completed = project("session.assistant_message", "visible answer", { streamState: "completed" }, "completed-1");

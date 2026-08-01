@@ -642,7 +642,7 @@ test("child task input retains the latest visible parent request", async () => {
 
   assert.match(calls[0], /用户原始请求：\n明天9点钟，提醒我买黄皮寄回家/);
   assert.match(calls[0], /子任务执行说明：\n请为用户创建一次性提醒/);
-  assert.equal(store.getSession(worker.id).messages.find((message) => message.role === "user").content, calls[0]);
+  assert.equal(store.getSession(worker.id).messages.find((message) => message.role === "user").content, "明天九点提醒用户买黄皮寄回家");
   const display = store.listTaskDisplayEvents(worker.id, { limit: 20 });
   assert.deepEqual(display.items.map((item) => item.content), ["明天九点提醒用户买黄皮寄回家", "提醒已创建"]);
   assert.equal(display.items.some((item) => item.content.includes("用户原始请求")), false);
@@ -651,6 +651,55 @@ test("child task input retains the latest visible parent request", async () => {
   orchestrator.stop();
   store.close();
   fs.rmSync(dataDir, { recursive: true, force: true });
+});
+
+test("worker follow-up input is persisted once and shared by desktop and mobile task detail", async () => {
+  const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), "oab-orchestrator-worker-follow-up-"));
+  const store = new BridgeStore({ dataDir, consoleBaseUrl: "https://agent.example.test" });
+  const calls = [];
+  const orchestrator = new SessionOrchestrator({
+    store,
+    hub: { broadcast: () => {} },
+    channels: {},
+    progressTimerEnabled: false,
+    runner: {
+      runAppServerCommand: async (input) => {
+        calls.push(input.stdin);
+        await input.onSessionEvent({
+          sessionId: input.sessionId,
+          kind: "session.user_message",
+          payload: { content: input.stdin, source: "agent-bridge-appserver" },
+        });
+        await input.onSessionEvent({
+          sessionId: input.sessionId,
+          kind: "session.assistant_message",
+          payload: { content: "已继续处理", metadata: { streamState: "completed" } },
+        });
+        return { ok: true };
+      },
+      stopAppServerCommand: () => false,
+    },
+  });
+
+  try {
+    const worker = orchestrator.createWorkerSession({ title: "任务", description: "初始要求", task: "内部执行提示" });
+    await orchestrator.resumeSession(worker.id, "继续 **处理**");
+    await waitFor(() => calls.length === 1 && !orchestrator.running.has(worker.id));
+
+    assert.deepEqual(store.getSession(worker.id).messages.filter((message) => message.role === "user").map((message) => message.content), [
+      "初始要求",
+      "继续 **处理**",
+    ]);
+    assert.deepEqual(store.listTaskDisplayEvents(worker.id, { limit: 20 }).items.map((item) => item.content), [
+      "初始要求",
+      "继续 **处理**",
+      "已继续处理",
+    ]);
+  } finally {
+    orchestrator.stop();
+    store.close();
+    fs.rmSync(dataDir, { recursive: true, force: true });
+  }
 });
 
 test("queues inputs for a running session and drains them serially", async () => {

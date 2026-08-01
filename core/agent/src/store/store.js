@@ -77,6 +77,11 @@ export class BridgeStore {
       CREATE INDEX IF NOT EXISTS idx_task_display_events_session_seq
         ON task_display_events(session_id, display_seq);
 
+      CREATE TABLE IF NOT EXISTS store_migrations (
+        id TEXT PRIMARY KEY,
+        applied_at TEXT NOT NULL
+      );
+
       CREATE TABLE IF NOT EXISTS task_display_state (
         session_id TEXT PRIMARY KEY,
         latest_plan_json TEXT NOT NULL,
@@ -369,10 +374,87 @@ export class BridgeStore {
     this.migrateJsonStateIfNeeded();
     this.backfillTokenUsageDailyIfNeeded();
     this.enforceSessionRoleInvariants();
+    this.backfillTaskDisplayUserEvents();
   }
 
   close() {
     this.db.close();
+  }
+
+  backfillTaskDisplayUserEvents() {
+    const migrationId = "task-display-visible-user-events-v1";
+    if (this.db.prepare("SELECT 1 FROM store_migrations WHERE id = ?").get(migrationId)) return;
+    const workers = this.db.prepare(`
+      SELECT * FROM sessions WHERE role = 'worker'
+    `).all();
+    for (const worker of workers) {
+      let changed = false;
+      const existingRequirement = this.db.prepare(`
+        SELECT 1 FROM task_display_events
+        WHERE session_id = ? AND kind = 'requirement' AND role = 'user'
+        LIMIT 1
+      `).get(worker.id);
+      if (!existingRequirement && String(worker.task_description || "").trim()) {
+        changed = Boolean(this.appendTaskDisplayEvent(worker.id, {
+          sourceEventId: `task-description:${worker.id}`,
+          kind: "requirement",
+          role: "user",
+          content: worker.task_description,
+          createdAt: worker.created_at,
+        })) || changed;
+      }
+
+      const userRows = this.db.prepare(`
+        SELECT * FROM events
+        WHERE session_id = ? AND kind = 'session.user_message'
+        ORDER BY seq ASC
+      `).all(worker.id);
+      const firstAppServerSeq = userRows.find((row) => fromJson(row.payload_json, {}).source === "agent-bridge-appserver")?.seq;
+      for (const row of userRows) {
+        const payload = fromJson(row.payload_json, {});
+        const metadata = payload.metadata && typeof payload.metadata === "object" ? payload.metadata : {};
+        const explicit = metadata.taskDisplayVisible === true
+          || payload.source === "agent-bridge-ui"
+          || (payload.source === "agent-bridge-appserver" && row.seq !== firstAppServerSeq);
+        if (!explicit) continue;
+        const item = this.appendTaskDisplayEvent(worker.id, {
+          sourceEventId: `user:${payload.persistedMessageId || row.id}`,
+          kind: metadata.taskDisplayKind === "requirement" ? "requirement" : "message",
+          role: "user",
+          content: payload.content,
+          metadata: { attachments: metadata.attachments },
+          createdAt: row.created_at,
+        });
+        changed = Boolean(item) || changed;
+      }
+      if (changed) this.resequenceTaskDisplayEvents(worker.id);
+    }
+    this.db.prepare("INSERT INTO store_migrations (id, applied_at) VALUES (?, ?)")
+      .run(migrationId, new Date().toISOString());
+  }
+
+  resequenceTaskDisplayEvents(sessionId) {
+    const rows = this.db.prepare(`
+      SELECT id, kind, created_at, display_seq FROM task_display_events
+      WHERE session_id = ?
+      ORDER BY CASE WHEN kind = 'requirement' THEN 0 ELSE 1 END ASC,
+        created_at ASC,
+        display_seq ASC
+    `).all(sessionId);
+    if (!rows.length || rows.every((row, index) => Number(row.display_seq) === index + 1)) return;
+    this.db.exec("BEGIN IMMEDIATE");
+    try {
+      this.db.prepare("UPDATE task_display_events SET display_seq = -display_seq WHERE session_id = ?").run(sessionId);
+      const update = this.db.prepare("UPDATE task_display_events SET display_seq = ? WHERE id = ?");
+      rows.forEach((row, index) => update.run(index + 1, row.id));
+      this.db.prepare(`
+        UPDATE task_display_state SET last_display_seq = ?, updated_at = ? WHERE session_id = ?
+      `).run(rows.length, rows.at(-1).created_at, sessionId);
+      this.db.exec("COMMIT");
+    } catch (error) {
+      this.db.exec("ROLLBACK");
+      throw error;
+    }
   }
 
   pruneHistory({ retentionDays = 30, vacuum = false, now = new Date() } = {}) {
@@ -660,6 +742,17 @@ export class BridgeStore {
     if (metadata.eventType === "turn/plan/updated") {
       const latestPlan = this.updateTaskDisplayPlan(sessionId, metadata.plan, { createdAt: event.createdAt });
       return latestPlan ? { type: "plan", taskId: sessionId, latestPlan } : null;
+    }
+    if (event.kind === "session.user_message" && metadata.taskDisplayVisible === true) {
+      const item = this.appendTaskDisplayEvent(sessionId, {
+        sourceEventId: `user:${event.payload?.persistedMessageId || event.id}`,
+        kind: metadata.taskDisplayKind === "requirement" ? "requirement" : "message",
+        role: "user",
+        content: event.payload?.content,
+        metadata: { attachments: metadata.attachments },
+        createdAt: event.createdAt,
+      });
+      return item ? { type: "event", taskId: sessionId, item } : null;
     }
     if (event.kind === "session.assistant_message") {
       if (metadata.streamState && metadata.streamState !== "completed") return null;
@@ -3222,8 +3315,12 @@ function normalizeTaskDisplayEvent(input) {
   if (!new Set(["user", "assistant", "error"]).has(role)) {
     throw taskDisplayError("TASK_DISPLAY_ROLE_INVALID", "task display event role is invalid", 400);
   }
-  const expectedRole = kind === "requirement" ? "user" : kind === "error" ? "error" : "assistant";
-  if (role !== expectedRole) {
+  const roleMatches = kind === "requirement"
+    ? role === "user"
+    : kind === "error"
+      ? role === "error"
+      : role === "user" || role === "assistant";
+  if (!roleMatches) {
     throw taskDisplayError("TASK_DISPLAY_ROLE_MISMATCH", "task display event role does not match its kind", 400);
   }
   const content = String(input?.content || "").trim().slice(0, 40_000);

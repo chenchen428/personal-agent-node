@@ -249,15 +249,12 @@ export class SessionOrchestrator {
         } : {}),
       },
     });
-    const displayItem = this.store.appendTaskDisplayEvent(session.id, {
-      sourceEventId: `task-description:${session.id}`,
-      kind: "requirement",
-      role: "user",
-      content: session.taskDescription,
-      createdAt: session.createdAt,
-    });
-    if (displayItem) {
-      this.broadcastTaskDisplayProjection({ type: "event", taskId: session.id, item: displayItem });
+    if (session.taskDescription) {
+      this.appendAndBroadcast(session.id, "session.user_message", {
+        content: session.taskDescription,
+        source: "personal-agent-task",
+        metadata: { taskDisplayVisible: true, taskDisplayKind: "requirement" },
+      });
     }
     if (session.parentSessionId) {
       const parent = this.store.getSessionRecord(session.parentSessionId);
@@ -287,7 +284,7 @@ export class SessionOrchestrator {
       task: input.task || input.taskDescription || "Start worker session.",
     });
     this.beginWorkerHooks(session);
-    const run = this.runTurn(session.id, task, { allowCreateThread: true });
+    const run = this.runTurn(session.id, task, { allowCreateThread: true, userMessagePersisted: Boolean(session.taskDescription) });
     void run.catch((error) => {
       this.appendAndBroadcast(session.id, "session.error", { content: error.message, level: "error" });
     });
@@ -388,9 +385,18 @@ export class SessionOrchestrator {
     const alreadyRunning = this.running.has(sessionId);
     if (!alreadyRunning && session.role === "worker") this.beginWorkerHooks(session);
     const notifyWechat = options.notifyWechat === true && session.role === "main" && isWechatMainChannel(session.channel);
+    const workerUserMessagePersisted = session.role === "worker" && Boolean(String(options.displayContent || content || "").trim());
+    if (workerUserMessagePersisted) {
+      this.appendAndBroadcast(sessionId, "session.user_message", {
+        content: options.displayContent || content,
+        source: options.messageMetadata?.channel || session.channel || "desktop",
+        metadata: { ...(options.messageMetadata || {}), taskDisplayVisible: true },
+      });
+    }
     const run = this.runTurn(sessionId, content, {
       steerIfRunning: true,
       notifyWechat,
+      ...(workerUserMessagePersisted ? { userMessagePersisted: true } : {}),
       ...(options.displayContent ? { displayContent: options.displayContent } : {}),
       ...(options.messageMetadata ? { messageMetadata: options.messageMetadata } : {}),
       ...(session.role === "main" ? { developerInstructions: buildMainAgentInstructions(session, this.agentCatalog) } : {}),

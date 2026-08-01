@@ -1,7 +1,7 @@
 import { ConversationPlan } from "./conversation-plan";
 import { formatTime } from "./shared";
 import type { CurrentPlan, LinkedTask, Message } from "./types";
-import { MarkdownContent } from "./markdown-content";
+import { MarkdownContent } from "../markdown-content";
 import { localTaskDetailHref } from "./conversation-links";
 
 type Props = { messages: Message[]; loading: boolean; loadingEarlier: boolean; hasEarlier: boolean; processing: boolean; linkedTask?: LinkedTask | null; plan?: CurrentPlan | null; onLoadEarlier: () => void };

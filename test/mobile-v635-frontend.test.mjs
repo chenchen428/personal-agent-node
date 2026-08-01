@@ -118,6 +118,9 @@ test("Mobile task detail keeps long-form conversation typography readable", () =
   assert.match(css, /\.mobile-task-message-body \{[^}]*color: #4b4843/);
   assert.match(css, /\.mobile-task-plan li \{[^}]*font-weight: 400/);
   assert.match(types, /attachments\?: ChatAttachment\[\]/);
+  assert.match(presentation, /MarkdownContent/);
+  assert.match(presentation, /className="mobile-task-message-body"/);
+  assert.doesNotMatch(presentation, /richText/);
   assert.match(presentation, /item\.metadata\?\.attachments/);
   assert.match(presentation, /TaskMessageAttachments/);
   assert.match(presentation, /attachment\.previewUrl/);
@@ -127,6 +130,9 @@ test("Mobile task detail keeps long-form conversation typography readable", () =
   assert.match(presentation, /formatAttachmentBytes/);
   assert.match(css, /\.mobile-task-message-attachments img/);
   assert.match(css, /\.mobile-task-message-attachments \.mobile-task-file/);
+  for (const selector of ["h1", "ol", "blockquote", "code", "pre", "a", "table"]) {
+    assert.match(css, new RegExp(`\\.mobile-task-message-body[^\\n]*${selector}`), selector);
+  }
 });
 
 test("Mobile primary loading states use layout-matched skeletons", () => {

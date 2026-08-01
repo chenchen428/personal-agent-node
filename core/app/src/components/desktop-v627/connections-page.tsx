@@ -6,7 +6,7 @@ import { useEffect, useMemo, useState } from "react";
 import { LoadingState } from "../desktop-v72/loading-state";
 import { Badge, DetailHeader, KeyValueGrid, SearchField } from "../desktop-v72/primitives";
 import { useJson } from "./shared";
-import { MarkdownContent } from "./markdown-content";
+import { MarkdownContent } from "../markdown-content";
 import { ConnectionActionRow } from "./connection-action-row";
 import { ConnectionViewSwitch, type ConnectionView } from "./connection-view-switch";
 import type { Connection } from "./connection-types";

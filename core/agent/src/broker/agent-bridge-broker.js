@@ -120,14 +120,7 @@ export class AgentBridgeBroker {
         source: "agent-bridge-broker",
       },
     });
-    const item = this.store.appendTaskDisplayEvent(session.id, {
-      sourceEventId: `task-description:${session.id}`,
-      kind: "requirement",
-      role: "user",
-      content: session.taskDescription,
-      createdAt: session.createdAt,
-    });
-    if (item) this.hub.broadcast({ type: "task.display.delta", taskId: session.id, item, task: this.store.getMobileTaskSummary(session.id) });
+    if (session.taskDescription) this.appendVisibleTaskUserMessage(session.id, session.taskDescription, { requirement: true });
     return session;
   }
 
@@ -157,14 +150,25 @@ export class AgentBridgeBroker {
     const delivered = this.deliverCommand(command);
     const nextCommand = this.store.updateCommand(command.id, { status: delivered ? "delivered" : "queued" });
     if (content && action === "send") {
-      this.store.appendEvent(sessionId, "session.user_message", {
-        content,
-        source: "agent-bridge-ui",
-        metadata: { commandId: command.id, action },
-      });
+      this.appendVisibleTaskUserMessage(sessionId, content, { metadata: { commandId: command.id, action } });
     }
     this.hub.broadcast({ type: "session.updated", session: this.store.getSessionRecord(sessionId) });
     return { command: nextCommand, delivered, session: this.store.getSession(sessionId) };
+  }
+
+  appendVisibleTaskUserMessage(sessionId, content, { requirement = false, metadata = {} } = {}) {
+    const event = this.store.appendEvent(sessionId, "session.user_message", {
+      content,
+      source: requirement ? "personal-agent-task" : "agent-bridge-ui",
+      metadata: { ...metadata, taskDisplayVisible: true, ...(requirement ? { taskDisplayKind: "requirement" } : {}) },
+    });
+    const session = this.store.getSessionRecord(sessionId);
+    this.hub.broadcast({ type: "session.delta", event, session });
+    const projection = this.store.projectTaskDisplayEvent(event);
+    if (projection?.type === "event") {
+      this.hub.broadcast({ type: "task.display.delta", taskId: projection.taskId, item: projection.item, task: this.store.getMobileTaskSummary(projection.taskId) });
+    }
+    return event;
   }
 
   attachRunnerSocket(socket) {
