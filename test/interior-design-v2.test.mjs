@@ -409,7 +409,7 @@ test('generates a deterministic, private, offline Pascal Page v2 with accessible
   assert.match(firstHtml, /id="model-derived-plan"/);
   assert.match(firstHtml, /data-level-mode="exploded"/);
   assert.match(firstHtml, /data-label-mode="visible"/);
-  assert.match(firstHtml, /data-camera-shot/);
+  assert.doesNotMatch(firstHtml, /data-camera-shot/);
   assert.match(firstHtml, /同场景质量/);
   assert.match(firstHtml, /PBR 材质/);
   assert.match(firstHtml, /几何一致性/);

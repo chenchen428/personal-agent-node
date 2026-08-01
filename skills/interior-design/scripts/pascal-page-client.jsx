@@ -1,12 +1,13 @@
-import React, { Component, createContext, useContext, useEffect, useMemo, useState } from 'react';
+import React, { Component, createContext, useContext, useEffect, useState } from 'react';
 import { createRoot } from 'react-dom/client';
-import { Html } from '@react-three/drei';
 import useScene from '@pascal-app/core/store';
 import { Viewer, useViewer } from '@pascal-app/viewer';
 import { ArchitectureEnvelope } from './pascal-architecture.jsx';
 import { DesignLighting } from './pascal-design-lighting.jsx';
+import { LandscapeViewportBridge } from './pascal-landscape-viewport.jsx';
 import { ProjectCamera } from './pascal-project-camera.jsx';
 import { DeliveryRenderBudget } from './pascal-render-budget.jsx';
+import { SceneLabels } from './pascal-scene-labels.jsx';
 import { showViewerFallback, ViewerLifecycle } from './pascal-viewer-lifecycle.jsx';
 
 class ViewerBoundary extends Component {
@@ -142,28 +143,6 @@ function ProceduralFurniture({ items, highlighted, materials }) {
   return items.filter((item) => item?.size?.length === 3).map((item) => <FurnitureItem item={item} key={item.id} materials={materials} selected={highlighted.has(item.id)} />);
 }
 
-function SceneLabels({ payload }) {
-  const labels = useMemo(() => Object.values(payload.scene?.nodes || {})
-    .filter((node) => node.type === 'zone' && Array.isArray(node.polygon) && node.polygon.length >= 3)
-    .map((node) => ({
-      id: node.id,
-      name: node.name,
-      position: [
-        node.polygon.reduce((sum, point) => sum + point[0], 0) / node.polygon.length,
-        1.35,
-        node.polygon.reduce((sum, point) => sum + point[1], 0) / node.polygon.length,
-      ],
-    })), [payload]);
-  return labels.map((label, index) => <Html
-    center
-    className={`pascal-room-label${[1, 4, 7, 8, 12].includes(index) ? ' is-dark' : ''}`}
-    key={label.id}
-    position={label.position}
-  >
-    <span>{label.name}</span>
-  </Html>);
-}
-
 function PascalScene({ payload }) {
   const [highlighted, setHighlighted] = useState(new Set());
   useEffect(() => {
@@ -203,6 +182,7 @@ function PascalScene({ payload }) {
     >
       <DeliveryRenderBudget />
       <ViewerLifecycle />
+      <LandscapeViewportBridge />
       <DesignLighting payload={payload} />
       <ProjectCamera payload={payload} />
       <ArchitectureEnvelope payload={payload} />

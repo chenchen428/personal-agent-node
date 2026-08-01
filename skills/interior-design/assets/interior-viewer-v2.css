@@ -105,8 +105,10 @@ body[data-viewer-state="loading"] .gesture { opacity: 0; pointer-events: none; }
   line-height: 1;
   white-space: nowrap;
   backdrop-filter: blur(8px);
+  transition: opacity .14s ease;
 }
 .pascal-room-label.is-dark span { border-color: rgba(29, 34, 30, .78); background: rgba(31, 36, 32, .9); color: #fff; }
+body[data-label-layout="decluttered"] .pascal-room-label span[data-collided="true"] { opacity: 0; }
 body:not([data-viewer-state="ready"]) .pascal-room-label { display: none !important; }
 
 .gesture { position: absolute; z-index: 4; right: 28px; bottom: 30px; color: var(--muted); font-size: 9px; letter-spacing: .08em; pointer-events: none; }

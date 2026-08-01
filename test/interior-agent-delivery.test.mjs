@@ -32,7 +32,7 @@ function referencedImageByAlt(html, alt) {
   return fs.readFileSync(path.join(artifactRoot, source));
 }
 
-function evaluateMobileLayout({ width, height, userAgent, mobile = false, maxTouchPoints = 0, screenWidth = width, screenHeight = height }) {
+function evaluateMobileLayout({ width, height, userAgent, mobile = false, maxTouchPoints = 0, screenWidth = width, screenHeight = height, search = "" }) {
   const properties = new Map();
   const listeners = new Map();
   const window = {
@@ -50,26 +50,45 @@ function evaluateMobileLayout({ width, height, userAgent, mobile = false, maxTou
     },
     innerWidth: width,
     innerHeight: height,
+    location: { search },
     navigator: { maxTouchPoints, userAgent, userAgentData: { mobile } },
     screen: { width: screenWidth, height: screenHeight },
     window,
   };
   vm.runInNewContext(mobileLandscapeController(), context);
-  return { layout: context.document.body.dataset.mobileLayout, properties };
+  return {
+    labels: context.document.body.dataset.labels,
+    layout: context.document.body.dataset.mobileLayout,
+    properties,
+  };
 }
 
 test("mobile portrait is forced into the landscape canvas without rotating narrow desktop windows", () => {
   const portrait = evaluateMobileLayout({ width: 390, height: 844, userAgent: "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X)", mobile: true, maxTouchPoints: 5 });
   assert.equal(portrait.layout, "forced-landscape");
+  assert.equal(portrait.labels, "hidden");
   assert.equal(portrait.properties.get("--portrait-viewport-width"), "390px");
   assert.equal(portrait.properties.get("--landscape-viewport-width"), "844px");
   assert.equal(portrait.properties.get("--landscape-viewport-height"), "390px");
 
   const landscape = evaluateMobileLayout({ width: 844, height: 390, userAgent: "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X)", mobile: true, maxTouchPoints: 5 });
   assert.equal(landscape.layout, "landscape");
+  assert.equal(landscape.labels, "hidden");
 
   const desktop = evaluateMobileLayout({ width: 430, height: 900, userAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64)", screenWidth: 1920, screenHeight: 1080 });
   assert.equal(desktop.layout, "desktop");
+  assert.equal(desktop.labels, "visible");
+
+  const portraitPreview = evaluateMobileLayout({
+    width: 390,
+    height: 844,
+    userAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
+    screenWidth: 1920,
+    screenHeight: 1080,
+    search: "?agent-output=1&device=mobile",
+  });
+  assert.equal(portraitPreview.layout, "forced-landscape");
+  assert.equal(portraitPreview.labels, "hidden");
 });
 
 test("Pascal delivery DPR follows a bounded pixel budget as the page grows", () => {
@@ -190,6 +209,7 @@ test("the representative delivery preserves the governed Pascal v2 interaction a
   assert.match(html, /data-level-mode="stacked"/);
   assert.match(html, /data-level-mode="exploded"/);
   assert.match(html, /data-level-mode="solo"/);
+  assert.doesNotMatch(html, /data-camera-shot/);
   assert.match(html, /pascal-room-label/);
   assert.match(html, /pascal-highlight/);
   assert.match(html, /professional-mesh-ink/);
@@ -219,6 +239,18 @@ test("render budget and Page generator keep the accepted Pascal v2 implementatio
   assert.match(generator, /new CustomEvent\('pascal-viewer-visibility'\)/);
   assert.match(generator, /function mobileLandscapeController\(\)/);
   assert.match(generator, /navigator\.userAgentData\?\.mobile/);
+  assert.match(generator, /previewMobile/);
+  assert.match(generator, /body\.dataset\.labels=mobile\?'hidden':'visible'/);
+  assert.match(generator, /pascal-layout-change/);
+  assert.doesNotMatch(generator, /data-camera-shot/);
+  assert.match(read("skills/interior-design/scripts/pascal-project-camera.jsx"), /maxPolarAngle=\{Math\.PI \/ 2 - 0\.05\}/);
+  const viewportBridge = read("skills/interior-design/scripts/pascal-landscape-viewport.jsx");
+  assert.match(viewportBridge, /target\.offsetWidth/);
+  assert.match(viewportBridge, /setSize\(width, height/);
+  assert.match(viewportBridge, /virtual-landscape/);
+  const sceneLabels = read("skills/interior-design/scripts/pascal-scene-labels.jsx");
+  assert.match(sceneLabels, /MOBILE_LABEL_LIMIT = 7/);
+  assert.match(sceneLabels, /element\.dataset\.collided/);
   assert.doesNotMatch(generator, /template\.json|artifactMarker|data-template-id|data-template-version/);
 });
 

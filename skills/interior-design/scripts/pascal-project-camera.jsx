@@ -143,6 +143,7 @@ export function ProjectCamera({ payload }) {
     key={cameraMode}
     makeDefault
     maxDistance={frame.span * 5}
+    maxPolarAngle={Math.PI / 2 - 0.05}
     minDistance={Math.max(2, frame.span * 0.16)}
     onStart={markUserCameraPose}
     ref={controls}
