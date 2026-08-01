@@ -64,6 +64,7 @@ function assembleWorkspaceSeed() {
     ["workflows", "workspace/workflows"],
     ["registry", "workspace/registry"],
     ["schemas", "workspace/schemas"],
+    ["core/agent/src/agents/workflow.js", "workspace/core/agent/src/agents/workflow.js"],
   ]) copyTo(source, target);
   for (const script of ["agent-guard.mjs", "skill-tree.mjs", "skill-guard.mjs", "setup-agent-bridge.sh"]) copyTo(`scripts/${script}`, `workspace/scripts/${script}`);
   for (const directory of ["apps", "plugins", "files", "publications", "databases", "mail", "backups", "config", "secrets", "runtime", "logs", "data"]) {

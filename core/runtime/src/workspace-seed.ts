@@ -31,6 +31,8 @@ const PRODUCT_MANAGED_AGENT_CAPABILITIES = [
   "registry/agents.json",
   "schemas/personal-agent/agents.schema.json",
   "schemas/personal-agent/agent-profile.schema.json",
+  "schemas/personal-agent/agent-workflow.schema.json",
+  "core/agent/src/agents/workflow.js",
   "scripts/agent-guard.mjs",
 ] as const;
 

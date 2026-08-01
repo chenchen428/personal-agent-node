@@ -98,6 +98,7 @@ test('customer Harness classifies and ships portable creation skills', () => {
   const build = fs.readFileSync(path.join(root, 'scripts/build-private-site-node-dist.mjs'), 'utf8');
   assert.match(build, /\["agents", "workspace\/agents"\]/);
   assert.match(build, /\["skills", "workspace\/skills"\]/);
+  assert.match(build, /\["core\/agent\/src\/agents\/workflow\.js", "workspace\/core\/agent\/src\/agents\/workflow\.js"\]/);
   assert.match(build, /"agent-guard\.mjs"/);
   assert.match(build, /copyDirectory\(publicRoot, path\.join\(outputRoot, "core", "app", "public"\)\)/);
 });

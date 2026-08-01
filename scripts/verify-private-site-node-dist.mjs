@@ -155,7 +155,7 @@ function verifyPreparation() {
     for (const relative of ["config", "runtime", "apps/installed", "plugins", "files", "databases", "secrets", "mail", "publications", "agent-workspace"]) {
       assert(fs.existsSync(path.join(personalRoot, ...relative.split("/"))), `Prepared Personal Space is missing: ${relative}`);
     }
-    for (const relative of ["AGENTS.md", "agents", "skills", "workflows", "registry", "schemas", "scripts/agent-guard.mjs"]) {
+    for (const relative of ["AGENTS.md", "agents", "skills", "workflows", "registry", "schemas", "core/agent/src/agents/workflow.js", "scripts/agent-guard.mjs"]) {
       assert(fs.existsSync(path.join(personalRoot, "agent-workspace", relative)), `Prepared Agent workspace is missing: ${relative}`);
     }
     for (const relative of ["registry/product-development.json", "workflows/product-development.md", "skills/personal-product-development/references/product-development.md"]) {

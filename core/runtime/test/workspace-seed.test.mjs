@@ -99,6 +99,8 @@ test("refreshes product-managed Agent sources, schemas, registry, and guard on u
       "registry/agents.json",
       "schemas/personal-agent/agents.schema.json",
       "schemas/personal-agent/agent-profile.schema.json",
+      "schemas/personal-agent/agent-workflow.schema.json",
+      "core/agent/src/agents/workflow.js",
       "scripts/agent-guard.mjs",
     ];
 
@@ -121,12 +123,14 @@ test("refreshes product-managed Agent sources, schemas, registry, and guard on u
     }
 
     const result = seedAgentWorkspace({ agentWorkspaceRoot, dataRoot }, { releaseRoot });
-    assert.equal(result.refreshed, 5);
+    assert.equal(result.refreshed, 7);
     assert.deepEqual(result.refreshedPaths, [
       "agents/interior-designer",
       "registry/agents.json",
       "schemas/personal-agent/agents.schema.json",
       "schemas/personal-agent/agent-profile.schema.json",
+      "schemas/personal-agent/agent-workflow.schema.json",
+      "core/agent/src/agents/workflow.js",
       "scripts/agent-guard.mjs",
     ]);
     assert.equal(fs.readFileSync(path.join(agentWorkspaceRoot, "agents", "interior-designer", "agent.yaml"), "utf8"), "new Agent config\n");
