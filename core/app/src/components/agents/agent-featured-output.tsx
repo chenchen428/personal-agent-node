@@ -1,34 +1,19 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
-import { FileText, Image as ImageIcon, Monitor, Smartphone } from "lucide-react";
+import { Expand, FileText, Image as ImageIcon, Monitor, Smartphone } from "lucide-react";
+import { AgentExampleMedia } from "./agent-example-media";
+import { agentExampleHref, resolveAgentExamplePresentation } from "./agent-example-presentation";
 import type { AgentExample } from "./types";
-
-const featuredRoutes: Record<string, {
-  preview: string;
-  device: "desktop" | "mobile";
-  media?: "iframe" | "video";
-  poster?: string;
-}> = {
-  "finance-analyst": { preview: "/assets/agents/finance-analyst/featured/index.html", device: "desktop" },
-  "interior-designer": { preview: "/assets/agents/interior-designer/featured/index.html", device: "desktop" },
-  "poster-designer": { preview: "/assets/agents/poster-designer/featured/index.html", device: "mobile" },
-  "travel-planner": { preview: "/assets/agent-examples/travel-planning-fuzhou-v1/index.html", device: "desktop" },
-  "video-creator": {
-    preview: "/assets/agent-examples/personal-agent-intro-v1/personal-agent-intro.mp4",
-    device: "desktop",
-    media: "video",
-    poster: "/assets/agent-examples/personal-agent-intro-v1/poster.jpg",
-  },
-};
 
 export function AgentFeaturedOutput({ agentId, examples }: { agentId: string; examples: AgentExample[] }) {
   const [selectedIndex, setSelectedIndex] = useState(0);
   const selected = examples[selectedIndex];
   if (!selected) return <div className="agent-example-empty">当前版本没有可公开展示的代表产物。</div>;
-  const fallback = featuredRoutes[agentId];
-  const mobile = (selected.device || fallback?.device) === "mobile";
-  const preview = selected.preview || fallback?.preview;
+  const presentation = resolveAgentExamplePresentation(agentId, examples, String(selectedIndex + 1));
+  if (!presentation) return <div className="agent-example-empty">当前代表产物无法打开，请重新选择。</div>;
+  const mobile = presentation.device === "mobile";
 
   return <div className="agent-featured-output">
     <div className="agent-example-list" role="tablist" aria-label="代表产物">
@@ -47,14 +32,13 @@ export function AgentFeaturedOutput({ agentId, examples }: { agentId: string; ex
     <section className={`agent-example-stage ${mobile ? "is-mobile" : "is-desktop"}`} aria-label={selected.title}>
       <header>
         <div><span>{selected.kind || "专业交付示例"}</span><strong>{selected.title}</strong></div>
-        <span className="agent-example-device">{mobile ? <Smartphone aria-hidden="true" /> : <Monitor aria-hidden="true" />}{mobile ? "移动端作品" : "桌面端作品"}</span>
+        <div className="agent-example-stage-actions">
+          <span className="agent-example-device">{mobile ? <Smartphone aria-hidden="true" /> : <Monitor aria-hidden="true" />}{mobile ? "移动端作品" : "桌面端作品"}</span>
+          <Link href={agentExampleHref(agentId, presentation.exampleId)}><Expand aria-hidden="true" />沉浸查看</Link>
+        </div>
       </header>
       <div className="agent-example-canvas">
-        {preview && fallback?.media === "video"
-          ? <video controls playsInline poster={fallback.poster} preload="metadata" src={preview} />
-          : preview
-            ? <iframe title={selected.title} src={preview} sandbox="allow-scripts allow-same-origin" />
-            : <div className="agent-example-placeholder"><FileText aria-hidden="true" /><strong>{selected.title}</strong><p>{selected.description || selected.summary}</p></div>}
+        <AgentExampleMedia presentation={presentation} />
       </div>
     </section>
   </div>;

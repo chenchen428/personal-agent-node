@@ -230,14 +230,20 @@ export function verifyAgentDeliveryExample(directory = targetRoot) {
     'data-presentation="requirements"',
     'data-presentation="model"',
     'data-presentation="render"',
-    'data-presentation="workflow"',
     'data-presentation-panel="render"',
     'data-render-select=',
     '用户需求与户型依据',
-    '历史案例的需求到设计稿投影',
     '概念效果不替代施工图或材料实样',
   ]) {
     if (!html.includes(marker)) throw new Error(`representative interior-designer delivery is missing ${marker}`);
+  }
+  for (const marker of [
+    'data-presentation="workflow"',
+    'data-presentation-panel="workflow"',
+    '案例流程',
+    '历史案例的需求到设计稿投影',
+  ]) {
+    if (html.includes(marker)) throw new Error(`representative interior-designer delivery exposes internal workflow content: ${marker}`);
   }
   const expectedReferencedImages = [
     ...renders.map((render, index) => [[

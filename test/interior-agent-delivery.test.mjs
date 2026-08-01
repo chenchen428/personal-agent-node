@@ -128,7 +128,9 @@ test("the representative delivery preserves the governed Pascal v2 interaction a
   assert.match(html, /data-presentation="requirements"[^>]*>.*?需求<\/button>/s);
   assert.match(html, /data-presentation="model"[^>]*>设计稿<\/button>/);
   assert.match(html, /data-presentation="render"[^>]*>.*?效果图<\/button>/s);
-  assert.match(html, /data-presentation="workflow"/);
+  assert.doesNotMatch(html, /data-presentation="workflow"/);
+  assert.doesNotMatch(html, /data-presentation-panel="workflow"/);
+  assert.doesNotMatch(html, /案例流程|历史案例的需求到设计稿投影/);
   assert.match(html, /data-presentation-panel="render"[^>]*data-image-viewer/);
   assert.match(html, /data-render-select="render-living-overview"/);
   assert.match(html, /用户需求与户型依据/);

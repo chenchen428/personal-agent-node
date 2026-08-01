@@ -56,7 +56,6 @@ export function generateProfessionalPage({ projectDir: projectDirInput, context,
   const concepts = renderConcepts(project, conceptMappings);
   const assumptions = renderAssumptions(project);
   const revisions = renderRevisions(project);
-  const workflow = renderDemandWorkflow(project.demandWorkflow);
   const declaredArea = project.evidence.map((entry) => entry.calibration?.knownAreaSquareMetres).find(Number.isFinite);
   const displayTitle = title.replace(/全屋改造$/u, '');
   const rooms = concept.levels.flatMap((level) => level.rooms);
@@ -68,13 +67,12 @@ export function generateProfessionalPage({ projectDir: projectDirInput, context,
   const allLevelButton = concept.levels.length > 1 ? '<button class="active" type="button" data-level-id="">全部</button>' : '';
   const conceptPicker = `<label class="concept-control${project.concepts.length === 1 ? ' is-single' : ''}"><span>设计方案</span><select class="concept-picker" id="concept-picker" aria-label="比较设计方案">${project.concepts.map((entry) => `<option value="${escapeAttr(conceptMappings[entry.conceptId])}"${entry.conceptId === project.selectedConceptId ? ' selected' : ''}>${escapeHtml(entry.name)}</option>`).join('')}</select></label>`;
   const renderPanel = conceptRenders.length ? renderConceptPanel(conceptRenders) : '';
-  const workflowPanel = conceptRenders.length ? renderWorkflowPanel(project.demandWorkflow, workflow) : '';
   const evidencePanel = conceptRenders.length
     ? renderRequirementsAndEvidencePanel({ planAssets, requirements, assumptions, revisions })
     : `<article class="presentation-panel document-panel plan-panel" data-presentation-panel="plan" hidden><header><div><small>DESIGN EVIDENCE</small><h2>用户户型图与 Agent 标注</h2></div><p>用户原图是唯一户型依据；Agent 标注、结构化空间、3D、平面和标签均由同一原图生成。</p></header><div class="document-grid"><figure class="card plan-card" data-plan-mode="source"><div class="card-head"><strong>户型依据</strong><span class="segmented"><button class="active" type="button" data-plan-mode="source">用户原图</button><button type="button" data-plan-mode="annotation">Agent 标注图</button></span></div><img class="plan-reference-image plan-source-image" src="media/source-plan${path.extname(planAssets.source.evidence.relativePath).toLowerCase()}" alt="${escapeAttr(planAssets.source.alt)}"><img class="plan-reference-image plan-annotation-image" src="media/agent-annotation${path.extname(planAssets.annotation.evidence.relativePath).toLowerCase()}" alt="${escapeAttr(planAssets.annotation.alt)}"><figcaption class="plan-caption">图片用于概念设计沟通，不替代现场测绘、施工图、结构鉴定或所在地法规审核。</figcaption></figure><aside class="card"><div class="card-head"><strong>版本脉络</strong></div><div class="stack">${revisions}</div></aside></div></article>
 <article class="presentation-panel document-panel" data-presentation-panel="requirements" hidden><header><div><small>REQUIREMENT TRACE</small><h2>需求与专业边界</h2></div><p>点击有模型关联的需求，可在 3D 场景中定位对应构件。</p></header><div class="document-grid"><section class="card"><div class="card-head"><strong>需求状态</strong></div><div class="requirement-list">${requirements}</div></section><aside class="card"><div class="card-head"><strong>假设、未知与专业核验</strong></div><div class="stack">${assumptions}</div></aside></div></article>`;
   const presentationNavigation = conceptRenders.length
-    ? `<nav class="presentation-switch" aria-label="装修设计资料切换"><button type="button" data-presentation="requirements" aria-pressed="false">${ICONS.requirements}需求</button><button class="active" type="button" data-presentation="model" aria-pressed="true">设计稿</button><button type="button" data-presentation="render" aria-pressed="false">${ICONS.render}效果图</button><button type="button" data-presentation="workflow" aria-pressed="false">案例流程</button></nav>`
+    ? `<nav class="presentation-switch" aria-label="装修设计资料切换"><button type="button" data-presentation="requirements" aria-pressed="false">${ICONS.requirements}需求</button><button class="active" type="button" data-presentation="model" aria-pressed="true">设计稿</button><button type="button" data-presentation="render" aria-pressed="false">${ICONS.render}效果图</button></nav>`
     : `<nav class="presentation-switch" aria-label="装修设计资料切换"><button class="active" type="button" data-presentation="model">SU 设计稿</button><button type="button" data-presentation="plan">${ICONS.plan}户型图</button><button type="button" data-presentation="requirements">${ICONS.requirements}用户需求</button></nav>`;
   const html = `<!doctype html>
 <html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src 'self' data:; style-src 'unsafe-inline'; script-src 'unsafe-inline'; connect-src 'none'; worker-src 'none'; frame-src 'none'; font-src 'none'; media-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'"><meta name="color-scheme" content="light"><meta name="personal-agent-id" content="${escapeAttr(delivery.agent.id)}"><meta name="personal-agent-example-id" content="${escapeAttr(delivery.id)}"><meta name="personal-agent-delivery-version" content="${escapeAttr(String(delivery.delivery.version))}"><meta name="personal-agent-interior-engine" content="pascal-v2"><title>${title} · 专业装修设计</title><style>${style}</style></head>
@@ -82,7 +80,7 @@ export function generateProfessionalPage({ projectDir: projectDirInput, context,
 <header class="top"><span class="brand"><span class="mark">PA</span><b>Pages</b></span><div class="identity"><small>PERSONAL AGENT · SU DESIGN</small><strong>${displayTitle}</strong><span>${escapeHtml(subtitle)}</span></div><span class="status" data-viewer-status><i></i><span>正在装配模型</span></span></header>
 <section class="stage">
 <section class="presentation-panel presentation-model" data-presentation-panel="model"><div class="viewport"><div id="scene" role="img" aria-label="${title} 可旋转的 Pascal 建筑场景"></div><div id="viewer-loading" role="status" aria-live="polite"><div class="loading-card"><span class="loading-mark"><i></i><i></i><i></i></span><small>PERSONAL AGENT · SU DESIGN</small><strong>正在构建设计模型</strong><p>正在装配空间、材质、家具与标注</p><span class="loading-line"><i></i></span></div></div><div id="fallback" hidden><figure>${fallbackSvg}<figcaption><span>3D 暂时不可用</span><span>已切换到模型派生平面图</span></figcaption></figure></div><div class="viewer-tools" role="group" aria-label="SU 设计稿查看工具">${conceptPicker}<span class="tool-label">${ICONS.layers}设计层</span><span class="level-tools">${allLevelButton}${levelButtons}</span><span class="divider"></span><span class="tool-label">${ICONS.view}视角</span><button class="active" type="button" data-camera-mode="perspective">3D</button><button type="button" data-camera-mode="orthographic">平面</button><span class="advanced-tools" data-level-count="${concept.levels.length}"><button class="active" type="button" data-level-mode="stacked">堆叠</button><button type="button" data-level-mode="exploded">分解</button><button type="button" data-level-mode="solo">单层</button></span><span class="divider"></span><button class="active icon-button" type="button" data-label-mode="visible" aria-label="隐藏细节标注" aria-pressed="true">${ICONS.label}</button><button class="icon-button" type="button" data-reset-view aria-label="复位 SU 设计稿">${ICONS.reset}</button></div><span class="gesture">拖动旋转 · 缩放 · 平移</span></div></section>
-${renderPanel}${evidencePanel}${workflowPanel}
+${renderPanel}${evidencePanel}
 <article class="presentation-panel document-panel" data-presentation-panel="review" hidden><header><div><small>QUALITY GATE</small><h2>质量报告与方案比较</h2></div><p>${audit.blockingCount} 个阻断 · ${audit.warningCount} 个警告 · 规则集 ${escapeHtml(audit.ruleSet)}</p></header><div class="document-grid"><section class="card"><div class="card-head"><strong>审计结果</strong></div><div class="issue-list">${issues}</div></section><aside class="card"><div class="card-head"><strong>方案比较</strong></div><div class="stack">${concepts}</div></aside></div></article>
 ${presentationNavigation}
 </section><p class="orientation-hint">横屏查看空间更完整</p><script id="pascal-scene" type="application/json">${safeJson(pagePayload)}</script><script>${pageController()}</script><script>${viewer}</script></main></body></html>`;
@@ -189,10 +187,8 @@ export function verifyProfessionalPageHtml(html, delivery) {
   if (html.includes('data-presentation-panel="render"')) {
     required.push(
       'data-presentation="render"',
-      'data-presentation="workflow"',
       'data-render-select=',
       '用户需求与户型依据',
-      '历史案例的需求到设计稿投影',
       '概念效果不替代施工图或材料实样',
     );
   } else {
@@ -296,31 +292,6 @@ function renderConceptPanel(renders) {
   const images = renders.map((render, index) => `<img${index ? ' hidden' : ''} data-render-image="${escapeAttr(render.record.renderId)}" src="${escapeAttr(render.dataUrl)}" alt="${escapeAttr(render.alt)}" draggable="false">`).join('');
   const thumbnails = renders.map((render, index) => `<button${index ? '' : ' class="active"'} type="button" data-render-select="${escapeAttr(render.record.renderId)}" aria-pressed="${index ? 'false' : 'true'}"><img src="${escapeAttr(render.dataUrl)}" alt=""><span><b>${String(render.record.sequence).padStart(2, '0')}</b><strong>${escapeHtml(render.shot.space)}</strong><small>${escapeHtml(render.shot.purpose)}</small></span></button>`).join('');
   return `<figure class="presentation-panel render-panel render-story" data-presentation-panel="render" data-image-viewer hidden><div class="image-viewer-viewport" data-image-viewport aria-label="可缩放查看装修概念效果图组"><div class="image-viewer-canvas" data-image-canvas>${images}</div></div><aside class="render-story-strip" aria-label="效果图叙事顺序"><header><small>RENDER STORY · ${renders.length} VIEWS</small><strong>从公共全景到私密空间</strong></header>${thumbnails}</aside>${imageViewerControls({ label: '效果图' })}<figcaption><span><small>DESIGN → CONCEPT RENDER</small><strong data-render-caption>${escapeHtml(featured.shot.space)}</strong></span><span>按空间关系、材质近景与私密空间依次查看 · 概念效果不替代施工图或材料实样</span></figcaption></figure>`;
-}
-
-function renderDemandWorkflow(workflow) {
-  const labels = {
-    intake: '资料建档',
-    'functional-discovery': '生活需求',
-    'layout-review': '布局确认',
-    'style-calibration': '风格校准',
-    'render-storyboard': '镜头脚本',
-    'render-review': '效果复核',
-    'brief-frozen': '需求冻结',
-    delivered: '设计稿交付',
-  };
-  return Object.keys(labels).map((stage, index) => {
-    const current = workflow.transitions.length;
-    const state = index < current ? 'done' : index === current ? 'current' : 'pending';
-    const confirmation = workflow.confirmations.find((entry) => entry.stage === stage);
-    return `<article class="workflow-step is-${state}"><span>${index + 1}</span><div><small>${stage.toUpperCase()}</small><strong>${labels[stage]}</strong><p>${confirmation ? `用户已确认：${confirmation.scope.join('；')}` : state === 'current' ? '当前阶段' : '等待前序确认'}</p></div></article>`;
-  }).join('');
-}
-
-function renderWorkflowPanel(workflow, steps) {
-  const primary = workflow.styleProfile?.primary;
-  const style = primary ? `<section class="workflow-brief card"><div class="card-head"><strong>已确认风格语言</strong><span class="badge">CONFIRMED</span></div><div class="style-contract"><h3>${escapeHtml(primary.label)}</h3><p>${escapeHtml(primary.borrow.join(' · '))}</p><dl>${Object.entries(primary.observable).map(([key, value]) => `<div><dt>${escapeHtml(key)}</dt><dd>${escapeHtml(value)}</dd></div>`).join('')}</dl><aside><b>明确避免</b><span>${escapeHtml(primary.avoid.join(' · '))}</span></aside></div></section>` : '';
-  return `<article class="presentation-panel document-panel workflow-panel" data-presentation-panel="workflow" hidden><header><div><small>HISTORICAL REPRESENTATIVE SNAPSHOT</small><h2>历史案例的需求到设计稿投影</h2></div><p>本区仅用于复现历史代表案例，不是当前工作流授权状态；新项目使用移动优先进度 Page、单张样张和十五张以上全量视角门禁。</p></header><div class="workflow-layout"><section class="workflow-timeline">${steps}</section>${style}</div></article>`;
 }
 
 function renderRequirementsAndEvidencePanel({ planAssets, requirements, assumptions, revisions }) {

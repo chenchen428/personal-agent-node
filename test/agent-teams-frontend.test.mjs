@@ -16,6 +16,7 @@ test("desktop navigation and routes expose Agent Teams after connections", () =>
   assert.match(breadcrumb, /drilldown\("Agent 团队", "\/app\/agents"/);
   assert.equal(fs.existsSync(path.join(root, "core/app/src/app/app/agents/page.tsx")), true);
   assert.equal(fs.existsSync(path.join(root, "core/app/src/app/app/agents/[agentId]/page.tsx")), true);
+  assert.equal(fs.existsSync(path.join(root, "core/app/src/app/app/agents/[agentId]/examples/[exampleId]/page.tsx")), true);
 });
 
 test("Agent Teams UI reads current runtime data and covers all directory states", () => {
@@ -39,6 +40,9 @@ test("each profile presents the public professional contract without internal in
   const overview = read("core/app/src/components/agents/agent-profile-overview.tsx");
   const delivery = read("core/app/src/components/agents/agent-delivery-system.tsx");
   const featured = read("core/app/src/components/agents/agent-featured-output.tsx");
+  const immersive = read("core/app/src/components/agents/agent-example-page.tsx");
+  const media = read("core/app/src/components/agents/agent-example-media.tsx");
+  const presentation = read("core/app/src/components/agents/agent-example-presentation.ts");
   assert.match(profile, /代表产物/);
   assert.match(profile, /能力与使用边界/);
   assert.match(profile, /工作方法与交付/);
@@ -47,7 +51,17 @@ test("each profile presents the public professional contract without internal in
   assert.match(delivery, /profile\.workflow/);
   assert.match(delivery, /profile\.deliverables/);
   assert.match(delivery, /profile\.acceptance/);
-  assert.match(featured, /sandbox="allow-scripts allow-same-origin"/);
+  assert.match(featured, /agentExampleHref\(agentId, presentation\.exampleId\)/);
+  assert.match(featured, /沉浸查看/);
+  assert.match(immersive, /返回 Agent 详情/);
+  assert.match(immersive, /找不到该代表产物/);
+  assert.match(immersive, /AgentExampleMedia presentation=\{presentation\} immersive/);
+  assert.match(media, /sandbox="allow-scripts allow-same-origin"/);
+  assert.match(presentation, /\/\^\[1-9\]\\d\*\$\//);
+  assert.match(presentation, /safeSameOriginPath/);
+  for (const agentId of ["finance-analyst", "interior-designer", "poster-designer", "travel-planner", "video-creator"]) {
+    assert.match(presentation, new RegExp(`"${agentId}"`));
+  }
   assert.doesNotMatch(`${profile}\n${overview}\n${delivery}`, /AGENT\.md|instructions/);
 });
 

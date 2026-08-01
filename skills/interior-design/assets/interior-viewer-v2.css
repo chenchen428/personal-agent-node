@@ -205,26 +205,6 @@ body:not([data-viewer-state="ready"]) .pascal-room-label { display: none !import
 .render-story .image-viewer-controls { left: calc(50% - 165px); }
 .render-story figcaption { right: 358px; }
 
-.workflow-layout { max-width: 1180px; display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(320px, .7fr); gap: 20px; margin: 0 auto; }
-.workflow-timeline { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
-.workflow-step { display: grid; grid-template-columns: 34px minmax(0, 1fr); gap: 12px; border: 1px solid var(--line); border-radius: 12px; padding: 14px; background: white; }
-.workflow-step > span { width: 30px; height: 30px; display: grid; place-items: center; border: 1px solid #cfcfc8; border-radius: 50%; color: #878b84; font: 700 9px ui-monospace, monospace; }
-.workflow-step.is-done > span { border-color: var(--moss); background: var(--moss); color: white; }
-.workflow-step.is-current { border-color: #a8b7ac; background: #f4f8f4; }
-.workflow-step div { display: grid; gap: 3px; }
-.workflow-step small { font-size: 7px; }
-.workflow-step strong { font-size: 11px; }
-.workflow-step p { margin: 3px 0 0; color: var(--muted); font-size: 8px; line-height: 1.5; }
-.style-contract { display: grid; gap: 13px; padding: 18px; }
-.style-contract h3 { margin: 0; font: 500 22px/1.2 Georgia, "Songti SC", serif; }
-.style-contract > p { margin: 0; color: var(--muted); font-size: 9px; line-height: 1.6; }
-.style-contract dl { display: grid; gap: 8px; margin: 0; }
-.style-contract dl div { display: grid; grid-template-columns: 82px 1fr; gap: 10px; border-top: 1px solid #ecece7; padding-top: 8px; }
-.style-contract dt { color: #858a83; font: 700 7px ui-monospace, monospace; text-transform: uppercase; }
-.style-contract dd { margin: 0; font-size: 9px; line-height: 1.45; }
-.style-contract aside { display: grid; gap: 5px; border-radius: 9px; padding: 11px; background: #f5eee8; }
-.style-contract aside b { color: var(--clay); font-size: 8px; }
-.style-contract aside span { color: #76685f; font-size: 8px; line-height: 1.5; }
 
 .presentation-switch {
   position: absolute;
@@ -331,7 +311,6 @@ body[data-labels="hidden"] #scene .pascal-room-label { display: none !important;
   .render-story-strip button > img { width: 70px; height: 52px; }
   .render-story .image-viewer-controls { left: calc(50% - 125px); }
   .render-story figcaption { right: 266px; }
-  .workflow-layout { grid-template-columns: 1fr 300px; gap: 12px; }
   .render-panel .image-viewer-controls { bottom: 12px; }
   .gesture { display: none; }
   .document-panel { padding: 94px 22px 72px; }
@@ -355,7 +334,6 @@ body[data-labels="hidden"] #scene .pascal-room-label { display: none !important;
   .render-story-strip header { display: none; }
   .render-story figcaption { top: 90px; right: 10px; left: 10px; }
   .render-story .image-viewer-controls { left: 50%; bottom: 188px; }
-  .workflow-layout, .workflow-timeline { grid-template-columns: 1fr; }
   .document-grid { grid-template-columns: 1fr; }
   .document-panel > header { display: grid; }
   .requirements-panel { display: block; overflow: auto; }

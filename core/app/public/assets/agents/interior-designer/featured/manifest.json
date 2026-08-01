@@ -14,8 +14,8 @@
   "visualAcceptance": "user",
   "files": {
     "index.html": {
-      "bytes": 2720414,
-      "sha256": "036899299e386f4731b349361a5a855604f5840a49607d744994ec46a5ad1bd2"
+      "bytes": 2714798,
+      "sha256": "1b8260704ec7ae48932ffe60e04d8040ba4ebe0d3634da85ebe3cd5c6cc91d25"
     },
     "scene.json": {
       "bytes": 64503,
