@@ -1,7 +1,8 @@
 import crypto from "node:crypto";
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
-import { spawn } from "node:child_process";
+import { execFile, spawn } from "node:child_process";
 import { operationError } from "./operations.ts";
 import { installationPaths } from "./space-registry.ts";
 
@@ -10,7 +11,7 @@ const CHECK_TTL_MS = 6 * 60 * 60_000;
 const MAX_ARTIFACT_BYTES = 1024 * 1024 * 1024;
 const ACTIVE_STATES = new Set(["planned", "approved", "downloading", "verified", "handoff", "activating", "restarting", "verifying"]);
 
-export function createUpdateManager({ config, operations, now = () => Date.now(), randomUUID = () => crypto.randomUUID(), fetchImpl = fetch, spawnImpl = spawn } = {}) {
+export function createUpdateManager({ config, operations, now = () => Date.now(), randomUUID = () => crypto.randomUUID(), fetchImpl = fetch, spawnImpl = spawn, downloadFallbackImpl = downloadArtifactWithPlatformClient } = {}) {
   if (!config?.dataRoot || !operations) throw operationError("INVALID_ARGUMENT", "Update manager requires config and operation storage", 2);
   const installRoot = path.join(config.homeRoot || path.dirname(config.dataRoot), "core");
   const updatesRoot = path.join(installationPaths(config.installationDataRoot || config.dataRoot).installationRoot, "updates");
@@ -90,7 +91,7 @@ export function createUpdateManager({ config, operations, now = () => Date.now()
     });
     const job = {
       schemaVersion: 1, id: jobId, kind: "apply", status: "planned", createdAt: iso(now()), updatedAt: iso(now()),
-      channel: available.channel, platform: platformKey(), targetVersion: available.version, targetReleaseId: available.releaseId,
+      channel: available.channel, platform: platformKey(), targetVersion: available.version, targetReleaseId: available.releaseId, targetTag: available.tag,
       previousReleaseId: snapshot.current.releaseId, artifact: available.asset,
       operationId: operation.id, operationDigest: operation.digest,
     };
@@ -145,11 +146,26 @@ export function createUpdateManager({ config, operations, now = () => Date.now()
   async function stageArtifact(job) {
     if (job.status === "verified" && fs.existsSync(job.artifactPath || "")) return;
     transition(job, "downloading");
-    const response = await fetchImpl(job.artifact.url, { redirect: "follow", headers: { "user-agent": "personal-agent-updater/1" }, signal: AbortSignal.timeout(120_000) });
-    if (!response.ok) throw operationError("UPDATE_DOWNLOAD_FAILED", `Update download failed with HTTP ${response.status}`, 7);
-    const declared = Number(response.headers.get("content-length") || job.artifact.size || 0);
-    if (declared > MAX_ARTIFACT_BYTES) throw operationError("UPDATE_ARTIFACT_TOO_LARGE", "Update artifact exceeds the size limit", 7);
-    const bytes = Buffer.from(await response.arrayBuffer());
+    const tag = job.targetTag || `v${job.targetVersion || job.targetReleaseId}`;
+    const artifactUrl = validateGitHubAssetUrl(job.artifact.url, tag, job.artifact.name);
+    const fallback = async () => {
+      try { return Buffer.from(await downloadFallbackImpl(artifactUrl)); }
+      catch { throw operationError("UPDATE_DOWNLOAD_FAILED", "Update download failed using both built-in and system transports", 7); }
+    };
+    let bytes;
+    let response;
+    try {
+      response = await fetchImpl(artifactUrl, { redirect: "follow", headers: { "user-agent": "personal-agent-updater/1" }, signal: AbortSignal.timeout(120_000) });
+    } catch {
+      bytes = await fallback();
+    }
+    if (response) {
+      if (!response.ok) throw operationError("UPDATE_DOWNLOAD_FAILED", `Update download failed with HTTP ${response.status}`, 7);
+      const declared = Number(response.headers.get("content-length") || job.artifact.size || 0);
+      if (declared > MAX_ARTIFACT_BYTES) throw operationError("UPDATE_ARTIFACT_TOO_LARGE", "Update artifact exceeds the size limit", 7);
+      try { bytes = Buffer.from(await response.arrayBuffer()); }
+      catch { bytes = await fallback(); }
+    }
     if (bytes.length > MAX_ARTIFACT_BYTES || (job.artifact.size && bytes.length !== job.artifact.size)) throw operationError("UPDATE_SIZE_MISMATCH", "Update artifact size does not match release metadata", 7);
     const actual = crypto.createHash("sha256").update(bytes).digest("hex");
     if (!constantTimeEqual(actual, job.artifact.sha256)) throw operationError("UPDATE_DIGEST_MISMATCH", "Update artifact checksum verification failed", 7);
@@ -229,6 +245,25 @@ function channelFor(version) { return String(version).includes("-") ? "beta" : "
 function platformKey() { return `${process.platform}-${process.arch}`; }
 function updaterAssetName(tag) { const os = { win32: "windows", darwin: "macos", linux: "linux" }[process.platform]; const arch = process.arch === "x64" ? "x64" : process.arch === "arm64" ? "arm64" : ""; if (!os || !arch) throw operationError("UNSUPPORTED_PLATFORM", `Updates are unavailable on ${process.platform}-${process.arch}`, 7); return `personal-agent-node-${tag}-${os}-${arch}-updater${process.platform === "win32" ? ".exe" : ""}`; }
 function validateGitHubAssetUrl(value, tag, name) { const url = new URL(String(value || "")); const expected = `/${REPOSITORY}/releases/download/${tag}/${name}`; if (url.protocol !== "https:" || url.hostname !== "github.com" || url.pathname !== expected || url.username || url.password || url.search || url.hash) throw operationError("UPDATE_METADATA_INVALID", "Release metadata contains an unsafe artifact URL", 7); return url.toString(); }
+async function downloadArtifactWithPlatformClient(url) {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), "personal-agent-update-"));
+  const target = path.join(directory, "artifact");
+  try {
+    const invocation = process.platform === "win32" ? powershellDownload(url, target, directory) : curlDownload(url, target);
+    await executeDownload(invocation.command, invocation.args);
+    if (!fs.statSync(target, { throwIfNoEntry: false })?.isFile()) throw new Error("System downloader did not create an artifact");
+    return fs.readFileSync(target);
+  } finally {
+    fs.rmSync(directory, { recursive: true, force: true });
+  }
+}
+function executeDownload(command, args) { return new Promise((resolve, reject) => execFile(command, args, { encoding: "utf8", shell: false, windowsHide: true, timeout: 120_000, maxBuffer: 1024 * 1024 }, (error) => error ? reject(error) : resolve())); }
+function curlDownload(url, target) { return { command: "curl", args: ["--fail", "--silent", "--show-error", "--location", "--proto", "=https", "--proto-redir", "=https", "--tlsv1.2", "--connect-timeout", "10", "--max-time", "90", "--output", target, "--", url] }; }
+function powershellDownload(url, target, directory) {
+  const script = path.join(directory, "download.ps1");
+  fs.writeFileSync(script, "param([Parameter(Mandatory=$true)][string]$Uri,[Parameter(Mandatory=$true)][string]$OutFile)\n$ErrorActionPreference='Stop'\n[Net.ServicePointManager]::SecurityProtocol=[Net.SecurityProtocolType]::Tls12\nInvoke-WebRequest -UseBasicParsing -Uri $Uri -OutFile $OutFile\n", { mode: 0o600 });
+  return { command: "powershell.exe", args: ["-NoLogo", "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-File", script, "-Uri", url, "-OutFile", target] };
+}
 function checksumFor(text, name) { const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"); const match = new RegExp(`^([a-f0-9]{64})\\s+\\*?${escaped}$`, "mi").exec(text); if (!match) throw operationError("UPDATE_METADATA_INVALID", `SHA256SUMS does not contain ${name}`, 7); return match[1].toLowerCase(); }
 function previousReleaseId(installation) { const previous = String(installation?.previous || ""); return previous ? path.basename(previous.replace(/[\\/]$/, "")) : null; }
 function packageVersion() { try { return JSON.parse(fs.readFileSync(new URL("../../../package.json", import.meta.url), "utf8")).version; } catch { return "0.0.0"; } }

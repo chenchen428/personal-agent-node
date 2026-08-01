@@ -71,3 +71,72 @@ test("update metadata comparison keeps stable ahead of prerelease", () => {
   assert.equal(updateInternals.compareVersions("0.3.1-beta.1", "0.3.0"), 1);
   assert.equal(updateInternals.channelFor("0.3.0-beta.1"), "beta");
 });
+
+test("update manager falls back to the platform downloader after a fetch transport failure", async () => {
+  const fallbackUrls = [];
+  const fixture = createDownloadFixture({
+    downloadFallbackImpl: async (url) => { fallbackUrls.push(url); return fixture.candidate; },
+  });
+  try {
+    await fixture.manager.check();
+    const planned = await fixture.manager.plan();
+    fixture.manager.approve({ jobId: planned.job.id, operationId: planned.operation.id, digest: planned.operation.digest });
+    await fixture.manager.apply({ jobId: planned.job.id, operationId: planned.operation.id, digest: planned.operation.digest });
+    const stored = fixture.manager.readJob(planned.job.id);
+    assert.deepEqual(fallbackUrls, [fixture.assetUrl]);
+    assert.equal(fs.readFileSync(stored.artifactPath).toString(), fixture.candidate.toString());
+  } finally {
+    fixture.cleanup();
+  }
+});
+
+test("update manager still rejects a platform-downloaded artifact with the wrong digest", async () => {
+  const fixture = createDownloadFixture({
+    downloadFallbackImpl: async () => Buffer.alloc(fixture.candidate.length, 1),
+  });
+  try {
+    await fixture.manager.check();
+    const planned = await fixture.manager.plan();
+    fixture.manager.approve({ jobId: planned.job.id, operationId: planned.operation.id, digest: planned.operation.digest });
+    await assert.rejects(
+      fixture.manager.apply({ jobId: planned.job.id, operationId: planned.operation.id, digest: planned.operation.digest }),
+      (error) => error.code === "UPDATE_DIGEST_MISMATCH",
+    );
+    assert.equal(fixture.manager.readJob(planned.job.id).failure.code, "UPDATE_DIGEST_MISMATCH");
+  } finally {
+    fixture.cleanup();
+  }
+});
+
+function createDownloadFixture({ downloadFallbackImpl }) {
+  const homeRoot = fs.mkdtempSync(path.join(os.tmpdir(), "pa-update-fallback-test-"));
+  const dataRoot = path.join(homeRoot, "workspace");
+  const installRoot = path.join(homeRoot, "core");
+  fs.mkdirSync(path.join(installRoot, "bin"), { recursive: true });
+  fs.mkdirSync(dataRoot, { recursive: true });
+  fs.writeFileSync(path.join(installRoot, "installation.json"), JSON.stringify({ schemaVersion: 2, activeReleaseId: "0.2.0-beta.50" }));
+  const launcher = path.join(installRoot, "bin", process.platform === "win32" ? "personal-agent-ui.exe" : "personal-agent-ui");
+  fs.writeFileSync(launcher, "launcher", { mode: 0o700 });
+  const candidate = Buffer.from("fallback candidate bytes");
+  const digest = crypto.createHash("sha256").update(candidate).digest("hex");
+  const tag = "v0.2.0-beta.51";
+  const assetName = updateInternals.updaterAssetName(tag);
+  const assetUrl = `https://github.com/chenchen428/personal-agent-node/releases/download/${tag}/${assetName}`;
+  const release = { tag_name: tag, draft: false, prerelease: true, assets: [
+    { name: assetName, size: candidate.length, browser_download_url: assetUrl },
+    { name: "SHA256SUMS", browser_download_url: `https://github.com/chenchen428/personal-agent-node/releases/download/${tag}/SHA256SUMS` },
+  ] };
+  const fetchImpl = async (url) => {
+    if (String(url).includes("api.github.com")) return Response.json([release]);
+    if (String(url).endsWith("SHA256SUMS")) return new Response(`${digest}  ${assetName}\n`);
+    throw new TypeError("fetch failed");
+  };
+  const manager = createUpdateManager({
+    config: { homeRoot, dataRoot, runtimeDir: path.join(dataRoot, "runtime") },
+    operations: createOperationStore({ dataRoot }),
+    fetchImpl,
+    downloadFallbackImpl,
+    spawnImpl() { return { unref() {} }; },
+  });
+  return { manager, candidate, assetUrl, cleanup: () => fs.rmSync(homeRoot, { recursive: true, force: true }) };
+}

@@ -263,7 +263,12 @@ test("Next.js owns the approved V6.39 mobile client and V7.3 desktop workspace",
   assert.doesNotMatch(desktopNavigationSource, /\/app\/automations/);
   assert.match(skillsClient, /SettingsCollectionLayout/);
   assert.match(skillsClient, /搜索技能/);
-  assert.doesNotMatch(updateClient, /rollback-plan|RotateCcw|恢复 \{/);
+  assert.doesNotMatch(updateClient, /rollback-plan|恢复 \{/);
+  assert.match(updateClient, /fetchJson<UpdateView>/);
+  assert.doesNotMatch(updateClient, /response\.json\(\)/);
+  assert.match(updateClient, /等待重新连接/);
+  assert.match(updateClient, /job\?\.failure\?\.message/);
+  assert.match(updateClient, /CircleX/);
   assert.match(desktopComponents, /PageDetail/);
   assert.match(desktopComponents, /runtime-page-full/);
   assert.match(desktopComponents, /ConversationPage/);
