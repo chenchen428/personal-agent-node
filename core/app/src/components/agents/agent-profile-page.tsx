@@ -10,6 +10,7 @@ import { AgentFeaturedOutput } from "./agent-featured-output";
 import { AgentProfileOverview } from "./agent-profile-overview";
 import { AgentStatusBadge } from "./agent-status";
 import { AgentsLoadState } from "./agents-load-state";
+import { InteriorPageRendererCard } from "./interior-page-renderer-card";
 import type { AgentDirectoryItem } from "./types";
 
 const icons = {
@@ -51,13 +52,14 @@ export function AgentProfilePage({ agentId }: { agentId: string }) {
         <small>主 Agent 只会传递完成当前项目所需的上下文和受治理产物。</small>
       </aside>
     </section>
-    <ProfileSection index="01" title="代表产物" description="这些案例用于展示专业质量和交付方式，不是可选择或复用的模板。">
+    <ProfileSection index="01" title="代表产物" description={agent.id === "interior-designer" ? "由版本化装修设计 Page 渲染能力从项目数据确定性生成。" : "这些案例用于展示专业质量和交付方式。"}>
       <AgentFeaturedOutput agentId={agent.id} examples={profile.examples} />
     </ProfileSection>
-    <ProfileSection index="02" title="能力与使用边界" description="先明确能解决的问题、所需输入，以及仍应由人负责的判断。">
+    {agent.id === "interior-designer" ? <ProfileSection index="02" title="Page 渲染能力" description="页面标准化、Agent 自查看和数据迭代构成同一个可升级闭环。"><InteriorPageRendererCard /></ProfileSection> : null}
+    <ProfileSection index={agent.id === "interior-designer" ? "03" : "02"} title="能力与使用边界" description="先明确能解决的问题、所需输入，以及仍应由人负责的判断。">
       <AgentProfileOverview profile={profile} />
     </ProfileSection>
-    <ProfileSection index="03" title="工作方法与交付" description="从输入到验收保持同一条专业链路，后续修改继续沿用当前项目上下文。">
+    <ProfileSection index={agent.id === "interior-designer" ? "04" : "03"} title="工作方法与交付" description="从输入到验收保持同一条专业链路，后续修改继续沿用当前项目上下文。">
       <AgentDeliverySystem profile={profile} />
     </ProfileSection>
   </PageSurface>;

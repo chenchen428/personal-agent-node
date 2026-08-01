@@ -273,6 +273,17 @@ export function verifyProfessionalPageHtml({ html, threeDHtml }, delivery) {
   const missingThreeD = requiredThreeD.filter((marker) => !threeDHtml.includes(marker));
   if (missingMain.length || missingThreeD.length) throw new Error(`generated Page does not match ${delivery.id} v3: main[${missingMain.join(', ')}] 3d[${missingThreeD.join(', ')}]`);
   if (/<iframe\b/i.test(html)) throw new Error('primary renovation booklet must link specialist Pages instead of embedding them');
+  const forbiddenThreeDNarrative = [
+    '项目摘要与需求',
+    '完整设计说明',
+    '材料清单与预算范围',
+    '设计一致性检查',
+    '设计过程与确认点',
+    '排除项、落地顺序与复尺清单',
+  ].filter((marker) => threeDHtml.includes(marker));
+  if (forbiddenThreeDNarrative.length || /<(?:section|article|aside)[^>]+(?:id|class)=["'][^"']*(?:requirements?|brief|narrative)[^"']*["']/i.test(threeDHtml)) {
+    throw new Error(`3D specialist Page must remain a focused model viewer without booklet requirements or narrative: ${forbiddenThreeDNarrative.join(', ')}`);
+  }
   for (const page of [html, threeDHtml]) {
     if (/<(?:script|link|iframe)[^>]+(?:src|href)=["']https?:\/\//i.test(page)) throw new Error('generated Page contains a remote executable asset');
     if (/editor\.pascal\.app|cdn\.jsdelivr\.net|127\.0\.0\.1|localhost|file:\/\//i.test(page)) throw new Error('generated Page contains a forbidden remote or local runtime reference');

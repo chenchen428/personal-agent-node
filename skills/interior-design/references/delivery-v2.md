@@ -22,6 +22,8 @@ The booklet must not embed the interactive 3D viewer or use a forced-landscape l
 
 `3d/index.html` owns the historical `su-design-classic` full-canvas shell and Pascal viewer. It has the pale edge-to-edge canvas, floating controls, orthographic-plan mode, label controls, reset, and a relative link back to the booklet. It warms the viewer automatically. A dedicated loading surface covers the Canvas until the first valid frame; controls and labels stay unavailable during that interval. A real viewer error may reveal the accessible model-derived SVG fallback.
 
+This specialist Page is a focused model viewer, not a second delivery document. Requirements, project narrative, material and budget explanations, process history, and professional-boundary sections belong only to the primary booklet and must not be duplicated here.
+
 Only this specialist Page uses the forced mobile-landscape contract. Mobile detection combines the browser mobile signal with touch-screen bounds; portrait mobile exchanges live viewport dimensions and rotates the Page root by 90 degrees, while desktop narrow windows stay unrotated. The renderer sizes itself from the exchanged logical viewport. The contract forbids a portrait fallback or rotate-device prompt. Mobile labels default hidden and collision handling keeps their visible set bounded.
 
 The viewer consumes the same sanitized `designQuality` data covered by the compiled scene hash. Room floors and furniture use the governed PBR palette, local lights and exposure use the executable lighting plan, and the initial shot uses the first governed delivery camera. The read-only Page does not expose editing or save controls.
@@ -32,7 +34,7 @@ Both Pages are offline artifacts. They cannot call MCP or Agent tools, read arbi
 
 Generation writes `index.html`, `3d/index.html`, `scene.json`, `audit.json`, `manifest.json`, and `media/`. Images are never base64-inlined. Every file independently obeys the publication file limit. The manifest records the primary layout, every specialist Page path and layout, Agent identity, delivery version, engine, project revision, scene and audit provenance, concept-render provenance, and exact size and SHA-256 for every declared file. It must not contain template provenance.
 
-The representative builder initializes the synthetic project, replays its confirmed workflow events, imports the governed render set, compiles the Pascal scene, runs the professional audit, invokes the production Page generator, derives `cover.svg`, and records exact hashes. `--check` regenerates everything and fails on byte, workflow, provenance, link, CSP, quality, or manifest drift.
+The representative builder initializes the synthetic project, replays its confirmed workflow events, imports the governed render set, compiles the Pascal scene, runs the professional audit, invokes `render-interior-pages` v1, derives `cover.svg`, and records exact hashes. The renderer emits `agent-review.json`; the Agent must inspect its five targets and revise only governed project data before rerendering. `--check` regenerates everything and fails on byte, workflow, provenance, link, CSP, quality, or manifest drift.
 
 Publish the directory as one Page bundle using `index.html` as its entry. The primary Page is the only delivery URL shown by default; its relative specialist links resolve inside the same immutable bundle. Natural-language changes create a new project revision, audit, bundle, and publication.
 

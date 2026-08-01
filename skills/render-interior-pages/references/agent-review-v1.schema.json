@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "personal-agent/interior-page-agent-review/v1",
+  "type": "object",
+  "required": ["schemaVersion", "rendererVersion", "revision", "targets"],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "rendererVersion": { "const": 1 },
+    "revision": { "type": "integer", "minimum": 1 },
+    "targets": { "type": "array", "minItems": 5, "maxItems": 5, "items": { "type": "object", "required": ["id", "status", "observations"], "properties": { "id": { "enum": ["booklet-desktop", "booklet-mobile", "three-d-desktop", "three-d-mobile-portrait", "three-d-mobile-landscape"] }, "status": { "enum": ["pass", "needs-change", "blocked"] }, "observations": { "type": "array", "items": { "type": "string", "minLength": 1 }, "maxItems": 20 } }, "additionalProperties": false } }
+  },
+  "additionalProperties": false
+}

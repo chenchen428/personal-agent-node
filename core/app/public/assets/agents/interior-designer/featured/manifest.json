@@ -60,10 +60,25 @@
       "bytes": 62990,
       "sha256": "0f4526082ef07db8281b1bad14b20177979d1dd085812e0790139cacb696dda2"
     },
+    "agent-review.json": {
+      "bytes": 1263,
+      "sha256": "b63032d943a8385c8ba012127c27ad3e622ecbd02201c1e86c08d1d3a4c4a966"
+    },
     "cover.svg": {
       "bytes": 23265,
       "sha256": "18722d13845f4b7782760a9e22202884bb84f7ebcc0a54589ebd2ab8a3cbe4b0"
     }
+  },
+  "renderer": {
+    "id": "render-interior-pages",
+    "version": 1,
+    "requestSchema": "personal-agent/interior-page-request/v1",
+    "outputSchema": "personal-agent/interior-page-bundle/v1"
+  },
+  "agentInspection": {
+    "required": true,
+    "plan": "agent-review.json",
+    "status": "ready"
   },
   "source": {
     "kind": "native-governed-pascal-v2-project",
@@ -74,7 +89,7 @@
       "render-storyboard",
       "pascal-scene-compile",
       "professional-quality-audit",
-      "page-v3-generate",
+      "render-interior-pages-v1",
       "artifact-hash-verify"
     ],
     "seedSha256": "1d5c802d45a28e34aa6981ef7f458e6041040a9f90b8ff150b2f9a0aa6f96093",

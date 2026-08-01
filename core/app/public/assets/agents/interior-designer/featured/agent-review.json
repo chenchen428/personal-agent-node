@@ -1,0 +1,52 @@
+{
+  "schemaVersion": 1,
+  "renderer": {
+    "id": "render-interior-pages",
+    "version": 1,
+    "requestSchema": "personal-agent/interior-page-request/v1",
+    "outputSchema": "personal-agent/interior-page-bundle/v1"
+  },
+  "revision": 10,
+  "status": "ready-for-agent-review",
+  "automaticChecks": {
+    "status": "passed",
+    "blockingCount": 0,
+    "warningCount": 2
+  },
+  "targets": [
+    {
+      "id": "booklet-desktop",
+      "entry": "index.html",
+      "viewport": "desktop"
+    },
+    {
+      "id": "booklet-mobile",
+      "entry": "index.html",
+      "viewport": "mobile-portrait"
+    },
+    {
+      "id": "three-d-desktop",
+      "entry": "3d/index.html",
+      "viewport": "desktop"
+    },
+    {
+      "id": "three-d-mobile-portrait",
+      "entry": "3d/index.html",
+      "viewport": "mobile-portrait-forced-landscape"
+    },
+    {
+      "id": "three-d-mobile-landscape",
+      "entry": "3d/index.html",
+      "viewport": "mobile-landscape-native"
+    }
+  ],
+  "correctionSurface": "governed-project-data-only",
+  "forbiddenSurface": [
+    "index.html",
+    "3d/index.html",
+    "inline CSS",
+    "viewer JavaScript"
+  ],
+  "next": "Inspect every target, record observations, then run the renderer review command.",
+  "visualAcceptance": "user"
+}

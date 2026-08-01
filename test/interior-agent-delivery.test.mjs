@@ -16,6 +16,7 @@ import {
   resolveDeliveryDpr,
 } from "../skills/interior-design/scripts/pascal-render-budget.mjs";
 import { mobileLandscapeController } from "../skills/interior-design/scripts/generate-page-v2.mjs";
+import { evaluateAgentReview, REVIEW_TARGETS } from "../skills/render-interior-pages/scripts/renderer.mjs";
 
 const root = path.resolve(import.meta.dirname, "..");
 const artifactRoot = path.join(root, "core/app/public/assets/agents/interior-designer/featured");
@@ -126,8 +127,14 @@ test("interior-designer owns one representative delivery contract without a temp
     engine: "pascal-v2",
   });
   assert.equal(contract.delivery.renderProfile, "professional-mesh-ink");
-  assert.match(contract.delivery.generator, /cli\.mjs page --project-dir/);
+  assert.match(contract.delivery.generator, /render-interior-pages\/scripts\/cli\.mjs render --project-dir/);
   assert.doesNotMatch(contract.delivery.generator, /--template/);
+  assert.deepEqual(contract.delivery.renderer, {
+    id: "render-interior-pages",
+    version: 1,
+    requestSchema: "personal-agent/interior-page-request/v1",
+    outputSchema: "personal-agent/interior-page-bundle/v1",
+  });
   assert.equal(contract.asset.basePath, "/assets/agents/interior-designer/featured");
   assert.equal(contract.asset.threeDPagePath, "/assets/agents/interior-designer/featured/3d/index.html");
   assert.ok(contract.fixedFramework.length >= 7);
@@ -137,6 +144,29 @@ test("interior-designer owns one representative delivery contract without a temp
   assert.equal(fs.existsSync(path.join(root, "skills/personal-pages/SKILL.md")), false);
   assert.equal(fs.existsSync(path.join(root, "core/app/public/assets/templates/interior-design-delivery-v2")), false);
   assert.equal(fs.existsSync(path.join(artifactRoot, "template.json")), false);
+});
+
+test("the renderer closes the Agent review loop without granting visual acceptance", () => {
+  const plan = JSON.parse(read("core/app/public/assets/agents/interior-designer/featured/agent-review.json"));
+  const observations = {
+    schemaVersion: 1,
+    rendererVersion: 1,
+    revision: plan.revision,
+    targets: REVIEW_TARGETS.map(({ id }) => ({ id, status: "pass", observations: ["Rendered Page inspected"] })),
+  };
+  assert.deepEqual(evaluateAgentReview(artifactRoot, observations), {
+    ok: true,
+    schemaVersion: 1,
+    renderer: plan.renderer,
+    revision: plan.revision,
+    decision: "ready-for-user-review",
+    blockingTargets: [],
+    visualAcceptance: "user",
+  });
+  observations.targets[3] = { ...observations.targets[3], status: "needs-change" };
+  assert.deepEqual(evaluateAgentReview(artifactRoot, observations).blockingTargets, ["three-d-mobile-portrait"]);
+  observations.targets[4] = { ...observations.targets[3] };
+  assert.throws(() => evaluateAgentReview(artifactRoot, observations), /duplicate targets/);
 });
 
 test("the representative delivery is reproducible, self-contained, and all declared hashes match", async () => {
@@ -208,6 +238,8 @@ test("the representative delivery preserves the governed Pascal v2 interaction a
   assert.match(html, /排除项、落地顺序与复尺清单/);
   assert.match(threeDHtml, /data-layout-profile="su-design-classic"/);
   assert.match(threeDHtml, /data-specialist-page="three-d"/);
+  assert.doesNotMatch(threeDHtml, /项目摘要与需求|完整设计说明|材料清单与预算范围|设计过程与确认点/);
+  assert.doesNotMatch(threeDHtml, /<(?:section|article|aside)[^>]+(?:id|class)=["'][^"']*(?:requirements?|brief|narrative)[^"']*["']/i);
   assert.match(threeDHtml, /data-mobile-layout/);
   assert.match(threeDHtml, /forced-landscape/);
   assert.match(threeDHtml, /--landscape-viewport-width/);

@@ -4,7 +4,8 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { generateProfessionalPage, renderProjectCoverSvg } from './generate-page-v2.mjs';
+import { renderProjectCoverSvg } from './generate-page-v2.mjs';
+import { renderInteriorPages } from '../../render-interior-pages/scripts/renderer.mjs';
 import { advanceProjectDemandWorkflow } from './demand-workflow-project.mjs';
 import { compileProjectScene } from './scene-v2.mjs';
 import {
@@ -105,7 +106,7 @@ export async function buildAgentDeliveryExample({ check = false } = {}) {
       now: () => fixedTime,
     });
     const delivery = loadInteriorDeliveryContract(skillRoot);
-    generateProfessionalPage({
+    renderInteriorPages({
       projectDir,
       context,
       output,
@@ -126,7 +127,7 @@ export async function buildAgentDeliveryExample({ check = false } = {}) {
         'render-storyboard',
         'pascal-scene-compile',
         'professional-quality-audit',
-        'page-v3-generate',
+        'render-interior-pages-v1',
         'artifact-hash-verify',
       ],
       seedSha256: sha256(seedBytes),
@@ -199,11 +200,14 @@ export function verifyAgentDeliveryExample(directory = targetRoot) {
     throw new Error('representative interior-designer delivery still carries retired template provenance');
   }
   if (!Array.isArray(manifest.source.pipeline)
-    || manifest.source.pipeline.join('>') !== 'project-v2-seed>demand-workflow-v1>style-calibration>render-storyboard>pascal-scene-compile>professional-quality-audit>page-v3-generate>artifact-hash-verify') {
+    || manifest.source.pipeline.join('>') !== 'project-v2-seed>demand-workflow-v1>style-calibration>render-storyboard>pascal-scene-compile>professional-quality-audit>render-interior-pages-v1>artifact-hash-verify') {
     throw new Error('representative interior-designer delivery pipeline is incomplete');
   }
   if (manifest.source.renderProfile !== 'professional-mesh-ink') {
     throw new Error('representative interior-designer delivery professional render profile is missing');
+  }
+  if (manifest.renderer?.id !== 'render-interior-pages' || manifest.renderer?.version !== 1 || manifest.agentInspection?.plan !== 'agent-review.json') {
+    throw new Error('representative delivery is not owned by the Page renderer capability');
   }
   if (manifest.source.layoutProfile !== 'renovation-booklet'
     || manifest.source.specialistPages?.threeD?.path !== '3d/index.html'

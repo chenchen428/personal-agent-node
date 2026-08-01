@@ -467,6 +467,8 @@ test('generates a deterministic renovation booklet with a separate private offli
   assert.match(firstThreeD, /data-viewer-status/);
   assert.match(firstThreeD, /data-layout-profile="su-design-classic"/);
   assert.match(firstThreeD, /data-specialist-page="three-d"/);
+  assert.doesNotMatch(firstThreeD, /项目摘要与需求|完整设计说明|材料清单与预算范围|设计过程与确认点/);
+  assert.doesNotMatch(firstThreeD, /<(?:section|article|aside)[^>]+(?:id|class)=["'][^"']*(?:requirements?|brief|narrative)[^"']*["']/i);
   assert.match(firstThreeD, /pascal-viewer-warmup/);
   assert.match(firstThreeD, /landscape-mapped/);
   assert.doesNotMatch(`${firstHtml}\n${firstThreeD}`, /space-page|owner-page|managedObjectId|file:\/\/|localhost|127\.0\.0\.1|sourceMappingURL/);

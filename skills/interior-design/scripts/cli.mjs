@@ -2,7 +2,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { generateProfessionalPage } from './generate-page-v2.mjs';
+import { renderInteriorPages } from '../../render-interior-pages/scripts/renderer.mjs';
 import { loadInteriorEnginePolicy } from './engine-policy.mjs';
 import { loadInteriorDeliveryContract } from './page-assets.mjs';
 import {
@@ -160,13 +160,15 @@ async function pageCommand() {
   const output = path.resolve(required(options.output, '--output'));
   const derivedRoot = path.resolve(projectDir, 'derived');
   if (!isInside(derivedRoot, output)) throw projectError('PROJECT_OUTPUT_VIOLATION', 'Page output must stay inside the project derived directory', 4);
-  const result = generateProfessionalPage({ projectDir, context, output, skillRoot, delivery });
+  const result = renderInteriorPages({ projectDir, context, output, skillRoot, delivery });
   recordEvent(projectDir, context, project, 'ok', { outputHash: result.manifest.files['index.html'].sha256 });
   emitProjectResult(project, {
     output: path.relative(projectDir, output),
     outputHash: result.manifest.files['index.html'].sha256,
     totalBytes: result.totalBytes,
     delivery: result.verification,
+    renderer: result.manifest.renderer,
+    agentReview: result.reviewPlan,
     adapterVersion: project.scene.adapterVersion,
     pascal: {
       coreVersion: project.provenance.pascalCoreVersion,
