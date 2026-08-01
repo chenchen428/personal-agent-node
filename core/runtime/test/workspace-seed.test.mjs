@@ -111,9 +111,11 @@ test("refreshes product-managed Agent sources, schemas, registry, and guard on u
     fs.writeFileSync(path.join(agentWorkspaceRoot, "agents", "interior-designer", "agent.yaml"), "old Agent config\n");
     fs.writeFileSync(path.join(agentWorkspaceRoot, "agents", "interior-designer", "removed.txt"), "removed product file\n");
     fs.writeFileSync(path.join(agentWorkspaceRoot, "agents", "custom-agent", "agent.yaml"), "user Agent config\n");
-    for (const agentId of ["poster-designer", "travel-planner", "finance-analyst"]) {
+    for (const agentId of ["poster-designer", "video-creator", "travel-planner", "finance-analyst"]) {
       fs.mkdirSync(path.join(seedRoot, "agents", agentId), { recursive: true });
+      fs.mkdirSync(path.join(agentWorkspaceRoot, "agents", agentId), { recursive: true });
       fs.writeFileSync(path.join(seedRoot, "agents", agentId, "agent.yaml"), `new ${agentId} config\n`);
+      fs.writeFileSync(path.join(agentWorkspaceRoot, "agents", agentId, "agent.yaml"), `old ${agentId} config\n`);
     }
     for (const relative of managedFiles) {
       fs.mkdirSync(path.dirname(path.join(seedRoot, relative)), { recursive: true });
@@ -123,9 +125,13 @@ test("refreshes product-managed Agent sources, schemas, registry, and guard on u
     }
 
     const result = seedAgentWorkspace({ agentWorkspaceRoot, dataRoot }, { releaseRoot });
-    assert.equal(result.refreshed, 7);
+    assert.equal(result.refreshed, 11);
     assert.deepEqual(result.refreshedPaths, [
       "agents/interior-designer",
+      "agents/poster-designer",
+      "agents/video-creator",
+      "agents/travel-planner",
+      "agents/finance-analyst",
       "registry/agents.json",
       "schemas/personal-agent/agents.schema.json",
       "schemas/personal-agent/agent-profile.schema.json",
@@ -136,7 +142,7 @@ test("refreshes product-managed Agent sources, schemas, registry, and guard on u
     assert.equal(fs.readFileSync(path.join(agentWorkspaceRoot, "agents", "interior-designer", "agent.yaml"), "utf8"), "new Agent config\n");
     assert.equal(fs.existsSync(path.join(agentWorkspaceRoot, "agents", "interior-designer", "removed.txt")), false);
     assert.equal(fs.readFileSync(path.join(agentWorkspaceRoot, "agents", "custom-agent", "agent.yaml"), "utf8"), "user Agent config\n");
-    for (const agentId of ["poster-designer", "travel-planner", "finance-analyst"]) {
+    for (const agentId of ["poster-designer", "video-creator", "travel-planner", "finance-analyst"]) {
       assert.equal(fs.readFileSync(path.join(agentWorkspaceRoot, "agents", agentId, "agent.yaml"), "utf8"), `new ${agentId} config\n`);
     }
     for (const relative of managedFiles) {

@@ -26,6 +26,7 @@ const PRODUCT_MANAGED_INTERIOR_DELIVERY_CAPABILITIES = [
 const PRODUCT_MANAGED_AGENT_CAPABILITIES = [
   "agents/interior-designer",
   "agents/poster-designer",
+  "agents/video-creator",
   "agents/travel-planner",
   "agents/finance-analyst",
   "registry/agents.json",
