@@ -216,8 +216,29 @@ export function createUpdateManager({ config, operations, now = () => Date.now()
   function transition(job, status, detail = {}) { job.status = status; job.updatedAt = iso(now()); Object.assign(job, detail); writeJob(job); }
   function writeState(value) { fs.mkdirSync(updatesRoot, { recursive: true, mode: 0o700 }); atomicJson(stateFile, value); }
 
-  async function fetchJson(url) { const response = await fetchImpl(url, { headers: { accept: "application/vnd.github+json", "user-agent": "personal-agent-updater/1" }, signal: AbortSignal.timeout(15_000) }); if (!response.ok) throw operationError("UPDATE_CHECK_FAILED", `GitHub release check failed with HTTP ${response.status}`, 7); return response.json(); }
-  async function fetchText(url, limit) { const response = await fetchImpl(url, { redirect: "follow", headers: { "user-agent": "personal-agent-updater/1" }, signal: AbortSignal.timeout(15_000) }); if (!response.ok) throw operationError("UPDATE_CHECK_FAILED", `Release metadata download failed with HTTP ${response.status}`, 7); const text = await response.text(); if (Buffer.byteLength(text) > limit) throw operationError("UPDATE_METADATA_INVALID", "Release metadata is too large", 7); return text; }
+  async function fetchJson(url) {
+    const bytes = await fetchMetadata(url, { headers: { accept: "application/vnd.github+json", "user-agent": "personal-agent-updater/1" } }, 8 * 1024 * 1024, "GitHub release check");
+    try { return JSON.parse(bytes.toString("utf8")); }
+    catch { throw operationError("UPDATE_METADATA_INVALID", "GitHub release metadata is not valid JSON", 7); }
+  }
+  async function fetchText(url, limit) { return (await fetchMetadata(url, { redirect: "follow", headers: { "user-agent": "personal-agent-updater/1" } }, limit, "Release metadata download")).toString("utf8"); }
+  async function fetchMetadata(url, init, limit, label) {
+    const fallback = async () => {
+      try { return Buffer.from(await downloadFallbackImpl(url)); }
+      catch { throw operationError("UPDATE_CHECK_FAILED", `${label} failed using both built-in and system transports`, 7); }
+    };
+    let response;
+    let bytes;
+    try { response = await fetchImpl(url, { ...init, signal: AbortSignal.timeout(15_000) }); }
+    catch { bytes = await fallback(); }
+    if (response) {
+      if (!response.ok) throw operationError("UPDATE_CHECK_FAILED", `${label} failed with HTTP ${response.status}`, 7);
+      try { bytes = Buffer.from(await response.arrayBuffer()); }
+      catch { bytes = await fallback(); }
+    }
+    if (bytes.length > limit) throw operationError("UPDATE_METADATA_INVALID", "Release metadata is too large", 7);
+    return bytes;
+  }
 
   return { status, check, plan, planRollback, approve, apply, readJob, listJobs, updatesRoot, installRoot };
 }
