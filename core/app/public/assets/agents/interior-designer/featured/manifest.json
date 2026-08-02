@@ -9,7 +9,7 @@
     "version": 3,
     "engine": "pascal-v2",
     "layoutProfile": "renovation-booklet",
-    "renderProfile": "professional-mesh-ink",
+    "renderProfile": "professional-archviz-v2",
     "specialistPages": {
       "threeD": {
         "path": "3d/index.html",
@@ -25,8 +25,8 @@
       "sha256": "49a5fe64cdf926a4d67f52c3d35d506a7401a579789997e54e376bf254f76cd5"
     },
     "3d/index.html": {
-      "bytes": 2717560,
-      "sha256": "9136142e62b744f57095c3804a2998c8d8b64957f6d8adefe01a2ab465041155"
+      "bytes": 2726972,
+      "sha256": "3e337900a5e4688a44e667a1c70e67c5b4ad9070f9c91b9ef9bd9897ba7fbc53"
     },
     "scene.json": {
       "bytes": 83623,
@@ -141,7 +141,7 @@
     "projectSha256": "ed7e06db3b189128940b3c2a35f8b1a88622da5e20a2f7141416b3b8eec22b3a",
     "sceneSha256": "163e8998fdabbe7d3309431edd342795db61a9daa4e0939f7d1ee2be22f0d686",
     "auditSha256": "87352309c5310b5cfc7133e5be02815446a0c00c57ad80166402767faaaa992a",
-    "renderProfile": "professional-mesh-ink",
+    "renderProfile": "professional-archviz-v2",
     "layoutProfile": "renovation-booklet",
     "specialistPages": {
       "threeD": {

@@ -126,7 +126,7 @@ test("interior-designer owns one representative delivery contract without a temp
     layoutProfile: "su-design-classic",
     engine: "pascal-v2",
   });
-  assert.equal(contract.delivery.renderProfile, "professional-mesh-ink");
+  assert.equal(contract.delivery.renderProfile, "professional-archviz-v2");
   assert.match(contract.delivery.generator, /render-interior-pages\/scripts\/cli\.mjs render --project-dir/);
   assert.doesNotMatch(contract.delivery.generator, /--template/);
   assert.deepEqual(contract.delivery.renderer, {
@@ -186,14 +186,14 @@ test("the representative delivery is reproducible, self-contained, and all decla
     version: 3,
     engine: "pascal-v2",
     layoutProfile: "renovation-booklet",
-    renderProfile: "professional-mesh-ink",
+    renderProfile: "professional-archviz-v2",
     specialistPages: {
       threeD: { path: "3d/index.html", layoutProfile: "su-design-classic", engine: "pascal-v2" },
     },
   });
   assert.equal(manifest.visualAcceptance, "user");
   assert.equal(manifest.source.kind, "native-governed-pascal-v2-project");
-  assert.equal(manifest.source.renderProfile, "professional-mesh-ink");
+  assert.equal(manifest.source.renderProfile, "professional-archviz-v2");
   assert.equal(manifest.source.demandWorkflow.stage, "delivered");
   assert.equal(manifest.source.demandWorkflow.transitionCount, 7);
   assert.equal(manifest.source.renderSet.length, 4);
@@ -258,7 +258,7 @@ test("the representative delivery preserves the governed Pascal v2 interaction a
   assert.doesNotMatch(threeDHtml, /data-camera-shot/);
   assert.match(threeDHtml, /pascal-room-label/);
   assert.match(threeDHtml, /pascal-highlight/);
-  assert.match(threeDHtml, /professional-mesh-ink/);
+  assert.match(threeDHtml, /professional-archviz-v2/);
   assert.match(threeDHtml, /pascal-viewer-warmup/);
   assert.match(cover, /data-cover-item=/);
   assert.doesNotMatch(`${html}\n${threeDHtml}`, /<(?:script|img|link|iframe)\b[^>]*(?:src|href)=["']https?:/i);
@@ -274,7 +274,9 @@ test("render budget and Page generator keep the accepted Pascal v2 implementatio
   const renderBudget = read("skills/interior-design/scripts/pascal-render-budget.jsx");
   const generator = read("skills/interior-design/scripts/generate-page-v2.mjs");
   assert.match(viewerClient, /shading: 'rendered'/);
-  assert.match(viewerClient, /shadows: false/);
+  assert.match(viewerClient, /shadows: true/);
+  assert.match(viewerClient, /sceneTheme: 'paper'/);
+  assert.doesNotMatch(viewerClient, /disablePostFx/);
   assert.match(viewerClient, /<DeliveryRenderBudget \/>/);
   assert.match(renderBudget, /resolveDeliveryDpr/);
   assert.match(renderBudget, /state\.viewport\.dpr/);

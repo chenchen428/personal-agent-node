@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo } from 'react';
-import { DoubleSide, Shape } from 'three';
+import { Shape } from 'three';
+import { AccentFinish, SurfaceFinish } from './pascal-materials.jsx';
 
 const EPSILON = 0.001;
 const FLOOR_COLORS = Object.freeze({
@@ -34,9 +35,10 @@ export function ArchitectureEnvelope({ payload }) {
   }, [architecture]);
   return <group name="personal-agent-architecture-envelope">
     <BoxShell
-      color="#e4e5e1"
+      color="#dedbd2"
       position={[architecture.center[0], -0.06, architecture.center[1]]}
       size={[architecture.size[0] + 5.4, 0.12, architecture.size[1] + 5.4]}
+      variant="stone"
     />
     {architecture.rooms.map((room) => <RoomSurface key={room.id} materials={payload.designQuality?.materials || []} room={room} />)}
     {architecture.wallPieces.map((piece) => <WallShell key={piece.id} piece={piece} />)}
@@ -62,51 +64,49 @@ function RoomSurface({ materials, room }) {
     rotation={[-Math.PI / 2, 0, 0]}
   >
     <shapeGeometry args={[shape]} />
-    <meshStandardMaterial
+    <SurfaceFinish
       color={finish?.baseColor || FLOOR_COLORS[room.kind] || '#b4a58e'}
-      metalness={finish?.metalness || 0}
-      opacity={finish?.opacity || 1}
-      roughness={finish?.roughness || 0.9}
-      side={DoubleSide}
+      profile={finish}
+      variant={`${room.kind}-floor`}
     />
   </mesh>;
 }
 
-function BoxShell({ color, position, rotation = [0, 0, 0], size }) {
+function BoxShell({ color, position, rotation = [0, 0, 0], size, variant = 'plaster' }) {
   return <mesh castShadow position={position} receiveShadow rotation={rotation}>
     <boxGeometry args={size} />
-    <meshStandardMaterial color={color} metalness={0} roughness={0.82} />
+    <SurfaceFinish color={color} variant={variant} />
   </mesh>;
 }
 
-function BasicBoxShell({ color, position, rotation = [0, 0, 0], size }) {
+function BasicBoxShell({ color, position, rotation = [0, 0, 0], size, metal = false }) {
   return <mesh position={position} rotation={rotation}>
     <boxGeometry args={size} />
-    <meshBasicMaterial color={color} />
+    <AccentFinish color={color} metal={metal} />
   </mesh>;
 }
 
 function WallShell({ piece }) {
   const [length, height, depth] = piece.size;
-  const edge = piece.exterior ? '#343b38' : '#555e58';
+  const edge = piece.exterior ? '#353d38' : '#68726b';
   return <group
     name={`pascal-wall-cap:${piece.id}`}
     position={piece.position}
     rotation={[0, piece.rotation, 0]}
   >
     <BoxShell
-      color={piece.exterior ? '#fbf8f0' : '#f2eee5'}
+      color={piece.exterior ? '#f8f2e7' : '#eee8dc'}
       position={[0, 0, 0]}
       size={piece.size}
     />
-    <BasicBoxShell color={edge} position={[0, height / 2 + 0.015, 0]} size={[length + 0.025, 0.03, depth + 0.025]} />
+    <BasicBoxShell color={edge} position={[0, height / 2 + 0.012, 0]} size={[length + 0.018, 0.024, depth + 0.018]} />
     {piece.bottom < EPSILON ? <BasicBoxShell
       color={edge}
       position={[0, -height / 2 + 0.012, 0]}
-      size={[length + 0.025, 0.024, depth + 0.025]}
+      size={[length + 0.018, 0.018, depth + 0.018]}
     /> : null}
-    <BasicBoxShell color={edge} position={[-length / 2 - 0.008, 0, 0]} size={[0.024, height + 0.03, depth + 0.025]} />
-    <BasicBoxShell color={edge} position={[length / 2 + 0.008, 0, 0]} size={[0.024, height + 0.03, depth + 0.025]} />
+    <BasicBoxShell color={edge} position={[-length / 2 - 0.006, 0, 0]} size={[0.018, height + 0.024, depth + 0.018]} />
+    <BasicBoxShell color={edge} position={[length / 2 + 0.006, 0, 0]} size={[0.018, height + 0.024, depth + 0.018]} />
   </group>;
 }
 
@@ -123,10 +123,11 @@ function BalconyRailing({ railing }) {
         transparent
       />
     </mesh>
-    <BasicBoxShell color="#28312d" position={[0, 1.12, 0]} size={[railing.length, 0.07, 0.07]} />
+    <BasicBoxShell color="#36433d" metal position={[0, 1.12, 0]} size={[railing.length, 0.055, 0.055]} />
     {Array.from({ length: postCount + 1 }, (_, index) => <BasicBoxShell
-      color="#28312d"
+      color="#36433d"
       key={index}
+      metal
       position={[-railing.length / 2 + (index * railing.length) / postCount, 0.64, 0]}
       size={[0.055, 1.02, 0.055]}
     />)}
@@ -193,6 +194,8 @@ function splitWall(wall, nodes, railings, bounds) {
   const length = Math.hypot(dx, dz);
   if (length < EPSILON) return [];
   const direction = [dx / length, dz / length];
+  const exterior = onExteriorBoundary(wall.start, wall.end, bounds);
+  const visibleHeight = Math.min(Number(wall.height || 2.85), exterior ? 1.42 : 1.18);
   const cuts = (wall.children || [])
     .map((id) => nodes[id])
     .filter((node) => ['door', 'window'].includes(node?.type))
@@ -213,14 +216,14 @@ function splitWall(wall, nodes, railings, bounds) {
     const middle = (from + to) / 2;
     const cut = cuts.find((entry) => middle > entry.start - EPSILON && middle < entry.end + EPSILON);
     const verticals = cut
-      ? [[0, cut.bottom], [cut.top, wall.height]]
-      : [[0, wall.height]];
+      ? [[0, Math.min(cut.bottom, visibleHeight)], [Math.min(cut.top, visibleHeight), visibleHeight]]
+      : [[0, visibleHeight]];
     verticals.forEach(([bottom, top], verticalIndex) => {
       if (top - bottom < 0.035) return;
       const local = (from + to) / 2;
       pieces.push({
         bottom,
-        exterior: onExteriorBoundary(wall.start, wall.end, bounds),
+        exterior,
         id: `${wall.id}:${index}:${verticalIndex}`,
         position: [
           startX + direction[0] * local,

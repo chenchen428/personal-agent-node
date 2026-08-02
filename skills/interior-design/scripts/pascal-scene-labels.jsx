@@ -3,6 +3,7 @@ import { Html } from '@react-three/drei';
 import { useFrame } from '@react-three/fiber';
 
 const MOBILE_LABEL_LIMIT = 7;
+const DESKTOP_LABEL_LIMIT = 10;
 const LABEL_GAP = 5;
 
 function polygonArea(polygon) {
@@ -45,7 +46,7 @@ export function SceneLabels({ payload }) {
     labels.forEach((label) => {
       const element = elements.current.get(label.id);
       if (!element) return;
-      if (!mobile || !appBounds) {
+      if (!appBounds) {
         delete element.dataset.collided;
         return;
       }
@@ -55,7 +56,7 @@ export function SceneLabels({ payload }) {
         || bounds.top < appBounds.top + LABEL_GAP
         || bounds.bottom > appBounds.bottom - LABEL_GAP;
       const blocked = outside
-        || placed.length >= MOBILE_LABEL_LIMIT
+        || placed.length >= (mobile ? MOBILE_LABEL_LIMIT : DESKTOP_LABEL_LIMIT)
         || placed.some((entry) => overlaps(bounds, entry));
       if (blocked) element.dataset.collided = 'true';
       else {
@@ -63,7 +64,7 @@ export function SceneLabels({ payload }) {
         placed.push(bounds);
       }
     });
-    document.body.dataset.labelLayout = mobile ? 'decluttered' : 'full';
+    document.body.dataset.labelLayout = 'decluttered';
   };
 
   const scheduleLayout = () => {

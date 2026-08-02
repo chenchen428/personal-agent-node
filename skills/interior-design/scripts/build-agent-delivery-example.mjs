@@ -153,7 +153,7 @@ export async function buildAgentDeliveryExample({ check = false } = {}) {
       projectSha256: sha256(canonicalJson(readProject(projectDir, context).project)),
       sceneSha256: compiled.scene.sceneHash,
       auditSha256: compiled.project.quality.sha256,
-      renderProfile: 'professional-mesh-ink',
+      renderProfile: 'professional-archviz-v2',
       layoutProfile: 'renovation-booklet',
       specialistPages: {
         threeD: { path: '3d/index.html', layoutProfile: 'su-design-classic', engine: 'pascal-v2' },
@@ -203,7 +203,7 @@ export function verifyAgentDeliveryExample(directory = targetRoot) {
     || manifest.source.pipeline.join('>') !== 'project-v2-seed>demand-workflow-v1>style-calibration>render-storyboard>pascal-scene-compile>professional-quality-audit>render-interior-pages-v1>artifact-hash-verify') {
     throw new Error('representative interior-designer delivery pipeline is incomplete');
   }
-  if (manifest.source.renderProfile !== 'professional-mesh-ink') {
+  if (manifest.source.renderProfile !== 'professional-archviz-v2') {
     throw new Error('representative interior-designer delivery professional render profile is missing');
   }
   if (manifest.renderer?.id !== 'render-interior-pages' || manifest.renderer?.version !== 1 || manifest.agentInspection?.plan !== 'agent-review.json') {
@@ -296,7 +296,7 @@ export function verifyAgentDeliveryExample(directory = targetRoot) {
     || !threeDHtml.includes('personal-agent-architecture-envelope')
     || !threeDHtml.includes('pascal-room-surface')
     || !threeDHtml.includes('pascal-wall-cap')
-    || !threeDHtml.includes('professional-mesh-ink')
+    || !threeDHtml.includes('professional-archviz-v2')
     || !threeDHtml.includes('data-layout-profile="su-design-classic"')
     || !threeDHtml.includes('pascal-viewer-warmup')
     || !threeDHtml.includes('CameraControls')

@@ -9,7 +9,7 @@
     "version": 3,
     "engine": "pascal-v2",
     "layoutProfile": "renovation-booklet",
-    "renderProfile": "professional-mesh-ink",
+    "renderProfile": "professional-archviz-v2",
     "specialistPages": {
       "threeD": {
         "path": "3d/index.html",
