@@ -6,7 +6,7 @@
     "selectedStyleId": "warm-mineral-walnut",
     "status": "candidate",
     "source": "demandWorkflow.styleProfile.primary",
-    "previewAlternatives": true,
+    "pagePresentation": "selected-style-only",
     "persistence": "Agent must create a governed project revision before effect-render generation"
   },
   "selected": {
@@ -70,189 +70,6 @@
       "高饱和色块"
     ]
   },
-  "options": [
-    {
-      "styleId": "warm-mineral-walnut",
-      "label": "暖矿物 × 深胡桃木的克制中古",
-      "palette": {
-        "backdrop": "#f1ede6",
-        "plaster": "#ded7cd",
-        "floor": "#c4aa82",
-        "stone": "#c4aa82",
-        "wood": "#6d4734",
-        "darkWood": "#282522",
-        "fabric": "#d7c9b9",
-        "accent": "#567c68",
-        "metal": "#9b7b52",
-        "plant": "#567c68"
-      },
-      "materials": [
-        "暖灰矿物墙面",
-        "自然胡桃木",
-        "亚麻软装",
-        "低饱和鼠尾草绿"
-      ],
-      "lighting": {
-        "ambientColor": "#fff5e7",
-        "keyColor": "#fff0d5",
-        "skyColor": "#e8f0eb",
-        "groundColor": "#82786c",
-        "exposure": 1.16,
-        "ambientScale": 1.04,
-        "keyScale": 1.02
-      },
-      "imageGeneration": {
-        "promptPrefix": "warm mineral contemporary interior, natural walnut joinery, soft limestone, linen upholstery, restrained sage accents, editorial architectural photography",
-        "negativePrompt": "cold blue cast, orange wood, glossy plastic, excessive gold, clutter",
-        "consistencyRules": [
-          "lock floor-plan geometry",
-          "preserve openings and circulation",
-          "use the same palette, material families, lighting temperature, and soft-furnishing language"
-        ]
-      },
-      "observable": {
-        "contrast": "低对比暖米色基底，以深胡桃木和细黑线条建立层次",
-        "lighting": "柔和自然光叠加 2700–3000K 暖白间接照明",
-        "surface": "哑光矿物涂料、亚麻、烟草色编织与少量细纹石材",
-        "visualDensity": "低装饰密度，留白优先，局部微量橄榄绿",
-        "woodTone": "深胡桃木为主，避免发红或浅黄橡木占据大面积"
-      },
-      "borrow": [
-        "低对比暖矿物基底",
-        "深胡桃木中古家具",
-        "奶油亚麻与烟草色编织",
-        "日式克制留白",
-        "细黑金属分隔"
-      ],
-      "avoid": [
-        "亮面大理石",
-        "冷灰空间",
-        "纯白样板间",
-        "繁复造型",
-        "高饱和色块"
-      ]
-    },
-    {
-      "styleId": "cream-quiet-luxury",
-      "label": "奶油轻奢",
-      "palette": {
-        "backdrop": "#f7f1e6",
-        "plaster": "#eee2d0",
-        "floor": "#d9c29c",
-        "stone": "#d9c29c",
-        "wood": "#a8835d",
-        "darkWood": "#463b35",
-        "fabric": "#e7d9c5",
-        "accent": "#9f795f",
-        "metal": "#bd9a62",
-        "plant": "#9f795f"
-      },
-      "materials": [
-        "奶油微水泥",
-        "浅烟熏木",
-        "羊羔绒与皮革",
-        "克制黄铜"
-      ],
-      "lighting": {
-        "ambientColor": "#fff5e7",
-        "keyColor": "#fff0d5",
-        "skyColor": "#e8f0eb",
-        "groundColor": "#82786c",
-        "exposure": 1.16,
-        "ambientScale": 1.04,
-        "keyScale": 1.02
-      },
-      "imageGeneration": {
-        "promptPrefix": "quiet luxury cream interior, limewash walls, pale smoked oak, boucle and leather, subtle brushed brass, soft sculptural furniture, premium editorial lighting",
-        "negativePrompt": "gaudy gold, hotel lobby excess, pure white clipping, glossy marble everywhere, clutter",
-        "consistencyRules": [
-          "lock floor-plan geometry",
-          "preserve openings and circulation",
-          "use the same palette, material families, lighting temperature, and soft-furnishing language"
-        ]
-      }
-    },
-    {
-      "styleId": "wabi-sabi-oak",
-      "label": "侘寂原木",
-      "palette": {
-        "backdrop": "#eee9de",
-        "plaster": "#d9d0c0",
-        "floor": "#bda77f",
-        "stone": "#bda77f",
-        "wood": "#8d6c48",
-        "darkWood": "#39362f",
-        "fabric": "#d5c8b3",
-        "accent": "#77806b",
-        "metal": "#8d7659",
-        "plant": "#77806b"
-      },
-      "materials": [
-        "手作灰泥",
-        "原生橡木",
-        "棉麻与藤编",
-        "苔绿陶器"
-      ],
-      "lighting": {
-        "ambientColor": "#fff5e7",
-        "keyColor": "#fff0d5",
-        "skyColor": "#e8f0eb",
-        "groundColor": "#82786c",
-        "exposure": 1.16,
-        "ambientScale": 1.04,
-        "keyScale": 1.02
-      },
-      "imageGeneration": {
-        "promptPrefix": "wabi sabi oak interior, handmade plaster, natural oak, linen and rattan, imperfect ceramics, calm daylight, tactile understated atmosphere",
-        "negativePrompt": "luxury marble, chrome, saturated colors, perfect symmetry, decorative clutter",
-        "consistencyRules": [
-          "lock floor-plan geometry",
-          "preserve openings and circulation",
-          "use the same palette, material families, lighting temperature, and soft-furnishing language"
-        ]
-      }
-    },
-    {
-      "styleId": "modern-charcoal",
-      "label": "现代深色",
-      "palette": {
-        "backdrop": "#dadbd7",
-        "plaster": "#babcb7",
-        "floor": "#77726d",
-        "stone": "#77726d",
-        "wood": "#49372f",
-        "darkWood": "#171c1b",
-        "fabric": "#797b78",
-        "accent": "#356554",
-        "metal": "#353938",
-        "plant": "#356554"
-      },
-      "materials": [
-        "暖灰艺术漆",
-        "烟熏木",
-        "深灰织物",
-        "黑钛金属"
-      ],
-      "lighting": {
-        "ambientColor": "#f1e6d6",
-        "keyColor": "#f5d8bd",
-        "skyColor": "#e8f0eb",
-        "groundColor": "#82786c",
-        "exposure": 1.08,
-        "ambientScale": 0.82,
-        "keyScale": 1.18
-      },
-      "imageGeneration": {
-        "promptPrefix": "modern charcoal interior, warm grey plaster, smoked timber, dark tailored upholstery, blackened metal details, controlled contrast, cinematic architectural lighting",
-        "negativePrompt": "crushed blacks, blue office lighting, all-black surfaces, neon accents, clutter",
-        "consistencyRules": [
-          "lock floor-plan geometry",
-          "preserve openings and circulation",
-          "use the same palette, material families, lighting temperature, and soft-furnishing language"
-        ]
-      }
-    }
-  ],
   "effectRenderBinding": {
     "styleId": "warm-mineral-walnut",
     "promptPrefix": "warm mineral contemporary interior, natural walnut joinery, soft limestone, linen upholstery, restrained sage accents, editorial architectural photography",
@@ -274,7 +91,7 @@
   "agentInspection": {
     "required": true,
     "inspect": [
-      "style selector changes actual 3D materials and lighting",
+      "rendered 3D uses the selected style materials, lighting, and soft furnishings",
       "selected styleId matches effect-render prompts",
       "desktop, forced-landscape portrait, and native landscape remain legible"
     ],

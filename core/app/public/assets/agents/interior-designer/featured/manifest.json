@@ -31,16 +31,16 @@
       "sha256": "49a5fe64cdf926a4d67f52c3d35d506a7401a579789997e54e376bf254f76cd5"
     },
     "3d/index.html": {
-      "bytes": 2739386,
-      "sha256": "5eb85ef9fe79dcaadf2959b9275c8c022963d00848810501f7df36659959799d"
+      "bytes": 2732656,
+      "sha256": "7edb9650beee89f21cf49253173008d750d3c0c88c25e36d1d6683d286df4a7a"
     },
     "scene.json": {
-      "bytes": 94047,
-      "sha256": "f2ab7707a2b478e3a9ecde63e5a4a593177467be967efbe8c159af266ad39525"
+      "bytes": 87563,
+      "sha256": "63fe95ec90ddefeafeb2f52ae3e9a8359329992789e88637f328823619da685b"
     },
     "style-guide.json": {
-      "bytes": 9843,
-      "sha256": "eaa98001412573791741bfb0adcef9d664c65ec061fbd37de6cb11779f680dd9"
+      "bytes": 3725,
+      "sha256": "659609c145d4abe342361098b33885b45df943aeefab2874ca94d6519e6c0d1d"
     },
     "audit.json": {
       "bytes": 2094,
@@ -71,8 +71,8 @@
       "sha256": "0f4526082ef07db8281b1bad14b20177979d1dd085812e0790139cacb696dda2"
     },
     "agent-review.json": {
-      "bytes": 1531,
-      "sha256": "c219e088595bd98743a65c55836cf49c5a7f220ef41afbd14fec9255bccce6ad"
+      "bytes": 1594,
+      "sha256": "ee281190a2d58691fec62accde9adfbba915cb097bc64409afc615b325f94934"
     },
     "cover.svg": {
       "bytes": 23265,
@@ -106,7 +106,7 @@
     "workflowEventsSha256": "ca0f133d2b4e30dfb9645aed471632d01e5d61e0c7ffc744faa24aefea21d9d7",
     "renderPromptSetSha256": "1c827f81fa7ea6c4b6ad9e51b74b0a00184757ad290f522c9cd1705e1e91855e",
     "styleId": "warm-mineral-walnut",
-    "styleGuideSha256": "eaa98001412573791741bfb0adcef9d664c65ec061fbd37de6cb11779f680dd9",
+    "styleGuideSha256": "659609c145d4abe342361098b33885b45df943aeefab2874ca94d6519e6c0d1d",
     "evidenceSha256": "23eab735dd2dcd2190264f93b3aad274b08a68b822c4a6f597a377afdc763542",
     "modelBasisSha256": "23eab735dd2dcd2190264f93b3aad274b08a68b822c4a6f597a377afdc763542",
     "annotationSha256": "2a8a7f8486409aee8e0252adb47f5c33c5e7d935b0b24a172bd6dcec579e48d1",
@@ -120,7 +120,7 @@
       {
         "renderId": "render-living-overview",
         "styleId": "warm-mineral-walnut",
-        "styleGuideSha256": "eaa98001412573791741bfb0adcef9d664c65ec061fbd37de6cb11779f680dd9",
+        "styleGuideSha256": "659609c145d4abe342361098b33885b45df943aeefab2874ca94d6519e6c0d1d",
         "generator": "imagegen",
         "sourceImageSha256": "1bc3195b402350049c462c02f8c17c47fdd0d02b963f47094679809ba935d135",
         "deliveryImageSha256": "beb7126786051a10de63c3bb893c98f0eb51d17f4f6f1023574103d490247d6c",
@@ -130,7 +130,7 @@
       {
         "renderId": "render-living-media-wall",
         "styleId": "warm-mineral-walnut",
-        "styleGuideSha256": "eaa98001412573791741bfb0adcef9d664c65ec061fbd37de6cb11779f680dd9",
+        "styleGuideSha256": "659609c145d4abe342361098b33885b45df943aeefab2874ca94d6519e6c0d1d",
         "generator": "imagegen",
         "sourceImageSha256": "5ca715716bfbb41cc7b789be0c203f403d5297199758de41376e4a3c05ef1fc7",
         "deliveryImageSha256": "dc40d844d876c083957fd18e89e8af983e66f4a7041774171314c7a291950a35",
@@ -140,7 +140,7 @@
       {
         "renderId": "render-dining-kitchen",
         "styleId": "warm-mineral-walnut",
-        "styleGuideSha256": "eaa98001412573791741bfb0adcef9d664c65ec061fbd37de6cb11779f680dd9",
+        "styleGuideSha256": "659609c145d4abe342361098b33885b45df943aeefab2874ca94d6519e6c0d1d",
         "generator": "imagegen",
         "sourceImageSha256": "72818576e1f8a7aff72a80b7d326016ad83f828c259f4a5c089ee0b9ecd5421b",
         "deliveryImageSha256": "9a3a8b9306d875556aae69365a4c2096bfaa2757fe9bab0c0957b7e766439895",
@@ -150,7 +150,7 @@
       {
         "renderId": "render-primary-bedroom",
         "styleId": "warm-mineral-walnut",
-        "styleGuideSha256": "eaa98001412573791741bfb0adcef9d664c65ec061fbd37de6cb11779f680dd9",
+        "styleGuideSha256": "659609c145d4abe342361098b33885b45df943aeefab2874ca94d6519e6c0d1d",
         "generator": "imagegen",
         "sourceImageSha256": "b29ae45fbd690e5e0de9c745d9d327970eb029ffc17003011dcd31bccbcdb66a",
         "deliveryImageSha256": "0f4526082ef07db8281b1bad14b20177979d1dd085812e0790139cacb696dda2",

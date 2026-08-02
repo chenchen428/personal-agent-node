@@ -16,6 +16,7 @@ import {
   resolveDeliveryDpr,
 } from "../skills/interior-design/scripts/pascal-render-budget.mjs";
 import { mobileLandscapeController } from "../skills/interior-design/scripts/generate-page-v2.mjs";
+import { interiorStyleProfiles, resolveInteriorStyleGuide } from "../skills/interior-design/scripts/interior-style-contract.mjs";
 import { evaluateAgentReview, REVIEW_TARGETS } from "../skills/render-interior-pages/scripts/renderer.mjs";
 
 const root = path.resolve(import.meta.dirname, "..");
@@ -171,12 +172,51 @@ test("the renderer closes the Agent review loop without granting visual acceptan
   assert.throws(() => evaluateAgentReview(artifactRoot, observations), /duplicate targets/);
 });
 
+test("the renderer exposes styles to the Agent while delivered Pages remain single-style", () => {
+  const result = spawnSync(process.execPath, ["skills/render-interior-pages/scripts/cli.mjs", "styles", "--json"], {
+    cwd: root,
+    encoding: "utf8",
+  });
+  assert.equal(result.status, 0, result.stderr);
+  const catalog = JSON.parse(result.stdout);
+  assert.equal(catalog.ok, true);
+  assert.equal(catalog.selectionField, "demandWorkflow.styleProfile.primary.styleId");
+  assert.equal(catalog.pagePresentation, "selected-style-only");
+  assert.equal(catalog.changeBehavior, "create-project-revision-and-rerender");
+  assert.deepEqual(catalog.styles.map(({ styleId }) => styleId), [
+    "warm-mineral-walnut",
+    "cream-quiet-luxury",
+    "wabi-sabi-oak",
+    "modern-charcoal",
+  ]);
+
+  const palettes = new Set();
+  for (const profile of interiorStyleProfiles()) {
+    const guide = resolveInteriorStyleGuide({
+      revision: 1,
+      demandWorkflow: { styleProfile: { primary: { styleId: profile.styleId, status: "confirmed" } } },
+    }, { sceneHash: "scene-style-catalog-test" });
+    assert.equal(guide.selection.selectedStyleId, profile.styleId);
+    assert.equal(guide.selection.pagePresentation, "selected-style-only");
+    assert.equal(guide.selected.styleId, profile.styleId);
+    assert.equal(guide.effectRenderBinding.styleId, profile.styleId);
+    assert.equal("options" in guide, false);
+    palettes.add(JSON.stringify(guide.selected.palette));
+  }
+  assert.equal(palettes.size, 4);
+  assert.throws(() => resolveInteriorStyleGuide({
+    revision: 1,
+    demandWorkflow: { styleProfile: { primary: { styleId: "unsupported-style" } } },
+  }, { sceneHash: "scene-style-catalog-test" }), /unsupported interior styleId/);
+});
+
 test("the representative delivery is reproducible, self-contained, and all declared hashes match", async () => {
   const result = await buildAgentDeliveryExample({ check: true });
   assert.equal(result.ok, true);
   assert.equal(result.mode, "check");
   const { manifest } = verifyAgentDeliveryExample(artifactRoot);
   const html = read("core/app/public/assets/agents/interior-designer/featured/index.html");
+  const styleGuide = JSON.parse(read("core/app/public/assets/agents/interior-designer/featured/style-guide.json"));
   const profile = JSON.parse(read("agents/interior-designer/profile.yaml"));
 
   assert.deepEqual(manifest.agent, {
@@ -208,6 +248,9 @@ test("the representative delivery is reproducible, self-contained, and all decla
   assert.ok(Object.keys(manifest.files).includes("3d/index.html"));
   assert.ok(Object.keys(manifest.files).includes("style-guide.json"));
   assert.ok(manifest.source.renderSet.every((entry) => entry.styleId === manifest.source.styleId));
+  assert.equal(styleGuide.selection.pagePresentation, "selected-style-only");
+  assert.equal(styleGuide.selected.styleId, manifest.source.styleId);
+  assert.equal("options" in styleGuide, false);
   for (const [name, expected] of Object.entries(manifest.files)) {
     const value = fs.readFileSync(path.join(artifactRoot, name));
     assert.equal(value.length, expected.bytes, name);
@@ -263,7 +306,7 @@ test("the representative delivery preserves the governed Pascal v2 interaction a
   assert.match(threeDHtml, /pascal-room-label/);
   assert.match(threeDHtml, /pascal-highlight/);
   assert.match(threeDHtml, /professional-archviz-v3/);
-  assert.match(threeDHtml, /data-style-profile/);
+  assert.doesNotMatch(threeDHtml, /data-style-profile|style-picker|style-control|setStyleProfile|getStyleState|pascal-style-change/);
   assert.match(threeDHtml, /pascal-viewer-warmup/);
   assert.match(cover, /data-cover-item=/);
   assert.doesNotMatch(`${html}\n${threeDHtml}`, /<(?:script|img|link|iframe)\b[^>]*(?:src|href)=["']https?:/i);
@@ -281,6 +324,7 @@ test("render budget and Page generator keep the accepted Pascal v2 implementatio
   assert.match(viewerClient, /shading: 'rendered'/);
   assert.match(viewerClient, /shadows: true/);
   assert.match(viewerClient, /sceneTheme: 'paper'/);
+  assert.doesNotMatch(viewerClient, /setStyleProfile|getStyleState|pascal-style-change|styleGuide\?\.options/);
   assert.doesNotMatch(viewerClient, /disablePostFx/);
   assert.match(viewerClient, /<DeliveryRenderBudget \/>/);
   assert.match(renderBudget, /resolveDeliveryDpr/);

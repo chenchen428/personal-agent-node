@@ -33,20 +33,14 @@ class ViewerBoundary extends Component {
 
 function PascalScene({ payload }) {
   const [highlighted, setHighlighted] = useState(new Set());
-  const [styleId, setStyleId] = useState(payload.styleGuide?.selection?.selectedStyleId || null);
-  const style = payload.styleGuide?.options?.find((entry) => entry.styleId === styleId)
-    || payload.styleGuide?.selected
-    || null;
+  const style = payload.styleGuide?.selected || null;
   useEffect(() => {
     document.body.dataset.renderProfile = 'professional-archviz-v3';
     const handler = (event) => setHighlighted(new Set(event.detail || []));
-    const styleHandler = (event) => setStyleId(event.detail?.styleId || null);
     window.addEventListener('pascal-highlight', handler);
-    window.addEventListener('pascal-style-change', styleHandler);
     return () => {
       delete document.body.dataset.renderProfile;
       window.removeEventListener('pascal-highlight', handler);
-      window.removeEventListener('pascal-style-change', styleHandler);
     };
   }, []);
   useEffect(() => {
@@ -153,22 +147,6 @@ function start() {
         useViewer.getState().setSelection({ selectedIds });
         window.dispatchEvent(new CustomEvent('pascal-highlight', { detail: selectedIds }));
         return true;
-      },
-      setStyleProfile(styleId) {
-        if (!payload.styleGuide?.options?.some((entry) => entry.styleId === styleId)) return false;
-        document.body.dataset.activeStyle = styleId;
-        document.body.dataset.styleStatus = styleId === confirmedStyleId ? 'confirmed' : 'preview';
-        window.dispatchEvent(new CustomEvent('pascal-style-change', { detail: { styleId } }));
-        return true;
-      },
-      getStyleState() {
-        const selectedStyleId = document.body.dataset.activeStyle || confirmedStyleId;
-        return {
-          selectedStyleId,
-          confirmedStyleId,
-          status: selectedStyleId === confirmedStyleId ? 'confirmed' : 'preview',
-          styleGuide: '../style-guide.json',
-        };
       },
     };
     createRoot(target).render(<PascalScene payload={payload} />);

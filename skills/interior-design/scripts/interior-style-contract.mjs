@@ -46,18 +46,15 @@ export function resolveInteriorStyleGuide(project, scenePayload) {
   const governed = project.demandWorkflow?.styleProfile?.primary || {};
   const confirmedId = governed.styleId || STYLE_PROFILES[0].styleId;
   const known = STYLE_PROFILES.find((entry) => entry.styleId === confirmedId);
-  const fallback = STYLE_PROFILES[0];
+  if (!known) throw new Error(`unsupported interior styleId: ${confirmedId}; query the renderer style catalog before rendering`);
   const selected = {
-    ...(known || fallback),
+    ...known,
     styleId: confirmedId,
-    label: governed.label || known?.label || confirmedId,
+    label: governed.label || known.label,
     observable: governed.observable || {},
     borrow: governed.borrow || [],
     avoid: governed.avoid || [],
   };
-  const options = known
-    ? STYLE_PROFILES.map((entry) => (entry.styleId === confirmedId ? selected : entry))
-    : [selected, ...STYLE_PROFILES];
   return {
     schema: 'personal-agent/interior-style-guide/v1',
     revision: project.revision,
@@ -66,11 +63,10 @@ export function resolveInteriorStyleGuide(project, scenePayload) {
       selectedStyleId: confirmedId,
       status: governed.status || 'candidate',
       source: 'demandWorkflow.styleProfile.primary',
-      previewAlternatives: true,
+      pagePresentation: 'selected-style-only',
       persistence: 'Agent must create a governed project revision before effect-render generation',
     },
     selected,
-    options,
     effectRenderBinding: {
       styleId: confirmedId,
       promptPrefix: selected.imageGeneration.promptPrefix,
@@ -81,7 +77,7 @@ export function resolveInteriorStyleGuide(project, scenePayload) {
     },
     agentInspection: {
       required: true,
-      inspect: ['style selector changes actual 3D materials and lighting', 'selected styleId matches effect-render prompts', 'desktop, forced-landscape portrait, and native landscape remain legible'],
+      inspect: ['rendered 3D uses the selected style materials, lighting, and soft furnishings', 'selected styleId matches effect-render prompts', 'desktop, forced-landscape portrait, and native landscape remain legible'],
       correctionSurface: 'governed project data and style profile only',
     },
   };

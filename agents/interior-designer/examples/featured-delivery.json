@@ -43,7 +43,7 @@
     "Complex interactive 3D is a separate same-revision Page linked from the booklet and opened in a new browser page; only that specialist Page uses the su-design-classic mobile-landscape canvas, and it stays a focused model viewer without requirements or booklet narrative.",
     "The user-uploaded source plan, Agent annotation, governed project, Pascal scene model basis, and Page payload must resolve to the same evidence hash.",
     "The Pascal scene remains the only production 3D engine and supplies the model-derived SVG failure fallback.",
-    "A governed styleId drives the 3D material palette, lighting, soft furnishing language, and effect-render prompt contract; style feedback creates a new project revision and rerender instead of patching Page code.",
+    "A governed styleId selected by the Agent before rendering drives the 3D material palette, lighting, soft furnishing language, and effect-render prompt contract; the delivered Page exposes no style switch, and style feedback creates a new project revision and rerender instead of patching Page code.",
     "A dedicated loading state precedes automatic first-frame 3D warmup; Canvas visibility must not depend on a click or drag.",
     "Perspective and orthographic views, stacked and isolated levels, labels, highlights, concept comparison, requirements, audit findings, and revision history remain available.",
     "The governed concept render records image, reference and prompt hashes, stays explicitly conceptual, and cannot replace construction drawings or material samples.",
@@ -52,6 +52,7 @@
   ],
   "agentFreedom": [
     "Derive spatial strategy and annotations from the current governed project evidence.",
+    "Choose one primary styleId from the renderer-owned catalog before generating a revision.",
     "Choose room, wall, opening, furniture, cabinet, material-intent, lighting-intent, and label content within the accepted project scope.",
     "Revise the governed scene and regenerate a new immutable delivery after user feedback."
   ]

@@ -892,9 +892,9 @@
       "owner": "render-interior-pages",
       "kind": "skill-script",
       "entrypoint": "skills/render-interior-pages/scripts/cli.mjs",
-      "command": "node skills/render-interior-pages/scripts/cli.mjs <render|review>",
-      "workspaceCommand": "node scripts/skill-tree.mjs interior-page-renderer <render|review>",
-      "description": "Render governed interior project data into versioned booklet and 3D Pages with an Agent inspection loop."
+      "command": "node skills/render-interior-pages/scripts/cli.mjs <styles|render|review>",
+      "workspaceCommand": "node scripts/skill-tree.mjs interior-page-renderer <styles|render|review>",
+      "description": "List governed interior style profiles, then render the Agent-selected style into versioned booklet and 3D Pages with an Agent inspection loop."
     },
     {
       "name": "agent-workflow",

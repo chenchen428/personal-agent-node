@@ -11,6 +11,12 @@ Treat this Skill as the only Page renderer for `interior-designer`. The design A
 
 Read [contract.md](references/contract.md), then render from the current quality-gated project:
 
+First list the renderer-owned style catalog when a direction has not yet been confirmed:
+
+`node skills/render-interior-pages/scripts/cli.mjs styles --json`
+
+The Agent selects one `styleId`, records it at `demandWorkflow.styleProfile.primary.styleId`, and creates a governed project revision before rendering. Different user-requested styles are separate revisions and separate immutable Page outputs, not states inside one delivered Page.
+
 `node skills/render-interior-pages/scripts/cli.mjs render --project-dir <project-dir> --output <project-dir>/derived/page --json`
 
 Do not write or patch `index.html`, `3d/index.html`, CSS, viewer JavaScript, or manifest fields. If output is wrong, change the governed project data or scene and render a new revision.
@@ -23,7 +29,7 @@ The primary booklet owns requirements, project narrative, materials, process, an
 
 After every render, read `agent-review.json` and inspect every required target: booklet desktop, booklet mobile, 3D desktop, 3D mobile portrait forced into the landscape canvas, and native mobile landscape. Use the returned relative preview entries or the authenticated same-origin publication; never invent a loopback or public URL.
 
-Read `style-guide.json` and verify that the selected `styleId` changes actual 3D materials, lighting, and soft furnishings and is the same `styleId` used by every later effect-render prompt. Style-selector changes in the Page are previews; feedback must update `demandWorkflow.styleProfile.primary`, stale prior renders, compile a new project revision, rerender the Page, and then regenerate effect renders.
+Read `style-guide.json` and verify that its single selected `styleId` drives the rendered 3D materials, lighting, and soft furnishings and is the same `styleId` used by every later effect-render prompt. The delivered Page exposes no style selector or client-side style-switch API. Style feedback must update `demandWorkflow.styleProfile.primary`, stale prior renders, compile a new project revision, rerender the Page, and then regenerate effect renders.
 
 Record observations using [agent-review-v2.schema.json](references/agent-review-v2.schema.json), including the required style binding review, then evaluate them:
 

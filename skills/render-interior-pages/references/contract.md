@@ -11,6 +11,6 @@
 
 渲染器先完成确定性合同检查，再返回五个 Agent 必查目标。Agent 查看真实 Page 后提交结构化观察；任何问题都回到项目数据或场景操作，生成新 revision 并重渲染。Agent 通过不等于用户验收通过。
 
-`style-guide.json` 是 3D 与后续效果图共用的风格契约。已确认 `styleId` 同时约束调色板、材质族、灯光曝光、软装语言、效果图正向提示和负向提示。Page 中的切换仅用于比较预览；收到风格反馈后，Agent 必须更新 `demandWorkflow.styleProfile.primary`、把旧效果图标记为 stale、编译新 revision、重渲染 Page 并完成 Agent review，再使用同一 `styleId` 和 manifest 中的 `styleGuideSha256` 生成效果图。
+`style-guide.json` 是 3D 与后续效果图共用的单一已选风格契约。Agent 可先通过渲染器的 `styles` 命令读取能力拥有的风格目录，再把一个 `styleId` 写入 `demandWorkflow.styleProfile.primary`。该 `styleId` 同时约束调色板、材质族、灯光曝光、软装语言、效果图正向提示和负向提示。成品 Page 不包含风格选择器，也不暴露客户端风格切换 API；收到风格反馈后，Agent 必须更新项目风格、把旧效果图标记为 stale、编译新 revision、重渲染 Page 并完成 Agent review，再使用同一 `styleId` 和 manifest 中的 `styleGuideSha256` 生成效果图。
 
 manifest 固定记录渲染能力 ID、版本、请求与输出契约。相同请求主版本可使用向后兼容的新版渲染器重建；未知主版本必须失败。

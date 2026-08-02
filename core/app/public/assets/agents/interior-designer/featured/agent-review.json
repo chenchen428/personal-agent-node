@@ -44,6 +44,7 @@
     "required": true,
     "guide": "style-guide.json",
     "selectedStyleId": "warm-mineral-walnut",
+    "pagePresentation": "selected-style-only",
     "effectRenderBinding": "same-style-id-required",
     "correctionSurface": "demandWorkflow.styleProfile.primary"
   },
@@ -54,6 +55,6 @@
     "inline CSS",
     "viewer JavaScript"
   ],
-  "next": "Inspect every target and every style option, record observations, then run the renderer review command.",
+  "next": "Inspect every target and verify the rendered selected style, record observations, then run the renderer review command.",
   "visualAcceptance": "user"
 }

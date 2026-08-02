@@ -5,12 +5,13 @@ import { fileURLToPath } from 'node:url';
 import { loadInteriorDeliveryContract } from '../../interior-design/scripts/page-assets.mjs';
 import { readProject, resolveTrustedContext } from '../../interior-design/scripts/project-v2.mjs';
 import { evaluateAgentReview, renderInteriorPages } from './renderer.mjs';
+import { interiorStyleProfiles } from '../../interior-design/scripts/interior-style-contract.mjs';
 
 const rendererRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const interiorSkillRoot = path.resolve(rendererRoot, '..', 'interior-design');
 const [command = 'help', ...argv] = process.argv.slice(2);
 const options = parse(argv);
-try { if (command === 'render') render(); else if (command === 'review') review(); else help(); }
+try { if (command === 'render') render(); else if (command === 'review') review(); else if (command === 'styles') styles(); else help(); }
 catch (error) { emit({ ok: false, error: { code: 'INTERIOR_PAGE_RENDER_FAILED', message: error.message } }); process.exitCode = 1; }
 
 function render() {
@@ -22,7 +23,17 @@ function render() {
   emit({ ok: true, schemaVersion: 1, renderer: result.manifest.renderer, revision: project.revision, output: path.relative(projectDir, output), preview: { primary: 'index.html', specialistPages: { threeD: '3d/index.html' }, styleGuide: 'style-guide.json', selectedStyleId: result.manifest.style?.selectedStyleId }, agentReview: result.reviewPlan, totalBytes: result.totalBytes });
 }
 function review() { emit(evaluateAgentReview(path.resolve(required('bundle')), JSON.parse(fs.readFileSync(path.resolve(required('input')), 'utf8')))); }
-function help() { emit({ ok: true, commands: ['render --project-dir <dir> --output <dir> --json', 'review --bundle <dir> --input <observations.json> --json'] }); }
+function styles() {
+  emit({
+    ok: true,
+    schemaVersion: 1,
+    selectionField: 'demandWorkflow.styleProfile.primary.styleId',
+    pagePresentation: 'selected-style-only',
+    changeBehavior: 'create-project-revision-and-rerender',
+    styles: interiorStyleProfiles(),
+  });
+}
+function help() { emit({ ok: true, commands: ['styles --json', 'render --project-dir <dir> --output <dir> --json', 'review --bundle <dir> --input <observations.json> --json'] }); }
 function required(name) { const value = options[name]; if (!value) throw new Error(`--${name} is required`); return value; }
 function emit(value) { process.stdout.write(`${JSON.stringify(value, null, 2)}\n`); }
 function inside(root, target) { const relative = path.relative(root, target); return relative === '' || (!relative.startsWith(`..${path.sep}`) && relative !== '..' && !path.isAbsolute(relative)); }
