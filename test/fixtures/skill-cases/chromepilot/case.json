@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "skill": "chromepilot",
+  "title": "跨平台真实 Chrome 隔离自动化",
+  "prompt": "使用 ChromePilot 在用户已授权的真实 Chrome 会话中复用或创建一个隔离 Tab Group，后台执行读取或代理检查，不抢夺焦点，不泄露会话信息，并在外部写入前确认。",
+  "commands": [
+    "node --test test/chromepilot-skill.test.mjs"
+  ],
+  "artifacts": [
+    { "path": "expected.json", "label": "Portable dependency and browser safety contract" }
+  ],
+  "verifiedAt": "2026-08-02"
+}

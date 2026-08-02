@@ -1,0 +1,4 @@
+interface:
+  display_name: "ChromePilot"
+  short_description: "Control an authorized Chrome session without stealing focus"
+  default_prompt: "Use $chromepilot to inspect or automate an authorized Chrome session in an isolated tab group."

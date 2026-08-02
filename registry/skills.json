@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "version": 12,
-  "updatedAt": "2026-08-01",
+  "version": 13,
+  "updatedAt": "2026-08-02",
   "categories": [
     {
       "id": "research-knowledge",
@@ -148,6 +148,43 @@
       "related": [
         "deep-research",
         "knowledge-capture",
+        "personal-connections"
+      ]
+    },
+    {
+      "name": "chromepilot",
+      "directory": "skills/chromepilot",
+      "category": "publishing-automation",
+      "maturity": "experimental",
+      "risks": [
+        "network-read",
+        "local-write",
+        "credentials",
+        "browser-session",
+        "external-write"
+      ],
+      "security": {
+        "network": "write",
+        "dataClass": "private",
+        "outboundData": "content",
+        "externalWrite": true,
+        "requiresAuthorization": true,
+        "requiresFinalConfirmation": true,
+        "untrustedContent": true
+      },
+      "origin": {
+        "kind": "workspace",
+        "license": "Apache-2.0"
+      },
+      "cli": [
+        "chromepilot"
+      ],
+      "examples": [
+        "test/fixtures/skill-cases/chromepilot/case.json"
+      ],
+      "caseRequired": true,
+      "related": [
+        "social-browser-read",
         "personal-connections"
       ]
     },
@@ -843,6 +880,15 @@
       "entrypoint": "scripts/specialist-workflow.mjs",
       "command": "node scripts/specialist-workflow.mjs <validate|accept|page|init|advance|reopen|sync|status>",
       "description": "Operate the Page-led, revision-safe confirmation workflows shared by all registered specialist Agents."
+    },
+    {
+      "name": "chromepilot",
+      "category": "publishing-automation",
+      "owner": "chromepilot",
+      "kind": "external-cli",
+      "entrypoint": "skills/chromepilot/SKILL.md",
+      "command": "chromepilot --help",
+      "description": "Operate an authorized real Chrome session through the optional external ChromePilot CLI."
     },
     {
       "name": "personal-agent",

@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "skill": "chromepilot",
+  "dependencyOwnership": "external-authorized-distribution",
+  "automaticInstall": false,
+  "platforms": ["darwin", "linux", "win32"],
+  "windowsExecutables": [".exe", ".cmd", ".bat"],
+  "scope": "tab-group",
+  "focusPolicy": "background-only",
+  "externalWriteRequiresFinalConfirmation": true
+}
