@@ -1,8 +1,8 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "renderer": {
     "id": "render-interior-pages",
-    "version": 1,
+    "version": 2,
     "requestSchema": "personal-agent/interior-page-request/v1",
     "outputSchema": "personal-agent/interior-page-bundle/v1"
   },
@@ -40,6 +40,13 @@
       "viewport": "mobile-landscape-native"
     }
   ],
+  "styleInspection": {
+    "required": true,
+    "guide": "style-guide.json",
+    "selectedStyleId": "warm-mineral-walnut",
+    "effectRenderBinding": "same-style-id-required",
+    "correctionSurface": "demandWorkflow.styleProfile.primary"
+  },
   "correctionSurface": "governed-project-data-only",
   "forbiddenSurface": [
     "index.html",
@@ -47,6 +54,6 @@
     "inline CSS",
     "viewer JavaScript"
   ],
-  "next": "Inspect every target, record observations, then run the renderer review command.",
+  "next": "Inspect every target and every style option, record observations, then run the renderer review command.",
   "visualAcceptance": "user"
 }

@@ -235,11 +235,12 @@
     "conceptRenderRecord": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["renderId", "shotId", "evidenceId", "sequence", "status", "promptSha256", "referenceSetSha256"],
+      "required": ["renderId", "shotId", "evidenceId", "styleId", "sequence", "status", "promptSha256", "referenceSetSha256"],
       "properties": {
         "renderId": { "$ref": "#/$defs/id" },
         "shotId": { "$ref": "#/$defs/id" },
         "evidenceId": { "$ref": "#/$defs/id" },
+        "styleId": { "$ref": "#/$defs/id" },
         "sequence": { "type": "integer", "minimum": 1 },
         "status": { "enum": ["candidate", "selected", "rejected", "stale"] },
         "promptSha256": { "$ref": "#/$defs/sha256" },

@@ -9,7 +9,7 @@
     "version": 3,
     "engine": "pascal-v2",
     "layoutProfile": "renovation-booklet",
-    "renderProfile": "professional-archviz-v2",
+    "renderProfile": "professional-archviz-v3",
     "specialistPages": {
       "threeD": {
         "path": "3d/index.html",
@@ -19,18 +19,28 @@
     }
   },
   "visualAcceptance": "user",
+  "style": {
+    "guide": "style-guide.json",
+    "selectedStyleId": "warm-mineral-walnut",
+    "status": "candidate",
+    "effectRenderBinding": "same-style-id-required"
+  },
   "files": {
     "index.html": {
       "bytes": 37261,
       "sha256": "49a5fe64cdf926a4d67f52c3d35d506a7401a579789997e54e376bf254f76cd5"
     },
     "3d/index.html": {
-      "bytes": 2726972,
-      "sha256": "3e337900a5e4688a44e667a1c70e67c5b4ad9070f9c91b9ef9bd9897ba7fbc53"
+      "bytes": 2739386,
+      "sha256": "5eb85ef9fe79dcaadf2959b9275c8c022963d00848810501f7df36659959799d"
     },
     "scene.json": {
-      "bytes": 83623,
-      "sha256": "bfe25571e0c80cd59a74cd276f2f680c90469716dc86bd6290a9dc09ef329a68"
+      "bytes": 94047,
+      "sha256": "f2ab7707a2b478e3a9ecde63e5a4a593177467be967efbe8c159af266ad39525"
+    },
+    "style-guide.json": {
+      "bytes": 9843,
+      "sha256": "eaa98001412573791741bfb0adcef9d664c65ec061fbd37de6cb11779f680dd9"
     },
     "audit.json": {
       "bytes": 2094,
@@ -61,8 +71,8 @@
       "sha256": "0f4526082ef07db8281b1bad14b20177979d1dd085812e0790139cacb696dda2"
     },
     "agent-review.json": {
-      "bytes": 1263,
-      "sha256": "b63032d943a8385c8ba012127c27ad3e622ecbd02201c1e86c08d1d3a4c4a966"
+      "bytes": 1531,
+      "sha256": "c219e088595bd98743a65c55836cf49c5a7f220ef41afbd14fec9255bccce6ad"
     },
     "cover.svg": {
       "bytes": 23265,
@@ -71,7 +81,7 @@
   },
   "renderer": {
     "id": "render-interior-pages",
-    "version": 1,
+    "version": 2,
     "requestSchema": "personal-agent/interior-page-request/v1",
     "outputSchema": "personal-agent/interior-page-bundle/v1"
   },
@@ -89,12 +99,14 @@
       "render-storyboard",
       "pascal-scene-compile",
       "professional-quality-audit",
-      "render-interior-pages-v1",
+      "render-interior-pages-v2",
       "artifact-hash-verify"
     ],
     "seedSha256": "1d5c802d45a28e34aa6981ef7f458e6041040a9f90b8ff150b2f9a0aa6f96093",
-    "workflowEventsSha256": "f28b7a715d1937eaf4decd7878f7b127120ad9218d3020a5ea4d9ec19eec9d1a",
-    "renderPromptSetSha256": "02425c8a153a0fb4117588eca10b39380a2fd6bffb467f443a2bfa28febcbec7",
+    "workflowEventsSha256": "ca0f133d2b4e30dfb9645aed471632d01e5d61e0c7ffc744faa24aefea21d9d7",
+    "renderPromptSetSha256": "1c827f81fa7ea6c4b6ad9e51b74b0a00184757ad290f522c9cd1705e1e91855e",
+    "styleId": "warm-mineral-walnut",
+    "styleGuideSha256": "eaa98001412573791741bfb0adcef9d664c65ec061fbd37de6cb11779f680dd9",
     "evidenceSha256": "23eab735dd2dcd2190264f93b3aad274b08a68b822c4a6f597a377afdc763542",
     "modelBasisSha256": "23eab735dd2dcd2190264f93b3aad274b08a68b822c4a6f597a377afdc763542",
     "annotationSha256": "2a8a7f8486409aee8e0252adb47f5c33c5e7d935b0b24a172bd6dcec579e48d1",
@@ -107,6 +119,8 @@
     "renderSet": [
       {
         "renderId": "render-living-overview",
+        "styleId": "warm-mineral-walnut",
+        "styleGuideSha256": "eaa98001412573791741bfb0adcef9d664c65ec061fbd37de6cb11779f680dd9",
         "generator": "imagegen",
         "sourceImageSha256": "1bc3195b402350049c462c02f8c17c47fdd0d02b963f47094679809ba935d135",
         "deliveryImageSha256": "beb7126786051a10de63c3bb893c98f0eb51d17f4f6f1023574103d490247d6c",
@@ -115,6 +129,8 @@
       },
       {
         "renderId": "render-living-media-wall",
+        "styleId": "warm-mineral-walnut",
+        "styleGuideSha256": "eaa98001412573791741bfb0adcef9d664c65ec061fbd37de6cb11779f680dd9",
         "generator": "imagegen",
         "sourceImageSha256": "5ca715716bfbb41cc7b789be0c203f403d5297199758de41376e4a3c05ef1fc7",
         "deliveryImageSha256": "dc40d844d876c083957fd18e89e8af983e66f4a7041774171314c7a291950a35",
@@ -123,6 +139,8 @@
       },
       {
         "renderId": "render-dining-kitchen",
+        "styleId": "warm-mineral-walnut",
+        "styleGuideSha256": "eaa98001412573791741bfb0adcef9d664c65ec061fbd37de6cb11779f680dd9",
         "generator": "imagegen",
         "sourceImageSha256": "72818576e1f8a7aff72a80b7d326016ad83f828c259f4a5c089ee0b9ecd5421b",
         "deliveryImageSha256": "9a3a8b9306d875556aae69365a4c2096bfaa2757fe9bab0c0957b7e766439895",
@@ -131,6 +149,8 @@
       },
       {
         "renderId": "render-primary-bedroom",
+        "styleId": "warm-mineral-walnut",
+        "styleGuideSha256": "eaa98001412573791741bfb0adcef9d664c65ec061fbd37de6cb11779f680dd9",
         "generator": "imagegen",
         "sourceImageSha256": "b29ae45fbd690e5e0de9c745d9d327970eb029ffc17003011dcd31bccbcdb66a",
         "deliveryImageSha256": "0f4526082ef07db8281b1bad14b20177979d1dd085812e0790139cacb696dda2",
@@ -138,10 +158,10 @@
         "promptSha256": "2f5908a4d11f0ece9a7a569bf12ab714affd9cf906fb9e8b486ba68437c379a2"
       }
     ],
-    "projectSha256": "ed7e06db3b189128940b3c2a35f8b1a88622da5e20a2f7141416b3b8eec22b3a",
+    "projectSha256": "8bcc0fd5ae267f81a18ea40e6f1ef780b1425a11e497ebb4fb0f70a5139fc43a",
     "sceneSha256": "163e8998fdabbe7d3309431edd342795db61a9daa4e0939f7d1ee2be22f0d686",
     "auditSha256": "87352309c5310b5cfc7133e5be02815446a0c00c57ad80166402767faaaa992a",
-    "renderProfile": "professional-archviz-v2",
+    "renderProfile": "professional-archviz-v3",
     "layoutProfile": "renovation-booklet",
     "specialistPages": {
       "threeD": {

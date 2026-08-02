@@ -7,6 +7,7 @@
   --moss: #315f4a;
   --clay: #9a5941;
   --warn: #a97724;
+  --scene-backdrop: #f4f4f1;
   font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
   color: var(--ink);
   background: #f4f4f1;
@@ -14,8 +15,8 @@
 
 * { box-sizing: border-box; }
 html, body, #app { width: 100%; height: 100%; margin: 0; overflow: hidden; }
-body { background: #f4f4f1; overscroll-behavior: none; }
-#app { position: relative; overflow: hidden; background: #f4f4f1; }
+body { background: var(--scene-backdrop); overscroll-behavior: none; }
+#app { position: relative; overflow: hidden; background: var(--scene-backdrop); }
 body[data-mobile-layout="forced-landscape"] #app {
   position: fixed;
   top: 0;
@@ -59,12 +60,12 @@ button:focus-visible, select:focus-visible { outline: 2px solid var(--clay); out
 body[data-viewer-state="loading"] .status i { background: #b68d4c; box-shadow: 0 0 0 5px rgba(182, 141, 76, .13); animation: status-pulse 1.15s ease-in-out infinite; }
 body[data-viewer-state="fallback"] .status i { background: #a76c56; box-shadow: 0 0 0 5px rgba(167, 108, 86, .13); }
 
-.stage { width: 100%; height: 100%; position: relative; background: #f4f4f1; }
+.stage { width: 100%; height: 100%; position: relative; background: var(--scene-backdrop); }
 .presentation-panel { width: 100%; height: 100%; }
 .presentation-panel[hidden] { display: none; }
 .presentation-model { display: block; }
 .viewport { width: 100%; height: 100%; min-width: 0; min-height: 0; position: relative; }
-#scene { width: 100%; height: 100%; display: block; background: radial-gradient(circle at 50% 46%, #fbfbf9 0, #f5f5f2 58%, #eeeeea 100%); touch-action: none; }
+#scene { width: 100%; height: 100%; display: block; background: radial-gradient(circle at 50% 46%, #fbfbf9 0, #f5f5f2 58%, var(--scene-backdrop) 100%); touch-action: none; }
 #scene > div, #scene canvas { width: 100% !important; height: 100% !important; }
 
 #viewer-loading {
@@ -157,6 +158,25 @@ body:not([data-viewer-state="ready"]) .pascal-room-label { display: none !import
 }
 .concept-control.is-single { display: none; }
 .concept-picker { min-height: 28px; max-width: 190px; border: 0; border-radius: 999px; padding: 0 24px 0 9px; background: #fff; color: var(--ink); font-size: 8px; font-weight: 700; }
+.style-control {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + 9px);
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  border: 1px solid rgba(43, 49, 45, .14);
+  border-radius: 999px;
+  padding: 4px 5px 4px 11px;
+  background: rgba(249, 248, 244, .96);
+  box-shadow: 0 8px 20px rgba(35, 40, 35, .11);
+  color: var(--muted);
+  font-size: 8px;
+  white-space: nowrap;
+}
+.style-control::after { content: "已确认"; padding-right: 5px; color: #607569; font-size: 7px; }
+.style-control[data-status="preview"]::after { content: "预览"; color: var(--clay); }
+.style-picker { min-height: 28px; max-width: 126px; border: 0; border-radius: 999px; padding: 0 22px 0 9px; background: #fff; color: var(--ink); font-size: 8px; font-weight: 750; }
 
 #fallback { position: absolute; inset: 0; z-index: 3; display: grid; place-items: center; overflow: auto; padding: 120px 42px 120px; background: radial-gradient(circle at 50% 46%, #fbfbf9 0, #f5f5f2 58%, #eeeeea 100%); }
 #fallback[hidden] { display: none; }
@@ -310,6 +330,7 @@ body[data-labels="hidden"] #scene .pascal-room-label { display: none !important;
   .viewer-tools .tool-label { display: none; }
   .viewer-tools button { min-width: 43px; min-height: 34px; padding: 0 8px; font-size: 8px; }
   .concept-control { right: 0; left: auto; transform: none; }
+  .style-control { right: auto; left: 0; }
   .presentation-switch { bottom: 12px; left: 12px; }
   .presentation-switch button { min-width: 68px; min-height: 34px; font-size: 8px; }
   .render-panel figcaption { top: 92px; right: 16px; }

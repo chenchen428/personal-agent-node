@@ -10,6 +10,7 @@ import { loadInteriorEnginePolicy } from '../skills/interior-design/scripts/engi
 import { calculateOrthographicZoom } from '../skills/interior-design/scripts/pascal-camera-framing.mjs';
 import {
   calculateForcedLandscapeOrbit,
+  calculateForcedLandscapeWheelScale,
   calculatePinchScale,
   mapForcedLandscapeDrag,
   resolveLandscapeCameraInput,
@@ -76,8 +77,8 @@ test('maps portrait-device gestures into the forced-landscape camera axes', () =
   assert.equal(resolveLandscapeCameraInput('forced-landscape'), 'landscape-mapped');
   assert.equal(resolveLandscapeCameraInput('landscape'), 'native');
   assert.equal(resolveLandscapeCameraInput('desktop'), 'native');
-  assert.deepEqual(mapForcedLandscapeDrag(0, 24), { x: 24, y: 0 });
-  assert.deepEqual(mapForcedLandscapeDrag(24, 0), { x: 0, y: -24 });
+  assert.deepEqual(mapForcedLandscapeDrag(0, 24), { x: -24, y: 0 });
+  assert.deepEqual(mapForcedLandscapeDrag(24, 0), { x: 0, y: 24 });
   const orbit = calculateForcedLandscapeOrbit({
     deltaX: 30,
     deltaY: 60,
@@ -85,11 +86,13 @@ test('maps portrait-device gestures into the forced-landscape camera axes', () =
     azimuthSpeed: 1,
     polarSpeed: 0.5,
   });
-  assert.equal(orbit.azimuth, Math.PI * 0.4);
-  assert.equal(orbit.polar, -Math.PI * 0.1);
+  assert.equal(orbit.azimuth, -Math.PI * 0.4);
+  assert.equal(orbit.polar, Math.PI * 0.1);
   assert.equal(calculatePinchScale(100, 120), 1.2);
   assert.equal(calculatePinchScale(0, 120), 1);
   assert.equal(calculatePinchScale(100, 200), 1.35);
+  assert.ok(calculateForcedLandscapeWheelScale(100) > 1);
+  assert.ok(calculateForcedLandscapeWheelScale(-100) < 1);
 });
 
 test('requires Pascal v2 as the only interior-design engine and rejects removed engine paths', () => {

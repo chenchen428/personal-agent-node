@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useThree } from '@react-three/fiber';
 import {
   calculateForcedLandscapeOrbit,
+  calculateForcedLandscapeWheelScale,
   calculatePinchScale,
   resolveLandscapeCameraInput,
 } from './pascal-landscape-gesture.mjs';
@@ -59,6 +60,7 @@ export function useLandscapeCameraInput({ controls, markUserCameraPose }) {
           azimuthSpeed: api.azimuthRotateSpeed,
           polarSpeed: api.polarRotateSpeed,
         });
+        document.body.dataset.lastCameraGesture = `${orbit.azimuth.toFixed(4)},${orbit.polar.toFixed(4)}`;
         void api.rotate(orbit.azimuth, orbit.polar, true);
         return;
       }
@@ -74,7 +76,8 @@ export function useLandscapeCameraInput({ controls, markUserCameraPose }) {
     const wheel = (event) => {
       stopNativeGesture(event);
       markUserCameraPose();
-      const scale = Math.exp(-event.deltaY * 0.0015);
+      const scale = calculateForcedLandscapeWheelScale(event.deltaY);
+      document.body.dataset.lastCameraWheel = `${event.deltaY}:${scale.toFixed(4)}`;
       if (camera.isOrthographicCamera) void api.zoomTo(camera.zoom * scale, true);
       else void api.dollyTo(api.distance / scale, true);
     };

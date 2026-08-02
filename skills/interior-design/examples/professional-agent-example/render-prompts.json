@@ -2,6 +2,7 @@
   "schemaVersion": 1,
   "generator": "imagegen",
   "mode": "built-in-image-generation",
+  "styleId": "warm-mineral-walnut",
   "styleContract": "低对比暖矿物墙面与奶油顶面；深胡桃木中古家具；奶油亚麻与烟草色编织；微量橄榄绿；柔和自然光与暖白间接照明；低装饰密度；克制日式宁静感；细黑金属分隔。避免亮面大理石、冷灰、纯白样板间、繁复造型。",
   "referenceSetSha256": "c7875017e6c76b469c765d909944c0a247a14babb9f5f385d9e58e7f3334682e",
   "renders": [

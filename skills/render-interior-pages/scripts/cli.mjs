@@ -19,7 +19,7 @@ function render() {
   const output = path.resolve(required('output'));
   if (!inside(path.resolve(projectDir, 'derived'), output)) throw new Error('Page output must stay inside the project derived directory');
   const result = renderInteriorPages({ projectDir, context, output, skillRoot: interiorSkillRoot, delivery: loadInteriorDeliveryContract(interiorSkillRoot) });
-  emit({ ok: true, schemaVersion: 1, renderer: result.manifest.renderer, revision: project.revision, output: path.relative(projectDir, output), preview: { primary: 'index.html', specialistPages: { threeD: '3d/index.html' } }, agentReview: result.reviewPlan, totalBytes: result.totalBytes });
+  emit({ ok: true, schemaVersion: 1, renderer: result.manifest.renderer, revision: project.revision, output: path.relative(projectDir, output), preview: { primary: 'index.html', specialistPages: { threeD: '3d/index.html' }, styleGuide: 'style-guide.json', selectedStyleId: result.manifest.style?.selectedStyleId }, agentReview: result.reviewPlan, totalBytes: result.totalBytes });
 }
 function review() { emit(evaluateAgentReview(path.resolve(required('bundle')), JSON.parse(fs.readFileSync(path.resolve(required('input')), 'utf8')))); }
 function help() { emit({ ok: true, commands: ['render --project-dir <dir> --output <dir> --json', 'review --bundle <dir> --input <observations.json> --json'] }); }

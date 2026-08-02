@@ -1,7 +1,8 @@
-export const DELIVERY_DPR_CAP = 1.25;
-export const DELIVERY_DPR_FLOOR = 0.01;
-export const DELIVERY_MAX_RENDER_EDGE = 2_048;
-export const DELIVERY_PIXEL_BUDGET = 1_400_000;
+export const DELIVERY_DPR_CAP = 2;
+export const DELIVERY_DPR_FLOOR = 1;
+export const DELIVERY_BASE_SUPERSAMPLE = 1.25;
+export const DELIVERY_MAX_RENDER_EDGE = 4_096;
+export const DELIVERY_PIXEL_BUDGET = 8_400_000;
 
 export function resolveDeliveryDpr({ width, height, deviceDpr = 1 }) {
   const safeDeviceDpr = Number.isFinite(deviceDpr) && deviceDpr > 0 ? deviceDpr : 1;
@@ -14,6 +15,9 @@ export function resolveDeliveryDpr({ width, height, deviceDpr = 1 }) {
     DELIVERY_MAX_RENDER_EDGE / safeWidth,
     DELIVERY_MAX_RENDER_EDGE / safeHeight,
   );
-  const resolved = Math.min(safeDeviceDpr, DELIVERY_DPR_CAP, budgetDpr, edgeDpr);
-  return Math.max(DELIVERY_DPR_FLOOR, Math.floor(resolved * 100) / 100);
+  const hardLimit = Math.min(DELIVERY_DPR_CAP, budgetDpr, edgeDpr);
+  const requested = Math.max(safeDeviceDpr, DELIVERY_BASE_SUPERSAMPLE);
+  const resolved = Math.min(requested, hardLimit);
+  const boundedFloor = Math.min(DELIVERY_DPR_FLOOR, hardLimit);
+  return Math.max(boundedFloor, Math.floor(resolved * 100) / 100);
 }

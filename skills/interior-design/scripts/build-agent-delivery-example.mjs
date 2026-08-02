@@ -118,6 +118,10 @@ export async function buildAgentDeliveryExample({ check = false } = {}) {
     fs.writeFileSync(path.join(output, 'cover.svg'), renderProjectCoverSvg(selectedConcept(compiled.project)), { mode: 0o600 });
     const manifestPath = path.join(output, 'manifest.json');
     const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
+    const styleGuidePath = path.join(output, 'style-guide.json');
+    const styleGuide = JSON.parse(fs.readFileSync(styleGuidePath, 'utf8'));
+    const styleGuideSha256 = fileRecord(styleGuidePath).sha256;
+    if (promptSet.styleId !== styleGuide.selection.selectedStyleId) throw new Error('effect-render prompts do not match the selected 3D style');
     manifest.source = {
       kind: 'native-governed-pascal-v2-project',
       pipeline: [
@@ -127,12 +131,14 @@ export async function buildAgentDeliveryExample({ check = false } = {}) {
         'render-storyboard',
         'pascal-scene-compile',
         'professional-quality-audit',
-        'render-interior-pages-v1',
+        'render-interior-pages-v2',
         'artifact-hash-verify',
       ],
       seedSha256: sha256(seedBytes),
       workflowEventsSha256: sha256(workflowEventsBytes),
       renderPromptSetSha256: sha256(promptSetBytes),
+      styleId: styleGuide.selection.selectedStyleId,
+      styleGuideSha256,
       evidenceSha256: sha256(sourceBytes),
       modelBasisSha256: compiled.scene.modelBasis.sha256,
       annotationSha256: sha256(annotationBytes),
@@ -144,6 +150,8 @@ export async function buildAgentDeliveryExample({ check = false } = {}) {
       },
       renderSet: promptSet.renders.map((render) => ({
         renderId: render.renderId,
+        styleId: promptSet.styleId,
+        styleGuideSha256,
         generator: promptSet.generator,
         sourceImageSha256: render.imageSha256,
         deliveryImageSha256: compiled.project.evidence.find((entry) => entry.evidenceId === `evidence-${render.renderId}`)?.contentHash,
@@ -153,7 +161,7 @@ export async function buildAgentDeliveryExample({ check = false } = {}) {
       projectSha256: sha256(canonicalJson(readProject(projectDir, context).project)),
       sceneSha256: compiled.scene.sceneHash,
       auditSha256: compiled.project.quality.sha256,
-      renderProfile: 'professional-archviz-v2',
+      renderProfile: 'professional-archviz-v3',
       layoutProfile: 'renovation-booklet',
       specialistPages: {
         threeD: { path: '3d/index.html', layoutProfile: 'su-design-classic', engine: 'pascal-v2' },
@@ -200,13 +208,13 @@ export function verifyAgentDeliveryExample(directory = targetRoot) {
     throw new Error('representative interior-designer delivery still carries retired template provenance');
   }
   if (!Array.isArray(manifest.source.pipeline)
-    || manifest.source.pipeline.join('>') !== 'project-v2-seed>demand-workflow-v1>style-calibration>render-storyboard>pascal-scene-compile>professional-quality-audit>render-interior-pages-v1>artifact-hash-verify') {
+    || manifest.source.pipeline.join('>') !== 'project-v2-seed>demand-workflow-v1>style-calibration>render-storyboard>pascal-scene-compile>professional-quality-audit>render-interior-pages-v2>artifact-hash-verify') {
     throw new Error('representative interior-designer delivery pipeline is incomplete');
   }
-  if (manifest.source.renderProfile !== 'professional-archviz-v2') {
+  if (manifest.source.renderProfile !== 'professional-archviz-v3') {
     throw new Error('representative interior-designer delivery professional render profile is missing');
   }
-  if (manifest.renderer?.id !== 'render-interior-pages' || manifest.renderer?.version !== 1 || manifest.agentInspection?.plan !== 'agent-review.json') {
+  if (manifest.renderer?.id !== 'render-interior-pages' || manifest.renderer?.version !== 2 || manifest.agentInspection?.plan !== 'agent-review.json') {
     throw new Error('representative delivery is not owned by the Page renderer capability');
   }
   if (manifest.source.layoutProfile !== 'renovation-booklet'
@@ -216,6 +224,8 @@ export function verifyAgentDeliveryExample(directory = targetRoot) {
   }
   const renders = manifest.source.renderSet;
   if (!Array.isArray(renders) || renders.length < 4 || renders.some((render) => render?.generator !== 'imagegen'
+    || render.styleId !== manifest.source.styleId
+    || render.styleGuideSha256 !== manifest.source.styleGuideSha256
     || !/^[a-f0-9]{64}$/.test(render.sourceImageSha256 || '')
     || !/^[a-f0-9]{64}$/.test(render.deliveryImageSha256 || '')
     || !/^[a-f0-9]{64}$/.test(render.referenceSetSha256 || '')
@@ -296,7 +306,7 @@ export function verifyAgentDeliveryExample(directory = targetRoot) {
     || !threeDHtml.includes('personal-agent-architecture-envelope')
     || !threeDHtml.includes('pascal-room-surface')
     || !threeDHtml.includes('pascal-wall-cap')
-    || !threeDHtml.includes('professional-archviz-v2')
+    || !threeDHtml.includes('professional-archviz-v3')
     || !threeDHtml.includes('data-layout-profile="su-design-classic"')
     || !threeDHtml.includes('pascal-viewer-warmup')
     || !threeDHtml.includes('CameraControls')

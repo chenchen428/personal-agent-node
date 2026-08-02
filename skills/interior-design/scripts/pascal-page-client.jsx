@@ -5,6 +5,7 @@ import { Viewer, useViewer } from '@pascal-app/viewer';
 import { ArchitectureEnvelope } from './pascal-architecture.jsx';
 import { DesignLighting } from './pascal-design-lighting.jsx';
 import { LandscapeViewportBridge } from './pascal-landscape-viewport.jsx';
+import { DeliveryStyleProvider } from './pascal-materials.jsx';
 import { ProjectCamera } from './pascal-project-camera.jsx';
 import { DeliveryRenderBudget } from './pascal-render-budget.jsx';
 import { ProceduralFurniture } from './pascal-furniture.jsx';
@@ -32,15 +33,27 @@ class ViewerBoundary extends Component {
 
 function PascalScene({ payload }) {
   const [highlighted, setHighlighted] = useState(new Set());
+  const [styleId, setStyleId] = useState(payload.styleGuide?.selection?.selectedStyleId || null);
+  const style = payload.styleGuide?.options?.find((entry) => entry.styleId === styleId)
+    || payload.styleGuide?.selected
+    || null;
   useEffect(() => {
-    document.body.dataset.renderProfile = 'professional-archviz-v2';
+    document.body.dataset.renderProfile = 'professional-archviz-v3';
     const handler = (event) => setHighlighted(new Set(event.detail || []));
+    const styleHandler = (event) => setStyleId(event.detail?.styleId || null);
     window.addEventListener('pascal-highlight', handler);
+    window.addEventListener('pascal-style-change', styleHandler);
     return () => {
       delete document.body.dataset.renderProfile;
       window.removeEventListener('pascal-highlight', handler);
+      window.removeEventListener('pascal-style-change', styleHandler);
     };
   }, []);
+  useEffect(() => {
+    if (!style) return;
+    document.body.dataset.activeStyle = style.styleId;
+    document.documentElement.style.setProperty('--scene-backdrop', style.palette?.backdrop || '#f4f4f1');
+  }, [style]);
   return <ViewerBoundary>
     <Viewer
       defaultRender={{ shading: 'rendered', textures: false, colorPreset: 'clay' }}
@@ -66,14 +79,16 @@ function PascalScene({ payload }) {
         window.setTimeout(restoreCamera, 1_800);
       }}
     >
-      <DeliveryRenderBudget />
-      <ViewerLifecycle />
-      <LandscapeViewportBridge />
-      <DesignLighting payload={payload} />
-      <ProjectCamera payload={payload} />
-      <ArchitectureEnvelope payload={payload} />
-      <ProceduralFurniture highlighted={highlighted} items={payload.furniture || []} materials={payload.designQuality?.materials || []} />
-      <SceneLabels payload={payload} />
+      <DeliveryStyleProvider style={style}>
+        <DeliveryRenderBudget />
+        <ViewerLifecycle />
+        <LandscapeViewportBridge />
+        <DesignLighting payload={payload} />
+        <ProjectCamera payload={payload} />
+        <ArchitectureEnvelope payload={payload} />
+        <ProceduralFurniture highlighted={highlighted} items={payload.furniture || []} materials={payload.designQuality?.materials || []} />
+        <SceneLabels payload={payload} />
+      </DeliveryStyleProvider>
     </Viewer>
   </ViewerBoundary>;
 }
@@ -91,6 +106,8 @@ function start() {
       materials: scene.materials || {},
     });
     useScene.getState().setReadOnly(true);
+    const confirmedStyleId = payload.styleGuide?.selection?.selectedStyleId || null;
+    if (confirmedStyleId) document.body.dataset.activeStyle = confirmedStyleId;
     useViewer.setState((state) => ({
       projectId: payload.projectId || null, renderContext: 'viewer',
       shading: 'rendered', shadingByContext: { ...state.shadingByContext, viewer: 'rendered' },
@@ -136,6 +153,22 @@ function start() {
         useViewer.getState().setSelection({ selectedIds });
         window.dispatchEvent(new CustomEvent('pascal-highlight', { detail: selectedIds }));
         return true;
+      },
+      setStyleProfile(styleId) {
+        if (!payload.styleGuide?.options?.some((entry) => entry.styleId === styleId)) return false;
+        document.body.dataset.activeStyle = styleId;
+        document.body.dataset.styleStatus = styleId === confirmedStyleId ? 'confirmed' : 'preview';
+        window.dispatchEvent(new CustomEvent('pascal-style-change', { detail: { styleId } }));
+        return true;
+      },
+      getStyleState() {
+        const selectedStyleId = document.body.dataset.activeStyle || confirmedStyleId;
+        return {
+          selectedStyleId,
+          confirmedStyleId,
+          status: selectedStyleId === confirmedStyleId ? 'confirmed' : 'preview',
+          styleGuide: '../style-guide.json',
+        };
       },
     };
     createRoot(target).render(<PascalScene payload={payload} />);

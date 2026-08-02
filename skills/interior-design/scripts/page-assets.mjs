@@ -28,7 +28,7 @@ export function loadInteriorDeliveryContract(skillRoot) {
   if (contract.delivery?.layoutProfile !== 'renovation-booklet'
     || contract.delivery?.specialistPages?.threeD?.path !== '3d/index.html'
     || contract.delivery?.specialistPages?.threeD?.layoutProfile !== 'su-design-classic'
-    || contract.delivery?.renderProfile !== 'professional-archviz-v2') {
+    || contract.delivery?.renderProfile !== 'professional-archviz-v3') {
     throw new Error(`${DELIVERY_ID} is missing its approved booklet or specialist Page profiles`);
   }
   return contract;

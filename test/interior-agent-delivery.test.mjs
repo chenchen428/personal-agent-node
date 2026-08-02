@@ -93,19 +93,19 @@ test("mobile portrait is forced into the landscape canvas without rotating narro
 });
 
 test("Pascal delivery DPR follows a bounded pixel budget as the page grows", () => {
-  assert.equal(DELIVERY_PIXEL_BUDGET, 1_400_000);
-  assert.equal(DELIVERY_MAX_RENDER_EDGE, 2_048);
-  assert.equal(resolveDeliveryDpr({ width: 640, height: 400, deviceDpr: 2 }), 1.25);
-  assert.equal(resolveDeliveryDpr({ width: 1280, height: 720, deviceDpr: 1.5 }), 1.23);
-  assert.equal(resolveDeliveryDpr({ width: 1920, height: 1080, deviceDpr: 2 }), 0.82);
-  assert.equal(resolveDeliveryDpr({ width: 2560, height: 1440, deviceDpr: 2 }), 0.61);
-  assert.equal(resolveDeliveryDpr({ width: 3840, height: 2160, deviceDpr: 2 }), 0.41);
-  assert.equal(resolveDeliveryDpr({ width: 5000, height: 200, deviceDpr: 2 }), 0.4);
+  assert.equal(DELIVERY_PIXEL_BUDGET, 8_400_000);
+  assert.equal(DELIVERY_MAX_RENDER_EDGE, 4_096);
+  assert.equal(resolveDeliveryDpr({ width: 640, height: 400, deviceDpr: 2 }), 2);
+  assert.equal(resolveDeliveryDpr({ width: 1280, height: 720, deviceDpr: 1.5 }), 1.5);
+  assert.equal(resolveDeliveryDpr({ width: 1920, height: 1080, deviceDpr: 2 }), 2);
+  assert.equal(resolveDeliveryDpr({ width: 2560, height: 1440, deviceDpr: 2 }), 1.5);
+  assert.equal(resolveDeliveryDpr({ width: 3840, height: 2160, deviceDpr: 2 }), 1);
+  assert.equal(resolveDeliveryDpr({ width: 5000, height: 200, deviceDpr: 2 }), 0.8192);
   assert.equal(resolveDeliveryDpr({ width: Number.NaN, height: 720, deviceDpr: 2 }), null);
   assert.equal(resolveDeliveryDpr({ width: 0, height: 720, deviceDpr: 2 }), null);
   assert.equal(resolveDeliveryDpr({ width: -1, height: 720, deviceDpr: 2 }), null);
   assert.equal(resolveDeliveryDpr({ width: Number.POSITIVE_INFINITY, height: 720, deviceDpr: 2 }), null);
-  assert.equal(resolveDeliveryDpr({ width: 1280, height: 720, deviceDpr: 0 }), 1);
+  assert.equal(resolveDeliveryDpr({ width: 1280, height: 720, deviceDpr: 0 }), 1.25);
   for (const [width, height] of [[1280, 720], [1920, 1080], [2560, 1440], [3840, 2160]]) {
     const dpr = resolveDeliveryDpr({ width, height, deviceDpr: 2 });
     assert.ok(width * height * dpr * dpr <= DELIVERY_PIXEL_BUDGET);
@@ -126,12 +126,12 @@ test("interior-designer owns one representative delivery contract without a temp
     layoutProfile: "su-design-classic",
     engine: "pascal-v2",
   });
-  assert.equal(contract.delivery.renderProfile, "professional-archviz-v2");
+  assert.equal(contract.delivery.renderProfile, "professional-archviz-v3");
   assert.match(contract.delivery.generator, /render-interior-pages\/scripts\/cli\.mjs render --project-dir/);
   assert.doesNotMatch(contract.delivery.generator, /--template/);
   assert.deepEqual(contract.delivery.renderer, {
     id: "render-interior-pages",
-    version: 1,
+    version: 2,
     requestSchema: "personal-agent/interior-page-request/v1",
     outputSchema: "personal-agent/interior-page-bundle/v1",
   });
@@ -149,18 +149,20 @@ test("interior-designer owns one representative delivery contract without a temp
 test("the renderer closes the Agent review loop without granting visual acceptance", () => {
   const plan = JSON.parse(read("core/app/public/assets/agents/interior-designer/featured/agent-review.json"));
   const observations = {
-    schemaVersion: 1,
-    rendererVersion: 1,
+    schemaVersion: 2,
+    rendererVersion: 2,
     revision: plan.revision,
     targets: REVIEW_TARGETS.map(({ id }) => ({ id, status: "pass", observations: ["Rendered Page inspected"] })),
+    style: { selectedStyleId: plan.styleInspection.selectedStyleId, effectRenderBindingReady: true, observations: ["3D and effect-render style binding inspected"] },
   };
   assert.deepEqual(evaluateAgentReview(artifactRoot, observations), {
     ok: true,
-    schemaVersion: 1,
+    schemaVersion: 2,
     renderer: plan.renderer,
     revision: plan.revision,
     decision: "ready-for-user-review",
     blockingTargets: [],
+    style: { selectedStyleId: plan.styleInspection.selectedStyleId, guide: "style-guide.json", effectRenderBindingReady: true, feedbackAction: "revise-style-profile-and-rerender" },
     visualAcceptance: "user",
   });
   observations.targets[3] = { ...observations.targets[3], status: "needs-change" };
@@ -186,14 +188,14 @@ test("the representative delivery is reproducible, self-contained, and all decla
     version: 3,
     engine: "pascal-v2",
     layoutProfile: "renovation-booklet",
-    renderProfile: "professional-archviz-v2",
+    renderProfile: "professional-archviz-v3",
     specialistPages: {
       threeD: { path: "3d/index.html", layoutProfile: "su-design-classic", engine: "pascal-v2" },
     },
   });
   assert.equal(manifest.visualAcceptance, "user");
   assert.equal(manifest.source.kind, "native-governed-pascal-v2-project");
-  assert.equal(manifest.source.renderProfile, "professional-archviz-v2");
+  assert.equal(manifest.source.renderProfile, "professional-archviz-v3");
   assert.equal(manifest.source.demandWorkflow.stage, "delivered");
   assert.equal(manifest.source.demandWorkflow.transitionCount, 7);
   assert.equal(manifest.source.renderSet.length, 4);
@@ -204,6 +206,8 @@ test("the representative delivery is reproducible, self-contained, and all decla
   assert.ok(Object.keys(manifest.files).includes("media/render-living-overview.webp"));
   assert.ok(Object.keys(manifest.files).includes("media/render-primary-bedroom.webp"));
   assert.ok(Object.keys(manifest.files).includes("3d/index.html"));
+  assert.ok(Object.keys(manifest.files).includes("style-guide.json"));
+  assert.ok(manifest.source.renderSet.every((entry) => entry.styleId === manifest.source.styleId));
   for (const [name, expected] of Object.entries(manifest.files)) {
     const value = fs.readFileSync(path.join(artifactRoot, name));
     assert.equal(value.length, expected.bytes, name);
@@ -258,7 +262,8 @@ test("the representative delivery preserves the governed Pascal v2 interaction a
   assert.doesNotMatch(threeDHtml, /data-camera-shot/);
   assert.match(threeDHtml, /pascal-room-label/);
   assert.match(threeDHtml, /pascal-highlight/);
-  assert.match(threeDHtml, /professional-archviz-v2/);
+  assert.match(threeDHtml, /professional-archviz-v3/);
+  assert.match(threeDHtml, /data-style-profile/);
   assert.match(threeDHtml, /pascal-viewer-warmup/);
   assert.match(cover, /data-cover-item=/);
   assert.doesNotMatch(`${html}\n${threeDHtml}`, /<(?:script|img|link|iframe)\b[^>]*(?:src|href)=["']https?:/i);

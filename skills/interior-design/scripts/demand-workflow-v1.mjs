@@ -98,7 +98,7 @@ export function validateDemandWorkflow(workflow, { requirementIds = new Set(), e
 
   validateStyleProfile(workflow.styleProfile, errors);
   validateStoryboard(workflow.renderStoryboard, requirementIds, errors);
-  validateRenderSet(workflow.renderSet, workflow.renderStoryboard, evidenceIds, errors);
+  validateRenderSet(workflow.renderSet, workflow.renderStoryboard, evidenceIds, workflow.styleProfile?.primary?.styleId, errors);
   if (stageIndex >= DEMAND_WORKFLOW_STAGES.indexOf('render-storyboard') && workflow.styleProfile?.status !== 'confirmed') errors.push('demandWorkflow requires a confirmed style profile before render-storyboard');
   if (stageIndex >= DEMAND_WORKFLOW_STAGES.indexOf('render-review')) {
     const activeShots = array(workflow.renderStoryboard).filter((entry) => entry.status !== 'stale');
@@ -177,7 +177,7 @@ function validateStoryboard(storyboardInput, requirementIds, errors) {
   }
 }
 
-function validateRenderSet(renderSetInput, storyboardInput, evidenceIds, errors) {
+function validateRenderSet(renderSetInput, storyboardInput, evidenceIds, selectedStyleId, errors) {
   const renderSet = array(renderSetInput);
   const shotIds = new Set(array(storyboardInput).map((entry) => entry?.shotId));
   unique(renderSet.map((entry) => entry?.renderId), 'demandWorkflow render IDs', errors);
@@ -186,6 +186,8 @@ function validateRenderSet(renderSetInput, storyboardInput, evidenceIds, errors)
     if (!object(render)) { errors.push('demandWorkflow render must be an object'); continue; }
     requiredText(render.renderId, 'demandWorkflow renderId', errors);
     requiredText(render.evidenceId, `demandWorkflow render ${render.renderId}: evidenceId`, errors);
+    requiredText(render.styleId, `demandWorkflow render ${render.renderId}: styleId`, errors);
+    if (selectedStyleId && render.styleId !== selectedStyleId) errors.push(`demandWorkflow render ${render.renderId}: styleId must match the confirmed style profile`);
     if (!shotIds.has(render.shotId)) errors.push(`demandWorkflow render ${render.renderId}: shotId does not resolve`);
     if (evidenceIds.size && !evidenceIds.has(render.evidenceId)) errors.push(`demandWorkflow render ${render.renderId}: evidenceId does not resolve`);
     if (!Number.isInteger(render.sequence) || render.sequence < 1) errors.push(`demandWorkflow render ${render.renderId}: sequence is invalid`);

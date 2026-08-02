@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { createContext, useContext, useMemo } from 'react';
 import {
   CanvasTexture,
   Color,
@@ -7,6 +7,15 @@ import {
 } from 'three';
 
 const TEXTURE_CACHE = new Map();
+const DeliveryStyleContext = createContext(null);
+
+export function DeliveryStyleProvider({ children, style }) {
+  return <DeliveryStyleContext.Provider value={style}>{children}</DeliveryStyleContext.Provider>;
+}
+
+export function useDeliveryStyle() {
+  return useContext(DeliveryStyleContext);
+}
 
 export function SurfaceFinish({
   color,
@@ -15,8 +24,9 @@ export function SurfaceFinish({
   variant = 'object',
   transparent = false,
 }) {
-  const baseColor = color || profile?.baseColor || '#d8c9b6';
+  const style = useDeliveryStyle();
   const category = profile?.category || inferCategory(variant);
+  const baseColor = styledSurfaceColor(style, category, variant, color || profile?.baseColor || '#d8c9b6');
   const map = useMemo(
     () => surfaceTexture(baseColor, category, variant),
     [baseColor, category, variant],
@@ -36,11 +46,13 @@ export function SurfaceFinish({
 }
 
 export function AccentFinish({ color, emissive = false, metal = false }) {
+  const style = useDeliveryStyle();
+  const resolvedColor = styledAccentColor(style, color, metal);
   return <meshPhysicalMaterial
     clearcoat={metal ? 0.32 : 0.04}
     clearcoatRoughness={0.42}
-    color={color}
-    emissive={emissive ? color : '#000000'}
+    color={resolvedColor}
+    emissive={emissive ? resolvedColor : '#000000'}
     emissiveIntensity={emissive ? 0.42 : 0}
     metalness={metal ? 0.78 : 0.02}
     roughness={metal ? 0.28 : 0.72}
@@ -52,8 +64,8 @@ function surfaceTexture(color, category, variant) {
   const key = `${color}:${category}:${variant}`;
   if (TEXTURE_CACHE.has(key)) return TEXTURE_CACHE.get(key);
   const canvas = document.createElement('canvas');
-  canvas.width = 192;
-  canvas.height = 192;
+  canvas.width = 384;
+  canvas.height = 384;
   const context = canvas.getContext('2d');
   const base = new Color(color);
   context.fillStyle = `#${base.getHexString()}`;
@@ -68,26 +80,27 @@ function surfaceTexture(color, category, variant) {
   texture.wrapS = RepeatWrapping;
   texture.wrapT = RepeatWrapping;
   texture.repeat.set(category === 'fabric' ? 5 : 3, category === 'fabric' ? 5 : 3);
-  texture.anisotropy = 4;
+  texture.anisotropy = 8;
   texture.needsUpdate = true;
   TEXTURE_CACHE.set(key, texture);
   return texture;
 }
 
 function drawWood(context, base) {
+  const size = context.canvas.width;
   const light = tint(base, 0.11);
   const dark = tint(base, -0.12);
-  for (let y = 0; y < 192; y += 32) {
-    context.fillStyle = y % 64 ? light : `#${base.getHexString()}`;
-    context.fillRect(0, y, 192, 31);
+  for (let y = 0; y < size; y += 48) {
+    context.fillStyle = y % 96 ? light : `#${base.getHexString()}`;
+    context.fillRect(0, y, size, 47);
     context.strokeStyle = dark;
     context.globalAlpha = 0.34;
-    context.strokeRect(0, y, 192, 32);
+    context.strokeRect(0, y, size, 48);
     context.globalAlpha = 0.16;
     for (let line = 0; line < 4; line += 1) {
       context.beginPath();
-      context.moveTo(0, y + 5 + line * 6);
-      context.bezierCurveTo(52, y + line * 6, 122, y + 12 + line * 5, 192, y + 4 + line * 6);
+      context.moveTo(0, y + 7 + line * 9);
+      context.bezierCurveTo(size * .27, y + line * 9, size * .64, y + 18 + line * 7, size, y + 6 + line * 9);
       context.stroke();
     }
   }
@@ -95,15 +108,16 @@ function drawWood(context, base) {
 }
 
 function drawStone(context, base) {
+  const size = context.canvas.width;
   context.strokeStyle = tint(base, -0.15);
   context.globalAlpha = 0.26;
-  for (let value = 0; value <= 192; value += 64) {
-    context.beginPath(); context.moveTo(value, 0); context.lineTo(value, 192); context.stroke();
-    context.beginPath(); context.moveTo(0, value); context.lineTo(192, value); context.stroke();
+  for (let value = 0; value <= size; value += 96) {
+    context.beginPath(); context.moveTo(value, 0); context.lineTo(value, size); context.stroke();
+    context.beginPath(); context.moveTo(0, value); context.lineTo(size, value); context.stroke();
   }
-  for (let index = 0; index < 96; index += 1) {
-    const x = (index * 47) % 191;
-    const y = (index * 83) % 191;
+  for (let index = 0; index < 192; index += 1) {
+    const x = (index * 47) % (size - 1);
+    const y = (index * 83) % (size - 1);
     context.fillStyle = index % 3 ? tint(base, 0.15) : tint(base, -0.14);
     context.globalAlpha = 0.18;
     context.fillRect(x, y, index % 4 === 0 ? 2 : 1, 1);
@@ -112,29 +126,32 @@ function drawStone(context, base) {
 }
 
 function drawFabric(context, base) {
+  const size = context.canvas.width;
   context.strokeStyle = tint(base, -0.18);
   context.globalAlpha = 0.13;
-  for (let value = 0; value < 192; value += 6) {
-    context.beginPath(); context.moveTo(value, 0); context.lineTo(value, 192); context.stroke();
-    context.beginPath(); context.moveTo(0, value); context.lineTo(192, value); context.stroke();
+  for (let value = 0; value < size; value += 8) {
+    context.beginPath(); context.moveTo(value, 0); context.lineTo(value, size); context.stroke();
+    context.beginPath(); context.moveTo(0, value); context.lineTo(size, value); context.stroke();
   }
   context.globalAlpha = 1;
 }
 
 function drawMetal(context, base) {
-  const gradient = context.createLinearGradient(0, 0, 192, 0);
+  const size = context.canvas.width;
+  const gradient = context.createLinearGradient(0, 0, size, 0);
   gradient.addColorStop(0, tint(base, -0.12));
   gradient.addColorStop(0.48, tint(base, 0.16));
   gradient.addColorStop(1, tint(base, -0.08));
   context.fillStyle = gradient;
-  context.fillRect(0, 0, 192, 192);
+  context.fillRect(0, 0, size, size);
 }
 
 function drawPlaster(context, base) {
-  for (let index = 0; index < 120; index += 1) {
+  const size = context.canvas.width;
+  for (let index = 0; index < 240; index += 1) {
     context.fillStyle = index % 2 ? tint(base, 0.08) : tint(base, -0.07);
     context.globalAlpha = 0.08;
-    context.fillRect((index * 61) % 191, (index * 37) % 191, 1, 1);
+    context.fillRect((index * 61) % (size - 1), (index * 37) % (size - 1), 1, 1);
   }
   context.globalAlpha = 1;
 }
@@ -160,4 +177,28 @@ function defaultRoughness(category) {
   if (category === 'wood') return 0.58;
   if (category === 'fabric') return 0.9;
   return 0.78;
+}
+
+function styledSurfaceColor(style, category, variant, fallback) {
+  const palette = style?.palette;
+  if (!palette) return fallback;
+  if (/plant/.test(variant)) return palette.plant;
+  if (/throw|pillow|accent/.test(variant)) return palette.accent;
+  if (category === 'fabric') return palette.fabric;
+  if (category === 'metal') return palette.metal;
+  if (/floor/.test(variant)) return palette.floor;
+  if (/frame|headboard|media|dark/.test(variant)) return palette.darkWood;
+  if (category === 'wood' || /cabinet|table|joinery/.test(variant)) return palette.wood;
+  if (category === 'stone' || /bath|kitchen|laundry|balcony/.test(variant)) return palette.stone;
+  return palette.plaster;
+}
+
+function styledAccentColor(style, fallback, metal) {
+  const palette = style?.palette;
+  if (!palette) return fallback;
+  if (metal) return palette.metal;
+  const normalized = String(fallback || '').toLowerCase();
+  if (['#30453b', '#567c68', '#4b7260'].includes(normalized)) return palette.accent;
+  if (['#2b302d', '#252a27', '#30352f'].includes(normalized)) return palette.darkWood;
+  return fallback;
 }

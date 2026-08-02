@@ -5,8 +5,8 @@ export function resolveLandscapeCameraInput(mobileLayout) {
 }
 
 export function mapForcedLandscapeDrag(deltaX, deltaY) {
-  const x = Number(deltaY) || 0;
-  const y = -(Number(deltaX) || 0);
+  const x = -(Number(deltaY) || 0);
+  const y = Number(deltaX) || 0;
   return {
     x: Object.is(x, -0) ? 0 : x,
     y: Object.is(y, -0) ? 0 : y,
@@ -33,4 +33,9 @@ export function calculatePinchScale(previousDistance, currentDistance) {
   const current = Number(currentDistance) || 0;
   if (!(previous > 0 && current > 0)) return 1;
   return Math.min(1.35, Math.max(0.74, current / previous));
+}
+
+export function calculateForcedLandscapeWheelScale(deltaY) {
+  const delta = Number(deltaY) || 0;
+  return Math.min(1.35, Math.max(0.74, Math.exp(delta * 0.0015)));
 }
