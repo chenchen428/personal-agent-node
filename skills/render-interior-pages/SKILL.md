@@ -1,47 +1,25 @@
 ---
 name: render-interior-pages
-description: Deterministically render governed interior-design project data into a responsive renovation booklet and a separate Pascal 3D Page, then return automatic checks and a required Agent inspection loop. Use when the interior-designer needs to create, preview, inspect, revise, or regenerate 装修设计 Pages; never use it to author arbitrary HTML, CSS, or JavaScript.
+description: Deterministically render an interior-workspace V5 project into an owner-facing booklet, six discipline-specific SVG drawings, editable semantic Three.js 3D, panorama review, and a gated krpano tour entry. Use when interior-designer creates, inspects, revises, or regenerates shareable 装修方案 Pages；不要用它制作任意网页。
 ---
 
-# Render Interior Pages
+# 装修工作区 Page 渲染 V5
 
-Treat this Skill as the only Page renderer for `interior-designer`. The design Agent owns project facts, scene data, materials, views, copy, and revision decisions. This renderer owns layouts, responsive behavior, 3D controls, offline packaging, validation, and upgrade compatibility.
+只从已通过概念质量门的 `project.json`、`geometry.json` 和 `artifact-workflow.json` 渲染。阅读 [contract.md](references/contract.md)，然后运行：
 
-## Render
+`node skills/render-interior-pages/scripts/cli.mjs render --project-dir <项目工作区> --json`
 
-Read [contract.md](references/contract.md), then render from the current quality-gated project:
+输出固定为 `<项目工作区>/pages/`：
 
-First list the renderer-owned style catalog when a direction has not yet been confirmed:
+- `index.html`：业主设计册和默认入口。
+- `assets/drawings/`：平面、天花灯具、开关、插座、给排水、柜体六类独立 SVG。
+- `3d/index.html`：带门窗、家具柜体、灯具、相机节点和键盘漫游的语义草图。
+- `panorama-review/index.html`：通过本地 360° 球面查看器逐视角展示相机、空间一致性检查与 Imagegen 实景全景确认状态；内部 Blender 控制图和提示词包不向用户展示。
+- `tour/index.html`：未解锁时解释门禁；全部全景确认后由 krpano 组装器替换。
+- `manifest.json` 与 `agent-review.json`：当前 revision、哈希和检查目标。
 
-`node skills/render-interior-pages/scripts/cli.mjs styles --json`
+观察结果使用当前 revision 与 renderer version 5：
 
-The Agent selects one `styleId`, records it at `demandWorkflow.styleProfile.primary.styleId`, and creates a governed project revision before rendering. Different user-requested styles are separate revisions and separate immutable Page outputs, not states inside one delivered Page.
+`node skills/render-interior-pages/scripts/cli.mjs review --bundle <项目工作区>/pages --input <observations.json> --json`
 
-`node skills/render-interior-pages/scripts/cli.mjs render --project-dir <project-dir> --output <project-dir>/derived/page --json`
-
-Do not write or patch `index.html`, `3d/index.html`, CSS, viewer JavaScript, or manifest fields. If output is wrong, change the governed project data or scene and render a new revision.
-
-The renderer must return a primary booklet, a separate `3d/index.html`, `style-guide.json`, assets, exact hashes, automatic diagnostics, and `agent-review.json`. Unsupported contract majors and automatic blockers fail closed.
-
-The primary booklet owns requirements, project narrative, materials, process, and professional boundaries. The separate 3D Page is a focused model viewer only: identity, model canvas, loading/error state, navigation back to the booklet, and model-view controls. Never duplicate requirements or booklet explanation sections inside the 3D Page.
-
-## Inspect and iterate
-
-After every render, read `agent-review.json` and inspect every required target: booklet desktop, booklet mobile, 3D desktop, 3D mobile portrait forced into the landscape canvas, and native mobile landscape. Use the returned relative preview entries or the authenticated same-origin publication; never invent a loopback or public URL.
-
-Read `style-guide.json` and verify that its single selected `styleId` drives the rendered 3D materials, lighting, and soft furnishings and is the same `styleId` used by every later effect-render prompt. The delivered Page exposes no style selector or client-side style-switch API. Style feedback must update `demandWorkflow.styleProfile.primary`, stale prior renders, compile a new project revision, rerender the Page, and then regenerate effect renders.
-
-Record observations using [agent-review-v2.schema.json](references/agent-review-v2.schema.json), including the required style binding review, then evaluate them:
-
-`node skills/render-interior-pages/scripts/cli.mjs review --bundle <page-dir> --input <observations.json> --json`
-
-If any target needs change, revise project data and rerender. Do not bypass the loop by editing generated Page code. A successful Agent review means only that the result is ready for user review; `visualAcceptance` remains `user`.
-
-## Boundaries
-
-- Keep the renderer offline and deterministic. Do not fetch remote assets or execute evidence markup.
-- Preserve the approved `renovation-booklet`, `su-design-classic`, Pascal v2, forced-mobile-landscape, true-landscape gesture, CSP, privacy, and professional-boundary contracts.
-- Keep the forced-landscape pointer transform as the inverse of the 90-degree visual transform; native landscape must keep native input coordinates. Verify vertical drag, horizontal drag, pinch/zoom, wheel, and reset in both modes.
-- Keep requirements and explanatory narrative in the booklet; keep the specialist 3D Page free of requirement, material, process, and delivery-description sections.
-- Keep renderer upgrades backward-compatible within the same request-schema major. Pin the renderer version in the manifest and regenerate from source data to receive compatible upgrades.
-- Publish the complete immutable bundle only after automatic checks and Agent review are ready. User visual and interaction acceptance remains the final gate.
+问题修改对应过程产物并依赖失效，不直接修改生成的 HTML、CSS 或 viewer bundle。Agent 自检通过只表示可交给用户检查；视觉与交互最终验收归用户。

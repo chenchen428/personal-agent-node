@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 5,
+  "source": "skills/interior-design/scripts/viewer-entry.mjs",
+  "output": "core/agent/public/assets/interior-workspace/workspace-viewer.bundle.js",
+  "bytes": 593685,
+  "sha256": "1d00535926c250a0e7cedab358a7dbf0b08bde6166049e5634dd95d68eff1019",
+  "features": [
+    "opening-aware-walls",
+    "open-door-leaves-and-handles",
+    "window-frames-and-glass",
+    "semantic-furniture",
+    "panorama-node-navigation",
+    "pointer-lock-and-keyboard-walkthrough",
+    "ceiling-zone-heights",
+    "ceiling-toggle"
+  ],
+  "dependencies": {
+    "three": "0.185.0",
+    "esbuild": "0.28.1"
+  }
+}

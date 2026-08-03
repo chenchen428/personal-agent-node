@@ -1,14 +1,11 @@
 {
   "schemaVersion": 1,
-  "id": "interior-c-layout-delivery",
+  "id": "interior-workspace-v5",
   "source": "product-example",
   "kind": "interactive-page",
-  "title": "C 户型空间设计交付",
-  "summary": "以主体装修设计册汇总户型证据、空间策略、效果图、材料与预算范围、过程确认和专业边界，并关联独立 3D Page 的脱敏示例。",
+  "title": "朝光三居装修设计工作区",
+  "summary": "面向业主说明空间方案、六类图纸、语义 3D、逐视角全景、最终 krpano、预算与待确认事项。",
   "sanitized": true,
   "verified": true,
-  "presentation": {
-    "devices": ["desktop", "mobile-landscape"],
-    "primaryView": "desktop"
-  }
+  "presentation": { "devices": ["desktop", "mobile", "mobile-landscape"], "primaryView": "desktop" }
 }

@@ -1,9 +1,9 @@
 {
   "schemaVersion": 1,
   "skill": "render-interior-pages",
-  "title": "Deterministic interior Page renderer and Agent review loop",
-  "prompt": "Render the governed representative interior project through $render-interior-pages, require all five Agent inspection targets, reject generated Page code edits, and leave final visual acceptance to the user.",
+  "title": "Deterministic interior workspace Page renderer",
+  "prompt": "Render the governed V5 representative project through $render-interior-pages, organize the booklet for the owner, provide six discipline-specific downloadable SVG drawings, editable semantic Web 3D, one-view panorama review, a gated krpano entry, no professional-file or internal-data downloads, and leave final visual acceptance to the user.",
   "commands": ["npm run interior:verify-agent-delivery"],
-  "artifacts": [{ "path": "acceptance.md", "label": "Interior Page renderer acceptance" }],
+  "artifacts": [{ "path": "acceptance.md", "label": "Interior workspace Page renderer acceptance" }],
   "verifiedAt": "2026-08-02"
 }

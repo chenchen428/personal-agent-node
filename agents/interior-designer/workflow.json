@@ -1,125 +1,99 @@
 {
   "schemaVersion": 2,
-  "id": "interior-design-workflow",
+  "id": "interior-design-v5-workflow",
   "agentId": "interior-designer",
-  "version": 4,
-  "goal": "通过分级事实状态、文字需求、独立专业 Page 和设计册式主体交付确认，收敛并交付用户认可的前置设计稿。",
-  "progressPage": {
-    "required": true,
-    "visibility": "private",
-    "mobileFirst": true,
-    "refreshPolicy": "every-transition",
-    "folderPattern": "workflow-{agentId}-{projectKey}"
-  },
+  "version": 7,
+  "goal": "把装修资料和生活需求收敛为可理解、可传播、可逐阶段修改确认的设计工作区，并以经确认的全景节点组装 krpano 最终漫游。",
+  "progressPage": { "required": true, "visibility": "private", "mobileFirst": true, "refreshPolicy": "every-transition", "folderPattern": "workflow-{agentId}-{projectKey}" },
   "interaction": {
     "maxQuestionsPerTurn": 3,
     "confirmationPolicy": "surface-aware-required",
     "revisionPolicy": "optimistic",
     "feedbackPolicy": "reopen-earliest-affected-stage",
-    "recommendedCheckpoint": {
-      "authorizationFact": "recommended-mode-authorized",
-      "stages": ["floorplan-adjustment", "three-d-design-review"],
-      "next": "render-style-sample",
-      "requiredArtifacts": ["three-d-design-page"],
-      "reviewArtifactKind": "three-d-design-page",
-      "confirmationPrompt": "请在三维设计 Page 中同时核对户型调整、家具、材质和细节；确认后才进入效果图样张。"
-    }
+    "recommendedCheckpoint": null
   },
   "stages": [
     {
-      "id": "initial-requirements",
-      "title": "初步需求",
-      "purpose": "用简明文字确认居住成员、生活方式、功能优先级、预算和设计边界，并登记事实状态与排除项。",
+      "id": "project-intake",
+      "title": "项目输入",
+      "purpose": "确认家庭、生活方式、预算、资料用途、排除项和待复尺边界。",
       "review": { "surface": "text", "artifactKind": null },
-      "requiredFacts": ["project-scope", "household", "functional-priorities", "budget-boundary", "recommended-mode-authorized", "fact-status-ledger-complete", "scope-exclusions-recorded"],
-      "factRules": [
-        { "key": "fact-status-ledger-complete", "operator": "equals", "value": true },
-        { "key": "scope-exclusions-recorded", "operator": "equals", "value": true }
-      ],
+      "requiredFacts": ["brief-complete", "evidence-classified", "prior-design-answer-excluded", "scope-exclusions-visible"],
+      "factRules": [{ "key": "brief-complete", "operator": "equals", "value": true }, { "key": "evidence-classified", "operator": "equals", "value": true }, { "key": "prior-design-answer-excluded", "operator": "equals", "value": true }, { "key": "scope-exclusions-visible", "operator": "equals", "value": true }],
       "requiredArtifacts": [],
-      "confirmationPrompt": "请确认这份初步需求描述；即使选择按推荐走，本次文字需求确认也不能省略。",
-      "next": "floorplan-adjustment"
+      "confirmationPrompt": "请确认项目输入、历史资料用途和当前待复尺事项。",
+      "next": "design-development"
     },
     {
-      "id": "floorplan-adjustment",
-      "title": "户型调整",
-      "purpose": "在户型图上标注拆改、保留、门洞、动线、收纳，锁定来源户型不变量并登记所有现场或结构复核项。",
-      "review": { "surface": "page", "artifactKind": "annotated-floorplan-page" },
-      "requiredFacts": ["current-plan-boundary", "wall-changes", "structure-unknowns", "route-storage-plan", "source-plan-invariants-locked", "site-verification-items-recorded"],
-      "factRules": [
-        { "key": "source-plan-invariants-locked", "operator": "equals", "value": true },
-        { "key": "site-verification-items-recorded", "operator": "equals", "value": true }
-      ],
-      "requiredArtifacts": ["annotated-floorplan-page"],
-      "confirmationPrompt": "请在标注户型 Page 中确认拆改与空间关系；未确认不得进入三维设计。",
-      "next": "three-d-design-review"
+      "id": "design-development",
+      "title": "设计深化",
+      "purpose": "建立毫米制空间、门窗、家具、柜体、天花、照明、电气、给排水和相机节点的统一设计数据。",
+      "review": { "surface": "page", "artifactKind": "design-review-page" },
+      "requiredFacts": ["geometry-authority-complete", "requirements-traceable", "clearances-checked", "design-boundary-visible"],
+      "factRules": [{ "key": "geometry-authority-complete", "operator": "equals", "value": true }, { "key": "requirements-traceable", "operator": "equals", "value": true }, { "key": "clearances-checked", "operator": "equals", "value": true }, { "key": "design-boundary-visible", "operator": "equals", "value": true }],
+      "requiredArtifacts": ["design-review-page"],
+      "confirmationPrompt": "请核对空间关系、家具柜体、材料灯光和关键净距。",
+      "next": "drawing-review"
     },
     {
-      "id": "three-d-design-review",
-      "title": "三维设计稿",
-      "purpose": "通过可移动端查看的三维设计 Page 确认家具、尺度关系、材质、灯光与关键细节，并完成固定元素的需求追踪。",
-      "review": { "surface": "page", "artifactKind": "three-d-design-page" },
-      "requiredFacts": ["furniture-plan", "asset-profile-plan", "material-plan", "lighting-plan", "delivery-camera-plan", "geometry-lock-policy", "detail-decisions", "unresolved-details", "fixed-element-traceability-complete", "design-budget-scope-consistent"],
-      "factRules": [
-        { "key": "fixed-element-traceability-complete", "operator": "equals", "value": true },
-        { "key": "design-budget-scope-consistent", "operator": "equals", "value": true }
-      ],
-      "requiredArtifacts": ["three-d-design-page"],
-      "confirmationPrompt": "请确认三维设计稿中的家具、材质、灯光和细节；未确认不得生成效果图样张。",
-      "next": "render-style-sample"
+      "id": "drawing-review",
+      "title": "六类图纸确认",
+      "purpose": "分别确认平面、天花灯具、开关控制、插座、给排水和柜体图纸；每张图均可单独修改。",
+      "review": { "surface": "page", "artifactKind": "six-discipline-drawings" },
+      "requiredFacts": ["six-drawings-generated", "drawing-semantics-independent", "drawing-revisions-recorded"],
+      "factRules": [{ "key": "six-drawings-generated", "operator": "equals", "value": true }, { "key": "drawing-semantics-independent", "operator": "equals", "value": true }, { "key": "drawing-revisions-recorded", "operator": "equals", "value": true }],
+      "requiredArtifacts": ["six-discipline-drawings", "drawing-plan-layout", "drawing-ceiling-lighting", "drawing-switch-control", "drawing-socket-layout", "drawing-plumbing", "drawing-cabinet"],
+      "confirmationPrompt": "请逐张确认六类在线图纸，或指出需要修改的具体图纸。",
+      "next": "spatial-sketch-review"
     },
     {
-      "id": "render-style-sample",
-      "title": "效果图样张",
-      "purpose": "只生成一张代表效果图，用同一空间验证风格、材质、光线和真实感。",
-      "review": { "surface": "page", "artifactKind": "style-sample-page" },
-      "requiredFacts": ["sample-render-count", "sample-style-contract", "sample-view", "compiled-scene-hash", "control-pass-contract", "render-geometry-invariants-checked"],
-      "factRules": [
-        { "key": "sample-render-count", "operator": "equals", "value": 1 },
-        { "key": "render-geometry-invariants-checked", "operator": "equals", "value": true }
-      ],
-      "requiredArtifacts": ["style-sample-page"],
-      "confirmationPrompt": "请在样张 Page 中确认这一张图的风格；未确认不得批量生成其他视角。",
-      "next": "full-render-set"
+      "id": "spatial-sketch-review",
+      "title": "3D 草图确认",
+      "purpose": "通过可进入查看的语义 3D 草图确认门窗、动线、体量、柜体、灯具和全景相机位置。",
+      "review": { "surface": "page", "artifactKind": "spatial-sketch-3d" },
+      "requiredFacts": ["semantic-3d-generated", "room-entry-works", "panorama-nodes-visible"],
+      "factRules": [{ "key": "semantic-3d-generated", "operator": "equals", "value": true }, { "key": "room-entry-works", "operator": "equals", "value": true }, { "key": "panorama-nodes-visible", "operator": "equals", "value": true }],
+      "requiredArtifacts": ["spatial-sketch-3d"],
+      "confirmationPrompt": "请进入各空间查看并确认 3D 草图及相机位置。",
+      "next": "panorama-production"
     },
     {
-      "id": "full-render-set",
-      "title": "全量效果图",
-      "purpose": "从入户门开始按空间行走顺序补齐全屋视角，生成并排版不少于十五张一致效果图。",
-      "review": { "surface": "page", "artifactKind": "full-render-gallery-page" },
-      "requiredFacts": ["render-count", "view-sequence", "entrance-first", "consistency-check", "compiled-scene-hash", "camera-sequence-binding", "render-limitations", "render-requirement-coverage-complete", "render-set-consistency-checked"],
-      "factRules": [
-        { "key": "render-count", "operator": "min-number", "value": 15 },
-        { "key": "view-sequence", "operator": "min-items", "value": 15 },
-        { "key": "entrance-first", "operator": "equals", "value": true },
-        { "key": "render-requirement-coverage-complete", "operator": "equals", "value": true },
-        { "key": "render-set-consistency-checked", "operator": "equals", "value": true }
-      ],
-      "requiredArtifacts": ["full-render-gallery-page"],
-      "confirmationPrompt": "请在多图 Page 中按入户到各空间的顺序核对不少于十五张效果图及一致性。",
-      "next": "final-delivery"
+      "id": "panorama-production",
+      "title": "逐视角全景确认",
+      "purpose": "每次只生成一张全景图，依次确认相机、基础全景和 Codex 图片增强结果；任一视角可独立重开。",
+      "review": { "surface": "page", "artifactKind": "panorama-production-review" },
+      "requiredFacts": ["one-image-per-generation", "view-confirmed", "image-confirmed", "all-panorama-nodes-confirmed"],
+      "factRules": [{ "key": "one-image-per-generation", "operator": "equals", "value": true }, { "key": "view-confirmed", "operator": "equals", "value": true }, { "key": "image-confirmed", "operator": "equals", "value": true }, { "key": "all-panorama-nodes-confirmed", "operator": "equals", "value": true }],
+      "requiredArtifacts": ["panorama-production-review"],
+      "confirmationPrompt": "请确认当前这一张全景图和视角；确认后才进入下一张。",
+      "next": "tour-review"
     },
     {
-      "id": "final-delivery",
-      "title": "最终交付",
-      "purpose": "以设计册式主体 Page 汇总已确认需求、户型分析、设计说明、平面方案、效果图、材料与预算范围、过程确认和专业边界，并关联独立专业 Page。",
-      "review": { "surface": "page", "artifactKind": "final-delivery-page" },
-      "requiredFacts": ["final-scope", "decision-record", "visual-acceptance-owner", "main-delivery-page-primary", "specialist-page-links-verified", "delivery-manifest-verified", "delivery-consistency-matrix-complete", "unresolved-boundaries-visible"],
-      "factRules": [
-        { "key": "main-delivery-page-primary", "operator": "equals", "value": true },
-        { "key": "specialist-page-links-verified", "operator": "equals", "value": true },
-        { "key": "delivery-manifest-verified", "operator": "equals", "value": true },
-        { "key": "delivery-consistency-matrix-complete", "operator": "equals", "value": true },
-        { "key": "unresolved-boundaries-visible", "operator": "equals", "value": true }
-      ],
-      "requiredArtifacts": ["final-delivery-page"],
-      "confirmationPrompt": "请确认主体设计册 Page 完整覆盖所有已确认内容、过程确认、排除项和专业边界，并可从其中打开当前 revision 的独立专业 Page；系统还必须通过闭环矩阵与交付清单验证。",
+      "id": "tour-review",
+      "title": "krpano 漫游走查",
+      "purpose": "全部全景锁定后组装 krpano，走查场景载入、热点、方向、移动端和全屏体验。",
+      "review": { "surface": "page", "artifactKind": "krpano-tour" },
+      "requiredFacts": ["all-panoramas-confirmed", "licensed-runtime-present", "hotspots-verified", "tour-walkthrough-passed"],
+      "factRules": [{ "key": "all-panoramas-confirmed", "operator": "equals", "value": true }, { "key": "licensed-runtime-present", "operator": "equals", "value": true }, { "key": "hotspots-verified", "operator": "equals", "value": true }, { "key": "tour-walkthrough-passed", "operator": "equals", "value": true }],
+      "requiredArtifacts": ["krpano-tour", "tour-walkthrough"],
+      "confirmationPrompt": "请走查最终漫游的画面、方向和热点跳转。",
+      "next": "shareable-delivery"
+    },
+    {
+      "id": "shareable-delivery",
+      "title": "用户工作区交付",
+      "purpose": "把设计册、六类图纸、3D 草图、全景漫游和待确认事项组织在同一可传播工作区。",
+      "review": { "surface": "page", "artifactKind": "owner-page-final" },
+      "requiredFacts": ["page-bundle-verified", "raw-evidence-private", "scope-boundary-visible", "artifact-workflow-complete"],
+      "factRules": [{ "key": "page-bundle-verified", "operator": "equals", "value": true }, { "key": "raw-evidence-private", "operator": "equals", "value": true }, { "key": "scope-boundary-visible", "operator": "equals", "value": true }, { "key": "artifact-workflow-complete", "operator": "equals", "value": true }],
+      "requiredArtifacts": ["owner-page-final"],
+      "confirmationPrompt": "请确认工作区是否清晰、可转发并完整呈现最终漫游。",
       "next": "delivered"
     },
     {
       "id": "delivered",
-      "title": "交付完成",
-      "purpose": "保持最终 Page 可访问，并保留完整 revision、确认与回退记录。",
+      "title": "本轮完成",
+      "purpose": "保留同一工作区入口；新反馈修改对应过程产物，并只使受影响的下游失效。",
       "review": { "surface": "terminal", "artifactKind": null },
       "requiredFacts": [],
       "factRules": [],

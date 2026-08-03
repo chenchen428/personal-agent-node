@@ -1,100 +1,39 @@
 {
-  "schema": "personal-agent/interior-style-guide/v1",
-  "revision": 10,
-  "sceneHash": "163e8998fdabbe7d3309431edd342795db61a9daa4e0939f7d1ee2be22f0d686",
-  "selection": {
-    "selectedStyleId": "warm-mineral-walnut",
-    "status": "candidate",
-    "source": "demandWorkflow.styleProfile.primary",
-    "pagePresentation": "selected-style-only",
-    "persistence": "Agent must create a governed project revision before effect-render generation"
-  },
+  "schemaVersion": 5,
+  "projectId": "example-courtyard-apartment",
+  "revision": 1,
   "selected": {
-    "styleId": "warm-mineral-walnut",
-    "label": "暖矿物 × 深胡桃木的克制中古",
-    "palette": {
-      "backdrop": "#f1ede6",
-      "plaster": "#ded7cd",
-      "floor": "#c4aa82",
-      "stone": "#c4aa82",
-      "wood": "#6d4734",
-      "darkWood": "#282522",
-      "fabric": "#d7c9b9",
-      "accent": "#567c68",
-      "metal": "#9b7b52",
-      "plant": "#567c68"
-    },
+    "id": "warm-mineral-walnut",
+    "name": "暖矿物与胡桃木",
+    "keywords": [
+      "克制",
+      "自然",
+      "低饱和",
+      "耐久"
+    ],
+    "palette": [
+      "#f2f0e9",
+      "#d7c7ae",
+      "#876d55",
+      "#8d9b91"
+    ],
+    "lighting": "2700-3500K 分层照明，公共区重点控制眩光。"
+  },
+  "bindings": {
+    "geometryHash": "c740438261c5ef342fc73bf9fb57b6a9307c938e084edb08acf292e420987164",
     "materials": [
-      "暖灰矿物墙面",
-      "自然胡桃木",
-      "亚麻软装",
-      "低饱和鼠尾草绿"
+      "floor-oak",
+      "wall-mineral",
+      "wood-walnut",
+      "fabric-sage"
     ],
-    "lighting": {
-      "ambientColor": "#fff5e7",
-      "keyColor": "#fff0d5",
-      "skyColor": "#e8f0eb",
-      "groundColor": "#82786c",
-      "exposure": 1.16,
-      "ambientScale": 1.04,
-      "keyScale": 1.02
-    },
-    "imageGeneration": {
-      "promptPrefix": "warm mineral contemporary interior, natural walnut joinery, soft limestone, linen upholstery, restrained sage accents, editorial architectural photography",
-      "negativePrompt": "cold blue cast, orange wood, glossy plastic, excessive gold, clutter",
-      "consistencyRules": [
-        "lock floor-plan geometry",
-        "preserve openings and circulation",
-        "use the same palette, material families, lighting temperature, and soft-furnishing language"
-      ]
-    },
-    "observable": {
-      "contrast": "低对比暖米色基底，以深胡桃木和细黑线条建立层次",
-      "lighting": "柔和自然光叠加 2700–3000K 暖白间接照明",
-      "surface": "哑光矿物涂料、亚麻、烟草色编织与少量细纹石材",
-      "visualDensity": "低装饰密度，留白优先，局部微量橄榄绿",
-      "woodTone": "深胡桃木为主，避免发红或浅黄橡木占据大面积"
-    },
-    "borrow": [
-      "低对比暖矿物基底",
-      "深胡桃木中古家具",
-      "奶油亚麻与烟草色编织",
-      "日式克制留白",
-      "细黑金属分隔"
-    ],
-    "avoid": [
-      "亮面大理石",
-      "冷灰空间",
-      "纯白样板间",
-      "繁复造型",
-      "高饱和色块"
+    "renderIds": [
+      "render-living-overview",
+      "render-living-media",
+      "render-dining-kitchen",
+      "render-primary-bedroom"
     ]
   },
-  "effectRenderBinding": {
-    "styleId": "warm-mineral-walnut",
-    "promptPrefix": "warm mineral contemporary interior, natural walnut joinery, soft limestone, linen upholstery, restrained sage accents, editorial architectural photography",
-    "negativePrompt": "cold blue cast, orange wood, glossy plastic, excessive gold, clutter",
-    "consistencyRules": [
-      "lock floor-plan geometry",
-      "preserve openings and circulation",
-      "use the same palette, material families, lighting temperature, and soft-furnishing language"
-    ],
-    "requiredProvenance": [
-      "styleId",
-      "styleGuideSha256",
-      "sceneHash",
-      "cameraId",
-      "promptSha256"
-    ],
-    "onStyleFeedback": "update demandWorkflow.styleProfile.primary, mark older renders stale, compile, render Page, inspect, then regenerate effect renders"
-  },
-  "agentInspection": {
-    "required": true,
-    "inspect": [
-      "rendered 3D uses the selected style materials, lighting, and soft furnishings",
-      "selected styleId matches effect-render prompts",
-      "desktop, forced-landscape portrait, and native landscape remain legible"
-    ],
-    "correctionSurface": "governed project data and style profile only"
-  }
+  "pagePresentation": "owner-decision-booklet-v5",
+  "feedbackAction": "modify-artifact-and-invalidate-dependants"
 }

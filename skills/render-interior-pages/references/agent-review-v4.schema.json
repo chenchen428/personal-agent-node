@@ -1,0 +1,34 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "personal-agent/interior-agent-review/v4",
+  "type": "object",
+  "required": ["schemaVersion", "rendererVersion", "revision", "targets", "style"],
+  "properties": {
+    "schemaVersion": { "const": 4 },
+    "rendererVersion": { "const": 4 },
+    "revision": { "type": "integer", "minimum": 1 },
+    "targets": {
+      "type": "array",
+      "minItems": 7,
+      "maxItems": 7,
+      "items": {
+        "type": "object",
+        "required": ["id", "status", "observations"],
+        "properties": {
+          "id": { "enum": ["booklet-desktop", "booklet-mobile", "online-drawing-desktop", "online-drawing-mobile", "three-d-desktop", "three-d-mobile-portrait", "three-d-mobile-landscape"] },
+          "status": { "enum": ["pass", "needs-change", "blocked"] },
+          "observations": { "type": "array", "items": { "type": "string" } }
+        }
+      }
+    },
+    "style": {
+      "type": "object",
+      "required": ["selectedStyleId", "effectRenderBindingReady", "observations"],
+      "properties": {
+        "selectedStyleId": { "type": "string" },
+        "effectRenderBindingReady": { "const": true },
+        "observations": { "type": "array", "items": { "type": "string" } }
+      }
+    }
+  }
+}

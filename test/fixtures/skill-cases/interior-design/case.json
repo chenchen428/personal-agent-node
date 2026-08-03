@@ -1,14 +1,10 @@
 {
   "schemaVersion": 1,
   "skill": "interior-design",
-  "title": "Native governed Pascal Agent delivery",
-  "prompt": "Create a Space-owned professional project from the native built-in seed and redacted synthetic evidence, compile a deterministic in-process Pascal scene, run the professional quality gate, generate the interior-designer representative Page with model-derived SVG fallback and Agent provenance, force detected mobile portrait viewports into the dedicated landscape canvas without rotating desktop narrow windows, verify the committed delivery has no drift, and leave visual acceptance to the user without claiming survey, BIM, code, or construction precision.",
-  "commands": [
-    "npm run interior:verify-agent-delivery"
-  ],
-  "artifacts": [
-    { "path": "acceptance.md", "label": "Native Pascal Agent delivery acceptance" }
-  ],
-  "verifiedAt": "2026-08-01",
-  "note": "The committed example uses only synthetic evidence. Customer drawings and generated customer Pages never enter product source."
+  "title": "Interior workspace V5 professional delivery",
+  "prompt": "Use $interior-design to build the synthetic representative project as one current co-design workspace, derive an owner-facing Page, three online SVG concept drawings, effect renders, decision prompts, and immersive Three.js Web 3D from the same millimeter geometry authority, keep raw evidence and internal project data private, expose survey and professional boundaries, verify every hash, and leave visual acceptance to the user.",
+  "commands": ["npm run interior:verify-agent-delivery"],
+  "artifacts": [{ "path": "acceptance.md", "label": "Interior workspace V5 acceptance" }],
+  "verifiedAt": "2026-08-02",
+  "note": "The committed example uses only synthetic evidence. Customer drawings and customer workspaces never enter product source."
 }

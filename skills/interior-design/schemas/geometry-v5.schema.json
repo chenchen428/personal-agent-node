@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "personal-agent/interior-geometry/v5",
+  "title": "Interior Geometry V5",
+  "type": "object",
+  "required": ["schemaVersion", "projectId", "revision", "units", "basis", "levels", "rooms", "walls", "openings", "elements", "points"],
+  "properties": {
+    "schemaVersion": { "const": 5 },
+    "projectId": { "$ref": "#/$defs/id" },
+    "revision": { "type": "integer", "minimum": 1 },
+    "units": { "const": "mm" },
+    "basis": {
+      "type": "object",
+      "required": ["grade", "sourceEvidenceIds", "confidence"],
+      "properties": {
+        "grade": { "enum": ["estimated", "drawing-derived", "surveyed"] },
+        "sourceEvidenceIds": { "type": "array", "items": { "$ref": "#/$defs/id" } },
+        "confidence": { "type": "number", "minimum": 0, "maximum": 1 }
+      }
+    },
+    "levels": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/level" } },
+    "rooms": { "type": "array", "items": { "$ref": "#/$defs/room" } },
+    "walls": { "type": "array", "items": { "$ref": "#/$defs/wall" } },
+    "openings": { "type": "array", "items": { "$ref": "#/$defs/opening" } },
+    "elements": { "type": "array", "items": { "$ref": "#/$defs/element" } },
+    "points": { "type": "array", "items": { "$ref": "#/$defs/point" } },
+    "clearances": { "type": "array" },
+    "cameras": { "type": "array" },
+    "dimensions": { "type": "array" },
+    "ceilingZones": { "type": "array", "items": { "$ref": "#/$defs/ceilingZone" } },
+    "circuits": { "type": "array", "items": { "$ref": "#/$defs/pathRecord" } },
+    "plumbingRuns": { "type": "array", "items": { "$ref": "#/$defs/pathRecord" } },
+    "cabinetModules": { "type": "array", "items": { "$ref": "#/$defs/cabinetModule" } },
+    "panoramaNodes": { "type": "array", "items": { "$ref": "#/$defs/panoramaNode" } }
+  },
+  "$defs": {
+    "id": { "type": "string", "pattern": "^[a-z][a-z0-9_-]{2,63}$" },
+    "point2": { "type": "array", "prefixItems": [{"type":"number"},{"type":"number"}], "items": false },
+    "point3": { "type": "array", "prefixItems": [{"type":"number"},{"type":"number"},{"type":"number"}], "items": false },
+    "level": { "type": "object", "required": ["id", "name", "elevation", "height"], "properties": { "id": {"$ref":"#/$defs/id"}, "name":{"type":"string"}, "elevation":{"type":"number"}, "height":{"type":"number","exclusiveMinimum":0} } },
+    "room": { "type": "object", "required": ["id", "name", "levelId", "polygon"], "properties": { "id":{"$ref":"#/$defs/id"}, "name":{"type":"string"}, "levelId":{"$ref":"#/$defs/id"}, "polygon":{"type":"array","minItems":3,"maxItems":256,"items":{"$ref":"#/$defs/point2"}} } },
+    "wall": { "type": "object", "required": ["id", "levelId", "start", "end", "thickness", "height"], "properties": { "id":{"$ref":"#/$defs/id"}, "levelId":{"$ref":"#/$defs/id"}, "start":{"$ref":"#/$defs/point2"}, "end":{"$ref":"#/$defs/point2"}, "thickness":{"type":"number","exclusiveMinimum":0}, "height":{"type":"number","exclusiveMinimum":0}, "confidence":{"type":"number","minimum":0,"maximum":1} } },
+    "opening": { "type": "object", "required": ["id", "type", "wallId", "offset", "width", "height"], "properties": { "id":{"$ref":"#/$defs/id"}, "type":{"enum":["door","window","passage"]}, "wallId":{"$ref":"#/$defs/id"}, "offset":{"type":"number","minimum":0}, "width":{"type":"number","exclusiveMinimum":0}, "height":{"type":"number","exclusiveMinimum":0}, "sill":{"type":"number","minimum":0} } },
+    "element": { "type": "object", "required": ["id", "type", "position", "size"], "properties": { "id":{"$ref":"#/$defs/id"}, "type":{"type":"string"}, "roomId":{"$ref":"#/$defs/id"}, "position":{"$ref":"#/$defs/point3"}, "size":{"type":"array","prefixItems":[{"type":"number","exclusiveMinimum":0},{"type":"number","exclusiveMinimum":0},{"type":"number","exclusiveMinimum":0}],"items":false}, "rotationDeg":{"type":"number"}, "materialId":{"$ref":"#/$defs/id"} } },
+    "point": { "type": "object", "required": ["id", "type", "position", "mountHeight"], "properties": { "id":{"$ref":"#/$defs/id"}, "type":{"type":"string"}, "roomId":{"$ref":"#/$defs/id"}, "position":{"$ref":"#/$defs/point2"}, "mountHeight":{"type":"number"} } },
+    "ceilingZone": { "type": "object", "required": ["id", "polygon", "elevation"], "properties": { "id":{"$ref":"#/$defs/id"}, "roomId":{"$ref":"#/$defs/id"}, "polygon":{"type":"array","minItems":3,"items":{"$ref":"#/$defs/point2"}}, "elevation":{"type":"number"} } },
+    "pathRecord": { "type": "object", "required": ["id", "path"], "properties": { "id":{"$ref":"#/$defs/id"}, "kind":{"type":"string"}, "path":{"type":"array","minItems":2,"items":{"$ref":"#/$defs/point2"}} } },
+    "cabinetModule": { "type": "object", "required": ["id", "position", "width", "depth", "height"], "properties": { "id":{"$ref":"#/$defs/id"}, "roomId":{"$ref":"#/$defs/id"}, "position":{"$ref":"#/$defs/point3"}, "width":{"type":"number","exclusiveMinimum":0}, "depth":{"type":"number","exclusiveMinimum":0}, "height":{"type":"number","exclusiveMinimum":0}, "rotationDeg":{"type":"number"} } },
+    "panoramaNode": { "type": "object", "required": ["id", "title", "position", "lookAt"], "properties": { "id":{"$ref":"#/$defs/id"}, "title":{"type":"string"}, "roomId":{"$ref":"#/$defs/id"}, "position":{"$ref":"#/$defs/point3"}, "lookAt":{"$ref":"#/$defs/point3"}, "hotspots":{"type":"array"} } }
+  }
+}

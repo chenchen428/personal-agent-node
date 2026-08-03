@@ -75,4 +75,4 @@ Page 是目录资源包。`index.html` 以同源相对路径引用图片、视�
 - `schemas/personal-agent/agent-workflow.schema.json`：schema v2；
 - `test/specialist-agent-workflow.test.mjs`：跨五个 Agent 的门禁和完整路径测试。
 
-装修项目中的 `demandWorkflow` v1 只为历史代表 Page 的确定性重放保留，已从客户工作流 CLI 退休，不得被视为当前授权状态。
+装修项目只使用注册的工作区流程；项目事实、几何事实和用户确认均来自当前 revision，不保留第二套项目内工作流或兼容授权状态。

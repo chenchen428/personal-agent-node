@@ -1,66 +1,78 @@
 {
-  "schemaVersion": 1,
-  "revision": 10,
-  "ruleSet": "professional-interior-v2",
-  "ruleSetVersion": 2,
-  "ok": true,
-  "blockingCount": 0,
-  "warningCount": 2,
-  "findings": [
+  "schemaVersion": 5,
+  "projectId": "example-courtyard-apartment",
+  "revision": 1,
+  "status": "concept-ready",
+  "conceptReady": true,
+  "constructionReady": false,
+  "productionReady": false,
+  "counts": {
+    "error": 0,
+    "hold": 5,
+    "warning": 0,
+    "info": 0
+  },
+  "metrics": {
+    "levels": 1,
+    "rooms": 6,
+    "walls": 9,
+    "openings": 11,
+    "elements": 16,
+    "points": 8,
+    "modeledAreaSqM": 108
+  },
+  "issues": [
     {
-      "issueId": "issue_d2bfda92e8ae3c1a",
-      "ruleId": "budget.unknown",
-      "severity": "warning",
-      "message": "The project budget is not calibrated; cost output remains scope guidance only.",
-      "nodeIds": [],
-      "measurement": null,
-      "threshold": null,
-      "thresholdSource": "product-concept-default",
-      "fix": "Record a target budget and estimate confidence before procurement decisions.",
-      "professionalVerification": false
+      "level": "hold",
+      "code": "GEO-SITE-MEASURE",
+      "message": "共有 20 个墙体/洞口尺寸尚未达到现场测量置信度，施工与定制生产必须复尺。",
+      "refs": [
+        "wall-north",
+        "wall-east",
+        "wall-south",
+        "wall-west",
+        "wall-hall",
+        "wall-bed-a",
+        "wall-bed-b",
+        "wall-service",
+        "wall-service-split",
+        "door-entry",
+        "window-living",
+        "window-primary"
+      ]
     },
     {
-      "issueId": "issue_e698430912656286",
-      "ruleId": "schedule.unknown",
-      "severity": "warning",
-      "message": "No delivery phases are allocated for the recorded renovation scope.",
-      "nodeIds": [],
-      "measurement": {
-        "scopeItems": 5,
-        "phases": 0,
-        "confidence": "unknown"
-      },
-      "threshold": {
-        "phasesRequiredWhenScheduleKnown": true
-      },
-      "thresholdSource": "product-concept-default",
-      "fix": "Record demolition, construction, systems, finishes, fixtures, furniture, verification, or other project-specific phases.",
-      "professionalVerification": false
+      "level": "hold",
+      "code": "PRO-UNKNOWN",
+      "message": "全部墙体、洞口、梁柱和完成面尺寸需现场复尺。",
+      "refs": [
+        "unknown-site-size"
+      ]
     },
     {
-      "issueId": "issue_987e3efa649d1112",
-      "ruleId": "circulation.narrowest-passage",
-      "severity": "info",
-      "message": "The narrowest modeled route on 首层 is reported for design review.",
-      "nodeIds": [
-        "page-zone-0043"
-      ],
-      "measurement": {
-        "minimumWidthMetres": 1.05,
-        "location": [
-          0,
-          7.25
-        ],
-        "gridMetres": 0.25,
-        "walkableCells": 2138,
-        "walkableEdges": 4007
-      },
-      "threshold": {
-        "comfortReviewWidthMetres": 0.75
-      },
-      "thresholdSource": "product-concept-default",
-      "fix": "Keep this bottleneck visible and replace the product default if the user or jurisdiction supplies another threshold.",
-      "professionalVerification": false
+      "level": "hold",
+      "code": "PRO-UNKNOWN",
+      "message": "烟道、立管、地漏、配电容量和原有回路尚未核实。",
+      "refs": [
+        "unknown-services"
+      ]
+    },
+    {
+      "level": "hold",
+      "code": "PRO-VERIFY",
+      "message": "拆改边界和承重属性必须以原始结构图及专业意见为准。",
+      "refs": [
+        "verify-structure"
+      ]
+    },
+    {
+      "level": "hold",
+      "code": "PRO-VERIFY",
+      "message": "卫生间防水、排水坡度和闭水试验由施工与监理确认。",
+      "refs": [
+        "verify-waterproof"
+      ]
     }
-  ]
+  ],
+  "visualAcceptance": "user"
 }

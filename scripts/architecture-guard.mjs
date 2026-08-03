@@ -113,7 +113,6 @@ checks.push({
   ok: !exists('registry/page-templates.json')
     && !exists('skills/personal-pages')
     && !exists('test/fixtures/skill-cases/personal-pages')
-    && !exists('core/app/public/assets/templates/interior-design-delivery-v2')
     && exists('agents/interior-designer/examples/featured-delivery.json')
     && exists('core/app/public/assets/agents/interior-designer/featured/manifest.json'),
 });

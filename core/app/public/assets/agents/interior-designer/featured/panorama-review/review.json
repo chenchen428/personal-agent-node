@@ -1,0 +1,37 @@
+{
+  "contract": "personal-agent/interior-panorama-review/v5",
+  "projectId": "example-courtyard-apartment",
+  "generationPolicy": "one-view-one-image-one-confirmation",
+  "nodes": [
+    {
+      "id": "living",
+      "title": "客餐厅",
+      "cameraStatus": "draft",
+      "controlStatus": "draft",
+      "promptStatus": "draft",
+      "photorealisticStatus": "draft",
+      "orientationOffsetDeg": 0,
+      "hotspotStatus": "draft"
+    },
+    {
+      "id": "kitchen",
+      "title": "厨房",
+      "cameraStatus": "draft",
+      "controlStatus": "draft",
+      "promptStatus": "draft",
+      "photorealisticStatus": "draft",
+      "orientationOffsetDeg": 0,
+      "hotspotStatus": "draft"
+    },
+    {
+      "id": "primary",
+      "title": "主卧",
+      "cameraStatus": "draft",
+      "controlStatus": "draft",
+      "promptStatus": "draft",
+      "photorealisticStatus": "draft",
+      "orientationOffsetDeg": 0,
+      "hotspotStatus": "draft"
+    }
+  ]
+}

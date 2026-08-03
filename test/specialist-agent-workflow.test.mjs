@@ -25,7 +25,7 @@ test("all specialist Agents ship valid Page-led, surface-aware workflows", () =>
     const workflow = readDefinition(agentId);
     const validation = validateSpecialistWorkflow(workflow, { agentId });
     assert.equal(validation.ok, true, `${agentId}: ${validation.errors.join("; ")}`);
-    assert.ok(workflow.stages.length >= 7 && workflow.stages.length <= 8);
+    assert.ok(workflow.stages.length >= 5 && workflow.stages.length <= 8);
     assert.equal(workflow.progressPage.visibility, "private");
     assert.equal(workflow.progressPage.mobileFirst, true);
     assert.equal(workflow.stages.at(-1).id, "delivered");
@@ -94,27 +94,36 @@ test("Page gate requires the exact private artifact Page the user reviewed", () 
   assert.equal(state.stage, "asset-audit");
 });
 
-test("interior render gates enforce one style sample and at least fifteen entrance-first views", () => {
+test("interior workflow enforces geometry, drawings, panorama, tour, and delivery gates", () => {
   const workflow = readDefinition("interior-designer");
-  const sample = workflow.stages.find((stage) => stage.id === "render-style-sample");
-  const full = workflow.stages.find((stage) => stage.id === "full-render-set");
-  assert.ok(sample.factRules.some((rule) => rule.key === "sample-render-count" && rule.operator === "equals" && rule.value === 1));
-  assert.ok(sample.factRules.some((rule) => rule.key === "render-geometry-invariants-checked" && rule.operator === "equals" && rule.value === true));
-  assert.ok(full.factRules.some((rule) => rule.key === "render-count" && rule.operator === "min-number" && rule.value === 15));
-  assert.ok(full.factRules.some((rule) => rule.key === "view-sequence" && rule.operator === "min-items" && rule.value === 15));
-  assert.ok(full.factRules.some((rule) => rule.key === "entrance-first" && rule.operator === "equals" && rule.value === true));
-  assert.ok(full.factRules.some((rule) => rule.key === "render-requirement-coverage-complete" && rule.operator === "equals" && rule.value === true));
-  assert.ok(full.factRules.some((rule) => rule.key === "render-set-consistency-checked" && rule.operator === "equals" && rule.value === true));
+  const design = workflow.stages.find((stage) => stage.id === "design-development");
+  const drawings = workflow.stages.find((stage) => stage.id === "drawing-review");
+  const sketch = workflow.stages.find((stage) => stage.id === "spatial-sketch-review");
+  const panorama = workflow.stages.find((stage) => stage.id === "panorama-production");
+  const tour = workflow.stages.find((stage) => stage.id === "tour-review");
+  const delivery = workflow.stages.find((stage) => stage.id === "shareable-delivery");
+  for (const key of ["geometry-authority-complete", "requirements-traceable", "clearances-checked", "design-boundary-visible"]) {
+    assert.ok(design.factRules.some((rule) => rule.key === key && rule.operator === "equals" && rule.value === true));
+  }
+  for (const [stage, keys] of [[drawings, ["six-drawings-generated", "drawing-semantics-independent"]], [sketch, ["semantic-3d-generated", "room-entry-works"]], [panorama, ["one-image-per-generation", "all-panorama-nodes-confirmed"]], [tour, ["all-panoramas-confirmed", "tour-walkthrough-passed"]]]) {
+    for (const key of keys) assert.ok(stage.factRules.some((rule) => rule.key === key && rule.operator === "equals" && rule.value === true));
+  }
+  for (const key of ["page-bundle-verified", "artifact-workflow-complete", "raw-evidence-private", "scope-boundary-visible"]) {
+    assert.ok(delivery.factRules.some((rule) => rule.key === key && rule.operator === "equals" && rule.value === true));
+  }
 });
 
-test("interior fact ledger, traceability, and delivery manifest gates fail closed", () => {
+test("interior evidence, traceability, and delivery gates fail closed", () => {
   const workflow = readDefinition("interior-designer");
-  assert.equal(workflow.version, 4);
+  assert.equal(workflow.version, 7);
   for (const [stageId, requiredKeys] of Object.entries({
-    "initial-requirements": ["fact-status-ledger-complete", "scope-exclusions-recorded"],
-    "floorplan-adjustment": ["source-plan-invariants-locked", "site-verification-items-recorded"],
-    "three-d-design-review": ["fixed-element-traceability-complete", "design-budget-scope-consistent"],
-    "final-delivery": ["main-delivery-page-primary", "specialist-page-links-verified", "delivery-manifest-verified", "delivery-consistency-matrix-complete", "unresolved-boundaries-visible"],
+    "project-intake": ["brief-complete", "evidence-classified", "prior-design-answer-excluded", "scope-exclusions-visible"],
+    "design-development": ["geometry-authority-complete", "requirements-traceable", "clearances-checked", "design-boundary-visible"],
+    "drawing-review": ["six-drawings-generated", "drawing-semantics-independent", "drawing-revisions-recorded"],
+    "spatial-sketch-review": ["semantic-3d-generated", "room-entry-works", "panorama-nodes-visible"],
+    "panorama-production": ["one-image-per-generation", "view-confirmed", "image-confirmed", "all-panorama-nodes-confirmed"],
+    "tour-review": ["all-panoramas-confirmed", "licensed-runtime-present", "hotspots-verified", "tour-walkthrough-passed"],
+    "shareable-delivery": ["page-bundle-verified", "artifact-workflow-complete", "raw-evidence-private", "scope-boundary-visible"],
   })) {
     const stage = workflow.stages.find((entry) => entry.id === stageId);
     for (const key of requiredKeys) {
@@ -127,42 +136,29 @@ test("interior fact ledger, traceability, and delivery manifest gates fail close
   const firstStage = workflow.stages[0];
   assert.throws(() => advanceSpecialistWorkflow(workflow, state, {
     baseRevision: 0,
-    facts: { ...stageFacts(firstStage), "fact-status-ledger-complete": false },
-    confirmation: { confirmed: true, summary: "确认初步需求", surface: "text" },
+    facts: { ...stageFacts(firstStage), "prior-design-answer-excluded": false },
+    confirmation: { confirmed: true, summary: "确认项目输入", surface: "text" },
   }), { code: "WORKFLOW_FACT_RULE_FAILED" });
 });
 
-test("interior recommended mode only batches floorplan and 3D at the 3D Page checkpoint", () => {
+test("interior workflow rejects retired compatibility modes and stage batching", () => {
   const workflow = readDefinition("interior-designer");
   const progress = publication("private-workflow-interior-designer-project_home_demo");
-  let state = createSpecialistWorkflowState(workflow, {
+  assert.throws(() => createSpecialistWorkflowState(workflow, {
     projectKey: "project_home_demo",
     mode: "recommended",
     progressPage: progress,
-  });
+  }), { code: "WORKFLOW_MODE_INVALID" });
+  let state = createSpecialistWorkflowState(workflow, { projectKey: "project_home_demo", progressPage: progress });
   state = advanceSpecialistWorkflow(workflow, state, {
     baseRevision: 0,
-    facts: { ...stageFacts(workflow.stages[0]), "recommended-mode-authorized": true },
-    confirmation: { confirmed: true, summary: "确认初步需求并授权按推荐走", surface: "text" },
+    facts: stageFacts(workflow.stages[0]),
+    confirmation: { confirmed: true, summary: "确认项目输入", surface: "text" },
   });
-  state = syncSpecialistWorkflowProgress(workflow, state, progress);
-  const floorplan = workflow.stages[1];
-  const threeD = workflow.stages[2];
-  const threeDPage = pageArtifact("three-d-design-page", 2);
-  state = advanceSpecialistWorkflow(workflow, state, {
-    baseRevision: 1,
-    nextStage: "render-style-sample",
-    facts: { ...stageFacts(floorplan), ...stageFacts(threeD), "recommended-mode-authorized": true },
-    artifacts: [threeDPage],
-    confirmation: { confirmed: true, summary: "在三维 Page 同时确认户型与三维设计", surface: "page", pageId: threeDPage.pageId },
-  });
-  assert.equal(state.stage, "render-style-sample");
-  assert.equal(state.confirmations.at(-1).stages.length, 2);
-  assert.equal(state.history.filter((entry) => entry.revision === 2).length, 2);
   state = syncSpecialistWorkflowProgress(workflow, state, progress);
   assert.throws(() => advanceSpecialistWorkflow(workflow, state, {
-    baseRevision: 2,
-    nextStage: "final-delivery",
+    baseRevision: 1,
+    nextStage: "shareable-delivery",
   }), { code: "WORKFLOW_STAGE_SKIP" });
 });
 

@@ -35,9 +35,9 @@ Usage:
   skill-tree video check --project <dir> [--strict] [--json]
   skill-tree video snapshot --project <dir> [--at 0,4,8] [--output snapshots/review] [--force]
   skill-tree video render --project <dir> --output renders/final.mp4 [--quality high] [--strict] [--force]
-  skill-tree interior validate --input <model.json>
-  skill-tree interior normalize --input <model.json> --output <normalized.json>
-  skill-tree interior page --input <normalized.json> --output <page-dir>
+  skill-tree interior evidence inventory --source-dir <dir> --output <inventory.json>
+  skill-tree interior workspace build --input <workspace-input.json> --source-dir <dir> --project-dir <dir>
+  skill-tree interior workspace verify --project-dir <dir>
   pa-cli pages upload --file <artifact> --folder <folder> --json
   skill-tree cases verify
 `;

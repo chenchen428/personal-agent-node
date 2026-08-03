@@ -1,4 +1,4 @@
 interface:
-  display_name: "装修设计 Page 渲染"
-  short_description: "把受治理装修数据确定性渲染为可复查的版本化 Pages"
-  default_prompt: "使用 $render-interior-pages 将装修项目数据渲染为 Page，并完成 Agent 自检闭环。"
+  display_name: "装修方案 Page 渲染"
+  short_description: "生成便于家庭分享确认的装修设计册、在线概念图和沉浸式三维体验"
+  default_prompt: "使用 $render-interior-pages 将当前装修方案渲染为业主设计册、三套在线概念图和独立沉浸式 Web 3D，并生成七目标验收清单。"

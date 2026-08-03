@@ -1,184 +1,168 @@
 {
-  "schemaVersion": 1,
-  "agent": {
-    "id": "interior-designer",
-    "version": 1,
-    "exampleId": "interior-c-layout-delivery"
-  },
+  "schemaVersion": 5,
+  "contract": "personal-agent/interior-page-bundle/v5",
+  "projectId": "example-courtyard-apartment",
+  "revision": 1,
   "delivery": {
-    "version": 3,
-    "engine": "pascal-v2",
-    "layoutProfile": "renovation-booklet",
-    "renderProfile": "professional-archviz-v3",
+    "primary": "index.html",
     "specialistPages": {
-      "threeD": {
-        "path": "3d/index.html",
-        "layoutProfile": "su-design-classic",
-        "engine": "pascal-v2"
-      }
-    }
+      "threeD": "3d/index.html",
+      "panoramaReview": "panorama-review/index.html",
+      "tour": "tour/index.html"
+    },
+    "onlineDrawings": [
+      "assets/drawings/p-01-plan-layout.svg",
+      "assets/drawings/c-01-ceiling-lighting.svg",
+      "assets/drawings/e-01-switch-control.svg",
+      "assets/drawings/e-02-socket-layout.svg",
+      "assets/drawings/w-01-plumbing.svg",
+      "assets/drawings/m-01-cabinet.svg"
+    ],
+    "engine": "geometry-v5+three-v5+krpano",
+    "distributions": [
+      "Owner-Page",
+      "Online-SVG",
+      "Semantic-Web3D",
+      "Krpano-Tour"
+    ],
+    "layoutProfile": "owner-decision-booklet-v5"
   },
-  "visualAcceptance": "user",
-  "style": {
-    "guide": "style-guide.json",
-    "selectedStyleId": "warm-mineral-walnut",
-    "status": "candidate",
-    "effectRenderBinding": "same-style-id-required"
+  "source": {
+    "projectSha256": "56830c8e1a9d16131d778021ff9252255bcdb42a359385871631c0b73c7e22bd",
+    "geometrySha256": "c740438261c5ef342fc73bf9fb57b6a9307c938e084edb08acf292e420987164",
+    "qualityStatus": "concept-ready",
+    "styleId": "warm-mineral-walnut"
   },
   "files": {
-    "index.html": {
-      "bytes": 37261,
-      "sha256": "49a5fe64cdf926a4d67f52c3d35d506a7401a579789997e54e376bf254f76cd5"
-    },
     "3d/index.html": {
-      "bytes": 2732656,
-      "sha256": "7edb9650beee89f21cf49253173008d750d3c0c88c25e36d1d6683d286df4a7a"
+      "bytes": 2493,
+      "sha256": "3881de7053875a813ed7b83ddd28048a77a10b6a2ff4087ed2cdda25c6fa3ace"
     },
-    "scene.json": {
-      "bytes": 87563,
-      "sha256": "63fe95ec90ddefeafeb2f52ae3e9a8359329992789e88637f328823619da685b"
+    "3d/model-data.js": {
+      "bytes": 34673,
+      "sha256": "ca2ea5bdf607763d255ae55eae9822ece0be39c2c71e6c77694d9929b41274b8"
     },
-    "style-guide.json": {
-      "bytes": 3725,
-      "sha256": "659609c145d4abe342361098b33885b45df943aeefab2874ca94d6519e6c0d1d"
+    "3d/viewer.bundle.js": {
+      "bytes": 593685,
+      "sha256": "1d00535926c250a0e7cedab358a7dbf0b08bde6166049e5634dd95d68eff1019"
+    },
+    "3d/viewer.css": {
+      "bytes": 4056,
+      "sha256": "5c12c2d1e9ababccd79cbe7942b46c30867159ced86b56dd10c8da5f3486c1e8"
+    },
+    "assets/booklet.css": {
+      "bytes": 9776,
+      "sha256": "d0bcf6d144fd86697d0a7bf56f4ce7f09aa34288a18cc359c9a7b2ed4e365262"
+    },
+    "assets/booklet.js": {
+      "bytes": 3838,
+      "sha256": "405def525f17f5cdc1bb017c03a62daa46e592e1a4c913addf27c2e736276e69"
+    },
+    "assets/drawings/c-01-ceiling-lighting.svg": {
+      "bytes": 10139,
+      "sha256": "6f97fdb4851f0144550de426e0ddc6e2b3196ed4f4950f67c7b5298ebf4d456a"
+    },
+    "assets/drawings/e-01-switch-control.svg": {
+      "bytes": 9919,
+      "sha256": "d80d992a95de1de15914ab7d3b501afb433284eae74617020ce2f07ab7481bd5"
+    },
+    "assets/drawings/e-02-socket-layout.svg": {
+      "bytes": 9694,
+      "sha256": "31a68f167d223a3adfb7c1eaae89a6797b030375b2188baf5d34c35fc6b89916"
+    },
+    "assets/drawings/m-01-cabinet.svg": {
+      "bytes": 10512,
+      "sha256": "5fde3778f4c4ea9f1e4e98b635696e2d70bdbd088de5d96706b2fb6b189077da"
+    },
+    "assets/drawings/p-01-plan-layout.svg": {
+      "bytes": 12901,
+      "sha256": "30dfc26d0dcea2b515b6f410b4c6738b19d66e134b13f667d3a7a24aefa10a7f"
+    },
+    "assets/drawings/w-01-plumbing.svg": {
+      "bytes": 10598,
+      "sha256": "c0d42d7463cc6ec90f6b1860745447879aed24fb4800843bde283fdb9bf30873"
     },
     "audit.json": {
-      "bytes": 2094,
-      "sha256": "4830919f6b707dd33f5295446ef2ba648cb85246b0931af4a6b5ebc6ab56262c"
-    },
-    "media/source-plan.png": {
-      "bytes": 282955,
-      "sha256": "23eab735dd2dcd2190264f93b3aad274b08a68b822c4a6f597a377afdc763542"
-    },
-    "media/agent-annotation.png": {
-      "bytes": 545551,
-      "sha256": "2a8a7f8486409aee8e0252adb47f5c33c5e7d935b0b24a172bd6dcec579e48d1"
-    },
-    "media/render-living-overview.webp": {
-      "bytes": 71042,
-      "sha256": "beb7126786051a10de63c3bb893c98f0eb51d17f4f6f1023574103d490247d6c"
-    },
-    "media/render-living-media-wall.webp": {
-      "bytes": 75646,
-      "sha256": "dc40d844d876c083957fd18e89e8af983e66f4a7041774171314c7a291950a35"
-    },
-    "media/render-dining-kitchen.webp": {
-      "bytes": 50614,
-      "sha256": "9a3a8b9306d875556aae69365a4c2096bfaa2757fe9bab0c0957b7e766439895"
-    },
-    "media/render-primary-bedroom.webp": {
-      "bytes": 62990,
-      "sha256": "0f4526082ef07db8281b1bad14b20177979d1dd085812e0790139cacb696dda2"
-    },
-    "agent-review.json": {
-      "bytes": 1594,
-      "sha256": "ee281190a2d58691fec62accde9adfbba915cb097bc64409afc615b325f94934"
+      "bytes": 1807,
+      "sha256": "3782e5a72f7a03e16e457f96dad71f752d1c6f0e5d3029c3f85b6ef72104d6b0"
     },
     "cover.svg": {
-      "bytes": 23265,
-      "sha256": "18722d13845f4b7782760a9e22202884bb84f7ebcc0a54589ebd2ab8a3cbe4b0"
+      "bytes": 10441,
+      "sha256": "807577023ed11163d42d424c8ed8a48da47b86e3ffb788cf4a98c63b1f1ce360"
+    },
+    "index.html": {
+      "bytes": 15431,
+      "sha256": "930cc758e9b52185b0a41a76e986be3f5e6c3fc9bbc05e122685c71e4c401b11"
+    },
+    "media/plan.svg": {
+      "bytes": 10441,
+      "sha256": "807577023ed11163d42d424c8ed8a48da47b86e3ffb788cf4a98c63b1f1ce360"
+    },
+    "media/render-dining-kitchen.png": {
+      "bytes": 1909715,
+      "sha256": "72818576e1f8a7aff72a80b7d326016ad83f828c259f4a5c089ee0b9ecd5421b"
+    },
+    "media/render-living-media.png": {
+      "bytes": 2180290,
+      "sha256": "5ca715716bfbb41cc7b789be0c203f403d5297199758de41376e4a3c05ef1fc7"
+    },
+    "media/render-living-overview.png": {
+      "bytes": 2139541,
+      "sha256": "1bc3195b402350049c462c02f8c17c47fdd0d02b963f47094679809ba935d135"
+    },
+    "media/render-primary-bedroom.png": {
+      "bytes": 2051405,
+      "sha256": "b29ae45fbd690e5e0de9c745d9d327970eb029ffc17003011dcd31bccbcdb66a"
+    },
+    "panorama-review/index.html": {
+      "bytes": 6311,
+      "sha256": "585a20e82928759e472ae33996626a998d484e2509447ab84a5a32a693930158"
+    },
+    "panorama-review/review.json": {
+      "bytes": 963,
+      "sha256": "ca354483ca10b82544e2227a70f608140b1ec6fc4d6eb678d312d088d01b5e8d"
+    },
+    "panorama-review/viewer.bundle.js": {
+      "bytes": 525021,
+      "sha256": "fb97b13b7be07bc99d379dc64a038d0d1e2cc7f75c8cfbe87d83e56710d89fce"
+    },
+    "panorama-review/viewer.html": {
+      "bytes": 1468,
+      "sha256": "60f4e3052d5ccef80c3a9077a3c1fe7a720a9909749e9f20ca79f0d53e56b6c8"
+    },
+    "style-guide.json": {
+      "bytes": 917,
+      "sha256": "2daec05fff63f5cecfdfd066a8eef00db3f53e5c20a6e945b79c288b9cdf9895"
+    },
+    "tour/index.html": {
+      "bytes": 948,
+      "sha256": "0733f8c12b5d6c0ee76d71dc6e86d565c4599df980b0e4c3b18e676078ac86aa"
+    },
+    "agent-review.json": {
+      "bytes": 1858,
+      "sha256": "35a2515aa110cb1d2f26477708ab2090e694a17d711b228677262ec5031194ef"
     }
   },
+  "privacy": {
+    "rawEvidenceIncluded": false,
+    "absolutePaths": false,
+    "remoteAssets": false
+  },
+  "visualAcceptance": "user",
   "renderer": {
     "id": "render-interior-pages",
-    "version": 2,
-    "requestSchema": "personal-agent/interior-page-request/v1",
-    "outputSchema": "personal-agent/interior-page-bundle/v1"
+    "version": 5,
+    "requestSchema": "personal-agent/interior-workspace/v5",
+    "outputSchema": "personal-agent/interior-page-bundle/v5"
   },
   "agentInspection": {
     "required": true,
     "plan": "agent-review.json",
     "status": "ready"
   },
-  "source": {
-    "kind": "native-governed-pascal-v2-project",
-    "pipeline": [
-      "project-v2-seed",
-      "demand-workflow-v1",
-      "style-calibration",
-      "render-storyboard",
-      "pascal-scene-compile",
-      "professional-quality-audit",
-      "render-interior-pages-v2",
-      "artifact-hash-verify"
-    ],
-    "seedSha256": "1d5c802d45a28e34aa6981ef7f458e6041040a9f90b8ff150b2f9a0aa6f96093",
-    "workflowEventsSha256": "ca0f133d2b4e30dfb9645aed471632d01e5d61e0c7ffc744faa24aefea21d9d7",
-    "renderPromptSetSha256": "1c827f81fa7ea6c4b6ad9e51b74b0a00184757ad290f522c9cd1705e1e91855e",
-    "styleId": "warm-mineral-walnut",
-    "styleGuideSha256": "659609c145d4abe342361098b33885b45df943aeefab2874ca94d6519e6c0d1d",
-    "evidenceSha256": "23eab735dd2dcd2190264f93b3aad274b08a68b822c4a6f597a377afdc763542",
-    "modelBasisSha256": "23eab735dd2dcd2190264f93b3aad274b08a68b822c4a6f597a377afdc763542",
-    "annotationSha256": "2a8a7f8486409aee8e0252adb47f5c33c5e7d935b0b24a172bd6dcec579e48d1",
-    "demandWorkflow": {
-      "version": 1,
-      "stage": "delivered",
-      "transitionCount": 7,
-      "confirmationCount": 7
-    },
-    "renderSet": [
-      {
-        "renderId": "render-living-overview",
-        "styleId": "warm-mineral-walnut",
-        "styleGuideSha256": "659609c145d4abe342361098b33885b45df943aeefab2874ca94d6519e6c0d1d",
-        "generator": "imagegen",
-        "sourceImageSha256": "1bc3195b402350049c462c02f8c17c47fdd0d02b963f47094679809ba935d135",
-        "deliveryImageSha256": "beb7126786051a10de63c3bb893c98f0eb51d17f4f6f1023574103d490247d6c",
-        "referenceSetSha256": "c7875017e6c76b469c765d909944c0a247a14babb9f5f385d9e58e7f3334682e",
-        "promptSha256": "418c301a6a90fb3669fa744f1afb645b03326886b8256124949f1cdc6ed0aa94"
-      },
-      {
-        "renderId": "render-living-media-wall",
-        "styleId": "warm-mineral-walnut",
-        "styleGuideSha256": "659609c145d4abe342361098b33885b45df943aeefab2874ca94d6519e6c0d1d",
-        "generator": "imagegen",
-        "sourceImageSha256": "5ca715716bfbb41cc7b789be0c203f403d5297199758de41376e4a3c05ef1fc7",
-        "deliveryImageSha256": "dc40d844d876c083957fd18e89e8af983e66f4a7041774171314c7a291950a35",
-        "referenceSetSha256": "c7875017e6c76b469c765d909944c0a247a14babb9f5f385d9e58e7f3334682e",
-        "promptSha256": "720851cef9f41a2823c064c84cdf67eb9830a00b4b11529ad9c644009c0a90f9"
-      },
-      {
-        "renderId": "render-dining-kitchen",
-        "styleId": "warm-mineral-walnut",
-        "styleGuideSha256": "659609c145d4abe342361098b33885b45df943aeefab2874ca94d6519e6c0d1d",
-        "generator": "imagegen",
-        "sourceImageSha256": "72818576e1f8a7aff72a80b7d326016ad83f828c259f4a5c089ee0b9ecd5421b",
-        "deliveryImageSha256": "9a3a8b9306d875556aae69365a4c2096bfaa2757fe9bab0c0957b7e766439895",
-        "referenceSetSha256": "c7875017e6c76b469c765d909944c0a247a14babb9f5f385d9e58e7f3334682e",
-        "promptSha256": "f165bcc2a6a0b09f77e2a924edbab049e21d2ce8a5372fdec8fdcdf364f15ce3"
-      },
-      {
-        "renderId": "render-primary-bedroom",
-        "styleId": "warm-mineral-walnut",
-        "styleGuideSha256": "659609c145d4abe342361098b33885b45df943aeefab2874ca94d6519e6c0d1d",
-        "generator": "imagegen",
-        "sourceImageSha256": "b29ae45fbd690e5e0de9c745d9d327970eb029ffc17003011dcd31bccbcdb66a",
-        "deliveryImageSha256": "0f4526082ef07db8281b1bad14b20177979d1dd085812e0790139cacb696dda2",
-        "referenceSetSha256": "c7875017e6c76b469c765d909944c0a247a14babb9f5f385d9e58e7f3334682e",
-        "promptSha256": "2f5908a4d11f0ece9a7a569bf12ab714affd9cf906fb9e8b486ba68437c379a2"
-      }
-    ],
-    "projectSha256": "8bcc0fd5ae267f81a18ea40e6f1ef780b1425a11e497ebb4fb0f70a5139fc43a",
-    "sceneSha256": "163e8998fdabbe7d3309431edd342795db61a9daa4e0939f7d1ee2be22f0d686",
-    "auditSha256": "87352309c5310b5cfc7133e5be02815446a0c00c57ad80166402767faaaa992a",
-    "renderProfile": "professional-archviz-v3",
-    "layoutProfile": "renovation-booklet",
-    "specialistPages": {
-      "threeD": {
-        "path": "3d/index.html",
-        "layoutProfile": "su-design-classic",
-        "engine": "pascal-v2"
-      }
-    },
-    "qualityFloor": {
-      "rooms": 12,
-      "furniture": 30,
-      "openings": 14,
-      "doors": 8,
-      "windows": 6,
-      "walls": 20,
-      "slabs": 1,
-      "ceilings": 1
-    }
+  "agent": {
+    "id": "interior-designer",
+    "version": 5,
+    "exampleId": "interior-workspace-v5"
   }
 }

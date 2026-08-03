@@ -1,0 +1,191 @@
+{
+  "schemaVersion": 5,
+  "project": {
+    "projectId": "example-courtyard-apartment",
+    "title": "朝光三居装修工作区",
+    "revision": 1,
+    "scope": {
+      "designStage": "concept-design",
+      "includes": ["需求澄清", "空间布局", "家具与柜体", "材料", "照明", "水电点位概念", "在线图纸", "Web 3D", "方案确认"],
+      "excludes": ["结构鉴定", "施工签章", "正式工程量清单", "定制生产尺寸"]
+    }
+  },
+  "brief": {
+    "summary": "三口之家长期居住，公共区需要连续采光、餐厨协同和可扩展收纳。",
+    "household": ["两位成人", "一名儿童"],
+    "priorities": ["公共区通透", "玄关与家政收纳", "儿童房可成长", "低眩光照明"],
+    "budgetBoundary": "硬装、定制与主材按 32-42 万元概念范围控制"
+  },
+  "evidence": [
+    {
+      "id": "source-plan",
+      "file": "source-plan.png",
+      "label": "脱敏户型参考",
+      "kind": "drawing-reference",
+      "factStatus": "image-derived",
+      "confidence": 0.78,
+      "allowedUses": ["structure-reference", "calibration-reference"],
+      "prohibitedUses": ["infer-load-bearing", "infer-construction-dimensions"],
+      "observations": ["单层三居", "公共区位于南侧", "服务空间集中在东侧"]
+    },
+    {
+      "id": "plan-annotation",
+      "file": "agent-annotation.png",
+      "label": "Agent 空间分析标注",
+      "kind": "agent-analysis",
+      "factStatus": "estimated",
+      "confidence": 0.72,
+      "allowedUses": ["design-explanation"],
+      "prohibitedUses": ["construction-dimension"],
+      "observations": ["用于说明公共区、服务区和卧室区关系"]
+    }
+  ],
+  "requirements": [
+    { "id": "req-public-light", "statement": "客餐厅保持连续采光和不少于 900mm 的主要通行净宽。", "priority": "must", "status": "satisfied", "source": "brief", "designElementIds": ["room-living", "sofa-main", "table-dining"], "verification": "平面净距与现场复尺" },
+    { "id": "req-entry-storage", "statement": "玄关具备鞋、外套、清洁工具和临时置物。", "priority": "must", "status": "satisfied", "source": "brief", "designElementIds": ["cabinet-entry"], "verification": "柜体深化" },
+    { "id": "req-kitchen-flow", "statement": "厨房按储藏、清洗、备餐、烹饪顺序组织。", "priority": "must", "status": "satisfied", "source": "brief", "designElementIds": ["cabinet-kitchen", "appliance-fridge", "appliance-cooktop"], "verification": "设备型号与台面复尺" },
+    { "id": "req-child-growth", "statement": "儿童房同时容纳睡眠、学习和可调整储物。", "priority": "must", "status": "satisfied", "source": "brief", "designElementIds": ["room-child", "bed-child", "desk-child", "cabinet-child"], "verification": "家具尺寸复核" },
+    { "id": "req-low-glare", "statement": "公共区避免单一主灯和直射屏幕的高眩光。", "priority": "should", "status": "satisfied", "source": "brief", "designElementIds": ["light-living-a", "light-dining-a"], "verification": "灯具配光与现场调试" }
+  ],
+  "assumptions": [
+    { "id": "assume-height", "statement": "概念层高暂按 2850mm 建模。", "status": "estimated", "sourceEvidenceIds": ["source-plan"] },
+    { "id": "assume-wall", "statement": "非结构分隔墙概念厚度按 120mm 表达。", "status": "estimated", "sourceEvidenceIds": ["source-plan"] }
+  ],
+  "unknowns": [
+    { "id": "unknown-site-size", "statement": "全部墙体、洞口、梁柱和完成面尺寸需现场复尺。", "status": "open", "owner": "现场测量人员", "holdPoint": "施工深化和定制下单前" },
+    { "id": "unknown-services", "statement": "烟道、立管、地漏、配电容量和原有回路尚未核实。", "status": "open", "owner": "机电专业人员", "holdPoint": "水电施工前" }
+  ],
+  "professionalVerifications": [
+    { "id": "verify-structure", "statement": "拆改边界和承重属性必须以原始结构图及专业意见为准。", "status": "required", "owner": "结构专业人员", "holdPoint": "任何拆改前" },
+    { "id": "verify-waterproof", "statement": "卫生间防水、排水坡度和闭水试验由施工与监理确认。", "status": "required", "owner": "施工方/监理", "holdPoint": "贴砖前" }
+  ],
+  "design": {
+    "concept": {
+      "name": "连续公共核",
+      "summary": "用一条连续木质收纳带串联玄关、餐厅与客厅，把杂物隐藏在公共区边缘。",
+      "rationale": "保留三间独立卧室，将主要活动集中到南侧连续公共区；厨房维持封闭防油烟，同时通过宽门洞与餐区协同。",
+      "boundary": "方案不改变未经确认的结构墙和湿区位置，所有固定柜与机电点位在复尺、设备选型和专业深化后实施。"
+    },
+    "style": { "id": "warm-mineral-walnut", "name": "暖矿物与胡桃木", "keywords": ["克制", "自然", "低饱和", "耐久"], "palette": ["#f2f0e9", "#d7c7ae", "#876d55", "#8d9b91"], "lighting": "2700-3500K 分层照明，公共区重点控制眩光。" },
+    "spaceStrategies": [
+      { "space": "玄关与公共区", "strategy": "通顶柜吸收鞋、外套、清洁工具和影音设备，柜体端部形成进门视觉缓冲。", "verification": "门扇开启、弱电箱和扫地机器人位置复尺" },
+      { "space": "餐厨", "strategy": "餐桌作为备餐与家庭活动中心，厨房保持 U 形工作面并预留冰箱散热。", "verification": "设备型号、烟道和燃气条件复核" },
+      { "space": "卧室区", "strategy": "主卧保持对称睡眠面，儿童房用标准单人床和独立书桌支持成长变化。", "verification": "床垫、书桌和衣柜成品尺寸确认" }
+    ],
+    "materials": [
+      { "id": "floor-oak", "category": "地面", "name": "哑光浅橡木地板", "color": "#d7c7ae", "specification": "低光泽、耐磨、适合地暖的稳定基材", "boundary": "以实样、批次和含水率为准" },
+      { "id": "wall-mineral", "category": "墙面", "name": "暖白矿物涂料", "color": "#f2f0e9", "specification": "低 VOC、可局部修补的哑光体系", "boundary": "先做 1㎡ 现场样板" },
+      { "id": "wood-walnut", "category": "柜体", "name": "中浅胡桃木饰面", "color": "#876d55", "specification": "直纹、低反射、统一封边色", "boundary": "板材环保等级、封边和五金另行确认" },
+      { "id": "fabric-sage", "category": "软装", "name": "灰绿耐磨织物", "color": "#8d9b91", "specification": "可拆洗、耐摩擦", "boundary": "以成品样卡为准" }
+    ],
+    "lighting": { "summary": "客厅用反射环境光配合阅读灯，餐桌使用可控光束吊灯，走道采用低位夜间照明。" },
+    "mep": { "summary": "开关、插座、照明和给排水点位已进入在线概念图；回路、负荷、管径、坡度与防水节点待专业深化。" },
+    "budget": [
+      { "category": "基础施工与机电", "low": 110000, "high": 145000, "basis": "概念面积与常规翻新范围" },
+      { "category": "定制柜体", "low": 80000, "high": 115000, "basis": "约 25-32 延米，未含特殊五金" },
+      { "category": "主材与灯具", "low": 75000, "high": 105000, "basis": "中端耐用品质区间" },
+      { "category": "家具软装与预备金", "low": 55000, "high": 75000, "basis": "核心家具与约 10% 风险预备" }
+    ],
+    "renders": [
+      { "id": "render-living-overview", "title": "客餐厅连续公共区", "view": "living-overview", "file": "renders/living-overview.png", "generator": "imagegen", "styleId": "warm-mineral-walnut", "geometryRevision": 1 },
+      { "id": "render-living-media", "title": "客厅收纳与影音墙", "view": "living-media-wall", "file": "renders/living-media-wall.png", "generator": "imagegen", "styleId": "warm-mineral-walnut", "geometryRevision": 1 },
+      { "id": "render-dining-kitchen", "title": "餐厨协同", "view": "dining-kitchen", "file": "renders/dining-kitchen.png", "generator": "imagegen", "styleId": "warm-mineral-walnut", "geometryRevision": 1 },
+      { "id": "render-primary-bedroom", "title": "主卧低眩光氛围", "view": "primary-bedroom", "file": "renders/primary-bedroom.png", "generator": "imagegen", "styleId": "warm-mineral-walnut", "geometryRevision": 1 }
+    ]
+  },
+  "geometry": {
+    "basis": { "grade": "drawing-derived", "sourceEvidenceIds": ["source-plan"], "confidence": 0.86 },
+    "levels": [{ "id": "level-main", "name": "主层", "elevation": 0, "height": 2850 }],
+    "rooms": [
+      { "id": "room-primary", "name": "主卧", "levelId": "level-main", "polygon": [[0,0],[4000,0],[4000,3600],[0,3600]] },
+      { "id": "room-child", "name": "儿童房", "levelId": "level-main", "polygon": [[4000,0],[8000,0],[8000,3600],[4000,3600]] },
+      { "id": "room-study", "name": "书房/客房", "levelId": "level-main", "polygon": [[8000,0],[12000,0],[12000,3600],[8000,3600]] },
+      { "id": "room-living", "name": "客餐厅", "levelId": "level-main", "polygon": [[0,3600],[9000,3600],[9000,9000],[0,9000]] },
+      { "id": "room-kitchen", "name": "厨房", "levelId": "level-main", "polygon": [[9000,3600],[12000,3600],[12000,6500],[9000,6500]] },
+      { "id": "room-bath", "name": "卫生间", "levelId": "level-main", "polygon": [[9000,6500],[12000,6500],[12000,9000],[9000,9000]] }
+    ],
+    "walls": [
+      { "id": "wall-north", "levelId": "level-main", "start": [0,0], "end": [12000,0], "thickness": 240, "height": 2850, "confidence": 0.86 },
+      { "id": "wall-east", "levelId": "level-main", "start": [12000,0], "end": [12000,9000], "thickness": 240, "height": 2850, "confidence": 0.86 },
+      { "id": "wall-south", "levelId": "level-main", "start": [12000,9000], "end": [0,9000], "thickness": 240, "height": 2850, "confidence": 0.86 },
+      { "id": "wall-west", "levelId": "level-main", "start": [0,9000], "end": [0,0], "thickness": 240, "height": 2850, "confidence": 0.86 },
+      { "id": "wall-hall", "levelId": "level-main", "start": [0,3600], "end": [12000,3600], "thickness": 120, "height": 2850, "confidence": 0.82 },
+      { "id": "wall-bed-a", "levelId": "level-main", "start": [4000,0], "end": [4000,3600], "thickness": 120, "height": 2850, "confidence": 0.82 },
+      { "id": "wall-bed-b", "levelId": "level-main", "start": [8000,0], "end": [8000,3600], "thickness": 120, "height": 2850, "confidence": 0.82 },
+      { "id": "wall-service", "levelId": "level-main", "start": [9000,3600], "end": [9000,9000], "thickness": 120, "height": 2850, "confidence": 0.82 },
+      { "id": "wall-service-split", "levelId": "level-main", "start": [9000,6500], "end": [12000,6500], "thickness": 120, "height": 2850, "confidence": 0.82 }
+    ],
+    "openings": [
+      { "id": "door-entry", "type": "door", "wallId": "wall-south", "offset": 1100, "width": 1000, "height": 2200, "sill": 0, "confidence": 0.8 },
+      { "id": "window-living", "type": "window", "wallId": "wall-west", "offset": 1100, "width": 3600, "height": 2200, "sill": 250, "confidence": 0.8 },
+      { "id": "window-primary", "type": "window", "wallId": "wall-north", "offset": 700, "width": 2200, "height": 1550, "sill": 900, "confidence": 0.8 },
+      { "id": "window-child", "type": "window", "wallId": "wall-north", "offset": 4900, "width": 2000, "height": 1550, "sill": 900, "confidence": 0.8 },
+      { "id": "window-study", "type": "window", "wallId": "wall-north", "offset": 9000, "width": 2100, "height": 1550, "sill": 900, "confidence": 0.8 },
+      { "id": "door-primary", "type": "door", "wallId": "wall-hall", "offset": 2900, "width": 900, "height": 2200, "sill": 0, "confidence": 0.8 },
+      { "id": "door-child", "type": "door", "wallId": "wall-hall", "offset": 5100, "width": 900, "height": 2200, "sill": 0, "confidence": 0.8 },
+      { "id": "door-study", "type": "door", "wallId": "wall-hall", "offset": 8100, "width": 900, "height": 2200, "sill": 0, "confidence": 0.8 },
+      { "id": "door-kitchen", "type": "door", "wallId": "wall-service", "offset": 900, "width": 1300, "height": 2200, "sill": 0, "confidence": 0.8 },
+      { "id": "door-bath", "type": "door", "wallId": "wall-service", "offset": 3700, "width": 800, "height": 2200, "sill": 0, "confidence": 0.8 },
+      { "id": "window-kitchen", "type": "window", "wallId": "wall-east", "offset": 4100, "width": 1400, "height": 1300, "sill": 1050, "confidence": 0.8 }
+    ],
+    "elements": [
+      { "id": "bed-primary", "name": "主卧双人床", "type": "bed", "roomId": "room-primary", "position": [2100,1700,0], "size": [1800,2100,550], "rotationDeg": 0, "materialId": "floor-oak", "collisionClass": "solid" },
+      { "id": "cabinet-primary", "name": "主卧衣柜", "type": "cabinet", "roomId": "room-primary", "position": [340,1800,0], "size": [600,2600,2400], "rotationDeg": 0, "materialId": "wood-walnut", "collisionClass": "solid" },
+      { "id": "bed-child", "name": "儿童床", "type": "bed", "roomId": "room-child", "position": [5000,1550,0], "size": [1200,2000,500], "rotationDeg": 0, "materialId": "floor-oak", "collisionClass": "solid" },
+      { "id": "desk-child", "name": "儿童书桌", "type": "table", "roomId": "room-child", "position": [6900,700,0], "size": [1200,600,750], "rotationDeg": 0, "materialId": "wood-walnut", "collisionClass": "solid" },
+      { "id": "cabinet-child", "name": "儿童衣柜", "type": "cabinet", "roomId": "room-child", "position": [7600,2200,0], "size": [600,2200,2400], "rotationDeg": 0, "materialId": "wood-walnut", "collisionClass": "solid" },
+      { "id": "sofa-main", "name": "三人沙发", "type": "sofa", "roomId": "room-living", "position": [3000,6400,0], "size": [2800,950,820], "rotationDeg": 0, "materialId": "fabric-sage", "collisionClass": "solid" },
+      { "id": "table-coffee", "name": "茶几", "type": "table", "roomId": "room-living", "position": [3000,7600,0], "size": [1200,650,380], "rotationDeg": 0, "materialId": "wood-walnut", "collisionClass": "solid" },
+      { "id": "cabinet-media", "name": "影音收纳柜", "type": "cabinet", "roomId": "room-living", "position": [3000,8750,0], "size": [4200,450,2200], "rotationDeg": 0, "materialId": "wood-walnut", "collisionClass": "solid" },
+      { "id": "table-dining", "name": "六人餐桌", "type": "table", "roomId": "room-living", "position": [6900,6200,0], "size": [1800,900,750], "rotationDeg": 0, "materialId": "wood-walnut", "collisionClass": "solid" },
+      { "id": "cabinet-entry", "name": "玄关家政柜", "type": "cabinet", "roomId": "room-living", "position": [8100,8500,0], "size": [1500,500,2400], "rotationDeg": 0, "materialId": "wood-walnut", "collisionClass": "solid" },
+      { "id": "cabinet-kitchen", "name": "厨房操作柜", "type": "cabinet", "roomId": "room-kitchen", "position": [10800,6100,0], "size": [2100,600,900], "rotationDeg": 0, "materialId": "wood-walnut", "collisionClass": "solid" },
+      { "id": "appliance-fridge", "name": "冰箱", "type": "appliance", "roomId": "room-kitchen", "position": [11600,4300,0], "size": [760,760,1900], "rotationDeg": 0, "collisionClass": "solid" },
+      { "id": "appliance-cooktop", "name": "灶具", "type": "appliance", "roomId": "room-kitchen", "position": [10300,6100,900], "size": [750,500,80], "rotationDeg": 0, "allowOverlap": true },
+      { "id": "sanitary-basin", "name": "台盆", "type": "sanitary", "roomId": "room-bath", "position": [9500,7200,0], "size": [600,500,850], "rotationDeg": 0, "collisionClass": "solid" },
+      { "id": "sanitary-toilet", "name": "坐便器", "type": "sanitary", "roomId": "room-bath", "position": [10800,7600,0], "size": [420,700,760], "rotationDeg": 0, "collisionClass": "solid" },
+      { "id": "sanitary-shower", "name": "淋浴区", "type": "sanitary", "roomId": "room-bath", "position": [11200,8500,0], "size": [1400,900,40], "rotationDeg": 0, "collisionClass": "visual" }
+    ],
+    "points": [
+      { "id": "light-living-a", "label": "客厅主照明", "type": "light", "roomId": "room-living", "position": [3000,6500], "mountHeight": 2700 },
+      { "id": "light-dining-a", "label": "餐桌吊灯", "type": "light", "roomId": "room-living", "position": [6900,6200], "mountHeight": 2200 },
+      { "id": "socket-media-a", "label": "影音插座组", "type": "socket", "roomId": "room-living", "position": [3000,8750], "mountHeight": 350 },
+      { "id": "socket-kitchen-a", "label": "台面插座", "type": "socket", "roomId": "room-kitchen", "position": [10300,6200], "mountHeight": 1150 },
+      { "id": "water-sink-a", "label": "厨房给水", "type": "water", "roomId": "room-kitchen", "position": [11000,6200], "mountHeight": 500 },
+      { "id": "drain-sink-a", "label": "厨房排水", "type": "drain", "roomId": "room-kitchen", "position": [11000,6200], "mountHeight": 150 },
+      { "id": "water-basin-a", "label": "台盆给水", "type": "water", "roomId": "room-bath", "position": [9500,7200], "mountHeight": 500 },
+      { "id": "drain-shower-a", "label": "淋浴地漏", "type": "drain", "roomId": "room-bath", "position": [11200,8500], "mountHeight": 0 }
+    ],
+    "clearances": [
+      { "id": "clear-living-route", "label": "客厅主要通道", "actualMm": 1120, "requiredMm": 900, "elementIds": ["sofa-main", "table-dining"] },
+      { "id": "clear-kitchen-aisle", "label": "厨房操作净距", "actualMm": 1080, "requiredMm": 900, "elementIds": ["cabinet-kitchen", "appliance-fridge"] }
+    ],
+    "cameras": [
+      { "id": "camera-overview", "name": "整屋鸟瞰", "position": [15500,12500,11500], "target": [6000,4500,1000] },
+      { "id": "camera-living", "name": "公共区", "position": [1500,8200,1550], "target": [6200,6000,1200] }
+    ],
+    "ceilingZones": [
+      { "id": "ceiling-living", "roomId": "room-living", "polygon": [[300,3900],[8700,3900],[8700,8700],[300,8700]], "elevation": 2650 },
+      { "id": "ceiling-kitchen", "roomId": "room-kitchen", "polygon": [[9200,3800],[11800,3800],[11800,6300],[9200,6300]], "elevation": 2400 }
+    ],
+    "circuits": [
+      { "id": "circuit-living-main", "kind": "lighting", "path": [[900,7200],[3000,6500]] },
+      { "id": "circuit-dining", "kind": "lighting", "path": [[900,7200],[6900,6200]] }
+    ],
+    "plumbingRuns": [
+      { "id": "run-kitchen-cold", "kind": "cold", "path": [[12000,5800],[11000,5800],[11000,6200]] },
+      { "id": "run-bath-hot", "kind": "hot", "path": [[12000,7000],[9500,7000],[9500,7200]] },
+      { "id": "run-bath-drain", "kind": "drain", "path": [[11200,8500],[12000,8500]] }
+    ],
+    "cabinetModules": [
+      { "id": "module-entry", "roomId": "room-living", "position": [8100,8500,0], "width": 1500, "depth": 500, "height": 2400, "rotationDeg": 0 },
+      { "id": "module-kitchen", "roomId": "room-kitchen", "position": [10800,6100,0], "width": 2100, "depth": 600, "height": 900, "rotationDeg": 0 },
+      { "id": "module-primary", "roomId": "room-primary", "position": [340,1800,0], "width": 2600, "depth": 600, "height": 2400, "rotationDeg": 90 }
+    ],
+    "panoramaNodes": [
+      { "id": "living", "title": "客餐厅", "roomId": "room-living", "position": [5000,7200,1550], "lookAt": [6900,6200,1300], "hotspots": [{ "target": "kitchen", "yaw": 62, "pitch": -3 }] },
+      { "id": "kitchen", "title": "厨房", "roomId": "room-kitchen", "position": [10400,5000,1550], "lookAt": [10800,6100,1200], "hotspots": [{ "target": "living", "yaw": -120, "pitch": -2 }] },
+      { "id": "primary", "title": "主卧", "roomId": "room-primary", "position": [2100,3150,1550], "lookAt": [2100,1200,1200], "hotspots": [{ "target": "living", "yaw": 170, "pitch": -4 }] }
+    ]
+  }
+}

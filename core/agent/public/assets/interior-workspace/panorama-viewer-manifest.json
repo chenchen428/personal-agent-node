@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 5,
+  "source": "skills/interior-design/scripts/panorama-viewer-entry.mjs",
+  "output": "core/agent/public/assets/interior-workspace/panorama-viewer.bundle.js",
+  "bytes": 525021,
+  "sha256": "fb97b13b7be07bc99d379dc64a038d0d1e2cc7f75c8cfbe87d83e56710d89fce",
+  "features": [
+    "equirectangular-sphere",
+    "pointer-and-touch-look",
+    "wheel-zoom",
+    "reset",
+    "fullscreen"
+  ],
+  "dependencies": {
+    "three": "0.185.0",
+    "esbuild": "0.28.1"
+  }
+}

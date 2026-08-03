@@ -2,14 +2,9 @@
   "schemaVersion": 1,
   "skill": "home-renovation",
   "title": "二手房全屋改造决策包",
-  "prompt": "为一套约 90 平方米、总预算边界 30 万元的二手房全屋改造建立 Space 内 project v2：分类证据、装修 brief、must/should/prefer/avoid 需求、A/B 概念方案、预算边界、材料和施工阶段、假设、未知、专业核验与决策顺序；需要视觉交付时通过 interior-design 编译 Pascal 场景并审计，未知尺寸与当地规范必须明确待核实。",
+  "prompt": "为一套约 90 平方米、总预算边界 30 万元的二手房建立可追溯装修决策：分类证据、需求、预算、材料、假设、未知项、专业复核和决策顺序；需要空间设计时交给 interior-design 建立毫米制 geometry.json，并生成便于家庭共同确认的设计册 Page、在线 SVG 概念图和沉浸式 Web 3D。未知尺寸与当地规范必须明确待核实。",
   "commands": [],
-  "artifacts": [
-    {
-      "path": "decision-pack.md",
-      "label": "Traceable renovation decision fixture"
-    }
-  ],
-  "verifiedAt": "2026-07-27",
+  "artifacts": [{ "path": "decision-pack.md", "label": "Traceable renovation decision fixture" }],
+  "verifiedAt": "2026-08-02",
   "note": "The fixture contains no current price or code claims; a real project must verify local rules, measurements, product documents, and quotations."
 }

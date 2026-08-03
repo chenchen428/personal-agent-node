@@ -1,17 +1,18 @@
 {
-  "schemaVersion": 2,
+  "schemaVersion": 5,
   "renderer": {
     "id": "render-interior-pages",
-    "version": 2,
-    "requestSchema": "personal-agent/interior-page-request/v1",
-    "outputSchema": "personal-agent/interior-page-bundle/v1"
+    "version": 5,
+    "requestSchema": "personal-agent/interior-workspace/v5",
+    "outputSchema": "personal-agent/interior-page-bundle/v5"
   },
-  "revision": 10,
+  "revision": 1,
   "status": "ready-for-agent-review",
   "automaticChecks": {
     "status": "passed",
-    "blockingCount": 0,
-    "warningCount": 2
+    "errorCount": 0,
+    "holdCount": 5,
+    "warningCount": 0
   },
   "targets": [
     {
@@ -25,6 +26,16 @@
       "viewport": "mobile-portrait"
     },
     {
+      "id": "online-drawing-desktop",
+      "entry": "index.html#drawings",
+      "viewport": "desktop"
+    },
+    {
+      "id": "online-drawing-mobile",
+      "entry": "index.html#drawings",
+      "viewport": "mobile-portrait"
+    },
+    {
       "id": "three-d-desktop",
       "entry": "3d/index.html",
       "viewport": "desktop"
@@ -32,7 +43,7 @@
     {
       "id": "three-d-mobile-portrait",
       "entry": "3d/index.html",
-      "viewport": "mobile-portrait-forced-landscape"
+      "viewport": "mobile-portrait"
     },
     {
       "id": "three-d-mobile-landscape",
@@ -44,17 +55,21 @@
     "required": true,
     "guide": "style-guide.json",
     "selectedStyleId": "warm-mineral-walnut",
-    "pagePresentation": "selected-style-only",
-    "effectRenderBinding": "same-style-id-required",
-    "correctionSurface": "demandWorkflow.styleProfile.primary"
+    "pagePresentation": "owner-decision-booklet-v5",
+    "correctionSurface": "project.json + geometry.json + artifact-workflow.json"
   },
-  "correctionSurface": "governed-project-data-only",
-  "forbiddenSurface": [
-    "index.html",
-    "3d/index.html",
-    "inline CSS",
-    "viewer JavaScript"
+  "shareableOutputs": [
+    "Owner-Page",
+    "Online-SVG",
+    "Semantic-Web3D",
+    "Krpano-Tour"
   ],
-  "next": "Inspect every target and verify the rendered selected style, record observations, then run the renderer review command.",
+  "correctionSurface": "dependency-aware-artifacts",
+  "forbiddenSurface": [
+    "generated HTML",
+    "generated CSS",
+    "viewer bundle"
+  ],
+  "next": "Inspect every target and interaction, then confirm or modify the corresponding artifact.",
   "visualAcceptance": "user"
 }

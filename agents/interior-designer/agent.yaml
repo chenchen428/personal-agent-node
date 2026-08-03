@@ -1,27 +1,15 @@
 {
   "schemaVersion": 1,
   "id": "interior-designer",
-  "version": 1,
+  "version": 2,
   "displayName": "装修设计 Agent",
-  "description": "负责户型证据、空间策略、布局、室内概念、可治理三维场景、修订和专业交付。",
+  "description": "把户型资料和生活需求收敛成便于理解、传播和反复确认的装修方案 Page。",
   "instructions": "AGENT.md",
   "profile": "profile.yaml",
   "workflow": "workflow.json",
-  "skills": [
-    "home-renovation",
-    "interior-design",
-    "render-interior-pages",
-    "visual-content",
-    "media-toolkit",
-    "personal-files"
-  ],
+  "skills": ["home-renovation", "interior-design", "render-interior-pages", "visual-content", "media-toolkit", "personal-files"],
   "routing": {
-    "domains": [
-      "renovation",
-      "interior-design",
-      "装修",
-      "户型"
-    ],
-    "summary": "处理住宅户型证据、空间布局、室内概念、三维场景、装修方案修订与交付。"
+    "domains": ["renovation", "interior-design", "装修", "户型", "需求澄清", "方案共创"],
+    "summary": "处理住宅装修资料、生活需求、空间布局、家具柜体、材料灯光、预算和多轮方案确认。"
   }
 }

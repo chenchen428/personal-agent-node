@@ -1,29 +1,30 @@
 {
-  "schemaVersion": 1,
-  "id": "interior-c-layout-delivery",
-  "agent": {
-    "id": "interior-designer",
-    "version": 1
-  },
+  "schemaVersion": 5,
+  "id": "interior-workspace-v5",
+  "agent": { "id": "interior-designer", "version": 5 },
   "delivery": {
-    "version": 3,
-    "engine": "pascal-v2",
-    "layoutProfile": "renovation-booklet",
-    "renderProfile": "professional-archviz-v3",
+    "version": 5,
+    "workspaceContract": "personal-agent/interior-workspace/v5",
+    "artifactWorkflowContract": "personal-agent/interior-artifact-workflow/v5",
+    "geometryAuthority": "geometry.json",
+    "engine": "geometry-v5+three-v5+krpano",
+    "layoutProfile": "owner-decision-booklet-v5",
+    "shareableOutputs": ["Owner-Page", "Online-SVG", "Semantic-Web3D", "Krpano-Tour"],
+    "onlineDrawings": [
+      "assets/drawings/p-01-plan-layout.svg",
+      "assets/drawings/c-01-ceiling-lighting.svg",
+      "assets/drawings/e-01-switch-control.svg",
+      "assets/drawings/e-02-socket-layout.svg",
+      "assets/drawings/w-01-plumbing.svg",
+      "assets/drawings/m-01-cabinet.svg"
+    ],
     "specialistPages": {
-      "threeD": {
-        "path": "3d/index.html",
-        "layoutProfile": "su-design-classic",
-        "engine": "pascal-v2"
-      }
+      "threeD": { "path": "3d/index.html", "layoutProfile": "editable-semantic-sketch", "engine": "three-interior-v5" },
+      "panoramaReview": { "path": "panorama-review/index.html", "layoutProfile": "one-view-at-a-time" },
+      "tour": { "path": "tour/index.html", "layoutProfile": "final-krpano-tour", "engine": "krpano" }
     },
-    "generator": "node skills/render-interior-pages/scripts/cli.mjs render --project-dir <space-owned-project-dir> --output <page-dir> --json",
-    "renderer": {
-      "id": "render-interior-pages",
-      "version": 2,
-      "requestSchema": "personal-agent/interior-page-request/v1",
-      "outputSchema": "personal-agent/interior-page-bundle/v1"
-    }
+    "generator": "node skills/render-interior-pages/scripts/cli.mjs render --project-dir <space-owned-workspace> --json",
+    "renderer": { "id": "render-interior-pages", "version": 5, "requestSchema": "personal-agent/interior-workspace/v5", "outputSchema": "personal-agent/interior-page-bundle/v5" }
   },
   "asset": {
     "basePath": "/assets/agents/interior-designer/featured",
@@ -34,26 +35,25 @@
   },
   "acceptance": {
     "visualOwner": "user",
-    "agentBrowserReview": true,
-    "agentReviewTargets": ["booklet-desktop", "booklet-mobile", "three-d-desktop", "three-d-mobile-portrait", "three-d-mobile-landscape"],
+    "artifactConfirmationRequired": true,
+    "dependencyInvalidationRequired": true,
+    "onePanoramaPerGeneration": true,
+    "allPanoramasConfirmedBeforeTour": true,
     "verifyArtifactBeforePublish": true
   },
   "fixedFramework": [
-    "The primary delivery is a responsive renovation-booklet Page covering the project summary, evidence, analysis, design narrative, plan, renders, materials and budget scope, consistency matrix, confirmation history, exclusions, and site-verification list.",
-    "Complex interactive 3D is a separate same-revision Page linked from the booklet and opened in a new browser page; only that specialist Page uses the su-design-classic mobile-landscape canvas, and it stays a focused model viewer without requirements or booklet narrative.",
-    "The user-uploaded source plan, Agent annotation, governed project, Pascal scene model basis, and Page payload must resolve to the same evidence hash.",
-    "The Pascal scene remains the only production 3D engine and supplies the model-derived SVG failure fallback.",
-    "A governed styleId selected by the Agent before rendering drives the 3D material palette, lighting, soft furnishing language, and effect-render prompt contract; the delivered Page exposes no style switch, and style feedback creates a new project revision and rerender instead of patching Page code.",
-    "A dedicated loading state precedes automatic first-frame 3D warmup; Canvas visibility must not depend on a click or drag.",
-    "Perspective and orthographic views, stacked and isolated levels, labels, highlights, concept comparison, requirements, audit findings, and revision history remain available.",
-    "The governed concept render records image, reference and prompt hashes, stays explicitly conceptual, and cannot replace construction drawings or material samples.",
-    "The delivery carries no remote resources, no customer data, and no claim of survey, construction drawing, structural, engineering, or code-compliance authority.",
-    "The Agent supplies governed project data only. The render-interior-pages capability owns HTML, CSS, JavaScript, responsive behavior, 3D interaction, manifests, diagnostics, and compatible renderer upgrades."
+    "Every process artifact is editable and has an independent revision and confirmation state.",
+    "A modification invalidates only transitive downstream dependants.",
+    "Six discipline-specific SVG drawings and semantic Web 3D derive from the same geometry revision.",
+    "Each panorama view is generated and confirmed independently after the sketch is confirmed.",
+    "krpano assembly is blocked until every enhanced panorama is confirmed.",
+    "Raw evidence stays private and the owner-facing bundle uses only relative assets.",
+    "Concept, construction, and fabrication readiness remain separate facts.",
+    "Visual and interaction acceptance remains owned by the user."
   ],
   "agentFreedom": [
-    "Derive spatial strategy and annotations from the current governed project evidence.",
-    "Choose one primary styleId from the renderer-owned catalog before generating a revision.",
-    "Choose room, wall, opening, furniture, cabinet, material-intent, lighting-intent, and label content within the accepted project scope.",
-    "Revise the governed scene and regenerate a new immutable delivery after user feedback."
+    "Derive an original spatial strategy from current evidence without copying prior design answers.",
+    "Modify any process artifact and invalidate only its dependants.",
+    "Choose geometry, furniture, cabinets, materials, lighting, MEP points, camera views, panorama prompts, and hotspots within the confirmed scope."
   ]
 }

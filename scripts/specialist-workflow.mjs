@@ -239,96 +239,35 @@ function traverseWorkflow(definition, { mode }) {
 
 function acceptInteriorWorkflow(definition) {
   const expectedOrder = [
-    "initial-requirements",
-    "floorplan-adjustment",
-    "three-d-design-review",
-    "render-style-sample",
-    "full-render-set",
-    "final-delivery",
+    "project-intake",
+    "design-development",
+    "drawing-review",
+    "spatial-sketch-review",
+    "panorama-production",
+    "tour-review",
+    "shareable-delivery",
     "delivered",
   ];
   invariant(JSON.stringify(definition.stages.map((stage) => stage.id)) === JSON.stringify(expectedOrder), "interior stage order is not exact");
-  const checkpoint = definition.interaction.recommendedCheckpoint;
-  invariant(
-    JSON.stringify(checkpoint?.stages) === JSON.stringify(["floorplan-adjustment", "three-d-design-review"])
-      && checkpoint?.next === "render-style-sample"
-      && checkpoint?.reviewArtifactKind === "three-d-design-page",
-    "interior recommended checkpoint may only combine floorplan and 3D review",
-  );
-
-  const recommended = traverseInteriorRecommended(definition);
-  const sample = definition.stages.find((stage) => stage.id === "render-style-sample");
-  const full = definition.stages.find((stage) => stage.id === "full-render-set");
-  invariant(sample.factRules.some((rule) => rule.key === "sample-render-count" && rule.operator === "equals" && rule.value === 1), "interior sample must contain exactly one render");
-  invariant(full.factRules.some((rule) => rule.key === "render-count" && rule.operator === "min-number" && rule.value === 15), "interior full render set must contain at least 15 renders");
-  invariant(full.factRules.some((rule) => rule.key === "view-sequence" && rule.operator === "min-items" && rule.value === 15), "interior view sequence must contain at least 15 entries");
-  invariant(full.factRules.some((rule) => rule.key === "entrance-first" && rule.operator === "equals" && rule.value === true), "interior full render sequence must start at the entrance");
+  invariant(!definition.interaction.recommendedCheckpoint, "interior workflow must not define a second or recommended mode");
+  const development = definition.stages.find((stage) => stage.id === "design-development");
+  const drawings = definition.stages.find((stage) => stage.id === "drawing-review");
+  const sketch = definition.stages.find((stage) => stage.id === "spatial-sketch-review");
+  const panorama = definition.stages.find((stage) => stage.id === "panorama-production");
+  const tour = definition.stages.find((stage) => stage.id === "tour-review");
+  const delivery = definition.stages.find((stage) => stage.id === "shareable-delivery");
+  invariant(development.requiredArtifacts.includes("design-review-page"), "interior design development requires a review Page");
+  invariant(drawings.requiredFacts.includes("six-drawings-generated") && drawings.requiredArtifacts.includes("drawing-cabinet"), "interior drawing review must require six independent drawings");
+  invariant(sketch.requiredArtifacts.includes("spatial-sketch-3d"), "interior sketch review must require semantic Web 3D");
+  invariant(panorama.requiredFacts.includes("one-image-per-generation") && panorama.requiredFacts.includes("all-panorama-nodes-confirmed"), "interior panorama production must be one view at a time");
+  invariant(tour.requiredArtifacts.includes("krpano-tour") && tour.requiredFacts.includes("tour-walkthrough-passed"), "interior tour review must require krpano walkthrough");
+  invariant(delivery.requiredFacts.includes("page-bundle-verified") && delivery.requiredFacts.includes("artifact-workflow-complete"), "interior delivery must verify the Page bundle and artifact workflow");
   return {
     exactStageOrder: true,
-    sampleRenderCount: 1,
-    minimumFullRenderCount: 15,
-    minimumViewSequenceCount: 15,
-    entranceFirst: true,
-    recommended,
-  };
-}
-
-function traverseInteriorRecommended(definition) {
-  const mode = "recommended";
-  const projectKey = "project_accept_interior_recommended";
-  const progress = progressPublication(definition, projectKey);
-  let state = createSpecialistWorkflowState(definition, { projectKey, mode, progressPage: progress });
-  const initial = definition.stages[0];
-  state = advanceSpecialistWorkflow(definition, state, {
-    baseRevision: state.revision,
-    facts: factsForStage(initial, { recommendedAuthorized: true }),
-    confirmation: { confirmed: true, summary: "accepted initial requirements", surface: "text" },
-  });
-  state = syncSpecialistWorkflowProgress(definition, state, progress);
-
-  const floorplan = definition.stages[1];
-  const threeD = definition.stages[2];
-  const threeDPage = pageArtifact("three-d-design-page", "recommended");
-  state = advanceSpecialistWorkflow(definition, state, {
-    baseRevision: state.revision,
-    nextStage: "render-style-sample",
-    facts: {
-      ...factsForStage(floorplan, { recommendedAuthorized: true }),
-      ...factsForStage(threeD, { recommendedAuthorized: true }),
-      "recommended-mode-authorized": true,
-    },
-    artifacts: [threeDPage],
-    confirmation: { confirmed: true, summary: "accepted combined floorplan and 3D Page", surface: "page", pageId: threeDPage.pageId },
-  });
-  invariant(state.confirmations.at(-1).stages.length === 2, "recommended confirmation must cover exactly two stages");
-  invariant(state.history.filter((entry) => entry.revision === state.revision).length === 2, "recommended checkpoint must preserve both stage history records");
-  state = syncSpecialistWorkflowProgress(definition, state, progress);
-  expectWorkflowCode(
-    () => advanceSpecialistWorkflow(definition, state, { baseRevision: state.revision, nextStage: "final-delivery" }),
-    "WORKFLOW_STAGE_SKIP",
-  );
-
-  while (state.stage !== "delivered") {
-    const stage = definition.stages.find((candidate) => candidate.id === state.stage);
-    const facts = factsForStage(stage, { recommendedAuthorized: true });
-    const artifacts = stage.requiredArtifacts.map((kind, index) => pageArtifact(kind, `recommended-${state.revision}-${index}`));
-    const reviewedArtifact = artifacts.find((artifact) => artifact.kind === stage.review.artifactKind);
-    state = advanceSpecialistWorkflow(definition, state, {
-      baseRevision: state.revision,
-      facts,
-      artifacts,
-      confirmation: { confirmed: true, summary: `accepted ${stage.id}`, surface: "page", pageId: reviewedArtifact.pageId },
-    });
-    state = syncSpecialistWorkflowProgress(definition, state, progress);
-  }
-  return {
-    authorizedByUser: true,
-    combinedStages: ["floorplan-adjustment", "three-d-design-review"],
-    confirmationPageKind: "three-d-design-page",
-    nextStageAfterCombinedConfirmation: "render-style-sample",
-    laterStageSkipRejected: true,
-    finalStage: state.stage,
-    progressPageSynced: state.progressPage.publishedRevision === state.revision,
+    singlePipeline: true,
+    compatibilityModes: 0,
+    shareableOutputs: ["Owner-Page", "Online-SVG", "Semantic-Web3D", "Krpano-Tour"],
+    geometryAuthority: "geometry.json",
   };
 }
 

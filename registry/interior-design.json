@@ -1,8 +1,11 @@
 {
-  "schemaVersion": 2,
-  "interiorDesignEngine": "pascal-v2",
-  "allowedEngines": [
-    "pascal-v2"
-  ],
-  "creationPolicy": "pascal-v2-required"
+  "schemaVersion": 5,
+  "workspaceContract": "personal-agent/interior-workspace/v5",
+  "projectAuthority": "project.json",
+  "geometryAuthority": "geometry.json",
+  "units": "mm",
+  "pipeline": "single-co-design-workspace",
+  "presentation": ["owner-page", "six-discipline-online-svg", "semantic-web-3d", "per-view-panorama-review", "krpano-tour", "decision-record"],
+  "shareableOutputs": ["owner-page", "online-svg", "semantic-web-3d", "krpano-tour"],
+  "compatibilityEngines": []
 }

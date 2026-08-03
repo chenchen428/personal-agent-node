@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "version": 13,
+  "version": 14,
   "updatedAt": "2026-08-02",
   "categories": [
     {
@@ -882,9 +882,9 @@
       "owner": "interior-design",
       "kind": "skill-script",
       "entrypoint": "skills/interior-design/scripts/cli.mjs",
-      "command": "node skills/interior-design/scripts/cli.mjs <project|scene|page>",
-      "workspaceCommand": "node scripts/skill-tree.mjs interior <project|scene|page>",
-      "description": "Operate governed Pascal v2 renovation projects: evidence, requirements, revisions, deterministic building scenes, professional quality gates, and offline interior-designer Pages."
+      "command": "node skills/interior-design/scripts/cli.mjs <evidence|workspace>",
+      "workspaceCommand": "node scripts/skill-tree.mjs interior <evidence|workspace>",
+      "description": "Turn renovation evidence and household needs into governed, shareable owner Pages, online SVG concept drawings, decision records, and immersive Web 3D."
     },
     {
       "name": "interior-page-renderer",
@@ -892,9 +892,9 @@
       "owner": "render-interior-pages",
       "kind": "skill-script",
       "entrypoint": "skills/render-interior-pages/scripts/cli.mjs",
-      "command": "node skills/render-interior-pages/scripts/cli.mjs <styles|render|review>",
-      "workspaceCommand": "node scripts/skill-tree.mjs interior-page-renderer <styles|render|review>",
-      "description": "List governed interior style profiles, then render the Agent-selected style into versioned booklet and 3D Pages with an Agent inspection loop."
+      "command": "node skills/render-interior-pages/scripts/cli.mjs <render|review>",
+      "workspaceCommand": "node skills/render-interior-pages/scripts/cli.mjs <render|review>",
+      "description": "Render one governed interior workspace revision into a responsive booklet and a separate Web 3D page, then record the Agent inspection result."
     },
     {
       "name": "agent-workflow",
