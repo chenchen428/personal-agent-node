@@ -182,10 +182,21 @@
       { "id": "module-kitchen", "roomId": "room-kitchen", "position": [10800,6100,0], "width": 2100, "depth": 600, "height": 900, "rotationDeg": 0 },
       { "id": "module-primary", "roomId": "room-primary", "position": [340,1800,0], "width": 2600, "depth": 600, "height": 2400, "rotationDeg": 90 }
     ],
+    "portals": [
+      { "id": "portal-living-kitchen", "openingId": "door-kitchen", "roomIds": ["room-living", "room-kitchen"], "traversable": true, "state": "open", "label": "厨房门洞" },
+      { "id": "portal-living-primary", "openingId": "door-primary", "roomIds": ["room-living", "room-primary"], "traversable": true, "state": "open", "label": "主卧门洞" }
+    ],
     "panoramaNodes": [
-      { "id": "living", "title": "客餐厅", "roomId": "room-living", "position": [5000,7200,1550], "lookAt": [6900,6200,1300], "hotspots": [{ "target": "kitchen", "yaw": 62, "pitch": -3 }] },
-      { "id": "kitchen", "title": "厨房", "roomId": "room-kitchen", "position": [10400,5000,1550], "lookAt": [10800,6100,1200], "hotspots": [{ "target": "living", "yaw": -120, "pitch": -2 }] },
-      { "id": "primary", "title": "主卧", "roomId": "room-primary", "position": [2100,3150,1550], "lookAt": [2100,1200,1200], "hotspots": [{ "target": "living", "yaw": 170, "pitch": -4 }] }
+      { "id": "living", "title": "客餐厅", "roomId": "room-living", "position": [5000,7200,1550], "lookAt": [6900,6200,1300], "hotspots": [
+        { "id": "living-to-kitchen", "kind": "portal", "target": "kitchen", "portalId": "portal-living-kitchen", "label": "厨房" },
+        { "id": "living-to-primary", "kind": "portal", "target": "primary", "portalId": "portal-living-primary", "label": "主卧" }
+      ] },
+      { "id": "kitchen", "title": "厨房", "roomId": "room-kitchen", "position": [10400,5000,1550], "lookAt": [10800,6100,1200], "hotspots": [
+        { "id": "kitchen-to-living", "kind": "portal", "target": "living", "portalId": "portal-living-kitchen", "label": "客餐厅" }
+      ] },
+      { "id": "primary", "title": "主卧", "roomId": "room-primary", "position": [2100,3150,1550], "lookAt": [2100,1200,1200], "hotspots": [
+        { "id": "primary-to-living", "kind": "portal", "target": "living", "portalId": "portal-living-primary", "label": "客餐厅" }
+      ] }
     ]
   }
 }

@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 5,
+  "source": "skills/interior-design/scripts/panorama-tour-preview-entry.mjs",
+  "output": "core/agent/public/assets/interior-workspace/panorama-tour-preview.bundle.js",
+  "bytes": 527965,
+  "sha256": "913a2bb3c84f4f852b19d5d0f1dabc7e3c9c25fbd2bf401887498c06aad74613",
+  "features": [
+    "multi-scene-equirectangular-sphere",
+    "threshold-hotspots",
+    "pre-turn",
+    "continuous-arrival-heading",
+    "pointer-and-touch-look",
+    "wheel-zoom",
+    "fullscreen"
+  ],
+  "dependencies": {
+    "three": "0.185.0",
+    "esbuild": "0.28.1"
+  }
+}

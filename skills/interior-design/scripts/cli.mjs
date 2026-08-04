@@ -4,6 +4,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { confirmArtifact, markArtifactReady, modifyArtifact, validateArtifactWorkflow, workflowSummary } from "./artifact-workflow-v5.mjs";
 import { assembleKrpanoTour } from "./render-krpano-tour.mjs";
+import { renderPanoramaTourPreview } from "./render-panorama-tour-preview.mjs";
 import { renderPanoramaReview } from "./render-panorama-review.mjs";
 import { registerPanoramaImage } from "./panorama-artifacts-v5.mjs";
 import { renderPanoramaControl } from "./render-panorama-control-v5.mjs";
@@ -22,6 +23,7 @@ try {
   else if (domain === "workflow" && action === "confirm") workflowConfirm();
   else if (domain === "workflow" && action === "modify") workflowModify();
   else if (domain === "tour" && action === "assemble") tourAssemble();
+  else if (domain === "tour" && action === "preview") tourPreview();
   else if (domain === "panorama" && action === "register") await panoramaRegister();
   else if (domain === "panorama" && action === "render-control") await panoramaRenderControl();
   else if (domain === "panorama" && action === "prepare-imagegen") panoramaPrepareImagegen();
@@ -97,6 +99,12 @@ function tourAssemble() {
   refreshWorkspaceManifest(root);
   emit(result);
 }
+function tourPreview() {
+  const root = path.resolve(required("project-dir"));
+  const result = renderPanoramaTourPreview({ projectDir: root, output: options.output });
+  refreshWorkspaceManifest(root);
+  emit(result);
+}
 async function panoramaRegister() {
   const root = path.resolve(required("project-dir"));
   const result = await registerPanoramaImage({
@@ -161,6 +169,7 @@ function help() {
     "workflow confirm --project-dir <workspace> --artifact <id> [--summary <text>] --json",
     "workflow modify --project-dir <workspace> --artifact <id> [--reason <text>] --json",
     "tour assemble --project-dir <workspace> --runtime <licensed-krpano.js> [--output <dir>] --json",
+    "tour preview --project-dir <workspace> [--output <dir>] --json",
     "panorama register --project-dir <workspace> --node <id> --kind <control|photorealistic> --file <relative.png> --generator <blender|codex-imagegen> [--prompt-id <id>] --json",
     "panorama render-control --project-dir <workspace> --node <id> --blender <blender.exe> --json",
     "panorama prepare-imagegen --project-dir <workspace> --node <id> --json",

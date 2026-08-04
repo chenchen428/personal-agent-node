@@ -38,8 +38,10 @@ function panoramaArtifacts(node, previousPhotorealisticId = null) {
   const id = String(node.id);
   const title = node.title ?? node.label ?? id;
   const cameraId = `panorama-camera-${id}`;
+  const portalId = `panorama-portal-map-${id}`;
   const controlId = `panorama-control-${id}`;
   const promptId = `panorama-imagegen-prompt-${id}`;
+  const rawId = `panorama-imagegen-raw-${id}`;
   const photorealisticId = `panorama-photorealistic-${id}`;
   const hotspotId = `panorama-hotspots-${id}`;
   const promptDependencies = previousPhotorealisticId
@@ -47,10 +49,12 @@ function panoramaArtifacts(node, previousPhotorealisticId = null) {
     : [controlId];
   return [
     artifact(cameraId, `${title} · 相机视角`, "panorama-camera", ["spatial-sketch-3d"]),
-    artifact(controlId, `${title} · Blender 结构控制底稿`, "panorama-control", [cameraId]),
+    artifact(portalId, `${title} · 门洞与路径锚点`, "panorama-portal-map", [cameraId], `panoramas/controls/${id}/portal-map.json`),
+    artifact(controlId, `${title} · Blender 几何控制通道`, "panorama-control", [cameraId, portalId]),
     artifact(promptId, `${title} · Imagegen 提示词包`, "panorama-imagegen-prompt", promptDependencies, `panoramas/prompts/${id}.json`),
-    artifact(photorealisticId, `${title} · Imagegen 实景全景图`, "panorama-photorealistic", [promptId]),
-    artifact(hotspotId, `${title} · 热点关系`, "panorama-hotspots", [cameraId, photorealisticId]),
+    artifact(rawId, `${title} · Imagegen 原始实景图`, "panorama-imagegen-raw", [promptId]),
+    artifact(photorealisticId, `${title} · 受约束合成全景图`, "panorama-photorealistic", [rawId, controlId]),
+    artifact(hotspotId, `${title} · 门槛热点与到达视线`, "panorama-hotspots", [portalId, photorealisticId]),
   ];
 }
 

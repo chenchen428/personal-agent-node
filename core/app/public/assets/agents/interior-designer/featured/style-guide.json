@@ -20,7 +20,7 @@
     "lighting": "2700-3500K 分层照明，公共区重点控制眩光。"
   },
   "bindings": {
-    "geometryHash": "c740438261c5ef342fc73bf9fb57b6a9307c938e084edb08acf292e420987164",
+    "geometryHash": "911eaf17ab732495afc5b693aa493d99ae7b3c2c63dd5a5fdf9b227549a52d23",
     "materials": [
       "floor-oak",
       "wall-mineral",

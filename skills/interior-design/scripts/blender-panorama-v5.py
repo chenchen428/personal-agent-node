@@ -13,6 +13,7 @@ def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("--scene", required=True)
     parser.add_argument("--output", required=True)
+    parser.add_argument("--controls-dir")
     return parser.parse_args(values)
 
 
@@ -56,6 +57,7 @@ def box(item):
     )
     obj = bpy.context.object
     obj.name = item["id"]
+    obj["semantic_kind"] = item.get("kind", "object")
     obj.scale = (size[0] / 2, size[1] / 2, size[2] / 2)
     bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
     obj.data.materials.append(material(f"mat-{item['kind']}-{item.get('color')}", item.get("color"), item["kind"]))
@@ -66,12 +68,184 @@ def box(item):
     return obj
 
 
+def portal_box(portal, camera_position):
+    delta_x = camera_position[0] - portal["center"][0]
+    delta_y = camera_position[1] - portal["center"][1]
+    distance = max(1.0, math.hypot(delta_x, delta_y))
+    mask_offset = 80.0
+    item = {
+        "id": f"portal-control-{portal['id']}",
+        "kind": "portal",
+        "color": "#ffffff",
+        "center": [
+            portal["center"][0] + delta_x / distance * mask_offset,
+            portal["center"][1] + delta_y / distance * mask_offset,
+            max(0, portal["center"][2] - portal["height"] / 2),
+        ],
+        "size": [portal["width"], 18, portal["height"]],
+        "rotationDeg": portal["wallRotationDeg"],
+    }
+    obj = box(item)
+    obj["portal_id"] = portal["id"]
+    obj.hide_render = True
+    return obj
+
+
+def emission_material(name, color):
+    current = bpy.data.materials.get(name)
+    if current:
+        return current
+    current = bpy.data.materials.new(name)
+    current.use_nodes = True
+    nodes = current.node_tree.nodes
+    links = current.node_tree.links
+    nodes.clear()
+    output = nodes.new("ShaderNodeOutputMaterial")
+    emission = nodes.new("ShaderNodeEmission")
+    emission.inputs["Color"].default_value = hex_color(color)
+    emission.inputs["Strength"].default_value = 1.0
+    links.new(emission.outputs["Emission"], output.inputs["Surface"])
+    return current
+
+
+def depth_material():
+    current = bpy.data.materials.get("control-depth")
+    if current:
+        return current
+    current = bpy.data.materials.new("control-depth")
+    current.use_nodes = True
+    nodes = current.node_tree.nodes
+    links = current.node_tree.links
+    nodes.clear()
+    output = nodes.new("ShaderNodeOutputMaterial")
+    emission = nodes.new("ShaderNodeEmission")
+    camera = nodes.new("ShaderNodeCameraData")
+    mapping = nodes.new("ShaderNodeMapRange")
+    mapping.inputs["From Min"].default_value = 0.2
+    mapping.inputs["From Max"].default_value = 15.0
+    mapping.inputs["To Min"].default_value = 1.0
+    mapping.inputs["To Max"].default_value = 0.0
+    mapping.clamp = True
+    links.new(camera.outputs["View Distance"], mapping.inputs["Value"])
+    links.new(mapping.outputs["Result"], emission.inputs["Color"])
+    links.new(emission.outputs["Emission"], output.inputs["Surface"])
+    return current
+
+
+def normal_material():
+    current = bpy.data.materials.get("control-normal")
+    if current:
+        return current
+    current = bpy.data.materials.new("control-normal")
+    current.use_nodes = True
+    nodes = current.node_tree.nodes
+    links = current.node_tree.links
+    nodes.clear()
+    output = nodes.new("ShaderNodeOutputMaterial")
+    emission = nodes.new("ShaderNodeEmission")
+    geometry = nodes.new("ShaderNodeNewGeometry")
+    transform = nodes.new("ShaderNodeVectorMath")
+    transform.operation = "MULTIPLY_ADD"
+    transform.inputs[1].default_value = (0.5, 0.5, 0.5)
+    transform.inputs[2].default_value = (0.5, 0.5, 0.5)
+    links.new(geometry.outputs["Normal"], transform.inputs[0])
+    links.new(transform.outputs["Vector"], emission.inputs["Color"])
+    links.new(emission.outputs["Emission"], output.inputs["Surface"])
+    return current
+
+
+def replace_material(obj, current):
+    if obj.type != "MESH":
+        return
+    obj.data.materials.clear()
+    obj.data.materials.append(current)
+
+
+def semantic_color(kind):
+    if kind in {"wall", "door-frame", "window-frame", "window-sill"}:
+        return "#f1f1f1"
+    if kind == "floor":
+        return "#3f7f4f"
+    if kind == "glass":
+        return "#3c92b8"
+    if kind in {"door", "door-handle"}:
+        return "#d48632"
+    if kind in {"cabinet", "cabinet-front", "cabinet-plinth"}:
+        return "#6e4b9e"
+    if kind in {"light"}:
+        return "#f2d447"
+    return "#8a8379"
+
+
+def configure_control_render(output):
+    scene = bpy.context.scene
+    scene.render.engine = "CYCLES"
+    scene.cycles.samples = 1
+    scene.cycles.use_denoising = False
+    scene.render.resolution_x = 2048
+    scene.render.resolution_y = 1024
+    scene.render.resolution_percentage = 100
+    scene.render.image_settings.file_format = "PNG"
+    scene.render.image_settings.color_mode = "RGB"
+    scene.render.image_settings.color_depth = "8"
+    scene.render.filepath = output
+    scene.view_settings.look = "None"
+    scene.view_settings.view_transform = "Standard"
+    scene.view_settings.exposure = 0.0
+    scene.world.use_nodes = True
+    background = scene.world.node_tree.nodes.get("Background")
+    background.inputs["Color"].default_value = (0, 0, 0, 1)
+    background.inputs["Strength"].default_value = 0.0
+
+
+def render_controls(directory, portal_objects):
+    os.makedirs(directory, exist_ok=True)
+    meshes = [obj for obj in bpy.context.scene.objects if obj.type == "MESH"]
+    regular = [obj for obj in meshes if obj not in portal_objects]
+    for obj in portal_objects:
+        obj.hide_render = True
+    for name, current in (("depth", depth_material()), ("normal", normal_material())):
+        for obj in regular:
+            obj.hide_render = False
+            replace_material(obj, current)
+        output = os.path.join(directory, f"{name}.png")
+        configure_control_render(output)
+        bpy.ops.render.render(write_still=True)
+    for obj in regular:
+        obj.hide_render = False
+        replace_material(obj, emission_material(f"control-semantic-{obj.get('semantic_kind', 'object')}", semantic_color(obj.get("semantic_kind", "object"))))
+    output = os.path.join(directory, "semantic.png")
+    configure_control_render(output)
+    bpy.ops.render.render(write_still=True)
+    black = emission_material("control-mask-black", "#000000")
+    for obj in regular:
+        obj.hide_render = False
+        replace_material(obj, black)
+    for obj in portal_objects:
+        obj.hide_render = False
+        replace_material(obj, emission_material("control-portal-white", "#ffffff"))
+    output = os.path.join(directory, "portal-mask-raw.png")
+    configure_control_render(output)
+    bpy.context.scene.render.film_transparent = True
+    bpy.context.scene.render.image_settings.color_mode = "RGBA"
+    bpy.ops.render.render(write_still=True)
+    for active in portal_objects:
+        for obj in portal_objects:
+            obj.hide_render = obj != active
+        output = os.path.join(directory, f"portal-mask-{active['portal_id']}-raw.png")
+        configure_control_render(output)
+        bpy.context.scene.render.film_transparent = True
+        bpy.context.scene.render.image_settings.color_mode = "RGBA"
+        bpy.ops.render.render(write_still=True)
+
+
 def polygon_surface(name, points, elevation, color, flip=False):
     vertices = [(point[0] / 1000, -point[1] / 1000, elevation / 1000) for point in points]
     mesh = bpy.data.meshes.new(f"{name}-mesh")
     mesh.from_pydata(vertices, [], [list(range(len(vertices)))])
     mesh.update()
     obj = bpy.data.objects.new(name, mesh)
+    obj["semantic_kind"] = "ceiling" if flip else "floor"
     bpy.context.collection.objects.link(obj)
     if flip:
         for polygon in mesh.polygons:
@@ -147,7 +321,9 @@ def add_camera(node):
 
 def configure_render(output):
     scene = bpy.context.scene
-    scene.render.engine = "BLENDER_EEVEE_NEXT"
+    scene.render.engine = "CYCLES"
+    scene.cycles.samples = 8
+    scene.cycles.use_denoising = True
     scene.render.resolution_x = 4096
     scene.render.resolution_y = 2048
     scene.render.resolution_percentage = 100
@@ -183,6 +359,9 @@ def main():
     os.makedirs(os.path.dirname(args.output), exist_ok=True)
     configure_render(args.output)
     bpy.ops.render.render(write_still=True)
+    if args.controls_dir:
+        portals = [portal_box(portal, scene["node"]["position"]) for portal in scene.get("portals", []) if portal.get("valid") and portal.get("traversable")]
+        render_controls(args.controls_dir, portals)
 
 
 if __name__ == "__main__":

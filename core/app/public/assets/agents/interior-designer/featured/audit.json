@@ -17,6 +17,7 @@
     "rooms": 6,
     "walls": 9,
     "openings": 11,
+    "portals": 2,
     "elements": 16,
     "points": 8,
     "modeledAreaSqM": 108

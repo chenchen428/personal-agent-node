@@ -21,7 +21,9 @@ test("Imagegen panorama prompt binds the confirmed design, camera, and Blender c
     assert.deepEqual(result.prompt.execution.deliveryCanvas, { width: 4096, height: 2048 });
     assert.match(result.prompt.finalPrompt, /按已确认装修设计/);
     assert.match(result.prompt.finalPrompt, /2:1 equirectangular projection/);
-    assert.match(result.prompt.finalPrompt, /Blender 空间结构控制底稿/);
+    assert.match(result.prompt.finalPrompt, /Image 3 锁定可通行门洞/);
+    assert.equal(result.prompt.inputs.images.length, 3);
+    assert.deepEqual(result.prompt.invariants, ["hard-geometry", "portal-topology", "camera", "equirectangular-projection", "wrap-seam"]);
     assert.equal(result.prompt.inputs.images[0].sha256, sha256(fs.readFileSync(path.join(root, "panoramas", "control", "living.png"))));
 
     const repeated = prepareImagegenPanoramaPrompt({ projectDir: root, nodeId: "living" });
@@ -66,7 +68,11 @@ test("Imagegen panorama finalization preserves 2:1 projection and records determ
     assert.deepEqual(result.source.dimensions, { width: 1600, height: 800 });
     assert.deepEqual(result.delivery, { file: "panoramas/photorealistic/living-attempt-001.png", width: 4096, height: 2048 });
     assert.equal(result.artifact.status, "ready-for-review");
-    assert.equal(result.record.normalization.type, "same-projection-resize-and-wrap-seam-stitch");
+    assert.equal(result.record.normalization.type, "geometry-aware-yaw-segment-composite-and-wrap-seam-stitch");
+    assert.equal(result.record.normalization.composite.segmentCount, 6);
+    assert.equal(result.record.normalization.composite.hardEdgeRetention.portal.status, "not-applicable");
+    assert.equal(result.record.normalization.composite.hardEdgeRetention.semantic.status, "not-applicable");
+    assert.match(result.record.normalization.composite.hardGeometryPolicy, /Blender portal and semantic hard-edge zones/);
     assert.equal(result.record.normalization.contentGeneratedByPostprocess, false);
     assert.equal(result.record.orientationOffsetDeg, result.record.normalization.orientationOffsetDeg);
     assert.equal(result.record.normalization.additionalYawOffsetDeg, 0);
@@ -97,8 +103,28 @@ function createProject() {
     },
   };
   const controlFile = path.join(root, "panoramas", "control", "living.png");
+  const controlsDir = path.join(root, "panoramas", "controls", "living");
   fs.mkdirSync(path.dirname(controlFile), { recursive: true });
-  fs.writeFileSync(controlFile, "control-image");
+  fs.mkdirSync(controlsDir, { recursive: true });
+  const pixel = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=", "base64");
+  fs.writeFileSync(controlFile, pixel);
+  const passEntries = {};
+  for (const name of ["depth", "normal", "semantic", "portal-mask"]) {
+    const passFile = path.join(controlsDir, `${name}.png`);
+    fs.writeFileSync(passFile, pixel);
+    passEntries[name] = { file: `panoramas/controls/living/${name}.png`, sha256: sha256(pixel) };
+  }
+  const atlasFile = path.join(controlsDir, "control-atlas.png");
+  fs.writeFileSync(atlasFile, pixel);
+  const portalMapFile = path.join(controlsDir, "portal-map.json");
+  fs.writeFileSync(portalMapFile, `${JSON.stringify({ hotspots: [] })}\n`);
+  fs.writeFileSync(path.join(controlsDir, "control-bundle.json"), `${JSON.stringify({
+    contract: "personal-agent/interior-panorama-control-bundle/v5",
+    geometryControl: { file: "panoramas/control/living.png", sha256: sha256(pixel) },
+    controlAtlas: { file: "panoramas/controls/living/control-atlas.png", sha256: sha256(pixel), layout: "2x2: depth, normal, semantic, neutral" },
+    passes: passEntries,
+    portalMap: { file: "panoramas/controls/living/portal-map.json", sha256: sha256(fs.readFileSync(portalMapFile)) },
+  }, null, 2)}\n`);
   const workflow = createArtifactWorkflow({ projectId: "fixture", geometry });
   workflow.artifacts["panorama-control-living"].status = "confirmed";
   workflow.artifacts["panorama-control-living"].file = "panoramas/control/living.png";

@@ -21,13 +21,26 @@ const panorama = await bundle({
   manifest: "panorama-viewer-manifest.json",
   features: ["equirectangular-sphere", "pointer-and-touch-look", "wheel-zoom", "reset", "fullscreen"],
 });
+const tourPreview = await bundle({
+  source: "panorama-tour-preview-entry.mjs",
+  output: "panorama-tour-preview.bundle.js",
+  manifest: "panorama-tour-preview-manifest.json",
+  features: ["multi-scene-equirectangular-sphere", "threshold-hotspots", "pre-turn", "continuous-arrival-heading", "pointer-and-touch-look", "wheel-zoom", "fullscreen"],
+  stripTrailingWhitespace: true,
+});
 
-process.stdout.write(`${JSON.stringify({ ok: true, runtimes: [workspace, panorama] }, null, 2)}\n`);
+process.stdout.write(`${JSON.stringify({ ok: true, runtimes: [workspace, panorama, tourPreview] }, null, 2)}\n`);
 
-async function bundle({ source, output, manifest, features }) {
+async function bundle({ source, output, manifest, features, stripTrailingWhitespace = false }) {
   const entry = path.join(skillRoot, "scripts", source);
   const target = path.join(runtimeRoot, output);
   await build({ entryPoints: [entry], outfile: target, bundle: true, minify: true, format: "iife", platform: "browser", target: ["es2022"], legalComments: "none", sourcemap: false });
+  if (stripTrailingWhitespace) {
+    const normalized = fs.readFileSync(target, "utf8")
+      .replace(/[ \t]+$/gm, "")
+      .replace(/^ +(?=\t)/gm, "");
+    fs.writeFileSync(target, normalized, "utf8");
+  }
   const value = fs.readFileSync(target);
   const record = {
     schemaVersion: 5,

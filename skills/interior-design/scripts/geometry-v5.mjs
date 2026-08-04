@@ -1,4 +1,5 @@
 import crypto from "node:crypto";
+import { auditPortalTopology } from "./portal-topology-v5.mjs";
 
 const ID_PATTERN = /^[a-z][a-z0-9_-]{2,63}$/; // V5 stable artifact IDs
 
@@ -10,7 +11,7 @@ export function normalizeGeometry(input, { projectId, revision }) {
   geometry.units = "mm";
   geometry.coordinateSystem ||= { plan: "x-right-y-down", vertical: "z-up" };
   geometry.basis ||= { grade: "estimated", sourceEvidenceIds: [], confidence: 0.5 };
-  for (const key of ["levels", "rooms", "walls", "openings", "elements", "points", "clearances", "cameras", "dimensions", "ceilingZones", "circuits", "plumbingRuns", "cabinetModules", "panoramaNodes"]) {
+  for (const key of ["levels", "rooms", "walls", "openings", "elements", "points", "clearances", "cameras", "dimensions", "ceilingZones", "circuits", "plumbingRuns", "cabinetModules", "portals", "panoramaNodes"]) {
     geometry[key] = Array.isArray(geometry[key]) ? geometry[key] : [];
   }
   return geometry;
@@ -22,7 +23,7 @@ export function auditInteriorWorkspace(project, geometry) {
   const allCollections = [
     ["level", geometry.levels], ["room", geometry.rooms], ["wall", geometry.walls],
     ["opening", geometry.openings], ["element", geometry.elements], ["point", geometry.points],
-    ["panorama-node", geometry.panoramaNodes],
+    ["portal", geometry.portals], ["panorama-node", geometry.panoramaNodes],
   ];
 
   if (geometry.units !== "mm") issue(issues, "error", "GEO-UNIT", "几何单位必须统一为毫米。", ["geometry.json"]);
@@ -104,11 +105,9 @@ export function auditInteriorWorkspace(project, geometry) {
       if (hotspot.target === node.id) issue(issues, "error", "GEO-PANORAMA-HOTSPOT-SELF", `全景节点 ${node.id} 不能跳转到自身。`, refs);
       if (targets.has(hotspot.target)) issue(issues, "warning", "GEO-PANORAMA-HOTSPOT-DUPLICATE", `全景节点 ${node.id} 存在重复热点 ${hotspot.target}。`, [node.id, hotspot.target]);
       targets.add(hotspot.target);
-      if (!Number.isFinite(hotspot.yaw) || !Number.isFinite(hotspot.pitch) || Math.abs(hotspot.yaw) > 180 || Math.abs(hotspot.pitch) > 90) {
-        issue(issues, "error", "GEO-PANORAMA-HOTSPOT-ANGLE", `全景节点 ${node.id} 的热点角度无效。`, [node.id, hotspot.target || "hotspot"]);
-      }
     }
   }
+  issues.push(...auditPortalTopology(geometry));
 
   const elementIds = new Set(geometry.elements.map((entry) => entry.id));
   const roomIds = new Set(geometry.rooms.map((entry) => entry.id));
@@ -178,6 +177,7 @@ export function geometryMetrics(geometry) {
     rooms: geometry.rooms.length,
     walls: geometry.walls.length,
     openings: geometry.openings.length,
+    portals: (geometry.portals ?? []).length,
     elements: geometry.elements.length,
     points: geometry.points.length,
     modeledAreaSqM: round(geometry.rooms.reduce((sum, room) => sum + polygonArea(room.polygon || []), 0) / 1_000_000, 2),

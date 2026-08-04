@@ -29,7 +29,7 @@
   },
   "source": {
     "projectSha256": "56830c8e1a9d16131d778021ff9252255bcdb42a359385871631c0b73c7e22bd",
-    "geometrySha256": "c740438261c5ef342fc73bf9fb57b6a9307c938e084edb08acf292e420987164",
+    "geometrySha256": "911eaf17ab732495afc5b693aa493d99ae7b3c2c63dd5a5fdf9b227549a52d23",
     "qualityStatus": "concept-ready",
     "styleId": "warm-mineral-walnut"
   },
@@ -39,8 +39,8 @@
       "sha256": "3881de7053875a813ed7b83ddd28048a77a10b6a2ff4087ed2cdda25c6fa3ace"
     },
     "3d/model-data.js": {
-      "bytes": 34673,
-      "sha256": "ca2ea5bdf607763d255ae55eae9822ece0be39c2c71e6c77694d9929b41274b8"
+      "bytes": 35009,
+      "sha256": "353c578f59efe49dd3b8f9b7335b38764be1caf2215de5eacde39ea93dde7126"
     },
     "3d/viewer.bundle.js": {
       "bytes": 593685,
@@ -60,31 +60,31 @@
     },
     "assets/drawings/c-01-ceiling-lighting.svg": {
       "bytes": 10139,
-      "sha256": "6f97fdb4851f0144550de426e0ddc6e2b3196ed4f4950f67c7b5298ebf4d456a"
+      "sha256": "62b701d5dbd22a1cacd46186bfaad41a3e63c06e4414ba26919c03f17e40f640"
     },
     "assets/drawings/e-01-switch-control.svg": {
       "bytes": 9919,
-      "sha256": "d80d992a95de1de15914ab7d3b501afb433284eae74617020ce2f07ab7481bd5"
+      "sha256": "ba2851d36733c13540a511f2fa488bb36f76d449c3ec39e30df6dfc83d60fc7e"
     },
     "assets/drawings/e-02-socket-layout.svg": {
       "bytes": 9694,
-      "sha256": "31a68f167d223a3adfb7c1eaae89a6797b030375b2188baf5d34c35fc6b89916"
+      "sha256": "e5c0faa5762735daa3c94e310e941a123333b877f653f55da5614511c5f9d217"
     },
     "assets/drawings/m-01-cabinet.svg": {
       "bytes": 10512,
-      "sha256": "5fde3778f4c4ea9f1e4e98b635696e2d70bdbd088de5d96706b2fb6b189077da"
+      "sha256": "e898eed4561aa6463ea7090fa8ef9a4e1121767fce998f926008bfa3aa9a1ec5"
     },
     "assets/drawings/p-01-plan-layout.svg": {
       "bytes": 12901,
-      "sha256": "30dfc26d0dcea2b515b6f410b4c6738b19d66e134b13f667d3a7a24aefa10a7f"
+      "sha256": "790e2cbe41cb5ad429db7f4dc5be3e02102f7818dd02c2fdc9202d592f92ca64"
     },
     "assets/drawings/w-01-plumbing.svg": {
       "bytes": 10598,
-      "sha256": "c0d42d7463cc6ec90f6b1860745447879aed24fb4800843bde283fdb9bf30873"
+      "sha256": "2545eb9abb4ada7fa220c6548173d40853c625b7e14f48dba40d5a14c30b7016"
     },
     "audit.json": {
-      "bytes": 1807,
-      "sha256": "3782e5a72f7a03e16e457f96dad71f752d1c6f0e5d3029c3f85b6ef72104d6b0"
+      "bytes": 1825,
+      "sha256": "93590d59f1a10882ecd8e3b983ffc7622d706361cb6d841ea14dc11df706c419"
     },
     "cover.svg": {
       "bytes": 10441,
@@ -116,7 +116,7 @@
     },
     "panorama-review/index.html": {
       "bytes": 6311,
-      "sha256": "585a20e82928759e472ae33996626a998d484e2509447ab84a5a32a693930158"
+      "sha256": "678a125ddb76c6cc5e4b8d9206ae8bdd55db300e9d4d20c871fcb40c3ae475c5"
     },
     "panorama-review/review.json": {
       "bytes": 963,
@@ -132,7 +132,7 @@
     },
     "style-guide.json": {
       "bytes": 917,
-      "sha256": "2daec05fff63f5cecfdfd066a8eef00db3f53e5c20a6e945b79c288b9cdf9895"
+      "sha256": "925e24de0f51d53e93ecc04092fb390a88575a90e0b92457f1c7ca2313cd8dc4"
     },
     "tour/index.html": {
       "bytes": 948,
