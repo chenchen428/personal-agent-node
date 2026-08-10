@@ -71,7 +71,7 @@ test("private preview is authenticated, range-aware, and covered by the Nginx ga
   const seedSession = seedStore.getOrCreateMainSessionForChannel({ channel: "wechat", senderId: "user-test", workspaceRoot: directory });
   const batch = seedStore.createPrivateFileBatch({
     sessionId: seedSession.id,
-    createdAt: "2026-07-10T15:06:07.000Z",
+    createdAt: new Date().toISOString(),
     attachments: [{ referenceName: "文件1", displayName: "家庭清单.txt", kind: "file", relativePath, size: 15 }],
   });
   seedStore.close();
