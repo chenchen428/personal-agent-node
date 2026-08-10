@@ -1,0 +1,7 @@
+interface:
+  display_name: "Photo to Zine Postcard"
+  short_description: "Turn one photo into a minimal two-sided zine postcard"
+  default_prompt: "Use $photo-to-zine-postcard to turn this photo into a coordinated minimal zine-style postcard front and functional back."
+
+policy:
+  allow_implicit_invocation: true

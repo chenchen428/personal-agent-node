@@ -1,0 +1,7 @@
+interface:
+  display_name: "Lieflat Charts"
+  short_description: "Template-driven charts with controlled color"
+  default_prompt: "Use $lieflat-charts to turn this dataset into a polished HTML chart by reusing the closest Lupi or Basics template, choosing Mono, one coherent built-in preset, or an explicitly requested custom palette without mixing color systems."
+
+policy:
+  allow_implicit_invocation: true

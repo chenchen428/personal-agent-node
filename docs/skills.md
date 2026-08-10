@@ -4,7 +4,7 @@
 
 - Research & Knowledge: structured research, source capture, governed memory/data access, and recipient-first gift decisions.
 - Writing & Content: article structure, editing, translation, and HTML preparation.
-- Visual & Media: visual planning, deterministic media work, local HTML video production, Guizang social cards, and Guizang web presentations.
+- Visual & Media: visual planning, template-driven HTML charts, deterministic media work, local HTML video production, photo-to-zine postcards, Guizang social cards, and Guizang web presentations.
 - Travel & Location: traceable AMap POI/route evidence and source-backed, feasible travel Pages and guidebooks.
 - Home & Living: traceable renovation decisions plus calibrated 2D-to-3D concept models, managed stills, and interactive floor-plan Pages.
 - Product Engineering: distinctive frontend direction and a searchable UI/UX design database.
@@ -18,7 +18,7 @@ These are customer capabilities and belong only to the Node Harness. The private
 | --- | --- |
 | Research & Knowledge | `skills/deep-research`, `skills/knowledge-capture`, `skills/gift-advisor`, `skills/personal-memory`, `skills/personal-files`, `skills/personal-data` |
 | Writing & Content | `skills/content-workbench` |
-| Visual & Media | `skills/visual-content`, `skills/media-toolkit`, `skills/hyperframes-video`, `skills/guizang-social-card-skill`, `skills/guizang-ppt-skill` |
+| Visual & Media | `skills/visual-content`, `skills/lieflat-charts`, `skills/photo-to-zine-postcard`, `skills/media-toolkit`, `skills/hyperframes-video`, `skills/guizang-social-card-skill`, `skills/guizang-ppt-skill` |
 | Travel & Location | `skills/amap-travel-routing`, `skills/travel-guidebook` |
 | Home & Living | `skills/home-renovation`, `skills/interior-design` |
 | Product Engineering | `skills/frontend-design`, `skills/ui-ux-pro-max`, `skills/personal-product-development`, `skills/personal-bug-report`, `skills/personal-acceptance` |
@@ -37,5 +37,7 @@ The catalog records exact upstream revisions, licenses, risks, security boundari
 - Scan the complete public diff before delivery. Private Cloud behavior, operator configuration, secrets, customer content, local paths, and parent-workspace assumptions must never enter the public Node release.
 
 Owner-specific `blog-publishing` is excluded. The former monolithic `personal-agent` Skill is split into focused `personal-*` capabilities, while the removed `open-agent-bridge` Skill remains replaced by the stable product CLIs. The old `guizang-social-card` copy is replaced by the pinned latest `guizang-social-card-skill`. `hyperframes-video` adapts the Apache-2.0 HyperFrames workflow into a pinned, local-only video authoring and rendering path; account, publish, cloud render, feedback, and remote generation commands remain excluded. The upstream `travel-planner` and `amap-jsapi` sources remain excluded because they declare no redistribution license; `amap-travel-routing` is a workspace-authored integration against the documented AMap Web service contract and does not copy those sources. The workspace-authored `home-renovation` Skill independently covers the broader renovation lifecycle without copying `pinterest-interior-design-skill`. Run `node scripts/skill-tree.mjs catalog` to inspect the installed set.
+
+`lieflat-charts` retains the pinned upstream chart templates under PolyForm Noncommercial License 1.0.0. It is available only for license-permitted noncommercial purposes; commercial use requires separate permission from the upstream licensor. The Personal Agent adaptation keeps chart output local or Space-managed, treats source material as untrusted, prefers offline SVG, and discloses any Chart.js, ECharts, or font CDN dependency.
 
 `chromepilot` is a workspace-authored safety and portability layer for an optional external CLI. Personal Agent ships the Skill and its read-only doctor, but not the vendor CLI, Chrome extension, account state, proxy rules, or machine-specific runtime data. The Skill works with authorized installations on macOS, Linux, and Windows and fails closed when the dependency is unavailable.

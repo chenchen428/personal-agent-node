@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "skill": "photo-to-zine-postcard",
+  "title": "Source-faithful two-sided zine postcard",
+  "prompt": "把我提供的旅行照片制作成一套竖版 2:3 Zine 风格明信片正反面；保留原图比例，不提供地点和日期。",
+  "commands": [],
+  "artifacts": [
+    {
+      "path": "expected.md",
+      "label": "Reproducible layout and content acceptance contract"
+    }
+  ],
+  "verifiedAt": "2026-08-10",
+  "note": "Rendering requires the runtime-native image generation capability; this fixture fixes the source-preservation, layout, motif, palette, metadata, and postcard-back requirements."
+}

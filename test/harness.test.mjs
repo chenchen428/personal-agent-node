@@ -76,6 +76,7 @@ test('customer Harness classifies and ships portable creation skills', () => {
   for (const category of ['writing-content', 'visual-media', 'travel-location', 'product-engineering']) assert.equal(categories.has(category), true, category);
   const expected = {
     'hyperframes-video': ['visual-media', 'Apache-2.0'],
+    'lieflat-charts': ['visual-media', 'PolyForm-Noncommercial-1.0.0'],
     'guizang-social-card-skill': ['visual-media', 'AGPL-3.0-only'],
     'guizang-ppt-skill': ['visual-media', 'AGPL-3.0-only'],
     'travel-guidebook': ['travel-location', 'MIT'],
@@ -91,9 +92,13 @@ test('customer Harness classifies and ships portable creation skills', () => {
     assert.equal(fs.existsSync(path.join(root, `skills/${name}/SKILL.md`)), true, name);
     assert.equal(fs.existsSync(path.join(root, `skills/${name}/agents/openai.yaml`)), true, name);
   }
-  for (const name of ['guizang-social-card-skill', 'guizang-ppt-skill']) {
+  for (const name of ['lieflat-charts', 'guizang-social-card-skill', 'guizang-ppt-skill']) {
     assert.equal(fs.existsSync(path.join(root, `skills/${name}/LICENSE`)), true, `${name} license`);
     assert.equal(fs.existsSync(path.join(root, `skills/${name}/NOTICE.md`)), true, `${name} notice`);
+  }
+  const thirdPartyNotices = fs.readFileSync(path.join(root, 'THIRD_PARTY_NOTICES.md'), 'utf8');
+  for (const requirement of ['larashero3-dotcom/lieflat-charts', 'e05f777261a774c945bdd0157817ef68f3c4766d', 'PolyForm Noncommercial License 1.0.0', 'skills/lieflat-charts/']) {
+    assert.match(thirdPartyNotices, new RegExp(requirement.replaceAll('/', '\\/')));
   }
   const build = fs.readFileSync(path.join(root, 'scripts/build-private-site-node-dist.mjs'), 'utf8');
   assert.match(build, /\["agents", "workspace\/agents"\]/);

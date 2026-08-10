@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "version": 14,
-  "updatedAt": "2026-08-02",
+  "version": 15,
+  "updatedAt": "2026-08-10",
   "categories": [
     {
       "id": "research-knowledge",
@@ -255,8 +255,77 @@
         "media-toolkit",
         "content-workbench",
         "interior-design",
+        "photo-to-zine-postcard",
+        "lieflat-charts",
         "guizang-social-card-skill",
         "guizang-ppt-skill"
+      ]
+    },
+    {
+      "name": "lieflat-charts",
+      "directory": "skills/lieflat-charts",
+      "category": "visual-media",
+      "maturity": "experimental",
+      "risks": [
+        "network-read",
+        "local-write"
+      ],
+      "security": {
+        "network": "read",
+        "dataClass": "mixed",
+        "outboundData": "none",
+        "externalWrite": false,
+        "requiresAuthorization": false,
+        "untrustedContent": true
+      },
+      "origin": {
+        "kind": "adapted",
+        "repository": "https://github.com/larashero3-dotcom/lieflat-charts",
+        "revision": "e05f777261a774c945bdd0157817ef68f3c4766d",
+        "license": "PolyForm-Noncommercial-1.0.0"
+      },
+      "cli": [],
+      "examples": [
+        "test/fixtures/skill-cases/lieflat-charts/case.json"
+      ],
+      "caseRequired": true,
+      "related": [
+        "visual-content",
+        "content-workbench",
+        "frontend-design"
+      ]
+    },
+    {
+      "name": "photo-to-zine-postcard",
+      "directory": "skills/photo-to-zine-postcard",
+      "category": "visual-media",
+      "maturity": "experimental",
+      "risks": [
+        "local-write",
+        "external-generation"
+      ],
+      "security": {
+        "network": "write",
+        "dataClass": "private",
+        "outboundData": "content",
+        "externalWrite": false,
+        "requiresAuthorization": true,
+        "untrustedContent": true
+      },
+      "origin": {
+        "kind": "adapted",
+        "repository": "https://github.com/Whiplashzeb/photo-to-zine-postcard",
+        "revision": "0091403bccb219d1be78c5be8552de29a6446f0a",
+        "license": "MIT"
+      },
+      "cli": [],
+      "examples": [
+        "test/fixtures/skill-cases/photo-to-zine-postcard/case.json"
+      ],
+      "caseRequired": true,
+      "related": [
+        "visual-content",
+        "media-toolkit"
       ]
     },
     {
@@ -290,6 +359,7 @@
       "caseRequired": true,
       "related": [
         "visual-content",
+        "photo-to-zine-postcard",
         "guizang-social-card-skill"
       ]
     },
@@ -1422,6 +1492,39 @@
           "decision": "excluded",
           "targets": [],
           "reason": "The upstream repository declares no redistribution license; customers may add an authorized map integration separately."
+        }
+      ]
+    },
+    {
+      "id": "lieflat-charts",
+      "repository": "https://github.com/larashero3-dotcom/lieflat-charts",
+      "revision": "e05f777261a774c945bdd0157817ef68f3c4766d",
+      "license": "PolyForm-Noncommercial-1.0.0",
+      "retrievedAt": "2026-08-10",
+      "mappings": [
+        {
+          "source": "lieflat-charts",
+          "decision": "retained",
+          "targets": [
+            "lieflat-charts"
+          ],
+          "reason": "Retain the complete template-driven chart workflow as an isolated noncommercial capability with its original license and third-party notices."
+        }
+      ]
+    },
+    {
+      "id": "photo-to-zine-postcard",
+      "repository": "https://github.com/Whiplashzeb/photo-to-zine-postcard",
+      "revision": "0091403bccb219d1be78c5be8552de29a6446f0a",
+      "license": "MIT",
+      "retrievedAt": "2026-08-10",
+      "mappings": [
+        {
+          "source": "photo-to-zine-postcard",
+          "decision": "retained",
+          "targets": [
+            "photo-to-zine-postcard"
+          ]
         }
       ]
     }

@@ -75,6 +75,20 @@ locked production dependency graph as an internal browser executor.
 - The Chrome Browser Bridge is not bundled or silently enabled. Chrome retains
   the permission decision and requires explicit user confirmation.
 
+## Lieflat Charts
+
+Source: https://github.com/larashero3-dotcom/lieflat-charts
+
+Revision: `e05f777261a774c945bdd0157817ef68f3c4766d`
+
+License: PolyForm Noncommercial License 1.0.0
+
+The complete corresponding Skill source, chart templates, examples, design
+tokens, upstream license, third-party notices, and Personal Agent modification
+notice are distributed under `skills/lieflat-charts/`. The templates may be used
+only for purposes permitted by that noncommercial license. Commercial use
+requires separate permission from the upstream licensor.
+
 ## Guizang social card skill
 
 Source: https://github.com/op7418/guizang-social-card-skill
