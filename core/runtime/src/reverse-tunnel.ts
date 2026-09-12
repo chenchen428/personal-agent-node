@@ -1,4 +1,5 @@
 import fs from "node:fs";
+import { isRuntimeEnvironmentPath } from "./runtime-environment-access.ts";
 import http from "node:http";
 import path from "node:path";
 import { WebSocket } from "ws";
@@ -545,6 +546,7 @@ export function isTunnelRouteAllowed(_distribution, requestPath, kind = "http", 
   try { pathname = new URL(resolveTunnelRequestPath(requestPath, routePolicy), "http://127.0.0.1").pathname; }
   catch { return false; }
   if (pathname === "/api/system/spaces" || pathname === "/api/spaces") return false;
+  if (isRuntimeEnvironmentPath(pathname)) return false;
   if (routePolicy === "gateway") {
     return ["http", "websocket"].includes(String(kind));
   }

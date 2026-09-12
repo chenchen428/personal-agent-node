@@ -11,6 +11,7 @@ import { readCustomDomainBindings } from './custom-domain.ts';
 import { localMailStatus } from './mail.ts';
 import { resolveCodexCli, resolveNodeConfig, workspaceRoot } from './config.ts';
 import { getSpace, installationPaths } from './space-registry.ts';
+import { inspectSetupRuntime, runtimeSetupChecks } from './setup-runtime.ts';
 
 const setupRegistry = readJson(path.join(workspaceRoot, 'registry', 'setup-checks.json'));
 const stateSet = new Set(setupRegistry.states);
@@ -24,6 +25,7 @@ export async function setupStatus({
   processAlive = defaultProcessAlive,
   portProbe = probePort,
   codexProbe = inspectCodex,
+  runtimeProbe = undefined,
   remoteProbe = inspectRemoteConnectivity,
   platform = process.platform,
 } = {}) {
@@ -57,9 +59,6 @@ export async function setupStatus({
   const gatewayReady = Boolean(config && await portProbe(config.gateway.host, config.gateway.port));
   const localAuthDocument = readJson(path.join(spaceDataRoot, 'config', 'local-auth.json'));
   const localAuthReady = Boolean(config?.env?.PERSONAL_AGENT_AUTH_PASSWORD || (localAuthDocument?.algorithm === 'scrypt' && localAuthDocument?.verifier));
-  const codex = config?.site
-    ? await codexProbe({ config, env: effectiveEnv, platform })
-    : emptyCodex();
   const managed = managedServiceReadiness({ dataRoot: spaceDataRoot, env: effectiveEnv });
   const customDomains = config ? safeCustomDomainBindings(spaceDataRoot, effectiveEnv) : { mail: null, sites: null };
   const connectionMode = config?.site?.connectionMode || 'local-only';
@@ -70,6 +69,7 @@ export async function setupStatus({
   const reverseTunnel = readJson(path.join(customOwner?.root || spaceDataRoot, 'runtime', 'reverse-tunnel.json'));
   const connectivityAcceptance = readJson(path.join(spaceDataRoot, 'runtime', 'setup', 'connectivity.json'));
   const conversationAcceptance = readJson(path.join(spaceDataRoot, 'runtime', 'setup', 'web-conversation.json'));
+  const agentRuntime = await inspectSetupRuntime({ config, env: effectiveEnv, platform, codexProbe, runtimeProbe, acceptance: conversationAcceptance });
   const mailAcceptance = readJson(path.join(spaceDataRoot, 'runtime', 'setup', 'mail.json'));
   const managedCloudAction = readJson(path.join(spaceDataRoot, 'runtime', 'setup', 'managed-cloud-action.json'));
   const selections = readJson(path.join(spaceDataRoot, 'config', 'setup-selections.json')) || {};
@@ -80,10 +80,6 @@ export async function setupStatus({
   const releaseReady = Boolean(installation?.activeReleaseId && pointerExists(path.join(resolvedInstallRoot, 'current')));
   const siteReady = Boolean(config?.space?.id && config?.site?.siteId && config?.site?.nodeId && fs.statSync(spaceDataRoot, { throwIfNoEntry: false })?.isDirectory());
   const serviceReady = installationSupervisorAlive && supervisorAlive && requiredComponentsReady(supervisor);
-  const codexConversationReady = conversationAcceptance?.schemaVersion === 1
-    && conversationAcceptance.realAgentRuntime === true
-    && conversationAcceptance.sameSessionAgentReply === true
-    && conversationAcceptance.route === '/app/chat';
   const enrolled = connectionMode === 'managed-cloud'
     ? Boolean(cloud?.managedHost && cloud?.siteId && cloud?.enrolledAt && cloud?.tunnel?.protocol === 'pa-reverse-ws-v1')
     : customSelected;
@@ -130,11 +126,7 @@ export async function setupStatus({
     makeCheck('installation.service', serviceReady, serviceReady ? '后台服务正在运行' : '后台服务需要启动或修复', { running: serviceReady }, generatedAt),
     makeCheck('installation.gateway', gatewayReady, gatewayReady ? '本机网关可访问' : '本机网关暂不可访问', { reachable: gatewayReady, loopback: config?.gateway?.host === '127.0.0.1' }, generatedAt),
     makeCheck('installation.console-auth', localAuthReady, localAuthDocument?.verifier ? '外部访问密码已使用不可逆校验器' : localAuthReady ? '外部访问密码已配置' : '桌面本机直达；手机访问密码尚未设置', { configured: localAuthReady, durableVerifier: Boolean(localAuthDocument?.verifier), protectsLocalDesktop: false, protectsRemoteAccess: true }, generatedAt, localAuthReady ? undefined : 'not-selected'),
-    makeCheck('agent.codex.executable', codex.installed, codex.installed ? '已找到 Codex' : '尚未找到 Codex', { installed: codex.installed }, generatedAt),
-    makeCheck('agent.codex.version', codex.versionSupported, codex.versionSupported ? 'Codex 版本受支持' : 'Codex 版本需要确认', { supported: codex.versionSupported, version: codex.version || '' }, generatedAt, codex.installed ? undefined : 'blocked'),
-    makeCheck('agent.codex.authentication', codex.authenticated, codex.authenticated ? 'Codex 已登录' : 'Codex 尚未登录', { authenticated: codex.authenticated }, generatedAt, codex.installed ? undefined : 'blocked'),
-    makeCheck('agent.codex.handshake', codex.handshake, codex.handshake ? 'Codex app-server 握手成功' : 'Codex app-server 握手未通过', { handshake: codex.handshake }, generatedAt, codex.authenticated ? undefined : 'blocked'),
-    makeCheck('agent.web-conversation', codexConversationReady, codexConversationReady ? '真实 Web 对话已验证' : '请在本机对话中完成一次真实回复', { route: '/app/chat', realAgentRuntime: codexConversationReady, sameSessionAgentReply: codexConversationReady }, generatedAt, codex.handshake ? undefined : 'blocked'),
+    ...runtimeSetupChecks(agentRuntime, makeCheck, generatedAt),
     makeCheck('connectivity.mode', remoteSelected, remoteSelected ? `已选择 ${connectionMode}` : '保持纯本机模式', { selected: remoteSelected, mode: connectionMode }, generatedAt, remoteSelected ? undefined : 'not-selected'),
     makeCheck('connectivity.enrollment', enrolled, enrolled ? '公网连接身份已建立' : '需要完成公网连接授权', { enrolled }, generatedAt, remoteSelected ? undefined : 'not-selected'),
     makeCheck('connectivity.heartbeat', heartbeatReady, heartbeatReady ? '应用隧道心跳正常' : '应用隧道心跳未就绪', { ready: heartbeatReady }, generatedAt, remoteSelected ? undefined : 'not-selected'),
@@ -158,7 +150,7 @@ export async function setupStatus({
       remote: remoteSelected ? dimensionState(checks, 'remote', { ignoreOptional: true }) : 'not-selected',
       mail: mailSelected ? dimensionState(checks.filter((check) => check.id.startsWith('mail.')), 'mail') : 'not-selected',
     },
-    groups: setupRegistry.groups,
+    groups: setupRegistry.groups.map((group) => group.id === 'agent' ? { ...group, label: `${agentRuntime.label} Agent` } : group),
     checks,
     actions: { managedCloud: publicManagedCloudAction(effectiveManagedCloudAction) },
   };
@@ -229,7 +221,7 @@ export async function inspectCodex({ config, env = process.env, platform = proce
   return { installed: versionResult.status === 0, version, versionSupported: versionResult.status === 0 && Boolean(version), authenticated, handshake };
 }
 
-export function writeWebConversationAcceptance({ dataRoot, now = () => new Date() } = {}) {
+export function writeWebConversationAcceptance({ dataRoot, now = () => new Date(), engine = undefined, revision = undefined, spaceId = undefined } = {}) {
   const target = path.join(path.resolve(dataRoot), 'runtime', 'setup', 'web-conversation.json');
   writeJsonAtomic(target, {
     schemaVersion: 1,
@@ -238,6 +230,7 @@ export function writeWebConversationAcceptance({ dataRoot, now = () => new Date(
     realAgentRuntime: true,
     sameSessionAgentReply: true,
     wechatRequired: false,
+    ...(engine === 'codex' || engine === 'claude-code' ? { engine, revision, ...(spaceId ? { spaceId } : {}) } : {}),
     verifiedAt: now().toISOString(),
   });
   return target;

@@ -968,7 +968,6 @@
 .desktop-v72 .settings-action-panel code { border-radius: 7px; padding: 6px 8px; background: var(--pa-subtle); }
 .desktop-v72 .settings-action-panel p { margin: 0; color: var(--pa-muted); font-size: 10px; }
 .desktop-v72 .settings-section-title { margin: 18px 0 8px; font-size: 12px; }
-.desktop-v72 .settings-codex-runtime { display: flex; align-items: center; justify-content: flex-end; gap: 7px; flex-wrap: wrap; }
 .desktop-v72 .settings-token-limit { display: flex; align-items: center; gap: 7px; }
 .desktop-v72 .settings-token-limit span { color: var(--pa-muted); font-size: 10px; }
 .desktop-v72 .settings-dialog-backdrop { position: fixed; inset: 0; z-index: 80; display: grid; place-items: center; padding: 24px; background: rgb(26 27 25 / 32%); backdrop-filter: blur(2px); }

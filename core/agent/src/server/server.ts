@@ -57,7 +57,9 @@ import { buildActivityTargetPreview } from "../activity/presentation.js";
 import { MemoryStore } from "../memory/store.js";
 import { authorizationSettings, readAuthorizationMode, withAuthorizationCliFlag, writeAuthorizationMode } from "../agent/authorization-mode.ts";
 import { readDailyTokenLimit, writeDailyTokenLimit } from "../agent/daily-token-limit.ts";
-import { readCodexRuntimeSettings, writeCodexRuntimeSettings } from "../agent/codex-runtime-settings.ts";
+import { readCodexRuntimeSettings } from "../agent/codex-runtime-settings.ts";
+import { createAgentRuntimeEnvironmentController } from "./runtime-environment-controller.ts";
+import { isLocalRuntimeEnvironmentRequest } from "../../../runtime/src/runtime-environment-access.ts";
 import { discoverAppServerDefaultModel, discoverAppServerModels } from "../agent/app-server-runner.ts";
 import { shutdownAppServerClient } from "../agent/app-server-client.ts";
 import { managedServiceReadiness } from "../../../runtime/src/cloud-resources.ts";
@@ -628,8 +630,33 @@ async function handleRequest(request: http.IncomingMessage, response: http.Serve
     }
   }
 
+  if (/^\/api\/node\/v1\/client\/agent-runtime(?:\/(?:detect|test))?$/.test(url.pathname)) {
+    if (!isTrustedLocalRuntimeEnvironmentRequest(request)) {
+      sendJson(response, 403, { ok: false, error: { code: "DESKTOP_LOCAL_ONLY", message: "运行环境配置仅支持本机桌面端" } });
+      return;
+    }
+    const action = url.pathname.slice("/api/node/v1/client/agent-runtime".length);
+    if ((action && request.method !== "POST") || (!action && !["GET", "POST"].includes(request.method || ""))) {
+      sendJson(response, 405, { ok: false, error: { code: "METHOD_NOT_ALLOWED", message: "Method Not Allowed" } });
+      return;
+    }
+    try {
+      const service = createAgentRuntimeEnvironmentController(config);
+      if (request.method === "GET") { sendJson(response, 200, { ok: true, ...service.view() }); return; }
+      const input = await readJsonBody(request, 32_768);
+      const result = action === "/detect" ? await service.detect(input)
+        : action === "/test" ? await service.testConnectivity(input) : service.save(input);
+      sendJson(response, 200, { ok: true, ...result });
+    } catch (error) {
+      sendJson(response, Number(error?.statusCode || 500), { ok: false, error: {
+        code: /^(?:RUNTIME_[A-Z_]+|INVALID_RUNTIME_ENVIRONMENT)$/.test(String(error?.code || "")) ? error.code : "RUNTIME_SETTINGS_FAILED",
+        message: /^(?:RUNTIME_[A-Z_]+|INVALID_RUNTIME_ENVIRONMENT)$/.test(String(error?.code || "")) ? error.message : "运行环境配置暂时无法完成，请稍后重试。",
+      } });
+    }
+    return;
+  }
   if (url.pathname === "/api/node/v1/client/codex-settings") {
-    if (!isTrustedLocalRequest(request)) {
+    if (!isTrustedLocalRuntimeEnvironmentRequest(request)) {
       sendJson(response, 403, { ok: false, error: "Codex settings require local access" });
       return;
     }
@@ -646,8 +673,9 @@ async function handleRequest(request: http.IncomingMessage, response: http.Serve
       const input = await readJsonBody(request);
       const model = typeof input?.model === "string" ? input.model.trim() : "";
       const reasoningEffort = typeof input?.reasoningEffort === "string" ? input.reasoningEffort.trim() : "";
-      validateCodexRuntimeSelection({ model, reasoningEffort }, catalog);
-      writeCodexRuntimeSettings(config.codexRuntimeSettingsFile, { model, reasoningEffort });
+      const service = createAgentRuntimeEnvironmentController(config);
+      const current = service.view();
+      service.save({ revision: current.revision, engine: current.engine, profiles: { codex: { model, reasoningEffort } } });
       sendJson(response, 200, { ok: true, ...codexRuntimeSettingsView(catalog) });
     } catch (error) {
       const statusCode = Number(error?.statusCode || 503);
@@ -2382,10 +2410,8 @@ async function discoverCodexRuntimeCatalog() {
 }
 
 function codexRuntimeSettingsView(catalog: any) {
-  const settings = readCodexRuntimeSettings(config.codexRuntimeSettingsFile, {
-    model: config.codexModel,
-    reasoningEffort: config.codexReasoningEffort,
-  });
+  const profile = createAgentRuntimeEnvironmentController(config).view().profiles.codex;
+  const settings = { model: profile.model, reasoningEffort: profile.reasoningEffort };
   const effectiveModel = settings.model || catalog.defaultModel?.id || "";
   const effectiveOption = catalog.models.find((item: any) => item.id === effectiveModel);
   const reasoningEfforts = Array.from(new Set(catalog.models.flatMap((item: any) => item.efforts || [])));
@@ -3098,6 +3124,12 @@ function isTrustedLocalRequest(request: http.IncomingMessage) {
   if (request.headers["x-forwarded-for"]) return false;
   const address = request.socket.remoteAddress || "";
   return address === "127.0.0.1" || address === "::1" || address === "::ffff:127.0.0.1";
+}
+
+function isTrustedLocalRuntimeEnvironmentRequest(request: http.IncomingMessage) {
+  return isTrustedLocalRequest(request)
+    && !["forwarded", "x-forwarded-host", "x-forwarded-proto"].some((name) => request.headers[name] !== undefined)
+    && isLocalRuntimeEnvironmentRequest(request.headers);
 }
 
 function isTrustedLocalConsoleRequest(request: http.IncomingMessage) {

@@ -21,7 +21,7 @@ const SRC = 'agent-bridge-appserver';
 const sessions = new Map();     // sessionId -> session
 const threadIndex = new Map();  // threadId -> sessionId
 const subThreadIndex = new Map(); // sub-agent threadId -> { sessionId, name } (parent session + nickname)
-let wired = false;
+let wired = new WeakSet();
 
 // ---------------------------------------------------------------------------
 // public API
@@ -31,10 +31,13 @@ let wired = false;
 export async function runAppServerCommand(config) {
   const sessionId = config.sessionId || `codex-${Date.now()}`;
   const onSessionEvent = typeof config.onSessionEvent === 'function' ? config.onSessionEvent : () => {};
-  const client = getAppServerClient(appServerClientOptions(config));
+  const client = config.appServerClient || getAppServerClient(appServerClientOptions(config));
   wire(client);
 
   const session = ensureSession(sessionId, { config, onSessionEvent });
+  if (session.client && session.client !== client) session.threadReady = false;
+  session.client = client;
+  if (config.refreshThreadInstructions) session.threadReady = false;
   session.config = config;
   session.onSessionEvent = onSessionEvent;
 
@@ -100,7 +103,7 @@ export async function steerActiveTurn(sessionId, content, onSessionEvent, option
 export function stopAppServerCommand(sessionId) {
   const session = sessions.get(sessionId);
   if (!session || !session.threadId || !session.currentTurnId) return false;
-  getAppServerClient().request('turn/interrupt', { threadId: session.threadId, turnId: session.currentTurnId })
+  (session.client || getAppServerClient()).request('turn/interrupt', { threadId: session.threadId, turnId: session.currentTurnId })
     .catch(() => {});
   return true;
 }
@@ -171,7 +174,7 @@ export function decideAppServerApproval(sessionId, payload) {
       const list = (Array.isArray(values) ? values : [values]).filter((v) => typeof v === 'string' && v.trim());
       if (list.length) answers[questionId] = { answers: list };
     }
-    const ok = getAppServerClient().respondToServerRequest(requestId, { answers });
+    const ok = (session.client || getAppServerClient()).respondToServerRequest(requestId, { answers });
     session.emit('authorization.decision', {
       content: (typeof payload.answersText === 'string' && payload.answersText.trim()) || (Object.keys(answers).length ? '已提交回答' : '已跳过提问'),
       source: 'agent-bridge-ui',
@@ -185,7 +188,7 @@ export function decideAppServerApproval(sessionId, payload) {
   }
 
   const decision = decisionFromPayload(payload);
-  const ok = getAppServerClient().respondToServerRequest(requestId, { decision });
+  const ok = (session.client || getAppServerClient()).respondToServerRequest(requestId, { decision });
   session.emit('authorization.decision', {
     content: `Authorization ${decision}`,
     source: 'agent-bridge-ui',
@@ -234,7 +237,7 @@ export async function listLoadedAppServerThreadIds(config) {
   return Array.from(await loadedThreadIds(client));
 }
 
-function appServerClientOptions(config) {
+export function appServerClientOptions(config) {
   const appServerCommand = normalizeAppServerCommand(config.command);
   return {
     command: config.appServerCommand || appServerCommand.command,
@@ -278,12 +281,13 @@ async function loadedThreadIds(client) {
 // ---------------------------------------------------------------------------
 
 function wire(client) {
-  if (wired) return;
-  wired = true;
-  client.onNotify(onNotify);
-  client.onServerRequest(onServerRequest);
+  if (wired.has(client)) return;
+  wired.add(client);
+  client.onNotify((msg) => onNotify(msg, client));
+  client.onServerRequest((msg) => onServerRequest(msg, client));
   client.onClose(() => {
     for (const session of sessions.values()) {
+      if (session.client !== client) continue;
       session.threadReady = false;
       session.currentTurnId = null;
       rejectTurn(session, new Error('app-server connection closed'));
@@ -291,10 +295,10 @@ function wire(client) {
   });
 }
 
-function onNotify(msg) {
+function onNotify(msg, client) {
   const threadId = msg.params?.threadId;
   const session = sessionForThread(threadId);
-  if (session) {
+  if (session && session.client === client) {
     registerCollabAgents(session, msg);
     if (msg.method === 'turn/started') {
       session.currentTurnId = msg.params?.turn?.id ?? session.currentTurnId;
@@ -312,7 +316,7 @@ function onNotify(msg) {
   // touch the parent's turn control state (currentTurnId / turnWaiter).
   const sub = subThreadIndex.get(threadId);
   const parent = sub ? sessions.get(sub.sessionId) : null;
-  if (!parent) return;
+  if (!parent || parent.client !== client) return;
   const tag = { threadId, ...(sub.name ? { name: sub.name } : {}) };
   for (const frame of mapMessage(msg, parent.mapperState)) {
     // session.error would flip the PARENT session to paused (store sessionStatusFromEvent); a
@@ -352,7 +356,7 @@ function registerCollabAgents(session, msg) {
 async function resolveAgentNickname(session, threadId, sub) {
   const read = async () => {
     try {
-      const res = await getAppServerClient().request('thread/read', { threadId }, 30_000);
+      const res = await (session.client || getAppServerClient()).request('thread/read', { threadId }, 30_000);
       return res?.thread?.agentNickname || res?.thread?.name || null;
     } catch { return null; }
   };
@@ -373,8 +377,7 @@ async function resolveAgentNickname(session, threadId, sub) {
 
 function shortThreadId(threadId) { return String(threadId || '').slice(0, 8); }
 
-function onServerRequest(msg) {
-  const client = getAppServerClient();
+function onServerRequest(msg, client) {
   const threadId = msg.params?.threadId;
   const sub = subThreadIndex.get(threadId);
   const session = sessionForThread(threadId) || (sub ? sessions.get(sub.sessionId) : null);
@@ -382,7 +385,7 @@ function onServerRequest(msg) {
     || msg.method === 'item/fileChange/requestApproval'
     || msg.method === 'item/tool/requestUserInput';
   const frames = session && isHumanRequest ? mapMessage(msg, session.mapperState) : [];
-  if (!session || frames.length === 0) {
+  if (!session || session.client !== client || frames.length === 0) {
     // Not a human request we model (e.g. dynamic tool call): fail closed so the turn does not hang
     // forever. For request_user_input the server falls back to submitting empty answers.
     client.errorToServerRequest(msg.id, `unsupported server request: ${msg.method}`);
@@ -402,7 +405,7 @@ function onServerRequest(msg) {
 // ---------------------------------------------------------------------------
 
 async function ensureThread(session, config) {
-  const client = getAppServerClient();
+  const client = session.client || getAppServerClient();
   await client.ensureStarted();
   if (session.threadId && session.threadReady) return;
   if (session.threadId) { // known thread but not live in the current child -> resume from disk rollout
@@ -436,12 +439,20 @@ export function threadStartParams(config) {
     sandbox: config.appServerSandbox || 'workspace-write',
   };
   if (config.appServerModel) params.model = config.appServerModel;
+  if (config.appServerModelProvider) params.modelProvider = config.appServerModelProvider;
+  if (config.appServerConfig) params.config = config.appServerConfig;
+  if (config.appServerEphemeral) params.ephemeral = true;
   if (config.appServerDeveloperInstructions) params.developerInstructions = config.appServerDeveloperInstructions;
   return params;
 }
 
 export function threadResumeParams(threadId, config) {
   const params = { threadId, cwd: config.workspace };
+  if (config.appServerModel) params.model = config.appServerModel;
+  if (config.appServerModelProvider) params.modelProvider = config.appServerModelProvider;
+  if (config.appServerConfig) params.config = config.appServerConfig;
+  if (config.refreshThreadInstructions && config.appServerApprovalPolicy) params.approvalPolicy = config.appServerApprovalPolicy;
+  if (config.refreshThreadInstructions && config.appServerSandbox) params.sandbox = config.appServerSandbox;
   if (config.appServerDeveloperInstructions) params.developerInstructions = config.appServerDeveloperInstructions;
   return params;
 }
@@ -509,8 +520,8 @@ function bindThread(session, threadId) {
 // ---------------------------------------------------------------------------
 
 async function dispatchInput(session, content, config) {
-  const parsed = parseInput(content);
-  const client = getAppServerClient();
+  const parsed = config.literalInput ? { kind: 'turn', input: content } : parseInput(content);
+  const client = session.client || getAppServerClient();
   switch (parsed.kind) {
     case 'compact':
       session.emit('session.status', { content: 'Compacting context…', source: SRC, level: 'info' });
@@ -549,7 +560,7 @@ async function dispatchInput(session, content, config) {
 
 /** Start a turn (text | skill | review) and await its completion; returns the TurnStatus. */
 async function startTurn(session, { text, skill, review, config }) {
-  const client = getAppServerClient();
+  const client = session.client || getAppServerClient();
   const waiter = deferred();
   session.turnWaiter = waiter;
   let res;
@@ -569,7 +580,7 @@ async function startTurn(session, { text, skill, review, config }) {
 }
 
 async function steer(session, content) {
-  await getAppServerClient().request('turn/steer', {
+  await (session.client || getAppServerClient()).request('turn/steer', {
     threadId: session.threadId,
     expectedTurnId: session.currentTurnId,
     input: [{ type: 'text', text: content }],
@@ -577,7 +588,7 @@ async function steer(session, content) {
 }
 
 async function runGoal(session, rest) {
-  const client = getAppServerClient();
+  const client = session.client || getAppServerClient();
   if (!rest) {
     const res = await client.request('thread/goal/get', { threadId: session.threadId });
     const objective = res?.goal?.objective ?? res?.objective ?? null;
@@ -596,7 +607,7 @@ async function runGoal(session, rest) {
 async function runShell(session, command) {
   if (!command) { session.emit('session.status', { content: 'Empty shell command.', source: SRC, level: 'warn' }); return; }
   session.emit('session.tool_use', { content: command, source: SRC, toolName: 'shell', metadata: { eventType: 'thread/shellCommand' } });
-  const res = await getAppServerClient().request('thread/shellCommand', { threadId: session.threadId, command });
+  const res = await (session.client || getAppServerClient()).request('thread/shellCommand', { threadId: session.threadId, command });
   const out = res?.output ?? res?.aggregatedOutput ?? res?.stdout ?? '';
   const exitCode = res?.exitCode ?? res?.exit_code ?? null;
   session.emit('session.tool_result', {
@@ -625,7 +636,7 @@ async function resolveDefaultModelId() {
 
 async function runModelList(session) {
   // .call (not .request): auto-starts the child so /model also works before the first turn.
-  const res = await getAppServerClient().call('model/list', {});
+  const res = await (session.client || getAppServerClient()).call('model/list', {});
   const models = (res?.data || []).map((m) => m.id || m.slug || m.name || m.model).filter(Boolean);
   session.emit('session.status', {
     content: `Available models:\n${models.map((m) => `- ${m}`).join('\n') || '(none)'}`,
@@ -728,7 +739,7 @@ export function normalizeModelList(data) {
 async function listSkills(config) {
   // .call (not .request): auto-starts the app-server child, so skills discovery also works
   // before the first turn (worker startup reporting).
-  const res = await getAppServerClient({ cwd: config?.workspace, env: config?.agentEnv }).call('skills/list', {
+  const res = await (config?.appServerClient || getAppServerClient({ cwd: config?.workspace, env: config?.agentEnv })).call('skills/list', {
     cwds: config?.workspace ? [config.workspace] : [],
     forceReload: false,
   });
@@ -812,4 +823,13 @@ function deferred() {
 function safeJson(v) { try { return JSON.stringify(v ?? {}); } catch { return String(v); } }
 
 /** Test hook: drop all in-memory session state. */
-export function _resetAppServerSessions() { sessions.clear(); threadIndex.clear(); subThreadIndex.clear(); wired = false; cachedDefaultModelId = undefined; }
+export function _resetAppServerSessions() { sessions.clear(); threadIndex.clear(); subThreadIndex.clear(); wired = new WeakSet(); cachedDefaultModelId = undefined; }
+
+export function releaseAppServerSession(sessionId) {
+  const session = sessions.get(sessionId);
+  if (session?.currentTurnId) return false;
+  if (session?.threadId) threadIndex.delete(session.threadId);
+  for (const [id, sub] of subThreadIndex) if (sub.sessionId === sessionId) subThreadIndex.delete(id);
+  sessions.delete(sessionId);
+  return true;
+}

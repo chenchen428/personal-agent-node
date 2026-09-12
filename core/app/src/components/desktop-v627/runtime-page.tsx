@@ -4,6 +4,7 @@ import { Activity, Cpu, HardDrive, RotateCw } from "lucide-react";
 import type { RuntimeData } from "./types";
 import { formatDuration, useJson } from "./shared";
 import { Badge, Button, Card, PageHeader, PageSurface } from "../desktop-v72/primitives";
+import { RuntimeEnvironmentSettings } from "../runtime-environments/runtime-environment-settings";
 
 export function RuntimePage() {
   const runtime = useJson<RuntimeData>("/api/node/v1/client/runtime");
@@ -27,6 +28,7 @@ export function RuntimePage() {
       <Card className="stat-card"><div className="stat-card-head"><span>服务状态</span><Cpu /></div><div className="stat-value">{running ? "正常" : "—"}</div><div className="stat-copy">客户端持续检测并自动保活</div></Card>
       <Card className="stat-card"><div className="stat-card-head"><span>当前版本</span><HardDrive /></div><div className="stat-value" style={{ fontSize: 17 }}>{runtime.value?.version || "读取中"}</div><div className="stat-copy">客户端、Agent 与 Core</div></Card>
     </section>
+    <RuntimeEnvironmentSettings />
     <Card className="section-list runtime-service-list">
       <header className="section-heading"><strong>服务状态</strong><span>客户端持续守护</span></header>
       {services.map((service) => <div className="plain-row" key={service.name}><i className={`status-dot ${running ? "success" : "danger"}`} /><span className="row-copy"><strong>{service.name}</strong><small>{service.detail}</small></span><Badge tone={running ? "success" : "danger"}>{running ? "正常" : "正在恢复"}</Badge></div>)}

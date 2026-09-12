@@ -20,6 +20,7 @@ import { requestControl } from '../runtime/src/control-service.ts';
 import { getDataExport, startDataExport } from './data-export.js';
 import { createSpace, deleteSpace, getSpace, listSpaces, setSpaceDesiredState } from '../runtime/src/space-registry.ts';
 import { bridgeInvalidResponseError, bridgeResponseError, bridgeTransportError, controlApiErrorResponse } from './api-errors.ts';
+import { isLocalRuntimeEnvironmentRequest } from '../runtime/src/runtime-environment-access.ts';
 
 const projectRoot = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(projectRoot, '..', '..');
@@ -229,7 +230,30 @@ async function handleRequest(request, response) {
     await sendJson(response, result || { ok: false, error: { message: '主 Agent 尚未就绪' } }, request.method === 'HEAD');
     return;
   }
+  if (/^\/api\/agent-runtime(?:\/(?:detect|test))?$/.test(url.pathname)) {
+    if (!isLocalRuntimeEnvironmentRequest(request.headers)) {
+      sendJsonStatus(response, 403, { ok: false, error: { code: 'DESKTOP_LOCAL_ONLY', message: '运行环境配置仅支持本机桌面端' } });
+      return;
+    }
+    const action = url.pathname.slice('/api/agent-runtime'.length);
+    if ((action && request.method !== 'POST') || (!action && !['GET', 'POST'].includes(request.method))) {
+      send(response, 405, 'text/plain; charset=utf-8', 'Method Not Allowed');
+      return;
+    }
+    const input = request.method === 'POST' ? await readRequestJson(request) : undefined;
+    const result = await requestOpenAgentBridge(`/api/node/v1/client/agent-runtime${action}`, {
+      method: request.method,
+      headers: { 'x-personal-agent-surface': 'desktop', ...(input ? { 'content-type': 'application/json' } : {}) },
+      body: input ? JSON.stringify(input) : undefined,
+    }, action ? 45_000 : 6000);
+    await sendJson(response, result || { ok: false, error: { code: 'AGENT_UNAVAILABLE', message: '本机 Agent 尚未就绪' } });
+    return;
+  }
   if (url.pathname === '/api/codex-settings') {
+    if (!isLocalRuntimeEnvironmentRequest(request.headers)) {
+      sendJsonStatus(response, 403, { ok: false, error: { code: 'DESKTOP_LOCAL_ONLY', message: '运行环境配置仅支持本机桌面端' } });
+      return;
+    }
     if (request.method !== 'GET' && request.method !== 'POST') {
       send(response, 405, 'text/plain; charset=utf-8', 'Method Not Allowed');
       return;
@@ -237,7 +261,7 @@ async function handleRequest(request, response) {
     const input = request.method === 'POST' ? await readRequestJson(request) : undefined;
     const result = await requestOpenAgentBridge('/api/node/v1/client/codex-settings', {
       method: request.method,
-      headers: input ? { 'content-type': 'application/json' } : undefined,
+      headers: { 'x-personal-agent-surface': 'desktop', ...(input ? { 'content-type': 'application/json' } : {}) },
       body: input ? JSON.stringify(input) : undefined,
     });
     await sendJson(response, result || { ok: false, error: { message: '本机 Agent 尚未就绪' } }, request.method === 'HEAD');
@@ -839,11 +863,11 @@ function buildOnboardingMessage(onboarding) {
   return lines.join('\n');
 }
 
-async function requestOpenAgentBridge(pathname, options = {}) {
+async function requestOpenAgentBridge(pathname, options = {}, timeoutMs = 6000) {
   const token = process.env.OPEN_AGENT_BRIDGE_API_TOKEN || '';
   if (!token) return null;
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 6000);
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
     const response = await fetch(`${openAgentBridgeBaseUrl}${pathname}`, {
       ...options,

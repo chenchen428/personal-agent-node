@@ -22,8 +22,8 @@ node scripts/bootstrap-private-site.mjs verify --config secrets/bootstrap.json
 ```
 
 The Node generates both private keys locally. The user owns the ECS, domain, SSH
-key, and Aliyun AKSK. Codex is the only supported Agent runtime in the current
-version and works from the complete cloned repository.
+key, and Aliyun AKSK. Agent 执行默认使用 Codex，也可在运行设置中选择 Claude Code；
+两种基座分别使用本机 CLI、账号或自定义模型配置，从用户的完整 Agent Workspace 执行任务。
 
 `PERSONAL_AGENT_AUTH_PASSWORD` must be present in the private Site environment before startup. Other generated secrets are created during `init`. The environment file and all mutable state live outside immutable releases under `PRIVATE_SITE_DATA_ROOT`.
 

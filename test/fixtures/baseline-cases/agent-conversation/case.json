@@ -24,6 +24,7 @@
     "Desktop and mobile conversation readers preserve structured final-reply image and file attachments with safe same-origin preview/download actions, image dimensions and alt text, file names and sizes, and pending, sent, failed, or ambiguous delivery state",
     "Canonical Task, Page and private-file records keep same-origin relative paths; task CLI results expose a complete Managed Mobile HTTPS url when available or an empty url with linkNotice when unavailable, and no caller concatenates a domain with internalUrl; drive paths, absolute filesystem paths, file URLs and loopback URLs never enter a remote reply",
     "Conversation execution does not require Cloud",
+    "Runtime settings default to Codex and retain isolated Codex/Claude Code profiles; account or custom protocol configuration is Space-local, secrets never appear in API/argv/events, draft connectivity tests do not save or activate settings, and each engine resumes only its own session IDs",
     "Release and final acceptance install the GitHub Release asset and use authenticated /app/chat",
     "A unique prompt reaches the real Agent runtime and its Agent reply is observed in the same session",
     "wechatRequired is false and the optional connections.wechat Setup check never blocks the Agent",

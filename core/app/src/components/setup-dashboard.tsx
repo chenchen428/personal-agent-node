@@ -21,7 +21,7 @@ const RELEASES = "https://github.com/chenchen428/personal-agent-node/releases";
 const labels: Record<SetupState, string> = { ready: "可用", checking: "检查中", "action-required": "需处理", blocked: "等待", "not-selected": "可选" };
 const badgeTone: Record<SetupState, "ready" | "warning" | "error" | "neutral"> = { ready: "ready", checking: "neutral", "action-required": "warning", blocked: "error", "not-selected": "neutral" };
 const detailGroups = [
-  { key: "core", label: "本机与 Codex", sources: ["installation", "agent"] },
+  { key: "core", label: "本机与运行环境", sources: ["installation", "agent"] },
   { key: "online", label: "公网与 Agent 邮箱", sources: ["connectivity", "mail-identity"] },
   { key: "optional", label: "本地邮件与连接", sources: ["local-mail", "connections"] },
 ];
@@ -110,6 +110,7 @@ export function SetupDashboard({ prototype = false }: { prototype?: boolean }) {
     if (["installation.repair", "installation.service-repair"].includes(requestedAction)) return <a className={buttonVariants({ variant: "outline", size: "sm" })} href={RELEASES} target="_blank" rel="noreferrer"><Wrench className="size-3.5" />打开安装包<ExternalLink className="size-3.5" /></a>;
     if (["agent.codex.install-guide", "agent.codex.update-guide", "agent.codex.login-guide"].includes(requestedAction)) return <a className={buttonVariants({ variant: "outline", size: "sm" })} href={CODEX_GUIDE} target="_blank" rel="noreferrer">Codex 官方指南<ExternalLink className="size-3.5" /></a>;
     if (requestedAction === "agent.open-chat") return <Link className={buttonVariants({ size: "sm" })} href="/app/conversations"><MessageCircle className="size-3.5" />开始真实对话</Link>;
+    if (requestedAction === "agent.runtime.settings") return <Link className={buttonVariants({ variant: "outline", size: "sm" })} href="/app/runtime">配置运行环境</Link>;
     if (["agent.codex.retry", "connectivity.retry"].includes(requestedAction)) return <Button variant="outline" size="sm" type="button" onClick={() => void refresh()} disabled={loading}><RefreshCw className="size-3.5" />重新检测</Button>;
 
     if (["connectivity.choose-mode", "connectivity.managed-authorize", "connectivity.repair"].includes(requestedAction)) {
@@ -135,7 +136,7 @@ export function SetupDashboard({ prototype = false }: { prototype?: boolean }) {
   const coreReady = !loading && !error && tasks.totalRequired > 0 && tasks.completedRequired === tasks.totalRequired && tasks.blockedChecks.length === 0;
   const currentDone = !loading && !error && tasks.requiredTasks.length === 0 && tasks.blockedChecks.length === 0;
   const headline = loading ? "正在检查这台电脑" : error ? "暂时无法完成检查" : currentDone ? "当前设置已经完成" : `${tasks.requiredTasks.length} 项待完成`;
-  const summary = loading ? "正在读取安装、Codex 和对话链路的本机事实。" : error || (currentDone ? "安装、Codex、公网域名与 Agent 邮箱已经完成检查。" : coreReady ? "本机已经可用；继续完成公网域名与 Agent 邮箱验证。" : "先完成本机、Codex、公网域名与 Agent 邮箱的当前事项。" );
+  const summary = loading ? "正在读取安装、运行环境和对话链路的本机事实。" : error || (currentDone ? "安装、运行环境、公网域名与 Agent 邮箱已经完成检查。" : coreReady ? "本机已经可用；继续完成公网域名与 Agent 邮箱验证。" : "先完成本机、运行环境、公网域名与 Agent 邮箱的当前事项。" );
 
   if (prototype) {
     const installationChecks = checks.filter((check) => check.group === "installation" && check.id !== "installation.console-auth");
@@ -168,7 +169,7 @@ export function SetupDashboard({ prototype = false }: { prototype?: boolean }) {
           </article>
           <article className={`setup-item${agentReady ? " done" : !installationReady ? "" : " active"}`}>
             <span className="setup-number">{agentReady ? "✓" : "2"}</span>
-            <div><strong>让 PA 可以工作</strong><p>{agentReady ? "Codex CLI、工作区和真实对话检查均已通过。" : agentTask?.check.guidance || "正在检查 Codex、工作区和真实对话链路。"}</p></div>
+            <div><strong>让 PA 可以工作</strong><p>{agentReady ? "所选基座、工作区和真实对话检查均已通过。" : agentTask?.check.guidance || "正在检查运行基座、工作区和真实对话链路。"}</p></div>
             {agentReady ? <Link className="pa-button" href="/app/conversations">查看状态</Link> : agentTask ? renderAction(agentTask.actionId) : <button className="pa-button" type="button" onClick={() => void refresh()}>重新检测</button>}
           </article>
           <article className={`setup-item${wechatReady ? " done" : installationReady && agentReady ? " active" : ""}`}>
@@ -230,7 +231,7 @@ export function SetupDashboard({ prototype = false }: { prototype?: boolean }) {
             {tasks.requiredTasks.map((task, index) => <SetupTodoItem key={task.check.id} task={task} index={index + 1} action={renderAction(task.actionId)} />)}
           </ol> : <div className="flex min-h-36 items-center gap-4 rounded-lg border border-dashed border-[var(--hairline)] bg-[var(--surface-soft)] p-5">
             {currentDone ? <CheckCircle2 className="size-7 shrink-0 text-[var(--success)]" /> : <Circle className="size-7 shrink-0 text-[var(--muted-soft)]" />}
-            <div><strong className="block text-sm font-medium text-[var(--ink)]">{loading ? "正在生成任务清单" : currentDone ? "当前引导已经完成" : error || "正在等待检测结果"}</strong><span className="mt-1 block text-xs leading-relaxed text-[var(--muted)]">{currentDone ? "本机、Codex、公网域名与 Agent 邮箱均已完成检查。" : "检测完成后，这里只会留下需要你处理的事项。"}</span></div>
+            <div><strong className="block text-sm font-medium text-[var(--ink)]">{loading ? "正在生成任务清单" : currentDone ? "当前引导已经完成" : error || "正在等待检测结果"}</strong><span className="mt-1 block text-xs leading-relaxed text-[var(--muted)]">{currentDone ? "本机、运行环境、公网域名与 Agent 邮箱均已完成检查。" : "检测完成后，这里只会留下需要你处理的事项。"}</span></div>
           </div>}
         </CardContent>
       </Card>

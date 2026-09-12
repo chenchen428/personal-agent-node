@@ -57,6 +57,14 @@ personal-agent doctor --json
 
 `setup status` and `doctor` are read-only and return sanitized evidence. They never print setup nonces, passwords, cookies, device codes, tokens, mail content, or conversation content.
 
+## 配置运行环境与模型
+
+在本机“运行设置 → 运行环境”选择默认基座。Codex 与 Claude Code 各自保留模型、推理强度及授权配置；账号模式使用对应 CLI 的登录，未安装或未登录时按检测结果处理。
+
+自定义模式填写模型 ID、服务 Base URL、API Key 或授权令牌，再点击“检测连通性”。Codex 需要 Responses 兼容服务，Claude Code 需要 Anthropic Messages 兼容服务。测试当前草稿不会保存设置；点击保存后，下一次对话回合与新任务开始使用所选配置。正在执行的回合保持原配置。已有凭据留空保留，更换服务来源时重新填写；清除凭据需显式操作。只有本机桌面入口提供这些配置。
+
+详细契约见 [统一 Agent 运行环境](adr/0013-agent-runtime-environments.md)。
+
 ## Managed connectivity is optional
 
 The Setup Center starts both purpose-bound browser approvals required by Personal Agent Cloud: Node enrollment and redacted resource access. The long-lived Node credential remains under the mode-600 local secrets directory. Managed remote access uses an outbound application WebSocket and does not install WireGuard or change system proxy, DNS, or routes. Only redacted domain, mailbox, endpoint, and readiness metadata is written to normal configuration.

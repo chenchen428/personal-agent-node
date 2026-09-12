@@ -350,8 +350,8 @@ test("Next.js owns the approved V6.39 mobile client and V7.3 desktop workspace",
   assert.match(desktopComponents, /\/api\/system\/update/);
   assert.match(desktopComponents, /安装后自动重启/);
   assert.match(desktopComponents, /\/api\/system\/authorization/);
-  assert.match(desktopComponents, /\/api\/system\/codex-settings/);
-  assert.match(desktopComponents, /模型与推理强度/);
+  assert.match(desktopComponents, /RuntimeEnvironmentSettings/);
+  assert.doesNotMatch(read("core/app/src/components/desktop-v627/settings-page.tsx"), /CodexRuntimeSetting|Agent 执行/);
   assert.match(agentServer, /\/api\/node\/v1\/client\/codex-settings/);
   assert.match(controlServer, /\/api\/codex-settings/);
   assert.match(desktopComponents, /bypass/);

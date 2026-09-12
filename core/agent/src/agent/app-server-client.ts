@@ -88,7 +88,8 @@ export function createAppServerClient({
   }
 
   function spawnChild(spawnArgs) {
-    child = spawn(command, spawnArgs, { cwd, stdio: ['pipe', 'pipe', 'pipe'], env: { ...process.env, ...(env || {}) } });
+    child = spawn(command, spawnArgs, { cwd, windowsHide: true, shell: false,
+      detached: process.platform !== 'win32', stdio: ['pipe', 'pipe', 'pipe'], env: { ...process.env, ...(env || {}) } });
     rl = readline.createInterface({ input: child.stdout });
     rl.on('line', handleFrame);
     child.stderr.on('data', (chunk) => {
@@ -233,9 +234,24 @@ export function createAppServerClient({
   function shutdownTransport() {
     try { ws?.close?.(); } catch {}
     ws = null;
-    try { child?.kill('SIGTERM'); } catch {}
     const c = child;
-    setTimeout(() => { try { if (c && !c.killed) c.kill('SIGKILL'); } catch {} }, 3_000).unref?.();
+    if (!c) return;
+    // Windows launchers may leave descendants holding the stdio pipes; kill the owned tree.
+    if (process.platform === 'win32' && c.pid) {
+      const killer = spawn('taskkill.exe', ['/PID', String(c.pid), '/T', '/F'], { windowsHide: true, shell: false, stdio: 'ignore' });
+      killer.on('error', () => { try { c.kill('SIGKILL'); } catch {} });
+    } else {
+      try { process.kill(-c.pid, 'SIGTERM'); } catch { try { c.kill('SIGTERM'); } catch {} }
+      setTimeout(() => {
+        if (c.exitCode !== null || c.signalCode !== null) return;
+        try { process.kill(-c.pid, 'SIGKILL'); } catch { try { c.kill('SIGKILL'); } catch {} }
+      }, 3_000).unref?.();
+    }
+    // Explicit close releases inherited pipes even if a launcher has already exited.
+    try { rl?.close(); } catch {}
+    c.stdin?.destroy(); c.stdout?.destroy(); c.stderr?.destroy();
+    for (const p of pending.values()) { clearTimeout(p.timer); p.reject(new Error('app-server stopped')); }
+    pending.clear();
   }
 }
 

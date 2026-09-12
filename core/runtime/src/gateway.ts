@@ -9,6 +9,7 @@ import { resolveNodeConfig, workspaceRoot } from "./config.ts";
 import { listExtensions } from "./extensions.ts";
 import { resolveDefaultPersonalApp, resolvePersonalAppAsset } from "./apps.ts";
 import { getSpace } from "./space-registry.ts";
+import { isLocalRuntimeEnvironmentRequest, isRuntimeEnvironmentPath } from "./runtime-environment-access.ts";
 
 const isEntrypoint = ["gateway.mjs", "gateway.ts"].includes(path.basename(process.argv[1] || ""));
 
@@ -51,6 +52,12 @@ export function createPrivateSiteGateway(options = {}) {
         return;
       }
       const url = new URL(request.url || "/", `http://${host || "localhost"}`);
+      if (isRuntimeEnvironmentPath(url.pathname) && (!isDirectLoopbackConsoleRequest(request)
+        || ["forwarded", "x-forwarded-for", "x-forwarded-host", "x-forwarded-proto"].some((name) => request.headers[name] !== undefined)
+        || !isLocalRuntimeEnvironmentRequest(request.headers))) {
+        sendText(response, 403, "Runtime environment settings require the local desktop\n", request.method === "HEAD");
+        return;
+      }
       if (isSpaceManagementPath(url.pathname) && !isDirectLoopbackConsoleRequest(request)) {
         sendText(response, 403, "Space management is available only from the local desktop\n", request.method === "HEAD");
         return;
@@ -159,6 +166,7 @@ export function createPrivateSiteGateway(options = {}) {
       }
       const url = new URL(request.url || "/", `http://${host || "localhost"}`);
       const route = matchRoute(routes, host, url.pathname, config);
+      if (isRuntimeEnvironmentPath(url.pathname)) return rejectUpgrade(socket, 403);
       if (!await authorizeRoute(request, route, config)) return rejectUpgrade(socket, 401);
       if (!route?.target || !route.websocket) return rejectUpgrade(socket, 404);
       prepareProxyHeaders(request, config, route.access !== "public");

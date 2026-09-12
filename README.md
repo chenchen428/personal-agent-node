@@ -12,6 +12,7 @@ Personal Agent Node 是 [Personal Agent](https://chenjianhui.site) 的开源、�
 - **Agent 动态**：主 Agent 主动维护面向用户、可阅读的工作进展、结果与交付物。
 - **连接自由**：支持纯本机/LAN、自有域名与隧道、可选 Personal Agent Cloud Edge。
 - **模型自由**：支持 BYOK 和 OpenAI-compatible Token 网关，连接方式与模型选择互不绑定。
+- **运行基座**：在“运行设置 → 运行环境”选择 Codex（默认）或 Claude Code，分别检测本机 CLI、配置账号模型或自定义模型服务并测试连通性。
 
 ## 可以用来做什么
 

@@ -1,0 +1,27 @@
+.runtime-environments { margin-top: 18px; padding: 0 20px 20px; }
+.runtime-environments .section-heading { min-height: 58px; }
+.runtime-environments label, .runtime-credential-dialog label { display: flex; flex-direction: column; align-items: stretch; gap: 8px; font-size: 12px; font-weight: 600; min-width: 0; }
+.runtime-environments select, .runtime-environments input, .runtime-credential-dialog input { width: 100%; min-width: 0; min-height: 36px; border: 1px solid var(--v72-line, #e5e2dc); border-radius: 6px; background: var(--v72-surface, #fff); padding: 7px 10px; color: inherit; font: inherit; }
+.runtime-environments select:focus-visible, .runtime-environments input:focus-visible, .runtime-credential-dialog input:focus-visible { outline: 2px solid var(--v72-ink, #292722); outline-offset: 2px; }
+.runtime-default { display: grid; grid-template-columns: minmax(160px, 280px) 1fr; align-items: end; gap: 18px; }
+.runtime-environments small, .runtime-hint, .runtime-credential > span, .runtime-credential-dialog p { color: var(--v72-muted, #716e67); font-size: 12px; line-height: 1.65; font-weight: 400; overflow-wrap: anywhere; }
+.runtime-base-tabs { display: flex; flex-wrap: wrap; gap: 8px; margin: 22px 0 14px; }
+.runtime-base-tabs [aria-pressed=true] { background: var(--v72-ink, #292722); color: white; border-color: var(--v72-ink, #292722); }
+.runtime-detection { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; padding: 14px 0; border-block: 1px solid var(--v72-line, #e5e2dc); }
+.runtime-detection-facts { display: flex; flex-wrap: wrap; gap: 14px 24px; font-size: 12px; }
+.runtime-detection-facts span { color: var(--v72-muted, #716e67); }
+.runtime-detection-facts strong { margin-left: 6px; color: var(--v72-ink, #292722); overflow-wrap: anywhere; }
+.runtime-fields { border: 0; padding: 0; margin: 20px 0 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px 24px; }
+.runtime-field-wide { grid-column: 1 / -1; }
+.runtime-credential { display: flex; flex-direction: column; gap: 6px; font-size: 12px; }
+.runtime-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.runtime-footer { margin-top: 20px; }
+.runtime-result { font-size: 12px; line-height: 1.6; overflow-wrap: anywhere; }
+.runtime-result.success { color: var(--v72-success, #15783d); }
+.runtime-result.error { color: var(--v72-danger, #b42318); }
+.runtime-credential-dialog { color: #292722; border: 1px solid #e5e2dc; border-radius: 10px; padding: 24px; width: min(460px, calc(100vw - 40px)); }
+.runtime-credential-dialog::backdrop { background: rgb(30 28 24 / 32%); }
+.runtime-credential-dialog h2 { font-size: 17px; margin-top: 0; }
+.runtime-credential-dialog .runtime-actions { justify-content: flex-end; margin-top: 20px; }
+.runtime-environments button:disabled, .runtime-environments fieldset:disabled { opacity: .6; }
+@media (max-width: 700px) { .runtime-fields, .runtime-default { grid-template-columns: minmax(0, 1fr); } .runtime-environments { padding-inline: 14px; } }
