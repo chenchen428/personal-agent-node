@@ -14,6 +14,6 @@ test("Node distribution verification targets the unified Next.js application con
   assert.match(verifier, /health\.architecture === "core-workspace"/);
   assert.match(verifier, /\/api\/system\/setup/);
   assert.match(verifier, /page\.includes\("首次设置"\)/);
-  assert.match(verifier, /page\.includes\("完成 Personal Agent 初始化"\)/);
+  assert.match(verifier, /page\.includes\("完成 Cove 初始化"\)/);
   assert.doesNotMatch(verifier, /server\.includes\("data-status"\)/);
 });
