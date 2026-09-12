@@ -141,7 +141,7 @@ test("mail web requires authentication and serves message, raw EML, and attachme
       child.kill("SIGTERM");
       await once(child, "exit");
     }
-    fs.rmSync(dataDir, { recursive: true, force: true });
+    fs.rmSync(dataDir, { recursive: true, force: true, maxRetries: 20, retryDelay: 100 });
   });
   await waitForServer(port, child, () => output);
 
