@@ -2,12 +2,14 @@
   "schemaVersion": 1,
   "skill": "social-browser-read",
   "title": "只读社交平台浏览器连接",
-  "prompt": "通过 Personal Agent 的小红书和 Twitter/X 浏览器连接搜索并读取内容，不接管登录态，也不执行任何发布或互动操作。",
+  "prompt": "通过 Personal Agent 的小红书和 X 浏览器连接搜索并读取内容；先检查同一浏览器登录状态，未登录引导用户人工登录并重新检测，不读取浏览器凭据或执行发布互动。",
   "commands": [
-    "node --import tsx --test core/agent/test/opencli-runner.test.mjs core/agent/test/xiaohongshu-opencli-provider.test.mjs core/agent/test/twitter-opencli-provider.test.mjs core/agent/test/social-connection-cli.test.mjs"
+    "node --import tsx --test core/agent/test/opencli-runner.test.mjs core/agent/test/xiaohongshu-opencli-provider.test.mjs core/agent/test/twitter-opencli-provider.test.mjs core/agent/test/social-connection-cli.test.mjs core/agent/test/social-platform-auth.test.mjs core/agent/test/twitter-credential-boundary.test.mjs"
   ],
   "artifacts": [
-    { "path": "expected.json", "label": "Browser connection and read-only Skill boundary" }
-  ],
-  "verifiedAt": "2026-07-18"
+    {
+      "path": "expected.json",
+      "label": "Browser connection and read-only Skill boundary"
+    }
+  ]
 }

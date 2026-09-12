@@ -10,8 +10,8 @@
     "Historical account login is coordinated without leaking verification codes",
     "Read-only search results are normalized",
     "Invalid legacy login and QR input is rejected",
-    "Current social status inspects only the browser executor, and opening a site creates no account connection",
+    "Social status separates browser readiness, visible platform login and read/search capabilities; missing or unknown login never appears connected, while a fixed official-site login handoff remains available",
     "OpenCLI execution is allowlisted, bounded, shell-free, and does not receive unrelated Personal Agent secrets",
-    "Twitter/X exposes normalized search and thread reads without inspecting login state or exposing OpenCLI write commands"
+    "Xiaohongshu and Twitter/X check login in the same browser profile before search/read, return a typed human-login blocker and resume authorized reads after confirmation without reading browser cookies or exposing OpenCLI write commands"
   ]
 }

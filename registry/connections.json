@@ -111,25 +111,25 @@
       "category": "内容平台",
       "icon": "sparkles",
       "summary": "通过浏览器安全搜索和阅读小红书",
-      "description": "此 OpenCLI 浏览器只读连接仅支持 Windows 和 macOS，不支持 Linux。它不要求 Personal Agent 建立或保存小红书账号授权，只检测浏览器操作环境和小红书只读能力，不读取、导出、保存或轮询登录态。未登录、验证码或风控由用户直接在浏览器中处理。连接器只开放打开站点、搜索和笔记阅读，不开放发布、评论、点赞或关注。",
-      "capabilities": ["检测浏览器操作环境", "检测小红书只读能力", "在浏览器打开小红书", "搜索笔记", "读取笔记正文和互动数据"],
+      "description": "此浏览器只读连接仅支持Windows和macOS。分别检测浏览器环境、小红书平台登录和搜索读取能力；只有真实登录与能力均确认后才显示已连接。登录检查只读取固定官方页面的可见信号，不导出或保存Cookie、Token和账号信息。未登录时打开官方页面由用户完成登录，验证码和风控需人工处理；不开放任何发布或互动写操作。",
+      "capabilities": ["检测浏览器操作环境", "检测平台登录状态", "检测小红书只读能力", "在浏览器打开小红书", "搜索笔记", "读取笔记正文和互动数据"],
       "runtime": [
         { "label": "支持系统", "value": "Windows / macOS" },
         { "label": "连接方式", "value": "浏览器操作" },
         { "label": "浏览器操作", "value": "等待检测" },
-        { "label": "账号会话", "value": "完全由用户浏览器持有，Personal Agent 不检查" },
+        { "label": "账号会话", "value": "浏览器持有凭据，连接仅报告脱敏登录状态" },
         { "label": "输出", "value": "结构化 envelope" },
         { "label": "平台约束", "value": "限频、验证码、单账号" }
       ],
       "skillName": "social-browser-read",
-      "skillDescription": "先用 status 检查内置 OpenCLI、浏览器桥接和小红书只读 Provider，不检查账号登录状态，也不创建平台授权。OpenCLI 运行时随 Personal Agent 安装和升级，用户无需安装 CLI。需要用户处理页面时用 open 打开固定站点；只允许 search 和 read，不得调用任意 OpenCLI 命令、浏览器脚本或 Cookie 工具。遇到未登录、验证码、风控或限频时停止并请用户直接在浏览器处理。旧 channel 扫码接口仅为历史兼容，不属于本连接器。",
+      "skillDescription": "先用status分别检查浏览器环境、小红书登录状态和只读能力；未确认不得当已连接。Windows/macOS支持，Linux拒绝。needs_login或CONNECTION_LOGIN_REQUIRED时用open打开固定官方登录页面，保留原查询上下文，用户完成登录后重新status确认并继续原已授权search/read。等待最多两分钟，超时保持待用户登录，不假称任务完成；前端不会自动唤醒Agent任务。搜索和读取每次都在同Space、同浏览器profile/session重新校验登录，登录墙/401立即失效，验证码与风控由用户处理。仅允许公开status/open/search/read，不调用任意脚本、Cookie工具或写命令，不输出Cookie、Token或账号标识。",
       "skillReference": "skills/personal-connections/references/connectors/xiaohongshu.md",
       "cli": {
         "command": "pa-cli connection xiaohongshu",
-        "description": "提供浏览器执行器 status、固定站点 open、search 和 read；不保存账号授权。",
+        "description": "提供浏览器环境、平台登录、读取能力三层status；open引导人工登录，search/read每次验证同一浏览器会话。",
         "operations": [
-          { "name": "status", "risk": "R0", "description": "只检查内置 OpenCLI、浏览器桥接与小红书只读 Provider，不读取登录态。" },
-          { "name": "open", "risk": "R1", "description": "在用户现有浏览器中打开固定小红书首页，不创建账号授权。" },
+          { "name": "status", "risk": "R0", "description": "分别检查浏览器环境、可见平台登录信号与搜索读取能力，未知状态不视为已连接。" },
+          { "name": "open", "risk": "R1", "description": "在当前Space绑定的浏览器会话打开固定小红书官方登录页面；此动作不要求预先登录，不自动填写或提交账号。" },
           { "name": "search", "risk": "R0", "description": "按关键词搜索笔记。" },
           { "name": "read", "risk": "R0", "description": "用搜索返回的签名 URL 或兼容 id/token 读取笔记。" }
         ]
@@ -151,25 +151,25 @@
       "category": "内容平台",
       "icon": "message",
       "summary": "通过浏览器搜索和阅读 Twitter / X",
-      "description": "此 OpenCLI 浏览器只读连接仅支持 Windows 和 macOS，不支持 Linux。它不要求 Personal Agent 建立或保存 X 账号授权，只检测浏览器操作环境和 Twitter / X 只读能力，不读取、导出、保存或轮询登录态。未登录或 2FA 由用户直接在浏览器处理。不开放发帖、回复、转发、点赞、关注或私信。",
-      "capabilities": ["检测浏览器操作环境", "检测 Twitter / X 只读能力", "在浏览器打开 Twitter / X", "搜索可见推文", "读取推文线程和回复", "返回结构化互动与媒体链接"],
+      "description": "此浏览器只读连接仅支持Windows和macOS。分别检测浏览器环境、Twitter / X平台登录和搜索读取能力；只有真实登录与能力均确认后才显示已连接。登录检查只读取固定官方页面的可见信号，不导出或保存Cookie、Token和账号信息。未登录时打开官方页面由用户完成登录，验证码和风控需人工处理；不开放任何发布或互动写操作。",
+      "capabilities": ["检测浏览器操作环境", "检测平台登录状态", "检测 Twitter / X 只读能力", "在浏览器打开 Twitter / X", "搜索可见推文", "读取推文线程和回复", "返回结构化互动与媒体链接"],
       "runtime": [
         { "label": "支持系统", "value": "Windows / macOS" },
         { "label": "连接方式", "value": "浏览器操作" },
         { "label": "浏览器操作", "value": "等待检测" },
-        { "label": "账号会话", "value": "完全由用户浏览器持有，Personal Agent 不检查" },
+        { "label": "账号会话", "value": "浏览器持有凭据，连接仅报告脱敏登录状态" },
         { "label": "输出", "value": "结构化 envelope" },
         { "label": "平台约束", "value": "登录墙、限频、页面与 GraphQL 变化" }
       ],
       "skillName": "social-browser-read",
-      "skillDescription": "先用 status 检查内置 OpenCLI、浏览器桥接和 Twitter / X 只读 Provider，不检查账号登录状态，也不创建平台授权。OpenCLI 运行时随 Personal Agent 安装和升级，用户无需安装 CLI。需要用户处理页面时用 open 打开固定 X 首页；只允许 search 和 read，不得调用 OpenCLI 的写命令、任意浏览器脚本或 Cookie 工具。遇到未登录、2FA、风控或限频时停止并请用户直接在浏览器处理。",
+      "skillDescription": "先用status分别检查浏览器环境、Twitter / X登录状态和只读能力；未确认不得当已连接。Windows/macOS支持，Linux拒绝。needs_login或CONNECTION_LOGIN_REQUIRED时用open打开固定官方登录页面，保留原查询上下文，用户完成登录后重新status确认并继续原已授权search/read。等待最多两分钟，超时保持待用户登录，不假称任务完成；前端不会自动唤醒Agent任务。搜索和读取每次都在同Space、同浏览器profile/session重新校验登录，登录墙/401立即失效，验证码与风控由用户处理。仅允许公开status/open/search/read，不调用任意脚本、Cookie工具或写命令，不输出Cookie、Token或账号标识。",
       "skillReference": "skills/personal-connections/references/connectors/twitter.md",
       "cli": {
         "command": "pa-cli connection twitter",
-        "description": "提供浏览器执行器 status、固定站点 open、search 和 read；不保存账号授权。",
+        "description": "提供浏览器环境、平台登录、读取能力三层status；open引导人工登录，search/read每次验证同一浏览器会话。",
         "operations": [
-          { "name": "status", "risk": "R0", "description": "只检查内置 OpenCLI、浏览器桥接与 Twitter / X 只读 Provider，不读取登录态。" },
-          { "name": "open", "risk": "R1", "description": "在用户现有浏览器中打开固定 X 首页，不创建账号授权。" },
+          { "name": "status", "risk": "R0", "description": "分别检查浏览器环境、可见平台登录信号与搜索读取能力，未知状态不视为已连接。" },
+          { "name": "open", "risk": "R1", "description": "在当前Space绑定的浏览器会话打开固定Twitter / X官方登录页面；此动作不要求预先登录，不自动填写或提交账号。" },
           { "name": "search", "risk": "R0", "description": "按查询词搜索推文并返回结构化结果。" },
           { "name": "read", "risk": "R0", "description": "按 tweet ID 或状态 URL 读取线程与回复。" }
         ]

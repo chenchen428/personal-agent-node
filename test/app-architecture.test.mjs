@@ -26,7 +26,7 @@ test("Next.js owns the approved V6.39 mobile client and V7.3 desktop workspace",
   const connectionsClient = read("core/app/src/components/desktop-v627/connections-page.tsx");
   const channelsClient = read("core/app/src/components/desktop-v627/channels-page.tsx");
   const connectionViewSwitch = read("core/app/src/components/desktop-v627/connection-view-switch.tsx");
-  const connectionActionsClient = read("core/app/src/components/desktop-v627/connection-action-row.tsx");
+  const connectionActionsClient = read("core/app/src/components/desktop-v627/connection-action-row.tsx") + read("core/app/src/components/desktop-v627/opencli-action.tsx") + read("core/app/src/components/desktop-v627/browser-platform-connection.ts");
   const currentMailClient = read("core/app/src/components/desktop-v627/mail-page.tsx");
   const personalWechatHistory = read("core/app/src/components/desktop-v627/use-personal-wechat-history.ts");
   const skillsClient = read("core/app/src/components/desktop-v627/skills-page.tsx");
@@ -247,10 +247,14 @@ test("Next.js owns the approved V6.39 mobile client and V7.3 desktop workspace",
   assert.match(css, /\.kv-grid > \.kv:last-child:nth-child\(odd\)\s*\{\s*grid-column:\s*1 \/ -1/);
   assert.match(css, /\.connection-toolbar \.split-toolbar-title\s*\{[^}]*display:\s*flex;[^}]*justify-content:\s*space-between/);
   assert.match(connectionActionsClient, /OpenCliAction/);
-  assert.match(connectionActionsClient, /\/api\/connections\/\$\{connection\.id\}\/open/);
-  assert.match(connectionActionsClient, /检测浏览器操作/);
-  assert.match(connectionActionsClient, /校验平台只读能力/);
-  assert.match(connectionActionsClient, /不是.*账号授权/);
+  assert.match(connectionActionsClient, /\/api\/connections\/\$\{initial\.id\}\/open/);
+  assert.match(connectionActionsClient, /检查浏览器环境/);
+  assert.match(connectionActionsClient, /确认平台登录/);
+  assert.match(connectionActionsClient, /确认搜索可用/);
+  assert.match(connectionActionsClient, /在浏览器登录/);
+  assert.match(connectionActionsClient, /手动完成登录、验证码或二次验证/);
+  assert.match(connectionActionsClient, /onClick=\{\(\) => void flow\.open\(!connected\)\}/);
+  assert.doesNotMatch(connectionActionsClient, /不检查登录状态|不读取任何平台登录状态/);
   assert.doesNotMatch(connectionActionsClient, /npm install|查看官方安装说明/);
   assert.doesNotMatch(connectionActionsClient, /XiaohongshuConnectPanel|xiaohongshu\/login/);
   assert.match(connectionActionsClient, /useConnectionStatusSync/);

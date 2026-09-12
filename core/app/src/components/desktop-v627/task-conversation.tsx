@@ -29,7 +29,7 @@ export function TaskConversation({ session, resuming, onResume }: {
       </div>
     </header>
     <div className="v72-task-scroll"><div className="v72-task-thread">
-      {messages.map((message, index) => <div key={message.id}><article className={`v72-task-message${message.role === "user" ? " user" : ""}`}><span className={`v72-task-avatar${message.role === "user" ? " user" : ""}`}>{message.role === "user" ? "你" : "PA"}</span><div><MarkdownContent className="v72-task-body" content={message.content} /><time>{formatTime(message.createdAt)}</time></div></article>{index === 0 && plan.length ? <TaskPlan session={session} /> : null}</div>)}
+      {messages.map((message, index) => <div key={message.id}><article className={`v72-task-message${message.role === "user" ? " user" : ""}`}><span className={`v72-task-avatar${message.role === "user" ? " user" : ""}`}>{message.role === "user" ? "你" : "PA"}</span><div><MarkdownContent className="v72-task-body" content={message.content} previewImages /><time>{formatTime(message.createdAt)}</time></div></article>{index === 0 && plan.length ? <TaskPlan session={session} /> : null}</div>)}
       {!messages.length ? <div className="v72-empty">任务暂无对话记录</div> : null}
       {plan.length && !messages.length ? <TaskPlan session={session} /> : null}
       <TaskLifecycleStatus session={session} />

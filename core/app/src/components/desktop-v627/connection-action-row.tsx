@@ -1,6 +1,6 @@
 "use client";
 
-import { BookOpen, CheckCircle2, ExternalLink, Globe2, LoaderCircle, Trash2, X } from "lucide-react";
+import { BookOpen, CheckCircle2, ExternalLink, LoaderCircle, Trash2, X } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "../desktop-v72/primitives";
 import { errorMessage, fetchJson } from "./shared";
@@ -12,6 +12,7 @@ import { PersonalWechatAction } from "./personal-wechat-action";
 import { ConnectionClearDialog } from "./connection-clear-dialog";
 import { WechatClawAction } from "./wechat-claw-action";
 import { DingTalkAction } from "./dingtalk-action";
+import { OpenCliAction } from "./opencli-action";
 
 export function ConnectionActionRow({ connection, refresh }: { connection: Connection; refresh: () => Promise<void> }) {
   if (connection.id === "wechat-personal") return <><div className="connection-summary-action"><p>{connection.description}</p><PersonalWechatAction connection={connection} refresh={refresh} /></div></>;
@@ -32,46 +33,6 @@ function DefaultConnectionActionRow({ connection, refresh }: { connection: Conne
           : null;
 
   return <div className="connection-summary-action"><p>{connection.description}</p>{action}</div>;
-}
-
-function OpenCliAction({ connection, refresh }: { connection: Connection; refresh: () => Promise<void> }) {
-  const [busy, setBusy] = useState(false);
-  const [message, setMessage] = useState("");
-  const [workflowStarted, setWorkflowStarted] = useState(connection.state !== "ready");
-  const ready = connection.state === "ready";
-  const setupRequired = connection.state === "needs_setup";
-  const unconfirmed = connection.state === "degraded";
-  const bridgeInstallUrl = connection.setup?.browserBridgeInstallUrl;
-  const check = async () => {
-    setWorkflowStarted(true); setBusy(true); setMessage("");
-    try {
-      const result = await fetchJson<{ connection: Connection }>(`/api/connections/${connection.id}/status`);
-      await refresh();
-      setMessage(result.connection.state === "ready" ? "浏览器只读能力已就绪。" : result.connection.statusLabel);
-    } catch (error) { setMessage(errorMessage(error)); }
-    finally { setBusy(false); }
-  };
-  const repair = () => {
-    setWorkflowStarted(true);
-    if (bridgeInstallUrl) window.open(bridgeInstallUrl, "_blank", "noopener,noreferrer");
-  };
-  const open = async () => {
-    setBusy(true); setMessage("");
-    try { await fetchJson(`/api/connections/${connection.id}/open`, { method: "POST" }); setMessage("已在浏览器打开"); }
-    catch (error) { await refresh().catch(() => undefined); setMessage(errorMessage(error)); }
-    finally { setBusy(false); }
-  };
-  const action = ready
-    ? <Button className="connection-compact-action" variant="primary" disabled={busy} onClick={() => void open()}>{busy ? <LoaderCircle className="connection-spinner" /> : <ExternalLink />}{busy ? "正在打开…" : connection.primaryAction}</Button>
-      : <>{setupRequired && bridgeInstallUrl ? <Button className="connection-compact-action" variant="default" onClick={repair}><ExternalLink />修复浏览器连接</Button> : null}<Button className="connection-compact-action" variant="primary" disabled={busy} onClick={() => void check()}>{busy ? <LoaderCircle className="connection-spinner" /> : null}{busy ? "正在检测…" : "检测浏览器操作"}</Button></>;
-  const checkingPanel = <div className="domain-human-guide" role="status"><strong>{unconfirmed && !busy ? "浏览器连接状态暂时无法确认" : "正在检查浏览器操作环境"}</strong><p>{message || (unconfirmed ? "请稍后重新检测浏览器操作。" : "检查本机浏览器连接是否可用，不读取任何平台登录状态。")}</p></div>;
-  const repairPanel = <div className="domain-human-guide" role="status"><strong>浏览器连接尚未就绪</strong><p>这是本机浏览器操作环境修复，不是 {connection.name} 账号授权。修复后重新检测即可。</p>{bridgeInstallUrl ? <a href={bridgeInstallUrl} target="_blank" rel="noreferrer">打开修复入口 <ExternalLink /></a> : null}</div>;
-  const capabilityPanel = <div className="domain-human-guide" role="status"><strong>正在校验平台只读能力</strong><p>只验证打开、搜索和阅读能力；不会创建或保存平台账号授权。</p></div>;
-  const readyPanel = <div className="connection-success-evidence"><CheckCircle2 /><div><strong>浏览器只读能力已经就绪</strong><span>现在可以在浏览器中打开、搜索和阅读 {connection.name}。</span></div></div>;
-  return <div className="connection-operation-flow">
-    <div className="connection-auth-action">{action}{!workflowStarted && message ? <div className="connection-auth-status" role="status"><span>{message}</span></div> : null}</div>
-    {workflowStarted ? <ConnectionOperationSop icon={<Globe2 />} title={`${connection.name} 浏览器操作检测`} summary={ready ? "浏览器操作与平台只读能力均已就绪" : message || "正在检测浏览器操作与平台只读能力"} tone={ready ? "success" : busy ? "working" : unconfirmed ? "neutral" : "danger"} statusLabel={ready ? "已就绪" : busy ? "检测中" : unconfirmed ? "状态待确认" : setupRequired ? "环境待修复" : "检测失败"} steps={openCliSteps({ ready, setupRequired, busy, unconfirmed })} stepPanels={{ "0": checkingPanel, "1": repairPanel, "2": capabilityPanel, "3": readyPanel }} /> : null}
-  </div>;
 }
 
 function NotionAction({ connection, refresh }: { connection: Connection; refresh: () => Promise<void> }) {
@@ -142,16 +103,6 @@ function NotionAction({ connection, refresh }: { connection: Connection; refresh
     {started ? <ConnectionOperationSop icon={<BookOpen />} title="Notion 工作区授权" summary={flowConnected ? "授权回调与能力检测均已完成" : message || "完成授权后会自动检测连接状态"} tone={flowConnected ? "success" : failed ? "danger" : "working"} statusLabel={flowConnected ? "连接成功" : failed ? "授权失败" : "等待授权"} steps={notionSteps({ busy, syncing, connected: flowConnected, failed, verificationUrl })} stepPanels={{ "0": launchPanel, "1": openPanel, "2": approvePanel, "3": completedPanel }} /> : null}
     {clearDialogOpen ? <ConnectionClearDialog connectionName="Notion" configurationSummary="官方 Notion CLI 保存的工作区登录凭据会被注销，当前授权立即停止。" preservedSummary="Personal Agent 已保存的本机内容和操作记录不会被删除。" busy={clearing} onCancel={() => setClearDialogOpen(false)} onConfirm={() => void clearConfiguration()} /> : null}
   </div>;
-}
-
-function openCliSteps({ ready, setupRequired, busy, unconfirmed }: { ready: boolean; setupRequired: boolean; busy: boolean; unconfirmed: boolean }): ConnectionOperationStep[] {
-  const labels = ["检测浏览器操作环境", "连接浏览器", "校验平台只读能力", "浏览器操作已就绪"];
-  const statuses: ConnectionOperationStep["status"][] = ready ? ["passed", "passed", "passed", "passed"]
-    : busy ? ["active", "pending", "pending", "pending"]
-      : unconfirmed ? ["pending", "pending", "pending", "pending"]
-      : setupRequired ? ["passed", "failed", "pending", "pending"]
-        : ["failed", "pending", "pending", "pending"];
-  return labels.map((label, index) => ({ id: String(index), label, status: statuses[index] }));
 }
 
 function notionSteps({ busy, syncing, connected, failed, verificationUrl }: { busy: boolean; syncing: boolean; connected: boolean; failed: boolean; verificationUrl: string }): ConnectionOperationStep[] {

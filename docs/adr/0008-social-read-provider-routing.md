@@ -1,11 +1,13 @@
 # ADR 0008: Browser-executed social reading capabilities
 
-- Status: Accepted
+- Status: Accepted; login-status semantics superseded on 2026-09-12 by [ADR 0014](0014-social-platform-login-gate.md).
 - Date: 2026-07-18
 - Scope: Personal Agent Node CLI, browser execution, Xiaohongshu, and Twitter/X reading
 - Related: ADR 0002 Self-contained installation, ADR 0003 Core/workspace architecture, ADR 0006 Local Personal Apps
 
 ## Summary
+
+本文件保留历史决策。当前实现必须区分浏览器环境、平台登录和搜索/读取能力；旧文中的“不检查登录态”与“仅执行器就绪即 ready”不再作为当前合同。浏览器仍持有凭据，Personal Agent 不读取或导出 Cookie/Token；完整现行规则见 ADR 0014。
 
 The product presents Xiaohongshu and Twitter/X as Connections because users need
 to understand which platforms Personal Agent can access. In the domain model

@@ -56,6 +56,10 @@ function verifyLayout() {
   assert(openCliRuntime.descriptor.entrypoint === openCli.entrypoint, "Bundled OpenCLI entrypoint does not match the release manifest");
   const openCliVersion = spawnSync(process.execPath, [openCliRuntime.entrypoint, "--version"], { encoding: "utf8", timeout: 30_000, windowsHide: true });
   assert(openCliVersion.status === 0 && String(openCliVersion.stdout || "").trim() === openCli.version, "Bundled OpenCLI runtime is not executable");
+  const social = manifest.browserExecutors?.socialPlatformSession;
+  assert(social?.entrypoint === "scripts/opencli-platform-session.mjs" && social.runtimeVersion === "1.8.6" && social.sessionIsolation === "space-platform" && social.readOnly === true, "Social platform session adapter contract is missing");
+  const socialProbe = spawnSync(process.execPath, [at(social.entrypoint), openCliRuntime.entrypoint, "--verify-runtime"], { cwd: releaseRoot, encoding: "utf8", timeout: 30_000, windowsHide: true });
+  assert(socialProbe.status === 0 && JSON.parse(socialProbe.stdout).ok === true, "Bundled social platform SDK adapter is not executable");
   const sharpRuntime = at("node_modules/sharp");
   assert(fs.statSync(sharpRuntime, { throwIfNoEntry: false })?.isDirectory(), "Bundled Sharp runtime is missing");
   const sharpProbe = spawnSync(process.execPath, ["-e", "require(process.argv[1])", sharpRuntime], { cwd: releaseRoot, encoding: "utf8", timeout: 30_000, windowsHide: true });

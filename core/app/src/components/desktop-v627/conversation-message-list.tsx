@@ -3,6 +3,7 @@ import { formatTime } from "./shared";
 import type { CurrentPlan, LinkedTask, Message } from "./types";
 import { MarkdownContent } from "../markdown-content";
 import { localTaskDetailHref } from "./conversation-links";
+import { ChatImageButton } from "../chat-images/chat-image-button";
 
 type Props = { messages: Message[]; loading: boolean; loadingEarlier: boolean; hasEarlier: boolean; processing: boolean; linkedTask?: LinkedTask | null; plan?: CurrentPlan | null; onLoadEarlier: () => void };
 
@@ -13,9 +14,9 @@ export function ConversationMessageList({ messages, loading, loadingEarlier, has
     {hasEarlier ? <button className="message-earlier" type="button" disabled={loadingEarlier} onClick={onLoadEarlier}>{loadingEarlier ? "正在加载…" : "加载更早的消息"}</button> : null}
     {messages.map((message, index) => {
       const user = message.role === "user";
-      return <article className={`message${user ? " user" : ""}${message.metadata?.optimistic ? " optimistic" : ""}`} key={message.id}>
+      return <article className={`message${user ? " user" : ""}${message.metadata?.optimistic ? " optimistic" : ""}`} key={message.metadata?.clientMessageId || message.id} data-message-id={message.metadata?.clientMessageId || message.id}>
         <span className={`avatar${user ? " user" : ""}`}>{user ? "你" : "PA"}</span>
-        <div className="message-content"><MessageAttachments messageId={message.id} attachments={message.metadata?.attachments || []} /><div className="message-body"><div><MarkdownContent content={message.content} linkTransform={localTaskDetailHref} />{linkedTask && index === linkedIndex ? <TaskReference task={linkedTask} /> : null}</div>{index === planIndex ? <ConversationPlan plan={plan} /> : null}<div className="message-meta">{user && message.metadata?.sourceLabel ? <span className="message-source">{message.metadata.sourceLabel}</span> : null}<time className="message-time" dateTime={message.createdAt}>{formatTime(message.createdAt)}</time></div></div></div>
+        <div className="message-content"><MessageAttachments messageId={message.metadata?.clientMessageId || message.id} attachments={message.metadata?.attachments || []} /><div className="message-body"><div><MarkdownContent content={message.content} linkTransform={localTaskDetailHref} previewImages />{linkedTask && index === linkedIndex ? <TaskReference task={linkedTask} /> : null}</div>{index === planIndex ? <ConversationPlan plan={plan} /> : null}<div className="message-meta">{user && message.metadata?.sourceLabel ? <span className="message-source">{message.metadata.sourceLabel}</span> : null}<time className="message-time" dateTime={message.createdAt}>{formatTime(message.createdAt)}</time></div></div></div>
       </article>;
     })}
     {processing ? <article className="message message-processing" role="status" aria-live="polite"><span className="avatar">PA</span><div className="message-body"><span className="message-dots" aria-hidden="true"><i /><i /><i /></span><p>正在处理，回复会自动显示</p></div></article> : null}
@@ -38,10 +39,10 @@ function findLastAssistant(messages: Message[], sessionId = "") { for (let index
 function MessageAttachments({ messageId, attachments }: { messageId: string; attachments: NonNullable<Message["metadata"]>["attachments"] }) {
   if (!attachments?.length) return null;
   return <div className="message-attachments">{attachments.map((attachment) => attachment.kind === "image" && attachment.previewUrl
-    ? <a className="message-image" href={attachment.viewUrl || attachment.previewUrl} target="_blank" rel="noreferrer" key={`${messageId}-${attachment.objectId || attachment.name}`}>
+    ? <ChatImageButton className="message-image" image={{ src: attachment.viewUrl || attachment.previewUrl, fallbackSrc: attachment.previewUrl, alt: attachment.alt || attachment.name, name: attachment.name, downloadUrl: attachment.downloadUrl }} key={`${messageId}-${attachment.objectId || attachment.name}`}>
       <img src={attachment.previewUrl} alt={attachment.alt || attachment.name} width={attachment.width} height={attachment.height} />
       <span><strong>{attachment.caption || attachment.name}</strong><small>{attachment.width && attachment.height ? `${attachment.width} × ${attachment.height} · ` : ""}{deliveryLabel(attachment.deliveryState)}</small></span>
-    </a>
+    </ChatImageButton>
     : <a className="message-file" href={attachment.downloadUrl || attachment.previewUrl} key={`${messageId}-${attachment.objectId || attachment.name}`}>
       <span className="message-file-type" aria-hidden="true">{fileType(attachment.name)}</span>
       <span><strong>{attachment.caption || attachment.name}</strong><small>{formatAttachmentBytes(attachment.sizeBytes)} · {deliveryLabel(attachment.deliveryState)}</small></span>

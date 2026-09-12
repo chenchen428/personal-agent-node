@@ -4,7 +4,16 @@
   "accessMode": "browser",
   "skill": "social-browser-read",
   "loginStateOwnedBy": "user-browser",
-  "loginStateInspected": false,
+  "loginStateInspected": true,
   "externalWrite": false,
-  "operations": ["status", "open", "search", "read"]
+  "operations": [
+    "status",
+    "open",
+    "search",
+    "read"
+  ],
+  "loginRequiredBeforeRead": true,
+  "credentialsExported": false,
+  "humanBrowserLogin": true,
+  "requiresVerifiedPlatformLogin": true
 }

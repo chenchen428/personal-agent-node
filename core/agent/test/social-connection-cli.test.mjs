@@ -70,3 +70,19 @@ test("Twitter CLI delegates only search and read contracts", async (t) => {
 });
 
 const noteId = "65b123456789abcdef123456";
+
+test("platform login blockers retain a typed CLI result and official recovery action without logging PA out", async (t) => {
+  const action = { type: "platform_login", connectionId: "xiaohongshu", url: "https://www.xiaohongshu.com/" };
+  const server = http.createServer((_request, response) => {
+    response.writeHead(409, { "content-type": "application/json" });
+    response.end(JSON.stringify({ ok: false, code: "CONNECTION_LOGIN_REQUIRED", error: "请先登录小红书", action }));
+  });
+  await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve)); t.after(() => server.close());
+  await assert.rejects(execFileAsync(process.execPath, [path.join(projectRoot, "bin", "pa-cli.mjs"), "connection", "xiaohongshu", "search", "--keyword", "original query", "--json"], {
+    cwd: projectRoot, env: { ...process.env, OPEN_AGENT_BRIDGE_API_BASE: `http://127.0.0.1:${server.address().port}`, OPEN_AGENT_BRIDGE_API_TOKEN: "fixture" },
+  }), (error) => {
+    const result = JSON.parse(error.stdout);
+    assert.equal(result.code, "CONNECTION_LOGIN_REQUIRED"); assert.deepEqual(result.action, action);
+    assert.doesNotMatch(error.stdout, /app\/login|auth_token|fixture/); return true;
+  });
+});

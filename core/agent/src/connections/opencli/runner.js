@@ -1,7 +1,9 @@
-import { execFile } from "node:child_process";
+import { execFile, spawn } from "node:child_process";
+import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import { promisify } from "node:util";
+import { fileURLToPath } from "node:url";
 
 const execFileAsync = promisify(execFile);
 const DEFAULT_MAX_OUTPUT_BYTES = 5 * 1024 * 1024;
@@ -16,12 +18,18 @@ export class OpenCliRunner {
     platform = process.platform,
     nodeCommand = process.execPath,
     execute = execFileAsync,
+    executePlatform = executePlatformChild,
     fileExists = fs.existsSync,
     minimumVersion = MINIMUM_VERSION,
   } = {}) {
     this.invocation = resolveOpenCliInvocation({ command, env, platform, nodeCommand, fileExists });
     this.env = minimalChildEnvironment(env, { isolateRuntime: this.invocation.source === "bundled", platform });
     this.execute = execute;
+    this.executePlatform = executePlatform;
+    this.nodeCommand = nodeCommand;
+    this.platformQueue = new Map();
+    this.sessionNamespace = crypto.createHash("sha256").update(String(env.PRIVATE_SITE_DATA_ROOT || this.env.OPENCLI_CONFIG_DIR || "personal-agent")).digest("hex").slice(0, 24);
+    this.platformScript = path.join(env.PRIVATE_SITE_RELEASE_ROOT || path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../../../.."), "scripts", "opencli-platform-session.mjs");
     this.minimumVersion = minimumVersion;
     this.probePromise = null;
     this.bridgeStatusPromise = null;
@@ -93,6 +101,36 @@ export class OpenCliRunner {
     return value;
   }
 
+  platformOperation(platform, operation, input = "") {
+    if (!["xiaohongshu", "twitter"].includes(platform) || !["status", "open", "search", "read"].includes(operation)) throw new TypeError("Unsupported social platform operation");
+    const previous = this.platformQueue.get(platform) || Promise.resolve();
+    const request = previous.then(async () => {
+      const entrypoint = this.invocation.prefixArgs[0];
+      if (!entrypoint?.endsWith("main.js")) throw new OpenCliError("OPENCLI_NOT_READY", "The pinned browser session adapter is unavailable.", 503);
+      let response;
+      try {
+        const { stdout } = await this.executePlatform(this.nodeCommand, [this.platformScript, entrypoint], {
+          env: this.env, timeout: operation === "status" ? 20_000 : 120_000, maxBuffer: DEFAULT_MAX_OUTPUT_BYTES,
+          input: JSON.stringify({ platform, operation, input, session: `pa-social-${this.sessionNamespace}-${platform}` }),
+        });
+        response = JSON.parse(stdout);
+      } catch (error) { throw mapExecutionError(error); }
+      if (response?.ok !== true) {
+        const code = response?.error?.code;
+        if (["AUTH_REQUIRED", "CONNECTION_LOGIN_REQUIRED"].includes(code)) throw new OpenCliError("CONNECTION_LOGIN_REQUIRED", "请先在平台官方页面登录，然后重新检测连接。", 409);
+        if (code === "CONNECTION_LOGIN_UNCONFIRMED") throw new OpenCliError(code, "平台登录状态尚未确认，请在官方页面检查后重试。", 409);
+        if (code === "SECURITY_BLOCK") throw new OpenCliError("OPENCLI_SECURITY_BLOCK", "请先在平台页面完成人工安全验证。", 429);
+        if (code === "BROWSER_CONNECT") throw new OpenCliError("OPENCLI_BROWSER_UNAVAILABLE", "浏览器连接暂时不可用。", 503);
+        if (code === "TIMEOUT") throw new OpenCliError("OPENCLI_TIMEOUT", "浏览器检测超时，请稍后重试。", 504);
+        if (code === "EMPTY_RESULT") throw new OpenCliError("OPENCLI_EMPTY_RESULT", "未找到可读取的内容。", 404);
+        throw new OpenCliError("OPENCLI_EXECUTION_FAILED", "平台读取暂时未完成，请稍后重试。", 502);
+      }
+      return response.result;
+    });
+    this.platformQueue.set(platform, request.catch(() => {}));
+    return request;
+  }
+
   async run(args, { timeoutMs = DEFAULT_TIMEOUT_MS, maxOutputBytes = DEFAULT_MAX_OUTPUT_BYTES } = {}) {
     const normalizedArgs = validateArguments(args);
     try {
@@ -113,6 +151,20 @@ export class OpenCliRunner {
       throw mapExecutionError(error);
     }
   }
+}
+
+export function executePlatformChild(command, args, { env, timeout, maxBuffer, input }) {
+  return new Promise((resolve, reject) => {
+    const child = spawn(command, args, { env, shell: false, windowsHide: true, stdio: ["pipe", "pipe", "pipe"] });
+    const output = []; let bytes = 0;
+    const timer = setTimeout(() => { child.kill(); reject(Object.assign(new Error("Browser operation timeout"), { code: "ETIMEDOUT" })); }, timeout);
+    child.once("error", (error) => { clearTimeout(timer); reject(error); });
+    child.stdout.on("data", (chunk) => { bytes += chunk.length; if (bytes > maxBuffer) { child.kill(); reject(new Error("Browser response exceeded limit")); } else output.push(chunk); });
+    child.stderr.on("data", () => {});
+    child.once("close", (code) => { clearTimeout(timer); if (code !== 0) reject(new Error("Browser operation failed")); else resolve({ stdout: Buffer.concat(output).toString("utf8") }); });
+    child.stdin.on("error", () => {});
+    child.stdin.end(input);
+  });
 }
 
 export class OpenCliError extends Error {

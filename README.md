@@ -23,6 +23,8 @@ Personal Agent Node 是 [Personal Agent](https://chenjianhui.site) 的开源、�
 - 整理私人文件、研究资料、邮件事件和周期自动化；
 - 使用自己的 Skill 和 Plugin 扩展新能力。
 
+小红书和 X 的连接会分开检查浏览器环境与平台登录。尚未登录时先在原浏览器完成登录，再继续搜索或阅读；仅工具可用不会显示为平台已连接。聊天阅读历史时保持滚动位置，回到底部后才跟随新消息；聊天图片在应用内预览。
+
 ## 连接模式
 
 Personal Agent Node 默认不需要连接 `chenjianhui.site` 或任何已配置的 Cloud：

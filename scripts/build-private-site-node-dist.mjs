@@ -173,7 +173,7 @@ function writeManifest(openCliRuntime) {
       harnessCli: "core/agent/bin/pa-cli.mjs",
       mailIngest: "core/agent/bin/pa-cli.mjs",
     },
-    browserExecutors: { opencli: openCliRuntime },
+    browserExecutors: { opencli: openCliRuntime, socialPlatformSession: { entrypoint: "scripts/opencli-platform-session.mjs", runtimeVersion: "1.8.6", sessionIsolation: "space-platform", readOnly: true } },
     pluginApi: { version: "personal-agent/v1", manifest: "core/plugins/schema/personal-agent.plugin.schema.json", installRoot: "workspace/plugins" },
     appApi: { version: "personal-agent/app-v1", nodeApiMajors: ["1"], manifest: "core/apps/schema/personal-agent.app.schema.json", installRoot: "workspace/apps", cloudRequired: false },
     harness: {

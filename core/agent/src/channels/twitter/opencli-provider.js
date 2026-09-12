@@ -1,81 +1,15 @@
-import crypto from "node:crypto";
 import { ChannelInputError } from "../xiaohongshu/channel.js";
 import { OpenCliError } from "../../connections/opencli/runner.js";
+import { SocialBrowserProvider } from "../../connections/opencli/social-provider.js";
 
-const READ_INTERVAL_MS = 2_500;
-const HOME_URL = "https://x.com/home";
-
-export class OpenCliTwitterProvider {
-  constructor({ runner, now = () => Date.now(), wait = delay } = {}) {
-    if (!runner) throw new TypeError("runner is required");
-    this.runner = runner;
-    this.now = now;
-    this.wait = wait;
-    this.statusPromise = null;
-    this.lastStatus = null;
-    this.lastReadAt = 0;
-    this.readQueue = Promise.resolve();
-  }
-
-  async status() {
-    if (!this.statusPromise) {
-      this.statusPromise = this.checkStatus()
-        .then((status) => {
-          this.lastStatus = status;
-          return status;
-        })
-        .finally(() => {
-          this.statusPromise = null;
-        });
-    }
-    return this.statusPromise;
-  }
-
-  catalogStatus() {
-    return this.lastStatus || this.statusPayload("needs_setup", "浏览器操作待检测");
-  }
-
-  async checkStatus() {
-    let runtime;
-    try {
-      runtime = await this.runner.probe();
-    } catch (error) {
-      return this.statusError(error);
-    }
-    try {
-      const bridge = await this.runner.browserBridgeStatus();
-      if (bridge.needsSetup) return this.statusPayload("needs_setup", "浏览器连接待修复", null, runtime, bridge);
-      return this.statusPayload("ready", "已就绪", null, runtime, bridge);
-    } catch (error) {
-      return this.statusError(error, runtime);
-    }
-  }
-
-  statusError(error, runtime) {
-    if (["OPENCLI_BROWSER_UNAVAILABLE", "OPENCLI_CONFIG_INVALID"].includes(error?.code)) {
-      return this.statusPayload("needs_setup", "浏览器连接待修复", error, runtime);
-    }
-    if (["OPENCLI_TIMEOUT", "OPENCLI_EXECUTION_FAILED"].includes(error?.code)) {
-      return this.statusPayload("degraded", "状态暂时无法确认", error, runtime);
-    }
-    return this.statusPayload("error", "浏览器不可用", error, runtime);
-  }
-
-  async open() {
-    await this.ensureAvailable();
-    const browserSession = `pa-twitter-${crypto.randomBytes(8).toString("hex")}`;
-    await this.runner.openBrowserSession(browserSession, HOME_URL);
-    return { ok: true, provider: "twitter", backend: "opencli", opened: true, url: HOME_URL, interaction: "browser", connectionCreated: false };
-  }
+export class OpenCliTwitterProvider extends SocialBrowserProvider {
+  constructor(options = {}) { super({ ...options, platform: "twitter" }); }
 
   async search(query) {
     const normalized = String(query || "").trim();
     if (!normalized || normalized.length > 240) throw new ChannelInputError("Twitter search query must contain 1 to 240 characters.");
     return this.withReadSpacing(async () => {
-      const rows = await this.runner.json(
-        ["twitter", "search", normalized, "--limit", "20", "--format", "json"],
-        { timeoutMs: 120_000 },
-      );
+      const rows = await this.readRows("search", normalized);
       if (!Array.isArray(rows)) throw new OpenCliError("OPENCLI_INVALID_OUTPUT", "OpenCLI Twitter search returned an invalid response.", 502);
       const tweets = rows.map(normalizeTweet).filter(Boolean);
       return { ok: true, provider: "twitter", backend: "opencli", query: normalized, tweets, count: tweets.length };
@@ -85,10 +19,7 @@ export class OpenCliTwitterProvider {
   async detail({ tweetId, url } = {}) {
     const target = resolveTweetTarget({ tweetId, url });
     return this.withReadSpacing(async () => {
-      const rows = await this.runner.json(
-        ["twitter", "thread", target.argument, "--limit", "50", "--format", "json"],
-        { timeoutMs: 120_000 },
-      );
+      const rows = await this.readRows("read", target.argument);
       if (!Array.isArray(rows)) throw new OpenCliError("OPENCLI_INVALID_OUTPUT", "OpenCLI Twitter thread returned an invalid response.", 502);
       const tweets = rows.map(normalizeTweet).filter(Boolean);
       if (!tweets.length) throw new OpenCliError("OPENCLI_EMPTY_RESULT", "OpenCLI did not return readable tweets.", 404);
@@ -96,48 +27,6 @@ export class OpenCliTwitterProvider {
     });
   }
 
-  statusPayload(state, statusLabel, error, runtime, bridge) {
-    return {
-      ok: true,
-      provider: "twitter",
-      backend: "opencli",
-      availableBackends: ["opencli"],
-      label: "Twitter / X",
-      state,
-      statusLabel,
-      error: error ? safeErrorCode(error) : undefined,
-      runtime: state === "degraded" ? [{ label: "浏览器操作", value: "状态待确认" }] : runtime ? [
-        { label: "浏览器操作", value: bridge?.browserBridge === "connected" ? "已就绪" : "待修复" },
-      ] : [{ label: "浏览器操作", value: "不可用" }],
-      browserOwnedSession: true,
-      loginStateInspected: false,
-      egress: "direct-required",
-      readOnly: true,
-      capabilities: ["browser_open", "search", "thread_read"],
-      setup: state === "needs_setup" ? openCliSetup() : undefined,
-      primaryAction: "在浏览器打开 Twitter / X",
-    };
-  }
-
-  async ensureAvailable() {
-    const status = await this.status();
-    if (status.state === "needs_setup") throw new OpenCliError("OPENCLI_NOT_READY", "The OpenCLI browser bridge is not ready.", 503);
-    if (status.state !== "ready") throw new OpenCliError("OPENCLI_NOT_READY", "OpenCLI browser executor is not ready.", 503);
-  }
-
-  withReadSpacing(action) {
-    const operation = this.readQueue.then(async () => {
-      const waitMs = Math.max(0, READ_INTERVAL_MS - (this.now() - this.lastReadAt));
-      if (waitMs) await this.wait(waitMs);
-      try {
-        return await action();
-      } finally {
-        this.lastReadAt = this.now();
-      }
-    });
-    this.readQueue = operation.catch(() => undefined);
-    return operation;
-  }
 }
 
 export function resolveTweetTarget({ tweetId, url } = {}) {
@@ -204,22 +93,4 @@ function safeHttpsUrl(value) {
 function metric(value) {
   const text = String(value ?? "").trim().replace(/,/g, "");
   return /^\d+(?:\.\d+)?[KMB]?$/i.test(text) ? text.slice(0, 32) : "0";
-}
-
-function safeErrorCode(error) {
-  return String(error?.code || error?.name || "OPENCLI_ERROR").replace(/[^A-Za-z0-9_.-]/g, "").slice(0, 80) || "OPENCLI_ERROR";
-}
-
-function openCliSetup() {
-  return {
-    runtimeBundled: true,
-    browserBridge: "OpenCLI Browser Bridge",
-    browserBridgeInstallUrl: "https://chromewebstore.google.com/detail/opencli/ildkmabpimmkaediidaifkhjpohdnifk",
-    userConfirmationRequired: true,
-    customExtensionRequired: false,
-  };
-}
-
-function delay(milliseconds) {
-  return new Promise((resolve) => setTimeout(resolve, milliseconds));
 }

@@ -5,6 +5,8 @@ import { useCallback, useEffect, useState } from "react";
 import { ArrowLeft, ArrowUpRight, Clock3, MessageCircle, RefreshCw } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { ChatImageButton } from "./chat-images/chat-image-button";
+import { MarkdownContent } from "./markdown-content";
 
 type ChatAttachment = { objectId?: string; kind?: "image" | "file"; name: string; previewUrl?: string; downloadUrl?: string; sizeBytes?: number; alt?: string; caption?: string; width?: number; height?: number; deliveryState?: string };
 type ChatMessage = { id: string; role: "user" | "assistant" | "agent" | "tool" | "system" | "error"; content: string; createdAt?: string; metadata?: { attachments?: ChatAttachment[] } };
@@ -62,8 +64,8 @@ export function MobileConversationReader({ initialSessionId = "" }: { initialSes
     <section className="mobile-conversation-transcript" aria-live="polite">
       {session?.messages?.length ? session.messages.map((message) => <article className={`mobile-conversation-message role-${message.role}`} key={message.id}>
         <header><span>{messageLabel(message.role)}</span>{message.createdAt ? <time>{formatTime(message.createdAt)}</time> : null}</header>
-        <div>{message.content}{message.metadata?.attachments?.length ? <div className="mobile-message-attachments">{message.metadata.attachments.map((attachment) => attachment.kind === "image" && attachment.previewUrl
-          ? <a href={attachment.previewUrl} target="_blank" rel="noreferrer" key={attachment.objectId || attachment.name}><img src={attachment.previewUrl} alt={attachment.alt || attachment.name} width={attachment.width} height={attachment.height} /><span><strong>{attachment.caption || attachment.name}</strong><small>{mobileDeliveryLabel(attachment.deliveryState)}</small></span></a>
+        <div><MarkdownContent content={message.content} previewImages />{message.metadata?.attachments?.length ? <div className="mobile-message-attachments">{message.metadata.attachments.map((attachment) => attachment.kind === "image" && attachment.previewUrl
+          ? <ChatImageButton image={{ src: attachment.previewUrl, alt: attachment.alt || attachment.name, name: attachment.name, downloadUrl: attachment.downloadUrl }} key={attachment.objectId || attachment.name}><img src={attachment.previewUrl} alt={attachment.alt || attachment.name} width={attachment.width} height={attachment.height} /><span><strong>{attachment.caption || attachment.name}</strong><small>{mobileDeliveryLabel(attachment.deliveryState)}</small></span></ChatImageButton>
           : <a className="mobile-message-file" href={attachment.downloadUrl || attachment.previewUrl} key={attachment.objectId || attachment.name}><i aria-hidden="true">{attachment.name.split(".").pop()?.slice(0, 5).toUpperCase() || "FILE"}</i><span><strong>{attachment.caption || attachment.name}</strong><small>{formatAttachmentBytes(attachment.sizeBytes)} · {mobileDeliveryLabel(attachment.deliveryState)}</small></span><em>下载</em></a>)}</div> : null}</div>
       </article>) : !loading ? <div className="mobile-conversation-empty"><MessageCircle className="size-6" /><strong>暂无可阅读内容</strong><span>这段会话还没有保存消息。</span></div> : null}
     </section>

@@ -9,17 +9,19 @@ test("OpenCLI Xiaohongshu provider normalizes search and note output", async () 
   const commands = [];
   const runner = {
     probe: async () => ({ available: true, version: "1.8.6" }),
-    json: async (args) => {
+    browserBridgeStatus: async () => ({ ready: true }),
+    platformOperation: async (site, operation, input) => {
+      const args = [site, operation, input];
       commands.push(args);
       if (args[1] === "search") {
-        return [{ title: "测试笔记", author: "作者", likes: "12", published_at: "2026-07-18", url: signedUrl }];
+        return { rows: [{ title: "测试笔记", author: "作者", likes: "12", published_at: "2026-07-18", url: signedUrl }], observation: { loginState: "logged_in", searchReady: true, readReady: true } };
       }
-      return [
+      return { observation: { loginState: "logged_in", searchReady: true, readReady: true }, rows: [
         { field: "title", value: "测试笔记" },
         { field: "author", value: "作者" },
         { field: "content", value: "正文" },
         { field: "tags", value: "#AI, #Agent" },
-      ];
+      ] };
     },
   };
   const provider = new OpenCliXiaohongshuProvider({ runner, now: () => 10_000, wait: async () => {} });
@@ -42,28 +44,28 @@ test("OpenCLI Xiaohongshu provider normalizes search and note output", async () 
   assert.equal(detail.feedId, noteId);
   assert.deepEqual(detail.detail.tags, ["#AI", "#Agent"]);
   assert.deepEqual(commands, [
-    ["xiaohongshu", "search", "测试", "--limit", "20", "--format", "json"],
-    ["xiaohongshu", "note", signedUrl, "--format", "json"],
+    ["xiaohongshu", "search", "测试"],
+    ["xiaohongshu", "read", signedUrl],
   ]);
 });
 
-test("OpenCLI Xiaohongshu open uses a fixed homepage without inspecting login state", async () => {
+test("OpenCLI Xiaohongshu open remains available before platform login", async () => {
   let opened;
   const runner = {
     probe: async () => ({ available: true, version: "1.8.6" }),
     browserBridgeStatus: async () => ({ ready: true, needsSetup: false, daemon: "running", browserBridge: "connected" }),
-    openBrowserSession: async (session, url) => { opened = { session, url }; },
+    platformOperation: async (site, operation) => { if(operation === "status") return { loginState: "logged_out" }; opened = { site, operation }; return { opened: true, url: "https://www.xiaohongshu.com/", connectionCreated: false }; },
   };
   const provider = new OpenCliXiaohongshuProvider({ runner });
   const status = await provider.status();
-  assert.equal(status.state, "ready");
-  assert.equal(status.statusLabel, "已就绪");
-  assert.equal(status.loginStateInspected, false);
+  assert.equal(status.state, "needs_login");
+  assert.equal(status.statusLabel, "请登录平台账号");
+  assert.equal(status.loginStateInspected, true);
   assert.equal("loggedIn" in status, false);
   const result = await provider.open();
   assert.equal(result.connectionCreated, false);
-  assert.equal(opened.url, "https://www.xiaohongshu.com/");
-  assert.match(opened.session, /^pa-xhs-[a-f0-9]{16}$/);
+  assert.equal(opened.operation, "open");
+  assert.equal(result.url, "https://www.xiaohongshu.com/");
 });
 
 test("Xiaohongshu signed URL validation rejects other hosts and unsigned notes", () => {

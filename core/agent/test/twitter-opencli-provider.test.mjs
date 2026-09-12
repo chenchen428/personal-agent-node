@@ -9,7 +9,9 @@ test("OpenCLI Twitter provider exposes only normalized search and thread reads",
   const commands = [];
   const runner = {
     probe: async () => ({ available: true, version: "1.8.6" }),
-    json: async (args) => {
+    browserBridgeStatus: async () => ({ ready: true }),
+    platformOperation: async (site, operation, input) => {
+      const args = [site, operation, input];
       commands.push(args);
       const base = {
         id: tweetId,
@@ -25,7 +27,7 @@ test("OpenCLI Twitter provider exposes only normalized search and thread reads",
         has_media: true,
         media_urls: ["https://pbs.twimg.com/media/example.jpg", "http://unsafe.example/image.jpg"],
       };
-      return [base];
+      return { rows: [base], observation: { loginState: "logged_in", searchReady: true, readReady: true } };
     },
   };
   const provider = new OpenCliTwitterProvider({ runner, now: () => 10_000, wait: async () => {} });
@@ -49,28 +51,28 @@ test("OpenCLI Twitter provider exposes only normalized search and thread reads",
   assert.equal(detail.tweetId, tweetId);
   assert.equal(detail.count, 1);
   assert.deepEqual(commands, [
-    ["twitter", "search", "personal agents", "--limit", "20", "--format", "json"],
-    ["twitter", "thread", tweetUrl, "--limit", "50", "--format", "json"],
+    ["twitter", "search", "personal agents"],
+    ["twitter", "read", tweetUrl],
   ]);
 });
 
-test("OpenCLI Twitter open uses the fixed home page without inspecting login state", async () => {
+test("OpenCLI Twitter open remains available before platform login", async () => {
   let opened;
   const runner = {
     probe: async () => ({ available: true, version: "1.8.6" }),
     browserBridgeStatus: async () => ({ ready: true, needsSetup: false, daemon: "running", browserBridge: "connected" }),
-    openBrowserSession: async (session, url) => { opened = { session, url }; },
+    platformOperation: async (site, operation) => { if(operation === "status") return { loginState: "logged_out" }; opened = { site, operation }; return { opened: true, url: "https://x.com/i/flow/login", connectionCreated: false }; },
   };
   const provider = new OpenCliTwitterProvider({ runner });
   const status = await provider.status();
-  assert.equal(status.state, "ready");
-  assert.equal(status.statusLabel, "已就绪");
-  assert.equal(status.loginStateInspected, false);
+  assert.equal(status.state, "needs_login");
+  assert.equal(status.statusLabel, "请登录平台账号");
+  assert.equal(status.loginStateInspected, true);
   assert.equal("loggedIn" in status, false);
   const result = await provider.open();
   assert.equal(result.connectionCreated, false);
-  assert.equal(opened.url, "https://x.com/home");
-  assert.match(opened.session, /^pa-twitter-[a-f0-9]{16}$/);
+  assert.equal(opened.operation, "open");
+  assert.equal(result.url, "https://x.com/i/flow/login");
 });
 
 test("Twitter read validation accepts ids and status URLs only", () => {

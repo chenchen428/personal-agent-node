@@ -3,6 +3,7 @@
 import { AlertCircle, Inbox } from "lucide-react";
 import type { ReactNode } from "react";
 import { MarkdownContent } from "../markdown-content";
+import { ChatImageButton } from "../chat-images/chat-image-button";
 import { firstCharacter, formatDateTime, relativeTaskTime } from "./data";
 import type { ChatAttachment, PlanStep, TaskDisplayEvent } from "./types";
 
@@ -37,7 +38,7 @@ export function TaskConversationContent({
 function TaskMessage({ item, userName }: { item: TaskDisplayEvent; userName: string }) {
   const user = item.role === "user";
   const content = <div>
-    {item.content?.trim() ? <MarkdownContent className="mobile-task-message-body" content={item.content} /> : null}
+    {item.content?.trim() ? <MarkdownContent className="mobile-task-message-body" content={item.content} previewImages /> : null}
     <TaskMessageAttachments attachments={item.metadata?.attachments || []} />
     <time dateTime={item.createdAt} title={formatDateTime(item.createdAt)}>{relativeTaskTime(item.createdAt)}</time>
   </div>;
@@ -51,10 +52,10 @@ function TaskMessage({ item, userName }: { item: TaskDisplayEvent; userName: str
 function TaskMessageAttachments({ attachments }: { attachments: ChatAttachment[] }) {
   if (!attachments.length) return null;
   return <div className="mobile-task-message-attachments">{attachments.map((attachment) => attachment.kind === "image" && attachment.previewUrl
-    ? <a href={attachment.previewUrl} target="_blank" rel="noreferrer" key={attachment.objectId || attachment.name}>
+    ? <ChatImageButton image={{ src: attachment.previewUrl, alt: attachment.alt || attachment.name, name: attachment.name, downloadUrl: attachment.downloadUrl }} key={attachment.objectId || attachment.name}>
       <img src={attachment.previewUrl} alt={attachment.alt || attachment.name} width={attachment.width} height={attachment.height} />
       <span><strong>{attachment.caption || attachment.name}</strong><small>{attachment.width && attachment.height ? `${attachment.width} × ${attachment.height} · ` : ""}{attachmentDeliveryLabel(attachment.deliveryState)}</small></span>
-    </a>
+    </ChatImageButton>
     : (attachment.downloadUrl || attachment.previewUrl) ? <a className="mobile-task-file" href={attachment.downloadUrl || attachment.previewUrl} key={attachment.objectId || attachment.name}>
       <i aria-hidden="true">{fileType(attachment.name)}</i>
       <span><strong>{attachment.caption || attachment.name}</strong><small>{formatAttachmentBytes(attachment.sizeBytes)} · {attachmentDeliveryLabel(attachment.deliveryState)}</small></span>

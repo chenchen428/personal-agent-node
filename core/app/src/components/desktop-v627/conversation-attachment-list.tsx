@@ -1,4 +1,5 @@
 import type { PendingAttachment } from "./conversation-attachments";
+import { ChatImageButton } from "../chat-images/chat-image-button";
 
 export function ConversationAttachmentList({
   attachments,
@@ -14,9 +15,9 @@ export function ConversationAttachmentList({
     {attachments.map((attachment, index) => {
       const image = attachment.mimeType.startsWith("image/");
       if (image) return <div className="composer-selected-image" key={`${attachment.name}-${index}`}>
-        <a href={attachment.viewUrl || attachment.previewUrl} target="_blank" rel="noreferrer" aria-label={`预览图片 ${attachment.name}`}>
+        <ChatImageButton image={{ src: attachment.viewUrl || attachment.previewUrl, fallbackSrc: attachment.previewUrl, alt: attachment.name, name: attachment.name, downloadUrl: attachment.downloadUrl }}>
           <img src={attachment.previewUrl} alt="" title={attachment.name} />
-        </a>
+        </ChatImageButton>
         <button type="button" disabled={disabled} onClick={() => onRemove(index)} aria-label={`移除图片 ${attachment.name}`}>×</button>
       </div>;
       return <div className="composer-selected-file" key={`${attachment.name}-${index}`}>

@@ -213,6 +213,13 @@ const server = http.createServer(async (request, response) => {
       ok: false,
       code: String((error as { code?: string } | null)?.code || "REQUEST_FAILED"),
       error: error instanceof Error ? error.message : String(error),
+      ...(/^CONNECTION_LOGIN_(REQUIRED|UNCONFIRMED)$/.test(String((error as { code?: string })?.code || "")) && /^\/api\/connections\/(xiaohongshu|twitter)\//.test(String(request.url || "")) ? {
+        action: {
+          type: "platform_login",
+          connectionId: String(request.url).includes("/xiaohongshu/") ? "xiaohongshu" : "twitter",
+          url: String(request.url).includes("/xiaohongshu/") ? "https://www.xiaohongshu.com/" : "https://x.com/i/flow/login",
+        },
+      } : {}),
     };
     if (String(request.url || "").startsWith("/api/node/v1")) {
       sendNodeApiError(response, statusCode, payload.code, payload.error, request.method === "HEAD");

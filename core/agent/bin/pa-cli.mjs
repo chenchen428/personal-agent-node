@@ -508,7 +508,8 @@ try {
     help();
   }
 } catch (error) {
-  console.error(error instanceof Error ? error.message : String(error));
+  if (args.json && /^CONNECTION_LOGIN_(REQUIRED|UNCONFIRMED)$/.test(String(error?.code || ""))) console.log(JSON.stringify({ ok: false, code: error.code, error: error.message, action: error.action }));
+  else console.error(error instanceof Error ? error.message : String(error));
   process.exit(1);
 }
 
@@ -555,7 +556,7 @@ async function del(pathname) {
 async function readResponse(response) {
   const text = await response.text();
   const data = text ? JSON.parse(text) : {};
-  if (!response.ok || data.ok === false) throw new Error(data.error || text || `HTTP ${response.status}`);
+  if (!response.ok || data.ok === false) throw Object.assign(new Error(typeof data.error === "string" ? data.error : data.error?.message || `HTTP ${response.status}`), { code: data.code || data.error?.code, action: data.action });
   return data;
 }
 

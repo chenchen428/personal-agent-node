@@ -10,6 +10,7 @@
 @import "./desktop-v633-conversation.css";
 @import "./desktop-v72.css";
 @import "./runtime-environments.css";
+@import "./chat-image-preview.css";
 
 :root {
   color-scheme: light;
