@@ -152,3 +152,32 @@ test('account probe abort signal kills its actual Claude process and returns fal
   assert.equal(result, false);
   assert.ok(Date.now() - started < 3000);
 });
+
+test('Codex drains asynchronous event handlers before resolving and surfaces handler failures', async (t) => {
+  const { root, file } = fixture(t, 'codex.mjs', codexSource);
+  const base = { sessionId: 'codex-async-events', workspace: root, appServerCommand: process.execPath,
+    appServerArgs: [file], stdin: 'reply', runtimeExecution: { engine: 'codex', profile: { mode: 'account' } } };
+  const handled = [];
+  const result = await runRuntimeCommand({ ...base, onSessionEvent: async event => {
+    if (event.kind === 'session.assistant_message') {
+      await new Promise(resolve => setTimeout(resolve, 40));
+      handled.push('assistant');
+    }
+    if (event.kind === 'session.complete') {
+      await new Promise(resolve => setTimeout(resolve, 20));
+      handled.push('complete');
+    }
+  } });
+  assert.equal(result.success, true);
+  assert.deepEqual(handled, ['assistant', 'complete']);
+  let completedAfterFailure = false;
+  await assert.rejects(runRuntimeCommand({ ...base, onSessionEvent: async event => {
+    if (event.kind === 'session.assistant_message') {
+      await new Promise(resolve => setTimeout(resolve, 10));
+      throw new Error('controlled event persistence failed');
+    }
+    if (event.kind === 'session.complete') completedAfterFailure = true;
+  } }), /controlled event persistence failed/);
+  assert.equal(completedAfterFailure, true);
+  assert.equal(stopRuntimeCommand(base.sessionId), false);
+});

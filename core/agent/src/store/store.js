@@ -524,6 +524,7 @@ export class BridgeStore {
       FROM events AS event
       INNER JOIN sessions AS session ON session.id = event.session_id
       WHERE event.kind = 'session.assistant_message'
+        AND COALESCE(json_extract(event.payload_json, '$.source'), '') != 'personal-agent-orchestrator'
         AND LENGTH(TRIM(COALESCE(json_extract(event.payload_json, '$.content'), ''))) > 0
         AND (
           json_extract(event.payload_json, '$.metadata.streamState') IS NULL

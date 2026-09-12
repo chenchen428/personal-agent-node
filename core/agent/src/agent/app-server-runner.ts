@@ -40,6 +40,8 @@ export async function runAppServerCommand(config) {
   if (config.refreshThreadInstructions) session.threadReady = false;
   session.config = config;
   session.onSessionEvent = onSessionEvent;
+  session.eventError = null;
+  session.eventFailed = false;
 
   session.emit('session.started', {
     content: `Agent command started: ${config.command || 'codex app-server'}`,
@@ -75,6 +77,14 @@ export async function runAppServerCommand(config) {
   // Aborted/failed turns still fall through to paused.
   if (completion.success) completion.idle = true;
   session.emit('session.complete', completion);
+  // Final-reply/media processing is asynchronous. A successful CLI result is not delivered until
+  // every owned callback (including the completion event) has finished or its error is surfaced.
+  while (true) {
+    const pendingEvents = session.eventQueue;
+    await pendingEvents;
+    if (pendingEvents === session.eventQueue) break;
+  }
+  if (session.eventFailed) throw session.eventError;
   return {
     sessionId,
     uploaded: session.uploaded,
@@ -790,11 +800,19 @@ function ensureSession(sessionId, { config, onSessionEvent }) {
     // turns after each turn completes (serial execution). See enqueueSessionInput / takeNextQueuedInput.
     queuedInputs: [],
     pendingApprovals: new Map(), turnWaiter: null, uploaded: 0, mapperState: createAppServerMapperState(),
+    eventQueue: Promise.resolve(), eventError: null, eventFailed: false,
     emit(kind, payload) {
       this.uploaded++;
       const withCli = { ...payload };
       if (this.threadId && withCli.cliSessionId === undefined) withCli.cliSessionId = this.threadId;
-      try { Promise.resolve(this.onSessionEvent({ sessionId: this.sessionId, kind, payload: withCli })).catch(() => {}); } catch {}
+      const callback = this.onSessionEvent;
+      const event = { sessionId: this.sessionId, kind, payload: withCli };
+      this.eventQueue = this.eventQueue.then(async () => {
+        try { await callback(event); }
+        catch (error) {
+          if (!this.eventFailed) { this.eventFailed = true; this.eventError = error; }
+        }
+      });
     },
   };
   sessions.set(sessionId, session);

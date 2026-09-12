@@ -5,6 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { BridgeStore } from '../src/store/store.js';
 import { SessionOrchestrator } from '../src/server/orchestrator.js';
+import { dailyTokenLimitSettings } from '../src/agent/daily-token-limit.ts';
 
 function setup(t, runner, extra = {}) {
   const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'pa-runtime-orchestrator-'));
@@ -134,4 +135,52 @@ test('runtime readiness receipt requires a successful reply and binds the actual
   assert.equal(value.engine, 'claude-code');
   assert.equal(value.revision, 7);
   assert.equal(value.spaceId, 'default');
+});
+
+test('desktop input on a unified WeChat main records the successful runtime; WeChat and event metadata cannot', async (t) => {
+  const { dataDir, store, orchestrator } = setup(t, {
+    runAppServerCommand: async config => {
+      await config.onSessionEvent({ sessionId: config.sessionId, kind: 'session.assistant_message', payload: {
+        content: 'model reply', source: 'desktop', metadata: { channel: 'desktop', streamState: 'completed' },
+      } });
+      return { success: true };
+    },
+    stopAppServerCommand: () => false,
+  }, { runtimeExecutionSettings: () => ({ ...snapshot('codex'), revision: 9 }) });
+  const unified = store.getOrCreateMainSessionForChannel({ channel: 'wechat', senderId: 'unified-owner',
+    senderName: 'Owner', workspaceRoot: dataDir });
+  const receipt = path.join(dataDir, 'runtime/setup/web-conversation.json');
+  await orchestrator.runTurn(unified.id, 'ordinary WeChat input');
+  assert.equal(fs.existsSync(receipt), false);
+  await orchestrator.runTurn(unified.id, 'internal input', { internalInput: true, messageMetadata: { channel: 'desktop' } });
+  assert.equal(fs.existsSync(receipt), false);
+  await orchestrator.resumeSession(unified.id, 'desktop input', {
+    displayContent: 'desktop input', messageMetadata: { channel: 'desktop', clientMessageId: 'desktop-runtime-check' },
+  });
+  await waitFor(() => !orchestrator.running.size);
+  const value = JSON.parse(fs.readFileSync(receipt, 'utf8'));
+  assert.equal(value.engine, 'codex');
+  assert.equal(value.revision, 9);
+  assert.equal(value.realAgentRuntime, true);
+  assert.equal(store.getSessionRecord(unified.id).channel, 'wechat');
+});
+
+test('synthetic task status and quota replies never create real-runtime readiness, including restart backfill', async (t) => {
+  let calls = 0;
+  const { dataDir, store, main, orchestrator } = setup(t, {
+    runAppServerCommand: async () => { calls++; return { success: true }; },
+    stopAppServerCommand: () => false,
+  });
+  const receipt = path.join(dataDir, 'runtime/setup/web-conversation.json');
+  orchestrator.completeDirectMainTurn(main, 'Task still running', {}, 'task/status-reported');
+  assert.equal(fs.existsSync(receipt), false);
+  assert.equal(store.hasCompletedLocalConversation(), false);
+  orchestrator.dailyTokenLimit = () => dailyTokenLimitSettings(1);
+  store.getTokenUsageSummary = () => ({ totalTokens: 2_000_000 });
+  await orchestrator.runTurn(main.id, 'blocked input', { messageMetadata: { channel: 'desktop' } });
+  assert.equal(calls, 0);
+  assert.equal(fs.existsSync(receipt), false);
+  const restarted = new SessionOrchestrator({ store, hub: { broadcast() {} }, channels: {}, siteDataRoot: dataDir, progressTimerEnabled: false });
+  restarted.stop();
+  assert.equal(fs.existsSync(receipt), false);
 });

@@ -957,7 +957,7 @@ export class SessionOrchestrator {
             : null;
           const persisted = existingFinalReply || this.appendAndBroadcast(activityEvent.sessionId, activityEvent.kind, activityEvent.payload);
           this.captureWorkerHookEvent(event.sessionId, persisted);
-          if (isCompletedAssistantMessage(persisted) && isLocalConversationSession(session)) {
+          if (isCompletedAssistantMessage(persisted) && isLocalConversationSession(session, options)) {
             completedLocalReply = true;
           }
           if (options.notifyWechat && isFinalWechatTurnCandidate(persisted)) {
@@ -1050,9 +1050,6 @@ export class SessionOrchestrator {
       source: "personal-agent-orchestrator",
       metadata: { streamState: "completed", eventType, ...metadata },
     });
-    if (isLocalConversationSession(session)) {
-      recordWebConversationAcceptance(this.siteDataRoot, new Date(this.now()));
-    }
     if (options.notifyWechat) this.maybeNotifyWechat(session.id, event);
     return event;
   }
@@ -1434,7 +1431,10 @@ function isCompletedAssistantMessage(event) {
   return !streamState || streamState === "completed";
 }
 
-export function isLocalConversationSession(session) {
+export function isLocalConversationSession(session, options = {}) {
+  // The desktop route sets this on the server. A unified main session can retain its original
+  // WeChat channel; never infer this turn's origin from model events or caller-provided payloads.
+  if (session.role === "main" && options.internalInput !== true && options.messageMetadata?.channel === "desktop") return true;
   if (session.role === "main" && session.channel === "desktop") return true;
   return session.role === "worker"
     && !session.channel
