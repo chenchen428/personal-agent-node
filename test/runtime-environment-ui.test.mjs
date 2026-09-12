@@ -32,10 +32,16 @@ test("runtime configuration owns desktop model controls and accessible secret ed
   const view = read("runtime-environments/runtime-environment-settings.tsx");
   assert.match(view, /检测当前草稿，不保存设置/);
   assert.match(view, /aria-pressed=/);
+  assert.doesNotMatch(view, /runtime-default|runtime-base-tabs|默认基座<select/);
+  assert.match(view, /state\.setEngine\(selected\)/);
+  assert.match(view, /onClick=\{state\.reset\}/);
+  assert.match(view, /runtime-save-bar/);
+  assert.match(read("runtime-environments/runtime-field.tsx"), /@\/components\/ui\/select/);
   const secretDialog = read("runtime-environments/credential-dialog.tsx");
   assert.match(secretDialog, /type="password"/);
   assert.match(secretDialog, /showModal/);
   assert.match(secretDialog, /onCancel=/);
+  assert.match(secretDialog, /previous\.focus\(\{ preventScroll: true \}\)/);
   const hook = read("runtime-environments/use-runtime-settings.ts");
   assert.match(hook, /"x-personal-agent-surface": "desktop"/);
   assert.match(hook, /revision: saved.revision/);

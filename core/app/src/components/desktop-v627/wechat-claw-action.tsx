@@ -1,7 +1,7 @@
 "use client";
 
 import { LoaderCircle, QrCode, Trash2 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { WechatConnectPanel } from "@/components/wechat-connect-panel";
 import { Button } from "../desktop-v72/primitives";
 import { ConnectionClearDialog } from "./connection-clear-dialog";
@@ -15,16 +15,18 @@ export function WechatClawAction({ connection, refresh }: { connection: Connecti
   const [clearDialogOpen, setClearDialogOpen] = useState(false);
   const [clearing, setClearing] = useState(false);
   const [clearedLocally, setClearedLocally] = useState(false);
-  const [connectedLocally, setConnectedLocally] = useState(connection.state === "connected");
+  const [observed, setObserved] = useState(connection);
+  useEffect(() => { setObserved(connection); }, [connection]);
   const [message, setMessage] = useState("");
-  const configured = !clearedLocally && (connectedLocally || connection.details?.configured === true || connection.state === "connected");
+  const connected = !clearedLocally && observed.state === "connected";
+  const configured = !clearedLocally && (observed.details?.configured === true || connected);
   const openScanPanel = () => { setExpanded(true); setPanelAttempt((value) => value + 1); setMessage(""); };
   const clearConfiguration = async () => {
     setClearing(true); setMessage("");
     try {
       await fetchJson("/api/channels/wechat/configuration", { method: "DELETE" });
       setExpanded(false); setScanActive(false); setClearedLocally(true); setClearDialogOpen(false);
-      setConnectedLocally(false);
+      setObserved({ ...connection, state: "needs_setup", details: { ...connection.details, configured: false } });
       setMessage("微信 claw 连接配置已清空，可以重新配置其他微信账号。");
       await refresh().catch(() => {});
     } catch (error) { setMessage(errorMessage(error)); setClearDialogOpen(false); }
@@ -37,7 +39,7 @@ export function WechatClawAction({ connection, refresh }: { connection: Connecti
       : <Button className="connection-compact-action" variant="primary" disabled={scanActive} onClick={openScanPanel}>{scanActive ? <><LoaderCircle className="connection-spinner" />等待扫码确认</> : <><QrCode />配置</>}</Button>}
       {message ? <span className="connection-action-message" role="status">{message}</span> : null}
     </div>
-    {expanded ? <WechatConnectPanel key={panelAttempt} connected={configured} autoStart onActiveChange={setScanActive} onCancel={() => { setExpanded(false); setScanActive(false); }} onConnected={async () => { setClearedLocally(false); setConnectedLocally(true); await refresh(); }} compact /> : null}
+    {expanded ? <WechatConnectPanel key={panelAttempt} connected={connected} autoStart onActiveChange={setScanActive} onCancel={() => { setExpanded(false); setScanActive(false); }} onConnected={async () => { setClearedLocally(false); setObserved({ ...connection, state: "connected" }); await refresh(); }} compact /> : null}
     {clearDialogOpen ? <ConnectionClearDialog connectionName="微信 claw" configurationSummary="登录凭据、同步游标、上下文缓存和当前账号绑定都会从当前隔离空间清空。" preservedSummary="已形成的本机对话记录和用户文件不会被删除。" releaseSummary="该微信账号可在另一个隔离空间重新配置。" busy={clearing} onCancel={() => setClearDialogOpen(false)} onConfirm={() => void clearConfiguration()} /> : null}
   </div>;
 }

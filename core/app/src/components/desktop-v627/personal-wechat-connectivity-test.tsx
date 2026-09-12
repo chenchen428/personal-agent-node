@@ -1,10 +1,12 @@
 "use client";
 
 import { CheckCircle2, Copy, LoaderCircle, MessageSquareReply, Send } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button } from "../desktop-v72/primitives";
 import type { PersonalWechatConnectivityTest } from "./connection-types";
 import { errorMessage, fetchJson } from "./shared";
+import { createLatestRequest } from "@/lib/latest-request";
+import { startConnectionPolling } from "../connection-polling";
 
 type Busy = "loading" | "starting" | "planning" | "replying" | "";
 
@@ -13,21 +15,39 @@ export function PersonalWechatConnectivityTestCard({ enabled, onStateChange }: {
   const [busy, setBusy] = useState<Busy>("loading");
   const [error, setError] = useState("");
   const [copied, setCopied] = useState(false);
+  const requests = useRef(createLatestRequest());
+  const request = useRef<AbortController | null>(null);
+  const stopPolling = useRef<(() => void) | null>(null);
+  const onChange = useRef(onStateChange); onChange.current = onStateChange;
 
-  const apply = (next: PersonalWechatConnectivityTest) => { setTest(next); onStateChange(next); };
+  const apply = (next: PersonalWechatConnectivityTest) => { setTest(next); onChange.current(next); };
   const load = async (quiet = false) => {
+    const current = requests.current.begin();
+    request.current?.abort();
+    const controller = new AbortController(); request.current = controller;
     if (!quiet) setBusy("loading");
-    try { const result = await fetchJson<{ test: PersonalWechatConnectivityTest }>("/api/connections/wechat-personal/connectivity-test"); apply(result.test); setError(""); }
-    catch (cause) { if (!quiet) setError(errorMessage(cause)); }
-    finally { if (!quiet) setBusy(""); }
+    try { const result = await fetchJson<{ test: PersonalWechatConnectivityTest }>("/api/connections/wechat-personal/connectivity-test", { signal: controller.signal }); if (current()) { apply(result.test); setError(""); } }
+    catch (cause) { if (current() && !quiet) setError(errorMessage(cause)); }
+    finally { if (current() && !quiet) setBusy(""); }
   };
 
-  useEffect(() => { if (enabled) void load(); }, [enabled]);
+  useEffect(() => { if (enabled) void load(); return () => { requests.current.invalidate(); request.current?.abort(); stopPolling.current?.(); }; }, [enabled]);
   useEffect(() => {
-    if (!enabled || test?.phase !== "waiting_message") return;
-    const timer = window.setInterval(() => void load(true), 1_500);
-    return () => window.clearInterval(timer);
-  }, [enabled, test?.phase]);
+    if (!enabled || busy || test?.phase !== "waiting_message") return;
+    const current = requests.current.begin();
+    const stop = startConnectionPolling({
+      deadline: Date.now() + 10 * 60_000, intervalMs: 1_500,
+      probe: async (signal) => {
+        const result = await fetchJson<{ test: PersonalWechatConnectivityTest }>("/api/connections/wechat-personal/connectivity-test", { signal });
+        return { state: result.test.phase === "waiting_message" ? "pending" as const : "completed" as const, test: result.test };
+      },
+      onResult: (result) => { if (current()) { apply(result.test); setError(""); } },
+      onError: () => { if (current()) setError("测试状态暂时无法读取，正在重试…"); },
+      onTimeout: () => { if (current()) setError("暂未确认测试结果，请重新进入查看最新状态。"); },
+    });
+    stopPolling.current = stop;
+    return () => { stop(); if (current()) requests.current.invalidate(); };
+  }, [enabled, busy, test?.phase]);
 
   const start = async () => run("starting", async () => (await fetchJson<{ test: PersonalWechatConnectivityTest }>("/api/connections/wechat-personal/connectivity-test/start", { method: "POST" })).test);
   const planReply = async () => run("planning", async () => (await fetchJson<{ state: PersonalWechatConnectivityTest }>("/api/connections/wechat-personal/connectivity-test/reply-plan", { method: "POST" })).state);
@@ -36,10 +56,12 @@ export function PersonalWechatConnectivityTestCard({ enabled, onStateChange }: {
     await run("replying", async () => (await fetchJson<{ test: PersonalWechatConnectivityTest }>("/api/connections/wechat-personal/connectivity-test/reply", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ operationId: test.operation?.id, digest: test.operation?.digest }) })).test);
   };
   const run = async (nextBusy: Busy, action: () => Promise<PersonalWechatConnectivityTest>) => {
+    stopPolling.current?.(); request.current?.abort();
+    const current = requests.current.begin();
     setBusy(nextBusy); setError("");
-    try { apply(await action()); }
-    catch (cause) { setError(errorMessage(cause)); }
-    finally { setBusy(""); }
+    try { const result = await action(); if (current()) apply(result); }
+    catch (cause) { if (current()) setError(errorMessage(cause)); }
+    finally { if (current()) setBusy(""); }
   };
   const copy = async () => {
     if (!test?.testText) return;

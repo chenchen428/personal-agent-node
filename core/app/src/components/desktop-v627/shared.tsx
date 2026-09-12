@@ -1,7 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useState, type ReactNode } from "react";
-import { fetchJson } from "@/lib/client-json";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { createLatestJsonRequest } from "@/lib/latest-json-request";
 import type { ActivityItem, PageItem } from "./types";
 
 export { fetchJson } from "@/lib/client-json";
@@ -22,7 +22,22 @@ export function Pager({ page, totalPages, totalRows, pageSize, onPage, compact =
   return <div className="pa-pager"><span>{first}–{last} / {totalRows}</span><div className="pa-pager-controls"><button type="button" disabled={page <= 1} aria-label="上一页" onClick={() => onPage(Math.max(1, page - 1))}>‹</button><strong>{page} / {totalPages}</strong><button type="button" disabled={page >= totalPages} aria-label="下一页" onClick={() => onPage(Math.min(totalPages, page + 1))}>›</button></div>{compact ? null : null}</div>;
 }
 export function columnName(index: number) { let value = index; let label = ""; while (value > 0) { value -= 1; label = String.fromCharCode(65 + (value % 26)) + label; value = Math.floor(value / 26); } return label || "A"; }
-export function useJson<T>(url: string) { const [value, setValue] = useState<T | null>(null); const [loading, setLoading] = useState(true); const [error, setError] = useState(""); const refresh = useCallback(async () => { setLoading(true); try { setValue(await fetchJson<T>(url)); setError(""); } catch (cause) { setError(errorMessage(cause)); } finally { setLoading(false); } }, [url]); useEffect(() => { void refresh(); }, [refresh]); return { value, loading, error, refresh }; }
+export function useJson<T>(url: string) {
+  const [value, setValue] = useState<T | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const requests = useRef(createLatestJsonRequest());
+  const refresh = useCallback(async () => {
+    setLoading(true);
+    await requests.current.refresh<T>(url, {
+      value: (result) => { setValue(result); setError(""); },
+      error: (cause) => setError(errorMessage(cause)),
+      settled: () => setLoading(false),
+    });
+  }, [url]);
+  useEffect(() => { void refresh(); return () => requests.current.cancel(); }, [refresh]);
+  return { value, loading, error, refresh };
+}
 export function errorMessage(cause: unknown) { return cause instanceof Error ? cause.message : "暂时无法读取本机内容"; }
 export function statusLabel(status = "") { return ({ start: "启动中", running: "进行中", idle: "等待继续", paused: "已暂停", done: "已完成", archived: "已归档", published: "已发布", received: "未处理", succeeded: "已完成", failed: "未完成", matched: "已匹配", skipped: "未触发" } as Record<string, string>)[status] || status || "已记录"; }
 export function formatCell(value: unknown) { if (value == null) return "—"; return typeof value === "object" ? JSON.stringify(value) : String(value); }

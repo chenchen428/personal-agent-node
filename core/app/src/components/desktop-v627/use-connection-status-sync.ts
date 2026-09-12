@@ -1,58 +1,50 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { startConnectionPolling, type ConnectionSyncResult } from "../connection-polling";
 
-export type ConnectionSyncResult = { state: "pending" | "completed" | "failed"; message?: string };
+export type { ConnectionSyncResult } from "../connection-polling";
 
 export function useConnectionStatusSync({ active, complete, probe, refresh, onComplete, onFailure, timeoutMs = 2 * 60_000 }: {
   active: boolean;
   complete: boolean;
-  probe: () => Promise<ConnectionSyncResult>;
+  probe: (signal: AbortSignal) => Promise<ConnectionSyncResult>;
   refresh: () => Promise<void>;
   onComplete: () => void;
   onFailure: (message: string) => void;
   timeoutMs?: number;
 }) {
   const [remainingSeconds, setRemainingSeconds] = useState(0);
+  const callbacks = useRef({ probe, refresh, onComplete, onFailure });
+  useEffect(() => { callbacks.current = { probe, refresh, onComplete, onFailure }; });
 
   useEffect(() => {
     if (!active) { setRemainingSeconds(0); return; }
-    if (complete) { onComplete(); return; }
-    let cancelled = false;
-    let timer = 0;
-    let countdownTimer = 0;
-    const startedAt = Date.now();
-    const updateCountdown = () => setRemainingSeconds(Math.max(0, Math.ceil((timeoutMs - (Date.now() - startedAt)) / 1000)));
+    if (complete) { callbacks.current.onComplete(); void callbacks.current.refresh().catch(() => {}); return; }
+    const deadline = Date.now() + timeoutMs;
+    const updateCountdown = () => setRemainingSeconds(Math.max(0, Math.ceil((deadline - Date.now()) / 1000)));
     updateCountdown();
-    countdownTimer = window.setInterval(updateCountdown, 1000);
-    const poll = async () => {
-      let terminal = false;
-      try {
-        const result = await probe();
-        if (cancelled) return;
+    const countdownTimer = window.setInterval(updateCountdown, 1000);
+    const stop = startConnectionPolling({
+      deadline,
+      probe: (signal) => callbacks.current.probe(signal),
+      onResult: (result) => {
         if (result.state === "completed") {
-          terminal = true;
-          await refresh();
-          if (!cancelled) onComplete();
+          window.clearInterval(countdownTimer);
+          setRemainingSeconds(0);
+          callbacks.current.onComplete();
+          // Catalog synchronization cannot undo successful authorization.
+          void callbacks.current.refresh().catch(() => {});
         } else if (result.state === "failed") {
-          terminal = true;
-          onFailure(result.message || "连接授权未完成，请重试。");
-        } else if (Date.now() - startedAt >= timeoutMs) {
-          terminal = true;
-          onFailure("连接授权等待已超时，请重新发起。");
+          window.clearInterval(countdownTimer);
+          callbacks.current.onFailure(result.message || "连接授权未完成，请重试。");
         }
-      } catch {
-        if (Date.now() - startedAt >= timeoutMs) {
-          terminal = true;
-          if (!cancelled) onFailure("连接状态暂时无法读取，请重新发起或检查本机服务。");
-        }
-      } finally {
-        if (!cancelled && !terminal) timer = window.setTimeout(() => void poll(), 1800);
-      }
-    };
-    timer = window.setTimeout(() => void poll(), 1200);
-    return () => { cancelled = true; window.clearTimeout(timer); window.clearInterval(countdownTimer); };
-  }, [active, complete, onComplete, onFailure, probe, refresh, timeoutMs]);
+      },
+      onError: () => {},
+      onTimeout: () => { window.clearInterval(countdownTimer); callbacks.current.onFailure("连接授权等待已超时，请重新发起或检查本机服务。"); },
+    });
+    return () => { stop(); window.clearInterval(countdownTimer); };
+  }, [active, complete, timeoutMs]);
 
   return remainingSeconds;
 }

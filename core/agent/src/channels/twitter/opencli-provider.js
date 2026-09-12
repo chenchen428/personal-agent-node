@@ -40,18 +40,25 @@ export class OpenCliTwitterProvider {
     try {
       runtime = await this.runner.probe();
     } catch (error) {
-      return this.statusPayload("error", "浏览器不可用", error);
+      return this.statusError(error);
     }
     try {
       const bridge = await this.runner.browserBridgeStatus();
       if (bridge.needsSetup) return this.statusPayload("needs_setup", "浏览器连接待修复", null, runtime, bridge);
       return this.statusPayload("ready", "已就绪", null, runtime, bridge);
     } catch (error) {
-      if (["OPENCLI_BROWSER_UNAVAILABLE", "OPENCLI_CONFIG_INVALID"].includes(error?.code)) {
-        return this.statusPayload("needs_setup", "浏览器连接待修复", error, runtime);
-      }
-      return this.statusPayload("error", "浏览器不可用", error, runtime);
+      return this.statusError(error, runtime);
     }
+  }
+
+  statusError(error, runtime) {
+    if (["OPENCLI_BROWSER_UNAVAILABLE", "OPENCLI_CONFIG_INVALID"].includes(error?.code)) {
+      return this.statusPayload("needs_setup", "浏览器连接待修复", error, runtime);
+    }
+    if (["OPENCLI_TIMEOUT", "OPENCLI_EXECUTION_FAILED"].includes(error?.code)) {
+      return this.statusPayload("degraded", "状态暂时无法确认", error, runtime);
+    }
+    return this.statusPayload("error", "浏览器不可用", error, runtime);
   }
 
   async open() {
@@ -99,7 +106,7 @@ export class OpenCliTwitterProvider {
       state,
       statusLabel,
       error: error ? safeErrorCode(error) : undefined,
-      runtime: runtime ? [
+      runtime: state === "degraded" ? [{ label: "浏览器操作", value: "状态待确认" }] : runtime ? [
         { label: "浏览器操作", value: bridge?.browserBridge === "connected" ? "已就绪" : "待修复" },
       ] : [{ label: "浏览器操作", value: "不可用" }],
       browserOwnedSession: true,
@@ -115,7 +122,7 @@ export class OpenCliTwitterProvider {
   async ensureAvailable() {
     const status = await this.status();
     if (status.state === "needs_setup") throw new OpenCliError("OPENCLI_NOT_READY", "The OpenCLI browser bridge is not ready.", 503);
-    if (status.state === "error") throw new OpenCliError("OPENCLI_NOT_READY", "OpenCLI browser executor is not ready.", 503);
+    if (status.state !== "ready") throw new OpenCliError("OPENCLI_NOT_READY", "OpenCLI browser executor is not ready.", 503);
   }
 
   withReadSpacing(action) {

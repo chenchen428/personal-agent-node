@@ -23,6 +23,7 @@ export function useRuntimeSettings() {
   const [selected, setSelected] = useState<Engine>("codex");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [resetVersion, setResetVersion] = useState(0);
   const [error, setError] = useState("");
   const [feedback, setFeedback] = useState("");
   const [detection, setDetection] = useState<Partial<Record<Engine, Detection>>>({});
@@ -97,5 +98,11 @@ export function useRuntimeSettings() {
     } catch (cause) { if (mounted.current) setFeedback(cause instanceof Error ? cause.message : "保存失败，请重试。"); }
     finally { if (mounted.current) setSaving(false); }
   };
-  return { saved, drafts, engine, setEngine, selected, setSelected, loading, saving, error, feedback, detection, results, busy, dirty, update, run, save, load };
+  const reset = () => {
+    if (!saved || saving) return;
+    for (const id of engines) { generation.current[id] += 1; controllers.current.get(id)?.abort(); }
+    setDrafts(saved.profiles); setEngine(saved.engine); setBusy({}); setResults({}); setDetection({}); setFeedback("");
+    setResetVersion((value) => value + 1);
+  };
+  return { saved, drafts, engine, setEngine, selected, setSelected, loading, saving, error, feedback, detection, results, busy, dirty, update, run, save, load, reset, resetVersion };
 }

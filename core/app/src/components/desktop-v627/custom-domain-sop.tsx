@@ -1,12 +1,13 @@
 "use client";
 
 import { Check, Copy, Globe2, LoaderCircle, Mail, ServerCog, ShieldCheck } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { runSetupAction } from "@/lib/setup-action-client";
 import { Button } from "../desktop-v72/primitives";
 import type { Connection, DomainVerification } from "./connection-types";
 import { DomainUnbindDialog } from "./domain-unbind-dialog";
 import { errorMessage, fetchJson } from "./shared";
+import { waitForConnectionResult } from "./domain-verification-polling";
 
 type Phase = "configure" | "verifying" | "complete";
 const STEP_LABELS = ["准备公网服务器", "配置自定义域名", "验证并生效"];
@@ -22,6 +23,9 @@ export function CustomDomainSop({ connection, refresh, onExit }: { connection: C
   const [feedback, setFeedback] = useState("");
   const [commandCopied, setCommandCopied] = useState(false);
   const [showRemove, setShowRemove] = useState(false);
+  const request = useRef<AbortController | null>(null);
+  useEffect(() => () => request.current?.abort(), []);
+  useEffect(() => { if (!busy) setPhase(verified ? "complete" : "configure"); }, [connection.details?.domainVerification, verified]);
   const relayTokenReady = /^[A-Za-z0-9_-]{43,128}$/.test(relayToken.trim());
   const commandDomain = /^[A-Za-z0-9.-]+$/.test(domain.trim()) ? domain.trim().toLowerCase() : "example.com";
   const relayInstallerUrl = connection.details?.customRelayInstallerUrl || "";
@@ -31,29 +35,40 @@ export function CustomDomainSop({ connection, refresh, onExit }: { connection: C
   const activeStep = phase === "configure" ? relayTokenReady || credentialPrepared ? 1 : 0 : 2;
 
   const startAndVerify = async () => {
+    request.current?.abort();
+    const controller = new AbortController(); request.current = controller;
     const deadline = Date.now() + 3 * 60_000;
     setBusy(true);
     setFeedback("");
     setPhase("verifying");
     try {
       await runSetupAction("connectivity.custom-domain-start", { kind, domain, relayToken });
+      if (controller.signal.aborted) return;
       setCredentialPrepared(true);
       setRelayToken("");
       await fetchJson(`/api/connections/${kind}/domain-binding`, {
         method: "POST",
+        signal: controller.signal,
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ binding: "custom", deadlineAt: new Date(deadline).toISOString() }),
       });
-      const completed = await waitForVerification(kind, deadline);
+      const result = await waitForConnectionResult({ signal: controller.signal, deadline,
+        probe: async (signal) => { const { verification } = await fetchJson<{ verification: DomainVerification }>(`/api/connections/${kind}/domain-binding?binding=custom`, { signal }); return { state: verification.phase === "verified" ? "completed" as const : verification.phase === "failed" ? "failed" as const : "pending" as const, verification }; },
+        onResult: () => setFeedback(""),
+        onError: () => setFeedback("验证状态暂时无法读取，正在重试…"),
+        timeoutMessage: "暂未确认自定义域名检测结果，请刷新查看最新验证状态。",
+      });
+      const completed = result.verification;
       if (completed.phase !== "verified") throw new Error(completed.error?.message || "自定义域名检测未通过");
-      await refresh();
       setPhase("complete");
       setFeedback("自定义域名已通过全链路检测");
+      await refresh().catch(() => {});
     } catch (error) {
+      if (controller.signal.aborted) return;
       setPhase("configure");
       setFeedback(errorMessage(error));
     } finally {
-      setBusy(false);
+      if (!controller.signal.aborted) setBusy(false);
     }
   };
 
@@ -92,13 +107,4 @@ export function CustomDomainSop({ connection, refresh, onExit }: { connection: C
     {phase !== "complete" ? <button className="custom-domain-back" type="button" onClick={onExit}>返回平台域名选项</button> : null}<span className="connection-action-message" role="status">{feedback}</span>
     {showRemove ? <DomainUnbindDialog binding="custom" busy={busy} onCancel={() => setShowRemove(false)} onConfirm={() => void remove()} /> : null}
   </section>;
-}
-
-async function waitForVerification(kind: "mail" | "sites", deadline: number) {
-  while (Date.now() < deadline) {
-    const result = await fetchJson<{ verification: DomainVerification }>(`/api/connections/${kind}/domain-binding`);
-    if (["verified", "failed"].includes(result.verification.phase)) return result.verification;
-    await new Promise((resolve) => window.setTimeout(resolve, 1800));
-  }
-  throw new Error("自定义域名检测已超过 3 分钟，请检查配置后重试");
 }

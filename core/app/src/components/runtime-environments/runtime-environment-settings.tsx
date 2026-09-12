@@ -1,28 +1,69 @@
 "use client";
 
-import { Badge, Button, Card } from "../desktop-v72/primitives";
+import { ArrowRight, Bot, Check, CheckCircle2, CircleAlert, LoaderCircle, PlugZap, TerminalSquare } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { ProfileFields } from "./profile-fields";
-import { engines, engineLabels, type Engine } from "./types";
+import { RuntimeDetectionPanel } from "./runtime-detection-panel";
+import { engines, engineLabels } from "./types";
+import { profileChanged } from "./draft";
 import { useRuntimeSettings } from "./use-runtime-settings";
 
 export function RuntimeEnvironmentSettings() {
   const state = useRuntimeSettings();
   const { selected, saved, drafts, saving } = state;
-  const detection = state.detection[selected];
   const busy = state.busy[selected];
+  const anyBusy = Object.values(state.busy).some(Boolean);
   const result = state.results[selected];
-  return <Card className="runtime-environments" aria-busy={state.loading || saving}>
-    <header className="section-heading"><strong>运行环境</strong>{saved ? <Badge>{engineLabels[saved.engine]} 正在使用</Badge> : null}</header>
-    {state.loading ? <p role="status">正在读取运行环境…</p> : state.error || !drafts || !saved ? <div role="alert"><p>{state.error || "运行环境暂不可用。"}</p><Button onClick={() => void state.load()}>重新读取</Button></div> : <>
-      <div className="runtime-default"><label>默认基座<select value={state.engine} disabled={saving} onChange={(event) => { state.setEngine(event.target.value as Engine); state.setSelected(event.target.value as Engine); }}><option value="codex">Codex（默认）</option><option value="claude-code">Claude Code</option></select></label><small>保存后用于当前隔离空间的下一次对话与新任务。</small></div>
-      <div className="runtime-base-tabs" role="group" aria-label="配置基座">{engines.map((engine) => <Button key={engine} disabled={saving} aria-pressed={selected === engine} onClick={() => state.setSelected(engine)}>{engineLabels[engine]}{state.engine === engine ? " · 已选默认" : ""}</Button>)}</div>
-      <div className="runtime-detection"><div className="runtime-detection-facts"><span>安装 <strong>{detection ? detection.installed ? "已安装" : "未安装" : "待检测"}</strong></span><span>版本 <strong>{detection?.version || "—"}</strong></span><span>账号 <strong>{detection ? ({ authenticated: "已登录", missing: "未登录", unknown: "未知" })[detection.authentication] : "待检测"}</strong></span></div><Button disabled={saving || Boolean(busy)} onClick={() => void state.run("detect")}>{busy === "detect" ? "检测中…" : "检测基座与模型"}</Button></div>
-      {detection?.message ? <p className="runtime-hint" role="status">{detection.message}</p> : null}
-      <ProfileFields key={selected} engine={selected} profile={drafts[selected]} detection={detection} disabled={saving} onChange={state.update} />
-      <div className="runtime-actions runtime-footer"><Button disabled={saving || Boolean(busy)} onClick={() => void state.run("test")}>{busy === "test" ? "连接检测中…" : "检测连通性"}</Button><small>检测当前草稿，不保存设置。</small></div>
-      {result ? <p className={`runtime-result ${result.ok ? "success" : "error"}`} role={result.ok ? "status" : "alert"}>{result.message}{result.ok && result.durationMs != null ? `（${result.durationMs} ms）` : ""}</p> : null}
-      <div className="runtime-actions runtime-footer"><Badge tone={state.dirty ? "warning" : "success"}>{state.dirty ? "有未保存的更改" : "设置已保存"}</Badge><Button variant="primary" disabled={saving || !state.dirty || Object.values(state.busy).some(Boolean)} onClick={() => void state.save()}>{saving ? "保存中…" : "保存运行环境"}</Button></div>
-      {state.feedback ? <p role="status" className="runtime-hint">{state.feedback}</p> : null}
-    </>}
-  </Card>;
+  return <section className="runtime-environments" aria-busy={state.loading || saving} aria-labelledby="runtime-environments-title">
+    <header className="runtime-section-header">
+      <div><h2 id="runtime-environments-title">运行环境</h2><p>当前隔离空间的模型、授权与执行基座。</p></div>
+      {saved ? <span className="runtime-active-summary"><span className="runtime-status-dot" />当前默认 <strong>{engineLabels[saved.engine]}</strong></span> : null}
+    </header>
+    {state.loading ? <div className="runtime-loading" role="status"><LoaderCircle className="runtime-spinning" aria-hidden="true" />正在读取运行环境…</div>
+      : state.error || !drafts || !saved ? <div className="runtime-loading" role="alert"><CircleAlert aria-hidden="true" /><p>{state.error || "运行环境暂不可用。"}</p><Button variant="outline" size="sm" onClick={() => void state.load()}>重新读取</Button></div>
+        : <>
+          <div className="runtime-workbench">
+            <nav className="runtime-base-list" aria-label="配置基座">
+              {engines.map((engine) => {
+                const Icon = engine === "codex" ? TerminalSquare : Bot;
+                return <button key={engine} type="button" className="runtime-base-option" disabled={saving} aria-pressed={selected === engine} onClick={() => state.setSelected(engine)}>
+                  <Icon aria-hidden="true" />
+                  <span><strong>{engineLabels[engine]}</strong><small>{saved.engine === engine ? "当前默认" : state.engine === engine ? "保存后设为默认" : "独立配置"}</small></span>
+                  {profileChanged(drafts[engine], saved.profiles[engine]) ? <span className="runtime-unsaved-dot" aria-label="有未保存配置" /> : selected === engine ? <ArrowRight aria-hidden="true" /> : null}
+                </button>;
+              })}
+            </nav>
+            <div className="runtime-editor" aria-label={`${engineLabels[selected]} 配置`}>
+              <header className="runtime-editor-header">
+                <div><h3>{engineLabels[selected]}</h3><p>{state.engine === selected ? saved.engine === selected ? "用于下一次对话与新任务" : "保存后将作为默认基座" : "可单独配置，不影响当前默认基座"}</p></div>
+                <Button variant="outline" size="sm" disabled={saving || state.engine === selected} onClick={() => state.setEngine(selected)}>
+                  {state.engine === selected ? <Check aria-hidden="true" /> : null}{state.engine === selected ? saved.engine === selected ? "当前默认" : "已选为默认" : "设为默认"}
+                </Button>
+              </header>
+              <RuntimeDetectionPanel detection={state.detection[selected]} busy={busy === "detect"} disabled={saving || Boolean(busy)} onDetect={() => void state.run("detect")} />
+              <ProfileFields key={`${selected}:${state.resetVersion}`} engine={selected} profile={drafts[selected]} detection={state.detection[selected]} disabled={saving} onChange={state.update} />
+              <section className="runtime-connection-test" aria-label="模型连接验证">
+                <div className="runtime-test-heading"><div><strong>连接验证</strong><p>检测当前草稿，不保存设置。</p></div>
+                  <Button variant="outline" size="sm" disabled={saving || Boolean(busy)} onClick={() => void state.run("test")}>
+                    {busy === "test" ? <LoaderCircle className="runtime-spinning" aria-hidden="true" /> : <PlugZap aria-hidden="true" />}{busy === "test" ? "检测中…" : "检测连通性"}
+                  </Button>
+                </div>
+                {result ? <div className={`runtime-result ${result.ok ? "success" : "error"}`} role={result.ok ? "status" : "alert"}>
+                  {result.ok ? <CheckCircle2 aria-hidden="true" /> : <CircleAlert aria-hidden="true" />}<span>{result.message}{result.ok && result.durationMs != null ? `（${result.durationMs} ms）` : ""}</span>
+                </div> : null}
+              </section>
+            </div>
+          </div>
+          <footer className="runtime-save-bar">
+            <div className="runtime-save-status"><Badge variant={state.dirty ? "warning" : "neutral"}>{state.dirty ? "有未保存的更改" : "配置已保存"}</Badge>
+              <small>{state.engine !== saved.engine ? `保存后默认使用 ${engineLabels[state.engine]}` : "保存后从下一次对话与新任务生效"}</small>
+            </div>
+            <div className="runtime-actions"><Button variant="ghost" size="sm" disabled={saving || !state.dirty} onClick={state.reset}>放弃更改</Button>
+              <Button size="sm" disabled={saving || !state.dirty || anyBusy} onClick={() => void state.save()}>{saving ? <LoaderCircle className="runtime-spinning" aria-hidden="true" /> : null}{saving ? "保存中…" : "保存运行环境"}</Button>
+            </div>
+          </footer>
+          {state.feedback ? <p role="status" className="runtime-save-feedback">{state.feedback}</p> : null}
+        </>}
+  </section>;
 }

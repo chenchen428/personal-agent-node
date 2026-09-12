@@ -6,6 +6,7 @@ import {
   WeChatTransport,
   DEFAULT_LONG_POLL_TIMEOUT_MS,
   describeWechatTransportError,
+  classifyWechatTransportError,
   type InboundWechatMessage,
 } from "./runtime/wechat-transport.ts";
 import {
@@ -36,13 +37,13 @@ type LoginSession = {
   baseUrl: string;
   createdAt: number;
   expiresAt: number;
+  generation: number;
 };
 
 type OrchestratorLike = {
   handleChannelMessage: (channelName: string, message: InboundWechatMessage) => Promise<unknown>;
 };
 
-const loginSessions = new Map<string, LoginSession>();
 const CONNECTOR_LONG_POLL_TIMEOUT_MS = Math.min(DEFAULT_LONG_POLL_TIMEOUT_MS, 15000);
 const LOGIN_SESSION_TIMEOUT_MS = 2 * 60 * 1000;
 const STARTUP_BACKLOG_GRACE_MS = 2 * 60 * 1000;
@@ -63,6 +64,10 @@ export class WeChatConnector {
   private lastMessageAt = "";
   private lastPollError = "";
   private configurationGeneration = 0;
+  private loginGeneration = 0;
+  private loginSessions = new Map<string, LoginSession>();
+  private rejectedCredential: { key: string; reason: string } | null = null;
+  private healthRequest = 0;
 
   constructor(private readonly logger: Logger, private readonly ownership?: { store: InstallationConnectionOwnership; spaceId: string }) {
     this.transport = new WeChatTransport({
@@ -96,15 +101,21 @@ export class WeChatConnector {
   }
 
   async status() {
+    const request = ++this.healthRequest;
+    const generation = this.configurationGeneration;
     const account = loadExistingCredentials();
     const ownershipError = account ? this.credentialOwnershipError(account) : null;
     const invalidReason = account
       ? ownershipError || await getStoredCredentialsInvalidReason(account, { timeoutMs: 5000 })
       : "No saved WeChat credentials found.";
+    if (account && invalidReason && !ownershipError && request === this.healthRequest && generation === this.configurationGeneration) {
+      this.rejectedCredential = { key: credentialKey(account), reason: "微信登录已失效，请重新扫码连接。" };
+    }
+    const confirmedInvalidReason = invalidReason || (account && this.rejectedCredential?.key === credentialKey(account) ? this.rejectedCredential.reason : "");
     return {
-      connected: Boolean(account && !invalidReason),
-      loginState: account && !invalidReason ? "connected" : ownershipError ? "space-conflict" : "login-required",
-      reason: invalidReason || "",
+      connected: Boolean(account && !confirmedInvalidReason),
+      loginState: account && !confirmedInvalidReason ? "connected" : ownershipError ? "space-conflict" : "login-required",
+      reason: confirmedInvalidReason || "",
       credentialsFile: CREDENTIALS_FILE,
       syncFile: SYNC_BUF_FILE,
       contextCacheFile: CONTEXT_CACHE_FILE,
@@ -130,11 +141,12 @@ export class WeChatConnector {
   catalogStatus() {
     const account = loadExistingCredentials();
     const ownershipError = account ? this.credentialOwnershipError(account) : null;
-    const connected = Boolean(account && !ownershipError);
+    const invalidReason = ownershipError || (account && this.rejectedCredential?.key === credentialKey(account) ? this.rejectedCredential.reason : "");
+    const connected = Boolean(account && !invalidReason);
     return {
       connected,
       loginState: connected ? "connected" : ownershipError ? "space-conflict" : "login-required",
-      reason: ownershipError || "",
+      reason: invalidReason || "",
       polling: this.polling,
       pollingEnabled: !this.stopped,
       configured: Boolean(account),
@@ -144,7 +156,10 @@ export class WeChatConnector {
   clearConfiguration() {
     const configured = Boolean(loadExistingCredentials());
     this.configurationGeneration += 1;
-    loginSessions.clear();
+    this.healthRequest += 1;
+    this.rejectedCredential = null;
+    this.loginGeneration += 1;
+    this.loginSessions.clear();
     this.ownership?.store.release("wechat-claw", this.ownership.spaceId);
     for (const file of [CREDENTIALS_FILE, SYNC_BUF_FILE, CONTEXT_CACHE_FILE]) fs.rmSync(file, { force: true });
     this.missingCredentialsLogged = false;
@@ -156,9 +171,11 @@ export class WeChatConnector {
   }
 
   async startLogin() {
-    pruneLoginSessions();
+    const generation = ++this.loginGeneration;
+    this.loginSessions.clear();
     const baseUrl = DEFAULT_BASE_URL;
     const qr = await fetchWechatQrCode({ baseUrl, botType: BOT_TYPE });
+    if (generation !== this.loginGeneration) throw new Error("WeChat login was replaced or cleared. Please start again.");
     const id = crypto.randomUUID();
     const session: LoginSession = {
       id,
@@ -167,8 +184,9 @@ export class WeChatConnector {
       baseUrl,
       createdAt: Date.now(),
       expiresAt: Date.now() + LOGIN_SESSION_TIMEOUT_MS,
+      generation,
     };
-    loginSessions.set(id, session);
+    this.loginSessions.set(id, session);
     return {
       session: id,
       status: "wait",
@@ -184,10 +202,11 @@ export class WeChatConnector {
   }
 
   async pollLoginStatus(sessionId: string) {
-    pruneLoginSessions();
-    const session = loginSessions.get(sessionId);
+    pruneLoginSessions(this.loginSessions);
+    const session = this.loginSessions.get(sessionId);
     if (!session) return { status: "missing", connected: false };
     const status = await pollWechatQrStatus({ baseUrl: session.baseUrl, qrcode: session.qrcode });
+    if (session.generation !== this.loginGeneration || this.loginSessions.get(sessionId) !== session) return { status: "missing", connected: false };
     if (status.status !== "confirmed") {
       return {
         status: status.status === "scaned" ? "scanned" : status.status || "wait",
@@ -208,7 +227,10 @@ export class WeChatConnector {
     };
     this.ownership?.store.replace("wechat-claw", [account.accountId, account.userId], this.ownership.spaceId);
     saveCredentials(account);
-    loginSessions.delete(sessionId);
+    this.configurationGeneration += 1;
+    this.healthRequest += 1;
+    this.rejectedCredential = null;
+    this.loginSessions.delete(sessionId);
     return {
       status: "confirmed",
       connected: true,
@@ -246,24 +268,32 @@ export class WeChatConnector {
     this.polling = true;
     try {
       while (!this.stopped) {
+        const generation = this.configurationGeneration;
         try {
           this.requireCredentialOwnership();
-          const generation = this.configurationGeneration;
           this.lastPollStartedAt = new Date().toISOString();
           const result = await this.transport.pollMessages({
             timeoutMs: CONNECTOR_LONG_POLL_TIMEOUT_MS,
             minCreatedAtMs: this.startedAtMs - STARTUP_BACKLOG_GRACE_MS,
           });
+          if (generation !== this.configurationGeneration) continue;
           this.lastPollCompletedAt = new Date().toISOString();
           this.lastPollError = "";
-          if (generation !== this.configurationGeneration) continue;
+          this.rejectedCredential = null;
+          this.healthRequest += 1;
           for (const message of result.messages) {
             this.lastMessageAt = new Date().toISOString();
             await this.orchestrator?.handleChannelMessage("wechat", message);
           }
         } catch (error) {
+          if (generation !== this.configurationGeneration) continue;
           const detail = describeWechatTransportError(error);
           this.lastPollError = detail.slice(0, 300);
+          if (classifyWechatTransportError(error).kind === "auth") {
+            const account = loadExistingCredentials();
+            if (account) this.rejectedCredential = { key: credentialKey(account), reason: "微信登录已失效，请重新扫码连接。" };
+            this.healthRequest += 1;
+          }
           if (/No saved WeChat credentials found/i.test(detail)) {
             if (!this.missingCredentialsLogged) {
               this.logger.log("[wechat] waiting for QR login before polling messages.");
@@ -323,6 +353,8 @@ export class WeChatConnector {
   }
 }
 
+function credentialKey(account: StoredAccount) { return `${account.accountId}:${account.savedAt}`; }
+
 function saveCredentials(account: StoredAccount) {
   ensureChannelDataDir();
   fs.writeFileSync(CREDENTIALS_FILE, JSON.stringify(account, null, 2), "utf8");
@@ -336,7 +368,7 @@ function saveCredentials(account: StoredAccount) {
   }
 }
 
-function pruneLoginSessions() {
+function pruneLoginSessions(loginSessions: Map<string, LoginSession>) {
   const now = Date.now();
   for (const [id, session] of loginSessions) {
     if (session.expiresAt <= now) loginSessions.delete(id);

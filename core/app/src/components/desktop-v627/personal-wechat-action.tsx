@@ -28,22 +28,25 @@ export function PersonalWechatAction({ connection, refresh }: { connection: Conn
   const [clearDialogOpen, setClearDialogOpen] = useState(false);
   const [clearing, setClearing] = useState(false);
   const attempt = useRef(0);
+  useEffect(() => () => { attempt.current += 1; }, []);
 
   useEffect(() => {
     let active = true;
+    const currentAttempt = attempt.current;
     void fetchJson<{ setup: PersonalWechatSetup }>("/api/connections/wechat-personal/setup")
-      .then((result) => { if (active) { setSetup(result.setup); setQianxunPort(portFromBaseUrl(result.setup.qianxunBaseUrl)); setSetupError(""); } })
-      .catch((error) => { if (active) setSetupError(errorMessage(error)); });
+      .then((result) => { if (active && attempt.current === currentAttempt) { setSetup(result.setup); setQianxunPort(portFromBaseUrl(result.setup.qianxunBaseUrl)); setSetupError(""); } })
+      .catch((error) => { if (active && attempt.current === currentAttempt) setSetupError(errorMessage(error)); });
     return () => { active = false; };
   }, []);
 
   useEffect(() => {
     let active = true;
+    const currentAttempt = attempt.current;
     void Promise.all([
       fetchJson<{ policy: PersonalWechatPolicy }>("/api/connections/wechat-personal/policy"),
       fetchJson<{ test: PersonalWechatConnectivityTest }>("/api/connections/wechat-personal/connectivity-test"),
     ]).then(([policyResult, testResult]) => {
-      if (!active) return;
+      if (!active || attempt.current !== currentAttempt) return;
       setPolicy(policyResult.policy); setConnectivity(testResult.test);
       if (policyResult.policy.enabled) setPhase(testResult.test.phase === "complete" ? "complete" : "testing");
     }).catch(() => {});
@@ -59,6 +62,7 @@ export function PersonalWechatAction({ connection, refresh }: { connection: Conn
     try {
       const baseUrl = `http://127.0.0.1:${port}`;
       await fetchJson("/api/connections/wechat-personal/detect", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ baseUrl, endpointStyle: "auto" }) });
+      if (attempt.current !== currentAttempt) return;
       setSetup((value) => value ? { ...value, configured: true, qianxunBaseUrl: baseUrl } : value);
       const [directoryResult, policyResult] = await Promise.all([
         fetchJson<{ directory: PersonalWechatDirectory }>("/api/connections/wechat-personal/directory"),
@@ -71,19 +75,22 @@ export function PersonalWechatAction({ connection, refresh }: { connection: Conn
   };
 
   const save = async (nextPolicy: PersonalWechatPolicy): Promise<boolean> => {
+    const currentAttempt = ++attempt.current;
     setPhase("saving"); setMessage("正在保存访问策略并启用消息接收。");
     try {
       const result = await fetchJson<{ policy: PersonalWechatPolicy }>("/api/connections/wechat-personal/policy", { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify(nextPolicy) });
+      if (attempt.current !== currentAttempt) return false;
       setPolicy(result.policy);
       const alreadyVerified = connectivity?.phase === "complete";
       setPhase(alreadyVerified ? "complete" : "testing");
       setReconfiguring(false);
       setMessage(alreadyVerified ? "访问策略已更新，原有收发连通验证仍然有效。" : "访问策略已保存。请通过文件传输助手完成消息回调和测试回复，两项通过后才算连接完成。");
       await refresh().catch(() => {}); return true;
-    } catch (error) { setPhase("configuring"); setMessage(errorMessage(error)); return false; }
+    } catch (error) { if (attempt.current === currentAttempt) { setPhase("configuring"); setMessage(errorMessage(error)); } return false; }
   };
 
   const handleConnectivity = (state: PersonalWechatConnectivityTest) => {
+    if (clearing) return;
     setConnectivity(state);
     if (state.phase === "complete") { setPhase("complete"); setMessage("消息回调和测试回复均已通过，个人微信连接完成。"); void refresh().catch(() => {}); }
     else if (policy?.enabled) { setPhase("testing"); setMessage(state.phase === "message_received" || state.phase === "reply_planned" ? "消息回调已收到，请确认并完成测试回复。" : "请通过文件传输助手完成消息回调和测试回复。"); }
@@ -96,18 +103,20 @@ export function PersonalWechatAction({ connection, refresh }: { connection: Conn
     setMessage("已取消本次重新配置，原有个人微信连接保持不变。");
   };
   const clearConfiguration = async () => {
+    const currentAttempt = ++attempt.current;
     setClearing(true);
     try {
       await fetchJson("/api/connections/wechat-personal/configuration", { method: "DELETE" });
-      attempt.current += 1;
+      if (attempt.current !== currentAttempt) return;
       setDirectory(null); setPolicy(null); setConnectivity(null); setReconfiguring(false);
       setSetup((value) => value ? { ...value, configured: false, qianxunBaseUrl: "http://127.0.0.1:8055" } : value);
       setQianxunPort("8055"); setPhase("idle"); setExpanded(false); setClearDialogOpen(false);
       setMessage("个人微信连接配置已清空，可重新配置其他微信账号。");
       await refresh().catch(() => {});
     } catch (error) {
+      if (attempt.current !== currentAttempt) return;
       setPhase("failed"); setExpanded(true); setMessage(errorMessage(error)); setClearDialogOpen(false);
-    } finally { setClearing(false); }
+    } finally { if (attempt.current === currentAttempt) setClearing(false); }
   };
   const connected = phase === "complete" && (connectedState(policy, connectivity) || connection.state === "connected");
   const hasConfiguration = setup?.configured ?? ["connected", "needs_policy", "needs_test", "space_conflict"].includes(connection.state);
@@ -115,7 +124,7 @@ export function PersonalWechatAction({ connection, refresh }: { connection: Conn
   const setupPanel = <PersonalWechatSetupGuide setup={setup} servicePort={qianxunPort} onServicePortChange={setQianxunPort} portDisabled={phase === "detecting" || phase === "saving"} error={phase === "failed" ? message : setupError} errorTitle={phase === "failed" ? "上次检测未通过" : "回调地址读取失败"} />;
   const readingPanel = <div className="domain-human-guide" role="status"><strong>正在读取千寻 Pro</strong><p>{message || "检测登录账号、联系人和群后，会进入访问策略配置。"}</p></div>;
   const policyPanel = directory && policy ? <PersonalWechatPolicyEditor key={directory.readAt} directory={directory} initialPolicy={policy} saving={phase === "saving"} saved={false} onSave={save} /> : readingPanel;
-  const connectivityPanel = <PersonalWechatConnectivityTestCard enabled={Boolean(policy?.enabled)} onStateChange={handleConnectivity} />;
+  const connectivityPanel = <PersonalWechatConnectivityTestCard enabled={Boolean(policy?.enabled) && !clearing} onStateChange={handleConnectivity} />;
   const completedPanel = <><div className="connection-success-evidence"><CheckCircle2 /><div><strong>个人微信连接已生效</strong><span>访问策略、消息回调和测试回复均已通过；需要调整时可重新发起配置。</span></div></div><div className="personal-wechat-history-entry"><span><History /></span><div><strong>个人微信聊天记录</strong><p>按私聊和群聊保存在本机；Agent 处理新消息前会读取该会话最近 100 条记录。</p></div><Link className="button" href="/app/connections/wechat-personal">查看聊天记录</Link></div></>;
   return <div className="personal-wechat-flow">
     <div className="connection-auth-action">{hasConfiguration ? <Button className="connection-compact-action" variant="danger" disabled={clearing} onClick={() => setClearDialogOpen(true)}><Trash2 />{clearing ? "正在清空…" : "清空配置"}</Button> : <Button className="connection-compact-action" variant="primary" disabled={phase === "detecting" || phase === "saving"} onClick={() => void detect()}><PlugZap />{phase === "detecting" ? "正在读取千寻 Pro" : "配置"}</Button>}{reconfiguring ? <Button className="connection-compact-action" onClick={cancelReconfiguration}><X />取消重新配置</Button> : null}</div>

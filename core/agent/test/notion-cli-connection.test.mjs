@@ -125,3 +125,120 @@ test("Notion CLI uses one writable Workspace home across login, poll, and doctor
     fs.rmSync(root, { recursive: true, force: true });
   }
 });
+
+function deferred() { let resolve; const promise = new Promise((yes) => { resolve = yes; }); return { promise, resolve }; }
+function isolatedNotion(t, run) {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "pa-notion-status-"));
+  t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+  return new NotionCliConnection({ command: "ntn", env: { PRIVATE_SITE_DATA_ROOT: root }, run, openBrowser: async () => true });
+}
+
+test("temporary Notion doctor failures preserve known authorization but explicit revocation clears it", async (t) => {
+  let response = { code: 0, stdout: "authenticated and healthy", stderr: "" };
+  const notion = isolatedNotion(t, async () => { if (response instanceof Error) throw response; return response; });
+  assert.equal((await notion.status()).state, "connected");
+  response = { code: 1, stdout: "", stderr: "upstream unavailable" };
+  assert.equal((await notion.status()).state, "connected");
+  assert.equal(notion.catalogStatus().details.statusCheck, "unavailable");
+  response = new Error("timeout with private path and token");
+  assert.equal((await notion.status()).state, "connected");
+  assert.doesNotMatch(JSON.stringify(notion.catalogStatus()), /private|token/);
+  response = { code: 1, stdout: "token expired; run `ntn login`", stderr: "" };
+  assert.equal((await notion.status()).state, "needs_setup");
+  assert.equal(notion.catalogStatus().details.statusCheck, undefined);
+});
+
+test("an older Notion doctor result cannot overwrite a newer observation or logout", async (t) => {
+  const old = deferred(); let reads = 0;
+  const notion = isolatedNotion(t, async (_command, args) => {
+    if (args[0] === "doctor" && ++reads === 1) return old.promise;
+    return { code: 0, stdout: "no token found", stderr: "" };
+  });
+  const pending = notion.status();
+  assert.equal((await notion.status()).state, "needs_setup");
+  await notion.clearConfiguration();
+  old.resolve({ code: 0, stdout: "authenticated and healthy", stderr: "" });
+  assert.equal((await pending).state, "needs_setup");
+  assert.equal(notion.catalogStatus().state, "needs_setup");
+});
+
+test("Notion logout waits for an in-flight login poll and invalidates its late success", async (t) => {
+  const pending = deferred(); const started = deferred(); const calls = [];
+  const notion = isolatedNotion(t, async (_command, args) => {
+    calls.push(args.join(" "));
+    if (args.join(" ") === "login poll") { started.resolve(); return pending.promise; }
+    return { code: 0, stdout: "authenticated and healthy", stderr: "" };
+  });
+  const polling = notion.pollLogin();
+  const rejected = assert.rejects(polling, (error) => error.code === "NOTION_LOGIN_CANCELLED");
+  await started.promise;
+  const clearing = notion.clearConfiguration();
+  assert.deepEqual(calls, ["login poll"]);
+  pending.resolve({ code: 0, stdout: "authorized", stderr: "" });
+  await rejected; await clearing;
+  assert.deepEqual(calls, ["login poll", "logout"]);
+  assert.equal(notion.catalogStatus().state, "needs_setup");
+});
+
+test("a failed status probe never confirms a pending Notion login from cached authorization", async (t) => {
+  const notion = isolatedNotion(t, async (_command, args) => args[0] === "login"
+    ? { code: 0, stdout: "authorized", stderr: "" }
+    : { code: 1, stdout: "", stderr: "temporarily unavailable" });
+  notion.lastStatus = { state: "connected", statusLabel: "已连接", details: { cliReady: true } };
+  await assert.rejects(notion.pollLogin(), (error) => error.code === "NOTION_STATUS_UNAVAILABLE" && error.statusCode === 503);
+});
+
+test("a new Notion authorization cannot succeed through the previously connected workspace", async (t) => {
+  const pending = deferred(); const started = deferred(); let polls = 0; let doctors = 0;
+  const notion = isolatedNotion(t, async (_command, args) => {
+    if (args.join(" ") === "login --no-browser") return { code: 0, stdout: "Open https://www.notion.so/cli-login", stderr: "" };
+    if (args.join(" ") === "login poll" && ++polls === 1) { started.resolve(); return pending.promise; }
+    if (args[0] === "doctor") doctors += 1;
+    return { code: 0, stdout: "authenticated and healthy", stderr: "" };
+  });
+  assert.equal((await notion.status()).state, "connected");
+  await notion.startLogin();
+  const polling = notion.pollLogin();
+  const rejected = assert.rejects(polling, (error) => error.code === "NOTION_LOGIN_PENDING" && error.statusCode === 409);
+  await started.promise;
+  assert.equal(notion.catalogStatus().state, "connected");
+  pending.resolve({ code: 1, stdout: "authorization_pending", stderr: "" });
+  await rejected;
+  assert.equal(doctors, 1, "old credentials must not be used to confirm the new attempt");
+  assert.notEqual(notion.pendingLogin, null);
+  assert.equal((await notion.pollLogin()).state, "connected");
+  assert.equal(notion.pendingLogin, null);
+});
+
+test("Notion poll transport errors and explicit pending output preserve the old account without completing the new attempt", async (t) => {
+  let mode = "error"; let doctors = 0;
+  const notion = isolatedNotion(t, async (_command, args) => {
+    if (args.join(" ") === "login --no-browser") return { code: 0, stdout: "Open https://www.notion.so/cli-login", stderr: "" };
+    if (args[0] === "doctor") { doctors += 1; return { code: 0, stdout: "authenticated and healthy", stderr: "" }; }
+    if (mode === "error") throw new Error("temporary private upstream failure");
+    return { code: 0, stdout: "authorization pending", stderr: "" };
+  });
+  await notion.status(); await notion.startLogin();
+  await assert.rejects(notion.pollLogin(), (error) => error.code === "NOTION_STATUS_UNAVAILABLE" && error.statusCode === 503);
+  mode = "pending";
+  await assert.rejects(notion.pollLogin(), (error) => error.code === "NOTION_LOGIN_PENDING" && error.statusCode === 409);
+  assert.equal(doctors, 1);
+  assert.equal(notion.catalogStatus().state, "connected");
+  assert.notEqual(notion.pendingLogin, null);
+});
+
+test("an in-flight Notion authorization start cannot reopen its state after logout", async (t) => {
+  const pending = deferred(); const started = deferred();
+  const notion = isolatedNotion(t, async (_command, args) => {
+    if (args[0] === "login") { started.resolve(); return pending.promise; }
+    return { code: 0, stdout: "logged out", stderr: "" };
+  });
+  const login = notion.startLogin();
+  const rejected = assert.rejects(login, (error) => error.code === "NOTION_LOGIN_CANCELLED");
+  await started.promise;
+  const clearing = notion.clearConfiguration();
+  pending.resolve({ code: 0, stdout: "Open https://www.notion.so/cli-login", stderr: "" });
+  await rejected; await clearing;
+  assert.equal(notion.pendingLogin, null);
+  assert.equal(notion.catalogStatus().state, "needs_setup");
+});

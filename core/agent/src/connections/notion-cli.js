@@ -14,6 +14,9 @@ export class NotionCliConnection {
     this.now = now;
     this.lastStatus = null;
     this.pendingLogin = null;
+    this.generation = 0;
+    this.statusRequest = 0;
+    this.operation = Promise.resolve();
   }
 
   catalogStatus() {
@@ -25,30 +28,58 @@ export class NotionCliConnection {
   }
 
   async status() {
+    const generation = this.generation;
+    const request = ++this.statusRequest;
+    const commit = (status) => {
+      if (generation === this.generation && request === this.statusRequest) this.lastStatus = status;
+      return this.catalogStatus();
+    };
+    const unavailable = () => ({
+      ...(this.lastStatus || { state: "error", details: { cliReady: true } }),
+      statusLabel: this.lastStatus?.state === "connected" ? "已连接 · 状态待确认" : "状态暂时无法读取",
+      details: { ...(this.lastStatus?.details || { cliReady: true }), statusCheck: "unavailable" },
+    });
     try {
       const result = await this.run(this.command, ["doctor"], { env: this.environment });
       const output = `${result.stdout}\n${result.stderr}`;
-      this.lastStatus = result.code !== 0 || !doctorHasAuthenticatedWorkspace(output)
-        ? { state: "needs_setup", statusLabel: "需要浏览器授权", details: { cliReady: true } }
-        : { state: "connected", statusLabel: "已连接", details: { cliReady: true } };
-      return this.lastStatus;
+      if (doctorRequiresLogin(output)) return commit({ state: "needs_setup", statusLabel: "需要浏览器授权", details: { cliReady: true } });
+      if (result.code === 0 && doctorHasAuthenticatedWorkspace(output)) return commit({ state: "connected", statusLabel: "已连接", details: { cliReady: true } });
+      return commit(unavailable());
     } catch (error) {
-      this.lastStatus = error?.code === "ENOENT"
+      return commit(error?.code === "ENOENT"
         ? { state: "missing", statusLabel: "官方 CLI 未安装", details: { cliReady: false } }
-        : { state: "error", statusLabel: "状态检查失败", error: safeError(error), details: { cliReady: true } };
-      return this.lastStatus;
+        : unavailable());
     }
   }
 
-  async startLogin() {
+  serialize(operation) {
+    const result = this.operation.then(operation, operation);
+    this.operation = result.catch(() => {});
+    return result;
+  }
+
+  requireGeneration(generation) {
+    if (generation !== this.generation) throw Object.assign(new Error("本次 Notion 授权已取消，请重新连接。"), { statusCode: 410, code: "NOTION_LOGIN_CANCELLED" });
+  }
+
+  startLogin() {
+    const generation = ++this.generation;
+    this.pendingLogin = null;
+    return this.serialize(() => this.performStartLogin(generation));
+  }
+
+  async performStartLogin(generation) {
+    this.requireGeneration(generation);
     try {
       const result = await this.run(this.command, ["login", "--no-browser"], { timeoutMs: 15_000, env: this.environment });
+      this.requireGeneration(generation);
       const authorization = parseLoginAuthorization(`${result.stdout}\n${result.stderr}`);
       if (result.code !== 0 || !authorization.verificationUrl) {
         throw Object.assign(new Error("Notion CLI 未返回可用的浏览器授权地址，请重试。"), { code: "NOTION_LOGIN_START_FAILED" });
       }
       const expiresAt = new Date(this.now() + LOGIN_TIMEOUT_MS).toISOString();
       const browserOpened = await this.openBrowser(authorization.verificationUrl);
+      this.requireGeneration(generation);
       this.pendingLogin = { expiresAt };
       return {
         state: "authorizing",
@@ -67,22 +98,49 @@ export class NotionCliConnection {
     }
   }
 
-  async pollLogin() {
+  pollLogin() {
+    const generation = this.generation;
+    return this.serialize(() => this.performPollLogin(generation));
+  }
+
+  async performPollLogin(generation) {
+    this.requireGeneration(generation);
     if (this.pendingLogin && this.now() >= new Date(this.pendingLogin.expiresAt).getTime()) {
       this.pendingLogin = null;
       throw Object.assign(new Error("Notion 授权已超时，请重新连接。"), { statusCode: 410, code: "NOTION_LOGIN_EXPIRED" });
     }
-    await this.run(this.command, ["login", "poll"], { timeoutMs: 15_000, env: this.environment }).catch(() => null);
+    let poll;
+    try { poll = await this.run(this.command, ["login", "poll"], { timeoutMs: 15_000, env: this.environment }); }
+    catch {
+      this.requireGeneration(generation);
+      throw Object.assign(new Error("Notion 授权状态暂时无法读取，请稍后重试。"), { statusCode: 503, code: "NOTION_STATUS_UNAVAILABLE" });
+    }
+    this.requireGeneration(generation);
+    // Doctor may still describe a previously authorized workspace. Only a
+    // successful exchange of this login attempt permits its completion.
+    if (poll.code !== 0 || /authorization[_ ]pending|(?:login|authorization) (?:is )?(?:pending|incomplete)|not yet (?:authorized|authenticated)|waiting for (?:authorization|approval|confirmation)/i.test(`${poll.stdout}\n${poll.stderr}`)) {
+      throw Object.assign(new Error("Notion 授权尚未完成，请先在浏览器中确认工作区授权。"), { statusCode: 409, code: "NOTION_LOGIN_PENDING" });
+    }
     const status = await this.status();
+    this.requireGeneration(generation);
+    if (status.details?.statusCheck === "unavailable") throw Object.assign(new Error("Notion 状态暂时无法读取，请稍后重试。"), { statusCode: 503, code: "NOTION_STATUS_UNAVAILABLE" });
     if (status.state !== "connected") throw Object.assign(new Error("Notion 授权尚未完成，请先在浏览器中确认工作区授权。"), { statusCode: 409, code: "NOTION_LOGIN_PENDING" });
     this.pendingLogin = null;
     return status;
   }
 
-  async clearConfiguration() {
+  clearConfiguration() {
+    ++this.generation;
+    ++this.statusRequest;
+    this.pendingLogin = null;
+    return this.serialize(() => this.performClearConfiguration());
+  }
+
+  async performClearConfiguration() {
     try {
       const result = await this.run(this.command, ["logout"], { timeoutMs: 15_000, env: this.environment });
       if (result.code !== 0) throw Object.assign(new Error("Notion CLI logout failed"), { code: "NOTION_LOGOUT_FAILED" });
+      ++this.statusRequest;
       this.pendingLogin = null;
       this.lastStatus = { state: "needs_setup", statusLabel: "需要浏览器授权", details: { cliReady: true } };
       return this.lastStatus;
@@ -184,17 +242,18 @@ export function runCommand(command, args, { timeoutMs = 30_000, env = process.en
   });
 }
 
-function safeError(error) {
-  return (error instanceof Error ? error.message : String(error)).replace(/[\r\n\t]+/g, " ").slice(0, 240);
-}
-
 function isExecutablePathAvailable(command) {
   return !path.isAbsolute(String(command || "")) || fs.existsSync(command);
 }
 
 function doctorHasAuthenticatedWorkspace(value) {
   const output = String(value || "").replace(/\u001b\[[0-9;]*m/g, "").toLowerCase();
-  if (/no token found|no default workspace|no workspace selected|run [`']?ntn login/.test(output)) return false;
+  if (doctorRequiresLogin(output)) return false;
   return /token source\s+[^!\n]*[✔✓]|public api access\s+[^!\n]*[✔✓]|workers access\s+[^!\n]*[✔✓]/i.test(output)
     || (!output.includes("!") && /healthy|authenticated|connected/.test(output));
+}
+
+function doctorRequiresLogin(value) {
+  const output = String(value || "").replace(/\u001b\[[0-9;]*m/g, "").toLowerCase();
+  return /no token found|no default workspace|no workspace selected|run [`']?ntn login|token (?:is )?(?:expired|invalid|revoked)|unauthorized|not authenticated|not connected/.test(output);
 }

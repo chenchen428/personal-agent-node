@@ -1,7 +1,7 @@
 "use client";
 
 import { CheckCircle2, ExternalLink, LoaderCircle, MessageCircle, PlugZap, Trash2 } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import { Button } from "../desktop-v72/primitives";
 import { ConnectionClearDialog } from "./connection-clear-dialog";
@@ -21,15 +21,19 @@ export function DingTalkAction({ connection, refresh }: { connection: Connection
   const [failed, setFailed] = useState(connection.state === "error");
   const [clearDialogOpen, setClearDialogOpen] = useState(false);
   const [clearing, setClearing] = useState(false);
+  const attempt = useRef(0);
   const connected = observed.state === "connected";
   const configured = Boolean(observed.details?.configured);
 
   useEffect(() => {
-    if (!saving && !syncing && !clearing) setObserved(connection);
-  }, [clearing, connection, saving, syncing]);
+    setObserved(connection);
+  }, [connection]);
+  useEffect(() => () => { attempt.current += 1; }, []);
 
-  const probe = useCallback(async (): Promise<ConnectionSyncResult> => {
-    const result = await fetchJson<{ connection: Connection }>("/api/connections/dingtalk/status");
+  const probe = useCallback(async (signal: AbortSignal): Promise<ConnectionSyncResult> => {
+    const currentAttempt = attempt.current;
+    const result = await fetchJson<{ connection: Connection }>("/api/connections/dingtalk/status", { signal });
+    if (signal.aborted || attempt.current !== currentAttempt) return { state: "pending" };
     setObserved(result.connection);
     if (result.connection.state === "connected") return { state: "completed" };
     if (result.connection.state === "error") return { state: "failed", message: result.connection.statusLabel };
@@ -41,6 +45,7 @@ export function DingTalkAction({ connection, refresh }: { connection: Connection
 
   const configure = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    const currentAttempt = ++attempt.current;
     setSaving(true); setFailed(false); setMessage(""); setExpanded(true);
     try {
       const result = await fetchJson<{ connection: Connection }>("/api/connections/dingtalk/configuration", {
@@ -48,15 +53,17 @@ export function DingTalkAction({ connection, refresh }: { connection: Connection
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ clientId, clientSecret }),
       });
+      if (attempt.current !== currentAttempt) return;
       setObserved(result.connection); setClientSecret("");
       if (result.connection.state === "connected") complete();
       else { setSyncing(true); setMessage("凭据已校验并保存，正在建立钉钉 Stream 长连接。"); }
       await refresh().catch(() => {});
-    } catch (error) { setFailed(true); setMessage(errorMessage(error)); }
-    finally { setSaving(false); }
+    } catch (error) { if (attempt.current === currentAttempt) { setFailed(true); setMessage(errorMessage(error)); } }
+    finally { if (attempt.current === currentAttempt) setSaving(false); }
   };
 
   const clearConfiguration = async () => {
+    attempt.current += 1;
     setClearing(true); setSyncing(false);
     try {
       await fetchJson("/api/connections/dingtalk/configuration", { method: "DELETE" });

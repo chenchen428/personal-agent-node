@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { describeWechatLoginError, readWechatLoginPayload, WechatLoginRequestError } from "@/components/wechat-login-error";
 import { syncWechatConnectionAfterLogin } from "@/components/wechat-login-sync";
+import { startConnectionPolling, type ConnectionSyncResult } from "./connection-polling";
 
 export type WechatLogin = {
   session: string;
@@ -27,9 +28,15 @@ export function useWechatLogin({ connected, onConnected, autoStart = false, reco
     : autoStart ? "正在生成一次性二维码…" : "生成一次性二维码后即可重新连接微信。");
   const autoStarted = useRef(false);
   const attempt = useRef(0);
+  const stopPolling = useRef<(() => void) | null>(null);
+  const connectedCallback = useRef(onConnected);
+  const wasConnected = useRef(connected);
+  useEffect(() => { connectedCallback.current = onConnected; }, [onConnected]);
+  useEffect(() => () => { attempt.current += 1; autoStarted.current = false; stopPolling.current?.(); }, []);
 
   const startLogin = useCallback(async () => {
     const currentAttempt = ++attempt.current;
+    stopPolling.current?.();
     setLogin(null);
     setPhase("generating");
     setMessage("正在向微信申请一次性二维码…");
@@ -52,6 +59,7 @@ export function useWechatLogin({ connected, onConnected, autoStart = false, reco
 
   const cancelLogin = useCallback(() => {
     attempt.current += 1;
+    stopPolling.current?.();
     setLogin(null);
     setPhase(connected ? "connected" : "idle");
     setMessage(connected ? "已取消本次重新连接，原有微信连接保持不变。" : "已取消本次微信连接。需要时可以重新生成二维码。");
@@ -64,52 +72,55 @@ export function useWechatLogin({ connected, onConnected, autoStart = false, reco
   }, [autoStart, connected, reconnectOnMount, startLogin]);
 
   useEffect(() => {
-    if (connected && !login) setPhase("connected");
+    if (!login) setPhase((current) => ["idle", "connected"].includes(current) ? connected ? "connected" : "idle" : current);
+    if (!wasConnected.current && connected) {
+      stopPolling.current?.();
+      setPhase("connected");
+      setMessage("微信连接成功。现在可以继续在微信中与 PA 沟通。");
+    }
+    if (wasConnected.current && !connected && login?.connected) {
+      attempt.current += 1;
+      setPhase("error");
+      setMessage("微信连接已断开，请重新检测或生成二维码连接。");
+    }
+    wasConnected.current = connected;
   }, [connected, login]);
 
   useEffect(() => {
     const session = login?.session;
-    if (!session) return;
-    let cancelled = false;
-    let timer = 0;
-    const poll = async () => {
-      let terminal = false;
-      if (login.expiresAt && Date.now() >= new Date(login.expiresAt).getTime()) {
-        terminal = true;
-        setPhase("expired");
-        setMessage("二维码已过期，请重新生成。");
-        return;
-      }
-      try {
-        const response = await fetch(`/api/channels/wechat/login/status?session=${encodeURIComponent(session)}`, { cache: "no-store" });
+    if (!session || (phase !== "ready" && phase !== "scanned")) return;
+    const currentAttempt = attempt.current;
+    const expired = () => { setPhase("expired"); setMessage("二维码已过期，请重新生成。"); };
+    const stop = startConnectionPolling<ConnectionSyncResult & { payload: Partial<WechatLogin> }>({
+      deadline: new Date(login.expiresAt || "").getTime() || Date.now() + 2 * 60_000,
+      initialDelayMs: 1800,
+      probe: async (signal) => {
+        const response = await fetch(`/api/channels/wechat/login/status?session=${encodeURIComponent(session)}`, { cache: "no-store", signal });
         const payload = await readWechatLoginPayload<Partial<WechatLogin> & { ok?: boolean; code?: string; error?: string }>(response);
-        if (cancelled) return;
+        const state = payload.connected || payload.status === "confirmed" ? "completed"
+          : ["missing", "expired"].includes(payload.status || "") ? "failed" : "pending";
+        return { state, payload };
+      },
+      onResult: ({ state, payload }) => {
+        if (attempt.current !== currentAttempt) return;
         setLogin((current) => current?.session === session ? { ...current, ...payload } : current);
-        if (payload.connected || payload.status === "confirmed") {
-          terminal = true;
+        if (state === "completed") {
           setPhase("connected");
           setMessage("微信连接成功。现在可以继续在微信中与 PA 沟通。");
-          const synchronized = await syncWechatConnectionAfterLogin(onConnected);
-          if (!cancelled && !synchronized) {
-            setMessage("微信连接已成功，连接列表正在同步，无需重新扫码。");
-          }
+          void syncWechatConnectionAfterLogin(connectedCallback.current).then((synchronized) => {
+            if (attempt.current === currentAttempt && !synchronized) setMessage("微信连接已成功，连接列表正在同步，无需重新扫码。");
+          });
         } else if (payload.status === "scanned") {
           setPhase("scanned");
           setMessage("二维码已扫描，请在微信中确认连接。");
-        } else if (["missing", "expired"].includes(payload.status || "")) {
-          terminal = true;
-          setPhase("expired");
-          setMessage("二维码已过期，请重新生成。");
-        }
-      } catch (error) {
-        if (!cancelled) setMessage(`${describeWechatLoginError(error)} 页面会继续检测，也可以重新生成二维码。`);
-      } finally {
-        if (!cancelled && !terminal) timer = window.setTimeout(() => void poll(), 1800);
-      }
-    };
-    timer = window.setTimeout(() => void poll(), 1800);
-    return () => { cancelled = true; window.clearTimeout(timer); };
-  }, [login?.expiresAt, login?.session, onConnected]);
+        } else if (state === "failed") expired();
+      },
+      onError: (error) => setMessage(`${describeWechatLoginError(error)} 页面会继续检测，也可以重新生成二维码。`),
+      onTimeout: expired,
+    });
+    stopPolling.current = stop;
+    return stop;
+  }, [login?.expiresAt, login?.session, phase === "ready" || phase === "scanned"]);
 
   return { login, phase, message, active: ["generating", "ready", "scanned"].includes(phase), working: phase === "generating", startLogin, cancelLogin };
 }
