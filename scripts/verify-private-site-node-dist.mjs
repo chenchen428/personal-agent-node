@@ -188,11 +188,12 @@ async function verifyApplication() {
   const controlPort = await availablePort();
   const appPort = await availablePort();
   const dataRoot = path.join(root, "workspace");
+  const probeToken = crypto.randomBytes(32).toString("hex");
   const blankProfile = { mode: "account", model: "", reasoningEffort: "", baseUrl: "", authType: "api-key", credentialConfigured: false };
   const runtimeSettings = { schemaVersion: 1, spaceId: "verification", revision: 0, engine: "codex", profiles: { codex: blankProfile, "claude-code": blankProfile } };
   const bridge = http.createServer((request, response) => {
     const allowed = request.url === "/api/node/v1/client/agent-runtime"
-      && request.headers.authorization === "Bearer verification-only-runtime-token"
+      && request.headers.authorization === `Bearer ${probeToken}`
       && request.headers["x-personal-agent-surface"] === "desktop";
     response.writeHead(allowed ? 200 : 404, { "content-type": "application/json" });
     response.end(JSON.stringify(allowed ? { ok: true, ...runtimeSettings } : { ok: false }));
@@ -203,7 +204,7 @@ async function verifyApplication() {
     PRIVATE_SITE_DATA_ROOT: dataRoot,
     PERSONAL_AGENT_CONTROL_PORT: String(controlPort),
     OPEN_AGENT_BRIDGE_INTERNAL_URL: `http://127.0.0.1:${bridge.address().port}`,
-    OPEN_AGENT_BRIDGE_API_TOKEN: "verification-only-runtime-token",
+    OPEN_AGENT_BRIDGE_API_TOKEN: probeToken,
   });
   const init = spawnSync(process.execPath, [at(manifest.entrypoints.node), "init", "--domain", "personal-agent.local", "--data-root", dataRoot], { env, encoding: "utf8", timeout: 30_000 });
   assert(init.status === 0, `Application verification init failed: ${String(init.stderr || "").trim()}`);
@@ -235,7 +236,7 @@ async function verifyApplication() {
     const remoteSettings = await fetch(`http://127.0.0.1:${appPort}/api/agent-runtime`, { headers: { ...localDesktopHeaders, "x-forwarded-host": "remote.example.site" } });
     assert(remoteSettings.status === 403, "Runtime configuration BFF accepted remote configuration");
     const page = await (await fetch(`http://127.0.0.1:${appPort}/app/setup`)).text();
-    assert(page.includes("首次设置") && page.includes("完成 Personal Agent 初始化"), "Next Setup Center did not render");
+    assert(page.includes("首次设置") && page.includes("完成 Cove 初始化"), "Next Setup Center did not render");
     return { framework: "nextjs", standalone: true, health: true, bff: true, spaces: true, gatewayRewrittenSpaces: true, runtimeSettingsRouting: true, remoteRuntimeSettingsDenied: true, setupCenter: true };
   } finally {
     control.kill("SIGTERM");
