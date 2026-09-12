@@ -1,10 +1,13 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
-import { bindClientCache, CACHE_RESET_EVENT, clearClientCache, clientResourceCache } from "@/lib/client-resource-cache";
-import { RecoveryPanel } from "./recovery-panel";
+import { usePathname } from "next/navigation";
+import { bindClientCache, CACHE_RESET_EVENT, clearClientCache } from "@/lib/client-resource-cache";
+import { CLIENT_SCOPE_ENDPOINT, clientScopeKey } from "@/lib/client-scope";
+import { SafeClientStartup } from "./safe-client-startup";
 
 export function ClientSessionBoundary({ children }: { children: ReactNode }) {
+  const pathname = usePathname();
   const [state, setState] = useState({ scope: "", error: false });
   const pending = useRef<AbortController | null>(null);
   const generation = useRef(0);
@@ -16,14 +19,13 @@ export function ClientSessionBoundary({ children }: { children: ReactNode }) {
     if (signal?.aborted) abort();
     signal?.addEventListener("abort", abort, { once: true });
     try {
-      const response = await fetch("/api/node/v1/client/overview", { cache: "no-store", signal: controller.signal });
+      const response = await fetch(CLIENT_SCOPE_ENDPOINT, { cache: "no-store", signal: controller.signal });
       if (!response.ok) throw new Error("Current Space unavailable");
       const payload = await response.json();
-      const value = payload.data ?? payload.result ?? payload;
-      if (typeof value.space?.id !== "string" || !value.space.id) throw new Error("Missing Space identity");
+      if (payload.ok === false) throw new Error("Current Space unavailable");
       if (controller.signal.aborted || revision !== generation.current) return;
-      const scope = `${window.location.origin}:${value.machine?.id || ""}:${value.space.id}`;
-      bindClientCache(scope); clientResourceCache.set("/api/node/v1/client/overview", value);
+      const scope = clientScopeKey(payload, window.location.origin);
+      bindClientCache(scope);
       setState({ scope, error: false });
     } catch { if (!controller.signal.aborted && revision === generation.current) setState((previous) => ({ ...previous, error: true })); }
     finally { signal?.removeEventListener("abort", abort); }
@@ -36,6 +38,6 @@ export function ClientSessionBoundary({ children }: { children: ReactNode }) {
     window.addEventListener("pagehide", clear); window.addEventListener(CACHE_RESET_EVENT, reset); window.addEventListener("pageshow", show);
     return () => { controller.abort(); generation.current += 1; pending.current?.abort(); window.removeEventListener("pagehide", clear); window.removeEventListener(CACHE_RESET_EVENT, reset); window.removeEventListener("pageshow", show); clearClientCache("unmount"); };
   }, [connect]);
-  if (!state.scope) return state.error ? <RecoveryPanel full onRetry={() => { setState({ scope: "", error: false }); void connect(); }} /> : <main className="cove-first-load" role="status">正在连接当前空间…</main>;
+  if (!state.scope) return <SafeClientStartup pathname={pathname} failed={state.error} onRetry={() => { setState({ scope: "", error: false }); void connect(); }} />;
   return <div key={state.scope} style={{ display: "contents" }}>{children}</div>;
 }

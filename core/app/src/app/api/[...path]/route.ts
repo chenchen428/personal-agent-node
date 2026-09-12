@@ -67,7 +67,7 @@ function isSpaceManagementPath(path: string[]) {
 
 function resolveUpstream(path: string[]): { target: "control" | "agent"; path: string[] } {
   if (path[0] === "system") return { target: "control", path: path.slice(1) };
-  const controlRoots = new Set(["agent-runtime", "codex-settings", "token-limit", "authorization", "data-export", "extensions", "mail", "onboarding", "plugins", "projects", "server-status", "setup", "spaces", "update", "wechat"]);
+  const controlRoots = new Set(["client-scope", "agent-runtime", "codex-settings", "token-limit", "authorization", "data-export", "extensions", "mail", "onboarding", "plugins", "projects", "server-status", "setup", "spaces", "update", "wechat"]);
   if (controlRoots.has(path[0])) return { target: "control", path };
   if (path[0] === "app") {
     const appRoutes: Record<string, string> = { data: "agent-data", schedules: "agent-corn", mail: "mail" };

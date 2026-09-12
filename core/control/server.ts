@@ -90,6 +90,27 @@ async function handleRequest(request, response) {
     await sendJson(response, { ok: true, projects: projectRegistry?.projects || [] }, request.method === 'HEAD');
     return;
   }
+  if (url.pathname === '/api/client-scope') {
+    if (request.method !== 'GET' && request.method !== 'HEAD') {
+      send(response, 405, 'text/plain; charset=utf-8', 'Method Not Allowed');
+      return;
+    }
+    if (url.search) {
+      sendJsonStatus(response, 400, { ok: false, error: { code: 'CLIENT_SCOPE_FIXED', message: '当前空间由服务端确定，不接受空间选择参数' } }, request.method === 'HEAD');
+      return;
+    }
+    const installation = readJsonFile(path.join(updateConfig.installationRoot, 'installation.json'));
+    const installationId = installation?.installationId;
+    const spaceId = updateConfig.space?.id;
+    if (typeof installationId !== 'string' || !installationId || typeof spaceId !== 'string' || !spaceId) {
+      sendJsonStatus(response, 503, { ok: false, error: { code: 'CLIENT_SCOPE_UNAVAILABLE', message: '本机空间尚未准备完成，请检查初始化状态' } }, request.method === 'HEAD');
+      return;
+    }
+    // Identity comes only from this Control process's selected installation/Space.
+    // No Agent call, other-Space inventory, path, credentials or customer content.
+    sendJsonStatus(response, 200, { ok: true, schemaVersion: 1, installationId, spaceId }, request.method === 'HEAD');
+    return;
+  }
   if (url.pathname === '/api/server-status') {
     if (request.method !== 'GET' && request.method !== 'HEAD') {
       send(response, 405, 'text/plain; charset=utf-8', 'Method Not Allowed');

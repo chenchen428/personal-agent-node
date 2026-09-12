@@ -39,7 +39,6 @@ const preactivationEnvironment = {
 };
 const privateSite = path.join(target, "core", "runtime", "bin", "private-site.mjs");
 runCandidate(privateSite, ["init", "--domain", args.domain || "personal-agent.local", "--data-root", dataRoot], preactivationEnvironment);
-runCandidate(privateSite, ["app-compatibility", "--data-root", dataRoot], preactivationEnvironment);
 const oldCurrent = pointerTarget(current);
 if (oldCurrent && path.resolve(oldCurrent) !== path.resolve(target)) replacePointer(previous, oldCurrent);
 replacePointer(current, target);

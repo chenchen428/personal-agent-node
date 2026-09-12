@@ -212,6 +212,13 @@ async function verifyApplication() {
     await waitForHttp(`http://127.0.0.1:${appPort}/healthz`);
     const health = await (await fetch(`http://127.0.0.1:${appPort}/healthz`)).json();
     assert(health.architecture === "core-workspace", "Next health contract is invalid");
+    // The Agent fixture does not implement overview: Control identity must still unlock recovery pages.
+    for (const route of ["/api/system/client-scope", "/api/client-scope"]) {
+      const scopeResponse = await fetch(`http://127.0.0.1:${appPort}${route}`, { headers: { "user-agent": "Mobile Safari" } });
+      const scope = await scopeResponse.json();
+      assert(scopeResponse.status === 200 && scope.schemaVersion === 1 && typeof scope.installationId === "string" && typeof scope.spaceId === "string", `Control-only client scope failed: ${route}`);
+      assert(Object.keys(scope).every((key) => ["ok", "schemaVersion", "installationId", "spaceId"].includes(key)), "Client scope leaked data beyond its selected identity");
+    }
     const setup = await fetch(`http://127.0.0.1:${appPort}/api/system/setup`);
     assert(setup.status === 200, `Next BFF setup route failed: ${setup.status}`);
     const setupBody = await setup.json();
@@ -232,7 +239,7 @@ async function verifyApplication() {
     assert(remoteSettings.status === 403, "Runtime configuration BFF accepted remote configuration");
     const page = await (await fetch(`http://127.0.0.1:${appPort}/app/setup`)).text();
     assert(page.includes("首次设置") && page.includes("完成 Cove 初始化"), "Next Setup Center did not render");
-    return { framework: "nextjs", standalone: true, health: true, bff: true, spaces: true, gatewayRewrittenSpaces: true, runtimeSettingsRouting: true, remoteRuntimeSettingsDenied: true, setupCenter: true };
+    return { framework: "nextjs", standalone: true, health: true, bff: true, clientScopeWithoutAgent: true, spaces: true, gatewayRewrittenSpaces: true, runtimeSettingsRouting: true, remoteRuntimeSettingsDenied: true, setupCenter: true };
   } finally {
     control.kill("SIGTERM");
     app.kill("SIGTERM");

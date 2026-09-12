@@ -7,7 +7,8 @@
 - 桌面客户端明确注册的菜单页面使用 React 19.2 公开 `Activity` API。按最近访问顺序保留最多8个页面实例；超出上限的最旧实例卸载。被淘汰的页面下次重新初始化，尚在缓存中的页面保留本地状态。
 - 页面仍使用原来的独立页面组件。侧栏通过 Next 支持的原生 History API 更新地址；服务端详情、兼容路由和手机页面继续交给 Next。没有保存或冻结 Next 的路由 children，也没有依赖内部 Context。
 - `Activity` 隐藏时会清理 effects，重新显示时重新订阅和获取数据。邮件、数据、任务、Token和运行设置因此需要保留已有选择与未保存草稿，而不能在每次 effect 启动时重置。
-- 数据缓存仅存在当前浏览器文档内，最多64项、约8 MiB，不写 localStorage、sessionStorage、IndexedDB 或服务端共享缓存。首次通过现有 overview API 的 `space.id`、`machine.id` 与当前 origin 绑定身份。切换完整文档、退出、认证失效时清除缓存；bfcache 恢复时重新校验空间身份。
+- 数据缓存仅存在当前浏览器文档内，最多64项、约8 MiB，不写 localStorage、sessionStorage、IndexedDB 或服务端共享缓存。通过独立 Control 服务的 `/api/system/client-scope` 返回的 installationId、spaceId 与当前 origin 绑定身份；该接口不读取Agent、不列出其他空间、不接受客户端选择Space。切换完整文档、退出、认证失效时清除缓存；bfcache 恢复时重新校验空间身份。
+- 身份尚未绑定时SSR仍输出不含私有数据的初始化/运行设置启动壳和真实恢复入口，不渲染旧空间的缓存页面。Control可用但Agent故障时仍可完成身份绑定，进入完整客户端与初始化、设置界面；具体Agent功能独立显示自己的错误状态，不阻塞整个客户端。
 - 请求使用 AbortController 与版本编号。取消、切换Space后的迟到结果不得写回缓存；同一资源较旧的并发响应也不能覆盖较新的成功结果。HTTP 401/403 清除全部私有快照，不以旧数据代替访问授权。
 - 每个缓存页面单独捕获渲染错误。“重新加载此页面”仅重建该实例并移除它读取的缓存，不重置其他菜单。Next 页面和全局错误也使用统一恢复面板。
 

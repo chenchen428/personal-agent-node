@@ -116,7 +116,7 @@ test("desktop cache uses public Activity and native history with per-page error 
   assert.match(cache, /clientResourceCache\.forgetRoute\(path\)/);
   assert.doesNotMatch(cache, /LayoutRouterContext|next\/dist|childrenByPath|cloneElement/);
   assert.doesNotMatch(resources, /localStorage|sessionStorage|indexedDB/);
-  assert.match(session, /value\.space\?\.id/);
+  assert.match(session, /clientScopeKey\(payload, window\.location\.origin\)/);
   assert.match(session, /pagehide/); assert.match(session, /event\.persisted/);
   assert.match(read("app/app/error.tsx"), /RecoveryPanel onRetry=\{reset\}/);
   assert.match(read("app/global-error.tsx"), /<html lang="zh-CN">/);

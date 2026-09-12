@@ -171,7 +171,6 @@ func Install(ctx context.Context, opts Options, runner Runner) (result Result, r
 	env := envFor(resolved)
 	for _, args := range [][]string{
 		{privateSite, "init", "--domain", resolved.Domain, "--data-root", resolved.DataRoot},
-		{privateSite, "app-compatibility", "--data-root", resolved.DataRoot},
 	} {
 		commandCtx, cancel := context.WithTimeout(ctx, 10*time.Minute)
 		_, runErr := runner.Run(commandCtx, node, args, env)

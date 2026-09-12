@@ -113,6 +113,50 @@ test('release installation does not materialize repository Agent compatibility l
   );
 });
 
+test('release installer activates a runtime without retired App commands and preserves user App files', () => {
+  const sandbox = fs.mkdtempSync(path.join(os.tmpdir(), 'cove-retired-app-install-'));
+  assert.equal(path.dirname(sandbox), path.resolve(os.tmpdir()));
+  const home = path.join(sandbox, 'home');
+  const installRoot = path.join(home, 'core');
+  const dataRoot = path.join(home, 'workspace');
+  const legacyApp = path.join(dataRoot, 'apps', 'installed', 'user-app', 'data', 'history.json');
+  fs.mkdirSync(path.dirname(legacyApp), { recursive: true });
+  fs.writeFileSync(legacyApp, '{"preserve":"user content"}');
+  const makeFixture = (releaseId, failInit = false) => {
+    const source = path.join(sandbox, releaseId);
+    fs.mkdirSync(path.join(source, 'scripts'), { recursive: true });
+    fs.mkdirSync(path.join(source, 'core/runtime/bin'), { recursive: true });
+    fs.writeFileSync(path.join(source, 'release-manifest.json'), JSON.stringify({ schemaVersion: 2, releaseType: 'personal-agent-node', releaseId, profile: 'personal', revision: releaseId }));
+    // This fixture exercises the real install/pointer code. Artifact security
+    // verification has its separate tests; candidate command dispatch is strict.
+    fs.writeFileSync(path.join(source, 'scripts/verify-private-site-node-dist.mjs'), 'process.exitCode = 0;\n');
+    fs.writeFileSync(path.join(source, 'core/runtime/bin/private-site.mjs'), `import fs from 'node:fs';import path from 'node:path';
+const args=process.argv.slice(2);if(args[0]!=='init')throw new Error('unsupported candidate command: '+args[0]);
+if(${failInit})throw new Error('fixture initialization failed');
+const root=args[args.indexOf('--data-root')+1];fs.mkdirSync(root,{recursive:true});fs.appendFileSync(path.join(root,'candidate-calls.txt'),args[0]+'\\n');\n`);
+    return source;
+  };
+  const install = (source) => spawnSync(process.execPath, ['scripts/install-private-site-node-release.mjs', source, '--home', home, '--install-root', installRoot, '--data-root', dataRoot], { cwd: root, encoding: 'utf8' });
+  try {
+    const first = install(makeFixture('first'));
+    assert.equal(first.status, 0, first.stderr);
+    assert.equal(path.basename(fs.realpathSync(path.join(installRoot, 'current'))), 'first');
+    const second = install(makeFixture('second'));
+    assert.equal(second.status, 0, second.stderr);
+    assert.equal(path.basename(fs.realpathSync(path.join(installRoot, 'current'))), 'second');
+    assert.equal(path.basename(fs.realpathSync(path.join(installRoot, 'previous'))), 'first');
+    const failed = install(makeFixture('failed', true));
+    assert.notEqual(failed.status, 0);
+    assert.match(failed.stderr, /Candidate preactivation failed/);
+    assert.equal(path.basename(fs.realpathSync(path.join(installRoot, 'current'))), 'second');
+    assert.equal(path.basename(fs.realpathSync(path.join(installRoot, 'previous'))), 'first');
+    assert.equal(fs.readFileSync(path.join(dataRoot, 'candidate-calls.txt'), 'utf8'), 'init\ninit\n');
+    assert.equal(fs.readFileSync(legacyApp, 'utf8'), '{"preserve":"user content"}');
+  } finally {
+    fs.rmSync(sandbox, { recursive: true, force: true });
+  }
+});
+
 test('local deployment installs and rolls back with the bundled release installer', () => {
   const deployment = fs.readFileSync(path.join(root, 'scripts', 'deploy-private-site-node.mjs'), 'utf8');
   const desktopBuild = fs.readFileSync(path.join(root, 'scripts', 'build-desktop-shell.mjs'), 'utf8');

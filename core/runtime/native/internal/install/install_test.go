@@ -35,18 +35,21 @@ func TestEnvForPreservesUserCLIBin(t *testing.T) {
 
 func (runner *fakeRunner) Run(_ context.Context, command string, args []string, _ []string) ([]byte, error) {
 	runner.calls = append(runner.calls, command+" "+strings.Join(args, " "))
+	if len(args) > 1 && args[1] == "app-compatibility" {
+		return nil, errors.New("retired App compatibility command must not execute")
+	}
 	return []byte(`{"platform":"darwin","serviceId":"site.personal-agent.private-site-node","filePath":"/tmp/source","installPath":"/tmp/target"}`), nil
 }
 
 type pointerObservingRunner struct {
 	fakeRunner
-	current                string
-	currentAtCompatibility string
+	current       string
+	currentAtInit string
 }
 
 func (runner *pointerObservingRunner) Run(ctx context.Context, command string, args []string, env []string) ([]byte, error) {
-	if strings.Contains(strings.Join(args, " "), "app-compatibility") {
-		runner.currentAtCompatibility = filepath.Base(pointerTarget(runner.current))
+	if len(args) > 1 && args[1] == "init" {
+		runner.currentAtInit = filepath.Base(pointerTarget(runner.current))
 	}
 	return runner.fakeRunner.Run(ctx, command, args, env)
 }
@@ -298,10 +301,10 @@ func TestInstallSwitchesCurrentAndRetainsPreviousWithoutHostNode(t *testing.T) {
 	if filepath.Base(previous) != "release-one" {
 		t.Fatalf("previous=%s", previous)
 	}
-	if len(runner.calls) != 6 {
-		t.Fatalf("expected init+app-compatibility+prepare for each install, got %v", runner.calls)
+	if len(runner.calls) != 4 {
+		t.Fatalf("expected init+prepare for each install, got %v", runner.calls)
 	}
-	assertCompatibilityBeforeActivation(t, runner.calls, "release-two")
+	assertInitBeforePreparation(t, runner.calls, "release-two")
 	if _, err := os.Stat(filepath.Join(pointerTarget(filepath.Join(installRoot, "current")), "runtime", "node")); err != nil {
 		t.Fatal(err)
 	}
@@ -371,24 +374,24 @@ func TestInstallLeavesMutableWorkspaceProvisioningToPersonalSpacePrepare(t *test
 	}
 }
 
-func assertCompatibilityBeforeActivation(t *testing.T, calls []string, release string) {
+func assertInitBeforePreparation(t *testing.T, calls []string, release string) {
 	t.Helper()
-	compatibility := -1
+	initialization := -1
 	prepare := -1
 	for index, call := range calls {
-		if strings.Contains(call, release) && strings.Contains(call, "app-compatibility") {
-			compatibility = index
+		if strings.Contains(call, release) && strings.Contains(call, " init ") {
+			initialization = index
 		}
 		if strings.Contains(call, release) && strings.Contains(call, " prepare ") {
 			prepare = index
 		}
 	}
-	if compatibility == -1 || prepare == -1 || compatibility >= prepare {
-		t.Fatalf("App compatibility must precede %s activation preparation: %v", release, calls)
+	if initialization == -1 || prepare == -1 || initialization >= prepare {
+		t.Fatalf("Initialization must precede %s activation preparation: %v", release, calls)
 	}
 }
 
-func TestUpgradeChecksAppCompatibilityBeforeSwitchingCurrent(t *testing.T) {
+func TestUpgradeInitializesBeforeSwitchingCurrent(t *testing.T) {
 	root := t.TempDir()
 	installRoot := filepath.Join(root, "install")
 	dataRoot := filepath.Join(root, "data")
@@ -406,8 +409,8 @@ func TestUpgradeChecksAppCompatibilityBeforeSwitchingCurrent(t *testing.T) {
 	if _, err := Install(context.Background(), options("release-two"), runner); err != nil {
 		t.Fatal(err)
 	}
-	if runner.currentAtCompatibility != "release-one" {
-		t.Fatalf("compatibility ran after current switched: observed %q", runner.currentAtCompatibility)
+	if runner.currentAtInit != "release-one" {
+		t.Fatalf("initialization ran after current switched: observed %q", runner.currentAtInit)
 	}
 }
 
