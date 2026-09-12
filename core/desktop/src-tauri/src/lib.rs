@@ -106,7 +106,7 @@ pub fn run() {
             let nav_for_page = Arc::clone(&navigation);
             let window =
                 WebviewWindowBuilder::new(app, MAIN_WINDOW, WebviewUrl::App("index.html".into()))
-                    .title("Personal Agent")
+                    .title("Cove")
                     .inner_size(1280.0, 840.0)
                     .min_inner_size(900.0, 620.0)
                     .center()

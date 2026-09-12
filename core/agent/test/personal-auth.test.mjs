@@ -50,8 +50,8 @@ test("renders a password-only responsive login page", async () => {
     assert.match(html, /name="password"/);
     assert.match(html, /name="viewport"/);
     assert.match(html, /value="\/agent-corn"/);
-    assert.match(html, /进入 Personal Agent/);
-    assert.match(html, /--primary:#262625/);
+    assert.match(html, /进入 Cove/);
+    assert.match(html, /--primary:#173f3b/);
     assert.match(html, /@media\(max-width:760px\)/);
     assert.doesNotMatch(html, /--forest:/);
     assert.doesNotMatch(html, /name="username"/);

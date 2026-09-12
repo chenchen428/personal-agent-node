@@ -1,3 +1,5 @@
+
+import { CoveMark } from "../brand/cove-mark";
 import { ConversationPlan } from "./conversation-plan";
 import { formatTime } from "./shared";
 import type { CurrentPlan, LinkedTask, Message } from "./types";
@@ -15,11 +17,11 @@ export function ConversationMessageList({ messages, loading, loadingEarlier, has
     {messages.map((message, index) => {
       const user = message.role === "user";
       return <article className={`message${user ? " user" : ""}${message.metadata?.optimistic ? " optimistic" : ""}`} key={message.metadata?.clientMessageId || message.id} data-message-id={message.metadata?.clientMessageId || message.id}>
-        <span className={`avatar${user ? " user" : ""}`}>{user ? "你" : "PA"}</span>
+        <span className={`avatar${user ? " user" : ""}`}>{user ? "你" : <CoveMark title="Cove" />}</span>
         <div className="message-content"><MessageAttachments messageId={message.metadata?.clientMessageId || message.id} attachments={message.metadata?.attachments || []} /><div className="message-body"><div><MarkdownContent content={message.content} linkTransform={localTaskDetailHref} previewImages />{linkedTask && index === linkedIndex ? <TaskReference task={linkedTask} /> : null}</div>{index === planIndex ? <ConversationPlan plan={plan} /> : null}<div className="message-meta">{user && message.metadata?.sourceLabel ? <span className="message-source">{message.metadata.sourceLabel}</span> : null}<time className="message-time" dateTime={message.createdAt}>{formatTime(message.createdAt)}</time></div></div></div>
       </article>;
     })}
-    {processing ? <article className="message message-processing" role="status" aria-live="polite"><span className="avatar">PA</span><div className="message-body"><span className="message-dots" aria-hidden="true"><i /><i /><i /></span><p>正在处理，回复会自动显示</p></div></article> : null}
+    {processing ? <article className="message message-processing" role="status" aria-live="polite"><span className="avatar"><CoveMark title="Cove" /></span><div className="message-body"><span className="message-dots" aria-hidden="true"><i /><i /><i /></span><p>正在处理，回复会自动显示</p></div></article> : null}
     {!loading && !messages.length ? <ConversationEmpty /> : null}
   </>;
 }
@@ -27,7 +29,7 @@ export function ConversationMessageList({ messages, loading, loadingEarlier, has
 function ConversationEmpty() {
   return <div className="conversation-empty" role="status">
     <span className="conversation-empty-mark" aria-hidden="true"><i /><i /><i /></span>
-    <small>PERSONAL AGENT</small>
+    <small>COVE</small>
     <strong>有什么想做的，直接告诉我</strong>
     <p>从一个想法、一段资料或一件待办开始，我会理解目标并持续推进。</p>
     <span className="conversation-empty-hint">输入框已准备好</span>

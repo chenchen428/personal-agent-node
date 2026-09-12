@@ -17,8 +17,8 @@
     "active": true,
     "targets": "all",
     "category": "Productivity",
-    "shortDescription": "Local-first Personal Agent",
-    "longDescription": "A lightweight desktop window for the Personal Agent Node Web Console.",
+    "shortDescription": "Cove — Your data. Put to work.",
+    "longDescription": "Cove connects your files, email, and tools with an AI assistant in your own workspace.",
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",

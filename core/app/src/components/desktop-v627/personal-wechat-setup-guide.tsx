@@ -26,13 +26,13 @@ export function PersonalWechatSetupGuide({ setup, servicePort, onServicePortChan
     <ol>
       <li><strong>安装并授权</strong><span>按官方快速入门安装千寻 Pro 与受支持的 PC 微信版本，申请试用或购买授权后添加微信并完成登录。</span></li>
       <li><strong>确认服务端口</strong><span>填写千寻 Pro 为当前微信启用的 HTTP 服务端口；检测地址为 <code>http://127.0.0.1:{servicePort || "端口"}/wechat/httpapi</code>。<label className="personal-wechat-port-field"><span>千寻服务端口</span><input type="text" inputMode="numeric" pattern="[0-9]*" maxLength={5} value={servicePort} disabled={portDisabled} aria-label="千寻服务端口" aria-describedby="personal-wechat-port-hint" onChange={(event) => onServicePortChange(event.target.value.replace(/\D/g, ""))} /><small id="personal-wechat-port-hint">默认 8055，可按千寻 Pro 中的实际配置修改</small></label></span></li>
-      <li><strong>配置消息回调</strong><span>把下面的完整地址填入千寻 Pro 的 HTTP 事件回调配置；Personal Agent 只接受来自本机的回调。</span></li>
+      <li><strong>配置消息回调</strong><span>把下面的完整地址填入千寻 Pro 的 HTTP 事件回调配置；Cove 只接受来自本机的回调。</span></li>
     </ol>
     <div className="personal-wechat-callback-field">
       <span><small>消息回调地址</small><code>{callbackUrl || "正在读取本机回调地址…"}</code></span>
       <button type="button" onClick={() => void copyCallback()} disabled={!callbackUrl} aria-label="复制个人微信消息回调地址">{copied ? <Check /> : <Copy />}{copied ? "已复制" : "复制"}</button>
     </div>
-    <p>保存千寻 Pro 配置并确认微信在线、授权有效后，再点击“检测千寻并配置”。检测成功时会保存上面的端口；Personal Agent 不会下载、启动或更新千寻 Pro 和微信。</p>
+    <p>保存千寻 Pro 配置并确认微信在线、授权有效后，再点击“检测千寻并配置”。检测成功时会保存上面的端口；Cove 不会下载、启动或更新千寻 Pro 和微信。</p>
   </section>;
 }
 

@@ -42,7 +42,7 @@ export function MobilePages({ pageId = "" }: { pageId?: string }) {
     <div className="page-list-page">
       {error ? <InlineError message={error} /> : null}
       {hasConditions ? <SearchStatus count={filtered.length} summary={conditionSummary} onClear={() => { setQuery(""); setFilter("all"); }} /> : null}
-      {!loading && !filtered.length ? <SearchEmpty title={hasConditions ? "没有找到相关页面" : "还没有发布页"} hint={hasConditions ? "调整搜索词或发布范围后再试" : "PA 发布页面后会显示在这里"} /> : null}
+      {!loading && !filtered.length ? <SearchEmpty title={hasConditions ? "没有找到相关页面" : "还没有发布页"} hint={hasConditions ? "调整搜索词或发布范围后再试" : "Cove 发布页面后会显示在这里"} /> : null}
       {initialLoading ? <MobileContentSkeleton kind="pages" /> : <OrderedPageGrid layoutKey={filtered.map((item) => item.id).join("|")}>{filtered.map((item, index) => <PageCard page={item} index={index} key={item.id} />)}</OrderedPageGrid>}
       {loading && !initialLoading ? <LoadSentinel loading canLoad={false} exhausted={false} onLoad={() => undefined} /> : null}
     </div>
@@ -53,18 +53,18 @@ function PageCard({ page, index }: { page: PageItem; index: number }) {
   const cover = coverKind(page, index);
   return <Link className="online-page-card" href={`/app/mobile/pages/${encodeURIComponent(page.id)}`}>
     <div className={`online-page-cover cover-${cover}${page.mobileThumbnailUrl ? " has-mobile-thumbnail" : ""}`}><PageShot page={page} kind={cover} /></div>
-    <div className="online-page-body"><div className="online-page-meta"><span className={`visibility${page.visibility === "private" ? " private" : ""}`}>{page.visibility === "private" ? "私有" : "公开"}</span><time dateTime={page.updatedAt} title={formatDateTime(page.updatedAt)}>{relativeTime(page.updatedAt)}</time></div><h2>{page.title}</h2><p>{page.summary}</p><span className="online-page-source">PA</span></div>
+    <div className="online-page-body"><div className="online-page-meta"><span className={`visibility${page.visibility === "private" ? " private" : ""}`}>{page.visibility === "private" ? "私有" : "公开"}</span><time dateTime={page.updatedAt} title={formatDateTime(page.updatedAt)}>{relativeTime(page.updatedAt)}</time></div><h2>{page.title}</h2><p>{page.summary}</p><span className="online-page-source">Cove</span></div>
   </Link>;
 }
 
 function PageShot({ page, kind }: { page: PageItem; kind: string }) {
   const thumbnailUrl = page.mobileThumbnailUrl || page.thumbnailUrl;
   if (thumbnailUrl) return <img src={thumbnailUrl} alt={page.mobileThumbnailAlt || page.thumbnailAlt || `${page.title} 页面预览`} style={{ width: "100%", height: "100%", objectFit: "cover" }} />;
-  if (kind === "finance") return <div className="page-shot page-shot-finance"><span>PERSONAL AGENT · PAGE</span><strong>{page.title}</strong><div className="shot-metrics"><i><b>本机</b>数据</i><i><b>{page.visibility === "private" ? "私有" : "公开"}</b>范围</i></div><div className="shot-heatmap">{Array.from({ length: 28 }, (_, index) => <i className={`heat-${index % 5}`} key={index} />)}</div></div>;
-  if (kind === "weekend") return <div className="page-shot page-shot-weekend"><span>PERSONAL AGENT · PAGE</span><strong>{page.title}</strong><div className="shot-list"><i>01 已整理</i><i>02 可随时查看</i><i>03 保存在你的空间</i></div></div>;
-  if (kind === "journal") return <div className="page-shot page-shot-journal"><span>PERSONAL AGENT · PAGE</span><strong>{page.title}</strong><div className="shot-photo"><i /><i /><i /></div></div>;
-  if (kind === "camp") return <div className="page-shot page-shot-camp"><span>PERSONAL AGENT · PAGE</span><strong>{page.title}</strong><div className="shot-checks"><i>✓ 内容已整理</i><i>✓ 随时可查看</i><i>● 后续可更新</i></div></div>;
-  return <div className="page-shot page-shot-travel"><span>PERSONAL AGENT · PAGE</span><strong>{page.title}</strong><p>{page.summary}</p><div><i>范围<br /><b>{page.visibility === "private" ? "只对你开放" : "可公开访问"}</b></i><i>更新<br /><b>{relativeTime(page.updatedAt)}</b></i></div></div>;
+  if (kind === "finance") return <div className="page-shot page-shot-finance"><span>COVE · PAGE</span><strong>{page.title}</strong><div className="shot-metrics"><i><b>本机</b>数据</i><i><b>{page.visibility === "private" ? "私有" : "公开"}</b>范围</i></div><div className="shot-heatmap">{Array.from({ length: 28 }, (_, index) => <i className={`heat-${index % 5}`} key={index} />)}</div></div>;
+  if (kind === "weekend") return <div className="page-shot page-shot-weekend"><span>COVE · PAGE</span><strong>{page.title}</strong><div className="shot-list"><i>01 已整理</i><i>02 可随时查看</i><i>03 保存在你的空间</i></div></div>;
+  if (kind === "journal") return <div className="page-shot page-shot-journal"><span>COVE · PAGE</span><strong>{page.title}</strong><div className="shot-photo"><i /><i /><i /></div></div>;
+  if (kind === "camp") return <div className="page-shot page-shot-camp"><span>COVE · PAGE</span><strong>{page.title}</strong><div className="shot-checks"><i>✓ 内容已整理</i><i>✓ 随时可查看</i><i>● 后续可更新</i></div></div>;
+  return <div className="page-shot page-shot-travel"><span>COVE · PAGE</span><strong>{page.title}</strong><p>{page.summary}</p><div><i>范围<br /><b>{page.visibility === "private" ? "只对你开放" : "可公开访问"}</b></i><i>更新<br /><b>{relativeTime(page.updatedAt)}</b></i></div></div>;
 }
 
 function PageReader({ page, loading, error, returnHref, returnLabel }: { page?: PageItem; loading: boolean; error: string; returnHref: string; returnLabel: string }) {

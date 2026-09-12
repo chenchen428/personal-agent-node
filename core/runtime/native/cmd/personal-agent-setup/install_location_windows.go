@@ -49,7 +49,7 @@ func selectInstallHome(defaultPath string) (string, bool, error) {
 	if initialized == 0 || initialized == 1 {
 		defer coUninitialize.Call()
 	}
-	title, err := syscall.UTF16PtrFromString("选择 Personal Agent 安装位置（程序和工作区都将保存在这里）")
+	title, err := syscall.UTF16PtrFromString("选择 Cove 安装位置（程序和工作区都将保存在这里）")
 	if err != nil {
 		return "", false, err
 	}

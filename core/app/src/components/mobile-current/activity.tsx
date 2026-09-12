@@ -61,7 +61,7 @@ export function MobileActivity() {
       {error ? <InlineError message={error} /> : null}
       {!initialLoading && !query && runningTasks.length ? <RunningTaskPresence tasks={runningTasks} expanded={tasksExpanded} setExpanded={setTasksExpanded} /> : null}
       {query ? <SearchStatus count={items.length} summary={`“${query}”`} onClear={() => setQuery("")} /> : null}
-      {!loading && !items.length ? <SearchEmpty title={query ? "没有找到相关动态" : "还没有最近动态"} hint={query ? "试试任务名称、邮件主题或页面标题" : "PA 的新工作会显示在这里"} /> : null}
+      {!loading && !items.length ? <SearchEmpty title={query ? "没有找到相关动态" : "还没有最近动态"} hint={query ? "试试任务名称、邮件主题或页面标题" : "Cove 的新工作会显示在这里"} /> : null}
       {initialLoading ? <MobileContentSkeleton kind="activity" /> : items.map((item) => <ActivityEntry item={item} key={item.id} />)}
       {!initialLoading ? <LoadSentinel loading={loading} canLoad={Boolean(cursor)} exhausted={loadedMore && !cursor} onLoad={() => void load(true)} /> : null}
     </div>
@@ -75,7 +75,7 @@ function RunningTaskPresence({ tasks, expanded, setExpanded }: { tasks: Session[
     <header><span><i aria-hidden="true" />正在工作</span><small>{tasks.length > 1 ? `${tasks.length} 项并行` : "1 项进行中"}</small></header>
     <Link className="activity-presence-primary" href={`/app/mobile/workers/${encodeURIComponent(current.id)}?from=activity`}>
       <div><strong>{current.title || "未命名任务"}</strong><time dateTime={current.updatedAt} title={formatDateTime(current.updatedAt)}>{relativeTime(current.updatedAt)}</time></div>
-      <p>{current.summary || current.taskDescription || "PA 正在处理这项任务"}</p>
+      <p>{current.summary || current.taskDescription || "Cove 正在处理这项任务"}</p>
     </Link>
     {parallelTasks.length ? <>
       <button className="activity-presence-toggle" type="button" aria-expanded={expanded} aria-controls="parallel-running-tasks" onClick={() => setExpanded(!expanded)}>

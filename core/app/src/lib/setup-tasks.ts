@@ -56,7 +56,7 @@ export function validateLocalPasswordInput(password: string, confirmation: strin
 export function managedCloudActionMessage(action?: ManagedCloudAction) {
   if (action?.state === "cancelled") return "已取消本次页面验证，原有连接保持不变。";
   if (action?.state === "failed") return cloudFailureMessage(action.code);
-  if (action?.phase === "resources") return "公网接入已确认，正在分配公网域名和 PA 邮箱。";
+  if (action?.phase === "resources") return "公网接入已确认，正在分配公网域名和 Cove 邮箱。";
   if (["starting", "running"].includes(action?.state || "idle")) return "正在后台确认 Cloud 会话并分配公网域名，无需手动操作。";
   if (action?.state === "succeeded") return "后台连接已完成，正在刷新公网域名。";
   return "";

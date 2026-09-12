@@ -153,7 +153,7 @@ test('Windows double-click setup selects one root for Core, Workspace, and stagi
   assert.match(setup, /filepath\.Join\(\*homeRoot, "workspace"\)/);
   assert.match(setup, /os\.MkdirTemp\(temporaryBase, "\.personal-agent-setup-"\)/);
   assert.match(windowsPicker, /SHBrowseForFolderW/);
-  assert.match(windowsPicker, /选择 Personal Agent 安装位置/);
+  assert.match(windowsPicker, /选择 Cove 安装位置/);
   assert.match(otherPlatforms, /return defaultPath, true, nil/);
 });
 

@@ -1,5 +1,7 @@
 "use client";
 
+import { CoveMark } from "./brand/cove-mark";
+
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
@@ -42,7 +44,7 @@ function DesktopShell({ pathname, apps, children }: { pathname: string; apps: Pe
       : active("/app/statistics/token-usage") ? "Token 统计"
         : active("/app/skills") ? "技能"
           : active("/app/settings") ? "空间设置"
-            : currentApp?.name || desktopNavigation.find((item) => active(item.href))?.label || (active("/app/apps") ? "全部应用" : "Personal Agent");
+            : currentApp?.name || desktopNavigation.find((item) => active(item.href))?.label || (active("/app/apps") ? "全部应用" : "Cove");
 
   useEffect(() => {
     let mounted = true;
@@ -55,7 +57,7 @@ function DesktopShell({ pathname, apps, children }: { pathname: string; apps: Pe
   return <div className={`desktop-v72 app-frame app-frame-embedded${collapsed ? " is-sidebar-collapsed" : ""}`}>
     <aside className={`v72-sidebar sidebar${collapsed ? " collapsed" : ""}`} aria-label="桌面端导航">
       <header className="v72-sidebar-head sidebar-head">
-        <Link className="v72-brand sidebar-brand" href="/app"><span className="v72-mark brand-mark">PA</span><span className="v72-brand-copy"><strong>Personal Agent</strong><small>本机工作区</small></span></Link>
+        <Link className="v72-brand sidebar-brand" href="/app"><span className="v72-mark brand-mark"><CoveMark title="Cove" /></span><span className="v72-brand-copy"><strong>Cove</strong><small>本机工作区</small></span></Link>
         <button className="icon-button sidebar-collapse" type="button" aria-label={collapsed ? "展开侧边栏" : "收起侧边栏"} title={collapsed ? "展开侧边栏" : "收起侧边栏"} onClick={() => setCollapsed((value) => !value)}>{collapsed ? <PanelLeftOpen /> : <PanelLeftClose />}</button>
       </header>
       <div className="v72-sidebar-scroll sidebar-scroll">
@@ -72,7 +74,7 @@ function DesktopShell({ pathname, apps, children }: { pathname: string; apps: Pe
       </div>
       <div className="v72-sidebar-bottom sidebar-bottom">
         <nav><UpdateNavItem active={active("/app/update")} />{desktopUtilityNavigation.map(({ label, href, icon: Icon }) => { const itemActive = href === "/app/settings" ? active(href) || active("/app/skills") : active(href); return <Link className={`v72-nav-link nav-link${itemActive ? " active" : ""}`} aria-current={itemActive ? "page" : undefined} href={href} title={collapsed ? label : undefined} key={href}><Icon /><span>{label}</span></Link>; })}</nav>
-        <div className="v72-runtime-chip runtime-chip" title="当前隔离空间运行正常"><i className="status-dot success" /><span><strong>PA 运行正常</strong><small>当前隔离空间独立运行</small></span></div>
+        <div className="v72-runtime-chip runtime-chip" title="当前隔离空间运行正常"><i className="status-dot success" /><span><strong>Cove 运行正常</strong><small>当前隔离空间独立运行</small></span></div>
       </div>
     </aside>
     <main className="v72-main-shell main-shell shell-card">

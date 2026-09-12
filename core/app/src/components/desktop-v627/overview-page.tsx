@@ -18,21 +18,21 @@ export function OverviewPage() {
   const remaining = setup.loading ? null : steps.filter((step) => !step.ready).length;
   const ready = remaining === 0;
   if (loading && setup.loading && !value && !setup.value) return <main className="v72-page" aria-busy="true">
-    <header className="v72-page-header"><div><h1>Personal Agent 正在准备</h1><p>正在连接本机服务并读取工作区状态。</p></div><span className="v72-badge warning"><i />正在连接</span></header>
+    <header className="v72-page-header"><div><h1>Cove 正在准备</h1><p>正在连接本机服务并读取工作区状态。</p></div><span className="v72-badge warning"><i />正在连接</span></header>
     <LoadingState label="正在读取桌面总览" />
   </main>;
   return <main className="v72-page">
-    <header className="v72-page-header"><div><h1>{ready ? "Personal Agent 已就绪" : "Personal Agent 正在准备"}</h1><p>{ready ? "查看最新动态、待处理内容和本机连接状态。" : "先完成必要设置，再把目标放心交给主 Agent。"}</p></div><span className={`v72-badge ${error || setup.error || !ready ? "warning" : "success"}`}><i />{loading || setup.loading ? "正在连接" : error || setup.error ? "部分不可用" : ready ? "全部正常" : `还差 ${remaining} 项`}</span></header>
+    <header className="v72-page-header"><div><h1>{ready ? "Cove 已就绪" : "Cove 正在准备"}</h1><p>{ready ? "查看最新动态、待处理内容和本机连接状态。" : "先完成必要设置，再把目标放心交给主 Agent。"}</p></div><span className={`v72-badge ${error || setup.error || !ready ? "warning" : "success"}`}><i />{loading || setup.loading ? "正在连接" : error || setup.error ? "部分不可用" : ready ? "全部正常" : `还差 ${remaining} 项`}</span></header>
     {!setup.loading && remaining ? <RequiredSetupGuide steps={steps} /> : null}
     <section className="v72-stat-grid">
       <Stat icon={Bot} label="进行中的任务" value={counts ? String(counts.runningWork ?? counts.work) : "—"} detail="主 Agent 当前正在推进的任务" />
       <Stat icon={Mail} label="收到的邮件" value={counts ? String(counts.mail) : "—"} detail="邮件正文和附件保存在本机" />
-      <Stat icon={FileText} label="最近发布" value={counts ? String(counts.pages) : "—"} detail="由 PA 创建并管理的发布页" />
+      <Stat icon={FileText} label="最近发布" value={counts ? String(counts.pages) : "—"} detail="由 Cove 创建并管理的发布页" />
       <Stat icon={Radio} label="渠道连接" value={counts ? String(counts.connectedChannels) : "—"} detail="已连接到这台电脑的渠道" />
     </section>
     <section className="v72-content-grid">
       <div className="v72-card v72-section-list"><header><strong>最近动态</strong><span>由主 Agent 整理</span></header>{(value?.recent || []).slice(0, 5).map((item) => <Link className={`v72-plain-row activity-${item.kind}`} href={desktopActivityHref(item)} key={item.id}><span className="v72-row-icon">{activityIcon(item.kind)}</span><span><strong>{item.title}</strong><small>{activityLabel(item.kind)} · {item.summary || statusLabel(item.status)}</small></span><time>{formatTime(item.updatedAt)}</time></Link>)}{!loading && !value?.recent.length ? <div className="v72-empty">还没有最近动态</div> : null}</div>
-      <aside className="v72-status-panel"><span>本机运行</span><h2>PA 已运行 {value ? formatDuration(value.machine.uptimeSeconds) : "—"}</h2><p>关闭客户端将停止本机服务；进行中的工作会先请求确认。</p><div className="v72-status-lines"><StatusLine label="主 Agent" value={error ? "需要检查" : "就绪"} /><StatusLine label="本机 Core" value="运行中" /><StatusLine label="当前工作区" value={value?.machine.workspaceRoot || "读取中"} copyable={Boolean(value?.machine.workspaceRoot)} /><StatusLine label="公网域名访问" value={value?.machine.mobileAccess === "available" ? "已连接" : "待连接"} /><StatusLine label="公网地址" value={value?.machine.mobileAddress || "尚未启用"} href={externalAddress(value?.machine.mobileAddress)} /></div><MobileAccessControl available={value?.machine.mobileAccess === "available"} address={value?.machine.mobileAddress} /></aside>
+      <aside className="v72-status-panel"><span>本机运行</span><h2>Cove 已运行 {value ? formatDuration(value.machine.uptimeSeconds) : "—"}</h2><p>关闭客户端将停止本机服务；进行中的工作会先请求确认。</p><div className="v72-status-lines"><StatusLine label="主 Agent" value={error ? "需要检查" : "就绪"} /><StatusLine label="本机 Core" value="运行中" /><StatusLine label="当前工作区" value={value?.machine.workspaceRoot || "读取中"} copyable={Boolean(value?.machine.workspaceRoot)} /><StatusLine label="公网域名访问" value={value?.machine.mobileAccess === "available" ? "已连接" : "待连接"} /><StatusLine label="公网地址" value={value?.machine.mobileAddress || "尚未启用"} href={externalAddress(value?.machine.mobileAddress)} /></div><MobileAccessControl available={value?.machine.mobileAccess === "available"} address={value?.machine.mobileAddress} /></aside>
     </section>
   </main>;
 }

@@ -134,7 +134,7 @@
   "examples": [
     {
       "id": "personal-agent-intro",
-      "title": "Personal Agent 产品介绍视频",
+      "title": "Cove 产品介绍视频",
       "kind": "产品视频",
       "summary": "从微信入口出发，用旅行规划、朋友圈视觉、家庭账务与家装交付说明产品价值。",
       "metadata": "examples/featured-output.json"

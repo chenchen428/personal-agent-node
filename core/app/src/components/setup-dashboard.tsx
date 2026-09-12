@@ -43,7 +43,7 @@ export function SetupDashboard({ prototype = false }: { prototype?: boolean }) {
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       setSnapshot(await response.json() as SetupSnapshot);
     } catch {
-      setError("控制服务尚未就绪，请先启动 Personal Agent 后重试。");
+      setError("控制服务尚未就绪，请先启动 Cove 后重试。");
     } finally {
       setLoading(false);
     }
@@ -119,13 +119,13 @@ export function SetupDashboard({ prototype = false }: { prototype?: boolean }) {
       const cloudRecovery = ["failed", "cancelled"].includes(cloudAction?.state || "idle");
       const cloudMessage = managedCloudActionMessage(cloudAction);
       return <div className="grid justify-items-start gap-2">
-        {cloudRecovery ? <Button size="sm" type="button" disabled={actionId === "connectivity.managed-authorize"} onClick={() => void runAction("connectivity.managed-authorize")}>重新连接公网与邮箱</Button> : <small className="text-xs leading-relaxed text-[var(--muted)]" role="status">{cloudPending ? "正在后台连接…" : "PA 会在后台自动连接并分配资源。"}</small>}
+        {cloudRecovery ? <Button size="sm" type="button" disabled={actionId === "connectivity.managed-authorize"} onClick={() => void runAction("connectivity.managed-authorize")}>重新连接公网与邮箱</Button> : <small className="text-xs leading-relaxed text-[var(--muted)]" role="status">{cloudPending ? "正在后台连接…" : "Cove 会在后台自动连接并分配资源。"}</small>}
         {cloudPending ? <Button variant="ghost" size="sm" type="button" disabled={actionId === "connectivity.managed-cancel"} onClick={() => void runAction("connectivity.managed-cancel")}>取消本次验证</Button> : null}
         {cloudMessage || actionMessage["connectivity.managed-authorize"] ? <small className="text-xs leading-relaxed text-[var(--muted)]" role="status">{cloudMessage || actionMessage["connectivity.managed-authorize"]}</small> : null}
       </div>;
     }
 
-    if (requestedAction === "mail.enable") return <small className="text-xs text-[var(--muted)]">公网域名验证通过后会自动分配 PA 邮箱。</small>;
+    if (requestedAction === "mail.enable") return <small className="text-xs text-[var(--muted)]">公网域名验证通过后会自动分配 Cove 邮箱。</small>;
     if (["mail.test-delivery", "mail.test-recovery"].includes(requestedAction)) return <Link className={buttonVariants({ variant: "outline", size: "sm" })} href="/app/mail"><Mail className="size-3.5" />打开邮件页</Link>;
     if (requestedAction === "connections.wechat.bind") return <WechatConnectPanel autoStart connected={snapshot?.checks.some((check) => check.id === "connections.wechat" && check.state === "ready") === true} onConnected={refresh} />;
     return null;
@@ -156,7 +156,7 @@ export function SetupDashboard({ prototype = false }: { prototype?: boolean }) {
     const cloudMessage = managedCloudActionMessage(cloudAction) || actionMessage["connectivity.managed-authorize"];
     return <>
       <header className="pa-heading">
-        <div><span className="pa-eyebrow">初始化向导</span><h1>把 PA 准备好</h1><p>先完成本机安全、智能体可工作和微信连接。公网域名与邮件作为可选能力单独设置。</p></div>
+        <div><span className="pa-eyebrow">初始化向导</span><h1>把 Cove 准备好</h1><p>先完成本机安全、智能体可工作和微信连接。公网域名与邮件作为可选能力单独设置。</p></div>
         <span className="pa-status setup-progress">{loading ? "正在检查" : error ? "检查失败" : `${completed} / 3 已完成`}</span>
       </header>
       {error ? <div className="pa-boundary-demo"><strong>暂时无法读取本机状态。</strong> {error}<button className="pa-button" type="button" onClick={() => void refresh()}>重新检测</button></div> : null}
@@ -164,30 +164,30 @@ export function SetupDashboard({ prototype = false }: { prototype?: boolean }) {
         <section className="setup-list" aria-label="核心初始化步骤">
           <article className={`setup-item${installationReady ? " done" : " active"}`}>
             <span className="setup-number">{installationReady ? "✓" : "1"}</span>
-            <div><strong>保护这台电脑上的 PA</strong><p>{installationReady ? "可信发行版、本机数据目录和服务入口均已确认。" : installationTask?.check.guidance || "正在检查安装包、数据目录和本机服务。"}</p></div>
+            <div><strong>保护这台电脑上的 Cove</strong><p>{installationReady ? "可信发行版、本机数据目录和服务入口均已确认。" : installationTask?.check.guidance || "正在检查安装包、数据目录和本机服务。"}</p></div>
             {installationReady ? <Link className="pa-button" href="/app/settings">查看</Link> : installationTask ? renderAction(installationTask.actionId) : <button className="pa-button" type="button" onClick={() => void refresh()}>重新检测</button>}
           </article>
           <article className={`setup-item${agentReady ? " done" : !installationReady ? "" : " active"}`}>
             <span className="setup-number">{agentReady ? "✓" : "2"}</span>
-            <div><strong>让 PA 可以工作</strong><p>{agentReady ? "所选基座、工作区和真实对话检查均已通过。" : agentTask?.check.guidance || "正在检查运行基座、工作区和真实对话链路。"}</p></div>
+            <div><strong>让 Cove 可以工作</strong><p>{agentReady ? "所选基座、工作区和真实对话检查均已通过。" : agentTask?.check.guidance || "正在检查运行基座、工作区和真实对话链路。"}</p></div>
             {agentReady ? <Link className="pa-button" href="/app/conversations">查看状态</Link> : agentTask ? renderAction(agentTask.actionId) : <button className="pa-button" type="button" onClick={() => void refresh()}>重新检测</button>}
           </article>
           <article className={`setup-item${wechatReady ? " done" : installationReady && agentReady ? " active" : ""}`}>
             <span className="setup-number">{wechatReady ? "✓" : "3"}</span>
-            <div><strong>连接微信</strong><p>{wechatReady ? "微信已经连接，可以直接向 PA 发送消息。" : "用微信扫描一次性二维码，确认后即可开始沟通。"}</p></div>
+            <div><strong>连接微信</strong><p>{wechatReady ? "微信已经连接，可以直接向 Cove 发送消息。" : "用微信扫描一次性二维码，确认后即可开始沟通。"}</p></div>
             {wechatReady ? <Link className="pa-button" href="/app/connections">查看</Link> : <WechatConnectPanel connected={false} onConnected={refresh} compact />}
           </article>
         </section>
         <aside className="setup-aside">
           <article className="setup-option">
-            <span className="pa-eyebrow">可选 · 公网域名</span><h2>在手机查看结果</h2><p>完成公网域名验证后，可从手机安全访问这台电脑上的 PA。</p>
-            {managedReady ? <Link className="pa-button" href="/app/connections">查看平台域名</Link> : cloudRecovery ? <button className="pa-button" type="button" disabled={actionId === "connectivity.managed-authorize"} onClick={() => void runAction("connectivity.managed-authorize")}>重新连接平台域名</button> : <span className="setup-option-note" role="status">{cloudPending ? "正在后台连接并分配域名…" : "PA 会自动在后台连接并分配域名"}</span>}
+            <span className="pa-eyebrow">可选 · 公网域名</span><h2>在手机查看结果</h2><p>完成公网域名验证后，可从手机安全访问这台电脑上的 Cove。</p>
+            {managedReady ? <Link className="pa-button" href="/app/connections">查看平台域名</Link> : cloudRecovery ? <button className="pa-button" type="button" disabled={actionId === "connectivity.managed-authorize"} onClick={() => void runAction("connectivity.managed-authorize")}>重新连接平台域名</button> : <span className="setup-option-note" role="status">{cloudPending ? "正在后台连接并分配域名…" : "Cove 会自动在后台连接并分配域名"}</span>}
             {cloudPending ? <button className="pa-button" type="button" onClick={() => void runAction("connectivity.managed-cancel")}>取消本次验证</button> : null}
             {cloudMessage ? <span className="setup-option-note" role="status">{cloudMessage}</span> : null}
           </article>
           <article className="setup-option dark">
-            <span className="pa-eyebrow">可选 · 邮件</span><h2>验证后分配 PA 邮箱</h2><p>公网域名验证通过后，系统会分配专属 PA 邮箱。</p>
-            <code>{mailReady ? "PA 邮箱已分配" : managedReady ? "正在确认邮箱分配状态" : "先完成公网域名验证"}</code>
+            <span className="pa-eyebrow">可选 · 邮件</span><h2>验证后分配 Cove 邮箱</h2><p>公网域名验证通过后，系统会分配专属 Cove 邮箱。</p>
+            <code>{mailReady ? "Cove 邮箱已分配" : managedReady ? "正在确认邮箱分配状态" : "先完成公网域名验证"}</code>
             {mailReady ? <Link className="pa-button inverse" href="/app/mail">查看邮件</Link> : <span className="setup-option-note">验证完成后自动分配，无需单独接入</span>}
           </article>
         </aside>

@@ -4,30 +4,37 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="color-scheme" content="light dark" />
-    <title>Personal Agent</title>
+    <title>Cove</title>
     <style>
-      :root { font-family: Inter, "PingFang SC", "Microsoft YaHei", sans-serif; color: #181715; background: #f6f0e6; }
+      :root { font-family: Inter, "PingFang SC", "Microsoft YaHei", sans-serif; color: #173f3b; background: #f7f8f2; }
       * { box-sizing: border-box; }
       body { margin: 0; min-height: 100vh; display: grid; place-items: center; }
       main { width: min(480px, calc(100vw - 48px)); text-align: center; }
-      .mark { width: 68px; height: 68px; margin: 0 auto 28px; display: grid; place-items: center; border-radius: 18px; background: #181715; color: #f6f0e6; font: 600 26px/1 Georgia, serif; }
-      .dot { display: inline-block; width: 12px; height: 12px; margin-left: 3px; border-radius: 999px; background: #cc785c; }
+      .mark { width: 68px; height: 68px; margin: 0 auto 28px; display: grid; place-items: center; border-radius: 18px; background: #173f3b; color: #f7f8f2; font: 600 26px/1 Georgia, serif; }
+      .dot { display: inline-block; width: 12px; height: 12px; margin-left: 3px; border-radius: 999px; background: #94b5a7; }
       h1 { margin: 0 0 12px; font: 500 32px/1.2 Georgia, "Songti SC", serif; }
-      p { margin: 0; color: #625f58; line-height: 1.7; }
+      p { margin: 0; color: #455d53; line-height: 1.7; }
       #detail { margin-top: 10px; font-size: 13px; }
       @media (prefers-color-scheme: dark) {
-        :root { color: #f6f0e6; background: #181715; }
-        .mark { background: #f6f0e6; color: #181715; }
-        p { color: #bdb7ad; }
+        :root { color: #f7f8f2; background: #173f3b; }
+        .mark { background: #f7f8f2; color: #173f3b; }
+        p { color: #aec2b2; }
       }
     </style>
   </head>
   <body>
     <main>
-      <div class="mark">PA<span class="dot" aria-hidden="true"></span></div>
-      <h1>正在启动 Personal Agent</h1>
-      <p id="status" role="status">正在连接这台电脑上的 Personal Agent 服务…</p>
-      <p id="detail">窗口可以关闭，后台服务会继续运行。</p>
+      <div class="mark"><svg xmlns="http://www.w3.org/2000/svg" width="52" height="52" viewBox="0 0 512 512" aria-label="Cove" role="img">
+  <rect width="512" height="512" rx="112" fill="#173f3b"/>
+  <g transform="translate(51.2 51.2) scale(6.4)" fill="#fffefa">
+    <path d="M51 15C43 6 27 6 17 14C6 23 6 39 15 49C24 59 40 58 51 48L41 37C36 42 29 43 24 39C19 35 20 28 25 24C30 20 37 21 41 26L51 15Z"/>
+    <path d="M46 29L56 24L53 35L46 29Z"/>
+  </g>
+</svg>
+</div>
+      <h1>正在启动 Cove</h1>
+      <p id="status" role="status">正在连接这台电脑上的 Cove 服务…</p>
+      <p id="detail">关闭客户端会停止本机服务；进行中的工作会先请求确认。</p>
     </main>
   </body>
 </html>

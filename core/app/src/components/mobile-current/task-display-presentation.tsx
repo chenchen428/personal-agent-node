@@ -1,5 +1,7 @@
 "use client";
 
+import { CoveMark } from "../brand/cove-mark";
+
 import { AlertCircle, Inbox } from "lucide-react";
 import type { ReactNode } from "react";
 import { MarkdownContent } from "../markdown-content";
@@ -45,7 +47,7 @@ function TaskMessage({ item, userName }: { item: TaskDisplayEvent; userName: str
   return <article className={`mobile-task-message ${user ? "user" : "agent"}`}>
     {user
       ? <><span className="mobile-task-avatar user" aria-label={userName}>{firstCharacter(userName)}</span>{content}</>
-      : <><span className="mobile-task-avatar agent" aria-label="PA">PA</span>{content}</>}
+      : <><span className="mobile-task-avatar agent" aria-label="Cove"><CoveMark title="Cove" /></span>{content}</>}
   </article>;
 }
 

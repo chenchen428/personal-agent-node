@@ -1,5 +1,7 @@
 "use client";
 
+import { CoveMark } from "../brand/cove-mark";
+
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Activity, Blocks, Info, Layers3, ListTodo, Menu, Newspaper, PanelsTopLeft, X } from "lucide-react";
@@ -162,8 +164,8 @@ function MobileDrawer({ section, activeAppId, close, overview, apps }: { section
   return <>
     <button className="mobile-drawer-backdrop" type="button" aria-label="关闭侧边菜单" onClick={close} />
     <aside className="mobile-drawer" aria-label="移动端侧边菜单">
-      <div className="drawer-head"><strong>PA · 个人智能体</strong><button type="button" aria-label="关闭侧边菜单" onClick={close}><X aria-hidden="true" /></button></div>
-      <div className="drawer-user"><span className="drawer-avatar">PA</span><div><strong>你的 PA</strong><span>{address}</span></div></div>
+      <div className="drawer-head"><strong>Cove · 私人 AI 助手</strong><button type="button" aria-label="关闭侧边菜单" onClick={close}><X aria-hidden="true" /></button></div>
+      <div className="drawer-user"><span className="drawer-avatar"><CoveMark title="Cove" /></span><div><strong>你的 Cove</strong><span>{address}</span></div></div>
       <MobileSpaceContext space={overview?.space} />
       <nav className="drawer-nav">
         <span className="drawer-nav-label">工作区</span>
@@ -176,7 +178,7 @@ function MobileDrawer({ section, activeAppId, close, overview, apps }: { section
         <span className="drawer-nav-label">系统</span>
         <Link href="/app/mobile/about" prefetch onClick={close} aria-current={section === "about" ? "page" : undefined}><Info className="mobile-nav-icon" aria-hidden="true" /><span>关于</span><small /></Link>
       </nav>
-      <div className="drawer-foot mobile-drawer-runtime"><i className="mobile-runtime-dot" /><div><strong>PA 正常运行</strong><span>{overview?.counts.work || 0} 项任务 · 最近发布 {overview?.counts.pages || 0} 个页面</span></div></div>
+      <div className="drawer-foot mobile-drawer-runtime"><i className="mobile-runtime-dot" /><div><strong>Cove 正常运行</strong><span>{overview?.counts.work || 0} 项任务 · 最近发布 {overview?.counts.pages || 0} 个页面</span></div></div>
     </aside>
   </>;
 }

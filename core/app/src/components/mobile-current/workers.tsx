@@ -89,15 +89,15 @@ function TaskRow({ session }: { session: Session }) {
   const seconds = elapsedSeconds(session, running);
   return <Link href={`/app/mobile/workers/${encodeURIComponent(session.id)}`}>
     <span className="mobile-task-icon"><Bot aria-hidden="true" /></span>
-    <span className="mobile-task-copy"><span><strong>{session.title || "未命名任务"}</strong><i className={`mobile-task-badge status-${taskStatusTone(session.status)}`}>{taskStatusLabel(session.status)}</i></span><p>{session.summary || session.taskDescription || "PA 正在整理这项任务的最新进展"}</p><small>{taskContext(session)} · {formatTaskDuration(seconds, running)}</small></span>
+    <span className="mobile-task-copy"><span><strong>{session.title || "未命名任务"}</strong><i className={`mobile-task-badge status-${taskStatusTone(session.status)}`}>{taskStatusLabel(session.status)}</i></span><p>{session.summary || session.taskDescription || "Cove 正在整理这项任务的最新进展"}</p><small>{taskContext(session)} · {formatTaskDuration(seconds, running)}</small></span>
     <span className="mobile-task-trailing"><time dateTime={session.updatedAt} title={formatDateTime(session.updatedAt)}>{relativeTime(session.updatedAt)}</time><ChevronRight aria-hidden="true" /></span>
   </Link>;
 }
 
 function TaskEmpty({ hasConditions }: { hasConditions: boolean }) {
-  return <div className="mobile-task-empty"><Bot aria-hidden="true" /><strong>{hasConditions ? "没有找到任务" : "还没有任务"}</strong><span>{hasConditions ? "调整搜索词或状态后再试。" : "PA 开始工作后会显示在这里。"}</span></div>;
+  return <div className="mobile-task-empty"><Bot aria-hidden="true" /><strong>{hasConditions ? "没有找到任务" : "还没有任务"}</strong><span>{hasConditions ? "调整搜索词或状态后再试。" : "Cove 开始工作后会显示在这里。"}</span></div>;
 }
 
 function taskStatusLabel(status: string) { return status === "idle" ? "已完成" : statusLabel(status); }
 function taskStatusTone(status: string) { return isRunning(status) ? "running" : ["failed", "error", "interrupted"].includes(status) ? "interrupted" : "completed"; }
-function taskContext(session: Session) { return session.channel === "wechat" ? "来自微信主会话" : session.channel === "mail" ? "来自邮箱" : "来自 PA"; }
+function taskContext(session: Session) { return session.channel === "wechat" ? "来自微信主会话" : session.channel === "mail" ? "来自邮箱" : "来自 Cove"; }

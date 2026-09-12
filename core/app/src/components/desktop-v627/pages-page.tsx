@@ -19,7 +19,7 @@ export function PagesPage() {
     && (visibility === "all" || page.visibility === visibility)
   ), [query, value?.pages, visibility]);
 
-  return <PageSurface className="pages-library-page"><PageHeader title="发布页" description="PA 交付的完整网页。列表展示发布时生成并保存的缩略图，打开后可查看完整页面。" actions={<>
+  return <PageSurface className="pages-library-page"><PageHeader title="发布页" description="Cove 交付的完整网页。列表展示发布时生成并保存的缩略图，打开后可查看完整页面。" actions={<>
     {searchOpen ? <SearchField autoFocus value={query} onChange={(event) => setQuery(event.target.value)} placeholder="搜索发布页…" aria-label="搜索发布页" /> : <button className="icon-button" type="button" aria-label="搜索" onClick={() => setSearchOpen(true)}><Search size={16} /></button>}
     <SegmentedControl value={visibility} onChange={setVisibility} options={[{ label: "全部", value: "all" }, { label: "私有", value: "private" }, { label: "公开", value: "public" }]} />
   </>} />

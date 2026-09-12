@@ -223,8 +223,8 @@ test("Next.js owns the approved V6.39 mobile client and V7.3 desktop workspace",
   assert.match(scheduledTaskDetail, /\/app\/workers\?task=/);
   assert.doesNotMatch(`${scheduledTasksClient}\n${scheduledTaskDetail}`, /"POST"|"PATCH"|"DELETE"|\/run\b/);
   assert.doesNotMatch(navigation, /\/app\/workers\/schedules|\/app\/schedules/);
-  assert.match(overviewClient, /Personal Agent 已就绪/);
-  assert.match(overviewClient, /Personal Agent 正在准备/);
+  assert.match(overviewClient, /Cove 已就绪/);
+  assert.match(overviewClient, /Cove 正在准备/);
   assert.match(overviewClient, /RequiredSetupGuide/);
   assert.match(desktopComponents, /开始使用前/);
   assert.match(overviewClient, /counts\.runningWork/);
@@ -362,10 +362,10 @@ test("Next.js owns the approved V6.39 mobile client and V7.3 desktop workspace",
   assert.match(desktopComponents, /confirm/);
   assert.match(desktopComponents, /if \(bypass\) await applyPlan/);
   assert.match(setupDashboard, /可选 · 公网域名/);
-  assert.match(setupDashboard, /验证后分配 PA 邮箱/);
+  assert.match(setupDashboard, /验证后分配 Cove 邮箱/);
   assert.match(setupDashboard, /无需单独接入/);
   assert.ok(setupDashboard.indexOf("可选 · 公网域名") < setupDashboard.indexOf("可选 · 邮件"));
-  assert.match(setupDashboard, /PA 会在后台自动连接并分配资源/);
+  assert.match(setupDashboard, /Cove 会在后台自动连接并分配资源/);
   assert.doesNotMatch(setupDashboard, />验证公网与邮箱</);
   assert.match(setupDashboard, /cloudPending/);
   assert.match(setupDashboard, /role="status"/);

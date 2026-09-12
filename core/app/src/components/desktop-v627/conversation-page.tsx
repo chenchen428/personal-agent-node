@@ -145,7 +145,7 @@ export function ConversationPage() {
       },
     };
     setSession((previous) => ({
-      ...(previous || { id: "desktop-main", role: "main", title: "与 PA 的对话", status: "running" }),
+      ...(previous || { id: "desktop-main", role: "main", title: "与 Cove 的对话", status: "running" }),
       status: "running",
       messages: mergeMessages(previous?.messages || [], [optimisticMessage]),
     }));
@@ -182,7 +182,7 @@ export function ConversationPage() {
   const mainProcessing = waiting || ["start", "running"].includes(session?.status || "");
   const processing = mainProcessing || ["start", "running"].includes(session?.linkedTask?.status || "");
 
-  return <main className="page flush conversation" aria-label="与 PA 的对话" data-session-role="main">
+  return <main className="page flush conversation" aria-label="与 Cove 的对话" data-session-role="main">
     <div className="message-scroll" ref={scroll.threadRef} aria-live="polite" tabIndex={0}><div className="message-thread" ref={scroll.contentRef}>
       <ConversationMessageList
         messages={session?.messages || []}

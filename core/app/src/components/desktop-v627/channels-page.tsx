@@ -34,9 +34,9 @@ function channelTone(state = ""): "success" | "warning" | "danger" | "info" {
 function channelValues(selected: Channel | undefined, overview: Overview | null) {
   if (selected?.provider === "wechat") return [{ label: "连接状态", value: selected.statusLabel }, { label: "用途", value: "唯一主会话" }, { label: "内容保存", value: "本机工作区" }, { label: "授权位置", value: "微信手机端" }];
   if (selected?.provider === "xiaohongshu") return [{ label: "能力入口", value: "浏览器只读操作" }, { label: "账号会话", value: "由用户浏览器持有" }, { label: "登录检测", value: "不读取" }, { label: "历史渠道", value: "仅兼容保留" }];
-  if (selected?.provider.includes("mail")) return [{ label: "处理状态", value: selected.statusLabel }, { label: "附件", value: "仅保存在本机" }, { label: "接收方式", value: "PA 邮箱" }, { label: "内容保存", value: "本机工作区" }];
+  if (selected?.provider.includes("mail")) return [{ label: "处理状态", value: selected.statusLabel }, { label: "附件", value: "仅保存在本机" }, { label: "接收方式", value: "Cove 邮箱" }, { label: "内容保存", value: "本机工作区" }];
   const address = overview?.machine.mobileAddress;
-  return [{ label: "公网地址", value: address ? <a className="v72-inline-link" href={address} target="_blank" rel="noreferrer">{address}</a> : "尚未启用" }, { label: "连接", value: "Personal Agent Cloud" }, { label: "内容", value: "仍保存在本机" }, { label: "状态", value: selected?.statusLabel || "等待连接" }];
+  return [{ label: "公网地址", value: address ? <a className="v72-inline-link" href={address} target="_blank" rel="noreferrer">{address}</a> : "尚未启用" }, { label: "连接", value: "Cove Cloud" }, { label: "内容", value: "仍保存在本机" }, { label: "状态", value: selected?.statusLabel || "等待连接" }];
 }
 
 function ChannelActions({ channel, address, refresh }: { channel: Channel; address?: string; refresh: () => void }) {

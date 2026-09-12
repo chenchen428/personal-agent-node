@@ -24,7 +24,7 @@ export function MobileWechatStatus() {
 
   return <section className={`mobile-about-section about-wechat${connected ? " is-connected" : " is-offline"}`}>
     <header><div><MessageCircle aria-hidden="true" /><h2>微信</h2></div><span className="mobile-about-live">{connected ? "已连接" : "已掉线"}</span></header>
-    <p>{connected ? "消息连接正常，最近检查：刚刚。" : "微信连接已断开，重新连接后可以继续与 PA 沟通。"}</p>
+    <p>{connected ? "消息连接正常，最近检查：刚刚。" : "微信连接已断开，重新连接后可以继续与 Cove 沟通。"}</p>
     {!connected ? <button className="about-wechat-retry" type="button" onClick={() => { setOpen(true); setSaved(""); void login.startLogin(); }}>重新连接</button> : null}
     {!connected && open ? <WechatRecovery login={login} saved={saved} setSaved={setSaved} /> : null}
   </section>;

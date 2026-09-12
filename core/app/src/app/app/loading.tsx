@@ -10,7 +10,7 @@ export default async function RouteLoading() {
 
 export function MobileRouteLoading() {
   return <div className="mobile-current"><div className="mobile-stage"><div className="phone">
-    <header className="mobile-header"><div className="mobile-title"><strong>Personal Agent</strong><span>正在打开</span></div></header>
+    <header className="mobile-header"><div className="mobile-title"><strong>Cove</strong><span>正在打开</span></div></header>
     <main className="mobile-screen"><MobileContentSkeleton kind="activity" /></main>
   </div></div></div>;
 }

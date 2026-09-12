@@ -59,7 +59,7 @@ function SkillDetail({ skill, category, spaceName, bypass }: { skill: Skill; cat
     <header><div><span>{category}</span><h2>{skill.name}</h2><p>{spaceName} · {skill.directory}</p></div><Badge tone="success">可使用</Badge></header>
     <section className="skill-detail-lead"><span><Sparkles /></span><p>{skill.description}</p></section>
     <section><h3>执行影响</h3><div className="skill-impact-list"><Badge>本机技能</Badge>{impactful ? <Badge tone="warning">可能产生写入</Badge> : null}<Badge tone={bypass ? "success" : "warning"}>{bypass ? "可直接使用" : "操作前确认"}</Badge></div></section>
-    <section><h3>使用方式</h3><div className="skill-readonly-note"><ShieldCheck /><div><strong>在主对话中使用</strong><p>直接说明目标，PA 会在{spaceName}中选择合适的技能。涉及外部写入或高风险操作时会遵循当前授权模式。</p></div></div></section>
+    <section><h3>使用方式</h3><div className="skill-readonly-note"><ShieldCheck /><div><strong>在主对话中使用</strong><p>直接说明目标，Cove 会在{spaceName}中选择合适的技能。涉及外部写入或高风险操作时会遵循当前授权模式。</p></div></div></section>
   </div>;
 }
 

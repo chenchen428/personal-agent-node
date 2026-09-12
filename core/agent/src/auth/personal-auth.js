@@ -299,9 +299,9 @@ export function renderLoginPage({ returnTo = "/", host = "personal-agent.local",
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="color-scheme" content="light">
-  <title>登录 · Personal Agent</title>
+  <title>登录 · Cove</title>
   <style nonce="${escapeAttr(nonce)}">
-    :root{color-scheme:light;--canvas:#f4f4f1;--surface:#fff;--subtle:#f7f7f5;--ink:#20201f;--body:#555552;--muted:#858580;--faint:#b7b7b1;--line:#e7e7e3;--line-strong:#d9d9d4;--primary:#262625;--primary-hover:#111110;--accent:#cc785c;--danger:#c43a32;--danger-soft:#fbecea;--radius:14px;--control-radius:11px;--shadow:0 1px 2px rgba(0,0,0,.04),0 18px 45px rgba(0,0,0,.06);font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","PingFang SC","Microsoft YaHei",sans-serif}
+    :root{color-scheme:light;--canvas:#f7f8f2;--surface:#fffefa;--subtle:#f2f5ec;--ink:#173f3b;--body:#455d53;--muted:#697b6d;--faint:#acb7a3;--line:#e0e6d8;--line-strong:#cad6c1;--primary:#173f3b;--primary-hover:#254e44;--accent:#276457;--danger:#c43a32;--danger-soft:#fbecea;--radius:14px;--control-radius:11px;--shadow:0 1px 2px rgba(0,0,0,.04),0 18px 45px rgba(0,0,0,.06);font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","PingFang SC","Microsoft YaHei",sans-serif}
     *{box-sizing:border-box;letter-spacing:0}
     html,body{min-height:100%;margin:0}
     body{background:var(--canvas);color:var(--ink)}
@@ -319,7 +319,7 @@ export function renderLoginPage({ returnTo = "/", host = "personal-agent.local",
     h1{max-width:520px;margin:0;font-family:"Iowan Old Style","Songti SC","STSong",serif;font-size:clamp(48px,5vw,66px);font-weight:500;line-height:1.06;letter-spacing:-.035em}
     .intro-copy{max-width:410px;margin:24px 0 0;color:var(--body);font-size:15px;line-height:1.85}
     .intro-meta{display:flex;align-items:center;gap:9px;margin-top:30px;color:var(--muted);font-size:12px}
-    .intro-meta:before{content:"";width:7px;height:7px;border-radius:50%;background:var(--accent);box-shadow:0 0 0 4px rgba(204,120,92,.12)}
+    .intro-meta:before{content:"";width:7px;height:7px;border-radius:50%;background:var(--accent);box-shadow:0 0 0 4px rgba(39,100,87,.12)}
     .auth-panel{position:relative;border:1px solid var(--line);border-radius:var(--radius);padding:34px;background:var(--surface);box-shadow:var(--shadow)}
     .panel-topline{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:30px}
     .panel-index{margin:0;color:var(--muted);font-size:10px;font-weight:720;letter-spacing:.11em;text-transform:uppercase}
@@ -354,19 +354,26 @@ export function renderLoginPage({ returnTo = "/", host = "personal-agent.local",
 <body>
   <main class="auth-shell">
     <header class="auth-header">
-      <a class="brand" href="/" aria-label="Personal Agent"><span class="brand-mark">PA</span><span>Personal Agent</span></a>
+      <a class="brand" href="/" aria-label="Cove"><span class="brand-mark"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 512 512" role="img" aria-label="Cove">
+  <rect width="512" height="512" rx="112" fill="#173f3b"/>
+  <g transform="translate(51.2 51.2) scale(6.4)" fill="#fffefa">
+    <path d="M51 15C43 6 27 6 17 14C6 23 6 39 15 49C24 59 40 58 51 48L41 37C36 42 29 43 24 39C19 35 20 28 25 24C30 20 37 21 41 26L51 15Z"/>
+    <path d="M46 29L56 24L53 35L46 29Z"/>
+  </g>
+</svg>
+</span><span>Cove</span></a>
       <div class="privacy"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="5" y="10" width="14" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg><span>安全访问</span></div>
     </header>
     <section class="auth-main">
       <div class="auth-intro">
         <p class="eyebrow">Private workspace</p>
         <h1>欢迎回来。</h1>
-        <p class="intro-copy">连接到你的 Personal Agent，继续查看这台设备上的工作与结果。</p>
+        <p class="intro-copy">连接到你的 Cove，继续查看这台设备上的工作与结果。</p>
         <p class="intro-meta">安全连接 · 数据仍保留在你的设备</p>
       </div>
       <section class="auth-panel" aria-labelledby="login-title">
         <div class="panel-topline"><p class="panel-index">身份验证</p><span class="host-badge">${safeHost}</span></div>
-        <h2 id="login-title">进入 Personal Agent</h2>
+        <h2 id="login-title">进入 Cove</h2>
         <p class="panel-copy">请输入为远程访问设置的密码。</p>
         ${errorMarkup}
         <form method="post" action="/login" data-auth-form>
@@ -381,7 +388,7 @@ export function renderLoginPage({ returnTo = "/", host = "personal-agent.local",
         <p class="session-note"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/><path d="m9 12 2 2 4-4"/></svg>登录状态仅用于当前访问地址</p>
       </section>
     </section>
-    <footer class="auth-footer"><span class="host-label">Personal Agent · 私人工作空间</span><span>© ${new Date().getUTCFullYear()}</span></footer>
+    <footer class="auth-footer"><span class="host-label">Cove · 私人工作空间</span><span>© ${new Date().getUTCFullYear()}</span></footer>
   </main>
   <script nonce="${escapeAttr(nonce)}">
     const input=document.querySelector('#password');const toggle=document.querySelector('[data-password-toggle]');toggle?.addEventListener('click',()=>{const visible=input.type==='text';input.type=visible?'password':'text';toggle.setAttribute('aria-label',visible?'显示密码':'隐藏密码');toggle.setAttribute('title',visible?'显示密码':'隐藏密码');input.focus()});document.querySelector('[data-auth-form]')?.addEventListener('submit',event=>{const button=event.currentTarget.querySelector('.submit-button');const label=event.currentTarget.querySelector('[data-submit-label]');button.disabled=true;if(label)label.textContent='验证中…'});

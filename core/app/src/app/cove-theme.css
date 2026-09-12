@@ -1,0 +1,79 @@
+/* Approved Cove Lite palette. Existing geometry, navigation and states are preserved. */
+:root[data-brand="cove"], [data-brand="cove"] .desktop-v72 {
+  --pa-app-canvas: #e8ede4;
+  --pa-canvas: #f7f8f2;
+  --pa-surface: #f0f3e9;
+  --pa-surface-solid: #fffefa;
+  --pa-paper: #fffefa;
+  --pa-sidebar: #edf1e6;
+  --pa-subtle: #f2f5ec;
+  --pa-hover: #e7eedf;
+  --pa-selected: #e0e9d9;
+  --pa-ink: #173f3b;
+  --pa-body: #455d53;
+  --pa-muted: #697b6d;
+  --pa-soft: #81907e;
+  --pa-faint: #acb7a3;
+  --pa-border: #e0e6d8;
+  --pa-border-strong: #cad6c1;
+  --pa-line: #dfe5d6;
+  --pa-primary: #173f3b;
+  --pa-primary-ink: #fffefa;
+  --pa-coral: #276457;
+  --pa-coral-dark: #173f3b;
+  --pa-dark: #173f3b;
+  --pa-dark-2: #254e44;
+  --pa-green: #4e8260;
+  --pa-success: #3d7955;
+  --pa-success-soft: #e6f0e3;
+  --pa-info: #436e80;
+  --pa-info-soft: #e8f0f2;
+  --cove-sage: #94b5a7;
+  --cove-sand: #dbcab0;
+  --coral: var(--pa-coral); --coral-active: var(--pa-coral-dark);
+  --ink: var(--pa-ink); --body: var(--pa-body); --muted: var(--pa-muted);
+  --muted-soft: var(--pa-soft); --hairline: var(--pa-line); --canvas: var(--pa-canvas);
+  --surface-soft: var(--pa-surface); --surface-card: var(--pa-selected);
+  --surface-dark: var(--pa-dark); --surface-dark-elevated: var(--pa-dark-2);
+  --surface-dark-soft: #1e473f; --on-dark: var(--pa-primary-ink);
+  --teal: var(--cove-sage); --success: var(--pa-success);
+  --v72-canvas: var(--pa-app-canvas); --v72-surface: var(--pa-surface-solid);
+  --v72-sidebar: var(--pa-sidebar); --v72-subtle: var(--pa-subtle);
+  --v72-hover: var(--pa-hover); --v72-selected: var(--pa-selected);
+  --v72-ink: var(--pa-ink); --v72-body: var(--pa-body); --v72-muted: var(--pa-muted);
+  --v72-faint: var(--pa-faint); --v72-border: var(--pa-border);
+  --v72-border-strong: var(--pa-border-strong); --v72-primary: var(--pa-primary);
+  --v72-success: var(--pa-success);
+}
+[data-brand="cove"] ::selection { background-color: #c6d9c5; }
+[data-brand="cove"] .cove-mark { display: block; width: 75%; height: 75%; }
+[data-brand="cove"] :is(.brand-mark, .drawer-avatar, .mobile-about-mark, .mobile-task-avatar.agent) { background: var(--pa-primary); color: var(--pa-primary-ink); }
+[data-brand="cove"] :is(.v72-nav-link:hover, .v72-sidebar-head button:hover) { background: var(--pa-hover); }
+[data-brand="cove"] .v72-nav-link[aria-current="page"] { background: var(--pa-selected); }
+[data-brand="cove"] :is(.v72-split-list, .v72-split-toolbar, .v72-task-plan, .v72-task-lifecycle) { background: var(--pa-subtle); }
+[data-brand="cove"] :is(.v72-search input, .desktop-v72 .search-field input, .v72-task-message.user .v72-task-body) { background: var(--pa-hover); }
+[data-brand="cove"] :is(.v72-split-detail, .v72-card, .v72-task-conversation, .desktop-v72 .card, .desktop-v72 .segmented button.active) { background: var(--pa-surface-solid); }
+[data-brand="cove"] .desktop-v72 .button.primary { background: var(--pa-primary); }
+[data-brand="cove"] .v72-required-setup-card { border-color: var(--pa-border-strong); background: var(--pa-surface); }
+[data-brand="cove"] .v72-required-setup-intro { background: linear-gradient(145deg, var(--pa-selected), var(--pa-canvas) 70%); }
+[data-brand="cove"] .mobile-current { background: var(--pa-app-canvas); }
+[data-brand="cove"] :is(.phone:not(.theme-dark), .mobile-header, .mobile-search-panel, .mobile-about, .mobile-personal-app-host) { background-color: var(--pa-surface-solid); }
+[data-brand="cove"] :is(.mobile-task-conversation, .mobile-task-state, .mobile-skeleton-page-reader) { background-color: var(--pa-canvas); }
+[data-brand="cove"] :is(.mobile-drawer, .drawer-head, .drawer-foot) { background-color: var(--pa-dark); }
+[data-brand="cove"] .drawer-nav a[aria-current="page"] { background: #315c4e; color: var(--pa-primary-ink); }
+[data-brand="cove"] .drawer-nav a[aria-current="page"]::before { background: var(--cove-sage); }
+[data-brand="cove"] .mobile-drawer .mobile-nav-icon { color: #aec2b2; }
+[data-brand="cove"] :is(.mobile-about-machine span:not(.mobile-about-mark), .mobile-about-skill-group article > span) { color: var(--pa-primary); }
+[data-brand="cove"] .mobile-about-skill-group article > span { background: var(--pa-subtle); }
+[data-brand="cove"] :is(.mobile-screen, .content-detail-screen, .content-detail-bar, .feed-item, .list-search-panel, .mobile-token-breakdown > div, .desktop-v72 .composer, .desktop-v72 .kv) { background-color: var(--pa-surface-solid); }
+[data-brand="cove"] :is(.list-search-filters, .mobile-token-usage .token-range-selector, .mobile-task-skeleton.plan) { background-color: var(--pa-subtle); }
+[data-brand="cove"] :is(.list-search-filters > button.is-active, .mobile-token-usage .token-range-selector button.active) { background-color: var(--pa-selected); color: var(--pa-ink); }
+[data-brand="cove"] .desktop-v72 .composer-wrap { background: linear-gradient(transparent, var(--pa-surface-solid) 22%, var(--pa-surface-solid)); }
+[data-brand="cove"] .desktop-v72 .conversation-empty-mark { background: radial-gradient(circle at 35% 30%, var(--pa-paper) 0 12%, var(--pa-subtle) 48%, var(--pa-selected) 100%); }
+[data-brand="cove"] .desktop-v72 .conversation-empty-mark::after { background: radial-gradient(circle, #94b5a726, transparent 68%); }
+[data-brand="cove"] .drawer-foot strong { color: var(--cove-sage); }
+[data-brand="cove"] .drawer-head button { background: #315c4e; color: #aec2b2; }
+[data-brand="cove"] :is(.desktop-v72 .desktop-token-trend, .mobile-token-usage) .token-heatmap .level-1 { background: #e0e9d9; }
+[data-brand="cove"] :is(.desktop-v72 .desktop-token-trend, .mobile-token-usage) .token-heatmap .level-2 { background: #94b5a7; }
+[data-brand="cove"] :is(.desktop-v72 .desktop-token-trend, .mobile-token-usage) .token-heatmap .level-3 { background: #4e8260; }
+[data-brand="cove"] :is(.desktop-v72 .desktop-token-trend, .mobile-token-usage) .token-heatmap .level-4 { background: #173f3b; }

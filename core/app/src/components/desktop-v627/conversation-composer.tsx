@@ -56,14 +56,14 @@ export function ConversationComposer({ initialMessage = "", sending, waiting, er
 
   return <form className="composer-wrap" onSubmit={submit}><div className="composer">
     <ConversationAttachmentList attachments={attachments} disabled={sending} onRemove={removeAttachment} />
-    <label className="sr-only" htmlFor="desktop-chat-input">发消息给 PA</label>
+    <label className="sr-only" htmlFor="desktop-chat-input">发消息给 Cove</label>
     <textarea
       id="desktop-chat-input"
       autoFocus
       rows={1}
       readOnly={sending}
       maxLength={4000}
-      placeholder="让 Personal Agent 做什么…"
+      placeholder="让 Cove 做什么…"
       value={message}
       onChange={(event) => setMessage(event.target.value)}
       onInput={(event) => {
@@ -77,13 +77,13 @@ export function ConversationComposer({ initialMessage = "", sending, waiting, er
       <button className="icon-button" type="button" disabled={sending} onClick={() => fileRef.current?.click()} aria-label="添加附件" title="添加附件">
         <AttachmentIcon />
       </button>
-      <span className="composer-feedback">{attachmentError || error || (uploading ? "正在上传附件…" : waiting ? "PA 正在处理，回复会自动出现" : "")}</span></div>
+      <span className="composer-feedback">{attachmentError || error || (uploading ? "正在上传附件…" : waiting ? "Cove 正在处理，回复会自动出现" : "")}</span></div>
       <button className="send-button" type="submit" disabled={sending || waiting || uploading || (!message.trim() && !attachments.length)} aria-label="发送消息">
         <SendIcon />
       </button>
     </footer>
     <input ref={fileRef} type="file" multiple hidden onChange={selectFiles} />
-    <span className="composer-send-status" role="status">{uploading ? "正在上传附件" : sending ? "正在发送" : waiting ? "PA 正在处理" : ""}</span>
+    <span className="composer-send-status" role="status">{uploading ? "正在上传附件" : sending ? "正在发送" : waiting ? "Cove 正在处理" : ""}</span>
   </div></form>;
 }
 
