@@ -1,0 +1,4 @@
+interface:
+  display_name: "Cove 网络连接"
+  short_description: "配置和验证本机、Managed Cloud 与自建 Edge 连接模式。"
+  default_prompt: "使用 $cove-connectivity 检查或配置 Cove 的连接模式。"

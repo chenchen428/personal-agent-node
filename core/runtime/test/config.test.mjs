@@ -27,9 +27,10 @@ test("initializes one stable Site identity and fixed path routes", () => {
     assert.equal(first.config.site.siteId, second.config.site.siteId);
     const config = resolveNodeConfig({ PRIVATE_SITE_DATA_ROOT: dataRoot });
     const routes = buildRoutes(config);
-    for (const prefix of ["/", "/login", "/logout", "/_next/static", "/assets", "/public", "/app", "/app/chat", "/app/connections", "/app/channels", "/app/files", "/app/mail", "/app/data", "/app/schedules", "/app/pages", "/app/agents", "/app/releases", "/app/skills", "/app/settings", "/app/setup", "/app/update", "/api/app", "/api/chat", "/api/agents", "/api/agent-team/status", "/api/connections", "/api/channels", "/api/managed-platforms", "/api/publications", "/api/system/setup/actions", "/api/system", "/api/extensions", "/pages", "/resources", "/blog", "/docs"]) {
+    for (const prefix of ["/", "/login", "/logout", "/_next/static", "/assets", "/public", "/app", "/app/chat", "/app/connections", "/app/channels", "/app/files", "/app/mail", "/app/data", "/app/schedules", "/app/pages", "/app/releases", "/app/skills", "/app/settings", "/app/setup", "/app/update", "/api/app", "/api/chat", "/api/connections", "/api/channels", "/api/managed-platforms", "/api/publications", "/api/system/setup/actions", "/api/system", "/api/extensions", "/pages", "/resources", "/blog", "/docs"]) {
       assert.ok(routes.has(prefix), prefix);
     }
+    for (const retired of ["/app/agents", "/api/agents", "/api/agent-team/status"]) assert.equal(routes.has(retired), false, retired);
     assert.deepEqual(
       Object.fromEntries(Object.entries(routes.get("/_next/static")).filter(([key]) => ["access", "targetKey", "upstreamPath"].includes(key))),
       { access: "public", targetKey: "console", upstreamPath: "/_next/static" },
@@ -48,12 +49,8 @@ test("initializes one stable Site identity and fixed path routes", () => {
     );
     assert.equal(routes.has("/template-pages"), false);
     assert.deepEqual(
-      Object.fromEntries(Object.entries(routes.get("/app/agents")).filter(([key]) => ["access", "targetKey", "upstreamPath"].includes(key))),
-      { access: "authenticated", targetKey: "console", upstreamPath: "/app/agents" },
-    );
-    assert.deepEqual(
-      Object.fromEntries(Object.entries(routes.get("/api/agents")).filter(([key]) => ["access", "targetKey", "upstreamPath"].includes(key))),
-      { access: "authenticated", targetKey: "agent", upstreamPath: "/api/agents" },
+      Object.fromEntries(Object.entries(routes.get("/api/calendar")).filter(([key]) => ["access", "targetKey", "upstreamPath"].includes(key))),
+      { access: "authenticated", targetKey: "agent", upstreamPath: "/api/calendar" },
     );
     assert.deepEqual(
       Object.fromEntries(Object.entries(routes.get("/app/connections")).filter(([key]) => ["access", "targetKey", "upstreamPath"].includes(key))),
@@ -159,7 +156,7 @@ test("local and self-hosted modes ignore stale managed gateway identity", () => 
   }
 });
 
-test("each Space resolves an independent Site, secrets, mail, apps, Token database, and Agent workspace", () => {
+test("each Space resolves an independent Site, secrets, mail, Token database, and Agent workspace", () => {
   const dataRoot = fs.mkdtempSync(path.join(os.tmpdir(), "personal-agent-space-config-"));
   try {
     const personal = initializeSite({ domain: "personal-agent.local", dataRoot }).config;
@@ -169,7 +166,8 @@ test("each Space resolves an independent Site, secrets, mail, apps, Token databa
     assert.notEqual(personal.configPath, custom.configPath);
     assert.notEqual(personal.envPath, custom.envPath);
     assert.notEqual(personal.mailDir, custom.mailDir);
-    assert.notEqual(personal.appsDir, custom.appsDir);
+    assert.equal("appsDir" in personal, false);
+    assert.equal("appsDir" in custom, false);
     assert.notEqual(personal.agentWorkspaceRoot, custom.agentWorkspaceRoot);
     assert.notEqual(personal.gateway.port, custom.gateway.port);
     const directCustom = resolveNodeConfig({ PRIVATE_SITE_DATA_ROOT: custom.dataRoot });

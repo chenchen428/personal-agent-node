@@ -14,7 +14,6 @@ import { commandKey, expandCommandName, HANDLED_COMMAND_KEYS } from '../src/comm
 import { localMailPlan, localMailStatus } from '../src/mail.ts';
 import { authorizeCloudResources, managedServiceReadiness, onboardingStatus, refreshCloudResources } from '../src/cloud-resources.ts';
 import { setupStatus } from '../src/setup.ts';
-import { clearDefaultPersonalApp, inspectPersonalApp, publicPersonalApp, readPersonalAppSettings, resolveDefaultPersonalApp, scanPersonalApps, setDefaultPersonalApp, verifyPersonalApp } from '../src/apps.ts';
 import { requestActivity } from '../src/activity.ts';
 import { createSpace, deleteSpace, getSpace, initializeInstallation, listSpaces, setSpaceDesiredState } from '../src/space-registry.ts';
 import { ensureProductDevelopment, productDevelopmentStatus, readProductDevelopmentContract } from '../src/product-development.ts';
@@ -79,11 +78,6 @@ async function executeHandled({ resource, action, id, args, requestedCommand }) 
   if (resource === 'backup' && action === 'status') return backupStatus();
   if (resource === 'mail' && action === 'status') return mailStatus();
   if (resource === 'mail' && action === 'plan') return mailPlan();
-  if (resource === 'app' && action === 'list') return appList();
-  if (resource === 'app' && action === 'inspect') return appInspect(id);
-  if (resource === 'app' && action === 'verify') return appVerify(id);
-  if (resource === 'app' && action === 'set-default') return appSetDefault(id);
-  if (resource === 'app' && action === 'clear-default') return appClearDefault();
   if (resource === 'extension' && action === 'list') return extensionList();
   if (resource === 'extension' && action === 'inspect') return extensionInspect(id);
   if (resource === 'activity' && ['list', 'search', 'show', 'create', 'upsert', 'update', 'hide', 'restore'].includes(action)) {
@@ -341,53 +335,6 @@ function mailStatus() {
 function mailPlan() {
   const config = requireConfig();
   return success('mail plan', { plan: localMailPlan(config) }, [], ['Review workflows/local-mail.md before configuring a local MTA pipe']);
-}
-
-function appList() {
-  const config = requireConfig();
-  const scan = scanPersonalApps(config);
-  const resolved = resolveDefaultPersonalApp(config);
-  return success('app list', {
-    apps: scan.apps.map(publicPersonalApp),
-    invalid: scan.invalid,
-    defaultAppId: resolved.configuredAppId,
-    effectiveDefaultAppId: resolved.app?.id || '',
-    fallback: resolved.fallback,
-  });
-}
-
-function appInspect(id) {
-  requireId(id, 'App id');
-  try { return success('app inspect', { app: publicPersonalApp(inspectPersonalApp(requireConfig(), id)) }); }
-  catch (error) { throw cliError('NOT_FOUND', error.message || `Unknown App: ${id}`, 3); }
-}
-
-function appVerify(id) {
-  requireId(id, 'App id');
-  try {
-    const app = verifyPersonalApp(requireConfig(), id);
-    if (!app.compatible) throw new Error(`App requires unsupported Node API ${app.requires.nodeApi}`);
-    return success('app verify', { verified: true, app: publicPersonalApp(app) });
-  } catch (error) {
-    throw cliError('ACCEPTANCE_FAILED', error.message || `App verification failed: ${id}`, 8);
-  }
-}
-
-function appSetDefault(id) {
-  requireId(id, 'App id');
-  try {
-    const resolved = setDefaultPersonalApp(requireConfig(), id);
-    return success('app set-default', { defaultAppId: resolved.app.id, route: `/apps/${resolved.app.id}/` });
-  } catch (error) {
-    throw cliError('ACCEPTANCE_FAILED', error.message || `Unable to select App: ${id}`, 8);
-  }
-}
-
-function appClearDefault() {
-  const config = requireConfig();
-  const previous = readPersonalAppSettings(config).defaultAppId || '';
-  clearDefaultPersonalApp(config);
-  return success('app clear-default', { previousDefaultAppId: previous, defaultAppId: '', route: '/app' });
 }
 
 function extensionList() {

@@ -38,7 +38,6 @@ test("Next.js owns the approved V6.39 mobile client and V7.3 desktop workspace",
   const dataClient = read("core/app/src/components/desktop-v627/data-page.tsx");
   const dataEmptyState = read("core/app/src/components/desktop-v627/data-empty-state.tsx");
   const runtimeClient = read("core/app/src/components/desktop-v627/runtime-page.tsx");
-  const appsClient = read("core/app/src/components/desktop-v627/apps-page.tsx");
   const legacyChatPage = read("core/app/src/app/app/chat/[[...slug]]/page.tsx");
   const settingsClient = read("core/app/src/components/desktop-v627/settings-page.tsx");
   const spaceSwitcher = read("core/app/src/components/space-switcher.tsx");
@@ -54,8 +53,6 @@ test("Next.js owns the approved V6.39 mobile client and V7.3 desktop workspace",
     "mobile-current/mobile-task-detail.tsx",
     "mobile-current/task-display-presentation.tsx",
     "mobile-current/use-task-display-history.ts",
-    "mobile-current/apps.tsx",
-    "mobile-current/personal-app.tsx",
     "mobile-current/about.tsx",
     "mobile-current/token-usage.tsx",
     "mobile-current/wechat-status.tsx",
@@ -82,10 +79,10 @@ test("Next.js owns the approved V6.39 mobile client and V7.3 desktop workspace",
   const conversationCss = read("core/app/src/app/desktop-v633-conversation.css");
   const mobileCss = read("core/app/src/app/mobile-current.css");
 
-  for (const route of ["/app/conversations", "/app/workers", "/app/mail", "/app/pages", "/app/data", "/app/connections", "/app/agents", "/app/runtime", "/app/apps", "/app/settings", "/app/statistics/token-usage", "/app/update"]) {
+  for (const route of ["/app/conversations", "/app/workers", "/app/mail", "/app/pages", "/app/data", "/app/connections", "/app/runtime", "/app/settings", "/app/statistics/token-usage", "/app/update"]) {
     assert.match(desktopNavigationSource, new RegExp(route.replaceAll("/", "\\/")));
   }
-  for (const route of ["/app/mobile", "/app/mobile/pages", "/app/mobile/workers", "/app/mobile/apps", "/app/mobile/about"]) {
+  for (const route of ["/app/mobile", "/app/mobile/pages", "/app/mobile/workers", "/app/mobile/about"]) {
     assert.match(navigation, new RegExp(route.replaceAll("/", "\\/")));
   }
   assert.match(shell, /关闭客户端会停止当前工作、邮件接收和手机入口/);
@@ -95,7 +92,7 @@ test("Next.js owns the approved V6.39 mobile client and V7.3 desktop workspace",
   assert.match(shell, /\["start", "running"\]/);
   assert.match(shell, /空间设置/);
   assert.match(shell, /本机工作区/);
-  assert.match(shell, /\/api\/system\/apps/);
+  assert.doesNotMatch(shell, /\/api\/system\/apps|自定义应用/);
   assert.match(dataClient, /\/api\/app\/data\/schema\?counts=0&preview=1/);
   assert.match(spaceSwitcher, /隔离空间不存在/);
   assert.match(spaceSwitcher, /options = snapshot\.spaces/);
@@ -140,8 +137,6 @@ test("Next.js owns the approved V6.39 mobile client and V7.3 desktop workspace",
   assert.match(runtimeClient, /runtime-stat-grid/);
   assert.match(runtimeClient, /客户端持续守护/);
   assert.doesNotMatch(runtimeClient, /关闭策略|停止 PA 服务|CircleStop|__personal-agent\/close/);
-  assert.match(appsClient, /\/app\/conversations\?draft=/);
-  assert.doesNotMatch(appsClient, /\/app\/chat\?draft=/);
   assert.match(legacyChatPage, /redirect\("\/app\/conversations"\)/);
   assert.equal(fs.existsSync(path.join(root, "core/app/src/components/chat-dashboard.tsx")), false);
   assert.match(dataExportControl, /SQLite/);
@@ -152,7 +147,7 @@ test("Next.js owns the approved V6.39 mobile client and V7.3 desktop workspace",
   assert.match(shell, /desktopNavigationGroups/);
   assert.ok(navigation.indexOf('label: "Agent 组件"') < navigation.indexOf('href: "\/app\/workers"'));
   assert.match(navigation, /label: "核心功能"/);
-  assert.match(navigation, /label: "Agent 团队", href: "\/app\/agents"/);
+  assert.doesNotMatch(navigation, /Agent 团队|\/app\/apps/);
   assert.doesNotMatch(navigation, /用户参与|Agent 工作/);
   assert.match(shell, /PanelLeftClose/);
   assert.doesNotMatch(shell, /window-dots|phone-status|9:41/);
@@ -169,7 +164,7 @@ test("Next.js owns the approved V6.39 mobile client and V7.3 desktop workspace",
   assert.doesNotMatch(mobileCss, /\.phone-status/);
   assert.match(mobileCss, /\.task-plan/);
   assert.match(mobileClient, /工作区/);
-  assert.match(mobileClient, /自定义应用/);
+  assert.doesNotMatch(mobileClient, /自定义应用/);
   assert.match(mobileClient, /系统/);
   assert.match(mobileClient, /mobile-task-list/);
   assert.match(mobileClient, /mobile-task-conversation/);
@@ -379,30 +374,12 @@ test("Next.js owns the approved V6.39 mobile client and V7.3 desktop workspace",
   assert.match(desktopComponents, /className="page flush data-shell"/);
   assert.match(desktopComponents, /可横向和纵向滚动的数据表/);
   assert.match(shell, /from "@\/components\/navigation"/);
-  assert.match(shell, /appActive\(app\)/);
-  const appHost = read("core/app/src/components/personal-app-host.tsx");
   const wechatLogin = read("core/app/src/components/wechat-login.ts");
   const wechatPanel = read("core/app/src/components/wechat-connect-panel.tsx");
-  const appCatalog = read("core/runtime/src/apps.ts");
-  const appGuide = read("docs/personal-app-development.md");
-  const referenceApp = read("examples/personal-apps/personal-agent.daily-brief/dist/index.html");
-  const referenceController = read("examples/personal-apps/personal-agent.daily-brief/dist/app.js");
-  assert.match(appHost, /embedded=1&surface=desktop/);
-  assert.match(appHost, /assetRoute/);
-  assert.match(css, /v72-page-scroll:has\(> \.personal-app-host\)/);
-  assert.match(css, /\.personal-app-host iframe \{ width: 100%; height: 100%/);
-  assert.match(appCatalog, /desktopRoute/);
-  assert.match(appCatalog, /mobileRoute/);
-  assert.match(appGuide, /Mobile is the primary Personal App entry/);
-  assert.match(appGuide, /A mobile surface is not a narrow desktop page/);
-  assert.match(referenceApp, /data-surface-view="desktop"/);
-  assert.match(referenceApp, /data-surface-view="mobile"/);
-  assert.match(referenceController, /requestedSurface === "mobile"/);
   assert.match(mobileClient, /\/api\/mobile\/activity/);
   assert.match(mobileClient, /\/api\/mobile\/tasks/);
   assert.match(mobileClient, /\/api\/mobile\/pages/);
-  assert.match(mobileClient, /app\.mobileRoute \|\| app\.route/);
-  assert.match(mobileClient, /embedded=1&surface=mobile/);
+  assert.doesNotMatch(mobileClient, /\/api\/system\/apps|自定义应用/);
   assert.match(mobileClient, /MobileWechatStatus/);
   assert.match(mobileClient, /\/api\/channels/);
   assert.match(mobileClient, /downloadWechatQrPng/);
@@ -426,7 +403,7 @@ test("Next.js owns the approved V6.39 mobile client and V7.3 desktop workspace",
   assert.match(mobileClient, /drawerOpen \? <MobileDrawer/);
   assert.doesNotMatch(mobileClient, /messageLimit=80/);
   assert.doesNotMatch(mobileClient.match(/const navItems:[\s\S]*?\];/)?.[0] || "", /conversations/);
-  for (const responsibility of ["activity.tsx", "pages.tsx", "workers.tsx", "mobile-task-detail.tsx", "task-display-presentation.tsx", "use-task-display-history.ts", "apps.tsx", "personal-app.tsx", "about.tsx", "wechat-status.tsx", "mail.tsx", "shell.tsx", "token-usage.tsx", "data.tsx", "types.ts"]) {
+  for (const responsibility of ["activity.tsx", "pages.tsx", "workers.tsx", "mobile-task-detail.tsx", "task-display-presentation.tsx", "use-task-display-history.ts", "about.tsx", "wechat-status.tsx", "mail.tsx", "shell.tsx", "token-usage.tsx", "data.tsx", "types.ts"]) {
     const file = path.join(root, "core/app/src/components/mobile-current", responsibility);
     assert.equal(fs.existsSync(file), true, responsibility);
     assert.ok(fs.readFileSync(file, "utf8").split(/\r?\n/).length <= 300, `${responsibility} exceeds 300 lines`);
@@ -438,14 +415,13 @@ test("Next.js owns the approved V6.39 mobile client and V7.3 desktop workspace",
 
 test("all finalized client routes have independently buildable Next pages", () => {
   const pages = [
-    "app/page.tsx", "app/conversations/page.tsx", "app/workers/page.tsx", "app/workers/schedules/page.tsx", "app/schedules/page.tsx", "app/automations/page.tsx", "app/mail/page.tsx",
-    "app/pages/page.tsx", "app/pages/[pageId]/page.tsx", "app/data/page.tsx", "app/apps/page.tsx", "app/apps/[appId]/page.tsx", "app/agents/page.tsx", "app/agents/[agentId]/page.tsx", "app/agents/[agentId]/examples/[exampleId]/page.tsx",
+    "app/page.tsx", "app/calendar/page.tsx", "app/mobile/calendar/page.tsx", "app/conversations/page.tsx", "app/workers/page.tsx", "app/workers/schedules/page.tsx", "app/schedules/page.tsx", "app/automations/page.tsx", "app/mail/page.tsx",
+    "app/pages/page.tsx", "app/pages/[pageId]/page.tsx", "app/data/page.tsx",
     "app/connections/page.tsx", "app/connections/wechat-personal/page.tsx", "app/channels/page.tsx", "app/skills/page.tsx", "app/statistics/token-usage/page.tsx", "app/setup/page.tsx", "app/runtime/page.tsx", "app/settings/page.tsx", "app/settings/memory/page.tsx", "app/update/page.tsx",
     "app/mobile/page.tsx", "app/mobile/pages/page.tsx", "app/mobile/pages/[pageId]/page.tsx",
     "app/mobile/workers/page.tsx", "app/mobile/workers/[sessionId]/page.tsx",
     "app/mobile/conversations/page.tsx", "app/mobile/conversations/[sessionId]/page.tsx",
-    "app/mobile/apps/page.tsx", "app/mobile/about/page.tsx", "app/mobile/mail/[messageId]/page.tsx",
-    "app/mobile/apps/[appId]/page.tsx",
+    "app/mobile/about/page.tsx", "app/mobile/mail/[messageId]/page.tsx",
   ];
   for (const page of pages) assert.equal(fs.existsSync(path.join(root, "core/app/src/app", page)), true, page);
   assert.match(read("core/app/src/app/app/schedules/page.tsx"), /redirect\("\/app\/workers\/schedules"\)/);
@@ -468,7 +444,7 @@ test("gateway routes the approved client to Next and its read-only data to the l
   const routes = distribution.routing.paths;
   assert.equal(routes.find((route) => route.key === "app").targetKey, "console");
   assert.equal(routes.find((route) => route.key === "app-pages").targetKey, "console");
-  assert.deepEqual(routes.find((route) => route.key === "app-agents"), { key: "app-agents", prefix: "/app/agents", access: "authenticated", kind: "proxy", targetKey: "console", upstreamPath: "/app/agents" });
+  assert.equal(routes.some((route) => /^(?:app-agents|api-agents)$/.test(route.key)), false);
   assert.equal(routes.some((route) => route.key === "template-pages"), false);
   assert.equal(routes.find((route) => route.key === "app-connections").targetKey, "console");
   assert.deepEqual(routes.find((route) => route.key === "app-schedules"), { key: "app-schedules", prefix: "/app/schedules", access: "authenticated", kind: "proxy", targetKey: "console", upstreamPath: "/app/schedules" });
@@ -480,8 +456,8 @@ test("gateway routes the approved client to Next and its read-only data to the l
   assert.equal(routes.find((route) => route.key === "api-chat").targetKey, "agent");
   assert.deepEqual(routes.find((route) => route.key === "api-token-usage"), { key: "api-token-usage", prefix: "/api/token-usage", access: "authenticated", kind: "proxy", targetKey: "agent", upstreamPath: "/api/token-usage" });
   assert.deepEqual(routeRegistry.routes.find((route) => route.pattern === "/api/token-usage"), { pattern: "/api/token-usage", access: "authenticated", capability: "agent" });
-  assert.deepEqual(routes.find((route) => route.key === "api-agents"), { key: "api-agents", prefix: "/api/agents", access: "authenticated", kind: "proxy", targetKey: "agent", upstreamPath: "/api/agents" });
-  assert.deepEqual(routeRegistry.routes.find((route) => route.pattern === "/api/agents"), { pattern: "/api/agents", access: "authenticated", capability: "agent" });
+  assert.equal(routes.some((route) => /^(?:app-agents|api-agents)$/.test(route.key)), false);
+  assert.equal(routeRegistry.routes.some((route) => route.pattern === "/api/agents"), false);
   assert.deepEqual(routes.find((route) => route.key === "api-connections"), { key: "api-connections", prefix: "/api/connections", access: "authenticated", kind: "proxy", targetKey: "agent", upstreamPath: "/api/connections" });
   const homeRoute = routes.find((route) => route.key === "home");
   const homeHost = distribution.domain.standardHosts.find((host) => host.key === "home");
@@ -509,15 +485,13 @@ test("gateway routes the approved client to Next and its read-only data to the l
   assert.match(nextBff, /path\[0\] === "publications"/);
 });
 
-test("existing writable desktop workflows and Personal Apps remain available", () => {
+test("existing writable workflows and Plugins remain available after Apps retirement", () => {
   const chat = read("core/app/src/components/desktop-v627/conversation-page.tsx");
   const mail = read("core/app/src/components/mail-dashboard.tsx");
   const channels = read("core/app/src/components/channels-dashboard.tsx");
   const setup = read("core/app/src/components/setup-dashboard.tsx");
-  const appCatalog = read("core/app/src/components/apps-dashboard.tsx");
   const appShell = read("core/app/src/components/app-shell.tsx");
   const mobileShell = read("core/app/src/components/mobile-current/shell.tsx");
-  const mobilePersonalApp = read("core/app/src/components/mobile-current/personal-app.tsx");
   const pluginStore = read("core/plugins/runtime/store.ts");
   assert.match(chat, /\/api\/chat\/desktop\/conversation\/messages/);
   assert.match(chat, /clientMessageId/);
@@ -527,11 +501,8 @@ test("existing writable desktop workflows and Personal Apps remain available", (
   assert.match(setup, /setup-layout/);
   assert.match(setup, /三个核心步骤|核心初始化步骤/);
   assert.match(setup, /WechatConnectPanel[\s\S]*compact/);
-  assert.match(appCatalog, /\/api\/system\/apps/);
-  assert.match(appShell, /pathname === "\/app\/apps" \? "page" : undefined/);
-  assert.match(mobilePersonalApp, /activeAppId=\{appId\}/);
-  assert.match(mobileShell, /section === "apps" && !activeAppId/);
-  assert.match(mobileShell, /aria-current=\{activeAppId === app\.id \? "page" : undefined\}/);
+  assert.doesNotMatch(appShell, /自定义应用|\/app\/apps/);
+  assert.doesNotMatch(mobileShell, /自定义应用|\/api\/system\/apps/);
   assert.match(pluginStore, /personal-agent\.plugin\.json/);
 });
 

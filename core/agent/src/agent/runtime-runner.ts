@@ -3,6 +3,7 @@ import { createAppServerClient } from './app-server-client.ts';
 import { appServerClientOptions, releaseAppServerSession, runAppServerCommand, steerActiveTurn, stopAppServerCommand } from './app-server-runner.ts';
 import { runClaudeCodeCommand, stopClaudeCodeCommand } from './claude-code-runner.ts';
 import { runtimeProviderBaseUrl } from '../runtime-environments/validation.ts';
+import { attachSkillCatalog, nativeSkillMetadata, disableNativeCodexSkills, assertNativeSkillsDisabled } from '../skills/runtime-policy.ts';
 
 const active = new Map();
 
@@ -43,7 +44,7 @@ export function runtimeExecutionConfig(base, execution) {
 
 export async function runRuntimeCommand(base) {
   const execution = base.runtimeExecution || { engine: 'codex', profile: { model: base.appServerModel, reasoningEffort: base.appServerReasoningEffort } };
-  const config = runtimeExecutionConfig(base, execution);
+  let config = attachSkillCatalog(runtimeExecutionConfig(base, execution));
   const engine = config.agentType;
   if (active.has(config.sessionId)) throw new Error('runtime session is already executing');
   active.set(config.sessionId, engine);
@@ -71,6 +72,13 @@ export async function runRuntimeCommand(base) {
     // Every turn owns a transport snapshot. Concurrent Spaces/providers can never inherit another
     // process's credentials, and settings changes cannot mutate an already running turn.
     client = createAppServerClient(appServerClientOptions(config));
+    if (config.coveSkillsManaged) {
+      const nativeSkills = await nativeSkillMetadata(client, config.workspace);
+      client.shutdown();
+      config = disableNativeCodexSkills(config, nativeSkills);
+      client = createAppServerClient(appServerClientOptions(config));
+      await assertNativeSkillsDisabled(client, config.workspace);
+    }
     if (base.runtimeTimeoutMs) deadline = setTimeout(() => client.shutdown(), base.runtimeTimeoutMs);
     return await runAppServerCommand({ ...config, appServerClient: client });
   } finally {
@@ -113,7 +121,7 @@ export async function probeRuntimeAccount(execution, base = {}, signal) {
       appServerApprovalPolicy: 'never', appServerSandbox: 'read-only', appServerEphemeral: true,
       claudeTools: [], claudeNoSessionPersistence: true, claudeTimeoutMs: 30_000,
       runtimeTimeoutMs: 30_000,
-      harnessRoot: undefined, appServerDeveloperInstructions: undefined, onSessionEvent: () => {} });
+      harnessRoot: undefined, skillReleaseRoot: undefined, appServerDeveloperInstructions: undefined, onSessionEvent: () => {} });
     return result.success === true;
   } catch { return false; }
   finally { clearTimeout(timer); }

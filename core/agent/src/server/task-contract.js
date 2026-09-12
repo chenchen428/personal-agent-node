@@ -1,15 +1,12 @@
-import { normalizeAgentId, normalizeProjectKey } from "../agents/catalog.js";
-
 export const TASK_TITLE_MAX_LENGTH = 20;
 export const TASK_DESCRIPTION_MAX_LENGTH = 100;
 
 export function normalizeTaskCreate(input = {}) {
+  rejectRetiredAgentOptions(input);
   const parentSessionId = normalizeSingleLine(input.parentSessionId);
   const title = normalizeSingleLine(input.title);
   const description = normalizeSingleLine(input.description ?? input.taskDescription);
   const task = String(input.task || "").trim();
-  const agentId = normalizeAgentId(input.agentId ?? input.agent, { optional: true });
-  const projectKey = normalizeProjectKey(input.projectKey ?? input.project, { optional: true });
 
   if (parentSessionId && !title) throw taskInputError("创建子任务时必须设置标题");
   if (parentSessionId && !description) throw taskInputError("创建子任务时必须设置描述");
@@ -18,10 +15,7 @@ export function normalizeTaskCreate(input = {}) {
     validateTaskText(title, "任务标题", TASK_TITLE_MAX_LENGTH);
     validateTaskText(description, "任务描述", TASK_DESCRIPTION_MAX_LENGTH);
   }
-  if (Boolean(agentId) !== Boolean(projectKey)) {
-    throw taskInputError("专业任务必须同时提供 agentId 和 projectKey");
-  }
-  return { parentSessionId, title, description, task, agentId, projectKey };
+  return { parentSessionId, title, description, task };
 }
 
 export function normalizeTaskPatch(input = {}) {
@@ -52,4 +46,13 @@ function validateTaskText(value, label, maximum) {
 
 function taskInputError(message) {
   return Object.assign(new Error(message), { code: "TASK_METADATA_INVALID", statusCode: 400 });
+}
+
+export function rejectRetiredAgentOptions(input = {}) {
+  const fields = ["agentId", "agent", "projectKey", "project", "project-key", "agentProfileVersion"];
+  if (fields.some((field) => input[field] !== undefined)) {
+    throw Object.assign(new Error("Agent 团队已下线；请直接创建或继续普通任务，不再指定专业 Agent 或项目身份"), {
+      code: "AGENT_TEAMS_RETIRED", statusCode: 400,
+    });
+  }
 }

@@ -1,4 +1,0 @@
-interface:
-  display_name: "装修方案 Page 渲染"
-  short_description: "生成便于家庭分享确认的装修设计册、在线概念图和沉浸式三维体验"
-  default_prompt: "使用 $render-interior-pages 将当前装修方案渲染为业主设计册、三套在线概念图和独立沉浸式 Web 3D，并生成七目标验收清单。"

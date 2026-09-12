@@ -1,51 +1,14 @@
-# Frontend Development Principles
+# 前端工程原则
 
-This is the local engineering contract for the Personal Agent Web Console, desktop shell, mobile pages, and Personal Apps. Product behavior and appearance still come from approved files under the parent workspace's `docs/prototypes/`.
+适用于Cove桌面与移动端。一个组件只有一个主要职责；页面负责组合，状态、数据读取、布局和可复用呈现按变化原因拆开。
 
-## Single responsibility
+复用现有导航、输入、筛选、分页、加载、空状态和错误恢复组件，不复制一整套页面。每个菜单目的地对应独立页面组件。每个 `.tsx`/`.jsx` 文件不超过300物理行，不通过压缩源码规避限制。
 
-Each component owns one primary concern. A page may compose a heading, filters, a list and a detail panel, while reusable data loading, formatting, navigation and UI primitives live outside the page.
+桌面侧栏和主内容分别滚动。移动端使用独立页面组合，共享数据和基础组件，不能把桌面页面简单缩窄。切换路由保留正确来源、有效选择和必要阅读位置。
 
-Do not use one large component as a switchboard for unrelated screens.
+使用真实数据状态，不伪造加载完成、成功结果或客户内容。图标按钮有明确可访问名称；链接和操作与标签承诺一致，键盘与触摸入口可用。
 
-## Reuse before duplication
-
-Extract behavior when multiple consumers need the same contract. Typical shared units include navigation definitions, page headings, filters, pagination, empty states, API hooks, formatters and Personal App host behavior.
-
-Reuse behavior and semantics, not only copied CSS.
-
-## 300-line component limit
-
-Every authored `.tsx` file under `core/app/src/components/` must contain no more than 300 physical lines. The limit is a ceiling, not a target. Split earlier when responsibilities are already separable.
-
-Generated files and CSS are governed separately. Minifying handwritten source to evade the limit is not compliant.
-
-## One menu destination, one page component
-
-Every primary menu route owns an independently named page component module. Route files import that page directly. Shared shells and primitives may wrap it, but unrelated menu pages must not share a single implementation module.
-
-Personal Apps do not own product navigation. Desktop and mobile render inside their respective core Personal App hosts, preserving the same brand, menu, active state and lifecycle controls. Their standalone asset route remains available for recovery access.
-
-Mobile is the primary Personal App surface, and desktop support is still required. Share data clients, state, semantics and reusable primitives, but keep device-specific page composition separate. A desktop layout compressed by media queries is not a mobile implementation. Mobile App links must use `/app/mobile/apps/<app-id>` and must not fall back into the desktop shell. Follow the complete contract in `docs/personal-app-development.md`.
-
-## Independent scrolling
-
-At desktop width, the product shell occupies the viewport:
-
-- the sidebar has its own vertical overflow boundary;
-- the main column owns a separate content scroller;
-- the top bar remains inside the main column;
-- scrolling a long page never moves the sidebar.
-
-Responsive mobile layouts may return to document scrolling when the sidebar becomes a drawer.
-
-## Real acceptance data
-
-Production code must not silently fabricate customer content. Design prototypes may use representative content, and local acceptance installations may be populated with clearly scoped demo records. Acceptance data must flow through the same APIs and local stores as ordinary data so mail, Pages, tasks, conversations, data objects and Personal Apps exercise their real integration paths.
-
-## Verification
-
-Run:
+视觉和浏览器交互由用户验收，未明确请求时不截图或自动点击。代码、类型、构建、语义和路由测试照常执行：
 
 ```bash
 npm run frontend:guard

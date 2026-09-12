@@ -226,7 +226,7 @@ test("mail web requires authentication and serves message, raw EML, and attachme
   assert.equal(nodeCapabilitiesPayload.ok, true);
   assert.deepEqual(nodeCapabilitiesPayload.result.supportedMajors, ["1"]);
   assert.equal(nodeCapabilitiesPayload.result.capabilities.data.rawSql, false);
-  assert.equal(nodeCapabilitiesPayload.result.capabilities.apps.history.append, true);
+  assert.equal("apps" in nodeCapabilitiesPayload.result.capabilities, false);
 
   const nodeMail = await fetch(`http://127.0.0.1:${port}/api/node/v1/mail/messages/${encodeURIComponent(ingested.event.id)}`, { headers });
   const nodeMailPayload = await nodeMail.json();
@@ -248,27 +248,12 @@ test("mail web requires authentication and serves message, raw EML, and attachme
   assert.equal(nodeDataQueryPayload.result.rows[0].category, "travel");
   assert.equal(nodeDataQueryPayload.result.rows[0].amount, 680);
 
-  const historyHeaders = { ...headers, "x-personal-agent-app-id": "personal-agent.daily-brief" };
-  const appendHistory = await fetch(`http://127.0.0.1:${port}/api/node/v1/apps/personal-agent.daily-brief/history`, {
-    method: "POST",
-    headers: { ...historyHeaders, "content-type": "application/json" },
-    body: JSON.stringify({ kind: "refresh", title: "Refresh brief", summary: "Shared data was read.", sources: ["data"] }),
-  });
-  assert.equal(appendHistory.status, 201);
-  assert.match((await appendHistory.json()).result.history.id, /^apphist_/);
-  const listHistory = await fetch(`http://127.0.0.1:${port}/api/node/v1/apps/personal-agent.daily-brief/history`, { headers: historyHeaders });
-  const listHistoryPayload = await listHistory.json();
-  assert.equal(listHistoryPayload.result.total, 1);
-  assert.equal(listHistoryPayload.result.items[0].sources[0], "data");
-  const legacyActivity = await fetch(`http://127.0.0.1:${port}/api/node/v1/apps/personal-agent.daily-brief/activity?limit=8`, { headers: historyHeaders });
-  const legacyActivityPayload = await legacyActivity.json();
-  assert.equal(legacyActivity.status, 200);
-  assert.equal(legacyActivityPayload.result.total, 1);
-  const mismatchedHistory = await fetch(`http://127.0.0.1:${port}/api/node/v1/apps/personal-agent.daily-brief/history`, {
-    headers: { ...headers, "x-personal-agent-app-id": "example.other" },
-  });
-  assert.equal(mismatchedHistory.status, 403);
-  assert.equal((await mismatchedHistory.json()).error.code, "APP_IDENTITY_REQUIRED");
+  for (const [method, endpoint] of [["POST", "history"], ["GET", "history"], ["GET", "activity?limit=8"]]) {
+    const retired = await fetch(`http://127.0.0.1:${port}/api/node/v1/apps/personal-agent.daily-brief/${endpoint}`, { method, headers });
+    assert.equal(retired.status, 410);
+    assert.equal((await retired.json()).error.code, "APPS_RETIRED");
+  }
+  assert.equal(fs.readFileSync(path.join(appRoot, "dist/index.html"), "utf8"), "<!doctype html><title>Daily Brief</title>");
 
   const nodePages = await fetch(`http://127.0.0.1:${port}/api/node/v1/pages`, { headers });
   const nodePagesPayload = await nodePages.json();

@@ -6,17 +6,29 @@
     "path": "core",
     "ownership": "product",
     "mutable": false,
-    "releasePointers": ["current", "previous"],
-    "directories": ["bin", "releases"]
+    "releasePointers": [
+      "current",
+      "previous"
+    ],
+    "directories": [
+      "bin",
+      "releases"
+    ]
   },
   "workspace": {
     "path": "workspace",
     "ownership": "user",
     "mutable": true,
     "preserveOnUninstall": true,
-    "harness": ["AGENTS.md", "agents", "registry", "schemas", "scripts", "skills", "workflows"],
+    "harness": [
+      "AGENTS.md",
+      "registry",
+      "schemas",
+      "scripts",
+      "skills",
+      "workflows"
+    ],
     "directories": [
-      "apps",
       "plugins",
       "files",
       "publications",
@@ -34,7 +46,13 @@
     "ownership": "product",
     "serviceOwner": "desktop-client",
     "origin": "http://127.0.0.1:8843",
-    "platforms": ["windows-x64", "macos-x64", "macos-arm64", "linux-x64", "linux-arm64"],
+    "platforms": [
+      "windows-x64",
+      "macos-x64",
+      "macos-arm64",
+      "linux-x64",
+      "linux-arm64"
+    ],
     "systemWebview": true,
     "bundledChromium": false,
     "bundledNodeSidecar": false,

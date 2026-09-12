@@ -4,7 +4,7 @@
 @import "./mobile-current.css";
 @import "./desktop-v627-base.css";
 @import "./desktop-v627-pages.css";
-@import "./agent-teams.css";
+@import "./cove-calendar.css";
 @import "./desktop-v627-v4.css";
 @import "./desktop-v627-data.css";
 @import "./desktop-v633-conversation.css";
@@ -142,7 +142,7 @@
   .footer { display: none; }
 }
 
-/* Approved Personal App P2 shell */
+/* Shared product shell */
 .app-shell { width: 100%; min-height: 100vh; display: grid; grid-template-columns: 236px minmax(0,1fr); overflow: visible; padding: 0; background: var(--canvas); }
 .app-sidebar { position: sticky; top: 0; z-index: 44; min-height: 100vh; height: 100vh; display: flex; flex-direction: column; overflow-y: auto; border-right: 1px solid #302e2a; padding: 24px 16px 18px; background: var(--surface-dark); color: #aaa69e; }
 .app-sidebar-brand { display: flex; align-items: center; gap: 10px; padding: 0 10px 25px; color: var(--on-dark); }
@@ -168,19 +168,6 @@
 .app-settings-link, .app-menu-button, .app-drawer-close { width: 38px; height: 38px; display: grid; place-items: center; border: 1px solid var(--hairline); border-radius: 9px; background: var(--canvas); color: var(--muted); }
 .app-menu-button { display: none; }
 .app-drawer-backdrop, .app-drawer-close { display: none; }
-.apps-page { padding-top: 46px; }
-.apps-catalog { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 16px; padding-top: 26px; }
-.apps-card { min-width: 0; min-height: 310px; display: flex; flex-direction: column; border: 1px solid var(--hairline); border-radius: 12px; padding: 22px; background: var(--canvas); transition: transform .18s ease, box-shadow .18s ease; }
-.apps-card:hover { transform: translateY(-2px); box-shadow: 0 16px 36px rgba(20,20,19,.08); }
-.apps-card > header, .apps-card > footer { display: flex; align-items: center; justify-content: space-between; gap: 14px; color: var(--muted-soft); font: 500 9px/1.4 var(--mono); }
-.apps-card-mark { width: 48px; height: 48px; display: grid; place-items: center; margin: 40px 0 20px; border-radius: 13px; background: var(--surface-dark); color: var(--on-dark); }
-.apps-card h2 { margin: 0; font-family: var(--sans); font-size: 18px; font-weight: 600; }
-.apps-card p { margin: 9px 0 24px; color: var(--muted); font-size: 11px; line-height: 1.6; }
-.apps-card > footer { margin-top: auto; border-top: 1px solid var(--hairline); padding-top: 15px; }
-.apps-card > footer span:last-child { color: var(--coral); }
-.apps-empty { min-height: 320px; display: grid; place-items: center; align-content: center; gap: 9px; margin-top: 26px; border: 1px solid var(--hairline); border-radius: 12px; color: var(--muted); text-align: center; }
-.apps-empty strong { color: var(--ink); font-size: 13px; }
-.apps-empty span { font-size: 10px; }
 
 @media (max-width: 1024px) {
   .app-shell { grid-template-columns: 1fr; }
@@ -192,15 +179,10 @@
   .app-topbar { min-height: 58px; padding: 0 14px; }
   .app-menu-button { display: grid; }
   .app-settings-link { width: 36px; height: 36px; }
-  .apps-catalog { grid-template-columns: repeat(2,minmax(0,1fr)); }
 }
 
 @media (max-width: 640px) {
   .app-topbar > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .apps-page { width: calc(100% - 28px); padding-top: 18px; }
-  .apps-catalog { grid-template-columns: 1fr; gap: 12px; padding-top: 18px; }
-  .apps-card { min-height: 250px; }
-  .apps-card-mark { margin-top: 28px; }
 }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; animation: none !important; transition: none !important; } }
 

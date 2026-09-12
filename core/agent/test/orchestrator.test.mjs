@@ -898,10 +898,10 @@ test("acknowledges WeChat immediately and queues the completed reply behind the 
   assert.match(calls[0].appServerDeveloperInstructions, /负责收集这些状态、向用户汇总有意义的进展/);
   assert.match(calls[0].appServerDeveloperInstructions, /询问任务、进度、完成情况.*禁止创建或续接任务/);
   assert.match(calls[0].appServerDeveloperInstructions, new RegExp(`pa-cli session list --parent ${session.id} --all --json`));
-  assert.match(calls[0].appServerDeveloperInstructions, /interior-designer/);
+  assert.doesNotMatch(calls[0].appServerDeveloperInstructions, /interior-designer|专业(?:子 )?Agent|专业目录|工作流进度/);
   assert.doesNotMatch(calls[0].appServerDeveloperInstructions, /户型证据整理/);
   assert.doesNotMatch(calls[0].appServerDeveloperInstructions, /项目连续性/);
-  assert.match(calls[0].appServerDeveloperInstructions, /--agent <agentId> --project-key <projectKey>/);
+  assert.doesNotMatch(calls[0].appServerDeveloperInstructions, /--agent|--project-key/);
   assert.doesNotMatch(calls[0].appServerDeveloperInstructions, /pa-cli pages templates list --json/);
   assert.match(calls[0].appServerDeveloperInstructions, /回复开头必须明确说‘任务已完成’或‘任务未完成’/);
   assert.doesNotMatch(calls[0].appServerDeveloperInstructions, /你好，在吗/);

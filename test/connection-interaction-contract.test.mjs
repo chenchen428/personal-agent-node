@@ -124,8 +124,8 @@ test("connection UI separates OpenCLI browser reads from QR and account authoriz
   assert.equal(twitterConnection.accessMode, "browser");
   assert.deepEqual(xiaohongshuConnection.platforms, ["win32", "darwin"]);
   assert.deepEqual(twitterConnection.platforms, ["win32", "darwin"]);
-  assert.equal(xiaohongshuConnection.skillName, "social-browser-read");
-  assert.equal(twitterConnection.skillName, "social-browser-read");
+  assert.equal(xiaohongshuConnection.skillName, "cove-connections");
+  assert.equal(twitterConnection.skillName, "cove-connections");
   assert.match(server, /CONNECTION_PLATFORM_UNSUPPORTED/);
   assert.match(server, /if \(openCliBrowserSupported\) void Promise\.all/);
   assert.match(server, /if \(personalWechatSupported\) wechatQianxun\.attach/);
@@ -220,7 +220,7 @@ test("personal WeChat is independent from WeChat claw and configures a Qianxun-b
 
 test("Notion runtime uses the official headless login handoff and login poll", () => {
   const runtime = read("core/agent/src/connections/notion-cli.js");
-  const skill = read("skills/personal-connections/references/connectors/notion.md");
+  const skill = read("skills/cove-connections/references/connectors/notion.md");
   assert.match(runtime, /\["login", "--no-browser"\]/);
   assert.match(runtime, /\["login", "poll"\]/);
   assert.match(runtime, /\["logout"\]/);
@@ -232,7 +232,7 @@ test("Notion runtime uses the official headless login handoff and login poll", (
 
 test("domain connector skills describe completion callbacks for bind and remove", () => {
   for (const id of ["mail", "sites"]) {
-    const skill = read(`skills/personal-connections/references/connectors/${id}.md`);
+    const skill = read(`skills/cove-connections/references/connectors/${id}.md`);
     assert.match(skill, /持续检查/);
     assert.match(skill, /状态回调/);
     assert.match(skill, /use-custom-domain/);

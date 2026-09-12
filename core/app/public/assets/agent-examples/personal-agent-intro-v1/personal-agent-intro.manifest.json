@@ -1,0 +1,33 @@
+{
+  "schemaVersion": 1,
+  "name": "Cove · Your data. Put to work.",
+  "compositionId": "personal-agent-intro",
+  "sourceSha256": "d87f9bd720f7797bea05b9141956762661125888c9a201485243aa0f86c14523",
+  "video": {
+    "file": "personal-agent-intro.mp4",
+    "sha256": "37cff7423f5c1574d2cf0388cddfaa0693521b795dcb1ad152e5129d3ef52055",
+    "bytes": 21888140,
+    "codec": "h264",
+    "width": 1920,
+    "height": 1080,
+    "fps": 60,
+    "frames": 2280,
+    "durationSeconds": 38,
+    "audioTracks": 0
+  },
+  "poster": {
+    "file": "poster.jpg",
+    "sha256": "8992d283541b43755e5516e81d89455c4d2f7342f14964e39f2f75659966e6b2",
+    "bytes": 99264,
+    "frameSeconds": 1.5
+  },
+  "render": {
+    "tool": "hyperframes",
+    "version": "0.7.82",
+    "quality": "high"
+  },
+  "verification": {
+    "fullDecodePassed": true,
+    "visualAcceptance": "pending-user"
+  }
+}

@@ -5,7 +5,7 @@ import path from "node:path";
 import qrcodeTerminal from "qrcode-terminal";
 import { ingestRawEmail, MAX_MAIL_BYTES } from "../src/connections/mail/mail-ingest.js";
 import { createGeneratedPageThumbnails } from "../src/online-pages/generated-page-thumbnails.js";
-import { normalizeTaskCreate, normalizeTaskPatch } from "../src/server/task-contract.js";
+import { normalizeTaskCreate, normalizeTaskPatch, rejectRetiredAgentOptions } from "../src/server/task-contract.js";
 
 const personalAgentHome = path.resolve(process.env.PERSONAL_AGENT_HOME || path.join(os.homedir(), ".personal-agent"));
 const siteDataRoot = path.resolve(process.env.PRIVATE_SITE_DATA_ROOT || path.join(personalAgentHome, "workspace"));
@@ -18,6 +18,7 @@ const apiBase = (process.env.OPEN_AGENT_BRIDGE_API_BASE || `http://127.0.0.1:${p
 const token = process.env.OPEN_AGENT_BRIDGE_API_TOKEN || "";
 
 try {
+  if (command === "session") rejectRetiredAgentOptions(args);
   if (command === "mail" && subcommand === "ingest") {
     const chunks = [];
     let totalBytes = 0;
@@ -35,24 +36,20 @@ try {
       envelopeSender: args.sender || "",
     });
     print({ ok: true, sha256: result.sha256, queuedForIntervalScan: result.queuedForIntervalScan === true });
+  } else if (command === "calendar") {
+    print(await calendarCommand(subcommand));
   } else if (command === "memory") {
     print(await memoryCommand(subcommand));
   } else if (command === "automation") {
     throw new Error("The standalone automation product has been removed; use pa-cli cron for task-based automation");
-  } else if (command === "agents" && subcommand === "list") {
-    print((await get("/api/agents")).agents);
-  } else if (command === "agents" && subcommand === "inspect") {
-    const agentId = String(args.id || args.agent || args._[2] || "").trim();
-    if (!agentId) throw new Error("--id is required");
-    print((await get(`/api/agents/${encodeURIComponent(agentId)}`)).agent);
+  } else if (command === "agents") {
+    throw new Error("Agent 团队已下线；请使用 pa-cli session 管理普通任务");
   } else if (command === "session" && (subcommand === "list" || subcommand === "search")) {
     const query = args.query || args.q || (subcommand === "search" ? args._.slice(2).join(" ") : "");
     if (subcommand === "search" && !query) throw new Error("--query is required");
     print(await listSessions({
       query,
       parentSessionId: args.parent || "",
-      agentId: args.agent || "",
-      projectKey: args["project-key"] || args.project || "",
     }));
   } else if (command === "session" && subcommand === "start") {
     const task = readTaskArgument({
@@ -66,8 +63,6 @@ try {
       title: args.title,
       description: args.description || args.desc,
       task,
-      agentId: args.agent,
-      projectKey: args["project-key"] || args.project,
     });
     const result = await post("/api/sessions", {
       task: metadata.task,
@@ -76,8 +71,6 @@ try {
       parentSessionId: metadata.parentSessionId || undefined,
       workspaceRoot: args.workspace,
       createdBy: "pa-cli",
-      agentId: metadata.agentId || undefined,
-      projectKey: metadata.projectKey || undefined,
     });
     print(result.session);
   } else if (command === "session" && subcommand === "update") {
@@ -97,9 +90,6 @@ try {
     });
     if (!sessionId) throw new Error("--session is required");
     if (!content) throw new Error("--text is required");
-    if (subcommand === "resume" && (args.agent !== undefined || args["project-key"] !== undefined || args.project !== undefined)) {
-      throw new Error("session resume cannot change Agent or project identity");
-    }
     print(await post(`/api/sessions/${encodeURIComponent(sessionId)}/input`, {
       content,
       notifyWechat: args['notify-wechat'] === true,
@@ -403,6 +393,8 @@ try {
       excludeRelativePaths,
       execute: args.execute === true,
     }));
+  } else if (command === "pages" && subcommand === "poster") {
+    print(await pagePosterCommand());
   } else if (command === "pages" && subcommand === "templates") {
     throw new Error("Page templates have been retired; publish the finished HTML with pa-cli pages publish");
   } else if (command === "pages" && subcommand === "publish") {
@@ -560,6 +552,52 @@ async function readResponse(response) {
   return data;
 }
 
+async function calendarCommand(action) {
+  const supported = new Set(["list", "show", "history", "create", "update", "follow-up", "due", "poster"]);
+  if (!supported.has(action)) throw new Error("calendar action must be list, show, history, create, update, follow-up, due, or poster");
+  const allowed = new Set(["_", "json", "id", "capability", "input-file", "title", "participants-json", "start-at", "end-at", "time-zone", "location", "notes", "next-follow-up-at", "status", "expected-revision", "content", "from", "to", "query", "limit", "offset", "before"]);
+  for (const key of Object.keys(args)) if (!allowed.has(key)) throw new Error("Unsupported calendar option: --" + key);
+  const input = args["input-file"] ? JSON.parse(fs.readFileSync(resolveRegularFile(args["input-file"], "--input-file"), "utf8")) : {};
+  if (!input || typeof input !== "object" || Array.isArray(input)) throw new Error("--input-file must contain a JSON object");
+  const fields = { title: "title", "start-at": "startAt", "end-at": "endAt", "time-zone": "timeZone", location: "location", notes: "notes",
+    "next-follow-up-at": "nextFollowUpAt", status: "status", content: "content", from: "from", to: "to", query: "query", before: "before" };
+  for (const [option, field] of Object.entries(fields)) if (args[option] !== undefined) input[field] = args[option];
+  if (args["participants-json"] !== undefined) {
+    input.participants = JSON.parse(args["participants-json"]);
+    if (!Array.isArray(input.participants) || input.participants.some((person) => typeof person !== "string")) throw new Error("--participants-json must be an array of participant names");
+  }
+  for (const [option, field, minimum] of [["expected-revision", "expectedRevision", 1], ["limit", "limit", 1], ["offset", "offset", 0]]) {
+    if (args[option] !== undefined) input[field] = requiredInteger(args[option], "--" + option, { minimum });
+  }
+  const entryId = String(args.id || args._[2] || "").trim();
+  if (["show", "history", "update", "follow-up"].includes(action) && !entryId) throw new Error("--id is required");
+  if (["update", "follow-up"].includes(action)) input.expectedRevision = requiredInteger(input.expectedRevision, "--expected-revision", { minimum: 1 });
+  const capability = String(args.capability || "").trim();
+  if (!capability) throw new Error("--capability is required and must come from the current main Agent turn");
+  const response = await fetch(apiBase + "/api/internal/calendar-agent", {
+    method: "POST",
+    headers: { ...headers(), "content-type": "application/json", "x-cove-calendar-capability": capability },
+    body: JSON.stringify({ action, entryId, input }),
+  });
+  return (await readResponse(response)).result;
+}
+
+async function pagePosterCommand() {
+  const allowed = new Set(["_", "json", "id", "source-object", "capability", "corner"]);
+  for (const key of Object.keys(args)) if (!allowed.has(key)) throw new Error("Unsupported pages poster option: --" + key);
+  const capability = String(args.capability || "").trim();
+  if (!capability) throw new Error("--capability is required and must come from the current main Agent turn");
+  const pageId = String(args.id || "").trim();
+  const sourceObjectId = String(args["source-object"] || "").trim();
+  if (!pageId || !sourceObjectId) throw new Error("--id and --source-object are required");
+  const input = { pageId, sourceObjectId, ...(args.corner ? { corner: args.corner } : {}) };
+  const response = await fetch(apiBase + "/api/internal/calendar-agent", {
+    method: "POST", headers: { ...headers(), "content-type": "application/json", "x-cove-calendar-capability": capability },
+    body: JSON.stringify({ action: "page-poster", input }),
+  });
+  return (await readResponse(response)).result;
+}
+
 async function memoryCommand(action) {
   const supported = new Set(["list", "search", "show", "stats", "recall", "create", "update", "delete"]);
   if (!supported.has(action)) throw new Error("memory action must be list, search, show, stats, recall, create, update, or delete");
@@ -638,7 +676,7 @@ function delay(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-async function listSessions({ query = "", parentSessionId = "", agentId = "", projectKey = "" } = {}) {
+async function listSessions({ query = "", parentSessionId = "" } = {}) {
   const limit = Math.min(Math.max(Number.parseInt(args.limit || "20", 10) || 20, 1), 50);
   let cursor = args.cursor || "";
   const sessions = [];
@@ -647,8 +685,6 @@ async function listSessions({ query = "", parentSessionId = "", agentId = "", pr
     const params = new URLSearchParams({ limit: String(limit), summary: "1" });
     if (query) params.set("query", query);
     if (parentSessionId) params.set("parent", parentSessionId);
-    if (agentId) params.set("agent", agentId);
-    if (projectKey) params.set("project", projectKey);
     if (cursor) params.set("cursor", cursor);
     if (args.archived) params.set("archived", "1");
     const page = await get(`/api/sessions?${params}`);
@@ -668,9 +704,6 @@ function sessionSummary(session) {
     status: session.status,
     title: session.title,
     taskDescription: session.taskDescription,
-    agentId: session.agentId || session.metadata?.agentId || null,
-    agentProfileVersion: session.agentProfileVersion || session.metadata?.agentProfileVersion || null,
-    projectKey: session.projectKey || session.metadata?.projectKey || null,
     summary: session.summary,
     workspaceRoot: session.workspaceRoot,
     hasResumeThread: Boolean(session.cliSessionId),
@@ -796,6 +829,13 @@ async function personalWechatConnectionCommand(parsed) {
 
 function help() {
   console.log(`Usage:
+  pa-cli calendar list [--from <offset-ISO>] [--to <offset-ISO>] [--status <status>] [--query <text>] [--limit <n>] [--offset <n>] --capability <ephemeral> [--json]
+  pa-cli calendar show|history --id <calendar-id> --capability <ephemeral> [--json]
+  pa-cli calendar create --title <text> --start-at <offset-ISO> --time-zone <IANA> [--participants-json <array>] [--end-at <offset-ISO>] [--location <text>] [--notes <text>] [--next-follow-up-at <offset-ISO>] --capability <ephemeral> [--json]
+  pa-cli calendar update --id <calendar-id> --expected-revision <n> [--input-file <json>] [--title <text>] [--status <planned|in_progress|done|cancelled>] --capability <ephemeral> [--json]
+  pa-cli calendar follow-up --id <calendar-id> --expected-revision <n> --content <text> [--status <status>] [--next-follow-up-at <offset-ISO>] --capability <ephemeral> [--json]
+  pa-cli calendar due [--before <offset-ISO>] --capability <ephemeral> [--json]
+  pa-cli calendar poster [--id <calendar-id>] [--from <offset-ISO>] [--to <offset-ISO>] --capability <ephemeral> [--json]
   pa-cli memory list [--status active|forgotten] [--query <text>] [--limit <n>] --capability <ephemeral> [--json]
   pa-cli memory search --query <text> [--status active|forgotten] --capability <ephemeral> [--json]
   pa-cli memory show --id <memory-id> --capability <ephemeral> [--json]
@@ -804,11 +844,9 @@ function help() {
   pa-cli memory create (--content <text>|--content-file <utf8-file>) --capability <ephemeral> [--json]
   pa-cli memory update --id <memory-id> (--content <text>|--content-file <utf8-file>) --expected-revision <n> --capability <ephemeral> [--json]
   pa-cli memory delete --id <memory-id> --expected-revision <n> --capability <ephemeral> [--json]
-  pa-cli agents list [--json]
-  pa-cli agents inspect --id <agent-id> [--json]
-  pa-cli session start (--task "..."|--task-file <utf8-file>) [--agent <agent-id> --project-key <project-key>] [--parent <session> --title "..." --description "..."] [--workspace <path>] [--json]
+  pa-cli session start (--task "..."|--task-file <utf8-file>) [--parent <session> --title "..." --description "..."] [--workspace <path>] [--json]
   pa-cli session update --session <id> [--title "..."] [--description "..."] [--json]
-  pa-cli session list [--query "..."] [--parent <main-session>] [--agent <agent-id>] [--project-key <project-key>] [--limit <n>] [--cursor <cursor>] [--all] [--json]
+  pa-cli session list [--query "..."] [--parent <main-session>] [--limit <n>] [--cursor <cursor>] [--all] [--json]
   pa-cli session search --query "..." [--all] [--json]
   pa-cli session input --session <id> --text "..." [--notify-wechat]
   pa-cli session resume --session <id> (--task "..."|--task-file <utf8-file>)
@@ -889,6 +927,7 @@ function help() {
   pa-cli file verify-storage [--execute] [--json]
   pa-cli file reconcile --root <allowlisted-dir> --source <source> --visibility public|private [--prefix <path>] [--exclude-manifest <json>] [--execute] [--json]
   pa-cli pages publish --file <index.html> --folder <stable-name> [--bundle <page-directory>] [--desktop-thumbnail <desktop.png> --mobile-thumbnail <mobile.png>] [--title <text>] [--summary <text>] [--desktop-thumbnail-alt <text>] [--mobile-thumbnail-alt <text>] [--private] [--overwrite] [--json]
+  pa-cli pages poster --id <page-id> --source-object <obj-id> --capability <ephemeral> [--corner bottom-right|bottom-left|top-right|top-left] [--json]
   pa-cli pages upload --file <asset.css|asset.js|image> [--folder <name>] [--private] [--json]`);
 }
 

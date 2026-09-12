@@ -25,7 +25,7 @@ test("connection catalog is the shared UI, Skill, and CLI contract", () => {
   assert.equal(catalog.find((item) => item.id === "notion").cli.command, "ntn");
   assert.equal(catalog.find((item) => item.id === "xiaohongshu").accessMode, "browser");
   assert.deepEqual(catalog.find((item) => item.id === "xiaohongshu").platforms, ["win32", "darwin"]);
-  assert.equal(catalog.find((item) => item.id === "xiaohongshu").skill.name, "social-browser-read");
+  assert.equal(catalog.find((item) => item.id === "xiaohongshu").skill.name, "cove-connections");
   assert.equal(catalog.find((item) => item.id === "xiaohongshu").setup.customExtensionRequired, false);
   assert.equal(catalog.find((item) => item.id === "twitter").accessMode, "browser");
   assert.deepEqual(catalog.find((item) => item.id === "twitter").platforms, ["win32", "darwin"]);
@@ -64,3 +64,11 @@ test("connection registry resolves from source and bundled agent layouts", () =>
 function escapeRegExp(value) {
   return String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
+
+test("connector documents remain confined to the renamed Cove connector root", () => {
+  const registry = readConnectionRegistry();
+  for (const reference of ["skills/cove-connections/references/connectors/../../SKILL.md", "skills/cove-connections/references/connectors-evil/secret.md"]) {
+    const changed = { ...registry, connections: [{ ...registry.connections[0], skillReference: reference }] };
+    assert.throws(() => buildConnectionCatalog({ registry: changed, platform: "win32" }), /escapes connector directory/);
+  }
+});

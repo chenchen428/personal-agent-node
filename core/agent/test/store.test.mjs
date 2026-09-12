@@ -615,3 +615,36 @@ test("archives the legacy Memory table separately from the Space-isolated produc
     store.close();
   }
 });
+
+test("legacy main conversation titles use Cove in read projections without rewriting stored titles", () => {
+  const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), "cove-title-projection-"));
+  const store = new BridgeStore({ dataDir, consoleBaseUrl: "https://agent.example.test" });
+  try {
+    const cases = [
+      { id: "legacy-main", role: "main", channel: "desktop", senderId: "owner-1", title: "与 PA 的对话", expected: "与 Cove 的对话" },
+      { id: "custom-main", role: "main", channel: "wechat", senderId: "owner-2", title: "我的 PA 研究", expected: "我的 PA 研究" },
+      { id: "custom-worker", role: "worker", title: "与 PA 的对话", expected: "与 PA 的对话" },
+    ];
+    for (const item of cases) {
+      store.createSessionRecord({ ...item, workspaceRoot: dataDir });
+      store.appendEvent(item.id, "session.token_usage", { threadId: "thread-" + item.id,
+        tokenUsage: { last: { totalTokens: 10 }, total: { inputTokens: 7, outputTokens: 3, totalTokens: 10 } } });
+    }
+    const summary = store.getTokenUsageSummary({ range: "all" });
+    for (const item of cases) {
+      assert.equal(store.getSessionRecord(item.id).title, item.expected);
+      assert.equal(store.getSession(item.id).title, item.expected);
+      for (const hydrate of [true, false]) {
+        assert.equal(store.listSessionsPage({ hydrate }).sessions.find((session) => session.id === item.id).title, item.expected);
+      }
+      assert.equal(summary.recentSessions.find((session) => session.sessionId === item.id).title, item.expected);
+      assert.equal(store.getSessionRow(item.id).title, item.title);
+      store.updateSession(item.id, { summary: "updated summary only" });
+      assert.equal(store.getSessionRow(item.id).title, item.title);
+    }
+    assert.equal(summary.totalTokens, 30);
+  } finally {
+    store.close();
+    fs.rmSync(dataDir, { recursive: true, force: true });
+  }
+});

@@ -4,10 +4,10 @@ import { CoveMark } from "../brand/cove-mark";
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Activity, Blocks, Info, Layers3, ListTodo, Menu, Newspaper, PanelsTopLeft, X } from "lucide-react";
+import { Activity, CalendarDays, Info, Layers3, ListTodo, Menu, PanelsTopLeft, X } from "lucide-react";
 import { createContext, useContext, useEffect, useLayoutEffect, useRef, useState, type MutableRefObject, type ReactNode, type RefObject } from "react";
 import { safeHost, useRememberedScroll, useRemote } from "./data";
-import type { FilterOption, MobileSection, Overview, PersonalApp } from "./types";
+import type { FilterOption, MobileSection, Overview } from "./types";
 
 export type ShellFilter = {
   label: string;
@@ -20,7 +20,6 @@ export type ShellFilter = {
 type ShellConfig = {
   mode: "list" | "detail";
   section: MobileSection;
-  activeAppId?: string;
   title: string;
   note: string;
   query?: string;
@@ -43,7 +42,6 @@ export function MobileAppShell({ children }: { children: ReactNode }) {
   const composingSearch = useRef(false);
   const pathname = usePathname();
   const overview = useRemote<Overview>("/api/node/v1/client/overview");
-  const apps = useRemote<{ apps: PersonalApp[] }>("/api/system/apps");
 
   useEffect(() => { setDrawerOpen(false); setSearchOpen(false); }, [pathname]);
   useEffect(() => { if (!composingSearch.current) setSearchDraft(config.query || ""); }, [config.query]);
@@ -73,16 +71,13 @@ export function MobileAppShell({ children }: { children: ReactNode }) {
     {children}
     {list && drawerOpen ? <MobileDrawer
       section={config.section}
-      activeAppId={config.activeAppId}
       close={() => setDrawerOpen(false)}
       overview={overview.value}
-      apps={(apps.value?.apps || []).filter((app) => app.compatible && app.route)}
     /> : null}
   </div></div></div></MobileShellContext.Provider>;
 }
-export function MobileListShell({ section, activeAppId, title, note, children, query, setQuery, searchLabel, searchPlaceholder, filter, screenClassName }: {
+export function MobileListShell({ section, title, note, children, query, setQuery, searchLabel, searchPlaceholder, filter, screenClassName }: {
   section: MobileSection;
-  activeAppId?: string;
   title: string;
   note: string;
   children: ReactNode;
@@ -97,8 +92,8 @@ export function MobileListShell({ section, activeAppId, title, note, children, q
   const filterSignature = filter?.options.map((option) => `${option.value}:${option.count}`).join("|") || "";
   useRememberedScroll(section);
   useLayoutEffect(() => {
-    setShellConfig?.({ mode: "list", section, activeAppId, title, note, query, setQuery, searchLabel, searchPlaceholder, filter, screenClassName });
-  }, [activeAppId, filter?.setValue, filter?.value, filterSignature, note, query, screenClassName, searchLabel, searchPlaceholder, section, setQuery, setShellConfig, title]);
+    setShellConfig?.({ mode: "list", section, title, note, query, setQuery, searchLabel, searchPlaceholder, filter, screenClassName });
+  }, [filter?.setValue, filter?.value, filterSignature, note, query, screenClassName, searchLabel, searchPlaceholder, section, setQuery, setShellConfig, title]);
   return <main className={`mobile-screen${screenClassName ? ` ${screenClassName}` : ""}`} data-mobile-scroll>{children}</main>;
 }
 
@@ -158,7 +153,7 @@ function SearchPanel({ open, label, placeholder, value, composing, onChange, onC
   </section>;
 }
 
-function MobileDrawer({ section, activeAppId, close, overview, apps }: { section: MobileSection; activeAppId?: string; close: () => void; overview: Overview | null; apps: PersonalApp[] }) {
+function MobileDrawer({ section, close, overview }: { section: MobileSection; close: () => void; overview: Overview | null }) {
   const address = overview?.machine.mobileAddress ? safeHost(overview.machine.mobileAddress) : "安全连接到你的电脑";
   const counts: Record<string, number | string> = { activity: "", pages: overview?.counts.pages ?? "", workers: overview?.counts.work ?? "" };
   return <>
@@ -172,9 +167,7 @@ function MobileDrawer({ section, activeAppId, close, overview, apps }: { section
         <Link href="/app/mobile" prefetch onClick={close} aria-current={section === "activity" ? "page" : undefined}><Activity className="mobile-nav-icon" aria-hidden="true" /><span>最近动态</span><small /></Link>
         <Link href="/app/mobile/workers" prefetch onClick={close} aria-current={section === "workers" ? "page" : undefined}><ListTodo className="mobile-nav-icon" aria-hidden="true" /><span>任务</span><small>{counts.workers}</small></Link>
         <Link href="/app/mobile/pages" prefetch onClick={close} aria-current={section === "pages" ? "page" : undefined}><PanelsTopLeft className="mobile-nav-icon" aria-hidden="true" /><span>发布页</span><small>{counts.pages}</small></Link>
-        <span className="drawer-nav-label">自定义应用</span>
-        <Link href="/app/mobile/apps" prefetch onClick={close} aria-current={section === "apps" && !activeAppId ? "page" : undefined}><Blocks className="mobile-nav-icon" aria-hidden="true" /><span>全部应用</span><small>{apps.length || ""}</small></Link>
-        {apps.slice(0, 1).map((app) => <Link href={app.mobileRoute || app.route} prefetch onClick={close} aria-current={activeAppId === app.id ? "page" : undefined} key={app.id}><Newspaper className="mobile-nav-icon" aria-hidden="true" /><span>{app.name}</span><small /></Link>)}
+        <Link href="/app/mobile/calendar" prefetch onClick={close} aria-current={section === "calendar" ? "page" : undefined}><CalendarDays className="mobile-nav-icon" aria-hidden="true" /><span>日程</span><small /></Link>
         <span className="drawer-nav-label">系统</span>
         <Link href="/app/mobile/about" prefetch onClick={close} aria-current={section === "about" ? "page" : undefined}><Info className="mobile-nav-icon" aria-hidden="true" /><span>关于</span><small /></Link>
       </nav>

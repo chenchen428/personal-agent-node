@@ -1,0 +1,34 @@
+"use client";
+
+import { useState } from "react";
+import { CalendarDays, ChevronLeft, ChevronRight, RefreshCw } from "lucide-react";
+import { useClientResource } from "@/lib/use-client-resource";
+import { calendarStatus, calendarTime, useCalendar, type CalendarEntry, type CalendarHistory, type CalendarResult } from "../calendar/data";
+import { MobileListShell } from "./shell";
+
+export function MobileCalendarPage() {
+  const calendar = useCalendar();
+  return <MobileListShell section="calendar" title="日程" note="你的安排，Cove 持续跟进" query={calendar.query} setQuery={calendar.setQuery} searchLabel="搜索日程" searchPlaceholder="搜索安排、参与人" filter={{ label: "日程状态", description: "选择要查看的安排", value: calendar.status, setValue: calendar.setStatus, options: [{ value: "all", label: "全部" }, ...Object.entries(calendarStatus).map(([value, label]) => ({ value, label }))] }}>
+    <div className="mobile-calendar"><div className="mobile-calendar-toolbar"><button aria-label="上一天" onClick={() => calendar.move(-1)}><ChevronLeft size={18} /></button><input type="date" aria-label="日程日期" value={calendar.day} onChange={(event) => calendar.setDay(event.target.value)} /><button aria-label="下一天" onClick={() => calendar.move(1)}><ChevronRight size={18} /></button><button aria-label="刷新日程" onClick={() => void calendar.refresh()}><RefreshCw size={17} /></button></div>
+      <div className="mobile-calendar-caption"><button onClick={calendar.today}>今天</button><span>{calendar.value?.total ?? "—"} 项 · {calendar.timeZone}</span><select aria-label="查看时间范围" value={calendar.period} onChange={(event) => calendar.setPeriod(event.target.value)}><option value="day">当天</option><option value="week">7 天</option></select></div>
+      {calendar.error ? <p role="alert">{calendar.error}<button onClick={() => void calendar.refresh()}>重新加载</button></p> : null}
+      {calendar.loading ? <p role="status">正在读取日程…</p> : null}
+      {!calendar.loading && calendar.selectedId && !calendar.value?.items.some((entry) => entry.id === calendar.selectedId) ? <LinkedCalendarEntry id={calendar.selectedId} /> : null}
+      {calendar.value?.items.map((entry) => <article className="mobile-calendar-entry" key={entry.id}><button className="mobile-calendar-entry-main" aria-expanded={calendar.selectedId === entry.id} onClick={() => calendar.setSelectedId(calendar.selectedId === entry.id ? null : entry.id)}><time dateTime={entry.startAt}>{calendarTime(entry.startAt, entry.timeZone)}</time><h2>{entry.title}</h2><p>{entry.participants.join(" · ")}</p><span>{calendarStatus[entry.status]}</span></button>{calendar.selectedId === entry.id ? <MobileCalendarDetail entry={entry} /> : null}</article>)}
+      {calendar.value?.total === 0 ? <div className="mobile-calendar-empty"><CalendarDays size={30} /><h2>今天，留一点空白</h2><p>这段时间没有安排。日程建立后，会在这里与你见面。</p></div> : null}
+      {calendar.value && (calendar.offset > 0 || calendar.value.hasMore) ? <div className="mobile-calendar-caption"><button disabled={calendar.offset === 0} onClick={() => calendar.setOffset(Math.max(0, calendar.offset - 50))}>上一页</button><span>{calendar.offset + calendar.value.items.length} / {calendar.value.total}</span><button disabled={!calendar.value.hasMore} onClick={() => calendar.setOffset(calendar.offset + 50)}>下一页</button></div> : null}
+    </div>
+  </MobileListShell>;
+}
+
+function LinkedCalendarEntry({ id }: { id: string }) {
+  const result = useClientResource<{ entry: CalendarEntry }>(`/api/calendar/${encodeURIComponent(id)}`);
+  const entry = result.value?.entry;
+  return <article className="mobile-calendar-entry">{result.error ? <p role="alert">{result.error}<button onClick={() => void result.refresh()}>重新加载</button></p> : null}{entry ? <><h2>{entry.title}</h2><p>{entry.participants.join(" · ")} · {calendarStatus[entry.status]}</p><MobileCalendarDetail entry={entry} /></> : <p role="status">正在读取这项安排…</p>}</article>;
+}
+
+function MobileCalendarDetail({ entry }: { entry: CalendarEntry }) {
+  const [offset, setOffset] = useState(0);
+  const history = useClientResource<CalendarResult<CalendarHistory>>(`/api/calendar/${encodeURIComponent(entry.id)}/history?limit=20&offset=${offset}`);
+  return <div className="mobile-calendar-detail"><dl><dt>完整时间</dt><dd>{calendarTime(entry.startAt, entry.timeZone)}{entry.endAt ? ` — ${calendarTime(entry.endAt, entry.timeZone)}` : ""}<small>{entry.timeZone}</small></dd>{entry.location ? <><dt>地点</dt><dd>{entry.location}</dd></> : null}{entry.nextFollowUpAt ? <><dt>下次跟进</dt><dd>{calendarTime(entry.nextFollowUpAt, entry.timeZone)}</dd></> : null}</dl>{entry.notes ? <p>{entry.notes}</p> : null}<h3>记录与跟进</h3>{history.error ? <p role="alert">{history.error}<button onClick={() => void history.refresh()}>重试</button></p> : null}<ol>{history.value?.items.map((item) => <li key={item.id}><small>{item.actor} · {calendarTime(item.createdAt)}</small><p>{item.content || ({ create: "记录了这项安排", update: "更新了安排", "follow-up": "跟进了安排" }[item.action] || "更新了记录")}</p></li>)}</ol>{offset > 0 ? <button onClick={() => setOffset(Math.max(0, offset - 20))}>较新记录</button> : null}{history.value?.hasMore ? <button onClick={() => setOffset(offset + 20)}>更早记录</button> : null}</div>;
+}

@@ -943,10 +943,6 @@
 .desktop-v72 .gallery-copy h2 { margin: 0; font-size: 13px; }
 .desktop-v72 .gallery-copy p { margin: 5px 0 11px; color: var(--pa-muted); font-size: 10px; }
 .desktop-v72 .gallery-meta { display: flex; align-items: center; justify-content: space-between; }
-.desktop-v72 .app-gallery-preview { display: grid; place-items: center; background: linear-gradient(145deg,#deddd7,#bfc4bc); }
-.desktop-v72 .app-gallery-preview::after { position: absolute; inset: 0; background: linear-gradient(180deg,transparent 38%,rgba(14,15,14,.62)); content: ""; }
-.desktop-v72 .app-gallery-preview > b { color: rgba(255,255,255,.75); font-size: 52px; font-weight: 700; }
-.desktop-v72 .app-gallery-preview span { position: absolute; z-index: 1; right: 16px; bottom: 14px; left: 16px; color: #fff; font-size: 14px; font-weight: 650; text-shadow: 0 1px 12px rgba(0,0,0,.3); }
 .desktop-v72 .settings-layout { display: grid; height: 100%; min-height: 0; grid-template-columns: 210px minmax(0,1fr); }
 .desktop-v72 .settings-nav { padding: 12px 8px; border-right: 1px solid var(--pa-border); background: #fcfcfb; }
 .desktop-v72 .settings-nav a { display: flex; align-items: center; gap: 8px; height: 34px; padding: 0 10px; border-radius: 10px; color: var(--pa-body); }
@@ -1225,11 +1221,6 @@
 .desktop-v72 .schedule-feedback strong { color: var(--pa-body); font-size: 12px; }
 .desktop-v72 .schedule-feedback p { max-width: 330px; margin: 0 0 4px; font-size: 10px; line-height: 1.6; }
 .desktop-v72 .schedule-feedback .button { font-size: 10px; }
-.desktop-v72 .v72-page-scroll:has(> .personal-app-host) { overflow: hidden; }
-.desktop-v72 .v72-page-scroll > .personal-app-host { width: 100%; height: 100%; min-height: 0; display: flex; margin: 0; padding: 0; background: #fff; }
-.desktop-v72 .personal-app-host iframe { width: 100%; height: 100%; min-width: 0; min-height: 0; display: block; flex: 1; border: 0; }
-.desktop-v72 .personal-app-state { min-height: 100%; display: grid; place-items: center; align-content: center; gap: 7px; color: var(--pa-muted); text-align: center; }
-.desktop-v72 .personal-app-state p { margin: 0; font-size: 10px; }
 @keyframes v72-pulse { 50% { opacity: .25; } }
 @keyframes token-usage-spin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .v72-sidebar { transition: none; } .v72-spin, .desktop-v72 .connection-spinner, .desktop-v72 .token-usage-status.loading svg { animation: none; } }

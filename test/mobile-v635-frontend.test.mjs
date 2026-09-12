@@ -7,7 +7,7 @@ const root = path.resolve(import.meta.dirname, "..");
 const read = (relative) => fs.readFileSync(path.join(root, relative), "utf8");
 
 test("Mobile V6.39 keeps every destination and task-history responsibility in a focused component", () => {
-  const components = ["activity", "pages", "page-masonry", "workers", "mobile-task-detail", "task-display-presentation", "apps", "personal-app", "about", "mail", "shell", "skeletons", "wechat-status", "token-usage"];
+  const components = ["activity", "pages", "page-masonry", "workers", "mobile-task-detail", "task-display-presentation", "about", "mail", "shell", "skeletons", "wechat-status", "token-usage"];
   for (const component of components) {
     const source = read(`core/app/src/components/mobile-current/${component}.tsx`);
     assert.ok(source.split(/\r?\n/).length <= 300, `${component} exceeds 300 lines`);
@@ -18,8 +18,6 @@ test("Mobile V6.39 keeps every destination and task-history responsibility in a 
     "app/mobile/workers/[sessionId]/page.tsx",
     "app/mobile/pages/page.tsx",
     "app/mobile/pages/[pageId]/page.tsx",
-    "app/mobile/apps/page.tsx",
-    "app/mobile/apps/[appId]/page.tsx",
     "app/mobile/about/page.tsx",
     "app/mobile/mail/[messageId]/page.tsx",
   ]) assert.equal(fs.existsSync(path.join(root, "core/app/src/app", route)), true, route);
@@ -35,7 +33,6 @@ test("Mobile V6.39 implements lazy navigation and tail-first task history", () =
   const history = read("core/app/src/components/mobile-current/use-task-display-history.ts");
   const activity = read("core/app/src/components/mobile-current/activity.tsx");
   const pages = read("core/app/src/components/mobile-current/pages.tsx");
-  const apps = read("core/app/src/components/mobile-current/apps.tsx");
   const about = read("core/app/src/components/mobile-current/about.tsx");
   const tokenUsage = read("core/app/src/components/mobile-current/token-usage.tsx");
   assert.match(desktopEntry, /export const dynamic = "force-dynamic"/);
@@ -46,7 +43,7 @@ test("Mobile V6.39 implements lazy navigation and tail-first task history", () =
   assert.match(mobileProxy, /x-personal-agent-responsive-surface/);
   assert.match(shell, /打开侧边菜单/);
   assert.match(shell, /工作区/);
-  assert.match(shell, /自定义应用/);
+  assert.doesNotMatch(shell, /自定义应用|\/api\/system\/apps/);
   assert.match(shell, /list-search-filters/);
   assert.match(shell, />完成</);
   assert.doesNotMatch(shell, /function FilterSheet|filter-sheet-layer/);
@@ -90,10 +87,6 @@ test("Mobile V6.39 implements lazy navigation and tail-first task history", () =
   assert.match(pages, /<OrderedPageGrid/);
   assert.match(pages, /filter !== "all"/);
   assert.match(pages, /setFilter\("all"\)/);
-  assert.match(apps, /你的常用工具/);
-  assert.match(apps, /手机与桌面共享应用/);
-  assert.match(apps, /<Link/);
-  assert.doesNotMatch(apps, /<a className="mobile-app-card/);
   assert.ok(about.indexOf("<MobileTokenUsageSection />") > about.indexOf("mobile-about-email"));
   assert.ok(about.indexOf("<MobileTokenUsageSection />") < about.indexOf("mobile-about-skills"));
   assert.match(tokenUsage, /TokenUsageHeatmap/);
@@ -138,11 +131,11 @@ test("Mobile task detail keeps long-form conversation typography readable", () =
 test("Mobile primary loading states use layout-matched skeletons", () => {
   const skeletons = read("core/app/src/components/mobile-current/skeletons.tsx");
   const css = read("core/app/src/app/mobile-current.css");
-  for (const component of ["activity", "workers", "pages", "apps", "mail", "personal-app"]) {
+  for (const component of ["activity", "workers", "pages", "mail"]) {
     const source = read(`core/app/src/components/mobile-current/${component}.tsx`);
     assert.match(source, /MobileContentSkeleton/, component);
   }
-  for (const kind of ["activity", "tasks", "pages", "apps", "mail", "page", "app"]) {
+  for (const kind of ["activity", "tasks", "pages", "mail", "page"]) {
     assert.match(skeletons, new RegExp(`kind === "${kind}"`), kind);
   }
   assert.match(read("core/app/src/components/mobile-current/about.tsx"), /MobileAboutMachineSkeleton/);
@@ -161,7 +154,7 @@ test("local Next preview mirrors the registered API upstream mappings", () => {
   assert.match(bff, /schedules: "agent-corn"/);
   assert.match(bff, /mail: "mail"/);
   assert.match(bff, /controlRoots/);
-  assert.match(bff, /"apps"/);
+  assert.match(bff, /FEATURE_RETIRED/);
   assert.match(bff, /path\[0\] === "chat"/);
   assert.match(bff, /path\[0\] === "publications"/);
 });

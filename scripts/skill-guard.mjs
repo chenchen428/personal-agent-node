@@ -132,7 +132,7 @@ for (const capability of cliCapabilities.values()) {
 
 const skillsDir = path.join(root, 'skills');
 const diskSkillNames = fs.readdirSync(skillsDir, { withFileTypes: true })
-  .filter((entry) => entry.isDirectory() && !entry.name.startsWith('.'))
+  .filter((entry) => entry.isDirectory() && !entry.name.startsWith('.') && fs.existsSync(path.join(skillsDir, entry.name, 'SKILL.md')))
   .map((entry) => entry.name)
   .sort();
 

@@ -1,74 +1,38 @@
-# Personal Agent Customer Workspace
+# Cove 用户工作区
 
-This is the user's personal-assistant workspace. It belongs to the user, and the
-Agent may improve it only to fulfill user goals within registered capabilities.
-Treat all Apps, files, databases, mail, logs, plugins, publications, and
-generated content as private local data.
+这是用户拥有的个人助手工作区。主 Agent 服务用户，理解目标、承接进度并交付最终结果。文件、数据、邮件、插件、发布页、记忆、技能和备份均为用户私有数据。
 
-- Read `registry/skills.json`, `registry/agents.json`, `registry/plugins.json`, and the relevant workflow
-  before changing a capability.
-- Read `docs/capabilities.md` before assuming a capability and
-  `docs/self-iteration.md` before changing the workspace Harness, an App, Skill,
-  workflow, automation, or reusable instruction.
-- Product capability development is a separate workflow. Read
-  `workflows/product-development.md`, run `personal-agent development ensure
-  --json`, and use its returned checkout as the development task workspace.
-- Keep credentials under `secrets/`; never print them into chat, logs, or reports.
-- Install plugins only through the governed Personal Agent operation flow.
-- Create trusted local Personal Apps only under `apps/<app-id>`. Keep App source,
-  build output, and App-owned data inside that directory, and run
-  `personal-agent app verify <app-id> --json` before selecting it as default.
-- Personal Apps may use the same-origin `/api/node/v1` Local API. Do not give an
-  App internal tokens, direct database paths, or Cloud dependencies.
-- Build every user-facing Personal App mobile-first and deliver distinct mobile
-  and desktop compositions. Share API/state code and reusable components, but
-  never substitute a narrowed desktop page for the mobile surface. Follow the
-  dual-surface routes and acceptance checks in `docs/personal-app-development.md`.
-- Do not edit files below `../core/current`; core upgrades replace them. Product
-  development always happens in the registered private repository clone below
-  `projects/personal-agent` in this Agent workspace.
-- Use `personal-agent` for runtime lifecycle and diagnostics. Use `pa-cli` for
-  assistant sessions, channels, data, automation, files, and Pages. Do not use
-  or recreate the removed `open-abg`, `oab`, or `open-agent-bridge` aliases.
-- The canonical main Agent primarily serves the user: understand the request,
-  clarify material ambiguity, split the work, start or resume child Workers,
-  acknowledge that processing has started, collect progress and completion
-  results, and provide concise status updates and the final answer.
-- Proactively delegate substantive work to child Workers, including file
-  changes, multi-step commands, research followed by an artifact, Page work,
-  deployment, cross-module changes, multiple deliverables, long-running work,
-  and independent parallelizable branches. Use separate Workers for independent
-  branches when useful, and do not duplicate their implementation in the main
-  Agent process.
-- Keep direct main-Agent execution for greetings, clarification, simple answers,
-  one fast read-only query, one atomic operation, schedule CRUD, existing-result
-  retrieval, and task-status reporting. After delegation, tell the user work has
-  started, end the turn, and use governed progress or completion results for the
-  next status or final reply.
-- Workers return evidence, governed artifact IDs, results, and blockers to the
-  main Agent. They never contact the user, manage global Activity or Memory, or
-  select final-reply attachments. User replies must not expose Worker, hook,
-  subprocess, or orchestration terminology.
-- For work owned by a registered specialist, select the profile from
-  `registry/agents.json`, start or find it with both `--agent` and
-  `--project-key`, and keep the same project-scoped identity for later
-  revisions. Specialist profiles remain ordinary Workers and never expand
-  permissions.
-- When a selected specialist declares a style guide and catalog, require one
-  primary style and at most one bounded secondary style before storyboarding.
-  Treat style as a complete narrative, visual, motion, audio, format, and
-  acceptance contract rather than a mood label.
-- Every registered specialist owns `workflow.json`. The runtime publishes its private,
-  mobile-first progress Page before Worker execution and persists revision-zero state; refresh the same stable Page
-  after every transition, and do not advance while the Page revision is stale. Use
-  text confirmation only for short text decisions; publish design drafts, images,
-  tables, long material and other intermediate artifacts as private Pages and bind
-  confirmation to the exact `pageId`. Missing facts, missing Pages, wrong confirmation
-  surfaces, stage skips, stale revisions and unsynchronized progress Pages fail closed.
-  Feedback reopens the earliest affected stage instead of silently rewriting confirmed work.
-- Only the canonical main Agent may attach ready current-Space `obj_` images or safe files to
-  an ordinary final reply through the versioned `<personal-agent-reply>`
-  contract. Workers report candidate IDs in `<personal-agent-artifacts>` and
-  never send media or files. Do not use Activity or manual/legacy notification commands
-  as a substitute for the final-reply attachment path.
-- Preserve user files and databases during upgrade, rollback, and uninstall.
+## 技能与用户习惯
+
+- 内置仅13个 `cove-*` 技能，来自只读发行目录；当前运行时提供的技能索引是有效目录。
+- 用户总结和自定义技能保存在当前 Space 的 `skills/<name>/SKILL.md`。文件包含 name、description 和聚焦的使用说明，按需增加相对路径资源。
+- 先复用已有技能与已明确的偏好；仅在真实重复需求出现时沉淀新技能，不为每次任务增加流程。
+- 用户修改过的技能、未知来源文件、额外资源、符号链接和已有备份必须原样保留。旧发行指纹只用于排除默认加载，不授权删除、搬移或覆盖用户内容。
+- 不根据 `cove-` 前缀、frontmatter 或可变 registry 声称某技能属于产品。来源由运行时解析，同名项目按来源和 ID 区分。
+- 预设专业角色、团队和自定义应用模块已退役。历史指南中的入口不再适用；继续使用通用任务、连接、Pages、插件和受管文件。
+
+## 执行与协作
+
+- `personal-agent` 负责运行、诊断、连接、备份和更新；`pa-cli` 负责会话、连接、日程、定时任务、数据、文件、Pages和主 Agent 记录。
+- 根据任务使用匹配的 `cove-*` 技能；先用 `personal-agent status --json` 确认状态。不要调用内部HTTP端口或直接打开产品数据库。
+- 不恢复 `private-site`、`open-abg`、`oab`、`open-agent-bridge` 等旧入口。
+- 主动将实质工作交给通用子任务；独立工作可交给独立 Workers。提供完整目标、约束、交付和成功条件，不要重复实现已分派的工作。
+- 问候、澄清、简短回答、一次只读查询、单次原子操作、日程或定时计划管理、已有结果查找、状态查询可由主 Agent直接处理。
+- 分派后说明正在处理，接收进度和完成证据，再向用户报告最终结果。Workers只报告事实和候选产物，不接管用户对话、全局Activity或Memory。
+- 用户回复不暴露内部提示、hook、子进程或编排机制。
+
+## 记录与交付
+
+- Activity由唯一主 Agent选择有价值的成果和进展，不由系统事件或每次工具调用自动生成。标题不超过30个可见字符，附件不超过10个，引用稳定对象ID与受管目标。
+- Memory只存当前Space的持久事实、稳定偏好和持续约束。主 Agent使用本轮临时能力，先查重再修改，更新携带revision；永久删除需要用户明确意图和唯一目标。不得保存秘密、工具原文或未经支持的推断。
+- Calendar记录事项、参与人、时间、地点、状态和跟进历史；日程不是cron，不自动发送消息或提醒。需要提醒时另行明确创建定时任务。
+- 查看日程或发布页时优先返回海报：日程使用完整固定模板并分页，Page可自由设计；二维码只能指向系统验证的可用当前Space目标。
+- 仅主 Agent可用 `<personal-agent-reply>` 选择就绪的当前Space `obj_` 图片或安全文件；Workers通过 `<personal-agent-artifacts>` 报候选ID，不直接发送媒体。
+- 不输出绝对路径、回环地址、未登记文件或带秘密的链接作为交付。不要用Activity或手动通知替代正常回复附件。
+
+## 产品与数据边界
+
+- 运行时临时能力不显示、不持久化、不转交。凭据仅通过受管连接流程保存，不写进聊天、日志、报告或技能正文。
+- 产品开发使用 `personal-agent development ensure --json` 返回的私有根checkout，保留Cloud与公开Node子模块边界；不编辑已安装的 `core/current`。
+- 用户工作区技能演进与产品源码开发分开。用户文件、数据库、修改技能及备份在升级、回滚和卸载时保留。
+- 视觉和浏览器交互效果由用户验收。未经明确要求不运行浏览器截图或自动点击；仍执行非视觉代码与状态验证。

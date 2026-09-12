@@ -38,7 +38,7 @@ import { OpenCliRunner } from "../connections/opencli/runner.js";
 import { WeChatQianxunConnector } from "../connections/wechat-qianxun/connector.ts";
 import { InstallationConnectionOwnership } from "../connections/connection-ownership.ts";
 import { DingTalkConnector } from "../connections/dingtalk/connector.ts";
-import { createAgentCatalog, normalizeAgentId, normalizeProjectKey } from "../agents/catalog.js";
+import { rejectRetiredAgentOptions } from "./task-contract.js";
 import { BridgeStore } from "../store/store.js";
 import { AgentBridgeBroker } from "../broker/agent-bridge-broker.js";
 import { readWorkspaceSkillCatalog } from "../skills/catalog.js";
@@ -51,10 +51,12 @@ import { renderMailPage } from "../web/mail-page.js";
 import { buildPrivateAttachmentPreviewUrl, buildPrivateAttachmentUrls, decodePrivateAttachmentPath, privateFilePreviewKind, relativeAttachmentPath, sanitizeInboundAttachmentFileName, storedAttachmentDisplayName } from "../private-files/attachments.js";
 import { configurePrivateManagedFiles, headPrivateAttachment, privateStorageConfigured, readPrivateAttachment, signPrivateAttachmentUrl, uploadPrivateAttachment, verifyPrivateStorageAccess } from "../private-files/local-store.js";
 import { ReleaseNotesStore } from "../release-notes/store.js";
-import { AppHistoryStore } from "../apps/history-store.js";
 import { ActivityStore } from "../activity/store.js";
 import { buildActivityTargetPreview } from "../activity/presentation.js";
 import { MemoryStore } from "../memory/store.js";
+import { CalendarStore } from "../calendar/store.js";
+import { PosterService } from "../posters/service.js";
+import { PublicPagePosterStore } from "../posters/public-pages.js";
 import { authorizationSettings, readAuthorizationMode, withAuthorizationCliFlag, writeAuthorizationMode } from "../agent/authorization-mode.ts";
 import { readDailyTokenLimit, writeDailyTokenLimit } from "../agent/daily-token-limit.ts";
 import { readCodexRuntimeSettings } from "../agent/codex-runtime-settings.ts";
@@ -75,11 +77,12 @@ const logger = {
 const store = new BridgeStore({ dataDir: config.dataDir, consoleBaseUrl: config.consoleBaseUrl, externalAccess: config.externalAccess });
 const managedFileCatalog = new ManagedFileCatalog({ dataDir: config.dataDir, databasePath: store.databasePath });
 const managedStorage = new LocalManagedProvider({ rootDir: path.join(config.dataDir, "managed-objects"), publicBaseUrl: config.pagesBaseUrl });
+const posterOutputRoot = path.join(config.siteDataRoot, "files", "managed", "posters");
 const managedFiles = new ManagedFileService({
   catalog: managedFileCatalog,
   remote: managedStorage,
-  managedRoots: [config.uploadsDir, config.inboundAttachmentsDir, config.materializedFilesDir, config.privatePublicationsDir, config.mailIngressDir, path.join(config.agentDataDir, "snapshots"), ...config.migrationRoots],
-  migrationRoots: [config.privatePublicationsDir, config.mailIngressDir, path.join(config.agentDataDir, "snapshots"), ...config.migrationRoots],
+  managedRoots: [posterOutputRoot, config.uploadsDir, config.inboundAttachmentsDir, config.materializedFilesDir, config.privatePublicationsDir, config.mailIngressDir, path.join(config.agentDataDir, "snapshots"), ...config.migrationRoots],
+  migrationRoots: [posterOutputRoot, config.privatePublicationsDir, config.mailIngressDir, path.join(config.agentDataDir, "snapshots"), ...config.migrationRoots],
   materializedDir: config.materializedFilesDir,
   retentionDays: config.managedFileRetentionDays,
   materializedTtlDays: config.materializedFileTtlDays,
@@ -96,6 +99,14 @@ const memoryStore = new MemoryStore({
   spaceId: config.spaceId || config.spaceSlug || "personal",
   sessionResolver: (sessionId) => store.getSessionRecord(sessionId),
 });
+const calendarStore = new CalendarStore({
+  dataDir: path.join(config.siteDataRoot, "databases", "calendar"),
+  spaceId: config.spaceId || config.spaceSlug || "personal",
+  sessionResolver: (sessionId) => {
+    const session = store.getSessionRecord(sessionId);
+    return session ? { ...session, spaceId: config.spaceId || config.spaceSlug || "personal" } : null;
+  },
+});
 configureOnlinePagesStorage({ catalog: managedFileCatalog, remote: managedStorage });
 configurePrivateManagedFiles({ catalog: managedFileCatalog });
 const initialHistoryCleanup = store.pruneHistory({ retentionDays: config.historyRetentionDays, vacuum: true });
@@ -110,10 +121,6 @@ const historyCleanupTimer = setInterval(() => {
 }, config.historyCleanupIntervalMs);
 historyCleanupTimer.unref?.();
 const hub = new BrowserHub();
-const agentCatalog = createAgentCatalog({
-  workspaceRoot: config.workspaceRoot,
-  releaseRoot: config.releaseRoot,
-});
 const agentBridgeBroker = new AgentBridgeBroker({ store, hub, logger });
 const agentData = new AgentDataStore({
   dataDir: config.agentDataDir,
@@ -161,7 +168,6 @@ domainBindingVerification = new DomainBindingVerification({
   logger,
 });
 const releaseNotes = new ReleaseNotesStore({ rootDir: config.releaseNotesDir });
-const appHistory = new AppHistoryStore({ appsDir: config.appsDir });
 mailScanner.start();
 domainBindingVerification.resume();
 const connectionOwnership = new InstallationConnectionOwnership({ installationDataRoot: config.installationDataRoot });
@@ -190,7 +196,9 @@ const channelLoginCoordinator = {
     return await cloudBinding.consumeWechatMessage(message) || await xiaohongshuLogin.consumeWechatMessage(message);
   },
 };
-const orchestrator = new SessionOrchestrator({ store, hub, channels: { wechat, "wechat-personal": wechatQianxun, dingtalk }, managedFiles, activityStore, memoryStore, channelLoginCoordinator, agentCatalog, privatePublications });
+const publicPagePosters = new PublicPagePosterStore({ uploadsRoot: config.uploadsDir, bindingRoot: path.join(config.siteDataRoot, "config", "page-posters") });
+const posterService = new PosterService({ calendarStore, privatePublications, publicPagePosters, managedFiles, outputRoot: posterOutputRoot, spaceId: calendarStore.spaceId, externalAccess: config.externalAccess });
+const orchestrator = new SessionOrchestrator({ store, hub, calendarStore, posterService, channels: { wechat, "wechat-personal": wechatQianxun, dingtalk }, managedFiles, activityStore, memoryStore, channelLoginCoordinator, privatePublications });
 const scheduledTasks = new ScheduledTaskRunner({ store, broker: agentBridgeBroker, channels: { wechat }, logger });
 wechat.attach(orchestrator);
 if (personalWechatSupported) wechatQianxun.attach((message) => orchestrator.handleChannelMessage("wechat-personal", message));
@@ -286,6 +294,7 @@ for (const signal of ["SIGINT", "SIGTERM"]) {
       agentData.close();
       activityStore.close();
       memoryStore.close();
+      calendarStore.close();
       store.close();
       process.exit(0);
     });
@@ -332,6 +341,17 @@ async function handleRequest(request: http.IncomingMessage, response: http.Serve
     }
     const capability = String(request.headers["x-personal-agent-activity-capability"] || "");
     const result = orchestrator.executeActivityCli(capability, await readJsonBody(request, 64 * 1024));
+    sendJson(response, 200, { ok: true, result });
+    return;
+  }
+
+  if (url.pathname === "/api/internal/calendar-agent") {
+    if (request.method !== "POST") { sendJson(response, 405, { ok: false, error: "Method Not Allowed" }); return; }
+    if (!isTrustedLocalRequest(request) || ["forwarded", "x-forwarded-host", "x-forwarded-proto"].some((name) => request.headers[name] !== undefined)) {
+      sendJson(response, 403, { ok: false, error: "日程 Agent 操作仅支持本机回合" }); return;
+    }
+    const capability = String(request.headers["x-cove-calendar-capability"] || "");
+    const result = await orchestrator.executeCalendarCli(capability, await readJsonBody(request, 64 * 1024));
     sendJson(response, 200, { ok: true, result });
     return;
   }
@@ -395,8 +415,8 @@ async function handleRequest(request: http.IncomingMessage, response: http.Serve
         mail: { messages: { list: true, inspect: true } },
         data: { schema: true, query: true, distinct: true, rawSql: false },
         pages: { list: true, publish: true },
+        calendar: { list: true, inspect: true, history: true, spaceIsolated: true, readOnlyUi: true },
         memory: { list: true, search: true, inspect: true, spaceIsolated: true, readOnlyUi: true },
-        apps: { history: { list: true, append: true, rawSql: false } },
         client: { overview: true, activity: true, pages: true, runtime: true, taskDetailPagination: true, readOnly: true },
       },
     });
@@ -741,18 +761,8 @@ async function handleRequest(request: http.IncomingMessage, response: http.Serve
     return;
   }
 
-  const nodeAppHistoryMatch = /^\/api\/node\/v1\/apps\/([^/]+)\/(?:history|activity)$/.exec(url.pathname);
-  if (nodeAppHistoryMatch && (request.method === "GET" || request.method === "POST")) {
-    const appId = decodeURIComponent(nodeAppHistoryMatch[1]);
-    if (String(request.headers["x-personal-agent-app-id"] || "") !== appId) {
-      sendNodeApiError(response, 403, "APP_IDENTITY_REQUIRED", "App identity does not match the history scope");
-      return;
-    }
-    if (request.method === "GET") {
-      sendNodeApiResult(response, 200, appHistory.list(appId, { limit: url.searchParams.get("limit") }));
-    } else {
-      sendNodeApiResult(response, 201, { history: appHistory.append(appId, await readJsonBody(request)) });
-    }
+  if (url.pathname === "/api/node/v1/apps" || url.pathname.startsWith("/api/node/v1/apps/")) {
+    sendNodeApiError(response, 410, "APPS_RETIRED", "自定义应用已下线");
     return;
   }
 
@@ -846,15 +856,29 @@ async function handleRequest(request: http.IncomingMessage, response: http.Serve
 
   if (url.pathname === "/agent-skills" && (request.method === "GET" || request.method === "HEAD")) {
     sendHtml(response, 200, renderSkillCatalogPage(readWorkspaceSkillCatalog(config.workspaceRoot, {
-      metadataRoots: [config.releaseRoot, config.workspaceRoot],
+      releaseRoot: config.releaseRoot,
     })), request.method === "HEAD");
     return;
   }
 
   if (url.pathname === "/api/skills" && (request.method === "GET" || request.method === "HEAD")) {
     sendJson(response, 200, { ok: true, ...readWorkspaceSkillCatalog(config.workspaceRoot, {
-      metadataRoots: [config.releaseRoot, config.workspaceRoot],
+      releaseRoot: config.releaseRoot,
     }), space: currentMemorySpace() }, request.method === "HEAD");
+    return;
+  }
+
+  if (url.pathname === "/api/calendar" || url.pathname.startsWith("/api/calendar/")) {
+    if (request.method !== "GET" && request.method !== "HEAD") { sendJson(response, 403, { ok: false, error: "日程界面只读，请通过主对话修改" }); return; }
+    const input: Record<string, any> = Object.fromEntries(url.searchParams.entries());
+    for (const key of ["limit", "offset"]) if (input[key] !== undefined) input[key] = Number(input[key]);
+    const match = /^\/api\/calendar\/([^/]+)(?:\/(history))?$/.exec(url.pathname);
+    if (url.pathname === "/api/calendar") sendJson(response, 200, { ok: true, ...calendarStore.list(input), space: currentMemorySpace() }, request.method === "HEAD");
+    else if (match?.[2]) sendJson(response, 200, { ok: true, ...calendarStore.history(decodeURIComponent(match[1]), input), space: currentMemorySpace() }, request.method === "HEAD");
+    else if (match) {
+      if (Object.keys(input).length) { sendJson(response, 400, { ok: false, error: "不支持的日程查询参数" }); return; }
+      sendJson(response, 200, { ok: true, entry: calendarStore.requireEntry(decodeURIComponent(match[1])), space: currentMemorySpace() }, request.method === "HEAD");
+    } else sendJson(response, 404, { ok: false, error: "日程不存在" });
     return;
   }
 
@@ -1684,31 +1708,21 @@ async function handleRequest(request: http.IncomingMessage, response: http.Serve
     return;
   }
 
-  if ((url.pathname === "/api/agents" || url.pathname === "/api/agent-team/status") && request.method === "GET") {
-    sendJson(response, 200, { ok: true, agents: agentCatalog.listPublic() });
-    return;
-  }
-
-  const apiAgentMatch = /^\/api\/agents\/([^/]+)$/.exec(url.pathname);
-  if (apiAgentMatch && request.method === "GET") {
-    const agent = agentCatalog.inspectPublic(decodeURIComponent(apiAgentMatch[1]));
-    sendJson(response, 200, { ok: true, agent });
+  if (url.pathname === "/api/agents" || url.pathname.startsWith("/api/agents/") || url.pathname === "/api/agent-team/status") {
+    sendJson(response, 410, { ok: false, code: "AGENT_TEAMS_RETIRED", error: "Agent 团队已下线" });
     return;
   }
 
   if (url.pathname === "/api/sessions" && request.method === "GET") {
     const query = url.searchParams.get("query") || "";
     const parentSessionId = url.searchParams.get("parent") || "";
-    const agentId = normalizeAgentId(url.searchParams.get("agent"), { optional: true });
-    const projectKey = normalizeProjectKey(url.searchParams.get("project"), { optional: true });
+    rejectRetiredAgentOptions(Object.fromEntries([...url.searchParams.entries()].filter(([key]) => ["agent", "agentId", "project", "projectKey", "project-key"].includes(key))));
     const page = store.listSessionsPage({
       includeArchived: url.searchParams.get("archived") === "1",
       limit: Number(url.searchParams.get("limit") || config.sessionPageSize),
       cursor: url.searchParams.get("cursor") || "",
       query,
       parentSessionId,
-      agentId,
-      projectKey,
       hydrate: false,
     });
     sendJson(response, 200, {
@@ -1717,8 +1731,6 @@ async function handleRequest(request: http.IncomingMessage, response: http.Serve
       totalSessions: store.countSessions({
         includeArchived: url.searchParams.get("archived") === "1",
         parentSessionId,
-        agentId,
-        projectKey,
       }),
       html: renderConsoleSessionsFragment(page.sessions, { empty: !page.sessions.length, search: Boolean(query) }),
     });
@@ -1727,6 +1739,7 @@ async function handleRequest(request: http.IncomingMessage, response: http.Serve
 
   if (url.pathname === "/api/sessions" && request.method === "POST") {
     const body = await readJsonBody(request);
+    rejectRetiredAgentOptions(body);
     const session = await orchestrator.startWorkerSession({
       task: body.task || body.taskDescription || body.content,
       title: body.title,
@@ -1734,8 +1747,6 @@ async function handleRequest(request: http.IncomingMessage, response: http.Serve
       parentSessionId: body.parentSessionId || body.parent,
       workspaceRoot: body.workspaceRoot || body.workspace,
       createdBy: body.createdBy || "api",
-      agentId: body.agentId,
-      projectKey: body.projectKey,
     });
     sendJson(response, 200, { ok: true, session });
     return;
@@ -1768,13 +1779,11 @@ async function handleRequest(request: http.IncomingMessage, response: http.Serve
     }
     if (action === "input" && request.method === "POST") {
       const body = await readJsonBody(request);
+      rejectRetiredAgentOptions(body);
       const content = String(body.content || body.text || "").trim();
       if (!content) throw new Error("content is required");
       await orchestrator.resumeSession(sessionId, content, {
         notifyWechat: body.notifyWechat === true,
-        ...(body.agentId !== undefined ? { agentId: body.agentId } : {}),
-        ...(body.projectKey !== undefined ? { projectKey: body.projectKey } : {}),
-        ...(body.agentProfileVersion !== undefined ? { agentProfileVersion: body.agentProfileVersion } : {}),
       });
       sendJson(response, 202, { ok: true, session: store.getSession(sessionId) });
       return;
@@ -2223,8 +2232,17 @@ function clientActivityTargetHref(target: { type: string; id: string } | null) {
   if (target.type === "page") return `/app/mobile/pages/${encodeURIComponent(target.id)}`;
   if (target.type === "mail") return `/app/mobile/mail/${encodeURIComponent(target.id)}`;
   if (target.type === "data") return "/app/data";
-  if (target.type === "app") return `/app/mobile/apps/${encodeURIComponent(target.id)}`;
+  if (target.type === "app") return ""; // Historical references remain readable without restoring the retired host.
   return "";
+}
+
+function clientPoster(binding: any) {
+  if (!binding?.objectId) return null;
+  try {
+    const object = managedFiles.stat(binding.objectId);
+    if (object.status !== "ready" || object.sha256 !== binding.sha256 || (object.spaceId && object.spaceId !== calendarStore.spaceId)) return null;
+    return { ...binding, imageUrl: `/api/chat/attachments/${encodeURIComponent(binding.objectId)}` };
+  } catch { return null; }
 }
 
 async function buildClientPages(url?: URL) {
@@ -2258,6 +2276,7 @@ async function buildClientPages(url?: URL) {
       : "",
     mobileThumbnailAlt: String(publication.page?.thumbnails?.mobile?.alt || ""),
     template: publication.page?.template,
+    poster: clientPoster(publication.page?.poster),
   }));
   const publicPages = publicAssets
     .filter((asset: any) => /\.html?$/i.test(String(asset.fileName || "")))
@@ -2279,6 +2298,7 @@ async function buildClientPages(url?: URL) {
       mobileThumbnailUrl: String(asset.mobileThumbnailUrl || ""),
       mobileThumbnailAlt: String(asset.page?.thumbnails?.mobile?.alt || ""),
       template: asset.page?.template,
+      poster: asset.page?.pageId ? clientPoster(publicPagePosters.currentPoster(asset.page.pageId)) : null,
     }));
   const pages = [...privatePages, ...publicPages].sort((left, right) => right.updatedAt.localeCompare(left.updatedAt));
   if (!url) return pages;

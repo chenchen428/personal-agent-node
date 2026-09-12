@@ -1,4 +1,4 @@
-type MobileSkeletonKind = "activity" | "tasks" | "pages" | "apps" | "mail" | "page" | "app";
+type MobileSkeletonKind = "activity" | "tasks" | "pages" | "mail" | "page";
 
 const repeated = (length: number) => Array.from({ length }, (_, index) => index);
 
@@ -8,10 +8,8 @@ export function MobileContentSkeleton({ kind }: { kind: MobileSkeletonKind }) {
       {kind === "activity" ? <ActivitySkeleton /> : null}
       {kind === "tasks" ? <TaskListSkeleton /> : null}
       {kind === "pages" ? <PageGridSkeleton /> : null}
-      {kind === "apps" ? <AppListSkeleton /> : null}
       {kind === "mail" ? <MailSkeleton /> : null}
       {kind === "page" ? <PageReaderSkeleton /> : null}
-      {kind === "app" ? <AppHostSkeleton /> : null}
     </div>
   </div>;
 }
@@ -47,12 +45,6 @@ function PageGridSkeleton() {
   </article>)}</div>;
 }
 
-function AppListSkeleton() {
-  return <div className="mobile-skeleton-app-list">{repeated(3).map((item) => <article key={item}>
-    <SkeletonBlock className="icon" /><div><SkeletonLine className="title" /><SkeletonLine /><SkeletonLine className="short" /></div><SkeletonLine className="action" />
-  </article>)}</div>;
-}
-
 function MailSkeleton() {
   return <article className="mobile-skeleton-mail"><SkeletonLine className="meta" /><SkeletonLine className="headline" /><SkeletonLine className="sender" />
     <div className="facts"><SkeletonLine /><SkeletonLine /></div>
@@ -62,10 +54,6 @@ function MailSkeleton() {
 
 function PageReaderSkeleton() {
   return <div className="mobile-skeleton-page-reader"><SkeletonBlock className="hero" /><SkeletonLine className="headline" /><SkeletonLine /><SkeletonLine className="short" /><div className="cards"><SkeletonBlock /><SkeletonBlock /></div></div>;
-}
-
-function AppHostSkeleton() {
-  return <div className="mobile-skeleton-app-host"><div className="top"><SkeletonBlock className="mark" /><SkeletonLine className="title" /></div><SkeletonBlock className="hero" /><SkeletonLine /><SkeletonLine className="short" /><div className="cards"><SkeletonBlock /><SkeletonBlock /></div></div>;
 }
 
 function SkeletonBlock({ className = "" }: { className?: string }) {

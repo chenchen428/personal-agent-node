@@ -26,8 +26,7 @@ checks.push({ name: 'project registry has target schema version', ok: projects.s
 checks.push({ name: 'historical projects directory is absent', ok: !exists('projects') });
 checks.push({ name: 'Next.js application is the unified Web surface', ok: exists('core/app/next.config.ts') && exists('core/app/src/app/app/layout.tsx') });
 checks.push({ name: 'delivery separates immutable core from mutable workspace', ok: delivery.schemaVersion === 1 && delivery.core?.path === 'core' && delivery.core?.mutable === false && delivery.workspace?.path === 'workspace' && delivery.workspace?.mutable === true && delivery.workspace?.preserveOnUninstall === true });
-checks.push({ name: 'workspace carries the customer Harness contract', ok: ['AGENTS.md', 'registry', 'schemas', 'skills', 'agents', 'workflows'].every((entry) => delivery.workspace?.harness?.includes(entry)) && exists('workspace/AGENTS.md') });
-checks.push({ name: 'specialist Agent registry is versioned and guarded', ok: exists('registry/agents.json') && exists('schemas/personal-agent/agents.schema.json') && exists('schemas/personal-agent/video-styles.schema.json') && exists('scripts/agent-guard.mjs') && exists('agents/video-creator/AGENT.md') && exists('agents/video-creator/STYLE-GUIDE.md') && exists('agents/video-creator/styles.json') && exists('agents/interior-designer/AGENT.md') && exists('agents/interior-designer/agent.yaml') && exists('agents/travel-planner/AGENT.md') && exists('agents/travel-planner/agent.yaml') });
+checks.push({ name: 'workspace carries the customer Harness contract', ok: ['AGENTS.md', 'registry', 'schemas', 'skills', 'workflows'].every((entry) => delivery.workspace?.harness?.includes(entry)) && exists('workspace/AGENTS.md') });
 checks.push({
   name: 'installed product development clones the registered private root outside immutable current',
   ok: productDevelopment.schemaVersion === 1
@@ -44,7 +43,7 @@ checks.push({
     && exists('schemas/personal-agent/product-development.schema.json')
     && exists('core/runtime/src/product-development.ts')
     && exists('workflows/product-development.md')
-    && exists('skills/personal-product-development/references/product-development.md'),
+    && exists('skills/cove-product-development/references/product-development.md'),
 });
 checks.push({ name: 'plugin schema and SDK are versioned', ok: exists('core/plugins/schema/personal-agent.plugin.schema.json') && exists('core/plugins/sdk/manifest.ts') });
 checks.push({ name: 'application logic is TypeScript', ok: !containsExtension(['core/runtime/src', 'core/control', 'core/plugins'], '.mjs') && ['core/runtime/src/config.ts', 'core/runtime/src/supervisor.ts', 'core/control/server.ts', 'core/plugins/runtime/store.ts', 'core/agent/src/agent/app-server-runner.ts', 'core/edge/src/edge.ts'].every(exists) });
@@ -98,13 +97,13 @@ checks.push({ name: 'commands reference capabilities', ok: commands.commands.eve
 checks.push({ name: 'commands declare R0-R3 risk', ok: commands.commands.every((entry) => /^R[0-3]$/.test(entry.risk)) });
 checks.push({ name: 'agent output contract is JSON', ok: commands.output?.agentFormat === 'json' && commands.output?.formats?.includes('json') });
 const personalSkillNames = [
-  'personal-runtime', 'personal-connectivity', 'personal-connections', 'personal-activity',
-  'personal-tasks', 'personal-schedules', 'personal-files', 'personal-data',
-  'personal-updates', 'personal-product-development', 'personal-bug-report',
-  'personal-acceptance', 'personal-memory',
+  'cove-runtime', 'cove-connectivity', 'cove-connections', 'cove-activity',
+  'cove-tasks', 'cove-schedules', 'cove-files', 'cove-data',
+  'cove-updates', 'cove-product-development', 'cove-bug-report',
+  'cove-acceptance', 'cove-memory',
 ];
 checks.push({
-  name: 'Personal Agent capabilities use focused skills',
+  name: 'Cove capabilities use focused skills',
   ok: personalSkillNames.every((name) => exists(`skills/${name}/SKILL.md`))
     && !exists('skills/personal-agent/SKILL.md'),
 });
@@ -112,9 +111,7 @@ checks.push({
   name: 'Page template product layer is retired',
   ok: !exists('registry/page-templates.json')
     && !exists('skills/personal-pages')
-    && !exists('test/fixtures/skill-cases/personal-pages')
-    && exists('agents/interior-designer/examples/featured-delivery.json')
-    && exists('core/app/public/assets/agents/interior-designer/featured/manifest.json'),
+    && !exists('test/fixtures/skill-cases/personal-pages'),
 });
 checks.push({ name: 'legacy bridge skill removed', ok: !exists('skills/open-agent-bridge/SKILL.md') });
 const cloudEnrollmentSource = fs.readFileSync(path.join(root, 'core/runtime/src/cloud-enrollment.ts'), 'utf8');

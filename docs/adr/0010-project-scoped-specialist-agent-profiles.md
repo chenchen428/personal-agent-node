@@ -147,7 +147,7 @@ skills:
   - interior-design
   - visual-content
   - media-toolkit
-  - personal-files
+  - cove-files
 routing:
   domains:
     - renovation
@@ -180,7 +180,7 @@ visualIdentity: {}
 
 ### 4. 公共 Skill 继续只维护一份
 
-Skill 仍是可复用能力层。多个专业子 Agent 可以引用同一个 Skill，例如 `deep-research`、`visual-content`、`content-workbench`、`media-toolkit` 和 `personal-files`。
+Skill 仍是可复用能力层。多个专业子 Agent 可以引用同一个 Skill，例如 `deep-research`、`visual-content`、`content-workbench`、`media-toolkit` 和 `cove-files`。
 
 Agent 配置通过 Skill ID 引用公共能力，禁止：
 
@@ -375,10 +375,10 @@ unavailable
 
 | Agent | 核心范围 | 典型交付 | 主要公共 Skill |
 | --- | --- | --- | --- |
-| 装修设计 | 户型证据、空间策略、布局、3D 场景、修订 | 交互 Page、方案文档、布局与概念图 | `home-renovation`、`interior-design`、`visual-content`、`media-toolkit`、`personal-files` |
-| 海报设计 | 传播信息、视觉概念、系列排版、多规格渲染 | 海报、轮播图、社交卡片、微信封面 | `guizang-social-card-skill`、`visual-content`、`media-toolkit`、`content-workbench`、`personal-files` |
-| 旅游规划 | 约束、最新资料、交通与预约、行程可行性 | 攻略 Page、执行清单、来源说明、可选 PDF | `travel-guidebook`、`deep-research`、`knowledge-capture`、`content-workbench`、`personal-files` |
-| 账务分析 | 账单解析、逐笔核对、分类确认、趋势与异常 | 分析 Page、标准化账本、异常与订阅复核清单 | `content-workbench`、`knowledge-capture`、`deep-research`、`personal-files` |
+| 装修设计 | 户型证据、空间策略、布局、3D 场景、修订 | 交互 Page、方案文档、布局与概念图 | `home-renovation`、`interior-design`、`visual-content`、`media-toolkit`、`cove-files` |
+| 海报设计 | 传播信息、视觉概念、系列排版、多规格渲染 | 海报、轮播图、社交卡片、微信封面 | `guizang-social-card-skill`、`visual-content`、`media-toolkit`、`content-workbench`、`cove-files` |
+| 旅游规划 | 约束、最新资料、交通与预约、行程可行性 | 攻略 Page、执行清单、来源说明、可选 PDF | `travel-guidebook`、`deep-research`、`knowledge-capture`、`content-workbench`、`cove-files` |
+| 账务分析 | 账单解析、逐笔核对、分类确认、趋势与异常 | 分析 Page、标准化账本、异常与订阅复核清单 | `content-workbench`、`knowledge-capture`、`deep-research`、`cove-files` |
 
 详尽能力、范围、方法和示例由各 Agent 的 `profile.yaml` 单独维护，不在主 Agent 提示中展开。
 

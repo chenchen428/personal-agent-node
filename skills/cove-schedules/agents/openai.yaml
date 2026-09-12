@@ -1,0 +1,4 @@
+interface:
+  display_name: "Cove 日程与定时任务"
+  short_description: "记录当前空间的日程与跟进，并单独管理提醒和周期性自动化任务。"
+  default_prompt: "使用 $cove-schedules 记录或跟进日程，或设置明确要求的提醒。"

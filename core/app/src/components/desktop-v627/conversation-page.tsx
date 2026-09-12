@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { ConversationComposer } from "./conversation-composer";
 import type { PendingAttachment } from "./conversation-attachments";
 import { ConversationMessageList } from "./conversation-message-list";
+import { usePageRefresh } from "@/lib/use-client-resource";
 import { errorMessage, fetchJson } from "./shared";
 import type { Message, Session } from "./types";
 import { useConversationScroll } from "./use-conversation-scroll";
@@ -72,6 +73,8 @@ export function ConversationPage() {
       if (!controller.signal.aborted) setLoading(false);
     }
   }, []);
+
+  usePageRefresh(loadLatest);
 
   const loadEarlier = useCallback(async () => {
     const cursor = session?.pagination?.earlierCursor;

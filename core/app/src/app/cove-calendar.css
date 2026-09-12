@@ -1,0 +1,56 @@
+.cove-calendar { --calendar-accent: var(--cove-sea, #496c64); }
+.cove-calendar-toolbar, .cove-calendar-date, .cove-calendar-caption, .cove-calendar-pager { display: flex; align-items: center; gap: 12px; }
+.cove-calendar-toolbar { flex-wrap: wrap; padding: 0 0 24px; border-bottom: 1px solid var(--hairline); }
+.cove-calendar-toolbar select, .cove-calendar-date input { min-height: 36px; padding: 4px 10px; color: var(--ink); background: var(--canvas); border: 1px solid var(--hairline); border-radius: 7px; }
+.cove-calendar-date > button:not(.button) { display: grid; place-items: center; width: 32px; height: 36px; border: 0; background: transparent; cursor: pointer; }
+.cove-calendar-layout { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 36px; padding-top: 28px; }
+.cove-calendar-caption { justify-content: space-between; color: var(--muted); font-size: 12px; padding-bottom: 14px; }
+.cove-calendar-entry { width: 100%; display: grid; grid-template-columns: 125px minmax(0, 1fr) 62px; gap: 18px; align-items: start; text-align: left; border: 0; border-bottom: 1px solid var(--hairline); padding: 24px 12px; background: transparent; cursor: pointer; color: var(--ink); }
+.cove-calendar-entry:hover, .cove-calendar-entry.is-selected { background: color-mix(in srgb, var(--calendar-accent) 7%, transparent); }
+.cove-calendar-entry strong { display: block; font-size: 16px; font-weight: 550; margin-bottom: 8px; overflow-wrap: anywhere; }
+.cove-calendar-entry small, .cove-calendar-detail dd small { display: block; margin-top: 5px; font-size: 11px; color: var(--muted); }
+.cove-calendar-entry time, .cove-calendar-entry span > span { font-size: 12px; }
+.cove-calendar-status { color: var(--calendar-accent); font-size: 11px; }
+.cove-calendar-sidebar { border-left: 1px solid var(--hairline); padding-left: 28px; }
+.cove-calendar-note > span { font-size: 10px; letter-spacing: .15em; color: var(--muted); }
+.cove-calendar-note h2 { font-size: 32px; margin: 24px 0; line-height: 1.45; }
+.cove-calendar-note p { font-size: 13px; line-height: 1.9; color: var(--muted); }
+.cove-calendar-detail h2 { font-size: 25px; overflow-wrap: anywhere; }
+.cove-calendar-detail dt { font-size: 11px; margin-top: 18px; color: var(--muted); }
+.cove-calendar-detail dd { margin: 5px 0; font-size: 13px; overflow-wrap: anywhere; }
+.cove-calendar-notes { white-space: pre-wrap; font-size: 13px; }
+.cove-calendar-detail h3 { font: 550 13px var(--sans); margin-top: 30px; }
+.cove-calendar-history { list-style: none; margin: 0; padding: 0; }
+.cove-calendar-history li { border-left: 1px solid var(--hairline); padding: 0 0 20px 14px; }
+.cove-calendar-history li > span { color: var(--muted); font-size: 10px; }
+.cove-calendar-history p { font-size: 12px; white-space: pre-wrap; overflow-wrap: anywhere; }
+.cove-calendar-history details { font-size: 11px; }
+.cove-calendar-empty { text-align: center; padding: 80px 30px; color: var(--muted); }
+.cove-calendar-empty svg { color: var(--calendar-accent); }
+.cove-calendar-empty h2 { font-size: 26px; }
+.cove-calendar-empty p { max-width: 340px; margin: auto; font-size: 13px; line-height: 1.9; }
+.cove-calendar-pager { justify-content: space-between; margin: 20px 0; font-size: 12px; }
+.mobile-calendar { padding: 10px 20px 60px; }
+.mobile-calendar-toolbar, .mobile-calendar-caption { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.mobile-calendar-toolbar button, .mobile-calendar-caption button { border: 0; background: transparent; color: inherit; min-width: 44px; min-height: 44px; }
+.mobile-calendar-toolbar input { max-width: 165px; background: transparent; border: 0; font: inherit; color: var(--ink); }
+.mobile-calendar-caption { color: var(--muted); font-size: 11px; border-bottom: 1px solid var(--hairline); padding: 6px 0; }
+.mobile-calendar-caption select { background: transparent; color: inherit; border: 0; min-height: 44px; }
+.mobile-calendar-entry { border-bottom: 1px solid var(--hairline); }
+.mobile-calendar-entry-main { position: relative; display: block; width: 100%; padding: 24px 0; text-align: left; background: transparent; border: 0; color: var(--ink); }
+.mobile-calendar-entry-main time { display: block; color: var(--muted); font-size: 11px; margin-bottom: 10px; }
+.mobile-calendar-entry-main h2 { font: 550 18px/1.5 var(--sans); margin: 0 0 7px; padding-right: 54px; overflow-wrap: anywhere; }
+.mobile-calendar-entry-main p { margin: 0; font-size: 12px; color: var(--muted); overflow-wrap: anywhere; }
+.mobile-calendar-entry-main > span { position: absolute; right: 0; top: 27px; color: #496c64; font-size: 10px; }
+.mobile-calendar-detail { padding-bottom: 24px; font-size: 13px; overflow-wrap: anywhere; }
+.mobile-calendar-detail dt { color: var(--muted); font-size: 11px; margin-top: 12px; }
+.mobile-calendar-detail dd { margin: 4px 0; }
+.mobile-calendar-detail small { display: block; color: var(--muted); font-size: 10px; }
+.mobile-calendar-detail h3 { font: 550 13px var(--sans); margin-top: 24px; }
+.mobile-calendar-detail p { white-space: pre-wrap; }
+.mobile-calendar-detail ol { padding-left: 18px; }
+.mobile-calendar-detail button { min-height: 44px; background: transparent; border: 1px solid var(--hairline); border-radius: 6px; padding: 0 12px; }
+.mobile-calendar-empty { padding: 70px 14px; text-align: center; color: var(--muted); }
+.mobile-calendar-empty h2 { font-size: 24px; }
+.mobile-calendar-empty p { font-size: 13px; line-height: 1.9; }
+.cove-calendar button:focus-visible, .mobile-calendar button:focus-visible { outline: 2px solid #496c64; outline-offset: 3px; }

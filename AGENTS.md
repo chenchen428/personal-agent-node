@@ -1,4 +1,4 @@
-# Personal Agent Node Agent Guide
+# Cove Node Agent Guide
 
 This repository is both the public, local-first Personal Agent runtime and the complete customer-machine Agent Harness. Cloud connectivity is optional.
 
@@ -6,13 +6,11 @@ This repository is both the public, local-first Personal Agent runtime and the c
 
 1. Read `registry/projects.json` before changing a project, route, port, or runtime.
 2. Read `registry/skills.json` before changing a skill or skill-owned CLI.
-3. Read `registry/agents.json` before changing a specialist Agent profile, its routing, or project-scoped Worker identity.
 4. Read `registry/behavior-baselines.json` before changing installation, login, conversation, WeChat, Xiaohongshu, Pages, backup, or rollback behavior.
 5. Run `node scripts/discover-projects.mjs list`.
 6. Run `node scripts/workspace-doctor.mjs`.
 7. Run `node scripts/project-guard.mjs --working` before project or runtime layout changes.
 8. Run `node scripts/skill-guard.mjs --working` before skill or fixture changes.
-9. Run `node scripts/agent-guard.mjs --working` after changing specialist Agents or their registry.
 10. Run `bash scripts/setup-agent-bridge.sh --check` when Agent compatibility links matter.
 11. Run `bash scripts/install-hooks.sh --check` when repository hooks matter.
 12. Read a subproject's `AGENTS.md` when present.
@@ -66,23 +64,13 @@ final answer.
   author global Activity or Memory, or select final-reply attachments.
 - User-facing replies describe the task and its status without exposing Worker,
   hook, subprocess, or orchestration terminology.
-- When a registered specialist owns the substantive domain, select it from
-  `registry/agents.json` and preserve its project identity with both `--agent`
-  and `--project-key`. A specialist is still a Worker and does not gain broader
-  permissions. Unknown Agent IDs fail closed instead of silently becoming a
-  generic task.
-- When the selected specialist declares `styleGuide` and `styleCatalog`, require
-  it to record one primary style and at most one bounded secondary style before
-  storyboarding or implementation. A style is a narrative, visual, motion,
-  audio, format, and acceptance contract—not a loose mood label.
-- Every registered specialist owns `workflow.json`. The runtime publishes its private,
-  mobile-first progress Page before Worker execution and persists revision-zero state; refresh the same stable Page
-  after every transition, and do not advance while the Page revision is stale. Use
-  text confirmation only for short text decisions; publish design drafts, images,
-  tables, long material and other intermediate artifacts as private Pages and bind
-  confirmation to the exact `pageId`. Missing facts, missing Pages, wrong confirmation
-  surfaces, stage skips, stale revisions and unsynchronized progress Pages fail closed.
-  Feedback reopens the earliest affected stage instead of silently rewriting confirmed work.
+- Use generic Workers for current work; retired presets and their phase workflow are not available.
+
+## Skill sources and personal adaptation
+
+Cove ships only thirteen cove-* skills in the immutable release. User summaries and custom skills stay in each Space’s agent-workspace/skills. Use the shared runtime catalog as the effective source, not old copied registries or raw engine discovery. Preserve user files, modified skills, unknown directories, links and backups. Legacy fingerprints authorize discovery exclusion only; never infer deletion authority from a name or matching bytes.
+
+Learn stable preferences from actual user corrections and use cove-memory; create reusable user skills only when they help recurring work. New personal skills need a SKILL.md with name and description and focused instructions. Do not introduce fixed specialist roles or arbitrary stage-confirmation rituals.
 
 ## Agent-Owned Activity
 
@@ -101,7 +89,7 @@ Every activity contract must support these user-facing fields and constraints:
 - `title`: required, concise, and no more than 30 user-visible characters after normalization. Reject an overlong title; do not silently truncate it.
 - `detail`: required user-facing content organized by the Agent. Keep it plain text or safely rendered restricted Markdown; never accept arbitrary HTML.
 - `attachments`: an ordered list of zero to ten references. The limit of ten includes images and non-image files together. Reject an eleventh attachment instead of dropping it silently.
-- `target`: an optional typed reference to the task, Page, mail item, data object, App, or other governed product object that owns the full detail. A scheduled automation targets its ordinary task.
+- `target`: an optional typed reference to the task, Page, mail item, data object, or other governed product object that owns the full detail. A scheduled automation targets its ordinary task.
 - `correlationKey`, `revision`, and an idempotency key: use them for deduplication, optimistic updates, and safe retries.
 
 ### Main-Agent Isolation
@@ -109,9 +97,9 @@ Every activity contract must support these user-facing fields and constraints:
 Global Activity is owner-scoped and main-Agent-controlled. Enforce this in the domain service, not through prompt wording or a caller-supplied `role` field.
 
 - The orchestrator must issue an unforgeable caller identity bound to the owner and canonical main session. The Activity service verifies that identity against server-owned session state on every Agent command.
-- A parent session ID, `role: main`, HTTP header, App ID, Extension manifest, or command-line option supplied by a caller is never proof of main-Agent authority.
+- A parent session ID, `role: main`, HTTP header, Extension ID, Extension manifest, or command-line option supplied by a caller is never proof of main-Agent authority.
 - Worker credentials are least-privilege and non-delegable. Spawning a child must not copy the main Agent's Activity capability, and a Worker cannot relay an Activity command through a generic tool or internal route.
-- System services, schedulers, channels, Extensions, Personal Apps, browser clients, and remote HTTP callers cannot obtain the Agent mutation capability. They may expose governed facts or submit results to the main Agent.
+- System services, schedulers, channels, Extensions,  browser clients, and remote HTTP callers cannot obtain the Agent mutation capability. They may expose governed facts or submit results to the main Agent.
 - Authenticated user interfaces have a separate read-only consumer capability for listing, searching, viewing, and downloading authorized Activity content. UI read access does not authorize Agent commands or mutation.
 - The main Agent may list, search, inspect, create, update, hide, and restore only the current owner's Activity. Cross-owner queries and object references fail closed, including on local loopback.
 - Record the verified main session, owner, command, target, revision, idempotency key, and redacted outcome in audit evidence. Never record private Activity detail or attachment content in audit logs.
@@ -124,8 +112,7 @@ Use Open Agent Bridge and registered Node capabilities to gather the facts neede
 
 - Task creation and progress come from normalized parent/child session identity, visible Agent replies, explicit plans, stable timestamps, and verified terminal state.
 - Data activity may use governed schema inspection, structured queries, object metadata, and result counts. Do not read business databases directly, expose database paths, dump raw rows, or treat an internal data mutation record as user-facing copy.
-- Mail, Pages, files, scheduled tasks, channels, and Personal Apps remain separate capability owners. Activity may reference their objects but does not bypass their permissions, approval policy, publication state, or retention rules.
-- A Personal App's existing app-local activity ledger is not global Activity and grants no Activity authority. Rename or retire that ledger as App history when implementing this contract so the two concepts cannot be confused. Only the main Agent may create a new global Activity item that references an App result; an App must never promote its own record or inject items into the global feed.
+- Mail, Pages, files, scheduled tasks, calendar records, and channels remain separate capability owners. Activity may reference their objects but does not bypass their permissions, approval policy, publication state, or retention rules.
 
 ### Space-isolated Product Memory
 
@@ -137,45 +124,42 @@ Memory is a separate, Space-local product domain for durable facts, stable prefe
 - Before every real main-Agent user turn, recall at most twelve relevant active memories from the current Space. Relevance sorts before heat. Only records actually injected into the turn count as hits, and `(spaceId, sessionId, turnId, memoryId)` is idempotent.
 - A hit increments hit count, updates the last-hit time, recomputes heat, and refreshes the one-year forgetting deadline. Heat is `round(100 * (0.55 * 2^(-ageDays/90) + 0.45 * min(1, log2(hitCount+1)/8)))`, where age uses last hit or creation time.
 - The forgetting time is one year after the latest creation, update, or hit. Due active records become forgotten with zero heat and are excluded from automatic recall. Updating a forgotten record reactivates it.
-- Only the verified canonical main Agent receives a per-turn, non-delegable Memory capability. It may list, search, inspect, create, revision-safely update, or permanently delete current-Space memory through `pa-cli memory`. Workers, Apps, schedulers, channels, browser clients, generic HTTP callers, and caller-supplied roles cannot obtain it.
+- Only the verified canonical main Agent receives a per-turn, non-delegable Memory capability. It may list, search, inspect, create, revision-safely update, or permanently delete current-Space memory through `pa-cli memory`. Workers, schedulers, channels, browser clients, generic HTTP callers, and caller-supplied roles cannot obtain it.
 - Permanent deletion requires explicit user intent, a uniquely identified record, and its current revision. Never store secrets, credentials, one-time state, raw tool output, internal paths, or unsupported inferences as memory.
 - The removed legacy `memories` table remains archived and must not be reopened. Product Memory uses the new versioned `personal_memories` contract and never auto-imports legacy rows.
 
-The installed CLIs have separate stable contracts: `personal-agent` owns runtime lifecycle and diagnostics; `pa-cli` owns assistant sessions, channels, data, scheduled tasks (`cron`), files, and Pages. Select the one functional `skills/personal-*` Skill that matches the request, use `personal-runtime` for command discovery, start runtime work with `personal-agent status --json`, and use only registered, executable commands. Do not call internal HTTP ports, inspect internal databases, use `private-site`, or recreate the removed `open-abg`, `oab`, and `open-agent-bridge` aliases. Report capability gaps honestly; never fabricate a successful write.
+The installed CLIs have separate stable contracts: `personal-agent` owns runtime lifecycle and diagnostics; `pa-cli` owns assistant sessions, channels, data, calendar records (`calendar`), scheduled tasks (`cron`), files, and Pages. Select the one functional `skills/cove-*` Skill that matches the request, use `cove-runtime` for command discovery, start runtime work with `personal-agent status --json`, and use only registered, executable commands. Do not call internal HTTP ports, inspect internal databases, use `private-site`, or recreate the removed `open-abg`, `oab`, and `open-agent-bridge` aliases. Report capability gaps honestly; never fabricate a successful write.
 
 Authorized Activity and Memory reads, searches, and previews are R0. Creating or updating private local Activity or Memory is an auditable R1 write. Activity hiding and restoring remain reversible; Memory deletion is intentionally permanent and requires explicit user intent plus a unique revision-bound target. Risk level never bypasses main-Agent isolation. Referencing an object never grants permission to mutate, publish, send, or disclose that object; those actions retain the owning capability's R2/R3 rules and explicit human approval requirements.
 
-When changing Activity or Memory behavior, update the capability and route registries, versioned schemas, behavior baselines, relevant Skills, registered Skill cases, semantic/API tests, and the approved prototype contract. Memory tests must cover Space isolation, main-Agent credential forgery, Worker and App denial, content-only records, heat calculation, hit idempotency, relevance-before-heat recall, the twelve-record cap, one-year forgetting, update reactivation, revision conflicts, explicit permanent deletion, read-only UI access, and legacy-table separation. Activity tests retain their own title, attachment, target, revision, permission, redaction, and system-event boundaries.
+When changing Activity or Memory behavior, update the capability and route registries, versioned schemas, behavior baselines, relevant Skills, registered Skill cases, semantic/API tests, and the approved prototype contract. Memory tests must cover Space isolation, main-Agent credential forgery, Worker and other-caller denial, content-only records, heat calculation, hit idempotency, relevance-before-heat recall, the twelve-record cap, one-year forgetting, update reactivation, revision conflicts, explicit permanent deletion, read-only UI access, and legacy-table separation. Activity tests retain their own title, attachment, target, revision, permission, redaction, and system-event boundaries.
 
 ## Major UI Changes
 
-- Treat a new page, a new primary user flow, or a material change to information architecture, navigation, layout, responsive behavior, interaction states, or the shared visual system as a major UI change.
-- When attached to the private Personal Agent workspace, follow `projects/prototype/docs/DESIGN-SYSTEM.md` and update the applicable React route listed in `projects/prototype/docs/PAGE-INVENTORY.md`. Reusable approved UI comes from the versioned `@personal-agent/ui` package; do not copy prototype fixtures or pages. A standalone Node clone must remain self-contained; if the parent design workspace is unavailable, create a temporary review artifact under its own `docs/design/` and obtain explicit approval before implementation.
-- Write visible UI copy from the user's immediate task and context. Show state, consequences, recovery and available actions; never render feature narration, design rationale, architecture, implementation details, Agent-facing instructions, permission explanations, or "this page is for" text as product content. Keep those explanations in design documents, inventories, code comments or non-visible accessibility metadata.
-- Wait for explicit user approval of the design artifact. Silence, partial feedback, self-review, or approval of a materially different earlier design does not authorize implementation.
-- Implement against the approved artifact. If a material change to its information architecture, flow, responsive behavior, or visual direction becomes necessary, stop and obtain approval for an updated design before continuing.
-- Small copy edits, isolated bug fixes, accessibility corrections, and styling adjustments that preserve an approved experience do not require a new design cycle. Scope expansion does.
-- Before design handoff, walk every changed prototype screen and important state at its representative width. Check alignment, typography and contrast, overflow/clipping, spacing, exclusive active states, empty/loading/error states, all advertised interactions, and visible copy for leaked developer-facing explanations; fix obvious defects before requesting user review. In the coordinated workspace, archive representative screenshots only after explicit approval and place them beside the approved surface.
-- Visual appearance and browser interaction acceptance remain user-owned. The internal prototype walk-through is not approval. Outside this design-artifact quality gate, do not run browser automation, screenshots, responsive visual QA, or automated click-through review unless the user explicitly requests them; continue non-visual code, semantic, route, session, and security checks.
+- Use approved prototype artifacts for substantial frontend changes and keep every enabled action real. Visible copy should describe the user’s task, state and available actions.
+- Visual appearance and browser interaction acceptance belong to the user. Do not run browser automation, screenshots or click-through checks unless explicitly requested. Continue code, semantic, route, session and security checks.
 
 ## Frontend Component Architecture
 
-- Read `docs/frontend-development-principles.md` before changing the Web Console, desktop shell, mobile pages, or a Personal App.
+- Read `docs/frontend-development-principles.md` before changing the Web Console, desktop shell, mobile pages.
 - Give every frontend component one primary responsibility. Separate data hooks, application shells, page composition, and reusable presentation.
 - Extract repeated controls, states, cards, navigation, and interaction patterns into shared components.
 - Keep every authored frontend component source file at 300 lines or fewer. Split it before delivery if it would exceed the limit.
 - Implement each menu destination as its own page component. Compose shared components, but never place unrelated menu-page implementations behind conditionals in one page component.
-- Keep desktop navigation in the core shell. Render Personal Apps through the shared host instead of copying the desktop menu into an App.
-- Treat mobile as the primary Personal App surface while still delivering both mobile and desktop compositions. Share data and reusable primitives, not a single desktop page squeezed into a phone. Route Apps through `/app/mobile/apps/<id>` on mobile and `/app/apps/<id>` on desktop, and follow `docs/personal-app-development.md`.
+- Keep desktop navigation in the core shell.
+- Share data and reusable primitives while keeping focused mobile and desktop compositions.
 - Keep the desktop navigation rail and main content as independent scroll containers.
 - Protect these boundaries with architecture tests that enumerate page modules, shared modules, and the 300-line limit.
+
+## Calendar and image delivery
+
+Calendar records are Space-local facts and follow-up history, not cron rules. Use cove-schedules to distinguish calendar from explicit reminders. Only the main Agent receives the per-turn Calendar capability. Calendar changes do not contact participants. View requests should prefer governed poster images: deterministic complete calendar templates, freely designed Page imagery, system-validated QR targets, and main-reply managed attachments.
 
 ## Required Checks
 
 ```bash
 npm run doctor
 npm run guard
-node scripts/agent-guard.mjs --working
 npm run baseline:verify
 node scripts/skill-tree.mjs cases verify
 npm run frontend:guard

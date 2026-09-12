@@ -559,8 +559,6 @@ export class BridgeStore {
     cursor = "",
     query = "",
     parentSessionId = "",
-    agentId = "",
-    projectKey = "",
     hydrate = true,
   } = {}) {
     const pageSize = Math.min(Math.max(Number(limit) || 20, 1), 50);
@@ -572,16 +570,6 @@ export class BridgeStore {
     if (parentId) {
       where.push("parent_session_id = ?");
       params.push(parentId);
-    }
-    const specialistAgentId = String(agentId || "").trim();
-    if (specialistAgentId) {
-      where.push("json_extract(metadata_json, '$.agentId') = ?");
-      params.push(specialistAgentId);
-    }
-    const specialistProjectKey = String(projectKey || "").trim();
-    if (specialistProjectKey) {
-      where.push("json_extract(metadata_json, '$.projectKey') = ?");
-      params.push(specialistProjectKey);
     }
     if (search) {
       const pattern = `%${escapeSqlLike(search)}%`;
@@ -609,7 +597,7 @@ export class BridgeStore {
     };
   }
 
-  countSessions({ includeArchived = false, parentSessionId = "", agentId = "", projectKey = "" } = {}) {
+  countSessions({ includeArchived = false, parentSessionId = "" } = {}) {
     const where = [];
     const params = [];
     if (!includeArchived) where.push("status != 'archived'");
@@ -617,16 +605,6 @@ export class BridgeStore {
     if (parentId) {
       where.push("parent_session_id = ?");
       params.push(parentId);
-    }
-    const specialistAgentId = String(agentId || "").trim();
-    if (specialistAgentId) {
-      where.push("json_extract(metadata_json, '$.agentId') = ?");
-      params.push(specialistAgentId);
-    }
-    const specialistProjectKey = String(projectKey || "").trim();
-    if (specialistProjectKey) {
-      where.push("json_extract(metadata_json, '$.projectKey') = ?");
-      params.push(specialistProjectKey);
     }
     const sql = `SELECT COUNT(*) AS count FROM sessions${where.length ? ` WHERE ${where.join(" AND ")}` : ""}`;
     return Number(this.db.prepare(sql).get(...params)?.count || 0);
@@ -899,7 +877,7 @@ export class BridgeStore {
     const row = this.getSessionRow(id);
     if (!row) return null;
     const session = rowToSession(row);
-    return { ...session, path: this.sessionPath(row.id), ...this.sessionAccess(row.id, session.role) };
+    return { ...session, title: sessionDisplayTitle(row), path: this.sessionPath(row.id), ...this.sessionAccess(row.id, session.role) };
   }
 
   summarizeSessionRow(row) {
@@ -907,6 +885,7 @@ export class BridgeStore {
     const access = this.sessionAccess(session.id, session.role);
     return {
       ...session,
+      title: sessionDisplayTitle(row),
       path: this.sessionPath(session.id),
       ...access,
       eventCount: Number(this.db.prepare("SELECT COUNT(*) AS count FROM events WHERE session_id = ?").get(session.id)?.count || 0),
@@ -978,7 +957,7 @@ export class BridgeStore {
           channel: normalizedChannel,
           senderId: normalizedSenderId,
           senderName: senderName || current.senderName,
-          title: current.title || "与 PA 的对话",
+          title: current.title || "与 Cove 的对话",
           updatedAt: new Date().toISOString(),
           metadata: {
             ...current.metadata,
@@ -1042,8 +1021,8 @@ export class BridgeStore {
       senderId: "local-owner",
       senderName: "本机用户",
       workspaceRoot,
-      title: "与 PA 的对话",
-      taskDescription: "Personal Agent main conversation",
+      title: "与 Cove 的对话",
+      taskDescription: "Cove main conversation",
       status: "idle",
       metadata: { createdBy: "desktop" },
     });
@@ -1302,6 +1281,7 @@ export class BridgeStore {
       SELECT
         usage.session_id,
         sessions.title,
+        sessions.role,
         sessions.workspace_root,
         SUM(usage.input_tokens) AS input_tokens,
         SUM(usage.cached_input_tokens) AS cached_input_tokens,
@@ -1312,7 +1292,7 @@ export class BridgeStore {
         MAX(usage.updated_at) AS updated_at
       FROM token_usage AS usage
       JOIN sessions ON sessions.id = usage.session_id
-      GROUP BY usage.session_id, sessions.title, sessions.workspace_root
+      GROUP BY usage.session_id, sessions.title, sessions.role, sessions.workspace_root
       ORDER BY updated_at DESC, usage.session_id DESC
       LIMIT ?
     `).all(recentLimit).map(rowToTokenUsageSession);
@@ -1853,6 +1833,7 @@ export class BridgeStore {
     const access = this.sessionAccess(id, session.role);
     return {
       ...session,
+      title: sessionDisplayTitle(row),
       path: this.sessionPath(id),
       ...access,
       messages: coalesceMessages(events.map(eventToMessage).filter(Boolean)),
@@ -3178,6 +3159,11 @@ function eventToMessage(event) {
   return null;
 }
 
+// Brand compatibility is a read-only projection; persistence retains original titles.
+function sessionDisplayTitle(row) {
+  return row.role === "main" && row.title === "与 PA 的对话" ? "与 Cove 的对话" : row.title;
+}
+
 function rowToSession(row) {
   const metadata = fromJson(row.metadata_json, {});
   return {
@@ -3197,11 +3183,6 @@ function rowToSession(row) {
     cliSessionId: row.cli_session_id || null,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
-    agentId: metadata.agentId || null,
-    agentProfileVersion: Number.isSafeInteger(Number(metadata.agentProfileVersion))
-      ? Number(metadata.agentProfileVersion)
-      : null,
-    projectKey: metadata.projectKey || null,
     metadata,
   };
 }
@@ -3235,7 +3216,7 @@ function rowToWorkspace(row) {
 function rowToTokenUsageSession(row) {
   return {
     sessionId: row.session_id,
-    title: row.title,
+    title: sessionDisplayTitle(row),
     workspaceRoot: row.workspace_root,
     inputTokens: Number(row.input_tokens || 0),
     cachedInputTokens: Number(row.cached_input_tokens || 0),

@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { usePageRefresh } from "@/lib/use-client-resource";
 import { fetchJson } from "./shared";
 import type { Session } from "./types";
 
@@ -17,16 +18,19 @@ export function useWorkerSessions(initialSessionId?: string | null) {
   const [resumeLoading, setResumeLoading] = useState(false);
   const [error, setError] = useState("");
   const selectedIdRef = useRef(initialSessionId || "");
+  const requests = useRef(new Map<string, AbortController>());
 
   const select = useCallback(async (sessionId: string, { background = false }: { background?: boolean } = {}) => {
     selectedIdRef.current = sessionId;
     setSelectedId(sessionId);
+    requests.current.get("detail")?.abort(); const controller = new AbortController(); requests.current.set("detail", controller);
     if (!background) setDetailLoading(true);
     try {
-      const detail = (await fetchJson<{ session: Session }>(`/api/chat/sessions/${encodeURIComponent(sessionId)}`)).session;
+      const detail = (await fetchJson<{ session: Session }>(`/api/chat/sessions/${encodeURIComponent(sessionId)}`, { signal: controller.signal })).session;
       if (selectedIdRef.current === sessionId) setSelected(detail);
       setError("");
     } catch (cause) {
+      if (controller.signal.aborted) return;
       if (!background && selectedIdRef.current === sessionId) setSelected(null);
       setError(cause instanceof Error ? cause.message : "暂时无法读取任务");
     } finally {
@@ -35,7 +39,8 @@ export function useWorkerSessions(initialSessionId?: string | null) {
   }, []);
 
   const load = useCallback(async ({ background = false }: { background?: boolean } = {}) => {
-    const list = await fetchJson<{ sessions: Session[] }>("/api/chat/sessions?limit=50");
+    requests.current.get("list")?.abort(); const controller = new AbortController(); requests.current.set("list", controller);
+    const list = await fetchJson<{ sessions: Session[] }>("/api/chat/sessions?limit=50", { signal: controller.signal });
     const workers = (list.sessions || []).filter((item) => item.role === "worker");
     setSessions(workers);
     const requestedId = selectedIdRef.current;
@@ -72,7 +77,9 @@ export function useWorkerSessions(initialSessionId?: string | null) {
     }
   }, []);
 
-  useEffect(() => { void load().catch((cause) => setError(cause instanceof Error ? cause.message : "暂时无法读取任务")).finally(() => setLoading(false)); }, [load]);
+  const refresh = useCallback(() => { void load({ background: true }).catch((cause) => { if (!(cause instanceof DOMException && cause.name === "AbortError")) setError(cause instanceof Error ? cause.message : "暂时无法读取任务"); }).finally(() => setLoading(false)); }, [load]);
+  useEffect(() => { refresh(); const pending = requests.current; return () => pending.forEach((controller) => controller.abort()); }, [refresh]);
+  usePageRefresh(refresh);
   useEffect(() => {
     if (!initialSessionId || initialSessionId === selectedIdRef.current) return;
     void select(initialSessionId);

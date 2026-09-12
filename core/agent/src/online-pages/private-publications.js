@@ -2,6 +2,7 @@ import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import { decodePageThumbnail, pageProperties } from "./page-thumbnail.js";
+import { pagePosterVersion } from "../posters/version.js";
 
 export class PrivatePublicationStore {
   constructor({ rootDir, maxUploadBytes = 20 * 1024 * 1024 } = {}) {
@@ -89,6 +90,46 @@ export class PrivatePublicationStore {
     };
   }
 
+  pageVersion(publicationId) {
+    const id = safeSegment(publicationId);
+    const manifest = JSON.parse(fs.readFileSync(path.join(this.rootDir, id, "publication.json"), "utf8"));
+    const page = manifest.page || {};
+    const names = new Set([page.entryFile, ...(page.assets || []).map((asset) => asset.fileName), ...Object.values(page.thumbnails || {}).map((thumbnail) => thumbnail.fileName)]);
+    const root = fs.realpathSync(path.join(this.rootDir, id));
+    if (!root.startsWith(`${fs.realpathSync(this.rootDir)}${path.sep}`)) throw Object.assign(new Error("发布页超出当前空间"), { code: "POSTER_PAGE_NOT_FOUND" });
+    if ([...names].some((name) => name && !(manifest.files || []).some((entry) => entry.name === name))) throw Object.assign(new Error("发布页资产尚未就绪"), { code: "POSTER_PAGE_NOT_FOUND" });
+    manifest.files = (manifest.files || []).map((entry) => {
+      if (!names.has(entry.name)) return entry;
+      const resolved = this.resolve(id, entry.name);
+      if (!resolved || !fs.realpathSync(resolved.filePath).startsWith(`${root}${path.sep}`)) throw Object.assign(new Error("发布页资产不可用"), { code: "POSTER_PAGE_NOT_FOUND" });
+      if (fs.statSync(resolved.filePath).size > this.maxUploadBytes) throw Object.assign(new Error("发布页资产超出大小限制"), { code: "POSTER_PAGE_NOT_FOUND" });
+      const bytes = fs.readFileSync(resolved.filePath);
+      return { ...entry, sha256: crypto.createHash("sha256").update(bytes).digest("hex"), sizeBytes: bytes.length };
+    });
+    return pagePosterVersion(manifest);
+  }
+
+  bindPoster({ publicationId, pageVersion, objectId, sha256, width, height } = {}) {
+    const id = safeSegment(publicationId);
+    const manifestPath = path.join(this.rootDir, id, "publication.json");
+    const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf8"));
+    if (this.pageVersion(id) !== pageVersion) throw Object.assign(new Error("发布页内容已变化，请重新生成海报"), { code: "POSTER_PAGE_VERSION_CONFLICT" });
+    if (!/^obj_[a-zA-Z0-9_-]+$/.test(String(objectId || "")) || !/^[a-f0-9]{64}$/.test(String(sha256 || "")) || !Number.isInteger(width) || !Number.isInteger(height) || width < 1 || height < 1) throw new Error("海报受管对象信息不完整");
+    // The authenticated server verifies this obj_ belongs to the current Space.
+    manifest.page.poster = { objectId, sha256, width, height, pageVersion, createdAt: new Date().toISOString() };
+    const temporary = `${manifestPath}.${process.pid}.${crypto.randomBytes(4).toString("hex")}.tmp`;
+    fs.writeFileSync(temporary, `${JSON.stringify(manifest, null, 2)}\n`, { mode: 0o600 });
+    fs.renameSync(temporary, manifestPath);
+    return manifest.page.poster;
+  }
+
+  currentPoster(publicationId) {
+    const id = safeSegment(publicationId);
+    const manifest = JSON.parse(fs.readFileSync(path.join(this.rootDir, id, "publication.json"), "utf8"));
+    try { return manifest.page?.poster?.pageVersion === this.pageVersion(id) ? manifest.page.poster : null; }
+    catch { return null; }
+  }
+
   list() {
     return fs.readdirSync(this.rootDir, { withFileTypes: true })
       .filter((entry) => entry.isDirectory())
@@ -96,6 +137,10 @@ export class PrivatePublicationStore {
         const manifestPath = path.join(this.rootDir, entry.name, "publication.json");
         if (!fs.existsSync(manifestPath)) return null;
         const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf8"));
+        if (manifest.page?.poster && !this.currentPoster(entry.name)) {
+          const { poster: _poster, ...page } = manifest.page;
+          return { ...manifest, page, url: publicationUrl(entry.name, "index.html") };
+        }
         return { ...manifest, url: publicationUrl(entry.name, "index.html") };
       })
       .filter(Boolean)

@@ -1,0 +1,15 @@
+{
+  "family": "Noto Sans SC",
+  "variant": "variable weight 100-900",
+  "fontVersion": "2.004-H2;hotconv 1.0.118;makeotfexe 2.5.65603",
+  "file": "NotoSansSC.ttf",
+  "upstreamFile": "NotoSansSC[wght].ttf",
+  "repository": "https://github.com/google/fonts",
+  "commit": "a85815a42757630ce188fdad368c2dfc444d4773",
+  "source": "https://raw.githubusercontent.com/google/fonts/a85815a42757630ce188fdad368c2dfc444d4773/ofl/notosanssc/NotoSansSC%5Bwght%5D.ttf",
+  "license": "SIL Open Font License 1.1",
+  "licenseFile": "OFL.txt",
+  "sizeBytes": 17772300,
+  "sha256": "a3041811a78c361b1de50f953c805e0244951c21c5bd412f7232ef0d899af0da",
+  "modified": false
+}

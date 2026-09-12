@@ -102,7 +102,10 @@ test("reverse tunnel protocol rejects unsafe paths, headers, oversized frames, a
   assert.equal(isTunnelRouteAllowed(distribution, "/api/system/spaces", "http", "POST"), false);
   assert.equal(isTunnelRouteAllowed(distribution, "/api/spaces", "http", "POST"), false);
   assert.equal(isTunnelRouteAllowed(distribution, "/api/mobile/activity", "http"), true);
-  assert.equal(isTunnelRouteAllowed(distribution, "/apps/future-app/", "http"), true);
+  assert.equal(isTunnelRouteAllowed(distribution, "/apps/future-app/", "http"), false);
+  for (const retired of ["/apps", "/app/apps", "/app/mobile/apps/a", "/api/apps", "/api/system/apps", "/api/node/v1/apps/a/history"]) {
+    for (const policy of ["gateway", "mobile-readonly"]) assert.equal(isTunnelRouteAllowed(distribution, retired, "http", "GET", policy), false, retired);
+  }
   assert.equal(isTunnelRouteAllowed(distribution, "/app/conversations", "http"), true);
   assert.equal(isTunnelRouteAllowed(distribution, "/api/mobile/activity", "http", "POST"), true);
   assert.equal(isTunnelRouteAllowed(distribution, "/future/capability", "http"), true);

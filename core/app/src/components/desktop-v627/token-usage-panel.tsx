@@ -22,7 +22,7 @@ export function TokenUsagePanel({ range, setRange, usage, loading, error }: {
   const state = loading ? "loading" : error ? "error" : !usage?.totalTokens ? "empty" : "ready";
 
   return <section className="desktop-token-panel" aria-labelledby="desktop-token-title">
-    <header className="desktop-token-header"><div className="desktop-token-heading"><span className="desktop-token-icon"><Activity aria-hidden="true" /></span><div><span>本机 Agent 用量</span><h2 id="desktop-token-title">用量概览</h2></div></div><TokenUsageRangeSelector value={range} onChange={setRange} /></header>
+    <header className="desktop-token-header"><div className="desktop-token-heading"><span className="desktop-token-icon"><Activity aria-hidden="true" /></span><div><span>本机 Cove 用量</span><h2 id="desktop-token-title">用量概览</h2></div></div><TokenUsageRangeSelector value={range} onChange={setRange} /></header>
     {state !== "ready" ? <TokenUsageStatus state={state} detail={error} /> : usage ? <>
       <div className="desktop-token-overview"><div className="desktop-token-total"><span>累计使用</span><strong><CompactTokenCount value={usage.totalTokens} /></strong><small>Tokens · {usage.sessionCount} 次会话 · {usage.requestCount} 次请求</small></div><div className="desktop-token-cache"><span><Database aria-hidden="true" />缓存输入占比</span><strong>{usage.cacheRate}%</strong><small>重复上下文优先复用缓存</small></div></div>
       <div className="desktop-token-metrics">{metrics.map((metric) => <div className={metric.tone} key={metric.label}><span>{metric.label}</span><strong><CompactTokenCount value={metric.value} /></strong><small>Tokens</small></div>)}</div>

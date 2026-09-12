@@ -9,7 +9,7 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 test("Online Pages CLI, Skill, server, clients, and Activity share one dual-device contract", () => {
   const cli = read("core/agent/bin/pa-cli.mjs");
   const runtimeCli = read("core/runtime/bin/personal-agent.mjs");
-  const publishing = read("skills/personal-runtime/references/page-publishing.md");
+  const publishing = read("skills/cove-runtime/references/page-publishing.md");
   const server = read("core/agent/src/server/server.ts");
   const activity = read("core/agent/src/activity/store.js");
   const desktop = read("core/app/src/components/desktop-v627/shared.tsx");
@@ -33,14 +33,6 @@ test("Online Pages CLI, Skill, server, clients, and Activity share one dual-devi
   assert.match(publishing, /intrinsic width must be at least twice/);
   assert.match(publishing, /bounded pan\/zoom or horizontal-scroll surface/);
   assert.match(publishing, /mobile gallery preview is not visual or interaction acceptance/);
-  const interiorSkill = read("skills/interior-design/SKILL.md");
-  const interiorDelivery = read("skills/interior-design/references/delivery-v5.md");
-  assert.match(interiorSkill, /最终用户收到持续更新的设计工作区/);
-  assert.match(interiorDelivery, /`pages\/index\.html` 是默认入口/);
-  assert.match(interiorDelivery, /`pages\/3d\/index\.html`/);
-  assert.match(interiorDelivery, /`pages\/panorama-review\/index\.html`/);
-  assert.match(interiorDelivery, /合法授权的 `krpano\.js`/);
-  assert.match(interiorDelivery, /按依赖关系只使受影响的下游失效/);
   assert.match(runtimeCli, /Page Activity requires --target-type page and --target-id <page-id>/);
   assert.match(activity, /PAGE_TARGET_REQUIRED/);
   assert.match(server, /desktopThumbnailUrl:/);

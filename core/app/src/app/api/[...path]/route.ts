@@ -13,6 +13,9 @@ const hopByHopHeaders = new Set([
 
 async function proxy(request: NextRequest, context: { params: Promise<{ path: string[] }> }) {
   const { path } = await context.params;
+  if (/^(?:(?:system|node\/v1)\/)?apps(?:\/|$)/.test(path.join("/"))) {
+    return Response.json({ ok: false, error: { code: "FEATURE_RETIRED", message: "自定义应用已下线" } }, { status: 410 });
+  }
   if (isRuntimeEnvironmentPath(`/api/${path.join("/")}`) && !isLocalRuntimeEnvironmentRequest(request.headers)) {
     return Response.json({ ok: false, error: { code: "DESKTOP_LOCAL_ONLY", message: "运行环境配置仅支持本机桌面端" } }, { status: 403 });
   }
@@ -64,7 +67,7 @@ function isSpaceManagementPath(path: string[]) {
 
 function resolveUpstream(path: string[]): { target: "control" | "agent"; path: string[] } {
   if (path[0] === "system") return { target: "control", path: path.slice(1) };
-  const controlRoots = new Set(["agent-runtime", "codex-settings", "token-limit", "apps", "authorization", "data-export", "extensions", "mail", "onboarding", "plugins", "projects", "server-status", "setup", "spaces", "update", "wechat"]);
+  const controlRoots = new Set(["agent-runtime", "codex-settings", "token-limit", "authorization", "data-export", "extensions", "mail", "onboarding", "plugins", "projects", "server-status", "setup", "spaces", "update", "wechat"]);
   if (controlRoots.has(path[0])) return { target: "control", path };
   if (path[0] === "app") {
     const appRoutes: Record<string, string> = { data: "agent-data", schedules: "agent-corn", mail: "mail" };

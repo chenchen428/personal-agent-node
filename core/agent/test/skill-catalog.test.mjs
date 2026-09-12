@@ -1,104 +1,83 @@
-import assert from "node:assert/strict";
-import fs from "node:fs";
-import os from "node:os";
-import path from "node:path";
-import test from "node:test";
+import assert from 'node:assert/strict';
+import crypto from 'node:crypto';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import test from 'node:test';
+import { parseSkillFrontmatter, readWorkspaceSkillCatalog, resolveWorkspaceSkills } from '../src/skills/catalog.js';
 
-import { parseSkillFrontmatter, readWorkspaceSkillCatalog } from "../src/skills/catalog.js";
+function fixture(t) {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'cove-skill-sources-'));
+  t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+  const release = path.join(root, 'release'), space = path.join(root, 'space');
+  for (const dir of [release, space]) fs.mkdirSync(path.join(dir, 'registry'), { recursive: true });
+  const put = (base, name, content, extra = {}) => {
+    const dir = path.join(base, 'skills', name); fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(path.join(dir, 'SKILL.md'), content);
+    for (const [file, text] of Object.entries(extra)) { fs.mkdirSync(path.dirname(path.join(dir, file)), { recursive: true }); fs.writeFileSync(path.join(dir, file), text); }
+    return dir;
+  };
+  const skill = (name, description = 'fixture') => '---\nname: ' + name + '\ndescription: ' + description + '\n---\nInstructions.';
+  const builtin = put(release, 'cove-runtime', skill('cove-runtime'));
+  fs.writeFileSync(path.join(release, 'registry', 'skills.json'), JSON.stringify({ skills: [{ name: 'cove-runtime', directory: 'skills/cove-runtime' }] }));
+  return { root, release, space, put, skill, builtin };
+}
+function baseline(release, name, files) {
+  fs.writeFileSync(path.join(release, 'registry', 'legacy-builtin-skills.json'), JSON.stringify({ schemaVersion: 1, skills: [{ name, directory: 'skills/' + name, files: Object.fromEntries(Object.entries(files).map(([file, text]) => [file, { bytes: Buffer.byteLength(text), sha256: crypto.createHash('sha256').update(text).digest('hex') }])) }] }));
+}
 
-test("parses plain, quoted, and folded skill descriptions", () => {
-  assert.deepEqual(parseSkillFrontmatter("---\nname: plain\ndescription: Plain description.\n---\n"), {
-    name: "plain",
-    description: "Plain description.",
-  });
-  assert.equal(parseSkillFrontmatter("---\nname: quoted\ndescription: \"Quoted description.\"\n---\n").description, "Quoted description.");
-  assert.equal(parseSkillFrontmatter("---\nname: folded\ndescription: >\n  First line.\n  Second line.\n---\n").description, "First line. Second line.");
+test('builtin ownership comes only from the release; user prefix/frontmatter/registry cannot forge it', t => {
+  const f = fixture(t);
+  f.put(f.space, 'cove-runtime', f.skill('cove-runtime', 'my custom version') + '\nsource: builtin');
+  fs.writeFileSync(path.join(f.space, 'registry', 'skills.json'), JSON.stringify({ skills: [{ name: 'cove-runtime', directory: 'skills/cove-runtime', source: { kind: 'builtin' }, origin: { kind: 'builtin' } }] }));
+  const result = readWorkspaceSkillCatalog(f.space, { releaseRoot: f.release });
+  assert.deepEqual(result.skills.map(s => s.source.kind), ['builtin', 'user']);
+  assert.equal(new Set(result.skills.map(s => s.id)).size, 2);
+  assert.ok(result.skills.every(s => !('skillPath' in s)));
+  assert.deepEqual(resolveWorkspaceSkills(f.space, { releaseRoot: f.release }).skills.map(s => s.skillPath), [path.join(f.builtin, 'SKILL.md'), path.join(f.space, 'skills/cove-runtime/SKILL.md')]);
 });
 
-test("discovers skills from the skills directory and enriches registered entries", () => {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), "oab-skill-catalog-"));
-  try {
-    fs.mkdirSync(path.join(root, "registry"), { recursive: true });
-    fs.mkdirSync(path.join(root, "skills", "alpha"), { recursive: true });
-    fs.mkdirSync(path.join(root, "skills", "gamma"), { recursive: true });
-    fs.writeFileSync(path.join(root, "registry", "skills.json"), JSON.stringify({
-      categories: [
-        { id: "second", label: "Second", order: 20 },
-        { id: "first", label: "First", order: 10 },
-      ],
-      skills: [
-        { name: "alpha", directory: "skills/alpha", category: "first", maturity: "stable", risks: [], security: { network: "none" }, origin: { kind: "workspace" }, cli: ["alpha"], examples: [], caseRequired: false, related: [] },
-        { name: "removed", directory: "skills/removed", category: "second", maturity: "beta", risks: ["network-read"], security: { network: "read" }, origin: { kind: "adapted" }, cli: [], examples: ["removed.json"], caseRequired: true, related: ["alpha"] },
-      ],
-    }));
-    fs.writeFileSync(path.join(root, "skills", "alpha", "SKILL.md"), "---\nname: alpha\ndescription: Alpha description.\n---\n");
-    fs.writeFileSync(path.join(root, "skills", "gamma", "SKILL.md"), "---\nname: gamma\ndescription: >\n  Gamma first line.\n  Gamma second line.\n---\n");
-
-    const catalog = readWorkspaceSkillCatalog(root);
-    assert.deepEqual(catalog.categories.map((category) => category.id), ["first", "second", "uncategorized"]);
-    assert.deepEqual(catalog.skills.map((skill) => skill.name), ["alpha", "gamma"]);
-    assert.equal(catalog.skills[1].description, "Gamma first line. Gamma second line.");
-    assert.deepEqual(catalog.skills[0].cli, ["alpha"]);
-    assert.equal(catalog.skills[0].directory, "skills/alpha");
-    assert.equal(catalog.skills[1].directory, "skills/gamma");
-    assert.equal(catalog.skills[1].category, "uncategorized");
-    assert.deepEqual(catalog.skills[1].risks, []);
-    assert.deepEqual(catalog.skills[1].security, {});
-    assert.equal(catalog.skills[1].caseRequired, false);
-  } finally {
-    fs.rmSync(root, { recursive: true, force: true });
-  }
+test('only an unchanged complete legacy file tree is excluded, while every file remains in place', t => {
+  const f = fixture(t), old = f.skill('frontend-design');
+  const folder = f.put(f.space, 'frontend-design', old, { 'references/guide.md': 'old guide' });
+  baseline(f.release, 'frontend-design', { 'SKILL.md': old, 'references/guide.md': 'old guide' });
+  let result = readWorkspaceSkillCatalog(f.space, { releaseRoot: f.release });
+  assert.equal(result.excludedLegacyCount, 1); assert.equal(result.skills.length, 1);
+  assert.equal(fs.readFileSync(path.join(folder, 'references/guide.md'), 'utf8'), 'old guide');
+  fs.writeFileSync(path.join(folder, 'references/guide.md'), 'user change');
+  result = readWorkspaceSkillCatalog(f.space, { releaseRoot: f.release });
+  assert.equal(result.excludedLegacyCount, 0); assert.equal(result.skills[1].source.kind, 'user');
+  fs.writeFileSync(path.join(folder, 'references/guide.md'), 'old guide');
+  fs.writeFileSync(path.join(folder, 'my-extra.txt'), 'my data');
+  assert.equal(readWorkspaceSkillCatalog(f.space, { releaseRoot: f.release }).excludedLegacyCount, 0);
 });
 
-test("reads the skills directory again when a skill is added", () => {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), "oab-skill-refresh-"));
-  try {
-    fs.mkdirSync(path.join(root, "registry"), { recursive: true });
-    fs.mkdirSync(path.join(root, "skills", "alpha"), { recursive: true });
-    fs.writeFileSync(path.join(root, "registry", "skills.json"), JSON.stringify({ categories: [], skills: [] }));
-    fs.writeFileSync(path.join(root, "skills", "alpha", "SKILL.md"), "---\nname: alpha\ndescription: Alpha.\n---\n");
-    assert.deepEqual(readWorkspaceSkillCatalog(root).skills.map((skill) => skill.name), ["alpha"]);
-
-    fs.mkdirSync(path.join(root, "skills", "beta"), { recursive: true });
-    fs.writeFileSync(path.join(root, "skills", "beta", "SKILL.md"), "---\nname: beta\ndescription: Beta.\n---\n");
-    assert.deepEqual(readWorkspaceSkillCatalog(root).skills.map((skill) => skill.name), ["alpha", "beta"]);
-  } finally {
-    fs.rmSync(root, { recursive: true, force: true });
-  }
+test('a missing legacy file or absent provenance never licenses exclusion', t => {
+  const f = fixture(t), old = f.skill('personal-runtime');
+  f.put(f.space, 'personal-runtime', old);
+  baseline(f.release, 'personal-runtime', { 'SKILL.md': old, 'references/extra.md': 'not present' });
+  assert.equal(readWorkspaceSkillCatalog(f.space, { releaseRoot: f.release }).skills.length, 2);
+  f.put(f.space, 'unknown', f.skill('unknown'));
+  assert.equal(readWorkspaceSkillCatalog(f.space, { releaseRoot: f.release }).skills.length, 3);
 });
 
-test("uses release metadata for skills discovered in an older mutable Workspace", () => {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), "oab-skill-metadata-"));
-  const release = fs.mkdtempSync(path.join(os.tmpdir(), "oab-skill-release-"));
-  try {
-    fs.mkdirSync(path.join(root, "registry"), { recursive: true });
-    fs.mkdirSync(path.join(root, "skills", "split-skill"), { recursive: true });
-    fs.mkdirSync(path.join(release, "registry"), { recursive: true });
-    fs.writeFileSync(path.join(root, "registry", "skills.json"), JSON.stringify({
-      categories: [],
-      skills: [],
-    }));
-    fs.writeFileSync(path.join(release, "registry", "skills.json"), JSON.stringify({
-      categories: [{ id: "product", label: "Product", order: 10 }],
-      skills: [{
-        name: "split-skill",
-        directory: "skills/split-skill",
-        category: "product",
-        maturity: "stable",
-        risks: [],
-      }],
-    }));
-    fs.writeFileSync(
-      path.join(root, "skills", "split-skill", "SKILL.md"),
-      "---\nname: split-skill\ndescription: Split skill.\n---\n",
-    );
+test('new skills appear on the next read and remain isolated to their Space', t => {
+  const f = fixture(t), other = path.join(f.root, 'other-space'); fs.mkdirSync(other);
+  assert.equal(readWorkspaceSkillCatalog(f.space, { releaseRoot: f.release }).skills.length, 1);
+  f.put(f.space, 'my-weekly', f.skill('my-weekly'));
+  assert.equal(readWorkspaceSkillCatalog(f.space, { releaseRoot: f.release }).skills.length, 2);
+  assert.equal(readWorkspaceSkillCatalog(other, { releaseRoot: f.release }).skills.length, 1);
+});
 
-    const catalog = readWorkspaceSkillCatalog(root, { metadataRoots: [release, root] });
-    assert.deepEqual(catalog.categories.map((category) => category.id), ["product"]);
-    assert.equal(catalog.skills[0].category, "product");
-    assert.equal(catalog.skills[0].maturity, "stable");
-  } finally {
-    fs.rmSync(root, { recursive: true, force: true });
-    fs.rmSync(release, { recursive: true, force: true });
-  }
+test('user symlink directories stay untouched and are not followed into another source', t => {
+  const f = fixture(t); fs.mkdirSync(path.join(f.space, 'skills'));
+  const link = path.join(f.space, 'skills', 'linked');
+  fs.symlinkSync(f.builtin, link, process.platform === 'win32' ? 'junction' : 'dir');
+  const result = readWorkspaceSkillCatalog(f.space, { releaseRoot: f.release });
+  assert.equal(result.skills[1].source.kind, 'user'); assert.equal(result.skills[1].status, 'unavailable');
+  assert.ok(fs.lstatSync(link).isSymbolicLink());
+});
+
+test('parses quoted and folded descriptions without loading fields as authority', () => {
+  assert.equal(parseSkillFrontmatter('---\nname: mine\ndescription: >\n  first\n  second\n---\n').description, 'first second');
 });

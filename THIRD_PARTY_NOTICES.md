@@ -1,10 +1,20 @@
-# Third-Party Skill Notices
+# 第三方资源说明
+
+## Noto Sans SC
+
+日程和发布页海报内置 Noto Sans SC 2.004，采用 SIL Open Font License 1.1。
+字体、完整许可证和上游版本/校验记录位于 `core/agent/src/posters/fonts/`；发布时原样打包到 `core/agent/app/fonts/`。
+
+## 历史技能来源
+
+下列记录保留历史归属信息。对应领域技能和预设 Agent 已退出本版本分发，不代表仍然内置这些能力。
+
 
 The workspace skill tree includes adapted workflow ideas from the following MIT-licensed projects. Upstream repositories are audit inputs only; the workspace stores its own consolidated skills and CLI implementation.
 
 ## Pascal professional interior runtime
 
-Personal Agent ships deterministic bundles built from the following exact MIT-licensed packages:
+Historical Personal Agent versions shipped deterministic bundles built from the following exact MIT-licensed packages:
 
 - `@pascal-app/core` `0.9.2`
 - `@pascal-app/viewer` `0.9.2`

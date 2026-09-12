@@ -36,7 +36,6 @@ export const config = {
   workspaceRoot: resolvedWorkspaceRoot,
   siteDataRoot,
   installationDataRoot,
-  appsDir: path.join(siteDataRoot, "apps", "installed"),
   agentAuthorizationFile: path.join(siteDataRoot, "config", "agent-authorization.json"),
   dailyTokenLimitFile: path.join(siteDataRoot, "config", "daily-token-limit.json"),
   codexRuntimeSettingsFile: path.join(siteDataRoot, "config", "codex-runtime-settings.json"),
@@ -138,7 +137,7 @@ function hostnameFromBase(value) {
 }
 
 export function ensureRuntimeDirs() {
-  for (const dir of [config.dataDir, config.publicDir, config.pagesDir, config.uploadsDir, config.materializedFilesDir, config.agentDataDir, config.privatePublicationsDir, config.releaseNotesDir, config.mailIngressDir, config.inboundAttachmentsDir, config.appsDir]) {
+  for (const dir of [config.dataDir, config.publicDir, config.pagesDir, config.uploadsDir, config.materializedFilesDir, config.agentDataDir, config.privatePublicationsDir, config.releaseNotesDir, config.mailIngressDir, config.inboundAttachmentsDir]) {
     fs.mkdirSync(dir, { recursive: true });
   }
 }

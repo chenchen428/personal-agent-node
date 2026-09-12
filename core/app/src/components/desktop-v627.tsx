@@ -1,6 +1,5 @@
 "use client";
 
-export { AppsPage } from "./desktop-v627/apps-page";
 export { ChannelsPage } from "./desktop-v627/channels-page";
 export { ConnectionsPage } from "./desktop-v627/connections-page";
 export { ConversationPage } from "./desktop-v627/conversation-page";

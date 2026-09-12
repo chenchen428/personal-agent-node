@@ -36,7 +36,6 @@ test("installation creates exactly one opaque personal Space with the complete i
       "databases/agent",
       "databases/bridge",
       "databases/activity",
-      "databases/apps",
       "databases/usage",
       "secrets/applications",
       "secrets/connections",
@@ -45,10 +44,10 @@ test("installation creates exactly one opaque personal Space with the complete i
       "pages/drafts",
       "publications/pages",
       "publications/resources",
-      "apps/data",
       "logs",
       "backups",
     ]) assert.equal(fs.statSync(path.join(personal.root, relative)).isDirectory(), true, relative);
+    for (const retired of ["apps", "databases/apps"]) assert.equal(fs.existsSync(path.join(personal.root, retired)), false);
     assert.equal(fs.lstatSync(personal.root).isSymbolicLink(), false);
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
@@ -72,7 +71,6 @@ test("custom Spaces have independent roots, workspaces, runtime generations and 
       "mail/archive/mail-private.txt",
       "pages/drafts/page-private.txt",
       "connections/provider-state/connection-private.txt",
-      "apps/data/app-private.txt",
       "publications/private/site-private.txt",
       "secrets/providers/provider-private.txt",
     ]) {
@@ -134,6 +132,24 @@ test("personal Space cannot be deleted", () => {
     const { personal } = initializeInstallation({ dataRoot: root });
     assert.throws(() => deleteSpace(root, personal.id), /不能删除/);
     assert.equal(listSpaces(root).length, 1);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
+
+test("reopening an installation preserves retired App data and settings", () => {
+  const root = temporaryRoot();
+  try {
+    const { personal } = initializeInstallation({ dataRoot: root });
+    const retiredFiles = ["apps/installed/example.app/data/history.json", "apps/data/private.txt", "databases/apps/archive.bin", "config/apps.json"];
+    for (const relative of retiredFiles) {
+      const target = path.join(personal.root, relative);
+      fs.mkdirSync(path.dirname(target), { recursive: true });
+      fs.writeFileSync(target, "preserved fixture");
+    }
+    initializeInstallation({ dataRoot: root });
+    for (const relative of retiredFiles) assert.equal(fs.readFileSync(path.join(personal.root, relative), "utf8"), "preserved fixture");
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
   }

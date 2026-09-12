@@ -5,6 +5,7 @@ import { FileText, Mail, Search } from "lucide-react";
 import type { MailView } from "./types";
 import { errorMessage, fetchJson, formatBytes, formatDateTime, relativeTime } from "./shared";
 import { LoadingState } from "../desktop-v72/loading-state";
+import { usePageRefresh } from "@/lib/use-client-resource";
 import { useSearchParams } from "next/navigation";
 
 export function MailPage() {
@@ -17,13 +18,17 @@ export function MailPage() {
   const [listLoading, setListLoading] = useState(true);
   const [detailLoading, setDetailLoading] = useState(false);
   const requestRef = useRef(0);
+  const selectedRef = useRef(selectedId); selectedRef.current = selectedId;
+  const viewRef = useRef(view); viewRef.current = view;
+  const pending = useRef<AbortController | null>(null);
 
   const load = useCallback(async (id = "", { detail = false }: { detail?: boolean } = {}) => {
     const request = ++requestRef.current;
+    pending.current?.abort(); const controller = new AbortController(); pending.current = controller;
     if (detail) setDetailLoading(true);
-    else setListLoading(true);
+    else setListLoading(!viewRef.current);
     try {
-      const mail = await fetchJson<MailView>(`/api/app/mail/messages${id ? `?message=${encodeURIComponent(id)}` : ""}`);
+      const mail = await fetchJson<MailView>(`/api/app/mail/messages${id ? `?message=${encodeURIComponent(id)}` : ""}`, { signal: controller.signal });
       if (request !== requestRef.current) return;
       setView(mail);
       setSelectedId((current) => current || mail.selectedEvent?.id || "");
@@ -40,12 +45,14 @@ export function MailPage() {
 
   useEffect(() => {
     const requestedMessage = searchParams.get("message") || "";
-    setSelectedId(requestedMessage);
-    void load(requestedMessage);
+    if (requestedMessage) { selectedRef.current = requestedMessage; setSelectedId(requestedMessage); }
+    void load(requestedMessage || selectedRef.current);
     void fetchJson<{ status: { suggestedRecipients?: string[] } }>("/api/system/mail/status")
       .then((status) => setRecipient(status.status?.suggestedRecipients?.[0] || "agent@你的域名"))
       .catch(() => undefined);
+    return () => { pending.current?.abort(); requestRef.current += 1; };
   }, [load, searchParams]);
+  usePageRefresh(useCallback(() => { void load(selectedRef.current); }, [load]));
   const events = (view?.events || []).filter((item) => !query || `${item.title} ${item.sender.displayName} ${item.sender.address}`.toLowerCase().includes(query.toLowerCase()));
   const selected = view?.selectedEvent;
   const detailFailed = Boolean(error && selectedId && selected?.id !== selectedId);

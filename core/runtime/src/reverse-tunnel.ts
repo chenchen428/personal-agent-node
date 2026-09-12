@@ -546,6 +546,7 @@ export function isTunnelRouteAllowed(_distribution, requestPath, kind = "http", 
   try { pathname = new URL(resolveTunnelRequestPath(requestPath, routePolicy), "http://127.0.0.1").pathname; }
   catch { return false; }
   if (pathname === "/api/system/spaces" || pathname === "/api/spaces") return false;
+  if (/^\/(?:apps|app\/(?:mobile\/)?apps|api\/(?:system\/|node\/v1\/)?apps)(?:\/|$)/.test(pathname)) return false;
   if (isRuntimeEnvironmentPath(pathname)) return false;
   if (routePolicy === "gateway") {
     return ["http", "websocket"].includes(String(kind));
@@ -563,7 +564,6 @@ const MOBILE_TUNNEL_EXACT_PATHS = new Set([
   "/favicon.ico",
   "/api/node/v1/client/overview",
   "/api/node/v1/client/runtime",
-  "/api/system/apps",
   "/api/system/mail/status",
   "/api/skills",
   "/api/channels",
@@ -575,7 +575,6 @@ const MOBILE_TUNNEL_PATH_PREFIXES = [
   "/app/mobile/",
   "/_next/static/",
   "/_next/image",
-  "/apps/",
   "/api/mobile/",
   "/api/chat/sessions/",
   "/api/app/mail/messages/",

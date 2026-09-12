@@ -1,0 +1,4 @@
+interface:
+  display_name: "Cove 验收"
+  short_description: "按客户机证据标准验收 Node 安装、运行、升级、回滚与可选联调。"
+  default_prompt: "使用 $cove-acceptance 对当前 Cove Node 交付执行验收。"

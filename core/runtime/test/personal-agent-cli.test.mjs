@@ -210,19 +210,19 @@ test('preview commands require explicit opt-in and warn on success', () => {
 
 test('skill commands use the public registry fields and succeed for a real skill', () => {
   const list = JSON.parse(runOk(['skill', 'list', '--json']).stdout);
-  const personalRuntime = list.result.skills.find((entry) => entry.name === 'personal-runtime');
-  assert.ok(personalRuntime);
-  assert.equal(personalRuntime.directory, 'skills/personal-runtime');
-  assert.ok(Array.isArray(personalRuntime.risks));
-  assert.equal(Object.hasOwn(personalRuntime, 'id'), false);
+  const coveRuntime = list.result.skills.find((entry) => entry.name === 'cove-runtime');
+  assert.ok(coveRuntime);
+  assert.equal(coveRuntime.directory, 'skills/cove-runtime');
+  assert.ok(Array.isArray(coveRuntime.risks));
+  assert.equal(Object.hasOwn(coveRuntime, 'id'), false);
   assert.equal(list.result.skills.some((entry) => entry.name === 'personal-agent'), false);
 
-  const inspect = JSON.parse(runOk(['skill', 'inspect', 'personal-runtime', '--json']).stdout);
-  assert.equal(inspect.result.skill.name, 'personal-runtime');
-  assert.equal(inspect.result.skill.directory, 'skills/personal-runtime');
+  const inspect = JSON.parse(runOk(['skill', 'inspect', 'cove-runtime', '--json']).stdout);
+  assert.equal(inspect.result.skill.name, 'cove-runtime');
+  assert.equal(inspect.result.skill.directory, 'skills/cove-runtime');
 
-  const verify = JSON.parse(runOk(['skill', 'verify', 'personal-runtime', '--json']).stdout);
-  assert.equal(verify.result.skillName, 'personal-runtime');
+  const verify = JSON.parse(runOk(['skill', 'verify', 'cove-runtime', '--json']).stdout);
+  assert.equal(verify.result.skillName, 'cove-runtime');
   assert.equal(verify.result.verified, true);
 });
 
@@ -362,41 +362,21 @@ test('mail status is R0 read-only while mail plan is preview-only', () => {
   }
 });
 
-test('Personal App CLI verifies trusted Workspace Apps and controls the default entry', () => {
-  const dataRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'personal-agent-cli-app-'));
+test('retired App commands reject without changing existing user files', () => {
+  const dataRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'cove-retired-app-cli-'));
   try {
     const { config } = initializeSite({ domain: 'local.example', dataRoot });
-    const appRoot = path.join(config.appsDir, 'example.dashboard');
-    fs.mkdirSync(path.join(appRoot, 'dist'), { recursive: true });
-    fs.writeFileSync(path.join(appRoot, 'personal-agent.app.json'), `${JSON.stringify({
-      apiVersion: 'personal-agent/app-v1',
-      id: 'example.dashboard',
-      name: 'Dashboard',
-      entry: 'dist/index.html',
-      requires: { nodeApi: '1' },
-    })}\n`);
-    fs.writeFileSync(path.join(appRoot, 'dist', 'index.html'), '<!doctype html><title>Dashboard</title>');
-
-    const verified = JSON.parse(runOk(['app', 'verify', 'example.dashboard', '--json', '--data-root', dataRoot]).stdout);
-    assert.equal(verified.command, 'app verify');
-    assert.equal(verified.result.verified, true);
-    assert.equal(verified.result.app.route, '/app/apps/example.dashboard');
-    assert.equal(verified.result.app.assetRoute, '/apps/example.dashboard/');
-
-    const selected = JSON.parse(runOk(['app', 'set-default', 'example.dashboard', '--json', '--data-root', dataRoot]).stdout);
-    assert.equal(selected.result.defaultAppId, 'example.dashboard');
-    const listed = JSON.parse(runOk(['app', 'list', '--json', '--data-root', dataRoot]).stdout);
-    assert.equal(listed.result.effectiveDefaultAppId, 'example.dashboard');
-    assert.deepEqual(listed.result.apps.map((app) => app.id), ['example.dashboard']);
-
-    const cleared = JSON.parse(runOk(['app', 'clear-default', '--json', '--data-root', dataRoot]).stdout);
-    assert.equal(cleared.result.route, '/app');
-    assert.equal(JSON.parse(fs.readFileSync(config.appsConfigPath, 'utf8')).defaultAppId, '');
-
-    fs.rmSync(path.join(appRoot, 'dist', 'index.html'));
-    const invalid = run(['app', 'verify', 'example.dashboard', '--json', '--data-root', dataRoot]);
-    assert.equal(invalid.status, 8);
-    assert.equal(JSON.parse(invalid.stderr).error.code, 'ACCEPTANCE_FAILED');
+    const appRoot = path.join(config.dataRoot, 'apps', 'installed', 'example.dashboard');
+    fs.mkdirSync(path.join(appRoot, 'data'), { recursive: true });
+    fs.writeFileSync(path.join(appRoot, 'data', 'history.json'), '{"items":[]}');
+    fs.writeFileSync(path.join(config.configDir, 'apps.json'), '{"schemaVersion":1,"defaultAppId":"example.dashboard"}');
+    const before = snapshotDataRoot(dataRoot);
+    for (const action of ['list', 'inspect', 'verify', 'set-default', 'clear-default']) {
+      const result = run(['app', action, 'example.dashboard', '--json', '--data-root', dataRoot]);
+      assert.notEqual(result.status, 0, action);
+      assert.equal(JSON.parse(result.stderr).ok, false);
+    }
+    assert.deepEqual(snapshotDataRoot(dataRoot), before);
   } finally {
     fs.rmSync(dataRoot, { recursive: true, force: true });
   }

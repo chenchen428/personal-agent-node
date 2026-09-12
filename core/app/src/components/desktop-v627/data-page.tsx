@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { usePageRefresh } from "@/lib/use-client-resource";
 import { Filter, Search, SlidersHorizontal, X } from "lucide-react";
 import { Button, SearchField } from "../desktop-v72/primitives";
 import { DataColumnPanel, DataVisibilityPanel } from "./data-column-panel";
@@ -27,6 +28,10 @@ export function DataPage() {
   const [initialized, setInitialized] = useState(false);
   const [error, setError] = useState("");
   const loadedSignature = useRef("");
+  const initializedRef = useRef(false);
+  const resultRef = useRef(result); resultRef.current = result;
+  const [refreshVersion, setRefreshVersion] = useState(0);
+  usePageRefresh(useCallback(() => setRefreshVersion((value) => value + 1), []));
 
   useEffect(() => {
     const controller = new AbortController();
@@ -34,10 +39,13 @@ export function DataPage() {
       const firstObject = data.objects?.[0]?.name || "";
       setObjects(data.objects || []);
       setMetadata(data.metadata || []);
-      setObjectName(firstObject);
-      setResult(data.initialResult || null);
-      setVisible(data.initialResult?.columns || []);
-      loadedSignature.current = data.initialResult ? querySignature(firstObject, {}, undefined, 1) : "";
+      if (!initializedRef.current) {
+        setObjectName(firstObject);
+        setResult(data.initialResult || null);
+        setVisible(data.initialResult?.columns || []);
+        loadedSignature.current = data.initialResult ? querySignature(firstObject, {}, undefined, 1) : "";
+        initializedRef.current = true;
+      }
       setError("");
       setInitialized(true);
     }).catch((cause) => {
@@ -46,18 +54,18 @@ export function DataPage() {
       setInitialized(true);
     }).finally(() => { if (!controller.signal.aborted) setLoading(false); });
     return () => controller.abort();
-  }, []);
+  }, [refreshVersion]);
   useEffect(() => {
     if (!initialized) return;
     if (!objectName) { setLoading(false); setResult(null); return; }
     const signature = querySignature(objectName, filters, sort, pageNumber);
     if (loadedSignature.current === signature) { loadedSignature.current = ""; return; }
     const controller = new AbortController();
-    setLoading(true);
+    setLoading(!resultRef.current);
     setError("");
     void fetchJson<DataResult>("/api/app/data/query", { method: "POST", headers: { "content-type": "application/json" }, signal: controller.signal, body: JSON.stringify({ object: objectName, filters: Object.entries(filters).filter(([, value]) => value).map(([field, value]) => ({ field, operator: "contains", value })), sort: sort ? [{ field: sort.column, direction: sort.direction }] : [], page: { number: pageNumber, size: 50 } }) }).then((data) => { setResult(data); setVisible((current) => current.length ? current.filter((column) => data.columns.includes(column)) : data.columns); }).catch((cause) => { if (!(cause instanceof DOMException && cause.name === "AbortError")) setError(errorMessage(cause)); }).finally(() => { if (!controller.signal.aborted) setLoading(false); });
     return () => controller.abort();
-  }, [filters, initialized, objectName, pageNumber, sort]);
+  }, [filters, initialized, objectName, pageNumber, sort, refreshVersion]);
 
   const display = (field: string) => metadata.find((item) => item.objectName === objectName && item.fieldName === field)?.displayName || field;
   const sheet = metadata.find((item) => item.objectName === objectName && !item.fieldName);

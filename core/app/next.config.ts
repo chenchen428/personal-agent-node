@@ -33,14 +33,6 @@ const nextConfig: NextConfig = {
         source: "/_next/static/:path*",
         headers: [{ key: "Cache-Control", value: "public, max-age=31536000, immutable" }],
       },
-      {
-        source: "/assets/agents/:path*",
-        headers: [{ key: "Cache-Control", value: "public, max-age=300, must-revalidate" }],
-      },
-      {
-        source: "/assets/agent-examples/gift-advisor-report-v1/:path*",
-        headers: [{ key: "Cache-Control", value: "public, max-age=300, must-revalidate" }],
-      },
     ];
   },
 };

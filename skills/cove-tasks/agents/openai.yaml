@@ -1,0 +1,4 @@
+interface:
+  display_name: "Cove 任务"
+  short_description: "创建、查询、更新和恢复 Cove 子任务，并保留完整执行要求与进展。"
+  default_prompt: "使用 $cove-tasks 创建、检查、更新或恢复指定任务。"

@@ -33,7 +33,7 @@ export function ConnectionsPage() {
     const text = `${connection.name}${connection.summary}${connection.description}${connection.capabilities.join("")}`.toLocaleLowerCase("zh-CN");
     return matchesView && matchesCategory && text.includes(query.trim().toLocaleLowerCase("zh-CN"));
   }), [category, connections, query, view]);
-  useEffect(() => { setSelectedId(requested || ""); }, [requested]);
+  useEffect(() => { if (requested) setSelectedId(requested); }, [requested]);
   useEffect(() => {
     const refreshWhenVisible = () => { if (document.visibilityState === "visible") void refresh(); };
     const timer = window.setInterval(refreshWhenVisible, 15_000);

@@ -1,4 +1,0 @@
-interface:
-  display_name: "专业装修设计工作区"
-  short_description: "把装修资料和生活需求变成可传播、可反复确认的空间方案与沉浸体验"
-  default_prompt: "使用 $interior-design 梳理我的装修资料和生活需求，建立一致的空间方案，并交付便于家人共同确认的设计册 Page、在线概念图纸、效果图与沉浸式 Web 3D。"

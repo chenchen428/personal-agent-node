@@ -6,7 +6,6 @@ import path from "node:path";
 import test from "node:test";
 import { initializeSite, resolveNodeConfig } from "../src/config.ts";
 import { authorizeRoute, createPrivateSiteGateway, resolveRelaySpaceProxyTarget } from "../src/gateway.ts";
-import { setDefaultPersonalApp } from "../src/apps.ts";
 
 test("Relay Space routing resolves a running subdomain target without granting loopback auth", (t) => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "pa-relay-space-route-"));
@@ -414,7 +413,7 @@ test("tunneled login preserves the session cookie through the gateway", async ()
   }
 });
 
-test("authenticated Personal Apps use the default root while invalid Apps fall back safely", async () => {
+test("retired Apps cannot execute and old default settings leave the Console homepage intact", async () => {
   const dataRoot = fs.mkdtempSync(path.join(os.tmpdir(), "personal-agent-app-gateway-"));
   const bridge = http.createServer((request, response) => {
     response.writeHead(request.url === "/_auth/check" && request.headers.cookie === "session=ok" ? 204 : 401);
@@ -425,29 +424,28 @@ test("authenticated Personal Apps use the default root while invalid Apps fall b
     initializeSite({ domain: "example.site", dataRoot });
     const base = resolveNodeConfig({ PRIVATE_SITE_DATA_ROOT: dataRoot, SITE_DOMAIN: "example.site" });
     const config = { ...base, ports: { ...base.ports, bridge: bridge.address().port } };
-    const appRoot = path.join(config.appsDir, "example.dashboard");
+    const appRoot = path.join(config.dataRoot, "apps", "installed", "example.dashboard");
     fs.mkdirSync(path.join(appRoot, "dist"), { recursive: true });
     fs.writeFileSync(path.join(appRoot, "personal-agent.app.json"), `${JSON.stringify({ apiVersion: "personal-agent/app-v1", id: "example.dashboard", name: "Dashboard", entry: "dist/index.html", requires: { nodeApi: "1" } })}\n`);
     fs.writeFileSync(path.join(appRoot, "dist", "index.html"), "<!doctype html><title>Personal App</title>");
-    setDefaultPersonalApp(config, "example.dashboard");
+    const settingsPath = path.join(config.configDir, "apps.json");
+    const settings = JSON.stringify({ schemaVersion: 1, defaultAppId: "example.dashboard" });
+    fs.writeFileSync(settingsPath, settings);
     const { server } = createPrivateSiteGateway({ config });
     await listen(server);
     try {
       const port = server.address().port;
-      assert.equal((await request({ port, host: "example.site", path: "/apps/example.dashboard/" })).status, 302);
+
       const home = await request({ port, host: "example.site", path: "/", headers: { cookie: "session=ok" } });
       assert.equal(home.status, 302);
-      assert.equal(home.headers.location, "/apps/example.dashboard/");
-      const canonical = await request({ port, host: "example.site", path: "/apps/example.dashboard?view=summary", headers: { cookie: "session=ok" } });
-      assert.equal(canonical.status, 308);
-      assert.equal(canonical.headers.location, "/apps/example.dashboard/?view=summary");
-      const app = await request({ port, host: "example.site", path: "/apps/example.dashboard/settings", headers: { cookie: "session=ok" } });
-      assert.equal(app.status, 200);
-      assert.match(app.body, /Personal App/);
-      fs.rmSync(path.join(appRoot, "dist", "index.html"));
-      const fallback = await request({ port, host: "example.site", path: "/", headers: { cookie: "session=ok" } });
-      assert.equal(fallback.headers.location, "/app");
-      assert.equal((await request({ port, host: "example.site", path: "/apps/example.dashboard/", headers: { cookie: "session=ok" } })).status, 404);
+      assert.equal(home.headers.location, "/app");
+      for (const retired of ["/apps", "/apps/example.dashboard/", "/app/apps/example.dashboard", "/app/mobile/apps/example.dashboard", "/api/system/apps", "/api/node/v1/apps/example.dashboard/history"]) {
+        for (const method of ["GET", "HEAD", "POST"]) {
+          assert.equal((await request({ port, host: "example.site", path: retired, method, headers: { cookie: "session=ok" } })).status, 410, retired);
+        }
+      }
+      assert.equal(fs.readFileSync(settingsPath, "utf8"), settings);
+      assert.equal(fs.readFileSync(path.join(appRoot, "dist", "index.html"), "utf8"), "<!doctype html><title>Personal App</title>");
     } finally {
       await close(server);
     }

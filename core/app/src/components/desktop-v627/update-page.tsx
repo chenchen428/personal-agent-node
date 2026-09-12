@@ -4,6 +4,7 @@ import { CoveMark } from "../brand/cove-mark";
 
 import { Check, CircleX, Download, RefreshCw, RotateCcw, ShieldCheck } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
+import { usePageRefresh } from "@/lib/use-client-resource";
 import { errorMessage, fetchJson, useJson } from "./shared";
 import { Badge, Button, Card, KeyValueGrid, PageHeader, PageSurface } from "../desktop-v72/primitives";
 
@@ -20,6 +21,7 @@ export function UpdatePage() {
   const [busy, setBusy] = useState("");
   const [message, setMessage] = useState("后台会定期检查，不影响离线使用。");
   const load = useCallback(async () => { const payload = await fetchJson<UpdateView>("/api/system/update"); setView(payload); if (payload.job) { setMessage(jobMessage(payload.job)); if (!payload.job.active) { setBusy(""); setPlan(null); } } }, []);
+  usePageRefresh(useCallback(() => { void load().catch((cause) => setMessage(errorMessage(cause))); }, [load]));
   useEffect(() => { void load().catch((cause) => setMessage(errorMessage(cause))); }, [load]);
   useEffect(() => { if (!view?.job?.active) return; const timer = window.setInterval(() => void load().catch(() => {}), 2000); return () => window.clearInterval(timer); }, [load, view?.job?.active]);
   const post = <T = unknown,>(action: string, body: object = {}) => fetchJson<T>("/api/system/update", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ action, ...body }) });

@@ -7,7 +7,6 @@ import httpProxy from "http-proxy";
 import mime from "mime-types";
 import { resolveNodeConfig, workspaceRoot } from "./config.ts";
 import { listExtensions } from "./extensions.ts";
-import { resolveDefaultPersonalApp, resolvePersonalAppAsset } from "./apps.ts";
 import { getSpace } from "./space-registry.ts";
 import { isLocalRuntimeEnvironmentRequest, isRuntimeEnvironmentPath } from "./runtime-environment-access.ts";
 
@@ -52,6 +51,10 @@ export function createPrivateSiteGateway(options = {}) {
         return;
       }
       const url = new URL(request.url || "/", `http://${host || "localhost"}`);
+      if (/^\/(?:apps|app\/(?:mobile\/)?apps|api\/(?:system\/|node\/v1\/)?apps)(?:\/|$)/.test(url.pathname)) {
+        sendText(response, 410, "Custom Apps have been retired\n", request.method === "HEAD");
+        return;
+      }
       if (isRuntimeEnvironmentPath(url.pathname) && (!isDirectLoopbackConsoleRequest(request)
         || ["forwarded", "x-forwarded-for", "x-forwarded-host", "x-forwarded-proto"].some((name) => request.headers[name] !== undefined)
         || !isLocalRuntimeEnvironmentRequest(request.headers))) {
@@ -117,16 +120,11 @@ export function createPrivateSiteGateway(options = {}) {
         return;
       }
       if (url.pathname === "/") {
-        const resolved = resolveDefaultPersonalApp(config);
         response.writeHead(302, {
-          Location: resolved.app ? `/apps/${encodeURIComponent(resolved.app.id)}/` : "/app",
+          Location: "/app",
           "Cache-Control": "no-store",
         });
         response.end();
-        return;
-      }
-      if (route.kind === "personal-app") {
-        await servePersonalApp(config, request, response, url);
         return;
       }
       if (route.kind === "static") {
@@ -165,6 +163,7 @@ export function createPrivateSiteGateway(options = {}) {
         return;
       }
       const url = new URL(request.url || "/", `http://${host || "localhost"}`);
+      if (/^\/(?:apps|app\/(?:mobile\/)?apps|api\/(?:system\/|node\/v1\/)?apps)(?:\/|$)/.test(url.pathname)) return rejectUpgrade(socket, 410);
       const route = matchRoute(routes, host, url.pathname, config);
       if (isRuntimeEnvironmentPath(url.pathname)) return rejectUpgrade(socket, 403);
       if (!await authorizeRoute(request, route, config)) return rejectUpgrade(socket, 401);
@@ -400,29 +399,6 @@ async function serveStatic(route, request, response, url) {
   });
   if (request.method === "HEAD") return response.end();
   fs.createReadStream(filePath).on("error", () => response.destroy()).pipe(response);
-}
-
-async function servePersonalApp(config, request, response, url) {
-  if (request.method !== "GET" && request.method !== "HEAD") return sendText(response, 405, "Method Not Allowed\n", request.method === "HEAD");
-  if (/^\/apps\/[^/]+$/.test(url.pathname)) {
-    response.writeHead(308, { Location: `${url.pathname}/${url.search}`, "Cache-Control": "no-store" });
-    return response.end();
-  }
-  const asset = resolvePersonalAppAsset(config, url.pathname);
-  if (!asset) return sendText(response, 404, "Not Found\n", request.method === "HEAD");
-  const stat = statFile(asset.filePath);
-  if (!stat?.isFile()) return sendText(response, 404, "Not Found\n", request.method === "HEAD");
-  const contentType = mime.contentType(path.extname(asset.filePath));
-  if (!contentType) return sendText(response, 404, "Not Found\n", request.method === "HEAD");
-  response.writeHead(200, {
-    "Content-Type": contentType,
-    "Content-Length": stat.size,
-    "Cache-Control": asset.cacheControl,
-    "X-Content-Type-Options": "nosniff",
-    "Referrer-Policy": "same-origin",
-  });
-  if (request.method === "HEAD") return response.end();
-  fs.createReadStream(asset.filePath).on("error", () => response.destroy()).pipe(response);
 }
 
 function normalizeRoute(entry, config) {

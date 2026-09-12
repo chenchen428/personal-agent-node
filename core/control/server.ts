@@ -15,7 +15,6 @@ import { setupDiagnostics, setupStatus } from '../runtime/src/setup.ts';
 import { executeSetupAction, planSetupAction, startAutomaticManagedCloudBootstrap } from '../runtime/src/setup-actions.ts';
 import { createOperationStore } from '../runtime/src/operations.ts';
 import { listExtensions } from '../runtime/src/extensions.ts';
-import { publicPersonalApp, scanPersonalApps } from '../runtime/src/apps.ts';
 import { requestControl } from '../runtime/src/control-service.ts';
 import { getDataExport, startDataExport } from './data-export.js';
 import { createSpace, deleteSpace, getSpace, listSpaces, setSpaceDesiredState } from '../runtime/src/space-registry.ts';
@@ -110,18 +109,8 @@ async function handleRequest(request, response) {
     await sendJson(response, { schemaVersion: 1, apiVersion: 'personal-agent/v1', plugins }, request.method === 'HEAD');
     return;
   }
-  if (url.pathname === '/api/apps') {
-    if (request.method !== 'GET' && request.method !== 'HEAD') {
-      send(response, 405, 'text/plain; charset=utf-8', 'Method Not Allowed');
-      return;
-    }
-    const config = resolveNodeConfig({ ...process.env, PRIVATE_SITE_DATA_ROOT: siteDataRoot });
-    const scan = scanPersonalApps(config);
-    await sendJson(response, {
-      schemaVersion: 1,
-      apps: scan.apps.map(publicPersonalApp),
-      invalid: scan.invalid,
-    }, request.method === 'HEAD');
+  if (/^\/api\/apps(?:\/|$)/.test(url.pathname)) {
+    send(response, 410, 'text/plain; charset=utf-8', 'Custom Apps have been retired');
     return;
   }
   if (url.pathname === '/api/spaces') {

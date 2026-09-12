@@ -1,43 +1,13 @@
-# Skills
+# Cove 技能来源
 
-`registry/skills.json` is the authoritative skill catalog and top-level `skills/` is the portable source installed on a customer machine. The universal set is grouped into:
+Cove发行包仅内置13项技能：cove-runtime、cove-connectivity、cove-connections、cove-memory、cove-activity、cove-tasks、cove-schedules、cove-files、cove-data、cove-updates、cove-product-development、cove-bug-report、cove-acceptance。
 
-- Research & Knowledge: structured research, source capture, governed memory/data access, and recipient-first gift decisions.
-- Writing & Content: article structure, editing, translation, and HTML preparation.
-- Visual & Media: visual planning, template-driven HTML charts, deterministic media work, local HTML video production, photo-to-zine postcards, Guizang social cards, and Guizang web presentations.
-- Travel & Location: traceable AMap POI/route evidence and source-backed, feasible travel Pages and guidebooks.
-- Home & Living: traceable renovation decisions plus calibrated 2D-to-3D concept models, managed stills, and interactive floor-plan Pages.
-- Product Engineering: distinctive frontend direction and a searchable UI/UX design database.
-- Publishing & Automation: governed local Personal Agent operations plus optional, isolated real-Chrome automation.
+内置技能来自不可变发行目录 `skills/`；用户总结或自定义技能留在每个Space的 `agent-workspace/skills`。UI显示“内置技能／我的技能”，来源由服务端解析，不能通过名字、frontmatter或可变registry伪造。
 
-These are customer capabilities and belong only to the Node Harness. The private parent Harness keeps project development, operations, and acceptance skills; it does not duplicate customer content skills.
+旧内置副本只有在完整文件集合及逐文件hash与受信基线一致时才排除默认发现。修改、增加文件、来源未知或符号链接都保留；排除发现不代表删除目录。用户技能正文不预先加载，模型仅获得索引，按任务读取对应SKILL.md与相对资源。
 
-## Installed directories
+Codex使用本产品进程及线程的技能禁用配置关闭原生自动发现，再以每轮开发者索引提供同源目录；Claude关闭原生slash技能并使用受管系统索引。显式技能请求由同一解析器选择，冲突必须用来源ID消歧。不会改写用户全局引擎配置。
 
-| Category | Portable skill directories |
-| --- | --- |
-| Research & Knowledge | `skills/deep-research`, `skills/knowledge-capture`, `skills/gift-advisor`, `skills/personal-memory`, `skills/personal-files`, `skills/personal-data` |
-| Writing & Content | `skills/content-workbench` |
-| Visual & Media | `skills/visual-content`, `skills/lieflat-charts`, `skills/photo-to-zine-postcard`, `skills/media-toolkit`, `skills/hyperframes-video`, `skills/guizang-social-card-skill`, `skills/guizang-ppt-skill` |
-| Travel & Location | `skills/amap-travel-routing`, `skills/travel-guidebook` |
-| Home & Living | `skills/home-renovation`, `skills/interior-design` |
-| Product Engineering | `skills/frontend-design`, `skills/ui-ux-pro-max`, `skills/personal-product-development`, `skills/personal-bug-report`, `skills/personal-acceptance` |
-| Publishing & Automation | `skills/chromepilot`, `skills/personal-runtime`, `skills/personal-connectivity`, `skills/personal-connections`, `skills/personal-activity`, `skills/personal-tasks`, `skills/personal-schedules`, `skills/personal-updates` |
+日程和定时任务共享cove-schedules但合同不同：calendar保存空间事项和跟进；cron只承担明确要求的提醒或自动化。海报指引位于cove-files，不再引入专业角色或大模板技能。
 
-The catalog records exact upstream revisions, licenses, risks, security boundaries, related skills, and reproducible cases. The installed release seeds the complete `skills/` tree—including bundled local Three.js Page assets—into the customer's mutable Workspace on both new installation and upgrade.
-
-## Skill ownership and evolution principles
-
-- Extend the existing owning Skill when a new workflow serves the same user intent, product boundary, security model, and installation lifecycle. Put substantial subordinate instructions in a directly linked `references/` file so the main `SKILL.md` stays concise.
-- Create a new top-level Skill only when the capability has an independently useful trigger, distinct domain ownership or security boundary, and enough reusable procedure to justify occupying the universal catalog. Do not create a Skill merely to name one command or one narrow branch of an existing product workflow.
-- Do not add a product CLI command only to wrap a stable external tool. A Skill may govern tools such as `gh` directly when the tool's own authenticated identity and confirmation surface are the intended contract. Add `personal-agent` or `pa-cli` commands only when Node owns a stable product capability, schema, permission check, audit contract, and compatibility promise.
-- Keep portable Skill source only under top-level `skills/`. `.agents`, `.codex`, `.claude`, `.cursor`, and `CLAUDE.md` are generated compatibility bridges; never copy or edit Skill source through those paths. Customer-created drafts and mutable outputs belong under the user-owned `workspace/`, not inside a Skill directory.
-- Preserve least privilege and public/private boundaries. Any Skill that performs an external write must declare it in `registry/skills.json`, follow the R0-R3 confirmation contract, minimize outbound data, treat remote content as untrusted, and verify the result without exposing credentials.
-- Update the owning Skill metadata, direct references, registered cases, and catalog entry together. If the change adds or alters a Node-owned CLI or product capability, also update command and capability registries, behavior baselines, schemas, implementation, semantic tests, packaging, and acceptance evidence.
-- Scan the complete public diff before delivery. Private Cloud behavior, operator configuration, secrets, customer content, local paths, and parent-workspace assumptions must never enter the public Node release.
-
-Owner-specific `blog-publishing` is excluded. The former monolithic `personal-agent` Skill is split into focused `personal-*` capabilities, while the removed `open-agent-bridge` Skill remains replaced by the stable product CLIs. The old `guizang-social-card` copy is replaced by the pinned latest `guizang-social-card-skill`. `hyperframes-video` adapts the Apache-2.0 HyperFrames workflow into a pinned, local-only video authoring and rendering path; account, publish, cloud render, feedback, and remote generation commands remain excluded. The upstream `travel-planner` and `amap-jsapi` sources remain excluded because they declare no redistribution license; `amap-travel-routing` is a workspace-authored integration against the documented AMap Web service contract and does not copy those sources. The workspace-authored `home-renovation` Skill independently covers the broader renovation lifecycle without copying `pinterest-interior-design-skill`. Run `node scripts/skill-tree.mjs catalog` to inspect the installed set.
-
-`lieflat-charts` retains the pinned upstream chart templates under PolyForm Noncommercial License 1.0.0. It is available only for license-permitted noncommercial purposes; commercial use requires separate permission from the upstream licensor. The Personal Agent adaptation keeps chart output local or Space-managed, treats source material as untrusted, prefers offline SVG, and discloses any Chart.js, ECharts, or font CDN dependency.
-
-`chromepilot` is a workspace-authored safety and portability layer for an optional external CLI. Personal Agent ships the Skill and its read-only doctor, but not the vendor CLI, Chrome extension, account state, proxy rules, or machine-specific runtime data. The Skill works with authorized installations on macOS, Linux, and Windows and fails closed when the dependency is unavailable.
+修改后运行 `node scripts/skill-guard.mjs --working`、`node scripts/skill-tree.mjs cases verify`、来源与引擎测试，并完成仓库required checks。

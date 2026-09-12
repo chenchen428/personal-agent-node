@@ -58,8 +58,8 @@ function PageCard({ page, index }: { page: PageItem; index: number }) {
 }
 
 function PageShot({ page, kind }: { page: PageItem; kind: string }) {
-  const thumbnailUrl = page.mobileThumbnailUrl || page.thumbnailUrl;
-  if (thumbnailUrl) return <img src={thumbnailUrl} alt={page.mobileThumbnailAlt || page.thumbnailAlt || `${page.title} 页面预览`} style={{ width: "100%", height: "100%", objectFit: "cover" }} />;
+  const thumbnailUrl = page.poster?.imageUrl || page.mobileThumbnailUrl || page.thumbnailUrl;
+  if (thumbnailUrl) return <img src={thumbnailUrl} alt={page.mobileThumbnailAlt || page.thumbnailAlt || `${page.title} 页面预览`} style={{ width: "100%", height: "100%", objectFit: page.poster ? "contain" : "cover" }} />;
   if (kind === "finance") return <div className="page-shot page-shot-finance"><span>COVE · PAGE</span><strong>{page.title}</strong><div className="shot-metrics"><i><b>本机</b>数据</i><i><b>{page.visibility === "private" ? "私有" : "公开"}</b>范围</i></div><div className="shot-heatmap">{Array.from({ length: 28 }, (_, index) => <i className={`heat-${index % 5}`} key={index} />)}</div></div>;
   if (kind === "weekend") return <div className="page-shot page-shot-weekend"><span>COVE · PAGE</span><strong>{page.title}</strong><div className="shot-list"><i>01 已整理</i><i>02 可随时查看</i><i>03 保存在你的空间</i></div></div>;
   if (kind === "journal") return <div className="page-shot page-shot-journal"><span>COVE · PAGE</span><strong>{page.title}</strong><div className="shot-photo"><i /><i /><i /></div></div>;

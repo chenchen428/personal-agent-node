@@ -2,22 +2,67 @@
   "schemaVersion": 2,
   "architecture": "next-core-workspace",
   "agentRuntime": {
-    "supported": ["codex"],
+    "supported": [
+      "codex"
+    ],
     "workspaceDelivery": "workspace-harness",
-    "compatibilityOnly": ["agents", "claude", "cursor"]
+    "compatibilityOnly": [
+      "agents",
+      "claude",
+      "cursor"
+    ]
   },
   "delivery": {
     "homeEnvironment": "PERSONAL_AGENT_HOME",
     "defaultHome": "~/.personal-agent",
-    "core": ["app", "apps", "runtime", "agent", "channels", "plugins"],
-    "workspace": ["AGENTS.md", "registry", "schemas", "skills", "agents", "workflows", "apps", "plugins", "files", "data", "databases", "mail", "backups", "config", "secrets", "runtime", "logs"]
+    "core": [
+      "app",
+      "runtime",
+      "agent",
+      "channels",
+      "plugins"
+    ],
+    "workspace": [
+      "AGENTS.md",
+      "registry",
+      "schemas",
+      "skills",
+      "workflows",
+      "plugins",
+      "files",
+      "data",
+      "databases",
+      "mail",
+      "backups",
+      "config",
+      "secrets",
+      "runtime",
+      "logs"
+    ]
   },
   "services": [
-    { "id": "personal-agent-control", "kind": "local-socket" },
-    { "id": "agent-runtime", "port": 8788 },
-    { "id": "personal-agent-app", "port": 8791, "framework": "nextjs" },
-    { "id": "personal-agent-control-api", "port": 8792, "visibility": "internal" },
-    { "id": "personal-agent-gateway", "port": 8843 }
+    {
+      "id": "personal-agent-control",
+      "kind": "local-socket"
+    },
+    {
+      "id": "agent-runtime",
+      "port": 8788
+    },
+    {
+      "id": "personal-agent-app",
+      "port": 8791,
+      "framework": "nextjs"
+    },
+    {
+      "id": "personal-agent-control-api",
+      "port": 8792,
+      "visibility": "internal"
+    },
+    {
+      "id": "personal-agent-gateway",
+      "port": 8843
+    }
   ],
   "pluginContract": {
     "apiVersion": "personal-agent/v1",
@@ -27,14 +72,5 @@
     "dataRoot": "workspace/data/plugins",
     "mutableByLocalAgent": true,
     "edgeChangesRequired": false
-  },
-  "personalAppContract": {
-    "apiVersion": "personal-agent/app-v1",
-    "nodeApiMajors": ["1"],
-    "manifest": "personal-agent.app.json",
-    "schema": "core/apps/schema/personal-agent.app.schema.json",
-    "installRoot": "workspace/apps",
-    "hosting": "authenticated-static-pwa",
-    "cloudRequired": false
   }
 }

@@ -24,7 +24,7 @@ export function MobileAbout() {
       <MobileWechatStatus />
       {mail.loading ? <MobileAboutSectionSkeleton /> : <section className="mobile-about-section"><header><div><Mail aria-hidden="true" /><h2>邮箱</h2></div><span>本机接收</span></header><strong className="mobile-about-email">{address}</strong><p>邮件正文和附件保存在当前工作机器，不上传到 Cloud。</p></section>}
       <MobileTokenUsageSection />
-      {skills.loading ? <MobileAboutSectionSkeleton /> : <section className="mobile-about-section mobile-about-skills"><header><div><Sparkles aria-hidden="true" /><h2>技能</h2></div><span>{groups.length} 类 · {skills.value?.skills?.length || 0} 项</span></header>{groups.map((group) => <div className="mobile-about-skill-group" key={group.name}><div><strong>{group.name}</strong><span>{group.skills.length}</span></div>{group.skills.map((skill) => <article key={`${group.name}-${skill.id || skill.name}`}><span>{skill.name.slice(0, 1)}</span><div><strong>{skill.name}</strong><p>{skill.description || "Cove 会在需要时使用这项能力。"}</p></div></article>)}</div>)}</section>}
+      {skills.loading ? <MobileAboutSectionSkeleton /> : <section className="mobile-about-section mobile-about-skills"><header><div><Sparkles aria-hidden="true" /><h2>技能</h2></div><span>{groups.length} 类 · {skills.value?.skills?.length || 0} 项</span></header>{groups.map((group) => <div className="mobile-about-skill-group" key={group.name}><div><strong>{group.name}</strong><span>{group.skills.length}</span></div>{group.skills.map((skill) => <article key={skill.id || `${group.name}-${skill.name}`}><span>{skill.name.slice(0, 1)}</span><div><strong>{skill.name}</strong><p>{skill.notice || skill.description || "Cove 会在需要时使用这项能力。"}</p></div></article>)}</div>)}</section>}
     </div>
   </MobileListShell>;
 }

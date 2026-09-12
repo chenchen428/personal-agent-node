@@ -107,13 +107,14 @@ export async function runClaudeCodeCommand(config) {
   };
   active.set(sessionId, state);
   emit('session.started', { content: 'Claude Code 执行已启动。', agentType: 'claude-code', agentAlias: 'claude-code' });
-  emit('session.user_message', { content: String(config.stdin || ''), source: 'agent-bridge-ui' });
+  emit('session.user_message', { content: config.coveOriginalInput ?? String(config.stdin || ''), source: 'agent-bridge-ui' });
   try {
     const executable = resolveClaudeCommand({ command: config.claudeCommand || 'claude', env: config.agentEnv });
     const tools = config.claudeTools || PRODUCT_TOOLS;
     const args = [...executable.args, '-p', '--output-format', 'stream-json', '--verbose',
       '--input-format', 'text', '--permission-mode', 'dontAsk', '--tools', tools.join(','),
       '--strict-mcp-config', '--mcp-config', '{"mcpServers":{}}', '--setting-sources', ''];
+    if (config.coveSkillsManaged) args.push('--disable-slash-commands');
     // Product authorization is server-owned. Confirm mode denies writes/commands in headless execution.
     const allowed = config.appServerApprovalPolicy === 'never' ? tools : tools.filter((tool) => ['Read', 'Glob', 'Grep', 'WebSearch', 'WebFetch'].includes(tool));
     if (allowed.length) args.push('--allowedTools', allowed.join(','));
@@ -122,13 +123,13 @@ export async function runClaudeCodeCommand(config) {
     if (config.appServerReasoningEffort) args.push('--effort', config.appServerReasoningEffort);
     if (cliSessionId) args.push('--resume', cliSessionId);
     else if (config.allowCreateThread === false) throw Object.assign(new Error('Claude Code 会话不可恢复。'), { code: 'CLAUDE_SESSION_MISSING' });
-    if (config.harnessRoot) {
-      const harness = fs.readFileSync(path.join(config.harnessRoot, 'AGENTS.md'), 'utf8');
+    if (config.harnessRoot || config.coveSkillsManaged) {
+      const harness = config.harnessRoot ? fs.readFileSync(path.join(config.harnessRoot, 'AGENTS.md'), 'utf8') : '';
       const directory = path.join(config.runtimeStateRoot || config.workspace, 'runtime', 'claude-turns');
       fs.mkdirSync(directory, { recursive: true, mode: 0o700 });
       promptFile = path.join(directory, `${turnId}.txt`);
       // Public Harness only. Per-turn Activity/Memory capabilities never enter argv or a prompt file.
-      fs.writeFileSync(promptFile, harness, { mode: 0o600 });
+      fs.writeFileSync(promptFile, [harness, config.coveSkillInstructions].filter(Boolean).join('\n\n'), { mode: 0o600 });
       args.push('--append-system-prompt-file', promptFile);
     }
     child = spawn(executable.command, args, { cwd: config.workspace, env: config.agentEnv || process.env,
@@ -145,7 +146,8 @@ export async function runClaudeCodeCommand(config) {
       child.once('error', reject);
       child.once('close', (code) => { lines.close(); resolve(code); });
     });
-    const context = config.appServerDeveloperInstructions ? `[Personal Agent runtime context]\n${config.appServerDeveloperInstructions}\n[/Personal Agent runtime context]\n\n` : '';
+    const runtimeInstructions = config.coveSkillsManaged ? config.coveRuntimeInstructions : config.appServerDeveloperInstructions;
+    const context = runtimeInstructions ? `[Personal Agent runtime context]\n${runtimeInstructions}\n[/Personal Agent runtime context]\n\n` : '';
     child.stdin.end(`${context}${String(config.stdin || '')}`);
     const timeout = Math.max(1000, Number(config.claudeTimeoutMs) || 30 * 60 * 1000);
     state.timer = setTimeout(() => stopClaudeCodeCommand(sessionId), timeout);

@@ -29,7 +29,7 @@ const menuPages = {
   "app/statistics/token-usage/page.tsx": "token-usage-page",
   "app/setup/page.tsx": "setup-page",
   "app/runtime/page.tsx": "runtime-page",
-  "app/apps/page.tsx": "apps-page",
+  "app/calendar/page.tsx": "calendar-page",
   "app/settings/page.tsx": "settings-page",
   "app/update/page.tsx": "update-page",
 };
@@ -43,55 +43,11 @@ for (const [route, moduleName] of Object.entries(menuPages)) {
   });
 }
 
-const agentsPage = read("core/app/src/app/app/agents/page.tsx");
-checks.push({
-  name: "menu route owns a direct page component: /app/agents",
-  ok: agentsPage.includes("@/components/agents/agents-page"),
-});
-
 const shell = read("core/app/src/components/app-shell.tsx");
-const appCatalog = read("core/runtime/src/apps.ts");
-const appGuide = read("docs/personal-app-development.md");
-const frontendSkill = read("skills/frontend-design/SKILL.md");
-const referenceApp = read("examples/personal-apps/personal-agent.daily-brief/dist/index.html");
-const mobileShell = read("core/app/src/components/mobile-current/shell.tsx");
-const mobilePersonalApp = read("core/app/src/components/mobile-current/personal-app.tsx");
-checks.push({
-  name: "desktop shell owns shared navigation",
-  ok: shell.includes('from "@/components/navigation"'),
-});
-checks.push({
-  name: "Personal Apps use the shared desktop host route",
-  ok: fs.existsSync(path.join(root, "core/app/src/app/app/apps/[appId]/page.tsx"))
-    && fs.existsSync(path.join(root, "core/app/src/components/personal-app-host.tsx")),
-});
-checks.push({
-  name: "Personal Apps expose distinct desktop and mobile host routes",
-  ok: appCatalog.includes("desktopRoute") && appCatalog.includes("mobileRoute")
-    && fs.existsSync(path.join(root, "core/app/src/app/app/mobile/apps/[appId]/page.tsx")),
-});
-checks.push({
-  name: "Personal App guide makes mobile-primary dual surfaces mandatory",
-  ok: appGuide.includes("Mobile is the primary Personal App entry")
-    && appGuide.includes("A mobile surface is not a narrow desktop page"),
-});
-checks.push({
-  name: "frontend skill carries the Personal App dual-surface contract",
-  ok: frontendSkill.includes("treat mobile as the primary surface")
-    && frontendSkill.includes("media-query-compressed desktop page"),
-});
-checks.push({
-  name: "reference Personal App owns separate desktop and mobile compositions",
-  ok: referenceApp.includes('data-surface-view="desktop"')
-    && referenceApp.includes('data-surface-view="mobile"'),
-});
-checks.push({
-  name: "Personal App detail owns an exclusive active navigation item",
-  ok: mobilePersonalApp.includes("activeAppId={appId}")
-    && mobileShell.includes('section === "apps" && !activeAppId')
-    && mobileShell.includes('activeAppId === app.id ? "page" : undefined')
-    && shell.includes('pathname === "/app/apps" ? "page" : undefined'),
-});
+checks.push({ name: "desktop shell owns shared navigation", ok: shell.includes('from "@/components/navigation"') });
+for (const retired of ["core/app/src/app/app/agents", "core/app/src/app/app/apps", "core/app/src/app/app/mobile/apps", "core/app/src/components/agents", "core/app/src/components/personal-app-host.tsx", "core/runtime/src/apps.ts", "core/apps"]) {
+ checks.push({ name: "retired feature source absent: " + retired, ok: !fs.existsSync(path.join(root, retired)) });
+}
 
 report(checks);
 

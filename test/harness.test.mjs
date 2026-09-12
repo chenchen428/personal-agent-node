@@ -19,40 +19,28 @@ function resolveBashCommand() {
   return fs.existsSync(candidate) ? candidate : 'bash';
 }
 
-test('customer Harness contains architecture registries and Agent guidance', () => {
-  for (const file of ['AGENTS.md', 'agents', 'core/agent/src/agents/workflow.js', 'core/agent/src/agents/workflow-page.js', 'docs/adr/0001-node-product-boundary-freeze.md', 'docs/adr/0012-specialist-agent-workflow-contract.md', 'registry/agents.json', 'registry/projects.json', 'registry/skills.json', 'registry/behavior-baselines.json', 'registry/capabilities.json', 'registry/routes.json', 'registry/extensions.json', 'registry/commands.json', 'registry/product-development.json', 'schemas/personal-agent/agents.schema.json', 'schemas/personal-agent/agent-profile.schema.json', 'schemas/personal-agent/agent-workflow.schema.json', 'schemas/personal-agent/product-development.schema.json', 'scripts/agent-guard.mjs', 'scripts/specialist-workflow.mjs', 'workflows/project-iteration.md', 'workflows/skill-iteration.md', 'workflows/product-development.md', 'skills/personal-product-development/references/product-development.md']) assert.equal(fs.existsSync(path.join(root, file)), true, file);
-  const developerGuide = fs.readFileSync(path.join(root, 'AGENTS.md'), 'utf8');
-  const customerGuide = fs.readFileSync(path.join(root, 'workspace/AGENTS.md'), 'utf8');
-  for (const guide of [developerGuide, customerGuide]) {
+test('customer Harness contains current registries, source-aware skills and generic Worker guidance', () => {
+  for (const file of ['AGENTS.md', 'workspace/AGENTS.md', 'docs/adr/0001-node-product-boundary-freeze.md', 'docs/adr/0015-cove-lightweight-capabilities.md', 'registry/projects.json', 'registry/skills.json', 'registry/legacy-builtin-skills.json', 'registry/behavior-baselines.json', 'registry/capabilities.json', 'registry/routes.json', 'registry/extensions.json', 'registry/commands.json', 'registry/product-development.json', 'schemas/personal-agent/product-development.schema.json', 'workflows/project-iteration.md', 'workflows/skill-iteration.md', 'workflows/product-development.md', 'skills/cove-product-development/references/product-development.md']) assert.equal(fs.existsSync(path.join(root, file)), true, file);
+  const developer = fs.readFileSync(path.join(root, 'AGENTS.md'), 'utf8');
+  const customer = fs.readFileSync(path.join(root, 'workspace/AGENTS.md'), 'utf8');
+  for (const guide of [developer, customer]) {
     assert.match(guide, /main Agent.*user|主 Agent.*用户/is);
     assert.match(guide, /Proactively delegate substantive work|主动.*实质/is);
     assert.match(guide, /independent.*Workers|独立.*Workers/is);
     assert.match(guide, /must not duplicate|do not[\s\S]*duplicate|不要.*重复/is);
     assert.match(guide, /progress.*final|进度.*最终/is);
+    assert.match(guide, /cove-/);
   }
 });
 
-test('specialist Agent registry ships five complete public-safe source profiles', () => {
+test('generic Workers replace shipped presets without erasing customer work', () => {
   const delivery = JSON.parse(fs.readFileSync(path.join(root, 'registry/delivery.json'), 'utf8'));
-  for (const entry of ['AGENTS.md', 'agents', 'registry', 'schemas', 'scripts', 'skills', 'workflows']) {
-    assert.equal(delivery.workspace.harness.includes(entry), true, `delivery harness: ${entry}`);
-  }
-  const registry = JSON.parse(fs.readFileSync(path.join(root, 'registry/agents.json'), 'utf8'));
-  assert.deepEqual(registry.agents.map((entry) => entry.id), [
-    'interior-designer',
-    'poster-designer',
-    'travel-planner',
-    'finance-analyst',
-    'video-creator',
-  ]);
-  for (const entry of registry.agents) {
-    const directory = path.join(root, entry.directory);
-    for (const relative of ['agent.yaml', 'AGENT.md', 'profile.yaml', 'workflow.json', 'examples/featured-output.json']) {
-      assert.equal(fs.existsSync(path.join(directory, relative)), true, `${entry.id}/${relative}`);
-    }
-  }
-  const guard = run(process.execPath, ['scripts/agent-guard.mjs']);
-  assert.equal(guard.status, 0, `${guard.stdout}\n${guard.stderr}`);
+  for (const entry of ['AGENTS.md', 'registry', 'schemas', 'skills', 'workflows']) assert.equal(delivery.workspace.harness.includes(entry), true);
+  assert.equal(delivery.workspace.harness.includes('agents'), false);
+  for (const file of ['registry/agents.json', 'scripts/agent-guard.mjs', 'scripts/specialist-workflow.mjs', 'core/app/src/app/app/agents/page.tsx', 'core/app/src/app/app/apps/page.tsx']) assert.equal(fs.existsSync(path.join(root, file)), false, file);
+  const seed = fs.readFileSync(path.join(root, 'core/runtime/src/workspace-seed.ts'), 'utf8');
+  assert.doesNotMatch(seed, /rmSync|unlinkSync|renameSync|retireRemovedProductSkill/);
+  assert.match(seed, /userDirectoriesPreserved: true/);
 });
 
 test('installed product development is autonomous, private-root-only, and never targets current', () => {
@@ -69,50 +57,28 @@ test('installed product development is autonomous, private-root-only, and never 
   for (const requirement of ['development ensure', 'private root', 'core/current', 'terminal', 'standing authority', 'self-iteration']) assert.match(workflow, new RegExp(requirement, 'i'));
 });
 
-test('customer Harness classifies and ships portable creation skills', () => {
+test('customer Harness ships exactly thirteen Cove skills and preserves legacy evidence separately', () => {
   const catalog = JSON.parse(fs.readFileSync(path.join(root, 'registry/skills.json'), 'utf8'));
-  const categories = new Set(catalog.categories.map((entry) => entry.id));
-  const skills = new Map(catalog.skills.map((entry) => [entry.name, entry]));
-  for (const category of ['writing-content', 'visual-media', 'travel-location', 'product-engineering']) assert.equal(categories.has(category), true, category);
-  const expected = {
-    'hyperframes-video': ['visual-media', 'Apache-2.0'],
-    'lieflat-charts': ['visual-media', 'PolyForm-Noncommercial-1.0.0'],
-    'guizang-social-card-skill': ['visual-media', 'AGPL-3.0-only'],
-    'guizang-ppt-skill': ['visual-media', 'AGPL-3.0-only'],
-    'travel-guidebook': ['travel-location', 'MIT'],
-    'frontend-design': ['product-engineering', 'Apache-2.0'],
-    'ui-ux-pro-max': ['product-engineering', 'MIT'],
-  };
-  for (const [name, [category, license]] of Object.entries(expected)) {
-    const skill = skills.get(name);
-    assert.equal(skill?.category, category, name);
-    assert.equal(skill?.origin?.license, license, name);
-    assert.match(skill?.origin?.revision || '', /^[0-9a-f]{40}$/, name);
-    assert.equal(skill?.caseRequired, true, name);
-    assert.equal(fs.existsSync(path.join(root, `skills/${name}/SKILL.md`)), true, name);
-    assert.equal(fs.existsSync(path.join(root, `skills/${name}/agents/openai.yaml`)), true, name);
+  assert.equal(catalog.skills.length, 13);
+  for (const skill of catalog.skills) {
+    assert.match(skill.name, /^cove-/); assert.equal(skill.directory, 'skills/' + skill.name);
+    assert.equal(skill.caseRequired, true);
+    assert.equal(fs.existsSync(path.join(root, skill.directory, 'SKILL.md')), true);
+    assert.equal(fs.existsSync(path.join(root, skill.directory, 'agents/openai.yaml')), true);
   }
-  for (const name of ['lieflat-charts', 'guizang-social-card-skill', 'guizang-ppt-skill']) {
-    assert.equal(fs.existsSync(path.join(root, `skills/${name}/LICENSE`)), true, `${name} license`);
-    assert.equal(fs.existsSync(path.join(root, `skills/${name}/NOTICE.md`)), true, `${name} notice`);
-  }
-  const thirdPartyNotices = fs.readFileSync(path.join(root, 'THIRD_PARTY_NOTICES.md'), 'utf8');
-  for (const requirement of ['larashero3-dotcom/lieflat-charts', 'e05f777261a774c945bdd0157817ef68f3c4766d', 'PolyForm Noncommercial License 1.0.0', 'skills/lieflat-charts/']) {
-    assert.match(thirdPartyNotices, new RegExp(requirement.replaceAll('/', '\\/')));
-  }
+  const legacy = JSON.parse(fs.readFileSync(path.join(root, 'registry/legacy-builtin-skills.json'), 'utf8'));
+  assert.equal(legacy.skills.length, 33); assert.match(legacy.sourceRevision, /^[a-f0-9]{40}$/);
+  assert.ok(legacy.skills.every(skill => skill.files['SKILL.md']?.sha256));
   const build = fs.readFileSync(path.join(root, 'scripts/build-private-site-node-dist.mjs'), 'utf8');
-  assert.match(build, /\["agents", "workspace\/agents"\]/);
-  assert.match(build, /\["skills", "workspace\/skills"\]/);
-  assert.match(build, /\["core\/agent\/src\/agents\/workflow\.js", "workspace\/core\/agent\/src\/agents\/workflow\.js"\]/);
-  assert.match(build, /"agent-guard\.mjs"/);
+  assert.doesNotMatch(build, /\["skills", "workspace\/skills"\]|\["agents", "workspace\/agents"\]/);
   assert.match(build, /copyDirectory\(publicRoot, path\.join\(outputRoot, "core", "app", "public"\)\)/);
 });
 
 test('customer Harness carries the portable Node acceptance standard', () => {
-  const standard = fs.readFileSync(path.join(root, 'skills/personal-acceptance/references/acceptance.md'), 'utf8');
+  const standard = fs.readFileSync(path.join(root, 'skills/cove-acceptance/references/acceptance.md'), 'utf8');
   for (const requirement of ['Node Core Gate', 'Optional Managed Cloud Integration', 'public whitelist', 'ten minutes', 'previous-release rollback', 'public GitHub Release asset', '"route": "/app/chat"', '"uniquePrompt": true', '"realAgentRuntime": true', '"sameSessionAgentReply": true', '"wechatRequired": false', 'connections.wechat', 'optional evidence', 'Stable Go launchers', 'Setup Center']) assert.match(standard, new RegExp(requirement));
-  assert.equal(fs.existsSync(path.join(root, 'test/fixtures/skill-cases/personal-acceptance/case.json')), true);
-  const expected = JSON.parse(fs.readFileSync(path.join(root, 'test/fixtures/skill-cases/personal-acceptance/expected.json'), 'utf8'));
+  assert.equal(fs.existsSync(path.join(root, 'test/fixtures/skill-cases/cove-acceptance/case.json')), true);
+  const expected = JSON.parse(fs.readFileSync(path.join(root, 'test/fixtures/skill-cases/cove-acceptance/expected.json'), 'utf8'));
   assert.deepEqual(Object.keys(expected.node.webConversation), [
     'releaseAssetRuntime',
     'route',
@@ -169,7 +135,7 @@ test('public dependency metadata uses only the public npm registry', () => {
 });
 
 test('project, architecture, Agent, and skill guards pass', () => {
-  for (const file of ['scripts/project-guard.mjs', 'scripts/architecture-guard.mjs', 'scripts/agent-guard.mjs', 'scripts/skill-guard.mjs']) {
+  for (const file of ['scripts/project-guard.mjs', 'scripts/architecture-guard.mjs', 'scripts/skill-guard.mjs']) {
     const result = run(process.execPath, [file, '--working']);
     assert.equal(result.status, 0, `${file}\n${result.stdout}\n${result.stderr}`);
   }

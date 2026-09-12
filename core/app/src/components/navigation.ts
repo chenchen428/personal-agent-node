@@ -1,6 +1,6 @@
 import type { ComponentType } from "react";
 import {
-  Activity, AppWindow, BarChart3, Bot, Cable, Database, FileText, Users,
+  Activity, BarChart3, Bot, Cable, CalendarDays, Database, FileText,
   Gauge, Info, LayoutDashboard, Mail, MessageCircle, Settings,
 } from "lucide-react";
 
@@ -17,10 +17,10 @@ export const desktopNavigationGroups: NavigationGroup[] = [
     { label: "总览", href: "/app", icon: LayoutDashboard },
     { label: "对话", href: "/app/conversations", icon: MessageCircle },
     { label: "连接", href: "/app/connections", icon: Cable },
-    { label: "Agent 团队", href: "/app/agents", icon: Users },
   ] },
   { label: "Agent 组件", items: [
     { label: "任务", href: "/app/workers", icon: Bot },
+    { label: "日程", href: "/app/calendar", icon: CalendarDays },
     { label: "邮件", href: "/app/mail", icon: Mail },
     { label: "数据", href: "/app/data", icon: Database },
     { label: "发布页", href: "/app/pages", icon: FileText },
@@ -41,6 +41,6 @@ export const mobileNavigation: NavigationItem[] = [
   { label: "最近动态", href: "/app/mobile", icon: Activity },
   { label: "发布页", href: "/app/mobile/pages", icon: FileText },
   { label: "任务", href: "/app/mobile/workers", icon: Bot },
-  { label: "全部应用", href: "/app/mobile/apps", icon: AppWindow },
+  { label: "日程", href: "/app/mobile/calendar", icon: CalendarDays },
   { label: "关于", href: "/app/mobile/about", icon: Info },
 ];

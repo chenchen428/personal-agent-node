@@ -1,8 +1,8 @@
-# Personal Agent Node
+# Cove Node
 
 [English](README.en.md) | 简体中文
 
-Personal Agent Node 是 [Personal Agent](https://chenjianhui.site) 的开源、本地优先运行时。对话、由 Agent 维护的动态、账号凭据、文件和 Agent 状态保存在你自己的电脑上；Personal Agent Cloud、自建公网入口和模型 Token 都是可选能力。
+Cove Node 是 [Cove](https://chenjianhui.site) 的开源、本地优先运行时。对话、由 Agent 维护的动态、账号凭据、文件和 Agent 状态保存在你自己的电脑上；Personal Agent Cloud、自建公网入口和模型 Token 都是可选能力。
 
 ## 为什么是本地 Node
 
@@ -37,12 +37,12 @@ Personal Agent Node 默认不需要连接 `chenjianhui.site` 或任何已配置�
 
 ## 安装发行版
 
-Beta 用户只需要下载对应系统的完整安装包，不需要预装 Node.js、npm、开发助手或克隆源码。当前发行版为 `v0.2.0-beta.55`：
+Beta 用户只需要下载对应系统的完整安装包，不需要预装 Node.js、npm、开发助手或克隆源码。当前发行版为 `v0.2.0-beta.56`：
 
-- Windows x86-64：`personal-agent-node-v0.2.0-beta.55-windows-x64-installer.exe`
-- macOS Apple Silicon：`personal-agent-node-v0.2.0-beta.55-macos-arm64.pkg`
-- macOS Intel：`personal-agent-node-v0.2.0-beta.55-macos-x64.pkg`
-- Linux x86-64 / ARM64：对应的 `personal-agent-node-v0.2.0-beta.55-linux-*.tar.gz`
+- Windows x86-64：`personal-agent-node-v0.2.0-beta.56-windows-x64-installer.exe`
+- macOS Apple Silicon：`personal-agent-node-v0.2.0-beta.56-macos-arm64.pkg`
+- macOS Intel：`personal-agent-node-v0.2.0-beta.56-macos-x64.pkg`
+- Linux x86-64 / ARM64：对应的 `personal-agent-node-v0.2.0-beta.56-linux-*.tar.gz`
 - 自定义域名公网服务器：`personal-agent-relay-install.sh`（由客户端展示当前版本固定命令）
 
 从携带 `personal-agent-node-install.sh` 的新版 Release 开始，Linux 发行版改为 `.tar.gz` 纯 headless 包，由 systemd user service 常驻，不携带 Tauri、WebKit 或桌面入口。将 `<release-tag>` 替换成目标版本后可一行安装：`curl -fsSL https://github.com/chenchen428/personal-agent-node/releases/download/<release-tag>/personal-agent-node-install.sh | bash`。首次设置通过 SSH 端口转发访问 `http://127.0.0.1:8843/app/setup`。

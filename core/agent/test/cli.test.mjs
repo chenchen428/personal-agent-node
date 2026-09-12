@@ -180,94 +180,18 @@ test("session list scopes status reads to one parent session", async (t) => {
   assert.equal(JSON.parse(stdout).sessions[0].status, "running");
 });
 
-test("specialist Agent CLI exposes public catalog and project-scoped session options", async (t) => {
-  const requests = [];
-  const publicAgent = {
-    id: "interior-designer",
-    displayName: "Interior Design Agent",
-    description: "Interior delivery.",
-    profile: { schemaVersion: 1, capabilities: ["layouts"] },
-    status: "available",
-  };
-  const server = http.createServer(async (request, response) => {
-    const chunks = [];
-    for await (const chunk of request) chunks.push(chunk);
-    const body = chunks.length ? JSON.parse(Buffer.concat(chunks).toString("utf8")) : {};
-    requests.push({ method: request.method, url: request.url, body });
-    response.writeHead(200, { "content-type": "application/json" });
-    if (request.url === "/api/agents") {
-      response.end(JSON.stringify({ ok: true, agents: [publicAgent] }));
-    } else if (request.url === "/api/agents/interior-designer") {
-      response.end(JSON.stringify({ ok: true, agent: publicAgent }));
-    } else if (request.method === "POST") {
-      response.end(JSON.stringify({ ok: true, session: {
-        id: "specialist-1",
-        role: "worker",
-        agentId: body.agentId,
-        agentProfileVersion: 1,
-        projectKey: body.projectKey,
-      } }));
-    } else {
-      response.end(JSON.stringify({ ok: true, sessions: [{
-        id: "specialist-1",
-        role: "worker",
-        agentId: "interior-designer",
-        agentProfileVersion: 1,
-        projectKey: "project_design_001",
-      }], nextCursor: "", hasMore: false }));
-    }
-  });
-  await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
-  t.after(() => server.close());
-  const address = server.address();
-  const env = { ...process.env, OPEN_AGENT_BRIDGE_API_BASE: `http://127.0.0.1:${address.port}` };
+test("retired Agent catalog and session identity options fail before dispatch", async () => {
   const cli = path.join(projectRoot, "bin", "pa-cli.mjs");
-
-  const listedAgents = await execFileAsync(process.execPath, [cli, "agents", "list", "--json"], { cwd: projectRoot, env });
-  const inspectedAgent = await execFileAsync(process.execPath, [cli, "agents", "inspect", "--id", "interior-designer", "--json"], { cwd: projectRoot, env });
-  const started = await execFileAsync(process.execPath, [
-    cli, "session", "start",
-    "--parent", "main-1",
-    "--agent", "interior-designer",
-    "--project-key", "project_design_001",
-    "--title", "Design",
-    "--description", "Create the design",
-    "--task", "Build the deliverable",
-    "--json",
-  ], { cwd: projectRoot, env });
-  const sessions = await execFileAsync(process.execPath, [
-    cli, "session", "list",
-    "--parent", "main-1",
-    "--agent", "interior-designer",
-    "--project-key", "project_design_001",
-    "--json",
-  ], { cwd: projectRoot, env });
-
-  assert.deepEqual(JSON.parse(listedAgents.stdout), [publicAgent]);
-  assert.deepEqual(JSON.parse(inspectedAgent.stdout), publicAgent);
-  assert.equal(JSON.parse(started.stdout).agentId, "interior-designer");
-  assert.equal(JSON.parse(sessions.stdout).sessions[0].projectKey, "project_design_001");
-  assert.deepEqual(requests[2].body, {
-    task: "Build the deliverable",
-    title: "Design",
-    description: "Create the design",
-    parentSessionId: "main-1",
-    createdBy: "pa-cli",
-    agentId: "interior-designer",
-    projectKey: "project_design_001",
-  });
-  const listUrl = new URL(requests[3].url, "http://127.0.0.1");
-  assert.equal(listUrl.searchParams.get("agent"), "interior-designer");
-  assert.equal(listUrl.searchParams.get("project"), "project_design_001");
-  await assert.rejects(
-    execFileAsync(process.execPath, [
-      cli, "session", "resume",
-      "--session", "specialist-1",
-      "--task", "Continue",
-      "--agent", "poster-designer",
-    ], { cwd: projectRoot, env }),
-    (error) => /cannot change Agent or project identity/.test(error.stderr),
-  );
+  for (const argv of [
+    ["agents", "list"], ["agents", "inspect", "--id", "interior-designer"],
+    ...["start", "list", "search", "resume", "input", "update", "status"].flatMap((command) =>
+      ["agent", "project-key", "project"].map((flag) => ["session", command, "--" + flag, "legacy"])),
+  ]) {
+    await assert.rejects(execFileAsync(process.execPath, [cli, ...argv, "--json"], {
+      cwd: projectRoot,
+      env: { ...process.env, OPEN_AGENT_BRIDGE_API_BASE: "http://127.0.0.1:1" },
+    }), (error) => /Agent 团队已下线/.test(error.stderr));
+  }
 });
 
 test("session CLI preserves the unavailable-domain notice instead of inventing a task URL", async (t) => {

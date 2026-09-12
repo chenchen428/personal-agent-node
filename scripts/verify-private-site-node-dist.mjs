@@ -44,10 +44,8 @@ function verifyLayout() {
   assert(manifest.dirty === false || process.env.PERSONAL_AGENT_ALLOW_DIRTY_RELEASE === "1", "Release must be built from a clean worktree");
   assert(manifest.delivery?.core?.mutable === false && manifest.delivery?.workspace?.mutable === true, "Core/Workspace ownership is invalid");
   assert(manifest.delivery?.workspace?.preserveOnUninstall === true, "Workspace preservation is not declared");
-  assert(manifest.harness?.agents === "workspace/registry/agents.json", "Installed Agent registry is missing from the Harness manifest");
-  assert(manifest.harness?.agentSources === "workspace/agents", "Installed Agent sources are missing from the Harness manifest");
+  assert(manifest.harness?.catalog === "registry/skills.json" && manifest.harness?.builtinSkills === "skills" && manifest.harness?.userSkills === "workspace/skills", "Builtin and user skill ownership must be separate");
   assert(manifest.pluginApi?.version === "personal-agent/v1", "Plugin API version is missing");
-  assert(manifest.appApi?.version === "personal-agent/app-v1" && manifest.appApi?.cloudRequired === false, "Personal App API contract is missing");
   const openCli = manifest.browserExecutors?.opencli;
   assert(openCli?.package === "@jackwener/opencli" && openCli.version === "1.8.6" && openCli.bundled === true, "Bundled OpenCLI runtime contract is missing");
   assert(openCli.installScripts === false && openCli.license === "Apache-2.0", "Bundled OpenCLI supply-chain policy is invalid");
@@ -68,19 +66,19 @@ function verifyLayout() {
   for (const relative of [
     "core/app/server.js", "core/app/.next/static", "core/runtime/bin/personal-agent.mjs", "core/runtime/bin/private-site.mjs",
     "core/runtime/app/control-service.mjs", "core/runtime/app/gateway.mjs", "core/runtime/app/reverse-tunnel.mjs", "core/agent/app/server.mjs", "core/agent/app/worker.mjs",
-    "core/control/server.mjs", "core/edge/bin/self-hosted-relay.mjs", "infra/edge/install-self-hosted-relay.sh", "infra/edge/install-self-hosted-mail.sh", "core/apps/schema/personal-agent.app.schema.json", "core/plugins/schema/personal-agent.plugin.schema.json",
-    "agents", "registry/agents.json", "schemas/personal-agent/agents.schema.json", "schemas/personal-agent/agent-profile.schema.json", "scripts/agent-guard.mjs",
-    "workspace/AGENTS.md", "workspace/agents", "workspace/skills", "workspace/workflows", "workspace/workflows/product-development.md", "workspace/registry/agents.json", "workspace/registry/skills.json", "workspace/registry/plugins.json", "workspace/registry/product-development.json",
-    "workspace/schemas/personal-agent/agents.schema.json", "workspace/schemas/personal-agent/agent-profile.schema.json", "workspace/scripts/agent-guard.mjs",
+    "core/control/server.mjs", "core/edge/bin/self-hosted-relay.mjs", "infra/edge/install-self-hosted-relay.sh", "infra/edge/install-self-hosted-mail.sh", "core/plugins/schema/personal-agent.plugin.schema.json",
+    "workspace/AGENTS.md", "workspace/skills", "workspace/workflows", "workspace/workflows/product-development.md", "workspace/registry/skills.json", "workspace/registry/plugins.json", "workspace/registry/product-development.json",
     "registry/delivery.json", "registry/product-development.json", "schemas/personal-agent/product-development.schema.json", "docs/adr/0003-core-workspace-next-architecture.md", "SBOM.cdx.json", "SHA256SUMS",
   ]) assert(fs.existsSync(at(relative)), `Release file is missing: ${relative}`);
   const installer = fs.readFileSync(at("scripts/install-private-site-node-release.mjs"), "utf8");
   assert(!/from\s+["'][^"']+\.ts["']/.test(installer), "Release installer depends on unpackaged TypeScript source");
-  for (const relative of ["workspace/apps", "workspace/files", "workspace/databases", "workspace/plugins", "workspace/secrets", "workspace/logs"]) {
+  for (const relative of ["workspace/files", "workspace/databases", "workspace/plugins", "workspace/secrets", "workspace/logs"]) {
     assert(fs.statSync(at(relative)).isDirectory(), `Workspace directory is missing: ${relative}`);
   }
-  const appSeeds = fs.readdirSync(at("workspace/apps")).filter((name) => name !== ".gitkeep");
-  assert(appSeeds.length === 0, `Release must not preinstall Personal Apps: ${appSeeds.join(", ")}`);
+  for (const relative of ["agents", "registry/agents.json", "core/apps", "workspace/apps", "workspace/agents"]) assert(!fs.existsSync(at(relative)), "Retired feature must not be distributed: " + relative);
+  const skills = readJson("registry/skills.json").skills;
+  assert(skills.length === 13 && skills.every((skill) => skill.name.startsWith("cove-") && fs.existsSync(at(skill.directory + "/SKILL.md"))), "Release must carry exactly the 13 Cove builtins");
+  assert(sha256(at("core/agent/app/fonts/NotoSansSC.ttf")) === "a3041811a78c361b1de50f953c805e0244951c21c5bd412f7232ef0d899af0da", "Poster font must be bundled and verified");
   assert(!fs.existsSync(at("examples")), "Development examples must not be distributed");
 }
 
@@ -157,28 +155,25 @@ function verifyPreparation() {
     const personalRoot = path.join(workspaceRoot, "spaces", spaceDirectories[0].name);
     const personalIdentity = JSON.parse(fs.readFileSync(path.join(personalRoot, "space.json"), "utf8"));
     assert(personalIdentity.kind === "personal" && personalIdentity.spaceId === spaceDirectories[0].name, "Prepared Personal Space identity is invalid");
-    for (const relative of ["config", "runtime", "apps/installed", "plugins", "files", "databases", "secrets", "mail", "publications", "agent-workspace"]) {
+    for (const relative of ["config", "runtime", "plugins", "files", "databases", "secrets", "mail", "publications", "agent-workspace"]) {
       assert(fs.existsSync(path.join(personalRoot, ...relative.split("/"))), `Prepared Personal Space is missing: ${relative}`);
     }
-    for (const relative of ["AGENTS.md", "agents", "skills", "workflows", "registry", "schemas", "core/agent/src/agents/workflow.js", "scripts/agent-guard.mjs"]) {
+    for (const relative of ["AGENTS.md", "skills", "workflows", "registry", "schemas"]) {
       assert(fs.existsSync(path.join(personalRoot, "agent-workspace", relative)), `Prepared Agent workspace is missing: ${relative}`);
     }
-    for (const relative of ["registry/product-development.json", "workflows/product-development.md", "skills/personal-product-development/references/product-development.md"]) {
+    for (const relative of ["registry/product-development.json", "workflows/product-development.md"]) {
       assert(fs.existsSync(path.join(personalRoot, "agent-workspace", ...relative.split("/"))), `Prepared Agent workspace is missing product development contract: ${relative}`);
     }
     const agentWorkspaceRoot = path.join(personalRoot, "agent-workspace");
-    const agentGuard = spawnSync(process.execPath, [path.join(agentWorkspaceRoot, "scripts", "agent-guard.mjs"), "--root", agentWorkspaceRoot], {
-      cwd: agentWorkspaceRoot,
-      env,
-      encoding: "utf8",
-      timeout: 30_000,
-    });
-    assert(agentGuard.status === 0, `Prepared Agent source contract is invalid: ${String(agentGuard.stderr || agentGuard.stdout || "").trim()}`);
-    const appCompatibility = JSON.parse(fs.readFileSync(path.join(personalRoot, "config", "apps-compatibility.json"), "utf8"));
-    assert(appCompatibility.schemaVersion === 1 && appCompatibility.candidateNodeApis?.includes("1"), "Prepared Workspace is missing the Personal App compatibility report");
+    assert(fs.readdirSync(path.join(agentWorkspaceRoot, "skills")).length === 0, "Fresh user skills must be empty; builtin skills belong to immutable release");
+    assert(!fs.existsSync(path.join(personalRoot, "apps")), "Fresh installation must not recreate retired Apps");
+    const preserved = path.join(agentWorkspaceRoot, "skills", "my-preference");
+    fs.mkdirSync(preserved);
+    fs.writeFileSync(path.join(preserved, "SKILL.md"), "user-owned skill");
     assert(!fs.existsSync(path.join(workspaceRoot, "workspace")), "Workspace must not be nested inside itself");
     const repeated = spawnSync(process.execPath, [at(manifest.entrypoints.node), "prepare"], { env, encoding: "utf8", timeout: 60_000 });
     assert(repeated.status === 0, "Release preparation is not idempotent");
+    assert(fs.readFileSync(path.join(preserved, "SKILL.md"), "utf8") === "user-owned skill", "Preparation must preserve user skills");
     return { homeRoot: "<temporary>/.personal-agent", core: "core", workspace: "workspace", installationRegistry: true, personalSpace: true, idempotent: true, workspacePreserved: true };
   } finally { fs.rmSync(root, { recursive: true, force: true }); }
 }

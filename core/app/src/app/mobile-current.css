@@ -734,23 +734,6 @@
 .task-live-waiting b { color: #77726b; font-weight: 500; font-variant-numeric: tabular-nums; }
 .task-live-waiting i { width: 12px; height: 12px; border: 1px solid #d2cec6; border-top-color: #77736d; border-radius: 50%; animation: mobile-spin .8s linear infinite; }
 
-.mobile-app-directory { padding: 26px 0 18px; }
-.mobile-app-directory > header { margin-bottom: 24px; }
-.mobile-app-directory h1 { margin: 7px 0 6px; font: 25px/1.2 var(--pa-serif); }
-.mobile-app-directory > header p { margin: 0; color: var(--pa-muted); font-size: 9px; }
-.mobile-app-list { display: grid; gap: 0; }
-.mobile-app-card { min-height: 94px; display: grid; grid-template-columns: 44px minmax(0,1fr) auto; align-items: center; gap: 14px; border-bottom: 1px solid #eeeae4; padding: 18px 0; color: inherit; text-decoration: none; }
-.mobile-app-card:first-child { border-top: 1px solid #eeeae4; }
-.mobile-app-icon { width: 44px; height: 44px; display: grid; place-items: center; border-radius: 12px; background: #20201e; color: #fff; font: 15px var(--pa-serif); }
-.mobile-app-icon.mint { background: #dce8e0; color: #446252; }
-.mobile-app-icon.coral { background: #f1ddd4; color: #a65338; }
-.mobile-app-card strong { display: block; font-size: 12px; font-weight: 600; }
-.mobile-app-card p { margin: 5px 0 7px; color: var(--pa-muted); font-size: 9px; line-height: 1.5; }
-.mobile-app-card small { color: var(--pa-soft); font-size: 8px; }
-.mobile-app-card > i { color: var(--pa-coral-dark); font-size: 8px; font-style: normal; }
-.mobile-screen.mobile-app-screen { display: flex; overflow: hidden; padding: 0; }
-.mobile-personal-app-host { min-width: 0; min-height: 0; display: flex; flex: 1; }
-.mobile-personal-app-host iframe { width: 100%; min-height: 0; flex: 1; border: 0; background: #fff; }
 .mobile-content-skeleton { width: 100%; color: transparent; }
 .mobile-content-skeleton.is-page,
 .mobile-content-skeleton.is-app { min-height: 0; display: flex; flex: 1; }
@@ -781,12 +764,6 @@
 .mobile-skeleton-page-grid .meta { width: 42%; height: 6px; margin: 10px 0; }
 .mobile-skeleton-page-grid .title { height: 10px; margin-bottom: 8px; }
 .mobile-skeleton-page-grid .short { height: 7px; }
-.mobile-skeleton-app-list { border-top: 1px solid #eeeae4; }
-.mobile-skeleton-app-list article { min-height: 94px; display: grid; grid-template-columns: 44px minmax(0,1fr) 30px; align-items: center; gap: 14px; border-bottom: 1px solid #eeeae4; padding: 18px 0; }
-.mobile-skeleton-app-list .icon { width: 44px; height: 44px; border-radius: 12px; }
-.mobile-skeleton-app-list .title { width: 42%; height: 11px; margin-bottom: 10px; }
-.mobile-skeleton-app-list article > div .mobile-skeleton-line:not(.title) { margin-top: 8px; }
-.mobile-skeleton-app-list .action { width: 26px; height: 7px; }
 .mobile-skeleton-mail { padding-top: 24px; }
 .mobile-skeleton-mail .meta { width: 31%; height: 7px; }
 .mobile-skeleton-mail .headline { width: 76%; height: 23px; margin-top: 13px; }
@@ -798,16 +775,8 @@
 .mobile-skeleton-page-reader .hero { width: 100%; aspect-ratio: 4 / 3; margin-bottom: 24px; }
 .mobile-skeleton-page-reader .headline { width: 72%; height: 22px; margin-bottom: 18px; }
 .mobile-skeleton-page-reader > .mobile-skeleton-line { margin-top: 12px; }
-.mobile-skeleton-page-reader .cards,
-.mobile-skeleton-app-host .cards { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 10px; margin-top: 28px; }
+.mobile-skeleton-page-reader .cards { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 10px; margin-top: 28px; }
 .mobile-skeleton-page-reader .cards .mobile-skeleton-block { height: 104px; }
-.mobile-skeleton-app-host { width: 100%; display: block; padding: 28px 20px 36px; background: #fff; }
-.mobile-skeleton-app-host .top { display: grid; grid-template-columns: 42px minmax(0,1fr); align-items: center; gap: 12px; }
-.mobile-skeleton-app-host .mark { width: 42px; height: 42px; border-radius: 12px; }
-.mobile-skeleton-app-host .top .title { width: 46%; height: 13px; }
-.mobile-skeleton-app-host .hero { width: 100%; height: 148px; margin: 26px 0 24px; }
-.mobile-skeleton-app-host > .mobile-skeleton-line { margin-top: 12px; }
-.mobile-skeleton-app-host .cards .mobile-skeleton-block { height: 86px; }
 .mobile-about-machine-skeleton > div { width: 100%; display: grid; grid-column: 1 / -1; grid-template-columns: 48px minmax(0,1fr) 34px; align-items: center; gap: 12px; }
 .mobile-about-machine-skeleton .mark { width: 48px; height: 48px; border-radius: 10px; }
 .mobile-about-machine-skeleton .meta { width: 42%; height: 7px; margin-bottom: 8px; }

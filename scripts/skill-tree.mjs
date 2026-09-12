@@ -1,61 +1,15 @@
 #!/usr/bin/env node
-import path from 'node:path';
-import { spawnSync } from 'node:child_process';
-import { fileURLToPath } from 'node:url';
 import { parseOptions } from './skill-tree/common.mjs';
 import { runCases } from './skill-tree/cases.mjs';
 import { runCatalog } from './skill-tree/catalog.mjs';
 
-const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const skillEntrypoints = {
-  research: 'skills/deep-research/scripts/cli.mjs',
-  capture: 'skills/knowledge-capture/scripts/cli.mjs',
-  content: 'skills/content-workbench/scripts/cli.mjs',
-  media: 'skills/media-toolkit/scripts/cli.mjs',
-  video: 'skills/hyperframes-video/scripts/cli.mjs',
-  interior: 'skills/interior-design/scripts/cli.mjs',
-};
-
 const [group = 'help', action, ...rest] = process.argv.slice(2);
-const parsed = parseOptions(rest);
-
-const help = `Personal Agent Node skill tree CLI
-
-Usage:
-  skill-tree catalog [--json]
-  skill-tree research init --topic <topic> [--items a,b] [--fields id:label] --out <dir>
-  skill-tree research validate --project <dir> [--allow-incomplete] [--json]
-  skill-tree research report --project <dir> [--out report.md]
-  skill-tree capture url --url <url> --out <file.md>
-  skill-tree content format --input <file.md> --output <file.md>
-  skill-tree content html --input <file.md> --output <file.html>
-  skill-tree media inspect --input <image>
-  skill-tree media compress --input <image> --output <image.webp> [--quality 80]
-  skill-tree video doctor [--json]
-  skill-tree video check --project <dir> [--strict] [--json]
-  skill-tree video snapshot --project <dir> [--at 0,4,8] [--output snapshots/review] [--force]
-  skill-tree video render --project <dir> --output renders/final.mp4 [--quality high] [--strict] [--force]
-  skill-tree interior evidence inventory --source-dir <dir> --output <inventory.json>
-  skill-tree interior workspace build --input <workspace-input.json> --source-dir <dir> --project-dir <dir>
-  skill-tree interior workspace verify --project-dir <dir>
-  pa-cli pages upload --file <artifact> --folder <folder> --json
-  skill-tree cases verify
-`;
-
 try {
   if (group === 'catalog') runCatalog(parseOptions([action, ...rest].filter(Boolean)).options);
-  else if (skillEntrypoints[group]) runSkillCli(group, [action, ...rest].filter(Boolean));
-  else if (group === 'cases') runCases(action, parsed);
-  else if (group === 'help' || group === '--help' || group === '-h') console.log(help);
-  else throw new Error(`Unknown command: ${group}\n\n${help}`);
+  else if (group === 'cases') runCases(action, parseOptions(rest));
+  else if (['help', '--help', '-h'].includes(group)) console.log('Cove skill catalog\n\n  skill-tree catalog [--json]\n  skill-tree cases verify');
+  else throw new Error('Unknown skill-tree command: ' + group + '. Use personal-agent help --json or pa-cli --help for product capabilities.');
 } catch (error) {
-  console.error(`[skill-tree] ${error.message}`);
+  console.error('[skill-tree] ' + error.message);
   process.exitCode = 1;
-}
-
-function runSkillCli(group, args) {
-  const entrypoint = path.join(root, skillEntrypoints[group]);
-  const result = spawnSync(process.execPath, [entrypoint, ...args], { cwd: process.cwd(), stdio: 'inherit' });
-  if (result.error) throw result.error;
-  if (result.status !== 0) process.exitCode = result.status ?? 1;
 }

@@ -15,6 +15,7 @@
 import { setTimeout as delay } from 'node:timers/promises';
 import { deriveAppServerTransport, getAppServerClient } from './app-server-client.ts';
 import { createAppServerMapperState, mapMessage, threadIdFromResult, turnIdFromResult, completionPayload, collabReceiverThreadIds } from './app-server-mapper.ts';
+import { resolveWorkspaceSkills } from '../skills/catalog.js';
 
 const SRC = 'agent-bridge-appserver';
 
@@ -420,14 +421,14 @@ async function ensureThread(session, config) {
   if (session.threadId && session.threadReady) return;
   if (session.threadId) { // known thread but not live in the current child -> resume from disk rollout
     const res = await client.request('thread/resume', threadResumeParams(session.threadId, config));
-    bindThread(session, threadIdFromResult(res) || session.threadId);
+    bindThread(session, threadIdFromResult(res) || session.threadId, res.model);
     return;
   }
   const known = typeof config.cliSessionId === 'string' && config.cliSessionId.trim() ? config.cliSessionId.trim() : null;
   if (known) {
     try {
       const res = await client.request('thread/resume', threadResumeParams(known, config));
-      bindThread(session, threadIdFromResult(res) || known);
+      bindThread(session, threadIdFromResult(res) || known, res.model);
       return;
     } catch (error) {
       if (config.allowCreateThread !== true) {
@@ -439,7 +440,7 @@ async function ensureThread(session, config) {
     throw new Error('本地 Codex 会话不可恢复，且当前命令不允许创建新 thread');
   }
   const res = await client.request('thread/start', threadStartParams(config));
-  bindThread(session, threadIdFromResult(res));
+  bindThread(session, threadIdFromResult(res), res.model);
 }
 
 export function threadStartParams(config) {
@@ -481,7 +482,7 @@ export function turnOverrides(config, { defaultModel } = {}) {
   // Plan/default collaboration mode is a persistent thread setting: sending {mode:'plan'} keeps every
   // later turn in plan mode until an explicit {mode:'default'} exits it. settings.model is required by
   // the wire schema; developer_instructions:null tells the server to inject its builtin mode template.
-  const mode = collaborationModeKind(config.appServerCollaborationMode);
+  const mode = collaborationModeKind(config.appServerCollaborationMode) || (config.coveSkillsManaged ? 'default' : null);
   if (mode) {
     const model = config.appServerModel || defaultModel;
     if (model) {
@@ -490,7 +491,7 @@ export function turnOverrides(config, { defaultModel } = {}) {
         settings: {
           model,
           reasoning_effort: config.appServerReasoningEffort || null,
-          developer_instructions: null,
+          developer_instructions: config.coveSkillsManaged ? config.appServerDeveloperInstructions : null,
         },
       };
     }
@@ -517,10 +518,11 @@ export function toSandboxObject(sandbox, cwd) {
   }
 }
 
-function bindThread(session, threadId) {
+function bindThread(session, threadId, model) {
   if (!threadId) throw new Error('thread/start returned no thread id');
   if (session.threadId && session.threadId !== threadId) threadIndex.delete(session.threadId);
   session.threadId = threadId;
+  if (model) session.threadModel = model;
   session.threadReady = true;
   threadIndex.set(threadId, session.sessionId);
 }
@@ -570,8 +572,10 @@ async function dispatchInput(session, content, config) {
 
 /** Start a turn (text | skill | review) and await its completion; returns the TurnStatus. */
 async function startTurn(session, { text, skill, review, config }) {
+  config ||= session.config;
   const client = session.client || getAppServerClient();
   const waiter = deferred();
+  waiter.promise.catch(() => {}); // Dispatch can fail before this promise is returned to its caller.
   session.turnWaiter = waiter;
   let res;
   if (review !== undefined) {
@@ -580,9 +584,10 @@ async function startTurn(session, { text, skill, review, config }) {
     res = await client.request('review/start', { threadId: session.threadId, target, delivery: 'inline' });
   } else {
     const input = skill ? await skillInput(session, skill, config) : [{ type: 'text', text: text ?? '' }];
-    const defaultModel = collaborationModeKind(session.config?.appServerCollaborationMode) && !session.config?.appServerModel
-      ? await resolveDefaultModelId()
-      : undefined;
+    const defaultModel = config.coveSkillsManaged ? session.threadModel
+      : collaborationModeKind(session.config?.appServerCollaborationMode) && !session.config?.appServerModel
+        ? await resolveDefaultModelId() : undefined;
+    if (config.coveSkillsManaged && !config.appServerModel && !defaultModel) throw new Error('Codex 未返回本轮模型，无法安全刷新技能索引。');
     res = await client.request('turn/start', { threadId: session.threadId, input, ...turnOverrides(session.config, { defaultModel }) });
   }
   session.currentTurnId = turnIdFromResult(res) || session.currentTurnId;
@@ -666,6 +671,11 @@ async function runSkillsList(session, config) {
 /** Resolve a skill invocation (/<name> [args]) into turn/start input items. */
 async function skillInput(session, parsed, config) {
   const skills = await listSkills(config);
+  if (config.coveSkillsManaged) {
+    const matches = skills.filter((skill) => skill.id === parsed.name || skill.name.toLowerCase() === parsed.name);
+    if (matches.length !== 1) throw new Error('请选择当前技能目录中的唯一技能 ID。');
+    return [{ type: 'text', text: `读取技能 ${JSON.stringify({ id: matches[0].id, path: matches[0].path })} 的 SKILL.md，并完成请求：\n${parsed.rest}` }];
+  }
   const match = skills.find((s) => String(s.name).toLowerCase() === parsed.name);
   if (!match) {
     // unknown slash command: fall back to sending the literal text so the model still sees it
@@ -747,6 +757,11 @@ export function normalizeModelList(data) {
 }
 
 async function listSkills(config) {
+  if (config?.coveSkillsManaged) return config.coveSkills.map((skill) => ({ ...skill, path: skill.skillPath }));
+  if (config?.skillReleaseRoot && config.workspace) {
+    return resolveWorkspaceSkills(config.workspace, { releaseRoot: config.skillReleaseRoot }).skills
+      .filter((skill) => skill.status === 'available').map((skill) => ({ ...skill, path: skill.skillPath }));
+  }
   // .call (not .request): auto-starts the app-server child, so skills discovery also works
   // before the first turn (worker startup reporting).
   const res = await (config?.appServerClient || getAppServerClient({ cwd: config?.workspace, env: config?.agentEnv })).call('skills/list', {

@@ -1,0 +1,10 @@
+.cove-desktop-pages { height: 100%; min-height: 0; }
+.cove-cached-page { height: 100%; min-height: 0; overflow: auto; overscroll-behavior: contain; }
+.cove-first-load { padding: 32px; color: var(--text-muted, #60736e); }
+.cove-refresh-control { display: flex; align-items: center; gap: 8px; }
+.cove-refresh-control > span { max-width: 170px; font-size: 11px; color: var(--text-muted, #60736e); }
+.cove-refresh-control button[aria-busy="true"] svg { opacity: .5; }
+.cove-recovery h2, .cove-recovery p { margin: 0; }
+.cove-recovery { color: var(--text-primary, #143d37); }
+.cove-recovery p { color: var(--text-muted, #60736e); }
+.page-scroll:has(> .cove-desktop-pages) { overflow: hidden; }
