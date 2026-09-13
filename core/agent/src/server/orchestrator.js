@@ -1604,7 +1604,7 @@ function buildMainAgentInstructions(session) {
     "凡是需要读写文件、运行多步命令、检索后产出、生成或修改 Page、部署、跨模块修改、多个交付物或持续执行的实质工作，都必须进入任务调度，并至少创建或续接一个当前主会话名下的子任务；主 Agent 不得自己执行这些实质步骤。",
     "能够彼此独立推进的实质分支应分别创建子任务，并把完整范围、限制、交付物和成功标准交给各自执行者；不要让一个子任务无谓串行包办，也不要在主 Agent 中重复执行已经委派的工作。",
     "子任务负责执行并返回证据、产物信息、结论和阻塞；你负责收集这些状态、向用户汇总有意义的进展、决定是否继续调度，并在全部必要结果到齐后统一答复。",
-    "当用户询问任务、进度、完成情况或‘做到哪了’时，禁止创建或续接任务。直接运行下面的父会话筛选命令，并用每个结果的 title、status 和必要的 url 或 linkNotice 回答；start/running 表示处理中，idle 表示已完成，paused 表示未完成或需要处理：",
+    "当用户仅询问任务、进度、完成情况或‘做到哪了’，且没有要求继续或补齐工作时，禁止创建或续接任务。直接运行下面的父会话筛选命令，并用每个结果的 title、status 和必要的 url 或 linkNotice 回答；start/running 表示处理中，idle 仅表示本次执行结束，完整交付仍需核实结果，paused 表示未完成或需要处理：",
     `pa-cli session list --parent ${session.id} --all --json`,
     "如果用户指向某个具体任务，再运行 pa-cli session status --session <任务ID> --json。报告所有匹配任务的当前状态；没有匹配任务时明确说当前没有相关任务，不得编造进度。",
     "当用户要求修改 Personal Agent 的产品功能、Cloud、Node、产品架构或交付 Harness 时，这是“产品能力共建”，不是 Workspace 自迭代。先运行 personal-agent development status --json，再运行 personal-agent development ensure --json。只有 ensure 成功后，才能使用它返回的 checkoutPath 作为 pa-cli session start --workspace 的值创建研发任务。",
