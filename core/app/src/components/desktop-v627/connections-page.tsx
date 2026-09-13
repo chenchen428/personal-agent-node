@@ -1,6 +1,6 @@
 "use client";
 
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { BookOpen, Globe2, Mail, MessageCircle, SearchX, Sparkles } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { LoadingState } from "../desktop-v72/loading-state";
@@ -15,8 +15,7 @@ const icons = { message: MessageCircle, sparkles: Sparkles, book: BookOpen, mail
 const effectiveStates = new Set(["connected", "ready", "available", "healthy"]);
 
 export function ConnectionsPage() {
-  const { value, loading, refresh } = useJson<{ connections: Connection[] }>("/api/connections");
-  const router = useRouter();
+  const { value, loading, error, refresh } = useJson<{ connections: Connection[] }>("/api/connections");
   const searchParams = useSearchParams();
   const requested = searchParams.get("connection");
   const [query, setQuery] = useState("");
@@ -51,12 +50,12 @@ export function ConnectionsPage() {
   const selected = filtered.find((item) => item.id === activeId);
   const select = (id: string) => {
     setSelectedId(id);
-    router.replace(`/app/connections?connection=${encodeURIComponent(id)}`, { scroll: false });
+    window.history.replaceState(null, "", `/app/connections?connection=${encodeURIComponent(id)}`);
   };
 
   return <main className="page flush"><div className="split-view">
     <aside className="split-list" aria-busy={loading}><div className="split-toolbar connection-toolbar"><div className="split-toolbar-title"><h1>连接</h1><ConnectionViewSwitch value={view} effectiveCount={effectiveCount} loading={initialLoading} onChange={setView} /></div><SearchField value={query} disabled={initialLoading} onChange={(event) => setQuery(event.target.value)} placeholder="搜索连接或能力…" aria-label="搜索连接或能力" /><nav aria-label="连接分类"><button className={category === "全部" ? "active" : ""} disabled={initialLoading} onClick={() => setCategory("全部")} type="button">全部</button>{categories.map((item) => <button className={category === item ? "active" : ""} onClick={() => setCategory(item)} type="button" key={item}>{item}</button>)}</nav></div><div className="list-section-label">{initialLoading ? "正在加载连接…" : <>{view === "effective" ? "已生效" : category === "全部" ? "全部连接" : category} · {filtered.length}</>}</div>{initialLoading ? <LoadingState label="正在加载连接" compact /> : filtered.length ? filtered.map((connection) => <ConnectionRow connection={connection} selected={connection.id === activeId} onSelect={select} key={connection.id} />) : <div className="connection-list-empty"><SearchX /><strong>{view === "effective" ? "暂无已生效连接" : "没有匹配的连接"}</strong><span>{view === "effective" ? "切换到全部查看并完成连接配置" : "调整搜索词或切换分类"}</span></div>}</aside>
-    <section className="split-detail" aria-busy={loading}>{initialLoading ? <LoadingState label="正在加载连接" /> : selected ? <ConnectionDetail connection={selected} refresh={refresh} key={selected.id} /> : <div className="empty-state">{view === "effective" ? "暂无已生效连接" : "没有匹配的连接"}</div>}</section>
+    <section className="split-detail" aria-busy={loading}>{error ? <div className="notice" role="alert">{error}<button type="button" onClick={() => void refresh()}>重新加载</button></div> : null}{initialLoading ? <LoadingState label="正在加载连接" /> : selected ? <ConnectionDetail connection={selected} refresh={refresh} key={selected.id} /> : error ? null : <div className="empty-state">{view === "effective" ? "暂无已生效连接" : "没有匹配的连接"}</div>}</section>
   </div></main>;
 }
 

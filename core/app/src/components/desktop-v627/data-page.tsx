@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { getPrefetchError, readPrefetched } from "@/lib/desktop-prefetch";
 import { usePageRefresh } from "@/lib/use-client-resource";
 import { Filter, Search, SlidersHorizontal, X } from "lucide-react";
 import { Button, SearchField } from "../desktop-v72/primitives";
@@ -12,23 +13,24 @@ import { errorMessage, fetchJson, formatCell } from "./shared";
 type DataSchema = { objects: DataObject[]; metadata: DataMetadata[]; initialResult: DataResult | null };
 
 export function DataPage() {
-  const [objects, setObjects] = useState<DataObject[]>([]);
-  const [metadata, setMetadata] = useState<DataMetadata[]>([]);
-  const [objectName, setObjectName] = useState("");
-  const [result, setResult] = useState<DataResult | null>(null);
+  const [initial] = useState(() => readPrefetched<DataSchema>("/api/app/data/schema?counts=0&preview=1"));
+  const [objects, setObjects] = useState<DataObject[]>(initial?.objects || []);
+  const [metadata, setMetadata] = useState<DataMetadata[]>(initial?.metadata || []);
+  const [objectName, setObjectName] = useState(initial?.objects?.[0]?.name || "");
+  const [result, setResult] = useState<DataResult | null>(initial?.initialResult || null);
   const [query, setQuery] = useState("");
   const [searching, setSearching] = useState(false);
   const [sort, setSort] = useState<{ column: string; direction: "asc" | "desc" }>();
   const [filters, setFilters] = useState<Record<string, string>>({});
   const [activeColumn, setActiveColumn] = useState("");
   const [columnsOpen, setColumnsOpen] = useState(false);
-  const [visible, setVisible] = useState<string[]>([]);
+  const [visible, setVisible] = useState<string[]>(initial?.initialResult?.columns || []);
   const [pageNumber, setPageNumber] = useState(1);
-  const [loading, setLoading] = useState(true);
-  const [initialized, setInitialized] = useState(false);
-  const [error, setError] = useState("");
-  const loadedSignature = useRef("");
-  const initializedRef = useRef(false);
+  const [loading, setLoading] = useState(() => !initial && !getPrefetchError("/api/app/data/schema?counts=0&preview=1"));
+  const [initialized, setInitialized] = useState(Boolean(initial));
+  const [error, setError] = useState(() => getPrefetchError("/api/app/data/schema?counts=0&preview=1"));
+  const loadedSignature = useRef(initial?.initialResult ? querySignature(objectName, {}, undefined, 1) : "");
+  const initializedRef = useRef(Boolean(initial));
   const resultRef = useRef(result); resultRef.current = result;
   const [refreshVersion, setRefreshVersion] = useState(0);
   usePageRefresh(useCallback(() => setRefreshVersion((value) => value + 1), []));

@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { getPrefetchError, readPrefetched } from "@/lib/desktop-prefetch";
 import { useSearchParams } from "next/navigation";
 import { ConversationComposer } from "./conversation-composer";
 import type { PendingAttachment } from "./conversation-attachments";
@@ -32,12 +33,12 @@ function mergeMessages(first: Message[], second: Message[]) {
 
 export function ConversationPage() {
   const searchParams = useSearchParams();
-  const [session, setSession] = useState<Session | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [session, setSession] = useState<Session | null>(() => readPrefetched<{ session: Session }>("/api/chat/desktop/conversation?limit=40")?.session ?? null);
+  const [loading, setLoading] = useState(() => !session && !getPrefetchError("/api/chat/desktop/conversation?limit=40"));
   const [loadingEarlier, setLoadingEarlier] = useState(false);
   const [sending, setSending] = useState(false);
   const [waiting, setWaiting] = useState(false);
-  const [error, setError] = useState("");
+  const [error, setError] = useState(() => getPrefetchError("/api/chat/desktop/conversation?limit=40"));
   const scroll = useConversationScroll(session);
   const earlierLoadingRef = useRef(false);
   const latestRequestRef = useRef<AbortController | null>(null);

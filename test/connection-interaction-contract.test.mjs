@@ -253,8 +253,8 @@ test("connection directory separates all connections from connections with effec
   assert.match(page, /initialLoading \? <LoadingState label="正在加载连接"/);
   assert.match(page, /正在加载连接/);
   assert.match(page, /setSelectedId\(id\)/);
-  assert.match(page, /router\.replace\(`\/app\/connections\?connection=\$\{encodeURIComponent\(id\)\}`/);
-  assert.match(page, /\{ scroll: false \}/);
+  assert.match(page, /window\.history\.replaceState\(null, "", `\/app\/connections\?connection=\$\{encodeURIComponent\(id\)\}`/);
+  assert.doesNotMatch(page, /router\.replace|window\.scrollTo/, "changing selection must not start route loading or move the scroll position");
   assert.match(page, /window\.setInterval\(refreshWhenVisible, 15_000\)/);
   assert.match(page, /window\.addEventListener\("focus", refreshWhenVisible\)/);
   assert.match(page, /document\.addEventListener\("visibilitychange", refreshWhenVisible\)/);

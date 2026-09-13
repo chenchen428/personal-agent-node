@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { fetchJson } from "./client-json";
 import { clientResourceCache, PAGE_REFRESH_EVENT } from "./client-resource-cache";
+import { getPrefetchError } from "./desktop-prefetch";
 
 export function usePageRefresh(refresh: () => void) {
   useEffect(() => {
@@ -19,13 +20,13 @@ export function usePageRefresh(refresh: () => void) {
 
 export function useClientResource<T>(url: string) {
   const [snapshot, setSnapshot] = useState<{ url: string; value: T | null; error: string; refreshing: boolean }>(() => ({
-    url, value: typeof window === "undefined" ? null : clientResourceCache.get<T>(url)?.value ?? null, error: "", refreshing: true,
+    url, value: typeof window === "undefined" ? null : clientResourceCache.get<T>(url)?.value ?? null, error: getPrefetchError(url), refreshing: true,
   }));
   const request = useRef<AbortController | null>(null);
   const refresh = useCallback(async () => {
     request.current?.abort();
     const controller = new AbortController(); request.current = controller;
-    setSnapshot((previous) => ({ url, value: previous.url === url ? previous.value : clientResourceCache.get<T>(url)?.value ?? null, error: "", refreshing: true }));
+    setSnapshot((previous) => ({ url, value: previous.url === url ? previous.value : clientResourceCache.get<T>(url)?.value ?? null, error: previous.url === url ? previous.error : getPrefetchError(url), refreshing: true }));
     try {
       const value = await fetchJson<T>(url, { signal: controller.signal });
       if (!controller.signal.aborted) setSnapshot({ url, value, error: "", refreshing: false });
@@ -36,6 +37,6 @@ export function useClientResource<T>(url: string) {
   useEffect(() => { void refresh(); return () => request.current?.abort(); }, [refresh]);
   usePageRefresh(refresh);
   const value = snapshot.url === url ? snapshot.value : clientResourceCache.get<T>(url)?.value ?? null;
-  return { value, loading: value === null && (snapshot.refreshing || snapshot.url !== url), refreshing: snapshot.refreshing,
+  return { value, loading: value === null && !snapshot.error && (snapshot.refreshing || snapshot.url !== url), refreshing: snapshot.refreshing,
     error: value === null ? snapshot.error : "", staleError: value !== null ? snapshot.error : "", refresh };
 }

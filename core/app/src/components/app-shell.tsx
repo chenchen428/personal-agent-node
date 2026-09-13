@@ -22,7 +22,7 @@ export function AppShell({ children, initialMobileHint = false }: { children: Re
 
   useCloseProtection(mobile);
   if (mobile) return <ClientSessionBoundary><MobileAppShell>{children}</MobileAppShell></ClientSessionBoundary>;
-  return <ClientSessionBoundary><ManagedConnectionsBootstrap enabled /><DesktopShell pathname={pathname}>{children}</DesktopShell></ClientSessionBoundary>;
+  return <ClientSessionBoundary desktop><ManagedConnectionsBootstrap enabled /><DesktopShell pathname={pathname}>{children}</DesktopShell></ClientSessionBoundary>;
 }
 
 function DesktopShell({ pathname, children }: { pathname: string; children: ReactNode }) {
@@ -43,8 +43,8 @@ function DesktopShell({ pathname, children }: { pathname: string; children: Reac
     return () => { mounted = false; };
   }, []);
 
-  return <div className={`desktop-v72 app-frame app-frame-embedded${collapsed ? " is-sidebar-collapsed" : ""}`}>
-    <aside className={`v72-sidebar sidebar${collapsed ? " collapsed" : ""}`} aria-label="桌面端导航" onClickCapture={navigateDesktopMenu}>
+  return <div className={`desktop-v72 app-frame app-frame-embedded${collapsed ? " is-sidebar-collapsed" : ""}`} onClickCapture={navigateDesktopMenu}>
+    <aside className={`v72-sidebar sidebar${collapsed ? " collapsed" : ""}`} aria-label="桌面端导航">
       <header className="v72-sidebar-head sidebar-head">
         <Link className="v72-brand sidebar-brand" href="/app"><span className="v72-mark brand-mark"><CoveMark title="Cove" /></span><span className="v72-brand-copy"><strong>Cove</strong><small>本机工作区</small></span></Link>
         <button className="icon-button sidebar-collapse" type="button" aria-label={collapsed ? "展开侧边栏" : "收起侧边栏"} title={collapsed ? "展开侧边栏" : "收起侧边栏"} onClick={() => setCollapsed((value) => !value)}>{collapsed ? <PanelLeftOpen /> : <PanelLeftClose />}</button>

@@ -84,7 +84,3 @@ export function cacheStatusForRoute(route: string) {
   return { refreshing: [...inFlight.values()].includes(route), stale: [...failures.values()].some((item) => item.route === route) };
 }
 export function refreshVisiblePage() { if (typeof window !== "undefined") window.dispatchEvent(new Event(PAGE_REFRESH_EVENT)); }
-
-export function visitPage(keys: string[], key: string, maximum = 8) {
-  return [...keys.filter((item) => item !== key), key].slice(-maximum);
-}

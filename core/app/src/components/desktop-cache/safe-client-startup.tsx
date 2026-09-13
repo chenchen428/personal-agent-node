@@ -4,11 +4,11 @@ import React from "react";
 import { startupSurface } from "../../lib/client-scope";
 
 /** Only fixed product copy belongs here; never render private cached page children. */
-export function SafeClientStartup({ pathname, failed, onRetry }: { pathname: string; failed: boolean; onRetry: () => void }) {
+export function SafeClientStartup({ pathname, failed, onRetry, preparing = false }: { pathname: string; failed: boolean; onRetry: () => void; preparing?: boolean }) {
   const surface = startupSurface(pathname);
   return <main className="cove-first-load" data-cove-safe-startup aria-busy={!failed}>
     <header><p>{surface.eyebrow}</p><h1>{surface.title}</h1>
-      <p role="status">{failed ? "暂时无法连接本机控制服务，请重试或查看初始化入口。" : "正在连接本机控制服务…"}</p>
+      <p role="status">{failed ? "暂时无法连接本机控制服务，请重试或查看初始化入口。" : preparing ? "正在准备工作区，进入后即可直接切换页面。" : "正在连接本机控制服务…"}</p>
     </header>
     {surface.setup ? <ol><li>确认本机环境</li><li>设置 Agent 运行方式</li><li>完成一次真实对话</li></ol> : null}
     <nav aria-label="本机恢复入口" style={{ display: "flex", gap: 16, flexWrap: "wrap", marginBlock: 20 }}>

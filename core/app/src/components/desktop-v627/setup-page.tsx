@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { ArrowRight, Check, FolderOpen, Link2, RefreshCw } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { useClientResource } from "@/lib/use-client-resource";
 import type { SetupCheck, SetupState } from "@/lib/setup-tasks";
 import { Button, Card, PageHeader, PageSurface } from "../desktop-v72/primitives";
 
@@ -14,20 +14,7 @@ const definitions: Step[] = [
 ];
 
 export function SetupPage() {
-  const [snapshot, setSnapshot] = useState<Snapshot | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-  const load = useCallback(async () => { setLoading(true); setError(""); try { const response = await fetch("/api/system/setup", { cache: "no-store" }); if (!response.ok) throw new Error(); setSnapshot(await response.json()); } catch { setError("暂时无法读取初始化状态。"); } finally { setLoading(false); } }, []);
-  useEffect(() => {
-    void load();
-    const refreshWhenVisible = () => { if (document.visibilityState === "visible") void load(); };
-    window.addEventListener("focus", refreshWhenVisible);
-    document.addEventListener("visibilitychange", refreshWhenVisible);
-    return () => {
-      window.removeEventListener("focus", refreshWhenVisible);
-      document.removeEventListener("visibilitychange", refreshWhenVisible);
-    };
-  }, [load]);
+  const { value: snapshot, loading, error, refresh: load } = useClientResource<Snapshot>("/api/system/setup");
   const stateFor = (groups: string[]): SetupState => { const checks = (snapshot?.checks || []).filter((check) => groups.includes(check.group) && check.id !== "installation.console-auth" && (check.requirement === "required-for-console" || check.requirement === "required-for-agent")); if (!checks.length) return "checking"; return checks.every((check) => check.state === "ready") ? "ready" : checks.some((check) => check.state === "blocked") ? "blocked" : "action-required"; };
   const complete = definitions.filter((step) => stateFor(step.groups) === "ready").length;
   return <PageSurface><PageHeader eyebrow="首次设置" title="完成 Cove 初始化" description={loading ? "正在检查这台电脑。" : complete === definitions.length ? "必要设置已经完成，可以开始把目标交给主 Agent。" : `剩余 ${definitions.length - complete} 步。完成后即可让主 Agent 持续接收目标并在后台工作。`} actions={<Button onClick={() => void load()} disabled={loading}><RefreshCw />{loading ? "检查中…" : "重新检查"}</Button>} />

@@ -1,6 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { getPrefetchError, readPrefetched } from "@/lib/desktop-prefetch";
+import { clientResourceCache } from "@/lib/client-resource-cache";
 import { fetchJson } from "@/lib/client-json";
 import { usePageRefresh } from "@/lib/use-client-resource";
 import { profileChanged, profilePayload, profileValidation } from "./draft";
@@ -8,22 +10,26 @@ import { engines, type ConnectionResult, type Detection, type DraftProfile, type
 
 const endpoint = "/api/system/agent-runtime";
 async function request<T>(path = "", body?: unknown, signal?: AbortSignal): Promise<T> {
-  return fetchJson<T>(endpoint + path, {
+  const generation = clientResourceCache.generation;
+  const value = await fetchJson<T>(endpoint + path, {
     method: body ? "POST" : "GET", cache: "no-store", signal,
     headers: { "x-personal-agent-surface": "desktop", ...(body ? { "content-type": "application/json" } : {}) },
     body: body ? JSON.stringify(body) : undefined,
   });
+  // The desktop surface header excludes this endpoint from generic GET caching.
+  if (!path && typeof window !== "undefined") clientResourceCache.set(endpoint, value, generation, "/app/runtime");
+  return value;
 }
 
 export function useRuntimeSettings() {
-  const [saved, setSaved] = useState<RuntimeSettings | null>(null);
-  const [drafts, setDrafts] = useState<Record<Engine, DraftProfile> | null>(null);
-  const [engine, setEngine] = useState<Engine>("codex");
-  const [selected, setSelected] = useState<Engine>("codex");
-  const [loading, setLoading] = useState(true);
+  const [saved, setSaved] = useState<RuntimeSettings | null>(() => readPrefetched<RuntimeSettings>(endpoint));
+  const [drafts, setDrafts] = useState<Record<Engine, DraftProfile> | null>(saved?.profiles ?? null);
+  const [engine, setEngine] = useState<Engine>(saved?.engine || "codex");
+  const [selected, setSelected] = useState<Engine>(saved?.engine || "codex");
+  const [loading, setLoading] = useState(() => !saved && !getPrefetchError(endpoint));
   const [saving, setSaving] = useState(false);
   const [resetVersion, setResetVersion] = useState(0);
-  const [error, setError] = useState("");
+  const [error, setError] = useState(() => getPrefetchError(endpoint));
   const [feedback, setFeedback] = useState("");
   const [detection, setDetection] = useState<Partial<Record<Engine, Detection>>>({});
   const [results, setResults] = useState<Partial<Record<Engine, ConnectionResult>>>({});
@@ -36,10 +42,11 @@ export function useRuntimeSettings() {
     controllers.current.get("load")?.abort();
     const controller = new AbortController();
     controllers.current.set("load", controller);
-    setLoading(!editor.current.saved); setError("");
+    setLoading(!editor.current.saved && !getPrefetchError(endpoint));
     try {
       const value = await request<RuntimeSettings>("", undefined, controller.signal);
       if (controller.signal.aborted) return;
+      setError("");
       const current = editor.current;
       const changed = current.saved && current.drafts && (current.engine !== current.saved.engine || engines.some((id) => profileChanged(current.drafts![id], current.saved!.profiles[id])));
       setSaved(value);

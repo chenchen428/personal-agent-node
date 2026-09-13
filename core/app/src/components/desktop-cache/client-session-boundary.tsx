@@ -5,10 +5,12 @@ import { usePathname } from "next/navigation";
 import { bindClientCache, CACHE_RESET_EVENT, clearClientCache } from "@/lib/client-resource-cache";
 import { CLIENT_SCOPE_ENDPOINT, clientScopeKey } from "@/lib/client-scope";
 import { SafeClientStartup } from "./safe-client-startup";
+import { prefetchDesktopData } from "@/lib/desktop-prefetch";
 
-export function ClientSessionBoundary({ children }: { children: ReactNode }) {
+export function ClientSessionBoundary({ children, desktop = false }: { children: ReactNode; desktop?: boolean }) {
   const pathname = usePathname();
   const [state, setState] = useState({ scope: "", error: false });
+  const [preparing, setPreparing] = useState(false);
   const pending = useRef<AbortController | null>(null);
   const generation = useRef(0);
   const connect = useCallback(async (signal?: AbortSignal) => {
@@ -26,10 +28,12 @@ export function ClientSessionBoundary({ children }: { children: ReactNode }) {
       if (controller.signal.aborted || revision !== generation.current) return;
       const scope = clientScopeKey(payload, window.location.origin);
       bindClientCache(scope);
+      if (desktop) { setPreparing(true); await prefetchDesktopData({ signal: controller.signal }); }
+      if (controller.signal.aborted || revision !== generation.current) return;
       setState({ scope, error: false });
     } catch { if (!controller.signal.aborted && revision === generation.current) setState((previous) => ({ ...previous, error: true })); }
-    finally { signal?.removeEventListener("abort", abort); }
-  }, []);
+    finally { if (revision === generation.current) setPreparing(false); signal?.removeEventListener("abort", abort); }
+  }, [desktop]);
   useEffect(() => {
     const controller = new AbortController(); void connect(controller.signal);
     const clear = () => { clearClientCache("navigation"); setState({ scope: "", error: false }); };
@@ -38,6 +42,6 @@ export function ClientSessionBoundary({ children }: { children: ReactNode }) {
     window.addEventListener("pagehide", clear); window.addEventListener(CACHE_RESET_EVENT, reset); window.addEventListener("pageshow", show);
     return () => { controller.abort(); generation.current += 1; pending.current?.abort(); window.removeEventListener("pagehide", clear); window.removeEventListener(CACHE_RESET_EVENT, reset); window.removeEventListener("pageshow", show); clearClientCache("unmount"); };
   }, [connect]);
-  if (!state.scope) return <SafeClientStartup pathname={pathname} failed={state.error} onRetry={() => { setState({ scope: "", error: false }); void connect(); }} />;
+  if (!state.scope) return <SafeClientStartup pathname={pathname} failed={state.error} preparing={preparing} onRetry={() => { setState({ scope: "", error: false }); void connect(); }} />;
   return <div key={state.scope} style={{ display: "contents" }}>{children}</div>;
 }

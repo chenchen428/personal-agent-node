@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
 import test from "node:test";
-import { ClientResourceCache, clientResourceCache, bindClientCache, cacheStatusForRoute, clearClientCache, visitPage } from "../core/app/src/lib/client-resource-cache.ts";
+import { ClientResourceCache, clientResourceCache, bindClientCache, cacheStatusForRoute, clearClientCache } from "../core/app/src/lib/client-resource-cache.ts";
 import { fetchJson } from "../core/app/src/lib/client-json.ts";
 
 function deferred() { let resolve; const promise = new Promise((done) => { resolve = done; }); return { promise, resolve }; }
@@ -35,13 +35,16 @@ test("binding another Space aborts prior reads and rejects their late cache writ
   assert.equal(cache.get("/api/private"), undefined);
 });
 
-test("menu revisit preserves the instance key while bounded history evicts only the oldest page", () => {
-  let keys = [];
-  for (const key of ["mail", "data", "pages", "calendar"]) keys = visitPage(keys, key, 3);
-  assert.deepEqual(keys, ["data", "pages", "calendar"]);
-  keys = visitPage(keys, "data", 3);
-  assert.deepEqual(keys, ["pages", "calendar", "data"]);
-  assert.equal(new Set(keys).size, 3);
+test("every fixed desktop menu is available without lazy imports or page eviction", () => {
+  const root = path.resolve(import.meta.dirname, "../core/app/src");
+  const catalog = fs.readFileSync(path.join(root, "components/desktop-cache/page-catalog.ts"), "utf8");
+  const cache = fs.readFileSync(path.join(root, "components/desktop-cache/desktop-page-cache.tsx"), "utf8");
+  for (const route of ["/app", "/app/settings/memory", "/app/workers/schedules", "/app/setup", "/app/calendar", "/app/skills"]) assert.ok(catalog.includes(`"${route}":`));
+  assert.doesNotMatch(catalog, /import\s*\(/, "menu code must arrive with the application, not on click");
+  assert.doesNotMatch(cache, /\blazy\b|\bSuspense\b|visitPage|\.slice\(/);
+  assert.match(cache, /Object\.keys\(desktopPages\)\.map/);
+  const shell = fs.readFileSync(path.join(root, "components/app-shell.tsx"), "utf8");
+  assert.match(shell, /<div className=\{`desktop-v72[^\n]+onClickCapture=\{navigateDesktopMenu\}/);
 });
 
 test("background refresh keeps last good data and clears stale state after recovery", async (t) => {

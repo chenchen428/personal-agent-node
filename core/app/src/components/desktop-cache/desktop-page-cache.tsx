@@ -1,9 +1,9 @@
 "use client";
 
-import { Activity, lazy, Suspense, useEffect, useMemo, useRef, useState, type MouseEvent, type ReactNode } from "react";
+import { Activity, useEffect, useRef, useState, type MouseEvent, type ReactNode } from "react";
 import { usePathname } from "next/navigation";
-import { cacheStatusForRoute, CACHE_STATUS_EVENT, clientResourceCache, refreshVisiblePage, visitPage } from "@/lib/client-resource-cache";
-import { desktopPageLoaders, isCachedDesktopPath } from "./page-catalog";
+import { cacheStatusForRoute, CACHE_STATUS_EVENT, clientResourceCache, refreshVisiblePage } from "@/lib/client-resource-cache";
+import { desktopPages, isCachedDesktopPath } from "./page-catalog";
 import { PageRecoveryBoundary } from "./recovery-panel";
 import "./desktop-cache.css";
 
@@ -14,15 +14,14 @@ export function navigateDesktopMenu(event: MouseEvent<HTMLElement>) {
   const target = new URL(link.href, window.location.href);
   if (target.origin !== window.location.origin || !isCachedDesktopPath(target.pathname)) return;
   event.preventDefault();
+  if (target.href === window.location.href) return;
   window.history.pushState(null, "", target.pathname + target.search + target.hash);
 }
 
 export function DesktopPageCache({ pathname, children }: { pathname: string; children: ReactNode }) {
   const cached = isCachedDesktopPath(pathname);
-  const [state, setState] = useState(() => ({ active: pathname, keys: cached ? [pathname] : [] }));
-  if (state.active !== pathname) setState({ active: pathname, keys: cached ? visitPage(state.keys, pathname) : state.keys });
   return <div className="cove-desktop-pages">
-    {state.keys.map((key) => <Activity key={key} mode={key === pathname ? "visible" : "hidden"}>
+    {Object.keys(desktopPages).map((key) => <Activity key={key} mode={key === pathname ? "visible" : "hidden"}>
       <CachedPage path={key} />
     </Activity>)}
     {!cached ? <div className="cove-cached-page">{children}</div> : null}
@@ -31,14 +30,13 @@ export function DesktopPageCache({ pathname, children }: { pathname: string; chi
 
 function CachedPage({ path }: { path: string }) {
   const [revision, setRevision] = useState(0);
-  // Recreate the lazy wrapper on retry so a rejected chunk can be requested again.
-  const Page = useMemo(() => lazy(desktopPageLoaders[path]), [path, revision]);
+  const Page = desktopPages[path];
   const scroller = useRef<HTMLDivElement>(null);
   const position = useRef(0);
   useEffect(() => { if (scroller.current) scroller.current.scrollTop = position.current; }, []);
   return <div ref={scroller} className="cove-cached-page" onScroll={(event) => { position.current = event.currentTarget.scrollTop; }}>
     <PageRecoveryBoundary key={revision} onRetry={() => { clientResourceCache.forgetRoute(path); setRevision((value) => value + 1); }}>
-      <Suspense fallback={<div className="cove-first-load" role="status">正在打开页面…</div>}><Page /></Suspense>
+      <Page />
     </PageRecoveryBoundary>
   </div>;
 }

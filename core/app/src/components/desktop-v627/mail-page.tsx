@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { getPrefetchError, readPrefetched } from "@/lib/desktop-prefetch";
 import { FileText, Mail, Search } from "lucide-react";
 import type { MailView } from "./types";
 import { errorMessage, fetchJson, formatBytes, formatDateTime, relativeTime } from "./shared";
@@ -10,12 +11,12 @@ import { useSearchParams } from "next/navigation";
 
 export function MailPage() {
   const searchParams = useSearchParams();
-  const [view, setView] = useState<MailView | null>(null);
-  const [selectedId, setSelectedId] = useState("");
+  const [view, setView] = useState<MailView | null>(() => readPrefetched<MailView>("/api/app/mail/messages"));
+  const [selectedId, setSelectedId] = useState(() => view?.selectedEvent?.id || "");
   const [query, setQuery] = useState("");
-  const [recipient, setRecipient] = useState("agent@你的域名");
-  const [error, setError] = useState("");
-  const [listLoading, setListLoading] = useState(true);
+  const [recipient, setRecipient] = useState(() => readPrefetched<{ status: { suggestedRecipients?: string[] } }>("/api/system/mail/status")?.status?.suggestedRecipients?.[0] || "agent@你的域名");
+  const [error, setError] = useState(() => getPrefetchError("/api/app/mail/messages"));
+  const [listLoading, setListLoading] = useState(!view && !error);
   const [detailLoading, setDetailLoading] = useState(false);
   const requestRef = useRef(0);
   const selectedRef = useRef(selectedId); selectedRef.current = selectedId;
@@ -26,7 +27,7 @@ export function MailPage() {
     const request = ++requestRef.current;
     pending.current?.abort(); const controller = new AbortController(); pending.current = controller;
     if (detail) setDetailLoading(true);
-    else setListLoading(!viewRef.current);
+    else setListLoading(!viewRef.current && !getPrefetchError("/api/app/mail/messages"));
     try {
       const mail = await fetchJson<MailView>(`/api/app/mail/messages${id ? `?message=${encodeURIComponent(id)}` : ""}`, { signal: controller.signal });
       if (request !== requestRef.current) return;

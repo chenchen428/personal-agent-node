@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { getPrefetchError, readPrefetched } from "@/lib/desktop-prefetch";
 import { usePageRefresh } from "@/lib/use-client-resource";
 import { fetchJson } from "./shared";
 import type { Session } from "./types";
@@ -10,28 +11,32 @@ export function isWorkerRunning(status = "") {
 }
 
 export function useWorkerSessions(initialSessionId?: string | null) {
-  const [sessions, setSessions] = useState<Session[]>([]);
-  const [selected, setSelected] = useState<Session | null>(null);
-  const [selectedId, setSelectedId] = useState(initialSessionId || "");
-  const [loading, setLoading] = useState(true);
+  const [initial] = useState(() => readPrefetched<{ sessions: Session[] }>("/api/chat/sessions?limit=50"));
+  const [sessions, setSessions] = useState<Session[]>(() => (initial?.sessions || []).filter((item) => item.role === "worker"));
+  const firstId = initialSessionId || sessions[0]?.id || "";
+  const [selected, setSelected] = useState<Session | null>(() => firstId ? readPrefetched<{ session: Session }>(`/api/chat/sessions/${encodeURIComponent(firstId)}`)?.session ?? null : null);
+  const [selectedId, setSelectedId] = useState(firstId);
+  const [loading, setLoading] = useState(() => !initial && !getPrefetchError("/api/chat/sessions?limit=50"));
   const [detailLoading, setDetailLoading] = useState(false);
   const [resumeLoading, setResumeLoading] = useState(false);
-  const [error, setError] = useState("");
-  const selectedIdRef = useRef(initialSessionId || "");
+  const [error, setError] = useState(() => getPrefetchError("/api/chat/sessions?limit=50") || (firstId ? getPrefetchError(`/api/chat/sessions/${encodeURIComponent(firstId)}`) : ""));
+  const selectedIdRef = useRef(firstId);
   const requests = useRef(new Map<string, AbortController>());
 
   const select = useCallback(async (sessionId: string, { background = false }: { background?: boolean } = {}) => {
     selectedIdRef.current = sessionId;
     setSelectedId(sessionId);
     requests.current.get("detail")?.abort(); const controller = new AbortController(); requests.current.set("detail", controller);
-    if (!background) setDetailLoading(true);
+    const cached = readPrefetched<{ session: Session }>(`/api/chat/sessions/${encodeURIComponent(sessionId)}`)?.session;
+    if (cached) setSelected(cached);
+    if (!background) setDetailLoading(!cached);
     try {
       const detail = (await fetchJson<{ session: Session }>(`/api/chat/sessions/${encodeURIComponent(sessionId)}`, { signal: controller.signal })).session;
       if (selectedIdRef.current === sessionId) setSelected(detail);
       setError("");
     } catch (cause) {
       if (controller.signal.aborted) return;
-      if (!background && selectedIdRef.current === sessionId) setSelected(null);
+      if (!background && !cached && selectedIdRef.current === sessionId) setSelected(null);
       setError(cause instanceof Error ? cause.message : "暂时无法读取任务");
     } finally {
       if (!background && selectedIdRef.current === sessionId) setDetailLoading(false);

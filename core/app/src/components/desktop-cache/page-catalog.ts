@@ -1,20 +1,39 @@
 import type { ComponentType } from "react";
+import { OverviewPage } from "../desktop-v627/overview-page";
+import { ConversationPage } from "../desktop-v627/conversation-page";
+import { ConnectionsPage } from "../desktop-v627/connections-page";
+import { WorkersPage } from "../desktop-v627/workers-page";
+import { ScheduledTasksPage } from "../desktop-v627/scheduled-tasks-page";
+import { MailPage } from "../desktop-v627/mail-page";
+import { DataPage } from "../desktop-v627/data-page";
+import { PagesPage } from "../desktop-v627/pages-page";
+import { CalendarPage } from "../desktop-v627/calendar-page";
+import { TokenUsagePage } from "../desktop-v627/token-usage-page";
+import { RuntimePage } from "../desktop-v627/runtime-page";
+import { SettingsPage } from "../desktop-v627/settings-page";
+import { MemoryPage } from "../desktop-v627/memory-page";
+import { SkillsPage } from "../desktop-v627/skills-page";
+import { UpdatePage } from "../desktop-v627/update-page";
+import { SetupPage } from "../desktop-v627/setup-page";
 
-// Only product-owned client pages belong here. Server detail routes remain owned by Next.
-export const desktopPageLoaders: Record<string, () => Promise<{ default: ComponentType }>> = {
-  "/app": () => import("../desktop-v627/overview-page").then((module) => ({ default: module.OverviewPage })),
-  "/app/conversations": () => import("../desktop-v627/conversation-page").then((module) => ({ default: module.ConversationPage })),
-  "/app/connections": () => import("../desktop-v627/connections-page").then((module) => ({ default: module.ConnectionsPage })),
-  "/app/workers": () => import("../desktop-v627/workers-page").then((module) => ({ default: module.WorkersPage })),
-  "/app/mail": () => import("../desktop-v627/mail-page").then((module) => ({ default: module.MailPage })),
-  "/app/data": () => import("../desktop-v627/data-page").then((module) => ({ default: module.DataPage })),
-  "/app/pages": () => import("../desktop-v627/pages-page").then((module) => ({ default: module.PagesPage })),
-  "/app/calendar": () => import("../desktop-v627/calendar-page").then((module) => ({ default: module.CalendarPage })),
-  "/app/statistics/token-usage": () => import("../desktop-v627/token-usage-page").then((module) => ({ default: module.TokenUsagePage })),
-  "/app/runtime": () => import("../desktop-v627/runtime-page").then((module) => ({ default: module.RuntimePage })),
-  "/app/settings": () => import("../desktop-v627/settings-page").then((module) => ({ default: module.SettingsPage })),
-  "/app/skills": () => import("../desktop-v627/skills-page").then((module) => ({ default: module.SkillsPage })),
-  "/app/update": () => import("../desktop-v627/update-page").then((module) => ({ default: module.UpdatePage })),
+// The finite desktop menu is loaded with the application, never on a menu click.
+export const desktopPages: Record<string, ComponentType> = {
+  "/app": OverviewPage,
+  "/app/conversations": ConversationPage,
+  "/app/connections": ConnectionsPage,
+  "/app/workers": WorkersPage,
+  "/app/workers/schedules": ScheduledTasksPage,
+  "/app/mail": MailPage,
+  "/app/data": DataPage,
+  "/app/pages": PagesPage,
+  "/app/calendar": CalendarPage,
+  "/app/statistics/token-usage": TokenUsagePage,
+  "/app/runtime": RuntimePage,
+  "/app/settings": SettingsPage,
+  "/app/settings/memory": MemoryPage,
+  "/app/skills": SkillsPage,
+  "/app/update": UpdatePage,
+  "/app/setup": SetupPage,
 };
 
-export function isCachedDesktopPath(pathname: string) { return Object.hasOwn(desktopPageLoaders, pathname); }
+export function isCachedDesktopPath(pathname: string) { return Object.hasOwn(desktopPages, pathname); }
