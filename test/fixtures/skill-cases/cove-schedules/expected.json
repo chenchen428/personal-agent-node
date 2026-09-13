@@ -22,6 +22,10 @@
     "sendsParticipantMessages": false,
     "fixedPosterTemplate": true,
     "allItemsIncluded": true,
-    "missingMobileLinkFails": true
+    "missingMobileLinkFails": true,
+    "upcomingHasNoDefaultEnd": true,
+    "nextEntryExcludesDoneAndCancelled": true,
+    "ongoingIsSeparateFromNext": true,
+    "nextDateTimeTextBeforePoster": true
   }
 }

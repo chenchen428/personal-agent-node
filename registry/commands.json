@@ -102,7 +102,7 @@
       "risk": "R1",
       "capability": "runtime",
       "implementationStatus": "implemented",
-      "description": "Clone or reuse the registered private Personal Agent workspace under the user Agent workspace for autonomous Cloud and Node product development."
+      "description": "准备注册私有研发仓库；可用 --checkout-source 校验并绑定既有完整根仓库，网络失败有限恢复并返回脱敏诊断，不覆盖现有入口或未提交改动。"
     },
     {
       "name": "space list|show",

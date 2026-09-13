@@ -31,7 +31,7 @@ try {
   process.stdout.write(`${JSON.stringify({ schemaVersion: 1, ok: true, ...response })}\n`);
 } catch (error) {
   const exitCode = Number(error.exitCode || 7);
-  process.stderr.write(`${JSON.stringify({ schemaVersion: 1, ok: false, error: { code: error.code || 'DEPENDENCY_UNAVAILABLE', message: error.message || 'Command failed', retryable: exitCode === 7 }, nextActions: error.nextActions || [] })}\n`);
+  process.stderr.write(`${JSON.stringify({ schemaVersion: 1, ok: false, error: { code: error.code || 'DEPENDENCY_UNAVAILABLE', message: error.message || 'Command failed', retryable: error.retryable ?? exitCode === 7, ...(error.diagnostic ? { diagnostic: error.diagnostic } : {}) }, nextActions: error.nextActions || [] })}\n`);
   process.exitCode = exitCode;
 }
 
@@ -63,7 +63,7 @@ async function executeHandled({ resource, action, id, args, requestedCommand }) 
   if (resource === 'skill' && action === 'inspect') return skillInspect(id);
   if (resource === 'skill' && action === 'verify') return skillVerify(id);
   if (resource === 'development' && action === 'status') return developmentStatus();
-  if (resource === 'development' && action === 'ensure') return developmentEnsure();
+  if (resource === 'development' && action === 'ensure') return developmentEnsure(args);
   if (resource === 'space' && action === 'list') return spaceList();
   if (resource === 'space' && action === 'show') return spaceShow(id);
   if (resource === 'space' && action === 'create') return spaceCreate(args);
@@ -189,9 +189,9 @@ function developmentStatus() {
   return success('development status', productDevelopmentStatus({ config, contract: readProductDevelopmentContract() }));
 }
 
-function developmentEnsure() {
+function developmentEnsure(args) {
   const config = requireConfig();
-  return success('development ensure', ensureProductDevelopment({ config, contract: readProductDevelopmentContract() }), [], [
+  return success('development ensure', ensureProductDevelopment({ config, contract: readProductDevelopmentContract(), checkoutSource: args.checkoutSource }), [], [
     'Start the product-development task with pa-cli session start --workspace <checkoutPath>',
   ]);
 }
@@ -492,12 +492,12 @@ function commandHelp(command, descriptor) {
   if (command.startsWith('development ')) {
     return {
       name: command,
-      usage: `personal-agent ${command} [--data-root <path>] --json`,
+      usage: `personal-agent ${command}${command === 'development ensure' ? ' [--checkout-source <absolute-path>]' : ''} [--data-root <path>] --json`,
       risk: descriptor.risk,
       capability: descriptor.capability,
       implementationStatus: descriptor.implementationStatus,
       description: descriptor.description,
-      options: commonOptions,
+      options: [...commonOptions, ...(command === 'development ensure' ? [{ name: '--checkout-source', type: 'string', required: false, secret: false, description: '验证并绑定现有完整私有根仓库；保留源目录与未提交改动，不重复克隆。' }] : [])],
       authorization: {
         method: 'existing-github-cli-session',
         userActionRequired: false,
@@ -630,6 +630,7 @@ function parseArgs(argv) {
     else if (value === '--preview') result.preview = true;
     else if (value === '--all') result.all = true;
     else if (value === '--data-root') result.dataRoot = argv[++index];
+    else if (value === '--checkout-source') result.checkoutSource = argv[++index];
     else if (value === '--space') result.space = argv[++index];
     else if (value === '--slug') result.slug = argv[++index];
     else if (value === '--name') result.name = argv[++index];

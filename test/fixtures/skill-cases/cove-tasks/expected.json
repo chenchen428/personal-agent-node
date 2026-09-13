@@ -11,6 +11,12 @@
     "taskFileSupported": true,
     "metadataUpdateSupported": true,
     "exactPausedTaskResumeSupported": true,
+    "completionReconcilesFullUserGoal": true,
+    "authorizedRemainingWorkContinues": true,
+    "mainAgentCompletesPosterAndChatDelivery": true,
+    "realBlockersDoNotCauseUnchangedRetries": true,
+    "mixedStatusRequestsPreserveActionIntent": true,
+    "idleStateAloneDoesNotProveDelivery": true,
     "artifactInformation": {
       "livesInFinalChatReply": true,
       "completionEventRemainsDomainNeutral": true,

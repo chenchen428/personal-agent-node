@@ -4,6 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import test from "node:test";
 import { ensureProductDevelopment, productDevelopmentStatus } from "../src/product-development.ts";
+import { classifyDevelopmentFailure, developmentCommandError } from "../src/product-development-errors.ts";
 
 const contract = {
   schemaVersion: 1,
@@ -84,6 +85,105 @@ test("product development removes only its temporary checkout when cloning fails
   }
 });
 
+test("transfer diagnostics never expose raw credentials and network recovery is bounded", (t) => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "pa-product-recovery-"));
+  t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+  const config = testConfig(root);
+  const base = fakeRunner();
+  const cloneCalls = [];
+  const run = (command, args, options) => {
+    if (command === "gh" && args[1] === "clone") {
+      cloneCalls.push(options);
+      return { status: 1, stderr: "RPC failed for https://private-token@github.com/repo Authorization: Bearer hidden-value" };
+    }
+    return base(command, args, options);
+  };
+  assert.throws(() => ensureProductDevelopment({ config, contract, run }), (error) => {
+    assert.equal(error.code, "CLONE_FAILED");
+    assert.deepEqual(error.diagnostic, { category: "network", attempts: 2, automaticRecoveryExhausted: true });
+    assert.equal(error.retryable, true);
+    assert.ok(error.nextActions.length);
+    assert.doesNotMatch(JSON.stringify(error) + error.message, /private-token|hidden-value|Authorization|https:/);
+    return true;
+  });
+  assert.equal(cloneCalls.length, 2);
+  assert.equal(cloneCalls[0].timeout, 600_000);
+  assert.equal(cloneCalls[0].env.GIT_CONFIG_VALUE_0, "true");
+  assert.equal(cloneCalls[1].env.GIT_CONFIG_VALUE_1, "HTTP/1.1");
+  for (const [stderr, category] of [["SSL certificate problem", "certificate"], ["Authentication failed", "authentication"], ["Filename too long", "long_path"], ["No space left on device", "disk"], ["Permission denied", "filesystem"], ["unrecognized", "unknown"]]) {
+    const error = developmentCommandError("CLONE_FAILED", { stderr });
+    assert.equal(error.diagnostic.category, category);
+    assert.equal(error.retryable, false);
+  }
+  assert.equal(classifyDevelopmentFailure({ error: { code: "ETIMEDOUT" } }), "timeout");
+});
+
+test("transient clone failure recovers once without disabling certificate checks", (t) => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "pa-product-recovered-"));
+  t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+  const config = testConfig(root);
+  const base = fakeRunner();
+  let attempts = 0;
+  const run = (command, args, options) => {
+    if (command === "gh" && args[1] === "clone" && ++attempts === 1) {
+      fs.mkdirSync(args[3], { recursive: true });
+      return { status: 1, stderr: "Connection reset" };
+    }
+    assert.notEqual(options?.env?.GIT_SSL_NO_VERIFY, "true");
+    return base(command, args, options);
+  };
+  assert.equal(ensureProductDevelopment({ config, contract, run }).ready, true);
+  assert.equal(attempts, 2);
+});
+
+test("explicit existing checkout binding preserves source and refuses rebinding and invalid origins", (t) => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "pa-product-source-"));
+  const config = testConfig(root);
+  const source = path.join(root, "existing");
+  seedCheckout(source);
+  fs.writeFileSync(path.join(source, "unfinished.txt"), "keep current work");
+  const calls = [];
+  const base = fakeRunner({ calls });
+  const run = (command, args, options) => args.includes("status") && !args.includes("submodule") && command === "git"
+    ? result(0, "?? unfinished.txt\n") : base(command, args, options);
+  // Remove the test junction with unlink, never recursively traverse its source.
+  t.after(() => { const link = path.join(config.agentWorkspaceRoot, "projects", "personal-agent"); if (fs.lstatSync(link, { throwIfNoEntry: false })?.isSymbolicLink()) fs.unlinkSync(link); fs.rmSync(root, { recursive: true, force: true }); });
+  const bound = ensureProductDevelopment({ config, contract, run, checkoutSource: source });
+  assert.equal(bound.boundExisting, true);
+  assert.equal(bound.checkout.dirty, true);
+  assert.equal(fs.realpathSync(bound.checkoutPath), fs.realpathSync(source));
+  assert.equal(ensureProductDevelopment({ config, contract, run, checkoutSource: source }).reused, true);
+  assert.equal(ensureProductDevelopment({ config, contract, run }).ready, true);
+  assert.equal(calls.some(({ args }) => args.includes("clone") || args.includes("update")), false);
+  assert.equal(fs.readFileSync(path.join(source, "unfinished.txt"), "utf8"), "keep current work");
+  const other = path.join(root, "other"); seedCheckout(other);
+  assert.throws(() => ensureProductDevelopment({ config, contract, run, checkoutSource: other }), { code: "CHECKOUT_CONFLICT" });
+  const wrongOrigin = (command, args, options) => args.includes("get-url") ? result(0, "https://github.com/other/wrong.git") : run(command, args, options);
+  assert.throws(() => ensureProductDevelopment({ config, contract, run: wrongOrigin, checkoutSource: source }), { code: "CHECKOUT_SOURCE_INVALID" });
+  assert.throws(() => ensureProductDevelopment({ config, contract, run: fakeRunner({ permission: "READ" }), checkoutSource: source }), { code: "GITHUB_PERMISSION_REQUIRED" });
+  const unpinned = (command, args, options) => args.includes("submodule") && args.includes("status") ? result(0, `+${"a".repeat(40)} projects/personal-agent-node`) : run(command, args, options);
+  assert.throws(() => ensureProductDevelopment({ config, contract, run: unpinned, checkoutSource: source }), { code: "SUBMODULE_FAILED" });
+});
+
+test("checkout source rejects immutable paths, nested roots and flattened repository boundaries", (t) => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "pa-product-source-boundary-"));
+  t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+  const config = testConfig(root);
+  const run = fakeRunner();
+  const immutable = path.join(root, "core", "current"); seedCheckout(immutable);
+  assert.throws(() => ensureProductDevelopment({ config, contract, run, checkoutSource: immutable }), { code: "CHECKOUT_SOURCE_INVALID" });
+  const source = path.join(root, "source"); seedCheckout(source);
+  const nested = (command, args, options) => args.includes("--show-toplevel") ? result(0, root) : run(command, args, options);
+  assert.throws(() => ensureProductDevelopment({ config, contract, run: nested, checkoutSource: source }), { code: "CHECKOUT_SOURCE_INVALID" });
+  fs.mkdirSync(path.join(source, "projects", "cloud", ".git"));
+  assert.throws(() => ensureProductDevelopment({ config, contract, run, checkoutSource: source }), { code: "CHECKOUT_SOURCE_INVALID" });
+  fs.rmdirSync(path.join(source, "projects", "cloud", ".git"));
+  fs.unlinkSync(path.join(source, "projects", "personal-agent-node", ".git"));
+  fs.mkdirSync(path.join(source, "projects", "personal-agent-node", ".git"));
+  assert.throws(() => ensureProductDevelopment({ config, contract, run, checkoutSource: source }), { code: "CHECKOUT_SOURCE_INVALID" });
+  assert.equal(fs.existsSync(path.join(config.agentWorkspaceRoot, "projects", "personal-agent")), false);
+});
+
 function testConfig(root) {
   const dataRoot = path.join(root, "space");
   const agentWorkspaceRoot = path.join(dataRoot, "agent-workspace");
@@ -112,8 +212,11 @@ function fakeRunner({ calls = [], permission = "WRITE", cloneFails = false } = {
       seedCheckout(target);
       return result(0, "cloned");
     }
+    if (command === "git" && args.includes("--show-toplevel")) return result(0, `${args[1]}\n`);
     if (command === "git" && args.includes("rev-parse")) return result(0, "true\n");
-    if (command === "git" && args.includes("get-url")) return result(0, "https://github.com/chenchen428/personal-agent.git\n");
+    if (command === "git" && args.includes("get-url")) return result(0, `https://github.com/chenchen428/${args[1].endsWith(`${path.sep}projects${path.sep}personal-agent-node`) ? "personal-agent-node" : "personal-agent"}.git\n`);
+    if (command === "git" && args.includes("ls-files")) return result(0, `160000 ${"a".repeat(40)} 0\tprojects/personal-agent-node\n`);
+    if (command === "git" && args.includes(".gitmodules")) return result(0, "https://github.com/chenchen428/personal-agent-node.git\n");
     if (command === "git" && args.includes("status")) return result(0, "");
     if (command === "git" && args.includes("submodule")) return result(0, "");
     return result(1, "", "unexpected command");
@@ -126,6 +229,7 @@ function seedCheckout(target) {
   }
   fs.writeFileSync(path.join(target, "AGENTS.md"), "# Personal Agent Workspace\n");
   fs.writeFileSync(path.join(target, "registry", "projects.json"), "{}\n");
+  fs.writeFileSync(path.join(target, "projects", "personal-agent-node", ".git"), "gitdir: ../../.git/modules/projects/personal-agent-node\n");
 }
 
 function result(status, stdout = "", stderr = "") {

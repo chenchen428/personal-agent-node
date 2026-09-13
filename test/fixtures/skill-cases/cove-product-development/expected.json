@@ -1,1 +1,1 @@
-{"schemaVersion":1,"privateRootRequired":true,"recursiveSubmodulesRequired":true,"immutableCurrentEdited":false,"appSubstitutionAllowed":false,"standingAuthorizationScoped":true}
+{"schemaVersion":1,"privateRootRequired":true,"recursiveSubmodulesRequired":true,"immutableCurrentEdited":false,"appSubstitutionAllowed":false,"standingAuthorizationScoped":true,"validatedExistingCheckoutBinding":true,"sourceChangesPreserved":true,"conflictingBindingRejected":true,"redactedFailureClassification":true,"networkRecoveryMaximumAttempts":2,"unchangedFailureLoopsForbidden":true}

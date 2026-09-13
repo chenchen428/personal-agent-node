@@ -23,6 +23,9 @@ test('personal-agent exposes machine-readable help and capability discovery', ()
   assert.ok(defaultHelp.result.commands.every((entry) => typeof entry.description === 'string' && entry.description.length > 0));
   assert.ok(defaultHelp.result.commands.some((entry) => entry.name === 'development status'));
   assert.ok(defaultHelp.result.commands.some((entry) => entry.name === 'development ensure'));
+  const developmentHelp = JSON.parse(runOk(['development', 'ensure', '--help', '--json']).stdout);
+  assert.ok(developmentHelp.result.command.options.some((entry) => entry.name === '--checkout-source'));
+  assert.match(developmentHelp.result.command.usage, /--checkout-source <absolute-path>/);
 
   const previewHelp = JSON.parse(runOk(['help', '--preview', '--json']).stdout);
   assert.equal(previewHelp.result.visibility, 'preview');

@@ -41,6 +41,10 @@ test("real Calendar HTTP API authenticates readers and rejects browser writes, S
   assert.equal((await fetch(`${base}/api/calendar`, { redirect: "manual" })).status, 401);
   const list = await (await fetch(`${base}/api/calendar?limit=1`, { headers })).json();
   assert.equal(list.total, 1); assert.equal(list.items[0].id, entry.id); assert.equal(list.hasMore, false);
+  const upcoming = await (await fetch(`${base}/api/calendar?view=upcoming&from=2026-08-01T00:00:00Z&limit=1`, { headers })).json();
+  assert.equal(upcoming.nextEntry.id, entry.id);
+  assert.equal(upcoming.ongoingEntry, null);
+  assert.equal((await fetch(`${base}/api/calendar?view=upcoming&spaceId=another-space`, { headers })).status, 400);
   assert.equal((await (await fetch(`${base}/api/calendar/${entry.id}`, { headers })).json()).entry.title, entry.title);
   assert.equal((await (await fetch(`${base}/api/calendar/${entry.id}/history`, { headers })).json()).total, 1);
   assert.equal((await fetch(`${base}/api/calendar/cal_missing`, { headers })).status, 404);

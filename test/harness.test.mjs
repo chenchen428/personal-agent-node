@@ -54,7 +54,7 @@ test('installed product development is autonomous, private-root-only, and never 
   assert.equal(contract.immutableRuntimePath, 'core/current');
   assert.notEqual(contract.checkout.relativePath, contract.immutableRuntimePath);
   const workflow = fs.readFileSync(path.join(root, 'workflows/product-development.md'), 'utf8');
-  for (const requirement of ['development ensure', 'private root', 'core/current', 'terminal', 'standing authority', 'self-iteration']) assert.match(workflow, new RegExp(requirement, 'i'));
+  for (const requirement of ['development ensure', '--checkout-source', '私有根', 'core/current', '恢复耗尽', '持续授权', '用户工作区演进']) assert.match(workflow, new RegExp(requirement, 'i'));
 });
 
 test('customer Harness ships exactly thirteen Cove skills and preserves legacy evidence separately', () => {

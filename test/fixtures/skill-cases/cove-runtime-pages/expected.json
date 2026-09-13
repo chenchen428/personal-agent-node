@@ -1,5 +1,12 @@
 {
   "schemaVersion": 1,
+  "posterRecovery": {
+    "structuredSafeError": ["ok", "code", "error", "recovery"],
+    "diagnoseBeforeRetry": true,
+    "preserveAvailableResult": true,
+    "noInternalManifestOrDatabaseEdits": true,
+    "originalAuthorizationCoversInScopeLocalRepair": true
+  },
   "mobileContract": {
     "representativeCssWidths": [360, 430],
     "desktopScaleOnly": false,

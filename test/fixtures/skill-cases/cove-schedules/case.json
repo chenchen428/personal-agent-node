@@ -2,10 +2,11 @@
   "schemaVersion": 1,
   "skill": "cove-schedules",
   "title": "分别记录日程与创建明确要求的提醒",
-  "prompt": "记录2026-09-20 14:00 Asia/Shanghai 与张三讨论项目的日程，并追加一次跟进；日程记录不得隐式创建cron或发送消息。用户另行明确要求每日21:00提醒复盘时才创建定时计划。两者分别核对持久化结果。",
+  "prompt": "记录2026-09-20 14:00 Asia/Shanghai 与张三讨论项目的日程，并追加一次跟进；日程记录不得隐式创建cron或发送消息。用户问下一次安排时即使未来7天为空也必须实际查询不限上界的后续安排，先文字给出下一次完整日期、时间、时区和事项，进行中的事项另外说明，再按需要返回海报。用户另行明确要求每日21:00提醒复盘时才创建定时计划。两者分别核对持久化结果。",
   "commands": [
     "pa-cli calendar create --title \"项目讨论\" --participants-json '[\"张三\"]' --start-at 2026-09-20T14:00:00+08:00 --time-zone Asia/Shanghai --capability <ephemeral> --json",
     "pa-cli calendar list --capability <ephemeral> --json",
+    "pa-cli calendar list --view upcoming --limit 1 --capability <ephemeral> --json",
     "personal-agent capabilities inspect schedules --json",
     "pa-cli cron create --name \"每日叶酸提醒\" --cron \"0 21 * * *\" --timezone Asia/Shanghai --prompt \"提醒用户吃叶酸。\" --json",
     "pa-cli cron list --json"

@@ -2,6 +2,7 @@ import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import { calendarError } from "../calendar/validation.js";
+import { posterFailure } from "./diagnostics.js";
 
 // Public Page content stays in its existing owner. Poster bindings are private
 // metadata; publishing a poster never rewrites the public Page's source files.
@@ -25,15 +26,17 @@ export class PublicPagePosterStore {
       }
     };
     visit(this.uploadsRoot);
-    if (matches.length !== 1) throw calendarError(404, "POSTER_PAGE_NOT_FOUND", "当前空间没有可唯一定位的发布页");
+    if (matches.length !== 1) throw posterFailure(null, matches.length ? "POSTER_PAGE_ENTRY_AMBIGUOUS" : "POSTER_PAGE_NOT_FOUND");
     const { directory, manifest } = matches[0];
+    if (!manifest.entryFile) throw posterFailure(null, "POSTER_PAGE_ENTRY_MISSING");
     const names = new Set([manifest.entryFile, ...(manifest.assets || []).map((item) => item.fileName), ...Object.values(manifest.thumbnails || {}).map((item) => item.fileName)]);
     const files = [...names].sort().map((name) => {
-      if (typeof name !== "string" || !name || name.includes("\\") || name.split("/").some((part) => !part || part === "." || part === "..")) throw calendarError(409, "POSTER_PAGE_NOT_FOUND", "发布页资产引用无效");
+      if (typeof name !== "string" || !name || name.includes("\\") || name.split("/").some((part) => !part || part === "." || part === "..")) throw posterFailure(null, "POSTER_PAGE_ASSET_INVALID");
       const target = path.resolve(directory, name);
-      if (!target.startsWith(`${directory}${path.sep}`) || !fs.realpathSync(target).startsWith(`${fs.realpathSync(directory)}${path.sep}`)) throw calendarError(409, "POSTER_PAGE_NOT_FOUND", "发布页资产超出范围");
+      if (!fs.existsSync(target)) throw posterFailure(null, "POSTER_PAGE_ASSET_MISSING");
+      if (!target.startsWith(`${directory}${path.sep}`) || !fs.realpathSync(target).startsWith(`${fs.realpathSync(directory)}${path.sep}`)) throw posterFailure(null, "POSTER_PAGE_ASSET_INVALID");
       const stat = fs.lstatSync(target);
-      if (!stat.isFile() || stat.isSymbolicLink() || stat.size > 25 * 1024 * 1024) throw calendarError(409, "POSTER_PAGE_NOT_FOUND", "发布页资产无效");
+      if (!stat.isFile() || stat.isSymbolicLink() || stat.size > 25 * 1024 * 1024) throw posterFailure(null, "POSTER_PAGE_ASSET_INVALID");
       return { name, sha256: crypto.createHash("sha256").update(fs.readFileSync(target)).digest("hex") };
     });
     return crypto.createHash("sha256").update(JSON.stringify({ manifest, files })).digest("hex");

@@ -5,6 +5,7 @@ import { buildManagedPageAccess } from "../server/managed-links.js";
 import { calendarError, objectFields } from "../calendar/validation.js";
 import { renderCalendarPosters, renderPagePoster, posterManagedMetadata } from "./index.js";
 import { validatePosterTarget } from "./qr.js";
+import { posterFailure } from "./diagnostics.js";
 
 export class PosterService {
   constructor({ calendarStore, privatePublications, publicPagePosters, managedFiles, outputRoot, spaceId, externalAccess, renderCalendar = renderCalendarPosters, renderPage = renderPagePoster, now = Date.now } = {}) {
@@ -60,27 +61,44 @@ export class PosterService {
     const privatePage = input.pageId.startsWith("private-");
     const pageStore = privatePage ? this.privatePublications : this.publicPagePosters;
     const publicationId = privatePage ? input.pageId.slice("private-".length) : input.pageId;
-    let pageVersion;
-    try { pageVersion = pageStore.pageVersion(publicationId); }
-    catch { throw calendarError(404, "POSTER_PAGE_NOT_FOUND", "当前空间没有该发布页"); }
-    const targetUrl = this.targetUrl(`/app/mobile/pages/${encodeURIComponent(input.pageId)}`);
+    const readVersion = () => {
+      try { return pageStore.pageVersion(publicationId); }
+      catch (error) { throw posterFailure(error); }
+    };
+    const pageVersion = readVersion();
+    let targetUrl;
+    try { targetUrl = this.targetUrl(`/app/mobile/pages/${encodeURIComponent(input.pageId)}`); }
+    catch (error) { throw posterFailure(error, "POSTER_LINK_UNAVAILABLE"); }
     if (!/^obj_[a-f0-9]{24}$/.test(String(input.sourceObjectId || ""))) throw calendarError(400, "POSTER_SOURCE_REQUIRED", "请提供当前空间的受管图片 obj_ ID");
-    const source = this.managedFiles.stat(input.sourceObjectId);
+    let source;
+    try { source = this.managedFiles.stat(input.sourceObjectId); }
+    catch { throw posterFailure(null, "POSTER_SOURCE_NOT_READY"); }
+    if (source.status !== "ready") throw posterFailure(null, "POSTER_SOURCE_NOT_READY");
     if (source.status !== "ready" || (source.spaceId && source.spaceId !== this.spaceId) || !["image/png", "image/jpeg", "image/webp"].includes(source.contentType) || source.sizeBytes > 25 * 1024 * 1024) throw calendarError(403, "POSTER_SOURCE_DENIED", "底图必须是当前空间已就绪的 PNG、JPEG 或 WebP 图片");
-    const materialized = await this.managedFiles.materialize(input.sourceObjectId, { taskId: `poster-${publicationId}`, ttlDays: 1 });
+    let materialized;
+    try { materialized = await this.managedFiles.materialize(input.sourceObjectId, { taskId: `poster-${publicationId}`, ttlDays: 1 }); }
+    catch { throw posterFailure(null, "POSTER_SOURCE_NOT_READY"); }
     const assertCurrent = () => {
       authorize();
-      if (pageStore.pageVersion(publicationId) !== pageVersion) throw calendarError(409, "POSTER_PAGE_VERSION_CONFLICT", "发布页已变化，请重新生成海报");
+      if (readVersion() !== pageVersion) throw posterFailure(null, "POSTER_PAGE_VERSION_CONFLICT");
     };
     assertCurrent();
-    if (!materialized.verified || !materialized.localPath) throw calendarError(409, "POSTER_SOURCE_DENIED", "底图尚未通过完整性检查");
-    const image = fs.readFileSync(materialized.localPath);
-    if (image.length !== source.sizeBytes || crypto.createHash("sha256").update(image).digest("hex") !== source.sha256) throw calendarError(409, "POSTER_SOURCE_DENIED", "底图内容已变化，请重新登记后重试");
-    const rendered = await this.renderPage({ image, targetUrl, pageId: input.pageId, pageVersion, corner: input.corner });
+    if (!materialized.verified || !materialized.localPath) throw posterFailure(null, "POSTER_SOURCE_CHANGED");
+    let image;
+    try { image = fs.readFileSync(materialized.localPath); }
+    catch { throw posterFailure(null, "POSTER_SOURCE_NOT_READY"); }
+    if (image.length !== source.sizeBytes || crypto.createHash("sha256").update(image).digest("hex") !== source.sha256) throw posterFailure(null, "POSTER_SOURCE_CHANGED");
+    let rendered;
+    try { rendered = await this.renderPage({ image, targetUrl, pageId: input.pageId, pageVersion, corner: input.corner }); }
+    catch (error) { throw posterFailure(error, "POSTER_RENDER_FAILED"); }
     assertCurrent();
-    const images = await this.registerImages([rendered], assertCurrent);
+    let images;
+    try { images = await this.registerImages([rendered], assertCurrent); }
+    catch (error) { authorize(); throw posterFailure(error, "POSTER_REGISTRATION_FAILED"); }
     assertCurrent();
-    const binding = pageStore.bindPoster({ publicationId, pageVersion, ...images[0] });
+    let binding;
+    try { binding = pageStore.bindPoster({ publicationId, pageVersion, ...images[0] }); }
+    catch (error) { throw posterFailure(error); }
     return { action: "page-poster", data: { pageId: input.pageId, pageVersion, objectIds: images.map((item) => item.objectId), images, targetUrl, binding } };
   }
 

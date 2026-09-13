@@ -4,6 +4,7 @@ import path from "node:path";
 import { spawnSync } from "node:child_process";
 import { workspaceRoot } from "./config.ts";
 import { operationError } from "./operations.ts";
+import { classifyDevelopmentFailure, developmentCommandError, developmentCommandOptions } from "./product-development-errors.ts";
 
 const WRITABLE_PERMISSIONS = new Set(["WRITE", "MAINTAIN", "ADMIN"]);
 
@@ -55,16 +56,17 @@ export function productDevelopmentStatus({ config, contract = readProductDevelop
   });
 }
 
-export function ensureProductDevelopment({ config, contract = readProductDevelopmentContract(), run = spawnSync, now = () => new Date() } = {}) {
+export function ensureProductDevelopment({ config, contract = readProductDevelopmentContract(), run = spawnSync, now = () => new Date(), checkoutSource = "" } = {}) {
   const status = productDevelopmentStatus({ config, contract, run });
   if (!status.tools.git) throw operationError("GIT_UNAVAILABLE", "Git is required for Personal Agent product development", 7);
   if (!status.tools.gh) throw operationError("GH_UNAVAILABLE", "GitHub CLI is required for Personal Agent product development", 7);
-  if (!status.authenticated) throw operationError("GITHUB_AUTH_REQUIRED", "GitHub CLI is not authenticated", 5);
+  if (!status.authenticated) throw Object.assign(operationError("GITHUB_AUTH_REQUIRED", "GitHub CLI 尚未完成认证。", 5), { retryable: false, nextActions: status.nextActions });
   if (!status.repository) throw operationError(status.blocker || "GITHUB_REPOSITORY_UNAVAILABLE", "The registered private Personal Agent repository is unavailable", 5);
   if (!status.repository?.writable) throw operationError("GITHUB_PERMISSION_REQUIRED", "The active GitHub account does not have write access to the private Personal Agent repository", 5);
+  if (checkoutSource) return bindExistingCheckout({ config, contract, run, now, status, checkoutSource });
   if (status.checkout.exists) {
     if (!status.checkout.valid) throw operationError("CHECKOUT_CONFLICT", "The configured product development path is not the registered Personal Agent repository", 4);
-    requireCommand(run, "git", ["-C", status.checkoutPath, "submodule", "update", "--init", "--recursive"], "SUBMODULE_FAILED", "Personal Agent submodule initialization failed");
+    if (!status.checkout.dirty) requireCommand(run, "git", ["-C", status.checkoutPath, "submodule", "update", "--init", "--recursive"], "SUBMODULE_FAILED", "Personal Agent submodule initialization failed", { transfer: true });
     verifySubmodules(run, status.checkoutPath);
     verifyCheckoutFiles(status.checkoutPath);
     const bridge = ensureCodexSkillBridge(status.checkoutPath);
@@ -78,13 +80,17 @@ export function ensureProductDevelopment({ config, contract = readProductDevelop
   const temporary = path.join(parent, `.personal-agent-clone-${process.pid}-${crypto.randomUUID()}`);
   assertTemporaryPath(parent, temporary);
   try {
-    requireCommand(
-      run,
-      "gh",
-      ["repo", "clone", contract.repository, temporary, "--", "--recurse-submodules"],
-      "CLONE_FAILED",
-      "Cloning the private Personal Agent repository failed",
-    );
+    for (let attempt = 1; attempt <= 2; attempt += 1) {
+      try {
+        requireCommand(run, "gh", ["repo", "clone", contract.repository, temporary, "--", "--recurse-submodules"],
+          "CLONE_FAILED", "Cloning the private Personal Agent repository failed", { transfer: true, retry: attempt > 1, attempts: attempt, retryInPlace: false });
+        break;
+      } catch (error) {
+        if (attempt !== 1 || !["network", "timeout"].includes(error.diagnostic?.category)) throw error;
+        assertTemporaryPath(parent, temporary);
+        fs.rmSync(temporary, { recursive: true, force: true });
+      }
+    }
     const cloned = inspectCheckout(run, temporary, contract.repository);
     if (!cloned.valid) throw operationError("CLONE_FAILED", "The cloned repository origin does not match the registered Personal Agent repository", 7);
     verifySubmodules(run, temporary);
@@ -132,8 +138,58 @@ function inspectRepository(run, repository) {
   }
 }
 
+function bindExistingCheckout({ config, contract, run, now, status, checkoutSource }) {
+  if (!path.isAbsolute(checkoutSource) || !fs.statSync(checkoutSource, { throwIfNoEntry: false })?.isDirectory()) {
+    throw operationError("CHECKOUT_SOURCE_INVALID", "研发源必须是已存在的绝对目录路径。", 2);
+  }
+  const source = fs.realpathSync(checkoutSource);
+  if ([path.resolve(checkoutSource), source].some((value) => /[\\/]core[\\/](?:current|releases)(?:[\\/]|$)/i.test(value))) {
+    throw operationError("CHECKOUT_SOURCE_INVALID", "不能把已安装的不可变运行时绑定为研发仓库。", 2);
+  }
+  let existingSource = "";
+  try { existingSource = fs.realpathSync(status.checkoutPath); } catch {}
+  if (status.checkout.exists && existingSource !== source) {
+    throw operationError("CHECKOUT_CONFLICT", "研发入口已指向另一目录；不会自动替换或覆盖。", 4);
+  }
+  const checkout = inspectCheckout(run, source, contract.repository);
+  const top = requireCommand(run, "git", ["-C", source, "rev-parse", "--show-toplevel"], "CHECKOUT_SOURCE_INVALID", "研发源不是 Git 根目录。");
+  let isRoot = false;
+  try { isRoot = fs.realpathSync(String(top.stdout || "").trim()) === source; } catch {}
+  if (!checkout.valid || !isRoot) throw operationError("CHECKOUT_SOURCE_INVALID", "研发源必须是 origin 匹配注册私有仓库的 Git 根目录。", 4);
+  verifyCheckoutFiles(source);
+  const nodePath = path.join(source, "projects", "personal-agent-node");
+  const cloudPath = path.join(source, "projects", "cloud");
+  const gitlink = requireCommand(run, "git", ["-C", source, "ls-files", "--stage", "--", "projects/personal-agent-node"], "CHECKOUT_SOURCE_INVALID", "无法验证 Node 子模块。");
+  if (!fs.lstatSync(cloudPath).isDirectory()
+    || !fs.lstatSync(nodePath).isDirectory()
+    || fs.existsSync(path.join(cloudPath, ".git"))
+    || fs.lstatSync(cloudPath).isSymbolicLink()
+    || !fs.lstatSync(path.join(nodePath, ".git"), { throwIfNoEntry: false })?.isFile()
+    || fs.lstatSync(nodePath).isSymbolicLink()
+    || !/^160000 [a-f0-9]{40,64} 0\tprojects\/personal-agent-node\s*$/m.test(String(gitlink.stdout || ""))) {
+    throw operationError("CHECKOUT_SOURCE_INVALID", "研发源必须保留 Cloud 普通目录与 Node 标准 Git 子模块边界。", 4);
+  }
+  verifySubmodules(run, source);
+  const nodeRepository = `${contract.repository.split("/")[0]}/personal-agent-node`;
+  const nodeOrigin = requireCommand(run, "git", ["-C", nodePath, "remote", "get-url", "origin"], "CHECKOUT_SOURCE_INVALID", "无法验证 Node 来源。");
+  const moduleUrl = requireCommand(run, "git", ["-C", source, "config", "--file", ".gitmodules", "--get", "submodule.projects/personal-agent-node.url"], "CHECKOUT_SOURCE_INVALID", "无法验证 Node 子模块注册。");
+  if ([nodeOrigin.stdout, moduleUrl.stdout].some((value) => normalizeGitHubRepository(value).toLowerCase() !== nodeRepository.toLowerCase())) {
+    throw operationError("CHECKOUT_SOURCE_INVALID", "Node origin 和子模块注册必须匹配当前产品的公开 Node 仓库。", 4);
+  }
+  const bridge = ensureCodexSkillBridge(source);
+  const parent = path.dirname(status.checkoutPath);
+  fs.mkdirSync(parent, { recursive: true, mode: 0o700 });
+  const existed = fs.existsSync(status.checkoutPath);
+  if (!existed) fs.symlinkSync(source, status.checkoutPath, process.platform === "win32" ? "junction" : "dir");
+  const result = { ...status, checkout, ready: true, canEnsure: true, reused: true, boundExisting: true,
+    bridge, checkedOutAt: now().toISOString() };
+  persistState(config, result);
+  return result;
+}
+
 function inspectCheckout(run, checkoutPath, repository) {
-  if (!fs.existsSync(checkoutPath)) return { exists: false, valid: false, repository: "", dirty: false };
+  if (!fs.lstatSync(checkoutPath, { throwIfNoEntry: false })) return { exists: false, valid: false, repository: "", dirty: false };
+  if (!fs.existsSync(checkoutPath)) return { exists: true, valid: false, repository: "", dirty: false };
   if (!fs.statSync(checkoutPath).isDirectory()) return { exists: true, valid: false, repository: "", dirty: false };
   const inside = run("git", ["-C", checkoutPath, "rev-parse", "--is-inside-work-tree"], commandOptions());
   const remote = run("git", ["-C", checkoutPath, "remote", "get-url", "origin"], commandOptions());
@@ -223,6 +279,15 @@ function publicStatus({ contract, checkoutPath, tools, authenticated = false, re
     ready: Boolean(ready),
     canEnsure: Boolean(canEnsure),
     blocker,
+    nextActions: blocker ? [({
+      GIT_UNAVAILABLE: "安装 Git 并确认 git --version 可用后重试。",
+      GH_UNAVAILABLE: "安装 GitHub CLI 并确认 gh --version 可用后重试。",
+      GITHUB_AUTH_REQUIRED: "运行 gh auth status --hostname github.com；未登录时完成 gh auth login。",
+      GITHUB_PERMISSION_REQUIRED: "使用具有注册私有根仓库写权限的 GitHub 身份；不绕过仓库授权。",
+      GITHUB_REPOSITORY_UNAVAILABLE: "检查 GitHub 网络与当前身份能否访问注册私有根仓库。",
+      GITHUB_REPOSITORY_INVALID: "核对注册仓库身份与私有可见性，不使用其他仓库替代。",
+      CHECKOUT_CONFLICT: "检查固定研发入口；已有另一目录时保留它，不覆盖或重绑。",
+    })[blocker] || "根据已分类的失败原因恢复必要前提后重新检查。"] : [],
   };
 }
 
@@ -236,16 +301,20 @@ function probe(run, command, args) {
   try { return run(command, args, commandOptions()).status === 0; } catch { return false; }
 }
 
-function requireCommand(run, command, args, code, message) {
-  let result;
-  try { result = run(command, args, commandOptions()); }
-  catch { throw operationError(code, message, 7); }
-  if (result.status !== 0) throw operationError(code, message, 7);
-  return result;
+function requireCommand(run, command, args, code, message, options = {}) {
+  const attempts = options.transfer && options.retryInPlace !== false ? 2 : 1;
+  for (let attempt = 1; attempt <= attempts; attempt += 1) {
+    let result;
+    try { result = run(command, args, developmentCommandOptions({ ...options, retry: options.retry || attempt > 1 })); }
+    catch (error) { result = { error }; }
+    if (result?.status === 0) return result;
+    const error = developmentCommandError(code, result || {}, options.attempts || attempt);
+    if (attempt === attempts || !["network", "timeout"].includes(classifyDevelopmentFailure(result || {}))) throw error;
+  }
 }
 
 function commandOptions() {
-  return { encoding: "utf8", windowsHide: true, stdio: ["ignore", "pipe", "pipe"], timeout: 120_000 };
+  return developmentCommandOptions();
 }
 
 function assertTemporaryPath(parent, temporary) {

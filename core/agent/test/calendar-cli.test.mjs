@@ -55,6 +55,11 @@ test("calendar CLI uses scoped control commands and revision-safe follow-up with
   assert.equal((await run("show", "--id", id)).data.notes, "保留多行\n内容");
   assert.equal((await run("history", "--id", id, "--limit", "2", "--offset", "0")).data.hasMore, true);
   assert.equal((await run("list", "--from", "2026-09-12T00:00:00+08:00", "--to", "2026-09-13T00:00:00+08:00", "--status", "in_progress")).data.total, 1);
+  await run("create", "--title", "远期安排", "--participants-json", '["小王"]', "--start-at", "2027-01-01T09:00:00+08:00", "--time-zone", "Asia/Shanghai");
+  const upcoming = (await run("list", "--view", "upcoming", "--from", "2026-09-13T00:00:00+08:00", "--limit", "1")).data;
+  assert.equal(upcoming.nextEntry.title, "远期安排");
+  assert.equal(upcoming.ongoingEntry.id, id);
+  assert.equal(upcoming.total, 2);
   await assert.rejects(run("update", "--id", id, "--expected-revision", "1", "--title", "stale"), (error) => /日程已更新/.test(error.stderr));
   assert.equal(requests.every((request) => request.url === "/api/internal/calendar-agent" && request.method === "POST"
     && request.capability === "ephemeral-calendar-value"), true);

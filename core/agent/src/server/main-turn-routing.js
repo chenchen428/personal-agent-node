@@ -1,8 +1,10 @@
 export function isTaskStatusRequest(content) {
   const text = String(content || "").trim();
   if (!text) return false;
-  return /(?:现在|目前|刚才|这个|那个|上个|任务|工作|处理)[^\n]{0,24}(?:进度|状态|做到哪|处理到哪|完成了吗|完成没有|怎么样了|还要多久)/i.test(text)
-    || /(?:做到哪|处理到哪|完成了吗|完成没有|任务状态|任务进度|当前状态|当前进度|还要多久)/i.test(text);
+  // Only consume an unambiguous status-only question. Mixed requests must reach
+  // the Agent intact so a request to finish or deliver something is not lost.
+  const clauses = text.split(/[？?。！!，,；;\n]+/u).map((part) => part.trim()).filter(Boolean);
+  return clauses.length > 0 && clauses.every((part) => /^(?:(?:请|麻烦)?(?:帮我)?(?:看一下|看下|查一下|查下|告诉我|只返回)\s*)?(?:(?:现在|目前|当前|刚才|这个|那个|上个|任务|工作|处理|的)\s*)*(?:进度|状态|做到哪(?:一?步)?|处理到哪(?:一?步)?|完成了吗|完成没有|怎么样了|还要多久)(?:了|呢|如何|怎么样|是什么)?$/u.test(part));
 }
 
 export function formatTaskStatusReply(children) {
@@ -20,7 +22,7 @@ export function formatTaskStatusReply(children) {
 
 function taskStatusLabel(status) {
   if (status === "start" || status === "running") return "处理中";
-  if (status === "idle") return "已完成";
+  if (status === "idle") return "本次处理已结束，是否完整交付以结果为准";
   if (status === "paused") return "未完成，需要继续处理";
   return "状态未知";
 }

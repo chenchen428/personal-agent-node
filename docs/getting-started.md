@@ -1,5 +1,7 @@
 # Getting started
 
+本源码包含本地修复候选版 `0.2.0-beta.58-recovery.1`，对应 Windows 安装包 `personal-agent-node-v0.2.0-beta.58-recovery.1-windows-x64-installer.exe`。本地候选使用下文的摘要绑定更新流程，不表示已经发布 GitHub Release。
+
 ## Install an immutable release
 
 Set `TAG=v0.2.0-beta.58` and open the matching [GitHub Release](https://github.com/chenchen428/personal-agent-node/releases/tag/v0.2.0-beta.58). A customer machine does not need Node.js, npm, Git, a source checkout, or a development Agent.

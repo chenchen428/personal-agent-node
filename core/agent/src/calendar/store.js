@@ -49,13 +49,18 @@ export class CalendarStore {
   }
 
   list(input = {}) {
-    objectFields(input, ["from", "to", "status", "query", "limit", "offset"]);
-    const from = isoTime(input.from, "from", { optional: true });
+    objectFields(input, ["view", "from", "to", "status", "query", "limit", "offset"]);
+    if (input.view !== undefined && input.view !== "upcoming") throw calendarError(400, "INVALID_CALENDAR_VIEW", "不支持的日程视图");
+    const upcoming = input.view === "upcoming";
+    const from = upcoming && input.from === undefined ? this.nowIso() : isoTime(input.from, "from", { optional: !upcoming });
     const to = isoTime(input.to, "to", { optional: true });
     if (from && to && from >= to) throw calendarError(400, "INVALID_CALENDAR_RANGE", "筛选结束时间必须晚于开始时间");
     const where = ["space_id = ?"], params = [this.spaceId];
     // A zero-duration event is included at its start; other intervals overlap [from, to).
-    if (from) { where.push("(end_at > ? OR ((end_at IS NULL OR end_at = start_at) AND start_at >= ?))"); params.push(from, from); }
+    if (upcoming) {
+      where.push("status IN ('planned', 'in_progress')", "(start_at >= ? OR end_at > ? OR (status = 'in_progress' AND end_at IS NULL))");
+      params.push(from, from);
+    } else if (from) { where.push("(end_at > ? OR ((end_at IS NULL OR end_at = start_at) AND start_at >= ?))"); params.push(from, from); }
     if (to) { where.push("start_at < ?"); params.push(to); }
     if (input.status !== undefined) { where.push("status = ?"); params.push(statusField(input.status)); }
     if (input.query !== undefined) {
@@ -65,7 +70,10 @@ export class CalendarStore {
         params.push(...Array(4).fill(`%${query.replace(/[\\%_]/g, "\\$&")}%`));
       }
     }
-    return this.queryEntries(where, params, input, "start_at ASC, id ASC");
+    const result = this.queryEntries(where, params, input, "start_at ASC, id ASC");
+    if (!upcoming) return result;
+    const first = (condition) => this.queryEntries([...where, condition], [...params, from], { limit: 1 }, "start_at ASC, id ASC").items[0] || null;
+    return { ...result, asOf: from, nextEntry: first("start_at >= ?"), ongoingEntry: first("start_at < ?") };
   }
 
   due(input = {}) {

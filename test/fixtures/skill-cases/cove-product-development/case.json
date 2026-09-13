@@ -6,6 +6,7 @@
   "commands": [
     "personal-agent development status --json",
     "personal-agent development ensure --json",
+    "personal-agent development ensure --checkout-source <absolute-private-root> --json",
     "pa-cli session start --workspace <checkoutPath> --task-file <utf8-task-file> --json"
   ],
   "artifacts": [{ "path": "expected.json", "label": "Product-development boundary expectation" }]

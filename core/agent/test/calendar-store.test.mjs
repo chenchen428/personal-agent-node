@@ -123,6 +123,41 @@ test("follow-up appends immutable progress, guards revisions, and updates due st
   assert.equal(cleared.nextFollowUpAt, null); assert.equal(cleared.endAt, null);
 });
 
+test("upcoming calendar has no seven-day horizon and keeps nearest future and ongoing entries independent of pagination", (t) => {
+  const { store, config, others } = fixture(t);
+  const add = (title, startAt, endAt = null, status = "planned") => store.create(actor, { ...input(), title, startAt, endAt, status });
+  add("past", "2026-09-12T01:00:00Z");
+  add("ended at now", "2026-09-13T01:00:00Z", "2026-09-13T02:00:00Z", "in_progress");
+  const ongoing = add("ongoing without end", "2026-09-13T00:00:00Z", null, "in_progress");
+  add("overlapping now", "2026-09-13T01:00:00Z", "2026-09-13T03:00:00Z");
+  add("cancelled earlier", "2026-09-14T01:00:00Z", null, "cancelled");
+  add("done earlier", "2026-09-15T01:00:00Z", null, "done");
+  const next = add("next after fifteen days", "2026-09-28T09:00:00+08:00");
+  add("next year", "2027-02-01T01:00:00Z");
+  const first = store.list({ view: "upcoming", limit: 1 });
+  assert.equal(first.total, 4);
+  assert.equal(first.hasMore, true);
+  assert.equal(first.items[0].id, ongoing.id);
+  assert.equal(first.ongoingEntry.id, ongoing.id);
+  assert.equal(first.nextEntry.id, next.id);
+  assert.equal(first.asOf, "2026-09-13T02:00:00.000Z");
+  const later = store.list({ view: "upcoming", limit: 1, offset: 3 });
+  assert.equal(later.items[0].title, "next year");
+  assert.equal(later.hasMore, false);
+  assert.equal(later.nextEntry.id, next.id);
+  assert.equal(later.ongoingEntry.id, ongoing.id);
+  assert.equal(store.list({ view: "upcoming", query: "missing" }).nextEntry, null);
+  assert.equal(store.list({ view: "upcoming", status: "cancelled" }).total, 0);
+  const boundary = add("starts exactly now", first.asOf);
+  assert.equal(store.list({ view: "upcoming" }).nextEntry.id, boundary.id);
+  assert.equal(store.list({ view: "upcoming", from: "2027-03-01T00:00:00Z" }).nextEntry, null);
+  for (const from of [null, ""]) assert.throws(() => store.list({ view: "upcoming", from }), { code: "INVALID_CALENDAR_TIME" });
+  assert.throws(() => store.list({ view: "unknown" }), { code: "INVALID_CALENDAR_VIEW" });
+  const other = new CalendarStore({ ...config, spaceId: "space-b" }); others.push(other);
+  assert.equal(other.list({ view: "upcoming" }).nextEntry, null);
+  assert.equal(other.list({ view: "upcoming" }).ongoingEntry, null);
+});
+
 test("calendar stale writes across SQLite handles fail without adding misleading history", (t) => {
   const { store, config, others } = fixture(t);
   const entry = store.create(actor, input());

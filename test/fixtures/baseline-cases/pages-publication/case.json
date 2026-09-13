@@ -20,6 +20,8 @@
     "Page Activity uses the stored mobile thumbnail as representative feed media without scraping Page HTML",
     "The authenticated Pages module remains a searchable result library without a template catalog, template detail route, or template selection entry point",
     "Page posters use freely designed visuals while calendar posters use a complete deterministic paginated template; QR targets derive only from verified current-Space mobile links and missing links fail explicitly",
-    "Poster images become managed objects and the main Agent selects final-reply image attachments; no arbitrary QR links, silent item truncation, or revival of specialist workflows"
+    "Poster images become managed objects and the main Agent selects final-reply image attachments; no arbitrary QR links, silent item truncation, or revival of specialist workflows",
+    "Private Page publishing preserves upload name as entryFile and thumbnail fileName so a real publish can generate a poster; legacy missing associations are recovered read-only only from a unique registered HTML entry and uniquely matched thumbnail digests",
+    "Page poster failures distinguish missing or ambiguous entries, unavailable assets, changing revisions, source readiness and mobile link availability; the JSON CLI preserves a safe error code and recovery advice without filesystem paths or raw exceptions, and the Agent diagnoses before retrying or delivering an available alternative"
   ]
 }

@@ -63,9 +63,13 @@ pa-cli session list --parent <main-session-id> --all --json
 pa-cli session status --session <task-id> --json
 ```
 
-Use `session status` only when the user identifies a particular task or the list result needs its full context. Report every matching task by its user-facing title and current state: `start` and `running` are in progress, `idle` is completed, and `paused` is incomplete or needs attention. If no child matches, say so directly. Never infer progress from elapsed time or create a replacement task while answering status.
+Use `session status` only when the user identifies a particular task or the list result needs its full context. Report every matching task by its user-facing title and current state: `start` and `running` are in progress, `idle` means this execution ended but does not prove the complete requested result was delivered, and `paused` is incomplete or needs attention. Check the verified result and required deliveries before saying completed. If no child matches, say so directly. Never infer progress from elapsed time or create a replacement task while answering status.
 
-The first reply after `session start` explicitly says the task has started and is in progress. Progress hooks explicitly say it is still in progress. Completion hooks begin with an explicit completed or incomplete state before summarizing the result.
+The first reply after `session start` explicitly says the task has started and is in progress. Progress hooks explicitly say it is still in progress. A completion hook means an execution ended; compare its evidence with the full user request before declaring the overall task complete. Continue already authorized substantive work through a child task and perform main-Agent-only atomic delivery steps directly. Do not wait for the user to ask again. Report completion only after the required deliverables have been produced and selected for delivery; report a real blocker when progress cannot continue.
+
+For a requested Page poster or QR image, the child supplies the published `pageId` and managed source-image `obj_`. The main Agent uses its current per-turn capability with `pa-cli pages poster`, then selects the returned poster objects in `<personal-agent-reply>`. A source image, an Activity attachment, or a promise to send the image does not complete chat delivery. Only explicit status-only questions may use the status shortcut; a mixed question that also requests further work must reach the Agent intact.
+
+Do not repeat the same failed operation or dispatch an identical task without new evidence or an authorized alternative. When a necessary external prerequisite is unavailable, preserve completed results and explain the blocker and the single required recovery action. Do not claim the work continues in the background after execution has stopped.
 
 `pa-cli session start`, `session status`, and session listings use the same link contract as Online Pages:
 

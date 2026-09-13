@@ -1,5 +1,7 @@
 # Cove Node
 
+This checkout includes local recovery candidate `0.2.0-beta.58-recovery.1`, packaged on Windows as `personal-agent-node-v0.2.0-beta.58-recovery.1-windows-x64-installer.exe`. It uses verified local candidate installation with rollback; public downloads remain the assets actually published on GitHub.
+
 English | [简体中文](README.md)
 
 Cove Node is the open-source, local-first runtime for [Cove](https://personal-agent.cn). Conversations, Agent-owned Activity, account credentials, files, and Agent state stay on your computer. Personal Agent Cloud, a self-hosted public endpoint, and model-token services are all optional.

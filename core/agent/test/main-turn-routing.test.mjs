@@ -15,6 +15,20 @@ test("formats child task states without internal worker terminology", () => {
     { title: "\u65c5\u884c\u89c4\u5212", status: "idle" },
   ]);
   assert.match(reply, /\u5904\u7406\u4e2d/);
-  assert.match(reply, /\u5df2\u5b8c\u6210/);
+  assert.match(reply, /本次处理已结束/);
+  assert.doesNotMatch(reply, /已完成/);
   assert.doesNotMatch(reply, /worker|\u5b50\u4efb\u52a1/i);
+});
+
+test("mixed status and delivery requests reach the Agent without losing follow-up work", () => {
+  for (const content of [
+    "完成了吗？二维码还没有，继续做完并发给我。",
+    "任务状态怎么样了，顺便把二维码补上",
+    "帮我看看任务完成了吗然后继续处理剩下的部分",
+    "二维码任务完成了吗",
+    "查下状态并告诉我最近一次日程是什么时候",
+  ]) assert.equal(isTaskStatusRequest(content), false, content);
+  for (const content of ["完成了吗？", "现在做到哪一步了？", "当前任务状态", "告诉我任务进度", "还要多久？"]) {
+    assert.equal(isTaskStatusRequest(content), true, content);
+  }
 });

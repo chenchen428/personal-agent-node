@@ -11,6 +11,7 @@ import { ManagedFileCatalog } from "../src/managed-files/catalog.js";
 import { ManagedFileService } from "../src/managed-files/service.js";
 import { LocalManagedProvider } from "../src/managed-files/local-provider.js";
 import { PublicPagePosterStore } from "../src/posters/public-pages.js";
+import { createPageThumbnailPng } from "./page-thumbnail-fixture.mjs";
 
 function setup(t) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "cove-poster-service-"));
@@ -56,11 +57,12 @@ test("poster selection rejects incomplete lists, injected URLs and changed revis
 
 test("Page poster uses a governed current-Space image, binds a version and never copies a supplied URL", async (t) => {
   const { root, service, privatePublications, managedFiles, catalog } = setup(t);
-  privatePublications.upload({ publicationId: "demo", fileName: "index.html", content: "<h1>Current</h1>" });
-  const manifestPath = path.join(root, "publications", "demo", "publication.json");
-  const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf8"));
-  manifest.page = { pageId: "private-demo", entryFile: "index.html", title: "Demo", assets: [] };
-  fs.writeFileSync(manifestPath, JSON.stringify(manifest));
+  const published = privatePublications.publish({ publicationId: "demo", fileName: "overview.html", content: "<h1>Current</h1>", title: "Demo",
+    desktopThumbnail: { fileName: "desktop.png", content: createPageThumbnailPng().toString("base64") },
+    mobileThumbnail: { fileName: "mobile.png", content: createPageThumbnailPng(750, 1200).toString("base64") },
+  });
+  assert.equal(published.page.entryFile, "overview.html");
+  assert.equal(published.page.thumbnails.desktop.fileName, "desktop.png");
   const sourceDir = path.join(service.outputRoot, "source");
   fs.mkdirSync(sourceDir, { recursive: true });
   await sharp({ create: { width: 1200, height: 1600, channels: 3, background: "#234449" } }).png().toFile(path.join(sourceDir, "source.png"));
@@ -70,6 +72,25 @@ test("Page poster uses a governed current-Space image, binds a version and never
   assert.equal(result.data.targetUrl, "https://space.example.com/app/mobile/pages/private-demo");
   assert.equal(privatePublications.currentPoster("demo").objectId, result.data.objectIds[0]);
   assert.equal(managedFiles.stat(result.data.objectIds[0]).spaceId, "space-a");
+  // Recover manifests written by older releases without guessing an HTML entry.
+  const manifestPath = path.join(root, "publications", "demo", "publication.json");
+  const legacy = JSON.parse(fs.readFileSync(manifestPath, "utf8"));
+  delete legacy.page.entryFile;
+  delete legacy.page.thumbnail.fileName;
+  for (const thumbnail of Object.values(legacy.page.thumbnails)) delete thumbnail.fileName;
+  fs.writeFileSync(manifestPath, JSON.stringify(legacy));
+  const recovered = await service.page({ action: "page-poster", input: { pageId: published.pageId, sourceObjectId } }, () => true);
+  assert.equal(recovered.data.pageVersion, privatePublications.pageVersion("demo"));
+  assert.equal(JSON.parse(fs.readFileSync(manifestPath, "utf8")).page.entryFile, undefined);
+  assert.equal(privatePublications.currentPoster("demo").objectId, recovered.data.objectIds[0]);
+  delete legacy.page.entryFile;
+  fs.writeFileSync(manifestPath, JSON.stringify(legacy));
+  privatePublications.upload({ publicationId: "demo", fileName: "another.html", content: "<h1>Ambiguous entry</h1>" });
+  await assert.rejects(service.page({ action: "page-poster", input: { pageId: published.pageId, sourceObjectId } }, () => true), { code: "POSTER_PAGE_ENTRY_AMBIGUOUS" });
+  fs.writeFileSync(manifestPath, JSON.stringify(legacy));
+  privatePublications.upload({ publicationId: "demo", fileName: "duplicate-desktop.png", content: createPageThumbnailPng().toString("base64"), encoding: "base64", mimeType: "image/png" });
+  await assert.rejects(service.page({ action: "page-poster", input: { pageId: published.pageId, sourceObjectId } }, () => true), { code: "POSTER_PAGE_ASSET_INVALID" });
+  fs.writeFileSync(manifestPath, JSON.stringify({ ...legacy, page: published.page }));
   const source = catalog.get(sourceObjectId);
   catalog.upsertObject({ ...source, metadata: { ...source.metadata, spaceId: "space-other" } });
   await assert.rejects(service.page({ action: "page-poster", input: { pageId: "private-demo", sourceObjectId } }, () => true), { code: "POSTER_SOURCE_DENIED" });

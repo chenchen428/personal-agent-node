@@ -13,6 +13,7 @@
     "A due schedule creates a normal local task and records its execution without depending on Cloud",
     "Built-in mail scanning may directly create a normal task after protection checks but does not create an automation rule, run, template, or automation Activity",
     "Calendar records and follow-up history are Space-isolated and main-Agent capability-bound; updates require the current revision and do not create cron rules or send messages to participants",
-    "Calendar stores participants and offset-aware start/end times with an IANA display timezone, filters overlapping ranges, and exposes read-only authenticated UI history"
+    "Calendar stores participants and offset-aware start/end times with an IANA display timezone, filters overlapping ranges, and exposes read-only authenticated UI history",
+    "Desktop and mobile calendar default to an upcoming view without a fixed future horizon; the scoped query excludes completed and cancelled entries and reports nearest future and ongoing entries independently of pagination, while preserving explicit day, week and poster link ranges and stating the next date and timezone before imagery"
   ]
 }

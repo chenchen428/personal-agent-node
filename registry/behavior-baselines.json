@@ -15,6 +15,7 @@
         "test/release-lifecycle.test.mjs",
         "test/opencli-runtime-packaging.test.mjs",
         "core/runtime/test/updates.test.mjs",
+        "core/runtime/test/product-development.test.mjs",
         "core/runtime/test/setup-actions.test.mjs",
         "core/runtime/test/gateway-security.test.mjs",
         "core/runtime/test/reverse-tunnel.test.mjs"
@@ -30,6 +31,7 @@
         "The local Console and main Agent share one digest-bound update plan, verified platform artifact, platform-appropriate native handoff, and persisted restart result",
         "A pre-release self-contained candidate can create a ten-minute digest-bound plan only when its commit, manifest, checksums, SBOM, candidate security metadata and platform agree; it reuses the platform-appropriate native handoff and immutable installer, records candidateAssetRuntime=true, and never satisfies public Release acceptance",
         "Applying executable updates normally supports authenticated local approval; a registered Owner-initiated product-development flow authorizes the exact digest-bound plan by policy without a second local confirmation",
+        "Product development can bind an explicitly selected existing private-root checkout only after GitHub write permission, origin, root and Cloud/Node submodule checks; it preserves source changes, rejects conflicting bindings, classifies transfer failures without raw output, and retries only network or timeout failures at most once with process-scoped Git recovery settings",
         "Managed Cloud and self-hosted reverse tunnels delegate Web and mobile routes to the local gateway except installation-level Space listing and management, which both the tunnel connector and remote gateway reject; mobile remains bound to the current Host's Space, while Space switching and creation require the marked local non-mobile desktop surface; direct loopback access needs no login, tunneled routes on the explicit public whitelist remain public, every other tunneled path requires the host-scoped access session before normal route resolution, and password reset invalidates existing remote sessions",
         "Browser and CLI recovery remain available",
         "Platform releases bundle the pinned OpenCLI production graph without lifecycle scripts or customer-side npm installation, while Chrome retains explicit Browser Bridge permission"
@@ -88,6 +90,7 @@
         "The main Agent proactively delegates substantive work, splits independent branches when useful, stays available for user-facing status and final replies, and never duplicates delegated implementation",
         "Child task execution preserves the complete latest visible parent request and all delegated prompt text, including content split by nested shell quotes",
         "Internal worker hook inputs never appear in user conversation history",
+        "Execution completion prompts compare verified outputs with the full user goal, continue authorized unfinished work, complete main-Agent-only QR composition and chat attachments, and distinguish genuine blockers without repeating unchanged failures; mixed status-and-action messages reach the Agent intact",
         "Mobile task detail reads only the Space-local display-event ledger: task requirements and every subsequent user-visible Worker input are persisted once and shared with desktop history, legacy explicit user input is migrated without exposing delegated or internal prompts, the detail opens on the latest 20 visible events at the absolute bottom, pages earlier events with a task-bound opaque cursor while preserving the reading anchor, follows sanitized live updates only when pinned to the tail, and never scans or falls back to raw Codex execution history",
         "The desktop conversation merges complete desktop and WeChat main-session history chronologically and labels each user message with its source",
         "Desktop conversation background updates, optimistic sends and image layout changes preserve the reader anchor while unpinned; initial latest positioning and explicit scrolling or jumping to the bottom enable following new messages",
@@ -173,7 +176,9 @@
         "core/agent/test/mail-task-dispatcher.test.mjs",
         "core/agent/test/cli.test.mjs",
         "core/agent/test/calendar-store.test.mjs",
-        "core/agent/test/calendar-cli.test.mjs"
+        "core/agent/test/calendar-cli.test.mjs",
+        "core/agent/test/calendar-web.test.mjs",
+        "test/calendar-experience.test.mjs"
       ],
       "requirements": [
         "The schedules capability is registered as implemented and the Personal Agent Skill routes reminder requests through pa-cli cron",
@@ -183,7 +188,8 @@
         "A due schedule creates a normal local task and records its execution without depending on Cloud",
         "Built-in mail scanning may directly create a normal task after protection checks but does not create an automation rule, run, template, or automation Activity",
         "Calendar records and follow-up history are Space-isolated and main-Agent capability-bound; updates require the current revision and do not create cron rules or send messages to participants",
-        "Calendar stores participants and offset-aware start/end times with an IANA display timezone, filters overlapping ranges, and exposes read-only authenticated UI history"
+        "Calendar stores participants and offset-aware start/end times with an IANA display timezone, filters overlapping ranges, and exposes read-only authenticated UI history",
+        "Desktop and mobile calendar default to an upcoming view without a fixed future horizon; the scoped query excludes completed and cancelled entries and reports nearest future and ongoing entries independently of pagination, while preserving explicit day, week and poster link ranges and stating the next date and timezone before imagery"
       ]
     },
     {
@@ -229,7 +235,9 @@
         "core/agent/test/activity-presentation.test.mjs",
         "core/agent/test/main-turn-routing.test.mjs",
         "test/online-pages-contract.test.mjs",
-        "core/agent/test/posters.test.mjs"
+        "core/agent/test/posters.test.mjs",
+        "core/agent/test/poster-service.test.mjs",
+        "core/agent/test/poster-diagnostics.test.mjs"
       ],
       "requirements": [
         "Private publication records remain authenticated",
@@ -246,7 +254,9 @@
         "Page Activity uses the stored mobile thumbnail as representative feed media without scraping Page HTML",
         "The authenticated Pages module remains a searchable result library without a template catalog, template detail route, or template selection entry point",
         "Page posters use freely designed visuals while calendar posters use a complete deterministic paginated template; QR targets derive only from verified current-Space mobile links and missing links fail explicitly",
-        "Poster images become managed objects and the main Agent selects final-reply image attachments; no arbitrary QR links, silent item truncation, or revival of specialist workflows"
+        "Poster images become managed objects and the main Agent selects final-reply image attachments; no arbitrary QR links, silent item truncation, or revival of specialist workflows",
+        "Private Page publishing preserves upload name as entryFile and thumbnail fileName so a real publish can generate a poster; legacy missing associations are recovered read-only only from a unique registered HTML entry and uniquely matched thumbnail digests",
+        "Page poster failures distinguish missing or ambiguous entries, unavailable assets, changing revisions, source readiness and mobile link availability; the JSON CLI preserves a safe error code and recovery advice without filesystem paths or raw exceptions, and the Agent diagnoses before retrying or delivering an available alternative"
       ]
     },
     {

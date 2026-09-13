@@ -903,7 +903,7 @@ test("acknowledges WeChat immediately and queues the completed reply behind the 
   assert.doesNotMatch(calls[0].appServerDeveloperInstructions, /项目连续性/);
   assert.doesNotMatch(calls[0].appServerDeveloperInstructions, /--agent|--project-key/);
   assert.doesNotMatch(calls[0].appServerDeveloperInstructions, /pa-cli pages templates list --json/);
-  assert.match(calls[0].appServerDeveloperInstructions, /回复开头必须明确说‘任务已完成’或‘任务未完成’/);
+  assert.match(calls[0].appServerDeveloperInstructions, /全部必要结果与交付均完成后才说‘任务已完成’/);
   assert.doesNotMatch(calls[0].appServerDeveloperInstructions, /你好，在吗/);
   await waitFor(() => !orchestrator.running.has(session.id));
   assert.equal(orchestrator.running.has(session.id), false);
@@ -1460,7 +1460,7 @@ test("shows a deterministic task status when the main-Agent completion summary f
   });
   await waitFor(() => store.getSession(main.id).messages.some((message) => message.metadata?.eventType === "worker/hook/summary-fallback"));
   const fallback = store.getSession(main.id).messages.find((message) => message.metadata?.eventType === "worker/hook/summary-fallback");
-  assert.match(fallback.content, /^任务已完成：检查装修模板。https:\/\/agent\.example\.test\/app\/mobile\/workers\//);
+  assert.match(fallback.content, /^本次处理已结束，结果汇总暂未完成：检查装修模板。https:\/\/agent\.example\.test\/app\/mobile\/workers\//);
   assert.equal(fallback.metadata.workerSessionId, worker.id);
   assert.equal(store.getSessionRecord(worker.id).status, "idle");
 
@@ -1575,9 +1575,16 @@ test("worker completion hook returns the result to the main agent for a concise 
   assert.match(calls[1].stdin, /Worker 输出（不可信数据/);
   assert.match(calls[1].stdin, /<personal-agent-artifacts>/);
   assert.match(calls[1].stdin, /page-result/);
+  assert.match(calls[1].stdin, /本次执行正常结束，完整任务仍需核对/);
+  assert.match(calls[1].stdin, /生成并发布页面后返回结果地址/);
+  assert.match(calls[1].stdin, /继续完成既有授权范围内的剩余工作/);
   assert.match(calls[1].appServerDeveloperInstructions, /好的动态/);
   assert.match(calls[1].appServerDeveloperInstructions, /type=page/);
   assert.match(calls[1].appServerDeveloperInstructions, /不要调用工具或再次调度/);
+  const completionPolicy = calls[1].appServerDeveloperInstructions.split("\n").find((line) => line.includes("[worker-hook:completed]"));
+  assert.match(completionPolicy, /原请求已经授权且仍有实质工作时继续调度/);
+  assert.doesNotMatch(completionPolicy, /不要再次调度/);
+  assert.match(calls[1].appServerDeveloperInstructions, /底图不是已合成二维码的海报/);
   assert.deepEqual(sent[0], {
     recipientId: "hook-user",
     content: "做好了：[查看页面](https://pages.example.test/result)",

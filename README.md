@@ -1,5 +1,7 @@
 # Cove Node
 
+本源码当前包含本地修复候选版 `0.2.0-beta.58-recovery.1`，Windows 安装包名为 `personal-agent-node-v0.2.0-beta.58-recovery.1-windows-x64-installer.exe`。此候选通过本地校验与可回滚更新安装；公开下载仍以 GitHub 已发布资产为准。
+
 [English](README.en.md) | 简体中文
 
 Cove Node 是 [Cove](https://chenjianhui.site) 的开源、本地优先运行时。对话、由 Agent 维护的动态、账号凭据、文件和 Agent 状态保存在你自己的电脑上；Personal Agent Cloud、自建公网入口和模型 Token 都是可选能力。

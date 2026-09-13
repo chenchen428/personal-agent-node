@@ -1,4 +1,11 @@
 .cove-calendar { --calendar-accent: var(--cove-sea, #496c64); }
+.calendar-upcoming-summary { display: grid; gap: 12px; margin-bottom: 24px; color: var(--ink); }
+.calendar-upcoming-summary > p { margin: 0; font-size: 13px; line-height: 1.7; }
+.calendar-upcoming-summary button { min-height: 44px; color: inherit; cursor: pointer; }
+.calendar-upcoming-entry { display: grid; gap: 7px; width: 100%; padding: 18px; text-align: left; border: 1px solid var(--hairline); border-radius: 10px; background: color-mix(in srgb, var(--cove-sea, #496c64) 6%, transparent); overflow-wrap: anywhere; }
+.calendar-upcoming-entry > span, .calendar-upcoming-entry > small { font-size: 11px; color: var(--muted); }
+.calendar-upcoming-entry > strong { font-size: 17px; font-weight: 550; }
+.calendar-upcoming-entry > time { font-size: 13px; line-height: 1.7; }
 .cove-calendar-toolbar, .cove-calendar-date, .cove-calendar-caption, .cove-calendar-pager { display: flex; align-items: center; gap: 12px; }
 .cove-calendar-toolbar { flex-wrap: wrap; padding: 0 0 24px; border-bottom: 1px solid var(--hairline); }
 .cove-calendar-toolbar select, .cove-calendar-date input { min-height: 36px; padding: 4px 10px; color: var(--ink); background: var(--canvas); border: 1px solid var(--hairline); border-radius: 7px; }

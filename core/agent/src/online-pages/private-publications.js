@@ -3,6 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { decodePageThumbnail, pageProperties } from "./page-thumbnail.js";
 import { pagePosterVersion } from "../posters/version.js";
+import { posterFailure } from "../posters/diagnostics.js";
 
 export class PrivatePublicationStore {
   constructor({ rootDir, maxUploadBytes = 20 * 1024 * 1024 } = {}) {
@@ -73,7 +74,7 @@ export class PrivatePublicationStore {
       pageId: `private-${asset.publicationId}`,
       title: properties.title,
       summary: properties.summary,
-      entryFile: asset.fileName,
+      entryFile: asset.name,
       visibility: "private",
       thumbnail: desktopMetadata,
       thumbnails: { desktop: desktopMetadata, mobile: mobileMetadata },
@@ -92,17 +93,23 @@ export class PrivatePublicationStore {
 
   pageVersion(publicationId) {
     const id = safeSegment(publicationId);
-    const manifest = JSON.parse(fs.readFileSync(path.join(this.rootDir, id, "publication.json"), "utf8"));
+    let manifest;
+    try { manifest = JSON.parse(fs.readFileSync(path.join(this.rootDir, id, "publication.json"), "utf8")); }
+    catch (error) { throw posterFailure(null, error.code === "ENOENT" ? "POSTER_PAGE_NOT_FOUND" : "POSTER_PAGE_UNAVAILABLE"); }
+    manifest = normalizeLegacyPageEntry(manifest);
     const page = manifest.page || {};
+    if (!page.pageId) throw posterFailure(null, "POSTER_PAGE_NOT_FOUND");
+    if (!page.entryFile) throw posterFailure(null, "POSTER_PAGE_ENTRY_MISSING");
     const names = new Set([page.entryFile, ...(page.assets || []).map((asset) => asset.fileName), ...Object.values(page.thumbnails || {}).map((thumbnail) => thumbnail.fileName)]);
     const root = fs.realpathSync(path.join(this.rootDir, id));
     if (!root.startsWith(`${fs.realpathSync(this.rootDir)}${path.sep}`)) throw Object.assign(new Error("发布页超出当前空间"), { code: "POSTER_PAGE_NOT_FOUND" });
-    if ([...names].some((name) => name && !(manifest.files || []).some((entry) => entry.name === name))) throw Object.assign(new Error("发布页资产尚未就绪"), { code: "POSTER_PAGE_NOT_FOUND" });
+    if ([...names].some((name) => !name || !(manifest.files || []).some((entry) => entry.name === name))) throw posterFailure(null, "POSTER_PAGE_ASSET_MISSING");
     manifest.files = (manifest.files || []).map((entry) => {
       if (!names.has(entry.name)) return entry;
       const resolved = this.resolve(id, entry.name);
-      if (!resolved || !fs.realpathSync(resolved.filePath).startsWith(`${root}${path.sep}`)) throw Object.assign(new Error("发布页资产不可用"), { code: "POSTER_PAGE_NOT_FOUND" });
-      if (fs.statSync(resolved.filePath).size > this.maxUploadBytes) throw Object.assign(new Error("发布页资产超出大小限制"), { code: "POSTER_PAGE_NOT_FOUND" });
+      if (!resolved) throw posterFailure(null, "POSTER_PAGE_ASSET_MISSING");
+      if (!fs.realpathSync(resolved.filePath).startsWith(`${root}${path.sep}`)) throw posterFailure(null, "POSTER_PAGE_ASSET_INVALID");
+      if (fs.statSync(resolved.filePath).size > this.maxUploadBytes) throw posterFailure(null, "POSTER_PAGE_ASSET_INVALID");
       const bytes = fs.readFileSync(resolved.filePath);
       return { ...entry, sha256: crypto.createHash("sha256").update(bytes).digest("hex"), sizeBytes: bytes.length };
     });
@@ -158,6 +165,24 @@ export class PrivatePublicationStore {
   }
 }
 
+function normalizeLegacyPageEntry(manifest) {
+  if (!manifest.page?.pageId || manifest.page.entryFile) return manifest;
+  // Earlier publish results used upload.fileName instead of upload.name. Only
+  // recover a uniquely registered HTML entry; never guess between multiple pages.
+  const htmlFiles = (manifest.files || []).filter((file) => /\.html?$/i.test(file.name || ""));
+  if (htmlFiles.length !== 1) throw posterFailure(null, htmlFiles.length ? "POSTER_PAGE_ENTRY_AMBIGUOUS" : "POSTER_PAGE_ENTRY_MISSING");
+  const restoreThumbnail = (thumbnail) => {
+    if (!thumbnail || thumbnail.fileName) return thumbnail;
+    const matches = (manifest.files || []).filter((file) => file.sha256 === thumbnail.sha256 && file.mimeType === thumbnail.mimeType);
+    if (matches.length !== 1) throw posterFailure(null, "POSTER_PAGE_ASSET_INVALID");
+    return { ...thumbnail, fileName: matches[0].name };
+  };
+  return { ...manifest, page: { ...manifest.page, entryFile: htmlFiles[0].name,
+    ...(manifest.page.thumbnail ? { thumbnail: restoreThumbnail(manifest.page.thumbnail) } : {}),
+    ...(manifest.page.thumbnails ? { thumbnails: Object.fromEntries(Object.entries(manifest.page.thumbnails).map(([key, value]) => [key, restoreThumbnail(value)])) } : {}),
+  } };
+}
+
 function normalizePrivatePageAssetPaths(input) {
   const assets = Array.isArray(input) ? input : [];
   if (assets.length > 256) throw new Error("Page bundle exceeds 256 assets");
@@ -206,7 +231,7 @@ function resolvePrivateThumbnailInput(store, publicationId, input) {
 
 function privateThumbnailMetadata(asset, thumbnail, alt) {
   return {
-    fileName: asset.fileName,
+    fileName: asset.name,
     mimeType: thumbnail.mimeType,
     width: thumbnail.width,
     height: thumbnail.height,

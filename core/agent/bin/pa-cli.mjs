@@ -6,6 +6,7 @@ import qrcodeTerminal from "qrcode-terminal";
 import { ingestRawEmail, MAX_MAIL_BYTES } from "../src/connections/mail/mail-ingest.js";
 import { createGeneratedPageThumbnails } from "../src/online-pages/generated-page-thumbnails.js";
 import { normalizeTaskCreate, normalizeTaskPatch, rejectRetiredAgentOptions } from "../src/server/task-contract.js";
+import { posterDiagnostic } from "../src/posters/diagnostics.js";
 
 const personalAgentHome = path.resolve(process.env.PERSONAL_AGENT_HOME || path.join(os.homedir(), ".personal-agent"));
 const siteDataRoot = path.resolve(process.env.PRIVATE_SITE_DATA_ROOT || path.join(personalAgentHome, "workspace"));
@@ -500,7 +501,9 @@ try {
     help();
   }
 } catch (error) {
-  if (args.json && /^CONNECTION_LOGIN_(REQUIRED|UNCONFIRMED)$/.test(String(error?.code || ""))) console.log(JSON.stringify({ ok: false, code: error.code, error: error.message, action: error.action }));
+  const diagnostic = command === "pages" && subcommand === "poster" ? posterDiagnostic(error?.code) : null;
+  if (args.json && diagnostic) { const { statusCode: _status, ...details } = diagnostic; console.log(JSON.stringify({ ok: false, ...details })); }
+  else if (args.json && /^CONNECTION_LOGIN_(REQUIRED|UNCONFIRMED)$/.test(String(error?.code || ""))) console.log(JSON.stringify({ ok: false, code: error.code, error: error.message, action: error.action }));
   else console.error(error instanceof Error ? error.message : String(error));
   process.exit(1);
 }
@@ -555,12 +558,12 @@ async function readResponse(response) {
 async function calendarCommand(action) {
   const supported = new Set(["list", "show", "history", "create", "update", "follow-up", "due", "poster"]);
   if (!supported.has(action)) throw new Error("calendar action must be list, show, history, create, update, follow-up, due, or poster");
-  const allowed = new Set(["_", "json", "id", "capability", "input-file", "title", "participants-json", "start-at", "end-at", "time-zone", "location", "notes", "next-follow-up-at", "status", "expected-revision", "content", "from", "to", "query", "limit", "offset", "before"]);
+  const allowed = new Set(["_", "json", "id", "capability", "input-file", "title", "participants-json", "start-at", "end-at", "time-zone", "location", "notes", "next-follow-up-at", "status", "expected-revision", "content", "from", "to", "query", "limit", "offset", "before", "view"]);
   for (const key of Object.keys(args)) if (!allowed.has(key)) throw new Error("Unsupported calendar option: --" + key);
   const input = args["input-file"] ? JSON.parse(fs.readFileSync(resolveRegularFile(args["input-file"], "--input-file"), "utf8")) : {};
   if (!input || typeof input !== "object" || Array.isArray(input)) throw new Error("--input-file must contain a JSON object");
   const fields = { title: "title", "start-at": "startAt", "end-at": "endAt", "time-zone": "timeZone", location: "location", notes: "notes",
-    "next-follow-up-at": "nextFollowUpAt", status: "status", content: "content", from: "from", to: "to", query: "query", before: "before" };
+    "next-follow-up-at": "nextFollowUpAt", status: "status", content: "content", from: "from", to: "to", query: "query", before: "before", view: "view" };
   for (const [option, field] of Object.entries(fields)) if (args[option] !== undefined) input[field] = args[option];
   if (args["participants-json"] !== undefined) {
     input.participants = JSON.parse(args["participants-json"]);
@@ -829,7 +832,7 @@ async function personalWechatConnectionCommand(parsed) {
 
 function help() {
   console.log(`Usage:
-  pa-cli calendar list [--from <offset-ISO>] [--to <offset-ISO>] [--status <status>] [--query <text>] [--limit <n>] [--offset <n>] --capability <ephemeral> [--json]
+  pa-cli calendar list [--view upcoming] [--from <offset-ISO>] [--to <offset-ISO>] [--status <status>] [--query <text>] [--limit <n>] [--offset <n>] --capability <ephemeral> [--json]
   pa-cli calendar show|history --id <calendar-id> --capability <ephemeral> [--json]
   pa-cli calendar create --title <text> --start-at <offset-ISO> --time-zone <IANA> [--participants-json <array>] [--end-at <offset-ISO>] [--location <text>] [--notes <text>] [--next-follow-up-at <offset-ISO>] --capability <ephemeral> [--json]
   pa-cli calendar update --id <calendar-id> --expected-revision <n> [--input-file <json>] [--title <text>] [--status <planned|in_progress|done|cancelled>] --capability <ephemeral> [--json]
