@@ -1,5 +1,5 @@
 import fs from "node:fs";
-import { resolveInheritedSpaceDomain } from "../../runtime/src/space-domain-access.ts";
+import { resolveSpaceDomainAccess } from "../../runtime/src/space-domain-facts.ts";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -111,32 +111,7 @@ export const config = {
 };
 
 export function resolveExternalAccess({ dataRoot = siteDataRoot, consoleBaseUrl = "", now = new Date() } = {}) {
-  const inherited = resolveInheritedSpaceDomain({ dataRoot, now });
-  if (inherited) return inherited;
-  const site = readJson(path.join(dataRoot, "config", "site.json"));
-  const mode = String(site?.connectionMode || "local-only");
-  if (mode === "local-only") return { ready: false, reason: "local-only", origin: "" };
-  const cloud = readJson(path.join(dataRoot, "config", "cloud.json"));
-  const host = mode === "managed-cloud" ? String(cloud?.managedHost || "") : hostnameFromBase(consoleBaseUrl);
-  if (!host) return { ready: false, reason: "not-configured", origin: "" };
-  if (mode === "managed-cloud") {
-    const state = readJson(path.join(dataRoot, "runtime", "reverse-tunnel.json"));
-    const lastPongAt = Date.parse(String(state?.lastPongAt || ""));
-    const heartbeatMs = Number(cloud?.tunnel?.heartbeatSeconds || 20) * 3000;
-    if (state?.state !== "ready" || !Number.isFinite(lastPongAt) || now.getTime() - lastPongAt > heartbeatMs) {
-      const recoveryState = ["degraded", "refreshing", "authorizing", "reauth_required"].includes(state?.state) ? state.state : "tunnel-offline";
-      return { ready: false, reason: recoveryState, origin: "" };
-    }
-  }
-  return { ready: true, reason: "ready", origin: `https://${host}` };
-}
-
-function readJson(filePath) {
-  try { return JSON.parse(fs.readFileSync(filePath, "utf8")); } catch { return null; }
-}
-
-function hostnameFromBase(value) {
-  try { return new URL(String(value || "")).hostname; } catch { return ""; }
+  return resolveSpaceDomainAccess({ dataRoot, now });
 }
 
 export function ensureRuntimeDirs() {

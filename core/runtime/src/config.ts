@@ -1,6 +1,6 @@
 import crypto from "node:crypto";
 import fs from "node:fs";
-import { resolveInheritedSpaceDomain } from "./space-domain-access.ts";
+import { resolveSpaceDomainAccess } from "./space-domain-facts.ts";
 import os from "node:os";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
@@ -49,8 +49,9 @@ export function resolveNodeConfig(env = process.env, options = {}) {
   const fileEnv = readEnvFile(envPath);
   const mergedEnv = { ...fileEnv, ...env };
   const providers = readProviderDocument(providersPath);
-  const inheritedDomain = resolveInheritedSpaceDomain({ dataRoot });
-  const domain = normalizeApexDomain(inheritedDomain?.domain || mergedEnv.SITE_DOMAIN || site?.asciiDomain || "personal-agent.local");
+  const domainAccess = resolveSpaceDomainAccess({ dataRoot });
+  const inheritedDomain = domainAccess.inherited ? domainAccess : null;
+  const domain = normalizeApexDomain(domainAccess.domain || mergedEnv.SITE_DOMAIN || site?.asciiDomain || "personal-agent.local");
   const routingMode = normalizeRoutingMode(mergedEnv.PERSONAL_AGENT_ROUTING_MODE || site?.routingMode || "path");
   const managedDirectGateway = site?.connectionMode === "managed-cloud";
   const agentWorkspaceRoot = path.resolve(mergedEnv.PRIVATE_SITE_AGENT_WORKSPACE || path.join(dataRoot, "agent-workspace"));
@@ -76,6 +77,7 @@ export function resolveNodeConfig(env = process.env, options = {}) {
     env: mergedEnv,
     domain,
     inheritedDomain,
+    domainAccess,
     routingMode,
     allowedHosts: normalizeHostList(mergedEnv.PERSONAL_AGENT_ALLOWED_HOSTS, [domain, spaceContext.space?.managedHost, mergedEnv.PRIVATE_SITE_LOCAL_DOMAIN || `${domain}.local`, "localhost", "127.0.0.1"]),
     agentWorkspaceRoot,

@@ -38,6 +38,19 @@ test("Site binding publishes the editorial Node introduction and commits only af
   assert.equal(verifier.isVerified("sites"), true);
 });
 
+test("first managed Site verification probes a live bound target before enabling user links", async (t) => {
+  const dataRoot = fs.mkdtempSync(path.join(os.tmpdir(), "pa-domain-first-proof-"));
+  t.after(() => fs.rmSync(dataRoot, { recursive: true, force: true }));
+  let publication;
+  const verifier = fixture({ dataRoot,
+    externalAccess: () => ({ ready: false, configured: true, domain: "owner.personal-agent.cn", reason: "domain-unverified", tunnelReady: true, targetReady: true, origin: "" }),
+    publishPage: async (input) => { publication = input; return { url: "/public/uploads/domain-verification/index.html" }; },
+    fetchImpl: async () => new Response(publication.content, { status: 200 }),
+  });
+  verifier.start("sites"); await verifier.running.get("sites");
+  assert.equal(verifier.isVerified("sites"), true);
+});
+
 test("mail binding sends a unique test message and links directly to the received desktop message", async (t) => {
   const dataRoot = fs.mkdtempSync(path.join(os.tmpdir(), "pa-domain-mail-"));
   t.after(() => fs.rmSync(dataRoot, { recursive: true, force: true }));

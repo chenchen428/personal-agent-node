@@ -9,6 +9,7 @@ import { resolveNodeConfig, workspaceRoot } from "./config.ts";
 import { listExtensions } from "./extensions.ts";
 import { getSpace } from "./space-registry.ts";
 import { resolveInheritedSpaceDomain } from "./space-domain-access.ts";
+import { resolveSpaceDomainAccess } from "./space-domain-facts.ts";
 import { isLocalRuntimeEnvironmentRequest, isRuntimeEnvironmentPath } from "./runtime-environment-access.ts";
 import { isLocalUserSkillRequest, isUserSkillManagementPath } from "./user-skill-access.ts";
 
@@ -94,7 +95,7 @@ export function createPrivateSiteGateway(options = {}) {
         return;
       }
       if (url.pathname === "/__private-site/health") {
-        sendJson(response, 200, { ok: true, service: "private-site-gateway", site: resolveInheritedSpaceDomain({ dataRoot: config.dataRoot })?.domain || config.domain, spaceId: config.space?.id || "", tls: gatewayUsesTls(config) }, request.method === "HEAD");
+        sendJson(response, 200, { ok: true, service: "private-site-gateway", site: resolveSpaceDomainAccess({ dataRoot: config.dataRoot }).domain || config.domain, spaceId: config.space?.id || "", tls: gatewayUsesTls(config) }, request.method === "HEAD");
         return;
       }
       const personalWechatCallback = resolvePersonalWechatCallbackTarget(request, url, config, options.personalWechatSpaceResolver);
@@ -486,8 +487,9 @@ function normalizeRequestHost(value) {
 }
 
 function hostAllowed(host, config) {
-  const inherited = resolveInheritedSpaceDomain({ dataRoot: config.dataRoot });
-  if (inherited?.domain === host) return true;
+  const current = resolveSpaceDomainAccess({ dataRoot: config.dataRoot });
+  if (current.configured && current.domain === host) return true;
+  if (config.domainAccess?.configured && host === config.domainAccess.domain) return false;
   if (config.inheritedDomain && host === config.inheritedDomain.domain) return false;
   if (config.routingMode === "host") return Boolean(toCanonicalHost(host, config));
   return config.allowedHosts.includes(host);

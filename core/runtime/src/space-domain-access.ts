@@ -34,7 +34,6 @@ export function resolveInheritedSpaceDomain({ dataRoot = "", now = new Date() }:
   try { endpoint = new URL(String(binding.tunnel.endpoint || "")); } catch { return null; }
   if (endpoint.protocol !== "wss:" || ![baseDomain, `connect.${baseDomain}`].includes(endpoint.hostname)
     || endpoint.username || endpoint.password || endpoint.search || endpoint.hash) return null;
-  const ownerSite = readJson(path.join(owner.root, "config", "site.json"));
   const verification = readJson(path.join(owner.root, "runtime", "domain-binding-verification.json"))?.sites;
   const bindingRevision = crypto.createHash("sha256").update(JSON.stringify([baseDomain, owner.id, binding.updatedAt || "", binding.tunnel])).digest("hex");
   const state = readJson(path.join(owner.root, "runtime", "reverse-tunnel.json"));
@@ -42,13 +41,16 @@ export function resolveInheritedSpaceDomain({ dataRoot = "", now = new Date() }:
   const age = now.getTime() - lastPong;
   const heartbeatMs = Number(binding.tunnel.heartbeatSeconds || 20) * 3000;
   const endpointOrigin = endpoint.hostname === `connect.${baseDomain}` ? `wss://${baseDomain}` : endpoint.origin;
-  const tunnelReady = ownerSite?.connectionMode === "self-hosted-edge" && state?.protocol === "pa-reverse-ws-v1"
+  const tunnelReady = owner.state === "running" && owner.desiredState === "running" && state?.protocol === "pa-reverse-ws-v1"
     && state.state === "ready" && (!state.endpointOrigin || state.endpointOrigin === endpointOrigin)
     && (!state.generation || Number(state.generation) >= Number(binding.tunnel.generation || 1))
     && Number.isFinite(age) && age >= -30_000 && age <= Math.min(360_000, heartbeatMs);
   const checked = readJson(path.join(space.root, "runtime", "domain-inheritance-verification.json"));
-  const routeVerified = checked?.ready === true && checked.spaceId === space.id && checked.domain === domain
-    && checked.baseDomain === baseDomain && checked.ownerSpaceId === owner.id && checked.parentVerifiedAt === String(verification?.updatedAt || "") && checked.bindingRevision === bindingRevision;
+  const localVerification = readJson(path.join(space.root, "runtime", "domain-binding-verification.json"))?.sites;
+  const existingRouteProof = localVerification?.phase === "verified" && localVerification.binding === "custom" && localVerification.resource === domain
+    && Date.parse(String(localVerification.verifiedAt || localVerification.updatedAt || "")) >= Date.parse(String(binding.updatedAt || ""));
+  const routeVerified = existingRouteProof || (checked?.ready === true && checked.spaceId === space.id && checked.domain === domain
+    && checked.baseDomain === baseDomain && checked.ownerSpaceId === owner.id && checked.parentVerifiedAt === String(verification?.updatedAt || "") && checked.bindingRevision === bindingRevision);
   const parentVerified = (verification?.phase === "verified" && verification.binding === "custom" && verification.resource === baseDomain)
     || (routeVerified && checked.parentVerifiedViaHealth === true);
   const targetReady = space.state === "running" && space.desiredState === "running";

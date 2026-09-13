@@ -28,7 +28,7 @@ import { AgentDataStore } from "../data/agent-data.js";
 import { ingestRawEmail, MAX_MAIL_BYTES } from "../connections/mail/mail-ingest.js";
 import { parseMailForDisplay, readMailAttachment } from "../connections/mail/mail-reader.js";
 import { buildConnectionCatalog, connectionPlatformSupport, inspectConnection, readConnectionRegistry } from "../connections/catalog.js";
-import { buildSitesConnectionStatus } from "../connections/sites-status.js";
+import { buildCustomSitesConnectionStatus, buildSitesConnectionStatus } from "../connections/sites-status.js";
 import { MailConnectionScanner } from "../connections/mail/scanner.js";
 import { MailTaskDispatcher, mailTaskFromEvent } from "../connections/mail/task-dispatcher.js";
 import { PublicTestMailSender } from "../connections/mail/public-test-sender.js";
@@ -70,7 +70,7 @@ import { discoverAppServerDefaultModel, discoverAppServerModels } from "../agent
 import { shutdownAppServerClient } from "../agent/app-server-client.ts";
 import { managedServiceReadiness } from "../../../runtime/src/cloud-resources.ts";
 import { readCustomDomainBindings } from "../../../runtime/src/custom-domain.ts";
-import { resolveInheritedSpaceDomain, verifyInheritedSpaceDomain } from "../../../runtime/src/space-domain-access.ts";
+import { verifyInheritedSpaceDomain } from "../../../runtime/src/space-domain-access.ts";
 import { getSpace } from "../../../runtime/src/space-registry.ts";
 
 ensureRuntimeDirs();
@@ -2125,7 +2125,6 @@ function formatSupportedPlatforms(platforms: string[]) {
 }
 
 function platformConnectionStatuses() {
-  const inherited = resolveInheritedSpaceDomain({ dataRoot: config.siteDataRoot });
   const services = managedServiceReadiness({ dataRoot: config.siteDataRoot });
   const external = config.externalAccess();
   const custom = readCustomDomainBindings({ dataRoot: config.siteDataRoot });
@@ -2133,31 +2132,18 @@ function platformConnectionStatuses() {
   const customMail = custom.mail?.domain ? custom.mail : null;
   const customOwner = getSpace(config.installationDataRoot, customSite?.ownerSpaceId || customMail?.ownerSpaceId);
   const customTunnel = customOwner ? readJsonFile(path.join(customOwner.root, "runtime", "reverse-tunnel.json")) : null;
-  const customServiceReady = inherited ? inherited.tunnelReady : customTunnel?.state === "ready";
-  const customSiteBound = inherited ? inherited.ready : Boolean(customSite && domainBindingVerification.isVerified("sites", "custom"));
+  const customServiceReady = customSite ? external.tunnelReady : customTunnel?.state === "ready";
   const customMailBound = Boolean(customMail && domainBindingVerification.isVerified("mail", "custom"));
-  const customSiteReady = inherited ? inherited.ready : customSiteBound && customServiceReady;
   const customMailReady = customMailBound && customServiceReady;
-  const siteBound = !customSite && services.publicDomain.ready && domainBindingVerification.isVerified("sites");
+  const siteBound = !customSite && external.bindingMode === "platform" && external.verificationReady;
   const mailBound = !customMail && services.agentMail.ready && domainBindingVerification.isVerified("mail");
-  const domain = services.publicDomain.value || "";
+  const domain = external.domain || services.publicDomain.value || "";
   const mailAddress = services.agentMail.value || "";
   const customSiteVerification = domainBindingVerification.status("sites", "custom");
   const customMailVerification = domainBindingVerification.status("mail", "custom");
   const relayInstallerUrl = selfHostedRelayInstallerUrl();
-  const sites = customSite ? {
-    state: customSiteReady ? "connected" : "degraded",
-    primaryAction: "清空配置",
-    statusLabel: inherited ? inherited.ready ? "已继承主空间域名" : inherited.reason === "space-domain-verifying" ? "子域名自动验证中" : "等待主空间域名恢复" : customSiteReady ? "自定义域名已生效" : customServiceReady ? "等待自定义域名验证" : "Relay 连接恢复中",
-    runtime: [
-      { label: "自定义域名", value: customSite.domain },
-      { label: "Relay 连接", value: customServiceReady ? "已连接" : "等待连接" },
-      { label: "公网访问", value: customSiteReady ? `https://${customSite.domain}` : customSiteBound ? "Relay 恢复后可用" : "等待 DNS、TLS 与内容验证" },
-    ],
-    details: { platformDomainBound: false, bindingMode: "custom", customDomain: customSite.domain, customPublicAddress: customSite.publicAddress, customServiceReady, customRelayCredentialPrepared: !inherited, customRelayInstallerUrl: relayInstallerUrl, publicReady: customSiteReady, publicStatus: customSiteReady ? "ready" : inherited?.reason || (customServiceReady ? "unavailable" : "tunnel-offline"), publicOrigin: customSiteReady ? `https://${customSite.domain}` : "", domainVerification: customSiteVerification,
-      ...(inherited ? { inherited: true, inheritedFromSpaceId: inherited.inheritedFromSpaceId, inheritedBaseDomain: inherited.inheritedBaseDomain } : {}) },
-  } : withRelayInstaller(buildSitesConnectionStatus({
-    domainReady: services.publicDomain.ready,
+  const sites = customSite ? buildCustomSitesConnectionStatus({ binding: customSite, external, verification: customSiteVerification, relayInstallerUrl }) : withRelayInstaller(buildSitesConnectionStatus({
+    domainReady: external.configured && external.bindingMode === "platform",
     domain,
     verified: siteBound,
     external,

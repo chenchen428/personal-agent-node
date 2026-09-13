@@ -132,7 +132,13 @@ export class DomainBindingVerification {
       latest = this.step("sites", latest, 3, "active", "正在通过公网域名请求发布页");
     }
     while (this.beforeDeadline(latest)) {
-      const access = custom ? { ready: true, origin: `https://${state.resource}` } : this.externalAccess();
+      let access = custom ? { ready: true, origin: `https://${state.resource}` } : this.externalAccess();
+      // A configured live target may be probed to establish its first content
+      // proof; it must not become a user-facing URL until this probe succeeds.
+      if (!custom && !access?.ready && access?.configured && access.tunnelReady && access.targetReady !== false
+        && access.reason === "domain-unverified" && access.domain === state.resource) {
+        access = { ...access, ready: true, origin: `https://${access.domain}` };
+      }
       if (access?.ready && access.origin) {
         const publicUrl = new URL(asset.url, `${access.origin}/`).toString();
         try {

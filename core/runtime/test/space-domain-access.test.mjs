@@ -23,6 +23,7 @@ function fixture(t) {
   const existing = child("work");
   const activate = async (domain = "owner.example.net", { legacy = false } = {}) => {
     await startCustomDomainForwarder({ dataRoot: owner.dataRoot, env: {}, input: { kind: "sites", domain, relayToken: "x".repeat(43) } });
+    updateSpaceRuntimeState(root, owner.space.id, "running");
     write(path.join(owner.runtimeDir, "reverse-tunnel.json"), { protocol: "pa-reverse-ws-v1", state: "ready", endpointOrigin: `wss://${domain}`, generation: 1, lastPongAt: now.toISOString() });
     if (!legacy) write(path.join(owner.runtimeDir, "domain-binding-verification.json"), { schemaVersion: 1, sites: { phase: "verified", binding: "custom", resource: domain, updatedAt: now.toISOString() } });
   };
@@ -65,6 +66,12 @@ test("parent rotation, same-domain Relay replacement, heartbeat expiry and disco
   assert.equal(f.access().reason, "space-offline"); assert.equal(f.access().ready, false);
   updateSpaceRuntimeState(f.root, f.existing.id, "running");
   assert.equal(f.access().ready, true);
+  const ownerSite = JSON.parse(fs.readFileSync(f.owner.configPath));
+  write(f.owner.configPath, { ...ownerSite, connectionMode: "local-only" });
+  assert.equal(f.access().ready, true, "live verified routing also overrides the parent's historical mode flag");
+  updateSpaceRuntimeState(f.root, f.owner.space.id, "stopped");
+  assert.equal(f.access().ready, false);
+  updateSpaceRuntimeState(f.root, f.owner.space.id, "running");
   const bindings = path.join(f.root, "installation", "custom-domain-bindings.json");
   const replacement = JSON.parse(fs.readFileSync(bindings)); replacement.sites.tunnel.generation += 1;
   write(bindings, replacement); assert.equal(f.access().ready, false); assert.equal(f.access().tunnelReady, false);
@@ -84,6 +91,18 @@ test("legacy parent metadata is repaired by real parent and child HTTPS probes, 
   await f.verify(f.existing, async (url) => { requested.push(url); return Response.json({ ok: true, service: "private-site-gateway", site: new URL(url).hostname, spaceId: requested.length === 1 ? f.owner.space.id : f.existing.id }); });
   assert.equal(requested.length, 2); assert.equal(f.access().ready, true);
   assert.equal(fs.existsSync(path.join(f.owner.runtimeDir, "domain-binding-verification.json")), false, "no parent metadata or credential was copied/mutated");
+});
+
+test("an existing child's matching Sites verification is reused without another binding flow", async (t) => {
+  const f = fixture(t); await f.activate();
+  const document = JSON.parse(fs.readFileSync(path.join(f.root, "installation", "custom-domain-bindings.json")));
+  write(path.join(f.existing.root, "runtime", "domain-binding-verification.json"), { sites: {
+    binding: "custom", phase: "verified", resource: "work.owner.example.net", verifiedAt: document.sites.updatedAt,
+  } });
+  assert.equal(f.access().ready, true);
+  assert.equal(resolveExternalAccess({ dataRoot: f.existing.root, consoleBaseUrl: "http://localhost:8788", now }).origin, "https://work.owner.example.net");
+  assert.equal(fs.existsSync(path.join(f.existing.root, "runtime", "domain-inheritance-verification.json")), false);
+  await f.activate("replacement.example.net"); assert.equal(f.access().ready, false);
 });
 
 test("independent bindings and installation identity remain isolated", async (t) => {

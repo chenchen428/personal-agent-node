@@ -60,6 +60,31 @@ export function buildSitesConnectionStatus({ domainReady, domain, verified, exte
       publicReason: external?.reason || "",
       publicOrigin: publicReady ? external.origin : "",
       domainVerification: verification,
+      authenticationRequired: external?.authenticationRequired === true,
+      accessPolicy: external?.accessPolicy || "space-authenticated",
+    },
+  };
+}
+
+export function buildCustomSitesConnectionStatus({ binding, external, verification, relayInstallerUrl = "" }) {
+  const ready = Boolean(external?.ready && external.bindingMode === "custom");
+  const domain = external?.domain || binding.domain;
+  const inherited = external?.inherited === true;
+  const live = external?.tunnelReady === true;
+  return {
+    state: ready ? "connected" : "degraded", primaryAction: "清空配置",
+    statusLabel: inherited ? ready ? "已继承主空间域名" : external.reason === "space-domain-verifying" ? "子域名自动验证中" : "等待主空间域名恢复"
+      : ready ? "自定义域名已生效" : live ? "等待自定义域名验证" : "Relay 连接恢复中",
+    runtime: [
+      { label: "自定义域名", value: domain },
+      { label: "Relay 连接", value: live ? "已连接" : "等待连接" },
+      { label: "公网访问", value: ready ? external.origin : external?.verificationReady ? "连接恢复后可用" : "等待 DNS、TLS 与内容验证" },
+    ],
+    details: { platformDomainBound: false, bindingMode: "custom", customDomain: domain, customPublicAddress: `https://${domain}`,
+      customServiceReady: live, customRelayCredentialPrepared: !inherited, customRelayInstallerUrl: relayInstallerUrl,
+      publicReady: ready, publicStatus: external?.reason || "not-configured", publicOrigin: ready ? external.origin : "",
+      authenticationRequired: true, accessPolicy: "space-authenticated", domainVerification: verification,
+      ...(inherited ? { inherited: true, inheritedFromSpaceId: external.inheritedFromSpaceId, inheritedBaseDomain: external.inheritedBaseDomain } : {}),
     },
   };
 }
