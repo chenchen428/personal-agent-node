@@ -24,9 +24,14 @@ export class PosterService {
     objectFields(input, ["from", "to", "status", "query"]);
     authorize();
     const select = () => {
-      if (command.entryId) return [this.calendarStore.requireEntry(command.entryId)];
+      if (command.entryId) {
+        const entry = this.calendarStore.requireEntry(command.entryId);
+        if (entry.recurrence && !entry.occurrenceAt) throw calendarError(400, "POSTER_RECURRENCE_RANGE_REQUIRED", "周期海报请使用已查询的某次日程实例，或指定起止日期范围");
+        return [entry];
+      }
       const result = this.calendarStore.list({ ...input, limit: 500 });
       if (result.hasMore || result.total !== result.items.length) throw calendarError(400, "POSTER_RANGE_TOO_LARGE", "日程过多，请缩短范围后生成海报");
+      if (!input.to && result.items.some((entry) => entry.recurrence)) throw calendarError(400, "POSTER_RECURRENCE_RANGE_REQUIRED", "周期海报请指定起止日期范围，不能将各计划下一次当作全部日程");
       return result.items;
     };
     const entries = select();

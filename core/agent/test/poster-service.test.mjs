@@ -55,6 +55,23 @@ test("poster selection rejects incomplete lists, injected URLs and changed revis
   await assert.rejects(service.calendar({ action: "poster", input: {} }, () => true), { code: "POSTER_LINK_UNAVAILABLE" });
 });
 
+test("recurring posters require an occurrence or explicit range and render every scoped occurrence", async (t) => {
+  const { service, calendarStore } = setup(t);
+  const plan = calendarStore.create({ sessionId: "main" }, { ...data, recurrence: { frequency: "daily", count: 3 } });
+  await assert.rejects(service.calendar({ action: "poster", input: {} }, () => true), { code: "POSTER_RECURRENCE_RANGE_REQUIRED" });
+  await assert.rejects(service.calendar({ action: "poster", entryId: plan.id, input: {} }, () => true), { code: "POSTER_RECURRENCE_RANGE_REQUIRED" });
+  const original = service.renderCalendar;
+  let renderedCount;
+  service.renderCalendar = async (input) => { renderedCount = input.entries.length; return original(input); };
+  const input = { from: "2026-09-12T00:00:00+08:00", to: "2026-09-15T00:00:00+08:00" };
+  const result = await service.calendar({ action: "poster", input }, () => true);
+  assert.equal(renderedCount, 3);
+  assert.equal(new URL(result.data.targetUrl).searchParams.get("to"), "2026-09-14T16:00:00.000Z");
+  const occurrence = calendarStore.list(input).items[0];
+  await service.calendar({ action: "poster", entryId: occurrence.id, input: {} }, () => true);
+  assert.equal(renderedCount, 1);
+});
+
 test("Page poster uses a governed current-Space image, binds a version and never copies a supplied URL", async (t) => {
   const { root, service, privatePublications, managedFiles, catalog } = setup(t);
   const published = privatePublications.publish({ publicationId: "demo", fileName: "overview.html", content: "<h1>Current</h1>", title: "Demo",
