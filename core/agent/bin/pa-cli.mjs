@@ -37,8 +37,8 @@ try {
       envelopeSender: args.sender || "",
     });
     print({ ok: true, sha256: result.sha256, queuedForIntervalScan: result.queuedForIntervalScan === true });
-  } else if (command === "calendar") {
-    print(await calendarCommand(subcommand));
+  } else if (command === "calendar" || command === "plan") {
+    print(await calendarCommand(subcommand, command === "plan"));
   } else if (command === "memory") {
     print(await memoryCommand(subcommand));
   } else if (command === "automation") {
@@ -152,7 +152,7 @@ try {
     if (!args.name) throw new Error("--name is required");
     if (!args.cron && !args.schedule) throw new Error("--cron is required");
     if (!prompt) throw new Error("--prompt is required");
-    print((await post("/api/agent-corn/tasks", {
+    print((await cronWrite("POST", "/api/agent-corn/tasks", {
       name: args.name,
       cron: args.cron || args.schedule,
       timezone: args.timezone,
@@ -175,15 +175,15 @@ try {
     if (args.recipient !== undefined || args.recipientId !== undefined) patchBody.recipientId = args.recipient || args.recipientId;
     if (args.enabled) patchBody.enabled = true;
     if (args.disabled) patchBody.enabled = false;
-    print((await patch(`/api/agent-corn/tasks/${encodeURIComponent(taskId)}`, patchBody)).task);
+    print((await cronWrite("PATCH", `/api/agent-corn/tasks/${encodeURIComponent(taskId)}`, patchBody)).task);
   } else if ((command === "cron" || command === "corn") && subcommand === "delete") {
     const taskId = args.id || args.taskId || args.task;
     if (!taskId) throw new Error("--id is required");
-    print(await del(`/api/agent-corn/tasks/${encodeURIComponent(taskId)}`));
+    print(await cronWrite("DELETE", `/api/agent-corn/tasks/${encodeURIComponent(taskId)}`));
   } else if ((command === "cron" || command === "corn") && subcommand === "run") {
     const taskId = args.id || args.taskId || args.task;
     if (!taskId) throw new Error("--id is required");
-    print(await post(`/api/agent-corn/tasks/${encodeURIComponent(taskId)}/run`, {}));
+    print(await cronWrite("POST", `/api/agent-corn/tasks/${encodeURIComponent(taskId)}/run`, {}));
   } else if (command === "connection" && subcommand === "list") {
     print((await get("/api/connections")).connections);
   } else if (command === "connection" && subcommand === "inspect") {
@@ -555,16 +555,33 @@ async function readResponse(response) {
   return data;
 }
 
-async function calendarCommand(action) {
-  const supported = new Set(["list", "show", "history", "create", "update", "follow-up", "due", "poster"]);
-  if (!supported.has(action)) throw new Error("calendar action must be list, show, history, create, update, follow-up, due, or poster");
-  const allowed = new Set(["_", "json", "id", "capability", "input-file", "title", "participants-json", "start-at", "end-at", "time-zone", "location", "notes", "next-follow-up-at", "status", "expected-revision", "content", "from", "to", "query", "limit", "offset", "before", "view"]);
+async function cronWrite(method, pathname, input) {
+  const capability = String(args.capability || "").trim();
+  if (!capability) throw new Error("--capability is required and must come from the current main Agent turn");
+  const response = await fetch(apiBase + pathname, { method,
+    headers: { ...headers(), "content-type": "application/json", "x-cove-calendar-capability": capability },
+    ...(input === undefined ? {} : { body: JSON.stringify(input) }),
+  });
+  return readResponse(response);
+}
+
+async function calendarCommand(action, plans = false) {
+  const supported = new Set(["list", "show", "history", "create", "update", "follow-up", "due", "poster", "runs"]);
+  if (!supported.has(action)) throw new Error("calendar/plan action must be list, show, history, create, update, follow-up, due, poster, or runs");
+  const allowed = new Set(["_", "json", "id", "capability", "input-file", "title", "participants-json", "start-at", "end-at", "time-zone", "location", "notes", "next-follow-up-at", "status", "expected-revision", "content", "from", "to", "query", "limit", "offset", "before", "view", "execution-mode", "execution-prompt", "recurrence-json", "missed-run-policy", "enabled", "disabled", "scope", "occurrence-at", "execution-context-json", "plan-id"]);
   for (const key of Object.keys(args)) if (!allowed.has(key)) throw new Error("Unsupported calendar option: --" + key);
   const input = args["input-file"] ? JSON.parse(fs.readFileSync(resolveRegularFile(args["input-file"], "--input-file"), "utf8")) : {};
   if (!input || typeof input !== "object" || Array.isArray(input)) throw new Error("--input-file must contain a JSON object");
   const fields = { title: "title", "start-at": "startAt", "end-at": "endAt", "time-zone": "timeZone", location: "location", notes: "notes",
-    "next-follow-up-at": "nextFollowUpAt", status: "status", content: "content", from: "from", to: "to", query: "query", before: "before", view: "view" };
+    "next-follow-up-at": "nextFollowUpAt", status: "status", content: "content", from: "from", to: "to", query: "query", before: "before", view: "view",
+    "execution-mode": "executionMode", "execution-prompt": "executionPrompt", "missed-run-policy": "missedRunPolicy", scope: "scope", "occurrence-at": "occurrenceAt", "plan-id": "planId" };
   for (const [option, field] of Object.entries(fields)) if (args[option] !== undefined) input[field] = args[option];
+  if (args.enabled && args.disabled) throw new Error("--enabled and --disabled are mutually exclusive");
+  if (args.enabled !== undefined) input.enabled = true;
+  if (args.disabled !== undefined) input.enabled = false;
+  for (const [option, field] of [["recurrence-json", "recurrence"], ["execution-context-json", "executionContext"]]) {
+    if (args[option] !== undefined) input[field] = JSON.parse(args[option]);
+  }
   if (args["participants-json"] !== undefined) {
     input.participants = JSON.parse(args["participants-json"]);
     if (!Array.isArray(input.participants) || input.participants.some((person) => typeof person !== "string")) throw new Error("--participants-json must be an array of participant names");
@@ -580,7 +597,7 @@ async function calendarCommand(action) {
   const response = await fetch(apiBase + "/api/internal/calendar-agent", {
     method: "POST",
     headers: { ...headers(), "content-type": "application/json", "x-cove-calendar-capability": capability },
-    body: JSON.stringify({ action, entryId, input }),
+    body: JSON.stringify({ action, entryId, input, ...(plans ? { view: "plans" } : {}) }),
   });
   return (await readResponse(response)).result;
 }
@@ -832,7 +849,11 @@ async function personalWechatConnectionCommand(parsed) {
 
 function help() {
   console.log(`Usage:
-  pa-cli calendar list [--view upcoming] [--from <offset-ISO>] [--to <offset-ISO>] [--status <status>] [--query <text>] [--limit <n>] [--offset <n>] --capability <ephemeral> [--json]
+  pa-cli plan list [--execution-mode <record|remind|execute>] [--status <status>] [--query <text>] [--limit <n>] [--offset <n>] --capability <ephemeral> [--json]
+  pa-cli plan show|history|runs --id <plan-id> [--occurrence-at <offset-ISO>] --capability <ephemeral> [--json]
+  pa-cli plan create --title <text> --start-at <offset-ISO> --time-zone <IANA> [--execution-mode <record|remind|execute>] [--execution-prompt <text>] [--recurrence-json <object-or-null>] [--missed-run-policy <skip|latest>] [--input-file <json>] --capability <ephemeral> [--json]
+  pa-cli plan update --id <plan-id> --expected-revision <n> [--scope <series|occurrence|future>] [--occurrence-at <offset-ISO>] [--recurrence-json <object-or-null>] [--execution-mode <record|remind|execute>] [--execution-prompt <text>] [--enabled|--disabled] [--input-file <json>] --capability <ephemeral> [--json]
+  pa-cli calendar list [--view upcoming] [--plan-id <plan-id>] [--from <offset-ISO>] [--to <offset-ISO>] [--status <status>] [--query <text>] [--limit <n>] [--offset <n>] --capability <ephemeral> [--json]
   pa-cli calendar show|history --id <calendar-id> --capability <ephemeral> [--json]
   pa-cli calendar create --title <text> --start-at <offset-ISO> --time-zone <IANA> [--participants-json <array>] [--end-at <offset-ISO>] [--location <text>] [--notes <text>] [--next-follow-up-at <offset-ISO>] --capability <ephemeral> [--json]
   pa-cli calendar update --id <calendar-id> --expected-revision <n> [--input-file <json>] [--title <text>] [--status <planned|in_progress|done|cancelled>] --capability <ephemeral> [--json]
@@ -864,10 +885,10 @@ function help() {
   pa-cli data restore --id <snapshot-id> [--json]
   pa-cli data metadata --object <table> [--field <column>] [--name <label>] [--description <text>] [--sensitivity <level>]
   pa-cli cron list [--json]
-  pa-cli cron create --name <name> --cron "0 9 * * *" --prompt "..." [--timezone <iana-zone>] [--workspace <name>] [--recipient <wechat-id>] [--json]
-  pa-cli cron update --id <task-id> [--name <name>] [--cron "..."] [--timezone <iana-zone>] [--prompt "..."] [--enabled|--disabled]
-  pa-cli cron delete --id <task-id>
-  pa-cli cron run --id <task-id> [--json]
+  pa-cli cron create --name <name> --cron "0 9 * * *" --prompt "..." [--timezone <iana-zone>] [--workspace <name>] --capability <ephemeral> [--json]
+  pa-cli cron update --id <task-id> [--name <name>] [--cron "..."] [--timezone <iana-zone>] [--prompt "..."] [--enabled|--disabled] --capability <ephemeral>
+  pa-cli cron delete --id <task-id> --capability <ephemeral>
+  pa-cli cron run --id <task-id> --capability <ephemeral> [--json]
   pa-cli connection list [--json]
   pa-cli connection inspect <wechat|dingtalk|wechat-personal|xiaohongshu|twitter|notion|mail|sites> [--json]
   pa-cli connection <id> status [--json]

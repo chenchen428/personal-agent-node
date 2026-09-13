@@ -21,7 +21,7 @@ export function desktopPrefetchUrls(now = new Date()) {
     "/api/token-usage?range=7d", "/api/node/v1/client/runtime", "/api/skills",
     "/api/system/authorization", "/api/system/token-limit", "/api/system/update",
     "/api/system/mail/status", "/api/system/agent-runtime", "/api/system/setup",
-    "/api/memories?status=active&query=&limit=200", "/api/app/schedules/tasks",
+    "/api/memories?status=active&query=&limit=200", "/api/plans?limit=50&offset=0&query=", "/api/calendar?view=upcoming&limit=1",
   ];
 }
 

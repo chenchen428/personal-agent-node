@@ -1,5 +1,7 @@
 "use client";
 
+import Link from "next/link";
+import { planHref } from "../plans/format";
 import { CoveMark } from "../brand/cove-mark";
 
 import { Check, Circle, LoaderCircle, RotateCcw } from "lucide-react";
@@ -23,6 +25,7 @@ export function TaskConversation({ session, resuming, onResume }: {
     <header className="v72-task-head">
       <div><span>任务 · {workerStatusLabel(session.status)}</span><h1>{session.title || "未命名任务"}</h1><p>{session.summary || session.taskDescription || "任务进展保存在本机工作区。"}</p></div>
       <div className="v72-task-head-actions">
+        {session.metadata?.planId ? <Link className="plan-detail-link" href={planHref(session.metadata.planId)}>查看所属计划</Link> : null}
         <span className={`v72-badge ${isWorkerRunning(session.status) || paused ? "warning" : "success"}`}>{workerStatusLabel(session.status)}</span>
         {paused ? <button className="v72-task-resume" type="button" disabled={resuming} onClick={() => onResume(session.id)}>
           {resuming ? <LoaderCircle className="v72-spin" aria-hidden="true" /> : <RotateCcw aria-hidden="true" />}

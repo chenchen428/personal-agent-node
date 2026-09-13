@@ -1,5 +1,7 @@
 "use client";
 
+import Link from "next/link";
+import { planHref } from "../plans/format";
 import { formatDetailedElapsed, formatTaskDuration, isRunning, statusLabel, useClock } from "./data";
 import { DetailShell } from "./shell";
 import { TaskConversationContent, TaskLoading, TaskUnavailable } from "./task-display-presentation";
@@ -21,6 +23,7 @@ export function MobileTaskDetail({ taskId, returnHref, returnLabel }: { taskId: 
     scrollRef={history.scrollRef}
     onScroll={history.onScroll}
   >
+    {history.task?.metadata?.planId ? <Link className="plan-detail-link" href={planHref(history.task.metadata.planId, true)}>查看所属计划 →</Link> : null}
     {history.error ? <TaskUnavailable error /> : history.task && hasContent ? <TaskConversationContent
       items={history.items}
       plan={history.latestPlan.steps}

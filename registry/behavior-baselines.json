@@ -165,7 +165,7 @@
     },
     {
       "id": "scheduled-tasks",
-      "label": "Task-based automation",
+      "label": "Unified task plans and calendar occurrences",
       "case": "test/fixtures/baseline-cases/scheduled-tasks/case.json",
       "command": [
         "node",
@@ -178,18 +178,27 @@
         "core/agent/test/calendar-store.test.mjs",
         "core/agent/test/calendar-cli.test.mjs",
         "core/agent/test/calendar-web.test.mjs",
-        "test/calendar-experience.test.mjs"
+        "test/calendar-experience.test.mjs",
+        "core/agent/test/unified-plan-store.test.mjs",
+        "core/agent/test/task-plans-scheduler.test.mjs",
+        "core/agent/test/task-plans-cli.test.mjs",
+        "test/unified-plans-ui.test.mjs",
+        "core/agent/test/task-plans-startup.test.mjs"
       ],
       "requirements": [
-        "The schedules capability is registered as implemented and the Personal Agent Skill routes reminder requests through pa-cli cron",
-        "The desktop exposes scheduled plans only as the task module's Automation subview; /app/automations and /app/schedules redirect to /app/workers/schedules and no standalone automation product or editable rule engine remains",
-        "A scheduled task persists its cron expression, IANA timezone, prompt, enabled state and next run, and the Agent verifies mutations by listing persisted schedules",
-        "Schedules reject intervals shorter than fifteen minutes",
-        "A due schedule creates a normal local task and records its execution without depending on Cloud",
+        "任务中心提供计划、日程和执行记录三个视图；旧日程与自动化链接兼容，主导航不再重复展示独立日程或自动化。",
+        "统一计划保存单次或周期时间、IANA时区、record/remind/execute执行方式、完整要求、开关和错过策略；默认record不运行Agent或联系参与人。",
+        "周期支持daily/weekly/monthly/yearly、自定义间隔、每周多日、截止与次数，并按当地时间处理夏令时、月末和跨年。",
+        "修改或取消支持仅本次、这次及以后、整个系列；每次发生身份稳定，既有执行与例外历史保留。",
+        "日程是同一计划的时间投影：无界upcoming显示各计划下一次及进行中，明确范围展开每次发生并分页，不以固定七天或一年判断没有下一项。",
+        "所有计划Agent变更使用Space限定的主会话临时能力，网页只读，旧cron变更也不允许绕过权限。",
+        "record不创建执行；remind与execute到点产生普通任务，由主Agent汇总交付，不由调度器直接向参与人发消息。",
+        "执行按planId和occurrenceAt原子领取去重，重启不静默重做未知结果，错过策略skip跳过或latest最多补最近一次。",
+        "旧单次日程保持原ID与历史，旧自动化按稳定来源幂等导入并保留旧数据，不启用双调度器或重复导入。",
+        "兼容cron保留五字段时区与不少于十五分钟的频率限制，读写映射统一计划；任务和日程可互相定位。",
         "Built-in mail scanning may directly create a normal task after protection checks but does not create an automation rule, run, template, or automation Activity",
-        "Calendar records and follow-up history are Space-isolated and main-Agent capability-bound; updates require the current revision and do not create cron rules or send messages to participants",
-        "Calendar stores participants and offset-aware start/end times with an IANA display timezone, filters overlapping ranges, and exposes read-only authenticated UI history",
-        "Desktop and mobile calendar default to an upcoming view without a fixed future horizon; the scoped query excludes completed and cancelled entries and reports nearest future and ongoing entries independently of pagination, while preserving explicit day, week and poster link ranges and stating the next date and timezone before imagery"
+        "已核实的下一次日期时间应先用文字回答，再按需返回受管海报；海报失败不吞掉日程事实。",
+        "计划调度与旧数据接管只在监听成功后启动，重复启动不会改写活跃执行；旧调度表停用且配置保留，回滚不复活已取消的旧计划。"
       ]
     },
     {

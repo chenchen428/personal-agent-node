@@ -3,6 +3,9 @@ import fs from "node:fs";
 import path from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { calendarError, ENTRY_FIELDS, entryFields, integerField, isoTime, objectFields, pagination, statusField, textField } from "./validation.js";
+import { initializePlans, planMetadata, hydratePlan } from "./plan-schema.js";
+import { listCalendar, listPlans, requireOccurrence, scopedUpdate, projectOccurrence } from "./plan-projection.js";
+import { planRuntimeMethods } from "./plan-runs.js";
 
 export class CalendarStore {
   constructor({ dataDir, databasePath, spaceId, sessionResolver, now = Date.now } = {}) {
@@ -33,6 +36,7 @@ export class CalendarStore {
       );
       CREATE INDEX IF NOT EXISTS idx_cove_calendar_history ON cove_calendar_history(space_id, entry_id, revision DESC);
     `);
+    initializePlans(this.db);
   }
 
   close() { this.db.close(); }
@@ -49,6 +53,10 @@ export class CalendarStore {
   }
 
   list(input = {}) {
+    return listCalendar(this, input);
+  }
+
+  listLegacy(input = {}) {
     objectFields(input, ["view", "from", "to", "status", "query", "limit", "offset"]);
     if (input.view !== undefined && input.view !== "upcoming") throw calendarError(400, "INVALID_CALENDAR_VIEW", "不支持的日程视图");
     const upcoming = input.view === "upcoming";
@@ -93,7 +101,25 @@ export class CalendarStore {
   }
 
   get(id) {
-    const row = this.db.prepare("SELECT * FROM cove_calendar_entries WHERE id = ? AND space_id = ?").get(entryId(id), this.spaceId);
+    if (typeof id === "string" && id.includes("@")) {
+      const [planId, stamp, ...extra] = id.split("@");
+      if (extra.length || !/^\d+$/.test(stamp)) return null;
+      const plan = this.getPlan(planId);
+      if (!plan) return null;
+      try { return requireOccurrence(this, plan, new Date(Number(stamp)).toISOString()); } catch (error) {
+        if (error instanceof RangeError) return null;
+        if (error.code !== "CALENDAR_NOT_FOUND") throw error;
+        const run = this.db.prepare("SELECT snapshot_json FROM cove_plan_runs WHERE plan_id=? AND space_id=? AND occurrence_at=? AND trigger_kind='scheduled'").get(planId, this.spaceId, new Date(Number(stamp)).toISOString());
+        return run ? { ...JSON.parse(run.snapshot_json), isHistorical: true } : null;
+      }
+    }
+    return this.getPlan(id);
+  }
+
+  getPlan(id) {
+    const normalized = entryId(id);
+    let row = this.db.prepare("SELECT * FROM cove_calendar_entries WHERE id = ? AND space_id = ?").get(normalized, this.spaceId);
+    if (!row) row = this.db.prepare("SELECT e.* FROM cove_plan_imports i JOIN cove_calendar_entries e ON e.id=i.plan_id AND e.space_id=i.space_id WHERE i.source_id=? AND i.space_id=?").get(normalized, this.spaceId);
     return row ? hydrateEntry(row) : null;
   }
 
@@ -103,8 +129,19 @@ export class CalendarStore {
     return entry;
   }
 
+  requirePlan(id) {
+    const plan = this.getPlan(id);
+    if (!plan) throw calendarError(404, "CALENDAR_NOT_FOUND", "当前空间没有该计划");
+    return plan;
+  }
+
+  listPlans(input = {}) { return listPlans(this, input); }
+  projectOccurrence(plan, at) { return projectOccurrence(this, plan, at); }
+  requireOccurrence(plan, at) { return requireOccurrence(this, plan, at); }
+
   history(id, input = {}) {
-    this.requireEntry(id);
+    const entry = this.requireEntry(id);
+    id = entry.planId || entry.id;
     objectFields(input, ["limit", "offset"]);
     const { limit, offset } = pagination(input);
     const total = Number(this.db.prepare("SELECT COUNT(*) AS count FROM cove_calendar_history WHERE entry_id = ? AND space_id = ?").get(id, this.spaceId).count);
@@ -121,27 +158,36 @@ export class CalendarStore {
     objectFields(input, ENTRY_FIELDS);
     const fields = entryFields(input);
     const now = this.nowIso();
-    const entry = { id: `cal_${crypto.randomBytes(12).toString("hex")}`, ...fields, revision: 1, createdAt: now, updatedAt: now };
+    const entry = { id: `cal_${crypto.randomBytes(12).toString("hex")}`, ...fields, mainSessionId: principal.sessionId, revision: 1, createdAt: now, updatedAt: now };
     return this.transaction(() => {
       this.db.prepare(`INSERT INTO cove_calendar_entries (id, space_id, title, participants_json, start_at, end_at,
         time_zone, location, notes, next_follow_up_at, status, revision, created_at, updated_at)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(entry.id, this.spaceId, entry.title,
         JSON.stringify(entry.participants), entry.startAt, entry.endAt, entry.timeZone, entry.location, entry.notes,
         entry.nextFollowUpAt, entry.status, 1, now, now);
+      this.saveMetadata(entry);
       this.appendHistory(principal, "create", entry, "", changedFields(null, entry));
       return entry;
     });
   }
 
   update(actor, id, input = {}) {
-    objectFields(input, [...ENTRY_FIELDS, "expectedRevision"]);
+    objectFields(input, [...ENTRY_FIELDS, "expectedRevision", "scope", "occurrenceAt"]);
     if (!ENTRY_FIELDS.some((field) => Object.hasOwn(input, field))) throw calendarError(400, "CALENDAR_UPDATE_EMPTY", "至少提供一个要更新的日程字段");
+    if (input.scope && input.scope !== "series") return scopedUpdate(this, actor, id, input);
+    if (id.includes("@")) id = this.requireEntry(id).planId;
     return this.mutate(actor, id, input, "update", "");
   }
 
   followUp(actor, id, input = {}) {
     objectFields(input, ["expectedRevision", "content", "status", "nextFollowUpAt"]);
     const content = textField(input.content, "跟进记录", 8_000, { multiline: true });
+    if (id.includes("@")) return this.transaction(() => {
+      const { content: ignored, ...fields } = input;
+      const entry = scopedUpdate(this, actor, id, { ...fields, scope: "occurrence" });
+      this.db.prepare("UPDATE cove_calendar_history SET action='follow-up',content=? WHERE entry_id=? AND space_id=? AND revision=?").run(content, entry.planId, this.spaceId, entry.revision);
+      return entry;
+    });
     return this.mutate(actor, id, input, "follow-up", content);
   }
 
@@ -152,16 +198,21 @@ export class CalendarStore {
       const current = this.requireEntry(id);
       if (current.revision !== expected) throw calendarError(409, "REVISION_CONFLICT", "日程已更新，请读取最新版本后重试");
       const fields = entryFields(input, current);
-      const entry = { ...current, ...fields, revision: current.revision + 1, updatedAt: this.nowIso() };
+      const entry = { ...current, ...fields, mainSessionId: current.mainSessionId || principal.sessionId, revision: current.revision + 1, updatedAt: this.nowIso() };
       const changed = this.db.prepare(`UPDATE cove_calendar_entries SET title = ?, participants_json = ?, start_at = ?, end_at = ?,
         time_zone = ?, location = ?, notes = ?, next_follow_up_at = ?, status = ?, revision = ?, updated_at = ?
         WHERE id = ? AND space_id = ? AND revision = ?`).run(entry.title, JSON.stringify(entry.participants), entry.startAt,
         entry.endAt, entry.timeZone, entry.location, entry.notes, entry.nextFollowUpAt, entry.status, entry.revision,
         entry.updatedAt, entry.id, this.spaceId, expected).changes;
       if (changed !== 1) throw calendarError(409, "REVISION_CONFLICT", "日程已更新，请读取最新版本后重试");
+      this.saveMetadata(entry);
       this.appendHistory(principal, action, entry, content, changedFields(current, entry));
       return entry;
     });
+  }
+
+  saveMetadata(entry) {
+    this.db.prepare("UPDATE cove_calendar_entries SET plan_json = ? WHERE id = ? AND space_id = ?").run(JSON.stringify(planMetadata(entry)), entry.id, this.spaceId);
   }
 
   appendHistory(principal, action, entry, content, changes) {
@@ -171,9 +222,18 @@ export class CalendarStore {
   }
 
   transaction(callback) {
+    if (this.transactionDepth) {
+      const savepoint = `calendar_${this.transactionDepth++}`;
+      this.db.exec(`SAVEPOINT ${savepoint}`);
+      try { const result = callback(); this.db.exec(`RELEASE ${savepoint}`); return result; }
+      catch (error) { this.db.exec(`ROLLBACK TO ${savepoint}`); this.db.exec(`RELEASE ${savepoint}`); throw error; }
+      finally { this.transactionDepth--; }
+    }
     this.db.exec("BEGIN IMMEDIATE");
+    this.transactionDepth = 1;
     try { const result = callback(); this.db.exec("COMMIT"); return result; }
     catch (error) { this.db.exec("ROLLBACK"); throw error; }
+    finally { this.transactionDepth = 0; }
   }
 
   nowIso() { return new Date(this.now()).toISOString(); }
@@ -184,10 +244,12 @@ function entryId(value) { return textField(value, "日程ID", 120); }
 function hydrateEntry(row) {
   return { id: row.id, title: row.title, participants: JSON.parse(row.participants_json), startAt: row.start_at, endAt: row.end_at,
     timeZone: row.time_zone, location: row.location, notes: row.notes, nextFollowUpAt: row.next_follow_up_at,
-    status: row.status, revision: row.revision, createdAt: row.created_at, updatedAt: row.updated_at };
+    status: row.status, revision: row.revision, createdAt: row.created_at, updatedAt: row.updated_at, ...hydratePlan(row) };
 }
 
 function changedFields(current, next) {
   return Object.fromEntries(ENTRY_FIELDS.filter((field) => !current || JSON.stringify(current[field]) !== JSON.stringify(next[field]))
     .map((field) => [field, { before: current ? current[field] : null, after: next[field] }]));
 }
+
+Object.assign(CalendarStore.prototype, planRuntimeMethods);

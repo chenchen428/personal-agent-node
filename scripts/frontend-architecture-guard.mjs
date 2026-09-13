@@ -21,6 +21,8 @@ const menuPages = {
   "app/page.tsx": "overview-page",
   "app/conversations/page.tsx": "conversation-page",
   "app/workers/page.tsx": "workers-page",
+  "app/workers/plans/page.tsx": "plans-page",
+  "app/workers/calendar/page.tsx": "calendar-page",
   "app/mail/page.tsx": "mail-page",
   "app/pages/page.tsx": "pages-page",
   "app/data/page.tsx": "data-page",

@@ -1,0 +1,41 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:cove:task-plan:input:v1",
+  "title": "Cove unified task plan input v1",
+  "type": "object",
+  "required": ["title", "startAt", "timeZone"],
+  "additionalProperties": false,
+  "properties": {
+    "title": { "type": "string", "minLength": 1, "maxLength": 200 },
+    "participants": { "type": "array", "maxItems": 100, "items": { "type": "string", "minLength": 1, "maxLength": 120 } },
+    "startAt": { "type": "string", "format": "date-time" },
+    "endAt": { "type": ["string", "null"], "format": "date-time" },
+    "timeZone": { "type": "string", "description": "有效IANA时区，规则按当地钟计算" },
+    "location": { "type": "string", "maxLength": 500 },
+    "notes": { "type": "string", "maxLength": 8000 },
+    "nextFollowUpAt": { "type": ["string", "null"], "format": "date-time" },
+    "status": { "enum": ["planned", "in_progress", "done", "cancelled"] },
+    "enabled": { "type": "boolean", "default": true },
+    "executionMode": { "enum": ["record", "remind", "execute"], "default": "record" },
+    "executionPrompt": { "type": "string", "description": "提醒或执行时保存完整用户要求" },
+    "missedRunPolicy": { "enum": ["skip", "latest"], "default": "skip" },
+    "recurrence": {
+      "oneOf": [
+        { "type": "null" },
+        {
+          "type": "object",
+          "required": ["frequency"],
+          "additionalProperties": false,
+          "properties": {
+            "frequency": { "enum": ["daily", "weekly", "monthly", "yearly", "cron"] },
+            "interval": { "type": "integer", "minimum": 1, "maximum": 9999, "default": 1 },
+            "weekdays": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "type": "integer", "minimum": 0, "maximum": 6 } },
+            "count": { "type": ["integer", "null"], "minimum": 1, "maximum": 1000000 },
+            "until": { "type": ["string", "null"], "format": "date-time" },
+            "expression": { "type": "string", "description": "仅兼容cron规则使用，不少于15分钟" }
+          }
+        }
+      ]
+    }
+  }
+}

@@ -5,6 +5,8 @@ description: Create, inspect, update, resume, and report Cove child tasks throug
 
 # Cove Tasks
 
+任务中心包含计划、日程和执行记录。指定时间、周期安排或提醒由 cove-schedules 使用统一 plan 创建；每次执行仍是普通子任务。此技能处理立即委托和具体执行会话，不为同一事项重复建立时间计划。任务的 planId 与 occurrenceAt 只用于回到原计划，不意味着可以修改整个周期。未知结果的中断执行先查证再按用户意图恢复。
+
 Use a child task for real multi-step work involving files, commands, research plus delivery, Pages, deployment, cross-module changes, multiple deliverables, or continued execution. Do not create a task for a greeting, clarification, simple answer, quick atomic action, schedule management, existing-result lookup, or task-status question.
 
 Search current children first. Create generic work with pa-cli session start --parent <main-session-id> --title "<title>" --description "<description>" --task-file <utf8-task-file> --json. Resume only an exact paused match:

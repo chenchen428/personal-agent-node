@@ -112,7 +112,7 @@ Use Open Agent Bridge and registered Node capabilities to gather the facts neede
 
 - Task creation and progress come from normalized parent/child session identity, visible Agent replies, explicit plans, stable timestamps, and verified terminal state.
 - Data activity may use governed schema inspection, structured queries, object metadata, and result counts. Do not read business databases directly, expose database paths, dump raw rows, or treat an internal data mutation record as user-facing copy.
-- Mail, Pages, files, scheduled tasks, calendar records, and channels remain separate capability owners. Activity may reference their objects but does not bypass their permissions, approval policy, publication state, or retention rules.
+- Mail, Pages, files, unified task plans, and channels retain their owning capability boundaries. Calendar is the time projection of plans and each execution is a normal task. Activity may reference their objects but does not bypass their permissions, approval policy, publication state, or retention rules.
 
 ### Space-isolated Product Memory
 
@@ -128,7 +128,7 @@ Memory is a separate, Space-local product domain for durable facts, stable prefe
 - Permanent deletion requires explicit user intent, a uniquely identified record, and its current revision. Never store secrets, credentials, one-time state, raw tool output, internal paths, or unsupported inferences as memory.
 - The removed legacy `memories` table remains archived and must not be reopened. Product Memory uses the new versioned `personal_memories` contract and never auto-imports legacy rows.
 
-The installed CLIs have separate stable contracts: `personal-agent` owns runtime lifecycle and diagnostics; `pa-cli` owns assistant sessions, channels, data, calendar records (`calendar`), scheduled tasks (`cron`), files, and Pages. Select the one functional `skills/cove-*` Skill that matches the request, use `cove-runtime` for command discovery, start runtime work with `personal-agent status --json`, and use only registered, executable commands. Do not call internal HTTP ports, inspect internal databases, use `private-site`, or recreate the removed `open-abg`, `oab`, and `open-agent-bridge` aliases. Report capability gaps honestly; never fabricate a successful write.
+The installed CLIs have separate stable contracts: `personal-agent` owns runtime lifecycle and diagnostics; `pa-cli` owns assistant sessions, channels, data, unified task plans (`plan`), calendar occurrences (`calendar`), compatible legacy schedules (`cron`), files, and Pages. Select the one functional `skills/cove-*` Skill that matches the request, use `cove-runtime` for command discovery, start runtime work with `personal-agent status --json`, and use only registered, executable commands. Do not call internal HTTP ports, inspect internal databases, use `private-site`, or recreate the removed `open-abg`, `oab`, and `open-agent-bridge` aliases. Report capability gaps honestly; never fabricate a successful write.
 
 Authorized Activity and Memory reads, searches, and previews are R0. Creating or updating private local Activity or Memory is an auditable R1 write. Activity hiding and restoring remain reversible; Memory deletion is intentionally permanent and requires explicit user intent plus a unique revision-bound target. Risk level never bypasses main-Agent isolation. Referencing an object never grants permission to mutate, publish, send, or disclose that object; those actions retain the owning capability's R2/R3 rules and explicit human approval requirements.
 
@@ -153,7 +153,7 @@ When changing Activity or Memory behavior, update the capability and route regis
 
 ## Calendar and image delivery
 
-Calendar records are Space-local facts and follow-up history, not cron rules. Use cove-schedules to distinguish calendar from explicit reminders. Only the main Agent receives the per-turn Calendar capability. Calendar changes do not contact participants. View requests should prefer governed poster images: deterministic complete calendar templates, freely designed Page imagery, system-validated QR targets, and main-reply managed attachments.
+Task plans are Space-local records with one-time or recurring timing and record, remind, or execute modes. Calendar projects occurrences from those same plans; every execution has a persistent occurrence identity and a normal task session. Use cove-schedules for plan and occurrence changes. Only the main Agent receives the per-turn plan/calendar mutation capability; browser views are read-only. Recording a plan defaults to record mode and never contacts participants. Preserve execution history and update scopes for this occurrence, future occurrences, or the entire series. View requests should prefer governed poster images: deterministic complete calendar templates, freely designed Page imagery, system-validated QR targets, and main-reply managed attachments.
 
 ## Required Checks
 

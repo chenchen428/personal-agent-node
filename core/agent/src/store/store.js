@@ -862,6 +862,9 @@ export class BridgeStore {
       metadata: {
         ...(session.metadata?.workerRecoveryAttempt ? { workerRecoveryAttempt: session.metadata.workerRecoveryAttempt } : {}),
         ...(session.metadata?.workerRecoveryStartedAt ? { workerRecoveryStartedAt: session.metadata.workerRecoveryStartedAt } : {}),
+        ...(session.metadata?.planId ? { planId: session.metadata.planId } : {}),
+        ...(session.metadata?.occurrenceAt ? { occurrenceAt: session.metadata.occurrenceAt } : {}),
+        ...(session.metadata?.planRunId ? { planRunId: session.metadata.planRunId } : {}),
       },
       path: this.sessionPath(session.id),
       ...this.sessionAccess(session.id, session.role),

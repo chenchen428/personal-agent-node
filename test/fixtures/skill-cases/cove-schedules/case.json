@@ -1,15 +1,14 @@
 {
   "schemaVersion": 1,
   "skill": "cove-schedules",
-  "title": "分别记录日程与创建明确要求的提醒",
-  "prompt": "记录2026-09-20 14:00 Asia/Shanghai 与张三讨论项目的日程，并追加一次跟进；日程记录不得隐式创建cron或发送消息。用户问下一次安排时即使未来7天为空也必须实际查询不限上界的后续安排，先文字给出下一次完整日期、时间、时区和事项，进行中的事项另外说明，再按需要返回海报。用户另行明确要求每日21:00提醒复盘时才创建定时计划。两者分别核对持久化结果。",
+  "title": "统一周期计划、日程实例与独立执行记录",
+  "prompt": "记录每周一三上午9点项目例会，默认仅记录；另创建每日21点提醒本人复盘的计划。不要为同一事项建立独立cron副本。查询下一次的真实年月日、时间、时区，修改仅本次时保留系列，查看plan runs确认每次执行。所有写入携带主会话能力和最新revision，不联系参与人，不把触发或idle当完整交付。",
   "commands": [
-    "pa-cli calendar create --title \"项目讨论\" --participants-json '[\"张三\"]' --start-at 2026-09-20T14:00:00+08:00 --time-zone Asia/Shanghai --capability <ephemeral> --json",
-    "pa-cli calendar list --capability <ephemeral> --json",
+    "pa-cli plan create --title \"项目例会\" --start-at 2026-09-14T09:00:00+08:00 --time-zone Asia/Shanghai --recurrence-json '{\"frequency\":\"weekly\",\"interval\":1,\"weekdays\":[1,3]}' --execution-mode record --capability <ephemeral> --json",
+    "pa-cli plan list --capability <ephemeral> --json",
     "pa-cli calendar list --view upcoming --limit 1 --capability <ephemeral> --json",
-    "personal-agent capabilities inspect schedules --json",
-    "pa-cli cron create --name \"每日叶酸提醒\" --cron \"0 21 * * *\" --timezone Asia/Shanghai --prompt \"提醒用户吃叶酸。\" --json",
-    "pa-cli cron list --json"
+    "pa-cli plan runs --id <plan-id> --capability <ephemeral> --json",
+    "pa-cli plan create --title \"每日复盘提醒\" --start-at 2026-09-14T21:00:00+08:00 --time-zone Asia/Shanghai --recurrence-json '{\"frequency\":\"daily\",\"interval\":1}' --execution-mode remind --execution-prompt \"提醒我复盘今天的工作。\" --capability <ephemeral> --json"
   ],
   "artifacts": [
     {

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { Bot, ChevronRight } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { elapsedSeconds, fetchJson, formatDateTime, formatTaskDuration, isRunning, relativeTime, statusLabel, useRememberedQuery, useSourcePage } from "./data";
+import { TaskModuleViewNavigation } from "../desktop-v627/task-module-view-navigation";
 import { MobileTaskDetail } from "./mobile-task-detail";
 import { InlineError, LoadSentinel, MobileListShell, SearchStatus } from "./shell";
 import { MobileContentSkeleton } from "./skeletons";
@@ -74,6 +75,7 @@ export function MobileWorkers({ sessionId = "" }: { sessionId?: string }) {
     searchPlaceholder="搜索任务…"
     filter={{ label: "筛选任务状态", description: "选择要查看的任务状态", value: filter, setValue: setFilter, options }}
   >
+    <TaskModuleViewNavigation active="tasks" mobile />
     <div className="mobile-task-list">
       {error ? <InlineError message={error} /> : null}
       {hasConditions ? <SearchStatus count={sessions.length} summary={conditionSummary} onClear={() => { setQuery(""); setFilter("all"); }} /> : null}

@@ -39,6 +39,24 @@ test("real Calendar HTTP API authenticates readers and rejects browser writes, S
   }
   assert.ok(ready, "test server ready");
   assert.equal((await fetch(`${base}/api/calendar`, { redirect: "manual" })).status, 401);
+  assert.equal((await fetch(`${base}/api/plans`, { redirect: "manual" })).status, 401);
+  const plans = await (await fetch(`${base}/api/plans?executionMode=record&enabled=true`, { headers })).json();
+  assert.equal(plans.total, 1);
+  assert.equal(plans.items[0].id, entry.id);
+  const detail = await (await fetch(`${base}/api/plans/${entry.id}`, { headers })).json();
+  assert.equal(detail.plan.id, entry.id);
+  assert.ok(Object.hasOwn(detail.plan, "nextOccurrenceAt"));
+  assert.ok(Object.hasOwn(detail.plan, "latestRun"));
+  assert.equal((await (await fetch(`${base}/api/plans/${entry.id}/runs`, { headers })).json()).total, 0);
+  assert.equal((await (await fetch(`${base}/api/plans/runs`, { headers })).json()).total, 0);
+  for (const endpoint of ["/api/plans?spaceId=other", "/api/plans?enabled=invalid", `/api/plans/${entry.id}/runs?ownerId=forged`]) {
+    assert.equal((await fetch(base + endpoint, { headers })).status, 400);
+  }
+  for (const endpoint of ["/api/plans", `/api/plans/${entry.id}`, `/api/plans/${entry.id}/runs`]) {
+    for (const method of ["POST", "PATCH", "DELETE"]) assert.equal((await fetch(base + endpoint, { method, headers, body: "{}" })).status, 403);
+  }
+  assert.equal((await fetch(`${base}/api/agent-cron/tasks`, { method: "POST", headers: { ...headers, "content-type": "application/json" },
+    body: JSON.stringify({ name: "forged", cron: "0 9 * * *", prompt: "no", timezone: "Asia/Shanghai" }) })).status, 403);
   const list = await (await fetch(`${base}/api/calendar?limit=1`, { headers })).json();
   assert.equal(list.total, 1); assert.equal(list.items[0].id, entry.id); assert.equal(list.hasMore, false);
   const upcoming = await (await fetch(`${base}/api/calendar?view=upcoming&from=2026-08-01T00:00:00Z&limit=1`, { headers })).json();
@@ -49,6 +67,7 @@ test("real Calendar HTTP API authenticates readers and rejects browser writes, S
   assert.equal((await (await fetch(`${base}/api/calendar/${entry.id}/history`, { headers })).json()).total, 1);
   assert.equal((await fetch(`${base}/api/calendar/cal_missing`, { headers })).status, 404);
   assert.equal((await fetch(`${base}/api/calendar?spaceId=another-space`, { headers })).status, 400);
+  assert.equal((await (await fetch(`${base}/api/calendar?planId=${entry.id}`, { headers })).json()).items[0].planId, entry.id);
   assert.equal((await fetch(`${base}/api/calendar`, { method: "POST", headers, body: "{}" })).status, 403);
   for (const extra of [{}, { "x-cove-calendar-capability": "forged", "x-agent-role": "main" }, { "x-forwarded-for": "127.0.0.1", "x-cove-calendar-capability": "forged" }]) {
     const response = await fetch(`${base}/api/internal/calendar-agent`, { method: "POST", headers: { ...headers, ...extra, "content-type": "application/json" }, body: JSON.stringify({ action: "create", input: { title: "forged" } }) });

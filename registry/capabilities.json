@@ -40,7 +40,7 @@
     {
       "id": "schedules",
       "owner": "personal-agent-node",
-      "dataScope": "local-private",
+      "dataScope": "space-local-private",
       "status": "implemented"
     },
     {
@@ -93,6 +93,12 @@
     },
     {
       "id": "calendar",
+      "owner": "personal-agent-node",
+      "dataScope": "space-local-private",
+      "status": "implemented"
+    },
+    {
+      "id": "plans",
       "owner": "personal-agent-node",
       "dataScope": "space-local-private",
       "status": "implemented"

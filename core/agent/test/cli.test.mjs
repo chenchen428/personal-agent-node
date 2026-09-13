@@ -84,6 +84,7 @@ test("cron CLI creates and verifies a governed scheduled task", async (t) => {
     "--cron", "0 21 * * *",
     "--timezone", "Asia/Shanghai",
     "--prompt", "提醒用户吃叶酸。",
+    "--capability", "ephemeral-cron-capability",
     "--json",
   ], { cwd: projectRoot, env });
   const listed = await execFileAsync(process.execPath, [cli, "cron", "list", "--json"], { cwd: projectRoot, env });

@@ -1,5 +1,7 @@
+import { assertMinimumCronInterval } from "../scheduler/scheduled-tasks.js";
+
 export const CALENDAR_STATUSES = new Set(["planned", "in_progress", "done", "cancelled"]);
-export const ENTRY_FIELDS = ["title", "participants", "startAt", "endAt", "timeZone", "location", "notes", "nextFollowUpAt", "status"];
+export const ENTRY_FIELDS = ["title", "participants", "startAt", "endAt", "timeZone", "location", "notes", "nextFollowUpAt", "status", "recurrence", "executionMode", "executionPrompt", "missedRunPolicy", "enabled", "executionContext"];
 
 export function calendarError(statusCode, code, message) {
   return Object.assign(new Error(message), { statusCode, code });
@@ -81,8 +83,40 @@ export function entryFields(input, current = null) {
   next.notes = textField(pick("notes", ""), "notes", 8_000, { optional: true, multiline: true });
   next.nextFollowUpAt = isoTime(pick("nextFollowUpAt", null), "nextFollowUpAt", { optional: true });
   next.status = statusField(pick("status", "planned"));
+  next.recurrence = recurrenceField(pick("recurrence", null));
+  if (next.recurrence?.until && next.recurrence.until < next.startAt) throw calendarError(400, "INVALID_RECURRENCE", "重复截止时间不能早于开始时间");
+  next.executionMode = pick("executionMode", "record");
+  if (!["record", "remind", "execute"].includes(next.executionMode)) throw calendarError(400, "INVALID_EXECUTION_MODE", "执行方式必须为仅记录、提醒或执行");
+  next.executionPrompt = textField(pick("executionPrompt", ""), "executionPrompt", 32_000, { optional: true, multiline: true });
+  if (next.executionMode !== "record" && !next.executionPrompt) throw calendarError(400, "EXECUTION_PROMPT_REQUIRED", "提醒和执行计划必须保留完整要求");
+  next.missedRunPolicy = pick("missedRunPolicy", "skip");
+  if (!["skip", "latest"].includes(next.missedRunPolicy)) throw calendarError(400, "INVALID_MISSED_RUN_POLICY", "错过策略必须为skip或latest");
+  next.enabled = pick("enabled", true);
+  if (typeof next.enabled !== "boolean") throw calendarError(400, "INVALID_PLAN_ENABLED", "enabled必须为布尔值");
+  const context = pick("executionContext", {});
+  objectFields(context, ["workspaceName", "workspaceRoot", "recipientId"]);
+  next.executionContext = Object.fromEntries(Object.entries(context).map(([key, value]) => [key, textField(value, key, 2000, { optional: true })]));
   if (next.endAt && next.endAt < next.startAt) throw calendarError(400, "INVALID_CALENDAR_RANGE", "结束时间不能早于开始时间");
   return next;
+}
+
+export function recurrenceField(value) {
+  if (value === null || value === undefined) return null;
+  objectFields(value, ["frequency", "interval", "weekdays", "until", "count", "expression"]);
+  if (!["daily", "weekly", "monthly", "yearly", "cron"].includes(value.frequency)) throw calendarError(400, "INVALID_RECURRENCE", "不支持的重复频率");
+  const rule = { frequency: value.frequency, interval: integerField(value.interval, "interval", { minimum: 1, maximum: 9999, fallback: 1 }) };
+  if (value.weekdays !== undefined) {
+    if (value.frequency !== "weekly" || !Array.isArray(value.weekdays) || !value.weekdays.length) throw calendarError(400, "INVALID_RECURRENCE", "weekdays只能用于每周重复且不能为空");
+    rule.weekdays = [...new Set(value.weekdays.map(day => integerField(day, "weekday", { maximum: 6 })))].sort();
+  }
+  if (value.until !== undefined && value.until !== null) rule.until = isoTime(value.until, "until");
+  if (value.count !== undefined && value.count !== null) rule.count = integerField(value.count, "count", { minimum: 1, maximum: 1_000_000 });
+  if (value.frequency === "cron") {
+    if (rule.interval !== 1) throw calendarError(400, "INVALID_RECURRENCE", "cron间隔由表达式定义");
+    rule.expression = textField(value.expression, "expression", 300);
+    try { assertMinimumCronInterval(rule.expression); } catch { throw calendarError(400, "INVALID_RECURRENCE", "cron表达式无效或间隔小于15分钟"); }
+  } else if (value.expression !== undefined) throw calendarError(400, "INVALID_RECURRENCE", "仅cron重复接受expression");
+  return rule;
 }
 
 export function pagination(input = {}) {

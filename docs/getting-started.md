@@ -1,6 +1,8 @@
 # Getting started
 
-本源码对应 GitHub 预发布版本 `v0.2.0-beta.59`，包含研发恢复、Page 海报和日程体验更新。请下载对应版本已发布的完整安装包；Windows 与 macOS 原生签名仍为已披露的预发布延期状态。
+本源码包含统一任务计划的本地候选版 `0.2.0-beta.60-plans.1`，Windows 包名为 `personal-agent-node-v0.2.0-beta.60-plans.1-windows-x64-installer.exe`。用于本机验收，公开下载仍以已发布版本为准。
+
+已发布的基础版本为 GitHub 预发布版本 `v0.2.0-beta.59`，包含研发恢复、Page 海报和日程体验更新。请下载对应版本已发布的完整安装包；Windows 与 macOS 原生签名仍为已披露的预发布延期状态。
 
 ## Install an immutable release
 

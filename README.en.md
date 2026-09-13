@@ -1,6 +1,8 @@
 # Cove Node
 
-This checkout targets GitHub prerelease `v0.2.0-beta.59`, including the recovery, Page poster, and calendar updates. Download only the matching published release assets; Windows and macOS packages retain the disclosed unsigned prerelease status.
+This checkout includes local candidate `0.2.0-beta.60-plans.1` for unified task plans; its Windows package is `personal-agent-node-v0.2.0-beta.60-plans.1-windows-x64-installer.exe`. Public downloads remain the already published releases.
+
+The published base release is GitHub prerelease `v0.2.0-beta.59`, including the recovery, Page poster, and calendar updates. Download only the matching published release assets; Windows and macOS packages retain the disclosed unsigned prerelease status.
 
 English | [简体中文](README.md)
 

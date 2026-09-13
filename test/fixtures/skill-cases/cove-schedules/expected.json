@@ -26,6 +26,37 @@
     "upcomingHasNoDefaultEnd": true,
     "nextEntryExcludesDoneAndCancelled": true,
     "ongoingIsSeparateFromNext": true,
-    "nextDateTimeTextBeforePoster": true
+    "nextDateTimeTextBeforePoster": true,
+    "upcomingListsNextPerPlan": true,
+    "dateRangesExpandOccurrences": true
+  },
+  "plan": {
+    "unifiedStore": true,
+    "modes": [
+      "record",
+      "remind",
+      "execute"
+    ],
+    "defaultMode": "record",
+    "recurrence": [
+      "daily",
+      "weekly",
+      "monthly",
+      "yearly"
+    ],
+    "scopes": [
+      "series",
+      "occurrence",
+      "future"
+    ],
+    "revisionBound": true,
+    "mainCapabilityRequired": true,
+    "missedRunPolicies": [
+      "skip",
+      "latest"
+    ],
+    "occurrenceIdempotency": true,
+    "legacyImportIdempotent": true,
+    "interruptedExecutionNotReplayed": true
   }
 }

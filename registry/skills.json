@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "version": 16,
-  "updatedAt": "2026-09-12",
+  "version": 17,
+  "updatedAt": "2026-09-13",
   "categories": [
     {
       "id": "cove",
@@ -499,7 +499,7 @@
       "kind": "external-cli",
       "entrypoint": "skills/cove-schedules/SKILL.md",
       "command": "pa-cli cron list --json",
-      "description": "Manage scheduled Personal Agent tasks."
+      "description": "旧 cron 兼容入口，使用同一计划存储和调度器；变更需要主会话临时能力。"
     },
     {
       "name": "pa-cli-pages",
@@ -573,6 +573,15 @@
       "command": "pa-cli calendar",
       "description": "Record and follow up current-Space calendar entries.",
       "label": "空间日程"
+    },
+    {
+      "name": "pa-cli-plan",
+      "category": "cove",
+      "owner": "cove-schedules",
+      "kind": "external-cli",
+      "entrypoint": "skills/cove-schedules/SKILL.md",
+      "command": "pa-cli plan list --capability <ephemeral> --json",
+      "description": "管理统一任务计划；日程和每次执行共享单次或周期规则。"
     }
   ],
   "upstreams": []

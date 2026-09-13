@@ -3,6 +3,7 @@ import { OverviewPage } from "../desktop-v627/overview-page";
 import { ConversationPage } from "../desktop-v627/conversation-page";
 import { ConnectionsPage } from "../desktop-v627/connections-page";
 import { WorkersPage } from "../desktop-v627/workers-page";
+import { PlansPage } from "../desktop-v627/plans-page";
 import { ScheduledTasksPage } from "../desktop-v627/scheduled-tasks-page";
 import { MailPage } from "../desktop-v627/mail-page";
 import { DataPage } from "../desktop-v627/data-page";
@@ -22,6 +23,8 @@ export const desktopPages: Record<string, ComponentType> = {
   "/app/conversations": ConversationPage,
   "/app/connections": ConnectionsPage,
   "/app/workers": WorkersPage,
+  "/app/workers/plans": PlansPage,
+  "/app/workers/calendar": CalendarPage,
   "/app/workers/schedules": ScheduledTasksPage,
   "/app/mail": MailPage,
   "/app/data": DataPage,

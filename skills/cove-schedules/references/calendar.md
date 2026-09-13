@@ -1,23 +1,26 @@
-# 空间日程
+# 计划与日程实例
 
-使用本轮主会话临时能力 `--capability <ephemeral>`，不保存、不转交、不输出该值。Space 和操作者由运行时绑定，不接受调用者指定。
+所有 Agent 命令使用 --json 和 --capability <ephemeral>。能力只来自当前主会话，不保存、不输出、不转交；Space 与操作者由运行时绑定。
 
-`pa-cli calendar list|show|history|create|update|follow-up|due|poster` 均使用 `--json` 和本轮能力。
+pa-cli plan list|show|history|runs|create|update 管理系列；pa-cli calendar list|show|history|create|update|follow-up|due|poster 保留日程兼容入口。
 
-- `list`：`--view upcoming --from --to --query --status --limit --offset`；起止范围使用带偏移量的 ISO 时间。
-- `show/history`：`--id`；history 支持 `--limit --offset`。
-- `create`：`--title --participants-json --start-at --time-zone`，可带 `--end-at --location --notes --next-follow-up-at --status` 或 `--input-file` JSON。
-- `update`：`--id --expected-revision` 和要修改的字段。
-- `follow-up`：`--id --expected-revision --content`，可更新状态及下次跟进时间。
-- `due`：`--before --limit --offset`，只查询待跟进事项。
-- `poster`：按 `--from --to --status --query` 选择范围并生成受管图片；不接受任意外部二维码地址。
+- plan list 返回计划系列；plan show --id 返回单个系列；plan runs --id 查看它的每次执行和普通任务链接。
+- calendar list --view upcoming --limit 1 查询下一次，不传固定 --to。nextEntry、ongoingEntry、asOf 分别表示下一次、进行中与查询基准。指定 --from/--to 查看带时区的明确范围；使用 limit/offset 翻页。
+- calendar show --id 接受服务返回的实例 ID；不要自行拼接计划 ID 或发生时间来假冒实例。
+- create 使用 --title、--participants-json、--start-at、--time-zone，可带 --end-at、--location、--notes、--status。复杂或多行内容优先使用 --input-file JSON，避免 shell 改写用户要求。
+- 执行方式用 --execution-mode record|remind|execute，完整要求用 --execution-prompt；仅记录不需要提示。--missed-run-policy skip|latest 决定错过后跳过或最多补最近一次，缺省 skip。--enabled/--disabled 控制计划开关。
+- 周期用 --recurrence-json 或输入文件的 recurrence。没有周期为 null；frequency 支持 daily、weekly、monthly、yearly，interval 为正整数；weekly 的 weekdays 为0至6数组（0周日、1周一）。工作日使用 [1,2,3,4,5]。until 是带偏移 ISO 截止时间，count 是总发生次数。规则按计划 IANA 时区的本地钟计算；月末不存在日期跳过，不悄悄改成别的日期。
+- update 使用 --id、--expected-revision 和修改字段。--scope series 修改整个系列；--scope occurrence 或 future 必须携带服务返回的 --occurrence-at。仅本次写例外，后续修改拆分系列并保留以前记录。取消通过 status=cancelled；暂停整个计划可 disabled，不永久删除历史。
+- history 支持 limit/offset；follow-up 使用最新 revision 和 content；due 只查待跟进，不会自动发送通知。
 
-参与人为字符串数组，时间采用带 offset 的 ISO 输入并保留 IANA timeZone。状态为 planned、in_progress、done、cancelled。结束时间不得早于开始；清空 endAt 或 nextFollowUpAt 使用 JSON null。
+示例：每周一、三9点的仅记录安排，首次时间与星期匹配。
 
-问“最近一次”“下一次”“接下来有什么安排”时先查询 `pa-cli calendar list --view upcoming --limit 1 --capability <ephemeral> --json`，不传固定 `--to`。该视图以服务端当前时间为起点，无未来天数上限，排除 done/cancelled，按开始时间升序分页。`nextEntry` 是尚未开始的最近一项，`ongoingEntry` 是已开始且尚未结束的最早一项，两者不受分页 offset 影响；无结束时间且状态为 in_progress 的事项继续作为进行中保留。`asOf` 给出查询基准时间。指定 `--from` 可覆盖基准时间；有明确日期范围才传 `--from/--to`。
+~~~text
+pa-cli plan create --title "项目例会" --start-at 2026-09-14T09:00:00+08:00 --time-zone Asia/Shanghai --recurrence-json '{"frequency":"weekly","interval":1,"weekdays":[1,3]}' --execution-mode record --capability <ephemeral> --json
+pa-cli plan show --id <plan-id> --capability <ephemeral> --json
+pa-cli calendar list --view upcoming --limit 1 --capability <ephemeral> --json
+~~~
 
-先在文字中回答下一项的完整日期（含年份）、当地时间、IANA 时区和标题。进行中与未来安排分别说清；后续查询更多事项遵循 `hasMore/offset`，不要把第一页或本周空白理解为没有后续日程。海报按已核实事项使用 `poster --id` 或明确范围，海报失败也不能吞掉文字答案。
+变更后核对实际持久化的周期、执行方式、时区、下一次和 revision，不能只复述输入。查看海报优先固定模板：calendar poster --id <已核实实例ID>，或 from/to 明确范围；分页上限10张，过多时缩短范围。二维码仅绑定系统验证的当前 Space 手机地址。无链接或图片失败时仍报告文字事实。
 
-更新前读取当前记录，写后核对服务返回的 revision 和持久化内容。日程和跟进不会自动创建 cron，也不会向参与人发送消息。需要提醒时另行使用定时任务合同。
-
-海报必须呈现所选范围内所有事项的标题、参与人、日期时间与必要状态；系统分页，最多10张，超限缩短范围。长备注与历史详情在链接查看。没有可用手机地址时明确报告不可生成可扫码海报。
+后续拆分若覆盖已有执行记录会拒绝，应从尚未开始的下一次修改；历史执行快照始终保留，不通过改变系列ID重跑过去的工作。

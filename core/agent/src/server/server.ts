@@ -42,7 +42,8 @@ import { rejectRetiredAgentOptions } from "./task-contract.js";
 import { BridgeStore } from "../store/store.js";
 import { AgentBridgeBroker } from "../broker/agent-bridge-broker.js";
 import { readWorkspaceSkillCatalog } from "../skills/catalog.js";
-import { assertMinimumCronInterval, ScheduledTaskRunner, nextRunAt, normalizeTimezone, parseCronExpression } from "../scheduler/scheduled-tasks.js";
+import { TaskPlanRunner, takeLegacyScheduleOwnership } from "../scheduler/task-plans.js";
+import { readPlanRequest, legacyTaskFromPlan, legacyTaskInput, listLegacyTasks } from "../calendar/plan-http.js";
 import { BrowserHub } from "./broadcast.js";
 import { buildConversationAttachmentDeliveryView, buildDesktopConversationView } from "./desktop-conversation.js";
 import { SessionOrchestrator } from "./orchestrator.js";
@@ -199,7 +200,7 @@ const channelLoginCoordinator = {
 const publicPagePosters = new PublicPagePosterStore({ uploadsRoot: config.uploadsDir, bindingRoot: path.join(config.siteDataRoot, "config", "page-posters") });
 const posterService = new PosterService({ calendarStore, privatePublications, publicPagePosters, managedFiles, outputRoot: posterOutputRoot, spaceId: calendarStore.spaceId, externalAccess: config.externalAccess });
 const orchestrator = new SessionOrchestrator({ store, hub, calendarStore, posterService, channels: { wechat, "wechat-personal": wechatQianxun, dingtalk }, managedFiles, activityStore, memoryStore, channelLoginCoordinator, privatePublications });
-const scheduledTasks = new ScheduledTaskRunner({ store, broker: agentBridgeBroker, channels: { wechat }, logger });
+const scheduledTasks = new TaskPlanRunner({ calendarStore, store, broker: agentBridgeBroker, orchestrator, workspaceRoot: config.workspaceRoot, logger });
 wechat.attach(orchestrator);
 if (personalWechatSupported) wechatQianxun.attach((message) => orchestrator.handleChannelMessage("wechat-personal", message));
 dingtalk.attach((message) => orchestrator.handleChannelMessage("dingtalk", message));
@@ -207,7 +208,6 @@ if (config.channelPollEnabled) {
   wechat.start();
   dingtalk.start();
 }
-if (config.schedulerEnabled) scheduledTasks.start();
 
 const server = http.createServer(async (request, response) => {
   try {
@@ -267,6 +267,10 @@ server.on("upgrade", (request, socket, head) => {
 });
 
 server.listen(config.port, config.host, () => {
+  // Recover and consume plans only after this process owns the serving port.
+  // A duplicate process that fails to listen must not interrupt the live runs.
+  takeLegacyScheduleOwnership(calendarStore, store);
+  if (config.schedulerEnabled) scheduledTasks.start();
   console.log(`open-agent-bridge listening http://${config.host}:${config.port}`);
   console.log(`console: ${config.consoleBaseUrl}`);
   console.log(`pages: ${config.pagesBaseUrl}`);
@@ -416,6 +420,7 @@ async function handleRequest(request: http.IncomingMessage, response: http.Serve
         data: { schema: true, query: true, distinct: true, rawSql: false },
         pages: { list: true, publish: true },
         calendar: { list: true, inspect: true, history: true, spaceIsolated: true, readOnlyUi: true },
+        plans: { list: true, inspect: true, runs: true, recurring: true, spaceIsolated: true, readOnlyUi: true },
         memory: { list: true, search: true, inspect: true, spaceIsolated: true, readOnlyUi: true },
         client: { overview: true, activity: true, pages: true, runtime: true, taskDetailPagination: true, readOnly: true },
       },
@@ -868,6 +873,12 @@ async function handleRequest(request: http.IncomingMessage, response: http.Serve
     return;
   }
 
+  if (url.pathname === "/api/plans" || url.pathname.startsWith("/api/plans/")) {
+    if (request.method !== "GET" && request.method !== "HEAD") { sendJson(response, 403, { ok: false, error: "计划界面只读，请通过主对话修改" }); return; }
+    sendJson(response, 200, { ok: true, ...readPlanRequest(calendarStore, url.pathname, url.searchParams), space: currentMemorySpace() }, request.method === "HEAD");
+    return;
+  }
+
   if (url.pathname === "/api/calendar" || url.pathname.startsWith("/api/calendar/")) {
     if (request.method !== "GET" && request.method !== "HEAD") { sendJson(response, 403, { ok: false, error: "日程界面只读，请通过主对话修改" }); return; }
     const input: Record<string, any> = Object.fromEntries(url.searchParams.entries());
@@ -914,16 +925,14 @@ async function handleRequest(request: http.IncomingMessage, response: http.Serve
   }
 
   if ((url.pathname === "/api/agent-corn/tasks" || url.pathname === "/api/agent-cron/tasks") && request.method === "GET") {
-    sendJson(response, 200, { ok: true, tasks: store.listScheduledTasks() });
+    sendJson(response, 200, { ok: true, tasks: listLegacyTasks(calendarStore) });
     return;
   }
 
   if ((url.pathname === "/api/agent-corn/tasks" || url.pathname === "/api/agent-cron/tasks") && request.method === "POST") {
-    const body = await readJsonBody(request);
-    const task = store.createScheduledTask(scheduledTaskInput(body));
-    const next = task.enabled ? nextRunAt(task.cron, new Date(), task.timezone).toISOString() : null;
-    const updated = store.updateScheduledTask(task.id, { nextRunAt: next });
-    sendJson(response, 200, { ok: true, task: updated });
+    const input = legacyTaskInput(await readJsonBody(request), null, config.schedulerTimezone);
+    const result = await executeLegacyPlanCommand(request, { action: "create", input });
+    sendJson(response, 200, { ok: true, task: legacyTaskFromPlan(calendarStore.requirePlan(result.data.id), calendarStore) });
     return;
   }
 
@@ -932,34 +941,39 @@ async function handleRequest(request: http.IncomingMessage, response: http.Serve
     const taskId = decodeURIComponent(scheduledTaskMatch[1]);
     const action = scheduledTaskMatch[2] || "";
     if (!action && request.method === "GET") {
-      const task = store.getScheduledTask(taskId);
+      const plan = calendarStore.getPlan(taskId);
+      const task = plan ? legacyTaskFromPlan(plan, calendarStore) : null;
       if (!task) sendJson(response, 404, { ok: false, error: "scheduled task not found" });
       else sendJson(response, 200, { ok: true, task });
       return;
     }
     if (!action && request.method === "PATCH") {
-      const current = store.getScheduledTask(taskId);
+      const current = calendarStore.getPlan(taskId);
       if (!current) {
         sendJson(response, 404, { ok: false, error: "scheduled task not found" });
         return;
       }
       const body = await readJsonBody(request);
-      const patch = scheduledTaskPatch(current, body);
-      const updated = store.updateScheduledTask(taskId, patch);
-      sendJson(response, 200, { ok: true, task: updated });
+      const input = legacyTaskInput(body, current, config.schedulerTimezone);
+      const updated = await executeLegacyPlanCommand(request, { action: "update", entryId: taskId, input });
+      sendJson(response, 200, { ok: true, task: legacyTaskFromPlan(calendarStore.requirePlan(updated.data.id), calendarStore) });
       return;
     }
     if (!action && request.method === "DELETE") {
-      sendJson(response, 200, { ok: true, deleted: store.deleteScheduledTask(taskId) });
+      const current = calendarStore.requirePlan(taskId);
+      await executeLegacyPlanCommand(request, { action: "update", entryId: taskId, input: { expectedRevision: current.revision, status: "cancelled", enabled: false } });
+      sendJson(response, 200, { ok: true, deleted: true });
       return;
     }
     if (action === "run" && request.method === "POST") {
+      await executeLegacyPlanCommand(request, { action: "show", entryId: taskId, input: {} });
       const result = await scheduledTasks.trigger(taskId, { manual: true });
       sendJson(response, 200, {
         ok: true,
         skipped: result.skipped,
         reason: result.reason,
-        task: result.task,
+        task: result.task ? legacyTaskFromPlan(result.task, calendarStore) : null,
+        run: result.run,
         delivered: result.delivered,
         notification: result.notification,
         session: result.session ? { id: result.session.id, url: result.session.url, status: result.session.status } : null,
@@ -3056,21 +3070,12 @@ async function resolveLocalMediaFile(input: unknown) {
   return resolved;
 }
 
-function scheduledTaskInput(body: any) {
-  const cron = String(body.cron || body.schedule || "").trim();
-  parseCronExpression(cron);
-  assertMinimumCronInterval(cron);
-  const workspace = findWorkspace(body.workspaceName || body.workspace);
-  return {
-    name: body.name,
-    cron,
-    timezone: normalizeTimezone(body.timezone || config.schedulerTimezone),
-    prompt: body.prompt || body.taskDescription || body.content,
-    workspaceName: String(body.workspaceName || body.workspace || workspace?.name || "").trim(),
-    workspaceRoot: String(body.workspaceRoot || workspace?.workspaceRoot || "").trim(),
-    recipientId: body.recipientId || body.recipient_id || "",
-    enabled: body.enabled !== false && body.enabled !== 0 && body.enabled !== "0",
-  };
+async function executeLegacyPlanCommand(request: http.IncomingMessage, command: any) {
+  if (!isTrustedLocalRequest(request) || ["forwarded", "x-forwarded-host", "x-forwarded-proto"].some((name) => request.headers[name] !== undefined)) {
+    throw Object.assign(new Error("计划修改仅支持当前本机主 Agent 回合"), { statusCode: 403 });
+  }
+  const capability = String(request.headers["x-cove-calendar-capability"] || "");
+  return orchestrator.executeCalendarCli(capability, { ...command, view: "plans" });
 }
 
 function dataPageQuery(searchParams: URLSearchParams) {
@@ -3096,30 +3101,6 @@ function dataPageQuery(searchParams: URLSearchParams) {
       sort: sortField ? [{ field: sortField, direction: sortDirection }] : [],
       page: { number: page, size: 25 },
     },
-  };
-}
-
-function scheduledTaskPatch(current: any, body: any) {
-  const next = {
-    name: body.name === undefined ? current.name : body.name,
-    cron: body.cron === undefined && body.schedule === undefined ? current.cron : String(body.cron || body.schedule || "").trim(),
-    timezone: body.timezone === undefined ? current.timezone : normalizeTimezone(body.timezone),
-    prompt: body.prompt === undefined && body.taskDescription === undefined && body.content === undefined
-      ? current.prompt
-      : body.prompt || body.taskDescription || body.content,
-    workspaceName: body.workspaceName === undefined && body.workspace === undefined ? current.workspaceName : String(body.workspaceName || body.workspace || "").trim(),
-    workspaceRoot: body.workspaceRoot === undefined ? current.workspaceRoot : String(body.workspaceRoot || "").trim(),
-    recipientId: body.recipientId === undefined && body.recipient_id === undefined ? current.recipientId : String(body.recipientId || body.recipient_id || "").trim(),
-    enabled: body.enabled === undefined ? current.enabled : body.enabled !== false && body.enabled !== 0 && body.enabled !== "0",
-  };
-  parseCronExpression(next.cron);
-  assertMinimumCronInterval(next.cron);
-  const workspace = findWorkspace(next.workspaceName);
-  if (!next.workspaceRoot && workspace?.workspaceRoot) next.workspaceRoot = workspace.workspaceRoot;
-  return {
-    ...next,
-    nextRunAt: next.enabled ? nextRunAt(next.cron, new Date(), next.timezone).toISOString() : null,
-    lastError: "",
   };
 }
 

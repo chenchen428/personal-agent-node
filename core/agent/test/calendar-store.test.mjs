@@ -42,7 +42,7 @@ test("calendar creation normalizes UTC and records verified authorship without s
   assert.deepEqual(history.items[0].changes.title, { before: null, after: "方案确认" });
   assert.equal(store.db.prepare("SELECT main_session_id FROM cove_calendar_history").get().main_session_id, "main-a");
   assert.deepEqual(store.db.prepare("SELECT name FROM sqlite_master WHERE type = 'table' ORDER BY name").all().map((row) => row.name),
-    ["cove_calendar_entries", "cove_calendar_history"]);
+    ["cove_calendar_entries", "cove_calendar_history", "cove_plan_exceptions", "cove_plan_imports", "cove_plan_runs"]);
 });
 
 test("calendar operations enforce Space and resolver-owned main identity", (t) => {

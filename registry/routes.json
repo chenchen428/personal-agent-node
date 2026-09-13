@@ -221,6 +221,46 @@
       "pattern": "/api/calendar/*",
       "access": "authenticated",
       "capability": "calendar"
+    },
+    {
+      "pattern": "/api/plans",
+      "access": "authenticated",
+      "capability": "plans"
+    },
+    {
+      "pattern": "/api/plans/*",
+      "access": "authenticated",
+      "capability": "plans"
+    },
+    {
+      "pattern": "/app/workers/plans",
+      "access": "authenticated",
+      "capability": "plans"
+    },
+    {
+      "pattern": "/app/workers/plans/*",
+      "access": "authenticated",
+      "capability": "plans"
+    },
+    {
+      "pattern": "/app/workers/calendar",
+      "access": "authenticated",
+      "capability": "plans"
+    },
+    {
+      "pattern": "/app/mobile/workers/plans",
+      "access": "authenticated",
+      "capability": "plans"
+    },
+    {
+      "pattern": "/app/mobile/workers/plans/*",
+      "access": "authenticated",
+      "capability": "plans"
+    },
+    {
+      "pattern": "/app/mobile/workers/calendar",
+      "access": "authenticated",
+      "capability": "plans"
     }
   ]
 }

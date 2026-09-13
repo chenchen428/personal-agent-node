@@ -885,8 +885,8 @@ test("acknowledges WeChat immediately and queues the completed reply behind the 
   assert.match(calls[0].appServerDeveloperInstructions, /简单问答.*直接处理/);
   assert.match(calls[0].appServerDeveloperInstructions, /不要轮询/);
   assert.match(calls[0].appServerDeveloperInstructions, /1 至 3 句话/);
-  assert.match(calls[0].appServerDeveloperInstructions, /pa-cli cron create\|update\|delete\|run/);
-  assert.match(calls[0].appServerDeveloperInstructions, /Do not start or resume a child task merely to manage a schedule/);
+  assert.match(calls[0].appServerDeveloperInstructions, /pa-cli plan list\|show\|create\|update\|history\|runs/);
+  assert.match(calls[0].appServerDeveloperInstructions, /不要仅为管理计划创建子任务/);
   assert.match(calls[0].appServerDeveloperInstructions, /search main-Agent Activity first/);
   assert.match(calls[0].appServerDeveloperInstructions, /Do not create a child task merely to retrieve an existing result/);
   assert.match(calls[0].appServerDeveloperInstructions, /silently try the other registered local indexes/);
@@ -1620,6 +1620,10 @@ test("recovers interrupted workers after restart and returns their completion to
     workspaceRoot: dataDir,
   });
   const calls = [];
+  const scheduledWorker = store.createSession({
+    parentSessionId: main.id, status: "running", title: "结果未确认的周期任务", workspaceRoot: dataDir,
+    metadata: { planId: "plan-known", occurrenceAt: "2026-09-14T01:00:00.000Z", planRunId: "run-known" },
+  });
   const orchestrator = new SessionOrchestrator({
     store,
     hub: { broadcast: () => {} },
@@ -1670,11 +1674,12 @@ test("recovers interrupted workers after restart and returns their completion to
     await waitFor(() => calls.length === 2);
 
     assert.deepEqual(first, duplicate);
-    assert.equal(first.discovered, 2);
+    assert.equal(first.discovered, 3);
     assert.equal(first.recovered, 1);
     assert.equal(first.completed, 1);
     assert.equal(first.failed, 0);
-    assert.equal(first.skippedSessionIds.length, 1);
+    assert.equal(first.skippedSessionIds.length, 2);
+    assert.ok(first.skippedSessionIds.includes(scheduledWorker.id));
     assert.equal(calls[0].sessionId, worker.id);
     assert.equal(calls[0].cliSessionId, "thread-before-restart");
     assert.equal(calls[0].allowCreateThread, true);
