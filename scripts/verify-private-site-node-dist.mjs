@@ -195,6 +195,9 @@ async function verifyApplication() {
   });
   await new Promise((resolve) => bridge.listen(0, "127.0.0.1", resolve));
   const env = releaseVerificationEnvironment(process.env, {
+    PERSONAL_AGENT_HOME: path.join(root, ".personal-agent"),
+    PRIVATE_SITE_INSTALL_ROOT: path.join(root, "core"),
+    PRIVATE_SITE_CLI_BIN: path.join(root, "bin"),
     PERSONAL_AGENT_DATA_ROOT: dataRoot,
     PRIVATE_SITE_DATA_ROOT: dataRoot,
     PERSONAL_AGENT_CONTROL_PORT: String(controlPort),
