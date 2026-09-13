@@ -66,6 +66,9 @@ test("local password validation explains every blocked submission", () => {
   assert.match(validateLocalPasswordInput("customer-owned-password", ""), /再次输入/);
   assert.match(validateLocalPasswordInput("customer-owned-password", "different-password"), /不一致/);
   assert.equal(validateLocalPasswordInput("customer-owned-password", "customer-owned-password"), "");
+  assert.equal(validateLocalPasswordInput("x".repeat(12), "x".repeat(12)), "");
+  assert.equal(validateLocalPasswordInput("x".repeat(256), "x".repeat(256)), "");
+  assert.match(validateLocalPasswordInput("x".repeat(257), "x".repeat(257)), /不能超过 256/);
 });
 
 test("managed Cloud action always explains waiting and failed states", () => {

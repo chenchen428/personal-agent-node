@@ -48,6 +48,7 @@ export function canonicalSetupAction(id: string) {
 export function validateLocalPasswordInput(password: string, confirmation: string) {
   if (!password) return "请输入访问密码。";
   if (password.length < 12) return `密码至少需要 12 个字符，还差 ${12 - password.length} 个。`;
+  if (password.length > 256) return "密码不能超过 256 个字符。";
   if (!confirmation) return "请再次输入密码进行确认。";
   if (password !== confirmation) return "两次输入的密码不一致。";
   return "";
