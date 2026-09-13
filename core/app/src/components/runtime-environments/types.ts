@@ -14,6 +14,9 @@ export type RuntimeSettings = {
   revision: number;
   engine: Engine;
   profiles: Record<Engine, Profile>;
+  readOnly?: boolean;
+  inherited?: boolean;
+  sourceSpace?: { id: string; kind: "personal"; displayName: string };
 };
 export type ModelOption = { id: string; label?: string; reasoningEfforts?: string[] };
 export type Detection = {

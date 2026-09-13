@@ -56,6 +56,8 @@ Never resume a task merely to answer a status question. Never resume a different
 
 ## Report
 
+进度页面是子任务的必要交付。新建、恢复或继续委托后，第一次确认回复必须包含服务返回的任务进度 URL；长任务进度提醒和用户查询状态时继续提供它。入口使用现有任务详情页，不为状态另建静态 Page，不以“稍后汇报”代替可查看进度。状态变化保留同一任务链接；重新读取后域名有更新时使用新的服务返回值。若远程地址不可用，给出 linkNotice 和本机“日程 → 执行记录”入口说明，不把内部路径改造成公网链接。
+
 When the user asks for progress or status, the main Agent does not create or resume a task. Query only children of the current main session:
 
 ```bash

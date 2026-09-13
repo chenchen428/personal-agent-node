@@ -42,6 +42,9 @@ import { rejectRetiredAgentOptions } from "./task-contract.js";
 import { BridgeStore } from "../store/store.js";
 import { AgentBridgeBroker } from "../broker/agent-bridge-broker.js";
 import { readWorkspaceSkillCatalog } from "../skills/catalog.js";
+import { createUserSkillService } from "../skills/user-skill-service.js";
+import { handleUserSkillRequest } from "../skills/user-skill-routes.js";
+import { isLocalUserSkillRequest } from "../../../runtime/src/user-skill-access.ts";
 import { TaskPlanRunner, takeLegacyScheduleOwnership } from "../scheduler/task-plans.js";
 import { readPlanRequest, legacyTaskFromPlan, legacyTaskInput, listLegacyTasks } from "../calendar/plan-http.js";
 import { BrowserHub } from "./broadcast.js";
@@ -67,6 +70,7 @@ import { discoverAppServerDefaultModel, discoverAppServerModels } from "../agent
 import { shutdownAppServerClient } from "../agent/app-server-client.ts";
 import { managedServiceReadiness } from "../../../runtime/src/cloud-resources.ts";
 import { readCustomDomainBindings } from "../../../runtime/src/custom-domain.ts";
+import { resolveInheritedSpaceDomain, verifyInheritedSpaceDomain } from "../../../runtime/src/space-domain-access.ts";
 import { getSpace } from "../../../runtime/src/space-registry.ts";
 
 ensureRuntimeDirs();
@@ -171,6 +175,9 @@ domainBindingVerification = new DomainBindingVerification({
 const releaseNotes = new ReleaseNotesStore({ rootDir: config.releaseNotesDir });
 mailScanner.start();
 domainBindingVerification.resume();
+void verifyInheritedSpaceDomain({ dataRoot: config.siteDataRoot });
+const inheritedDomainTimer = setInterval(() => { void verifyInheritedSpaceDomain({ dataRoot: config.siteDataRoot }); }, 15_000);
+inheritedDomainTimer.unref?.();
 const connectionOwnership = new InstallationConnectionOwnership({ installationDataRoot: config.installationDataRoot });
 const ownership = { store: connectionOwnership, spaceId: config.spaceId };
 const wechat = new WeChatConnector(logger, ownership);
@@ -275,6 +282,12 @@ server.listen(config.port, config.host, () => {
   console.log(`console: ${config.consoleBaseUrl}`);
   console.log(`pages: ${config.pagesBaseUrl}`);
   console.log(`data: ${config.dataDir}`);
+  void orchestrator.recoverInterruptedMainSessions().then((result) => {
+    if (!result.discovered) return;
+    console.log(`main recovery: ${result.recovered}/${result.discovered} resumed, ${result.completed} completed, ${result.failed} failed`);
+  }).catch(() => {
+    console.error("main recovery failed before interrupted conversations could be resumed");
+  });
   void orchestrator.recoverInterruptedWorkers().then((result) => {
     if (!result.discovered) return;
     console.log(`worker recovery: ${result.recovered}/${result.discovered} resumed, ${result.completed} completed, ${result.failed} failed`);
@@ -286,6 +299,7 @@ server.listen(config.port, config.host, () => {
 for (const signal of ["SIGINT", "SIGTERM"]) {
   process.on(signal, () => {
     clearInterval(historyCleanupTimer);
+    clearInterval(inheritedDomainTimer);
     scheduledTasks.stop();
     mailScanner.stop();
     xiaohongshuLogin.stop();
@@ -675,6 +689,7 @@ async function handleRequest(request: http.IncomingMessage, response: http.Serve
     try {
       const service = createAgentRuntimeEnvironmentController(config);
       if (request.method === "GET") { sendJson(response, 200, { ok: true, ...service.view() }); return; }
+      service.assertWritable();
       const input = await readJsonBody(request, 32_768);
       const result = action === "/detect" ? await service.detect(input)
         : action === "/test" ? await service.testConnectivity(input) : service.save(input);
@@ -697,6 +712,7 @@ async function handleRequest(request: http.IncomingMessage, response: http.Serve
       return;
     }
     try {
+      if (request.method === "POST") createAgentRuntimeEnvironmentController(config).assertWritable();
       const catalog = await discoverCodexRuntimeCatalog();
       if (request.method === "GET") {
         sendJson(response, 200, { ok: true, ...codexRuntimeSettingsView(catalog) });
@@ -864,6 +880,15 @@ async function handleRequest(request: http.IncomingMessage, response: http.Serve
       releaseRoot: config.releaseRoot,
     })), request.method === "HEAD");
     return;
+  }
+
+  if (url.pathname.startsWith("/api/skills/user/")) {
+    const result = await handleUserSkillRequest({ request, pathname: url.pathname, readJsonBody,
+      service: createUserSkillService({ workspaceRoot: config.workspaceRoot, releaseRoot: config.releaseRoot }),
+      authorized: isTrustedLocalConsoleRequest(request) && isLocalUserSkillRequest(request.headers)
+        && request.headers["x-personal-agent-internal"] === "next-bff" && request.headers["x-personal-agent-authenticated"] === "1",
+    });
+    sendJson(response, result.statusCode, { ok: true, ...result.result }); return;
   }
 
   if (url.pathname === "/api/skills" && (request.method === "GET" || request.method === "HEAD")) {
@@ -2100,6 +2125,7 @@ function formatSupportedPlatforms(platforms: string[]) {
 }
 
 function platformConnectionStatuses() {
+  const inherited = resolveInheritedSpaceDomain({ dataRoot: config.siteDataRoot });
   const services = managedServiceReadiness({ dataRoot: config.siteDataRoot });
   const external = config.externalAccess();
   const custom = readCustomDomainBindings({ dataRoot: config.siteDataRoot });
@@ -2107,10 +2133,10 @@ function platformConnectionStatuses() {
   const customMail = custom.mail?.domain ? custom.mail : null;
   const customOwner = getSpace(config.installationDataRoot, customSite?.ownerSpaceId || customMail?.ownerSpaceId);
   const customTunnel = customOwner ? readJsonFile(path.join(customOwner.root, "runtime", "reverse-tunnel.json")) : null;
-  const customServiceReady = customTunnel?.state === "ready";
-  const customSiteBound = Boolean(customSite && domainBindingVerification.isVerified("sites", "custom"));
+  const customServiceReady = inherited ? inherited.tunnelReady : customTunnel?.state === "ready";
+  const customSiteBound = inherited ? inherited.ready : Boolean(customSite && domainBindingVerification.isVerified("sites", "custom"));
   const customMailBound = Boolean(customMail && domainBindingVerification.isVerified("mail", "custom"));
-  const customSiteReady = customSiteBound && customServiceReady;
+  const customSiteReady = inherited ? inherited.ready : customSiteBound && customServiceReady;
   const customMailReady = customMailBound && customServiceReady;
   const siteBound = !customSite && services.publicDomain.ready && domainBindingVerification.isVerified("sites");
   const mailBound = !customMail && services.agentMail.ready && domainBindingVerification.isVerified("mail");
@@ -2122,13 +2148,14 @@ function platformConnectionStatuses() {
   const sites = customSite ? {
     state: customSiteReady ? "connected" : "degraded",
     primaryAction: "清空配置",
-    statusLabel: customSiteReady ? "自定义域名已生效" : customServiceReady ? "等待自定义域名验证" : "Relay 连接恢复中",
+    statusLabel: inherited ? inherited.ready ? "已继承主空间域名" : inherited.reason === "space-domain-verifying" ? "子域名自动验证中" : "等待主空间域名恢复" : customSiteReady ? "自定义域名已生效" : customServiceReady ? "等待自定义域名验证" : "Relay 连接恢复中",
     runtime: [
       { label: "自定义域名", value: customSite.domain },
       { label: "Relay 连接", value: customServiceReady ? "已连接" : "等待连接" },
       { label: "公网访问", value: customSiteReady ? `https://${customSite.domain}` : customSiteBound ? "Relay 恢复后可用" : "等待 DNS、TLS 与内容验证" },
     ],
-    details: { platformDomainBound: false, bindingMode: "custom", customDomain: customSite.domain, customPublicAddress: customSite.publicAddress, customServiceReady, customRelayCredentialPrepared: true, customRelayInstallerUrl: relayInstallerUrl, publicReady: customSiteReady, publicStatus: customSiteReady ? "ready" : customServiceReady ? "unavailable" : "tunnel-offline", publicOrigin: customSiteReady ? `https://${customSite.domain}` : "", domainVerification: customSiteVerification },
+    details: { platformDomainBound: false, bindingMode: "custom", customDomain: customSite.domain, customPublicAddress: customSite.publicAddress, customServiceReady, customRelayCredentialPrepared: !inherited, customRelayInstallerUrl: relayInstallerUrl, publicReady: customSiteReady, publicStatus: customSiteReady ? "ready" : inherited?.reason || (customServiceReady ? "unavailable" : "tunnel-offline"), publicOrigin: customSiteReady ? `https://${customSite.domain}` : "", domainVerification: customSiteVerification,
+      ...(inherited ? { inherited: true, inheritedFromSpaceId: inherited.inheritedFromSpaceId, inheritedBaseDomain: inherited.inheritedBaseDomain } : {}) },
   } : withRelayInstaller(buildSitesConnectionStatus({
     domainReady: services.publicDomain.ready,
     domain,
@@ -2451,13 +2478,15 @@ async function discoverCodexRuntimeCatalog() {
 }
 
 function codexRuntimeSettingsView(catalog: any) {
-  const profile = createAgentRuntimeEnvironmentController(config).view().profiles.codex;
+  const view = createAgentRuntimeEnvironmentController(config).view();
+  const profile = view.profiles.codex;
   const settings = { model: profile.model, reasoningEffort: profile.reasoningEffort };
   const effectiveModel = settings.model || catalog.defaultModel?.id || "";
   const effectiveOption = catalog.models.find((item: any) => item.id === effectiveModel);
   const reasoningEfforts = Array.from(new Set(catalog.models.flatMap((item: any) => item.efforts || [])));
   return {
     ...settings,
+    readOnly: view.readOnly, inherited: view.inherited, sourceSpace: view.sourceSpace,
     models: catalog.models,
     defaultModel: catalog.defaultModel,
     effectiveModel,

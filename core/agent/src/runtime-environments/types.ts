@@ -14,8 +14,11 @@ export type RuntimeEnvironmentView = {
   revision: number;
   engine: RuntimeEngine;
   profiles: Record<RuntimeEngine, RuntimeProfile>;
+  readOnly: boolean;
+  inherited: boolean;
+  sourceSpace: { id: string; kind: "personal"; displayName: string };
 };
-export type RuntimeExecution = { engine: RuntimeEngine; revision: number; profile: RuntimeProfile; credential: string };
+export type RuntimeExecution = { engine: RuntimeEngine; revision: number; profile: RuntimeProfile; credential: string; sourceSpaceId?: string };
 export type ConnectivityResult = {
   ok: boolean;
   engine: RuntimeEngine;

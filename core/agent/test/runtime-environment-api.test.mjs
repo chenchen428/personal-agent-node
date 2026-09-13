@@ -5,7 +5,8 @@ import http from "node:http";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
-import { initializeInstallation } from "../../runtime/src/space-registry.ts";
+import { createSpace, initializeInstallation } from "../../runtime/src/space-registry.ts";
+import { createRuntimeEnvironmentService } from "../src/runtime-environments/index.ts";
 
 const packageRoot = path.resolve(import.meta.dirname, "../../..");
 const apiPath = "/api/node/v1/client/agent-runtime";
@@ -82,12 +83,57 @@ test("Agent runtime API requires marked local desktop and rejects direct forged,
   }
 });
 
-async function startAgent(t) {
+test("child runtime API returns main settings read-only and rejects every mutation path server-side", async t => {
+  const fixture = await startAgent(t, { childSpace: true });
+  const waitForReply = async (model) => {
+    let latest;
+    for (let attempt = 0; attempt < 150; attempt++) {
+      const result = await fixture.request("/api/desktop/conversation");
+      latest = result.body.session;
+      if (result.body.session?.status === "idle" && JSON.stringify(result.body).includes(model)) return result;
+      await new Promise(resolve => setTimeout(resolve, 50));
+    }
+    throw new Error(`Inherited runtime did not return the selected main model: ${JSON.stringify({ status: latest?.status, messages: latest?.messages?.map(item => ({ role: item.role, content: item.content })) })}`);
+  };
+  const view = await fixture.request(apiPath);
+  assert.equal(view.status, 200); assert.equal(view.body.readOnly, true); assert.equal(view.body.inherited, true);
+  assert.equal(view.body.sourceSpace.id, fixture.mainId);
+  assert.equal(view.body.profiles.codex.model, "shared-main-model");
+  assert.doesNotMatch(JSON.stringify(view.body), /shared-main-credential|credentialId|secrets/);
+  const firstTurn = await fixture.request("/api/desktop/conversation/messages", { content: "Return the selected model", clientMessageId: "shared-runtime-first" });
+  assert.equal(firstTurn.status, 202);
+  const firstReply = await waitForReply("shared-main-model");
+  assert.doesNotMatch(JSON.stringify(firstReply.body), /shared-main-credential/);
+  for (const route of [apiPath, `${apiPath}/detect`, `${apiPath}/test`, "/api/node/v1/client/codex-settings"]) {
+    const result = await fixture.request(route, { revision: 1, engine: "codex", model: "forged", sourceSpace: { id: fixture.mainId }, profile: { mode: "custom", baseUrl: "https://attacker.invalid", credential: "attempt" } });
+    assert.equal(result.status, 403, route);
+    assert.equal(result.body.error.code, "RUNTIME_SETTINGS_READ_ONLY", route);
+  }
+  const legacy = await fixture.request("/api/node/v1/client/codex-settings");
+  assert.equal(legacy.body.readOnly, true); assert.equal(legacy.body.model, "shared-main-model");
+  assert.equal((await fixture.request(apiPath, undefined, { "x-personal-agent-surface": "mobile" })).status, 403);
+  fixture.mainService.save({ revision: 1, engine: "codex", profiles: { codex: { model: "updated-main-model" } } });
+  const nextTurn = await fixture.request("/api/desktop/conversation/messages", { content: "Return the selected model again", clientMessageId: "shared-runtime-second" });
+  assert.equal(nextTurn.status, 202); await waitForReply("updated-main-model");
+  const receipt = JSON.parse(fs.readFileSync(path.join(fixture.spaceRoot, "runtime", "setup", "web-conversation.json")));
+  assert.equal(receipt.runtimeSourceSpaceId, fixture.mainId);
+  fixture.mainService.save({ revision: 2, engine: "claude-code", profiles: { "claude-code": { model: "updated-main-model" } } });
+  const changed = await fixture.request(apiPath);
+  assert.equal(changed.body.engine, "claude-code"); assert.equal(changed.body.revision, 3);
+  assert.equal(changed.body.profiles["claude-code"].model, "updated-main-model");
+  assert.equal(fs.existsSync(path.join(fixture.spaceRoot, "config", "runtime-environments.json")), false);
+  assert.equal(fs.existsSync(path.join(fixture.spaceRoot, "secrets", "runtime-environments")), false);
+});
+
+async function startAgent(t, { childSpace = false } = {}) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "pa-runtime-api-"));
   const portServer = http.createServer(); await listen(portServer); const port = portServer.address().port; await new Promise(resolve => portServer.close(resolve));
   const installationRoot = path.join(root, "installation");
   const { personal } = initializeInstallation({ dataRoot: installationRoot });
-  const spaceRoot = personal.root;
+  const selected = childSpace ? createSpace({ dataRoot: installationRoot, slug: "work", displayName: "Work" }) : personal;
+  const spaceRoot = selected.root;
+  const mainService = createRuntimeEnvironmentService({ workspaceRoot: personal.root, spaceId: personal.id });
+  if (childSpace) mainService.save({ revision: 0, engine: "codex", profiles: { codex: { mode: "custom", baseUrl: "https://models.example.invalid/v1", model: "shared-main-model", credential: "shared-main-credential" } } });
   const work = path.join(root, "agent-workspace"); fs.mkdirSync(work, { recursive: true });
   fs.mkdirSync(path.join(spaceRoot, "config"), { recursive: true });
   fs.writeFileSync(path.join(spaceRoot, "config", "codex-runtime-settings.json"), JSON.stringify({ model: "legacy-model", reasoningEffort: "low" }));
@@ -95,13 +141,19 @@ async function startAgent(t) {
   fs.writeFileSync(mockCli, `import readline from 'node:readline';
 const rl = readline.createInterface({ input: process.stdin });
 rl.on('line', line => { const p = JSON.parse(line); if (p.id === undefined) return;
-const result = p.method === 'model/list' ? {data:[{id:'mock-model',isDefault:true,supportedReasoningEfforts:['high','low']}]} : p.method === 'config/read' ? {config:{model:'mock-model'}} : {};
+if (p.method === 'thread/start' || p.method === 'thread/resume') { process.stdout.write(JSON.stringify({id:p.id,result:{thread:{id:p.params.threadId || 'shared-runtime-thread'}}})+'\\n'); return; }
+if (p.method === 'turn/start') {
+ process.stdout.write(JSON.stringify({id:p.id,result:{turn:{id:'shared-runtime-turn'}}})+'\\n');
+ process.stdout.write(JSON.stringify({method:'item/completed',params:{threadId:p.params.threadId,turnId:'shared-runtime-turn',item:{type:'agentMessage',id:'reply',text:JSON.stringify({model:p.params.model,credential:process.env.PERSONAL_AGENT_MODEL_API_KEY})}}})+'\\n');
+ process.stdout.write(JSON.stringify({method:'turn/completed',params:{threadId:p.params.threadId,turn:{id:'shared-runtime-turn',status:'completed'}}})+'\\n'); return;
+}
+const result = p.method === 'skills/list' ? {data:[{cwd:p.params.cwds[0],skills:[],errors:[]}]} : p.method === 'model/list' ? {data:[{id:'mock-model',isDefault:true,supportedReasoningEfforts:['high','low']}]} : p.method === 'config/read' ? {config:{model:'mock-model'}} : {};
 process.stdout.write(JSON.stringify({id:p.id,result})+'\\n'); });
 rl.on('close',()=>process.exit(0));`);
   const token = "runtime-api-fixture-token";
   const env = { ...process.env, NODE_ENV: "test", OPEN_AGENT_BRIDGE_PORT: String(port), OPEN_AGENT_BRIDGE_API_TOKEN: token,
-    PRIVATE_SITE_DATA_ROOT: spaceRoot, PERSONAL_AGENT_DATA_ROOT: installationRoot, PERSONAL_AGENT_SPACE_ID: personal.id,
-    PERSONAL_AGENT_SPACE_ROOT: spaceRoot, PERSONAL_AGENT_SPACE_SLUG: "personal", PERSONAL_AGENT_SPACE_KIND: "personal",
+    PRIVATE_SITE_DATA_ROOT: spaceRoot, PERSONAL_AGENT_DATA_ROOT: installationRoot, PERSONAL_AGENT_SPACE_ID: selected.id,
+    PERSONAL_AGENT_SPACE_ROOT: spaceRoot, PERSONAL_AGENT_SPACE_SLUG: selected.slug, PERSONAL_AGENT_SPACE_KIND: selected.kind,
     OPEN_AGENT_BRIDGE_WORKSPACE_ROOT: work, OPEN_AGENT_BRIDGE_DATA_DIR: path.join(spaceRoot, "databases", "bridge"),
     OPEN_AGENT_BRIDGE_AGENT_DATA_DIR: path.join(spaceRoot, "agent-data"), OPEN_AGENT_BRIDGE_AGENT_DATA_DATABASE: path.join(spaceRoot, "agent-data", "data.sqlite"),
     OPEN_AGENT_BRIDGE_PRIVATE_PUBLICATIONS_DIR: path.join(spaceRoot, "private-publications"), OPEN_AGENT_BRIDGE_UPLOADS_DIR: path.join(spaceRoot, "uploads"),
@@ -123,7 +175,7 @@ rl.on('close',()=>process.exit(0));`);
     if (attempt === 299) throw new Error(`Fixture startup timed out: ${output}`);
     await new Promise(resolve => setTimeout(resolve, 100));
   }
-  return { port, spaceRoot, async request(route, body, headers = {}) {
+  return { port, spaceRoot, mainService, mainId: personal.id, async request(route, body, headers = {}) {
     return new Promise((resolve, reject) => {
       const outgoing = http.request({ hostname: "127.0.0.1", port, path: route, method: body === undefined ? "GET" : "POST",
         headers: { authorization: `Bearer ${token}`, "content-type": "application/json", "x-personal-agent-surface": "desktop", ...headers }, timeout: 15000 }, response => {

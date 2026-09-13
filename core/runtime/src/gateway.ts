@@ -8,7 +8,9 @@ import mime from "mime-types";
 import { resolveNodeConfig, workspaceRoot } from "./config.ts";
 import { listExtensions } from "./extensions.ts";
 import { getSpace } from "./space-registry.ts";
+import { resolveInheritedSpaceDomain } from "./space-domain-access.ts";
 import { isLocalRuntimeEnvironmentRequest, isRuntimeEnvironmentPath } from "./runtime-environment-access.ts";
+import { isLocalUserSkillRequest, isUserSkillManagementPath } from "./user-skill-access.ts";
 
 const isEntrypoint = ["gateway.mjs", "gateway.ts"].includes(path.basename(process.argv[1] || ""));
 
@@ -61,6 +63,12 @@ export function createPrivateSiteGateway(options = {}) {
         sendText(response, 403, "Runtime environment settings require the local desktop\n", request.method === "HEAD");
         return;
       }
+      if (isUserSkillManagementPath(url.pathname) && (!isDirectLoopbackConsoleRequest(request)
+        || ["forwarded", "x-forwarded-for", "x-forwarded-host", "x-forwarded-proto"].some((name) => request.headers[name] !== undefined)
+        || !isLocalUserSkillRequest(request.headers))) {
+        sendText(response, 403, "Skill management requires the local desktop browser\n", request.method === "HEAD");
+        return;
+      }
       if (isSpaceManagementPath(url.pathname) && !isDirectLoopbackConsoleRequest(request)) {
         sendText(response, 403, "Space management is available only from the local desktop\n", request.method === "HEAD");
         return;
@@ -86,7 +94,7 @@ export function createPrivateSiteGateway(options = {}) {
         return;
       }
       if (url.pathname === "/__private-site/health") {
-        sendJson(response, 200, { ok: true, service: "private-site-gateway", site: config.domain, tls: gatewayUsesTls(config) }, request.method === "HEAD");
+        sendJson(response, 200, { ok: true, service: "private-site-gateway", site: resolveInheritedSpaceDomain({ dataRoot: config.dataRoot })?.domain || config.domain, spaceId: config.space?.id || "", tls: gatewayUsesTls(config) }, request.method === "HEAD");
         return;
       }
       const personalWechatCallback = resolvePersonalWechatCallbackTarget(request, url, config, options.personalWechatSpaceResolver);
@@ -279,7 +287,12 @@ export function resolveRelaySpaceProxyTarget(request, config, resolver = null) {
   const gatewayPort = Number(space.ports?.gateway || 0);
   if (!Number.isInteger(gatewayPort) || gatewayPort < 1 || gatewayPort > 65_535) return { statusCode: 503, message: "Space gateway is unavailable" };
   const site = readJson(path.join(space.root, "config", "site.json"));
-  const targetHost = String(site?.asciiDomain || space.managedHost || "").trim().toLowerCase();
+  const inheritedDomain = resolveInheritedSpaceDomain({ dataRoot: space.root });
+  const ownBinding = readJson(path.join(space.root, "config", "custom-domain-bindings.json"))?.sites;
+  const independentCustom = ownBinding?.domain && ownBinding.scope !== "installation"
+    && (!ownBinding.ownerSpaceId || ownBinding.ownerSpaceId === space.id);
+  if (!inheritedDomain && (site?.connectionMode === "managed-cloud" || independentCustom)) return { statusCode: 404, message: "Space uses an independent connection" };
+  const targetHost = String(inheritedDomain?.domain || site?.asciiDomain || space.managedHost || "").trim().toLowerCase();
   if (!targetHost) return { statusCode: 503, message: "Space hostname is unavailable" };
   return { target: `http://127.0.0.1:${gatewayPort}`, host: targetHost, spaceId: space.id, slug: space.slug };
 }
@@ -473,6 +486,9 @@ function normalizeRequestHost(value) {
 }
 
 function hostAllowed(host, config) {
+  const inherited = resolveInheritedSpaceDomain({ dataRoot: config.dataRoot });
+  if (inherited?.domain === host) return true;
+  if (config.inheritedDomain && host === config.inheritedDomain.domain) return false;
   if (config.routingMode === "host") return Boolean(toCanonicalHost(host, config));
   return config.allowedHosts.includes(host);
 }

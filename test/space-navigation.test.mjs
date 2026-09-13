@@ -56,15 +56,35 @@ test("space navigation remains on the current page when startup times out", asyn
   }), /启动超时/);
 });
 
-test("space navigation preserves the current route after selecting the correct origin", () => {
+test("space navigation keeps the module but removes private queries and hashes", () => {
   assert.equal(
     buildSpaceNavigationUrl(target, "http://127.0.0.1:8843/app/chat?from=desktop#latest"),
-    "http://127.0.0.1:8863/app/chat?from=desktop#latest",
+    "http://127.0.0.1:8863/app/conversations",
   );
   assert.equal(
     buildSpaceNavigationUrl(target, "https://owner.personal-agent.cn/app/connections"),
     "https://work-owner.personal-agent.cn/app/connections",
   );
+});
+
+test("space navigation never sends source-Space object identities to the target", () => {
+  for (const [route, destination] of [
+    ["/app/workers?task=private-worker", "/app/workers"],
+    ["/app/workers/plans?id=private-plan", "/app/workers/calendar"],
+    ["/app/pages/private-page?query=confidential#private-fragment", "/app/pages"],
+    ["/app/chat/private-session", "/app/conversations"],
+    ["/app/mobile/workers/private-worker", "/app/mobile/workers"],
+    ["/app/mobile/workers/plans?id=private-plan", "/app/mobile/workers/calendar"],
+  ]) assert.equal(buildSpaceNavigationUrl(target, `http://127.0.0.1:8843${route}`), `http://127.0.0.1:8863${destination}`);
+});
+
+test("a cancelled runtime wait cannot poll or complete with a late response", async () => {
+  const controller = new AbortController();
+  await assert.rejects(waitForSpaceRuntime(target, {
+    signal: controller.signal,
+    fetchImpl: async () => { controller.abort(); return jsonResponse({ spaces: [{ ...target, state: "running" }] }); },
+  }), { name: "AbortError" });
+  await assert.rejects(waitForSpaceRuntime({ ...target, state: "running" }, { signal: controller.signal }), { name: "AbortError" });
 });
 
 function jsonResponse(body, status = 200) {

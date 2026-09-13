@@ -5,19 +5,20 @@ import { useState } from "react";
 import { CalendarDays, ChevronLeft, ChevronRight, RefreshCw } from "lucide-react";
 import { useClientResource } from "@/lib/use-client-resource";
 import { calendarStatus, calendarTime, useCalendar, type CalendarEntry, type CalendarHistory, type CalendarResult } from "../calendar/data";
-import { TaskModuleViewNavigation } from "../desktop-v627/task-module-view-navigation";
+import { CalendarModuleHeader, calendarModuleDescription } from "../calendar/module-header";
+import { PlanDetail } from "../plans/plan-detail";
 import { OccurrencePlanLinks } from "../plans/occurrence-plan-links";
 import { MobileListShell } from "./shell";
-import { CalendarUpcomingSummary } from "../calendar/upcoming-summary";
 
 export function MobileCalendarPage() {
   const calendar = useCalendar();
-  return <MobileListShell section="workers" title="任务" note="日程 · 计划的每次安排" query={calendar.query} setQuery={calendar.setQuery} searchLabel="搜索日程" searchPlaceholder="搜索安排、参与人" filter={{ label: "日程状态", description: "选择要查看的安排", value: calendar.status, setValue: calendar.setStatus, options: [{ value: "all", label: calendar.period === "upcoming" ? "全部未结束安排" : "全部" }, ...calendar.statusOptions.map(([value, label]) => ({ value, label }))] }}>
-    <div className="mobile-calendar"><TaskModuleViewNavigation active="calendar" mobile />
-      <CalendarUpcomingSummary {...calendar.upcoming} onSelect={calendar.setSelectedId} onRetry={() => void calendar.upcoming.refresh()} />
+  return <MobileListShell section="workers" title="日程" note={calendarModuleDescription} screenClassName="mobile-calendar-module" query={calendar.query} setQuery={calendar.setQuery} searchLabel="搜索日程" searchPlaceholder="搜索安排、参与人" filter={{ label: "日程状态", description: "选择要查看的安排", value: calendar.status, setValue: calendar.setStatus, options: [{ value: "all", label: calendar.period === "upcoming" ? "全部未结束安排" : "全部" }, ...calendar.statusOptions.map(([value, label]) => ({ value, label }))] }}>
+    <div className="mobile-calendar"><CalendarModuleHeader active="calendar" mobile onSelect={calendar.setSelectedId} onRefresh={() => void calendar.refresh()} />
+
       {calendar.planId ? <p className="plan-help">当前仅显示所选计划 · <Link href="/app/mobile/workers/calendar">查看全部日程</Link></p> : null}
       <div className="mobile-calendar-toolbar"><select aria-label="查看时间范围" value={calendar.period} onChange={(event) => calendar.setPeriod(event.target.value)}><option value="upcoming">即将到来</option><option value="day">当天</option><option value="week">7 天</option></select><div className="mobile-calendar-date-slot">{calendar.period !== "upcoming" ? <><button aria-label="上一个时间段" onClick={() => calendar.move(-1)}><ChevronLeft size={18} /></button><input type="date" aria-label="日程日期" value={calendar.day} onChange={(event) => calendar.setDay(event.target.value)} /><button aria-label="下一个时间段" onClick={() => calendar.move(1)}><ChevronRight size={18} /></button></> : <span>各计划下一次 · 含进行中</span>}</div><button aria-label="刷新日程" onClick={() => void calendar.refresh()}><RefreshCw size={17} /></button></div>
       <div className="mobile-calendar-caption"><span>{calendar.value?.total ?? "—"} 项 · {calendar.timeZone}</span><button onClick={calendar.today}>今天</button></div>
+      {calendar.planId && !calendar.selectedId ? <PlanDetail id={calendar.planId} mobile key={calendar.planId} /> : null}
       {calendar.error || calendar.staleError ? <p role="alert">{calendar.error || `更新失败，以下为上次结果：${calendar.staleError}`}<button onClick={() => void calendar.refresh()}>重新加载</button></p> : null}
       {calendar.loading ? <p role="status">正在读取日程…</p> : null}
       {!calendar.loading && calendar.selectedId && !calendar.value?.items.some((entry) => entry.id === calendar.selectedId) ? <LinkedCalendarEntry id={calendar.selectedId} /> : null}

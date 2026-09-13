@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import { bindClientCache, CACHE_RESET_EVENT, clearClientCache } from "@/lib/client-resource-cache";
 import { CLIENT_SCOPE_ENDPOINT, clientScopeKey } from "@/lib/client-scope";
 import { SafeClientStartup } from "./safe-client-startup";
-import { prefetchDesktopData } from "@/lib/desktop-prefetch";
+import { prepareDesktopStartup } from "@/lib/desktop-startup-prefetch";
 
 export function ClientSessionBoundary({ children, desktop = false }: { children: ReactNode; desktop?: boolean }) {
   const pathname = usePathname();
@@ -28,7 +28,13 @@ export function ClientSessionBoundary({ children, desktop = false }: { children:
       if (controller.signal.aborted || revision !== generation.current) return;
       const scope = clientScopeKey(payload, window.location.origin);
       bindClientCache(scope);
-      if (desktop) { setPreparing(true); await prefetchDesktopData({ signal: controller.signal }); }
+      if (desktop) {
+        setPreparing(true);
+        await prepareDesktopStartup(window.location.pathname, controller.signal, { onReady: () => {
+          if (controller.signal.aborted || revision !== generation.current) return;
+          setState({ scope, error: false }); setPreparing(false);
+        } });
+      }
       if (controller.signal.aborted || revision !== generation.current) return;
       setState({ scope, error: false });
     } catch { if (!controller.signal.aborted && revision === generation.current) setState((previous) => ({ ...previous, error: true })); }
@@ -42,6 +48,6 @@ export function ClientSessionBoundary({ children, desktop = false }: { children:
     window.addEventListener("pagehide", clear); window.addEventListener(CACHE_RESET_EVENT, reset); window.addEventListener("pageshow", show);
     return () => { controller.abort(); generation.current += 1; pending.current?.abort(); window.removeEventListener("pagehide", clear); window.removeEventListener(CACHE_RESET_EVENT, reset); window.removeEventListener("pageshow", show); clearClientCache("unmount"); };
   }, [connect]);
-  if (!state.scope) return <SafeClientStartup pathname={pathname} failed={state.error} preparing={preparing} onRetry={() => { setState({ scope: "", error: false }); void connect(); }} />;
+  if (!state.scope) return <SafeClientStartup pathname={pathname} desktop={desktop} failed={state.error} preparing={preparing} onRetry={() => { setState({ scope: "", error: false }); void connect(); }} />;
   return <div key={state.scope} style={{ display: "contents" }}>{children}</div>;
 }

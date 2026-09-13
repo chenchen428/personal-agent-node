@@ -5,6 +5,8 @@ import path from "node:path";
 import http from "node:http";
 import test from "node:test";
 import { createRuntimeEnvironmentService, runtimeProviderBaseUrl } from "../src/runtime-environments/index.ts";
+import { createSpace, initializeInstallation } from "../../runtime/src/space-registry.ts";
+import { runtimeExecutionConfig } from "../src/agent/runtime-runner.ts";
 
 function fixture(t, options = {}) {
   const workspaceRoot = fs.mkdtempSync(path.join(os.tmpdir(), "pa-runtime-environments-"));
@@ -63,6 +65,55 @@ test("distinct Space directories retain independent selection and secrets", t =>
   assert.equal(b.read().revision, 0);
   assert.equal(b.read().profiles.codex.credentialConfigured, false);
   assert.equal(b.readExecution().credential, "");
+});
+
+test("registered child Spaces inherit main settings and process-only credentials while preserving local history", async t => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "pa-runtime-settings-owner-"));
+  t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+  const { personal } = initializeInstallation({ dataRoot: root });
+  const space = createSpace({ dataRoot: root, slug: "work", displayName: "Work" });
+  const previous = path.join(space.root, "config", "runtime-environments.json");
+  const previousContents = JSON.stringify({ schemaVersion: 1, spaceId: space.id, revision: 12, engine: "claude-code", profiles: { "claude-code": { model: "child-old-model" } } });
+  fs.writeFileSync(previous, previousContents);
+  fs.writeFileSync(path.join(space.root, "config", "codex-runtime-settings.json"), JSON.stringify({ model: "child-legacy" }));
+  const main = createRuntimeEnvironmentService({ workspaceRoot: personal.root, spaceId: personal.id });
+  let probes = 0;
+  const child = createRuntimeEnvironmentService({ workspaceRoot: space.root, spaceId: space.id,
+    legacyFallback: { model: "ignored-child-default" }, fetchImpl: async () => { probes++; throw new Error("must not contact provider"); } });
+  assert.equal(child.view().profiles.codex.model, "");
+  main.save({ revision: 0, engine: "codex", profiles: { codex: draft("https://main-model.example/v1", { credential: "parent-private-key", model: "main-model" }) } });
+  const view = child.view();
+  assert.equal(view.spaceId, space.id); assert.equal(view.revision, 1);
+  assert.equal(view.readOnly, true); assert.equal(view.inherited, true);
+  assert.deepEqual(view.sourceSpace, { id: personal.id, kind: "personal", displayName: personal.displayName });
+  assert.equal(view.profiles.codex.model, "main-model");
+  assert.doesNotMatch(JSON.stringify(view), /parent-private-key|credentialId|secrets|root/);
+  assert.equal(main.view().readOnly, false);
+  for (const operation of [() => child.save({ revision: 1, engine: "codex" }), () => child.assertWritable()]) assert.throws(operation, { code: "RUNTIME_SETTINGS_READ_ONLY", statusCode: 403 });
+  await assert.rejects(child.detect({ engine: "codex" }), { code: "RUNTIME_SETTINGS_READ_ONLY" });
+  await assert.rejects(child.testConnectivity({ engine: "codex", profile: draft("https://attacker.invalid") }), { code: "RUNTIME_SETTINGS_READ_ONLY" });
+  assert.equal(probes, 0);
+  const snapshot = child.readExecution();
+  assert.equal(snapshot.credential, "parent-private-key");
+  const config = runtimeExecutionConfig({ agentEnv: {} }, snapshot);
+  assert.equal(config.agentEnv.PERSONAL_AGENT_MODEL_API_KEY, "parent-private-key");
+  assert.doesNotMatch(JSON.stringify(config.appServerArgs), /parent-private-key/);
+  main.save({ revision: 1, engine: "claude-code", profiles: { "claude-code": draft("https://new-main.example", { credential: "rotated-main-key", model: "new-main-model" }) } });
+  assert.equal(child.readExecution().engine, "claude-code");
+  assert.equal(child.readExecution().profile.model, "new-main-model");
+  assert.equal(child.readExecution().credential, "rotated-main-key");
+  assert.equal(snapshot.profile.model, "main-model", "an in-flight execution retains its snapshot");
+  assert.equal(fs.readFileSync(previous, "utf8"), previousContents);
+  assert.equal(fs.existsSync(path.join(space.root, "secrets", "runtime-environments")), false);
+  assert.throws(() => createRuntimeEnvironmentService({ workspaceRoot: space.root, spaceId: personal.id }), { code: "RUNTIME_SPACE_MISMATCH" });
+  const otherRoot = path.join(root, "another-installation");
+  const other = initializeInstallation({ dataRoot: otherRoot }).personal;
+  const otherService = createRuntimeEnvironmentService({ workspaceRoot: other.root, spaceId: other.id });
+  assert.equal(otherService.readExecution().credential, ""); assert.equal(otherService.view().revision, 0);
+  fs.copyFileSync(path.join(personal.root, "config", "runtime-environments.json"), path.join(other.root, "config", "runtime-environments.json"));
+  assert.throws(() => otherService.readExecution(), { code: "RUNTIME_SPACE_MISMATCH" });
+  fs.unlinkSync(path.join(space.root, "space.json"));
+  assert.throws(() => createRuntimeEnvironmentService({ workspaceRoot: space.root, spaceId: space.id }), { code: "RUNTIME_SPACE_MISMATCH" });
 });
 
 test("failed multi-profile saves retain the old config and credential pair", t => {

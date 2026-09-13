@@ -61,7 +61,7 @@ export async function setupStatus({
   const localAuthReady = Boolean(config?.env?.PERSONAL_AGENT_AUTH_PASSWORD || (localAuthDocument?.algorithm === 'scrypt' && localAuthDocument?.verifier));
   const managed = managedServiceReadiness({ dataRoot: spaceDataRoot, env: effectiveEnv });
   const customDomains = config ? safeCustomDomainBindings(spaceDataRoot, effectiveEnv) : { mail: null, sites: null };
-  const connectionMode = config?.site?.connectionMode || 'local-only';
+  const connectionMode = config?.inheritedDomain?.mode || config?.site?.connectionMode || 'local-only';
   const customSelected = Boolean(customDomains.sites?.domain || customDomains.mail?.domain);
   const remoteSelected = connectionMode !== 'local-only' || customSelected;
   const cloud = readJson(path.join(spaceDataRoot, 'config', 'cloud.json'));

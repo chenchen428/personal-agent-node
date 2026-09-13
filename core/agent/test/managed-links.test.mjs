@@ -7,6 +7,7 @@ import {
   TASK_ACCESS_OFFLINE,
   TASK_ACCESS_UNAVAILABLE,
 } from "../src/server/managed-links.js";
+import { buildManagedTaskAccess } from "../src/managed-access.js";
 
 const readyAccess = { ready: true, reason: "ready", origin: "https://owner.personal-agent.cn" };
 
@@ -61,4 +62,19 @@ test("remote Page links fail closed when no managed domain is accessible", () =>
   assert.equal(prepared.content, `查看报告（${PAGE_ACCESS_UNAVAILABLE}）`);
   assert.equal(prepared.unavailableManagedLinks, true);
   assert.doesNotMatch(prepared.content, /\/publications\//);
+});
+
+test("inherited links distinguish automatic verification and parent outage from missing configuration", () => {
+  for (const reason of ["space-domain-verifying", "parent-domain-unverified", "tunnel-offline"]) {
+    const access = { ready: false, inherited: true, reason, origin: "" };
+    const page = buildManagedPageAccess("/app/mobile/pages/private-demo", access);
+    const task = buildManagedTaskAccess("sess_demo", access);
+    const remote = prepareRemoteChannelText("[页面](/publications/demo/index.html)", { externalAccess: access });
+    for (const notice of [page.linkNotice, task.linkNotice, remote.content]) {
+      assert.match(notice, /无需重复配置/);
+      assert.doesNotMatch(notice, /暂未配置|https:\/\//);
+      assert.match(notice, reason === "tunnel-offline" ? /主空间的远程连接暂时离线/ : /自动验证/);
+    }
+    assert.equal(page.url, ""); assert.equal(task.url, "");
+  }
 });

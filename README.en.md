@@ -1,6 +1,6 @@
 # Cove Node
 
-This checkout includes local candidate `0.2.0-beta.60-plans.2` for unified task plans; its Windows package is `personal-agent-node-v0.2.0-beta.60-plans.2-windows-x64-installer.exe`. Public downloads remain the already published releases.
+This checkout includes local candidate `0.2.0-beta.61-ux.1` for workspace transitions, shared settings, skill management and conversation recovery; its Windows package is `personal-agent-node-v0.2.0-beta.61-ux.1-windows-x64-installer.exe`. Public downloads remain the already published releases.
 
 The published base release is GitHub prerelease `v0.2.0-beta.59`, including the recovery, Page poster, and calendar updates. Download only the matching published release assets; Windows and macOS packages retain the disclosed unsigned prerelease status.
 

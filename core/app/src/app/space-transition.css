@@ -1,0 +1,63 @@
+/* Same product frame on either side of a full-document Space navigation. */
+.desktop-v72 { --cove-transition-sidebar: 236px; }
+.desktop-v72.is-sidebar-collapsed { --cove-transition-sidebar: 58px; }
+.cove-space-transition {
+  position: fixed;
+  inset: 44px 0 0 var(--cove-transition-sidebar, 236px);
+  width: auto;
+  height: auto;
+  max-width: none;
+  max-height: none;
+  margin: 0;
+  padding: 32px;
+  overflow: auto;
+  border: 0;
+  background: #fff;
+  color: var(--v72-ink, #20201f);
+  font: 13px/1.5 var(--pa-font, sans-serif);
+}
+.cove-space-transition[open] { display: grid; align-items: start; justify-items: center; }
+.cove-space-transition::backdrop { background: rgba(32, 32, 31, .06); }
+.cove-transition-content { width: min(560px, 100%); margin: clamp(24px, 7vh, 72px) auto 28px; }
+.cove-transition-heading { min-height: 166px; text-align: center; }
+.cove-transition-symbol { width: 44px; height: 44px; display: grid; place-items: center; margin: 0 auto 15px; border: 1px solid #e7e7e3; border-radius: 13px; background: #f5f5f3; color: #555552; }
+.cove-transition-symbol svg { width: 20px; height: 20px; stroke-width: 1.6; }
+.cove-transition-heading > p { margin: 0 0 7px; color: #858580; font-size: 12px; }
+.cove-transition-heading h1 { margin: 0; font: 600 23px/1.4 var(--pa-font, sans-serif); color: #20201f; overflow-wrap: anywhere; }
+.cove-transition-heading .cove-transition-status { min-height: 36px; display: flex; align-items: center; justify-content: center; gap: 7px; margin: 8px 0 0; line-height: 1.6; }
+.cove-transition-status[role="alert"] { color: #b44332; }
+.cove-transition-spinner { width: 14px; height: 14px; flex: 0 0 14px; animation: cove-transition-spin 1.1s linear infinite; }
+.cove-space-skeleton { padding: 17px 20px 4px; border: 1px solid #eaeae7; border-radius: 14px; background: #fff; }
+.cove-skeleton-toolbar { display: flex; align-items: center; justify-content: space-between; height: 34px; margin-bottom: 6px; }
+.cove-skeleton-toolbar span { width: 28%; height: 12px; }
+.cove-skeleton-toolbar i { width: 66px; height: 23px; }
+.cove-skeleton-row { min-height: 64px; display: flex; align-items: center; gap: 12px; border-top: 1px solid #f0f0ed; }
+.cove-skeleton-row > i { width: 29px; height: 29px; flex: 0 0 29px; }
+.cove-skeleton-row > div { flex: 1; }
+.cove-skeleton-row span { display: block; width: 48%; height: 9px; }
+.cove-skeleton-row span + span { width: 72%; height: 7px; margin-top: 8px; }
+.cove-skeleton-row b { width: 36px; height: 9px; }
+.cove-space-skeleton i, .cove-space-skeleton span, .cove-space-skeleton b { border-radius: 5px; background: #f0f0ed; }
+.cove-transition-actions { min-height: 38px; display: flex; align-items: center; justify-content: center; gap: 10px; margin-top: 23px; }
+.cove-transition-actions button { min-height: 34px; padding: 0 13px; border: 1px solid #e7e7e3; border-radius: 8px; background: #fff; color: #555552; cursor: pointer; font: 12px/1.5 var(--pa-font, sans-serif); }
+.cove-transition-actions button.primary { border-color: #262625; background: #262625; color: #fff; }
+.cove-transition-actions button:hover { filter: brightness(.96); }
+.cove-transition-actions button:disabled { opacity: .45; cursor: wait; }
+.cove-transition-actions button:focus-visible, .cove-startup-recovery a:focus-visible { outline: 2px solid #858580; outline-offset: 3px; }
+.cove-startup-main { min-width: 0; flex: 1; display: flex; flex-direction: column; background: #fff; }
+.cove-startup-body { flex: 1; min-height: 0; overflow: auto; padding: 32px; }
+.cove-startup-nav-skeleton { display: grid; gap: 18px; padding: 26px 18px; }
+.cove-startup-nav-skeleton span { width: 67%; height: 12px; border-radius: 5px; background: #eaeae7; }
+.cove-startup-nav-skeleton span:nth-child(even) { width: 54%; }
+.cove-startup-space-label { display: flex; align-items: center; gap: 7px; color: #858580; font-size: 11px; }
+.cove-startup-space-label svg { width: 14px; height: 14px; }
+.cove-startup-recovery { display: flex; gap: 18px; flex-wrap: wrap; justify-content: center; margin-top: 22px; font-size: 11px; color: #858580; }
+.cove-startup-recovery a:hover { text-decoration: underline; color: #20201f; }
+.cove-startup-steps { margin: 20px 0; padding-left: 24px; font-size: 12px; color: #555552; }
+.cove-startup-mobile { min-height: 100dvh; background: #fff; }
+@keyframes cove-transition-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .cove-transition-spinner { animation: none; } }
+@media (max-width: 640px) {
+  .cove-startup-body { padding: 22px; }
+  .cove-transition-content { margin-top: 28px; }
+}

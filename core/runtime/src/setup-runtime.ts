@@ -23,7 +23,7 @@ export async function inspectSetupRuntime({ config, env, platform, codexProbe, r
     view = service.view();
   } catch { return { ...base, label: '运行环境', configError: true }; }
   const profile = view.profiles[view.engine];
-  const current = { ...base, engine: view.engine, label: view.engine === 'codex' ? 'Codex' : 'Claude Code', revision: view.revision, mode: profile.mode };
+  const current = { ...base, engine: view.engine, label: view.engine === 'codex' ? 'Codex' : 'Claude Code', revision: view.revision, mode: profile.mode, inherited: view.inherited };
   const receipt = matchesRuntimeAcceptance(acceptance, view);
   if (view.engine === 'codex' && profile.mode === 'account') {
     const codex = await codexProbe({ config, env, platform });
@@ -57,6 +57,7 @@ export async function inspectSetupRuntime({ config, env, platform, codexProbe, r
 export function matchesRuntimeAcceptance(acceptance: any, view: any) {
   if (acceptance?.schemaVersion !== 1 || acceptance.realAgentRuntime !== true || acceptance.sameSessionAgentReply !== true || acceptance.route !== '/app/chat') return false;
   if (acceptance.spaceId && acceptance.spaceId !== view.spaceId) return false;
+  if (view.inherited && acceptance.runtimeSourceSpaceId !== view.sourceSpace?.id) return false;
   if (acceptance.engine !== undefined || acceptance.revision !== undefined) {
     return acceptance.engine === view.engine && acceptance.revision === view.revision;
   }
@@ -77,7 +78,9 @@ export function runtimeSetupChecks(runtime: any, makeCheck: any, generatedAt: st
   ];
   if (custom || engine === 'claude-code') {
     for (const check of checks.slice(0, 4)) {
-      check.guidance = '前往当前隔离空间的“运行设置 → 运行环境”，安装并检测所选基座，完成账号授权或自定义模型配置；保存后在本机对话中取得一次真实回复，再重新检测。';
+      check.guidance = runtime.inherited
+        ? '运行配置继承自主空间；请在主空间的“运行设置 → 运行环境”修改或测试配置，再在当前空间取得一次真实回复。'
+        : '前往主空间的“运行设置 → 运行环境”，安装并检测所选基座，完成账号授权或自定义模型配置；保存后在本机对话中取得一次真实回复，再重新检测。';
       check.actionIds = ['agent.runtime.settings'];
     }
     if (installed && authorizationReady) checks[3].actionIds = ['agent.open-chat'];

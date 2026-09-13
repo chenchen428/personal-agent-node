@@ -96,5 +96,5 @@ export function useWorkerSessions(initialSessionId?: string | null) {
     return () => window.clearInterval(timer);
   }, [hasRunningWorker, load]);
 
-  return { sessions, selected, selectedId, select, resume, loading, detailLoading, resumeLoading, error };
+  return { sessions, selected, selectedId, select, resume, refresh, loading, detailLoading, resumeLoading, error };
 }

@@ -28,7 +28,7 @@ export function AppShell({ children, initialMobileHint = false }: { children: Re
 function DesktopShell({ pathname, children }: { pathname: string; children: ReactNode }) {
   const [collapsed, setCollapsed] = useState(false);
   const [machineName, setMachineName] = useState("本机在线");
-  const active = (href: string) => href === "/app/workers/plans" ? pathname.startsWith("/app/workers") || pathname === "/app/calendar" : href === "/app" ? pathname === href : pathname === href || pathname.startsWith(`${href}/`);
+  const active = (href: string) => href === "/app/workers/calendar" ? pathname.startsWith("/app/workers") || pathname === "/app/calendar" : href === "/app" ? pathname === href : pathname === href || pathname.startsWith(`${href}/`);
   const current = active("/app/update") ? "软件更新"
       : active("/app/statistics/token-usage") ? "Token 统计"
         : active("/app/skills") ? "技能"

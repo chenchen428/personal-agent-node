@@ -18,9 +18,9 @@ export function DesktopHeaderBreadcrumb({ pathname, currentLabel }: {
 }
 
 function headerItems(pathname: string, currentLabel: string): HeaderItem[] {
-  if (["/app/workers/schedules", "/app/workers/plans"].includes(pathname)) return drilldown("任务", "/app/workers/plans", "计划");
-  if (["/app/calendar", "/app/workers/calendar"].includes(pathname)) return drilldown("任务", "/app/workers/plans", "日程");
-  if (pathname === "/app/workers") return drilldown("任务", "/app/workers/plans", "执行记录");
+  if (["/app/workers/schedules", "/app/workers/plans"].includes(pathname)) return [{ label: "日程" }];
+  if (["/app/calendar", "/app/workers/calendar"].includes(pathname)) return [{ label: "日程" }];
+  if (pathname === "/app/workers") return drilldown("日程", "/app/workers/calendar", "执行记录");
   if (pathname === "/app/connections/wechat-personal") return drilldown("连接", "/app/connections", "个人微信");
   if (pathname === "/app/settings/memory") return drilldown("空间设置", "/app/settings", "记忆");
   if (pathname === "/app/skills") return drilldown("空间设置", "/app/settings", "技能");

@@ -22,11 +22,12 @@ export function desktopPrefetchUrls(now = new Date()) {
     "/api/system/authorization", "/api/system/token-limit", "/api/system/update",
     "/api/system/mail/status", "/api/system/agent-runtime", "/api/system/setup",
     "/api/memories?status=active&query=&limit=200", "/api/plans?limit=50&offset=0&query=", "/api/calendar?view=upcoming&limit=1",
+    "/api/calendar?limit=50&offset=0&view=upcoming",
   ];
 }
 
-/** Hydrate the Space's first menu views before enabling desktop navigation. */
-export async function prefetchDesktopData({ signal }: { signal?: AbortSignal } = {}): Promise<void> {
+/** Hydrate one requested batch; callers decide which batch blocks the current page. */
+export async function prefetchDesktopData({ signal, urls = desktopPrefetchUrls() }: { signal?: AbortSignal; urls?: string[] } = {}): Promise<void> {
   const generation = clientResourceCache.generation;
   const scopeController = new AbortController();
   let timedOut = false;
@@ -34,7 +35,7 @@ export async function prefetchDesktopData({ signal }: { signal?: AbortSignal } =
   const abort = () => scopeController.abort();
   signal?.addEventListener("abort", abort, { once: true });
   if (signal?.aborted) abort();
-  const queue = desktopPrefetchUrls();
+  const queue = [...urls];
   const unfinished = new Set(queue);
   const deadline = setTimeout(() => { timedOut = true; scopeController.abort(); }, 8_000);
   async function read(url: string) {

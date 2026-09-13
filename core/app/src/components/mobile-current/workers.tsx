@@ -4,7 +4,7 @@ import Link from "next/link";
 import { Bot, ChevronRight } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { elapsedSeconds, fetchJson, formatDateTime, formatTaskDuration, isRunning, relativeTime, statusLabel, useRememberedQuery, useSourcePage } from "./data";
-import { TaskModuleViewNavigation } from "../desktop-v627/task-module-view-navigation";
+import { CalendarModuleHeader, calendarModuleDescription } from "../calendar/module-header";
 import { MobileTaskDetail } from "./mobile-task-detail";
 import { InlineError, LoadSentinel, MobileListShell, SearchStatus } from "./shell";
 import { MobileContentSkeleton } from "./skeletons";
@@ -51,7 +51,7 @@ export function MobileWorkers({ sessionId = "" }: { sessionId?: string }) {
     return <MobileTaskDetail
       taskId={sessionId}
       returnHref={from === "activity" ? "/app/mobile" : "/app/mobile/workers"}
-      returnLabel={from === "activity" ? "最近动态" : "任务"}
+      returnLabel={from === "activity" ? "最近动态" : "执行记录"}
     />;
   }
 
@@ -67,21 +67,25 @@ export function MobileWorkers({ sessionId = "" }: { sessionId?: string }) {
   const initialLoading = loading && !sessions.length;
   return <MobileListShell
     section="workers"
-    title="任务"
-    note={filter === "all" ? `${taskCounts.running} 项任务进行中` : `${selectedFilter.count} 项${selectedFilter.label}`}
+    title="日程"
+    screenClassName="mobile-calendar-module"
+    note={calendarModuleDescription}
     query={query}
     setQuery={setQuery}
-    searchLabel="搜索任务"
-    searchPlaceholder="搜索任务…"
+    searchLabel="搜索执行记录"
+    searchPlaceholder="搜索执行记录…"
     filter={{ label: "筛选任务状态", description: "选择要查看的任务状态", value: filter, setValue: setFilter, options }}
   >
-    <TaskModuleViewNavigation active="tasks" mobile />
+    <div className="mobile-calendar"><CalendarModuleHeader active="tasks" mobile onRefresh={() => void load()} />
+    <div className="mobile-calendar-toolbar mobile-execution-toolbar"><span>{filter === "all" ? `${taskCounts.running} 项任务进行中` : `${selectedFilter.count} 项${selectedFilter.label}`}</span><button onClick={() => void load()}>刷新</button></div>
+    <div className="mobile-calendar-caption"><span>{sessions.length} 条执行记录</span><span>最近更新</span></div>
     <div className="mobile-task-list">
       {error ? <InlineError message={error} /> : null}
       {hasConditions ? <SearchStatus count={sessions.length} summary={conditionSummary} onClear={() => { setQuery(""); setFilter("all"); }} /> : null}
       {!loading && !sessions.length ? <TaskEmpty hasConditions={hasConditions} /> : null}
       {initialLoading ? <MobileContentSkeleton kind="tasks" /> : <div className="mobile-task-items">{sessions.map((item) => <TaskRow session={item} key={item.id} />)}</div>}
       {loading && !initialLoading ? <LoadSentinel loading canLoad={false} exhausted={false} onLoad={() => undefined} /> : null}
+    </div>
     </div>
   </MobileListShell>;
 }

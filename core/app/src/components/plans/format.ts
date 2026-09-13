@@ -17,5 +17,5 @@ export function recurrenceLabel(rule?: Recurrence | null) {
 export function runStatusLabel(status: string) {
   return ({ claimed: "准备执行", dispatched: "已开始", pending: "等待执行", running: "执行中", completed: "本次执行结束", succeeded: "本次执行结束", failed: "执行失败", interrupted: "已中断", skipped: "已跳过", cancelled: "已取消", unknown: "结果待确认" } as Record<string, string>)[status] || status;
 }
-export function planHref(id: string, mobile = false) { return `/app/${mobile ? "mobile/" : ""}workers/plans?id=${encodeURIComponent(id)}`; }
+export function planHref(id: string, mobile = false) { return `/app/${mobile ? "mobile/" : ""}workers/calendar?planId=${encodeURIComponent(id)}`; }
 export function executionHref(sessionId: string, mobile = false) { return mobile ? `/app/mobile/workers/${encodeURIComponent(sessionId)}` : `/app/workers?task=${encodeURIComponent(sessionId)}`; }

@@ -1,5 +1,7 @@
 # Connectivity
 
+主空间已有自托管父域时，同一安装的新旧隔离空间默认使用 `<空间slug>.<父域>`，无需再次配置 Relay 或复制凭据。系统保持各空间独立认证，通过父连接的新鲜心跳与当前空间域名的真实 HTTPS 网关验证后才开放任务进度、Pages 和手机链接；验证中或父连接离线时说明当前原因，不要求用户重复配置。父域更换、移除或 Relay 配置更新会使旧继承证明失效并自动重新验证。独立配置的子空间连接优先；子空间不能清空父域。旧主空间缺历史验证记录时，系统自动验证父域和子域的网关身份，不通过拼接域名宣称可用。Managed Cloud 继续使用其已授权分配的真实空间域名，不臆造未被服务端支持的多级域名。
+
 Choose one declared mode with `connection set`: `local-only`, `managed-cloud`, or `self-hosted-edge`.
 
 Local-only is the default complete product path. It must support the local console, Agent, BYOK, connections, files, built-in mail scanning, publications and backup without Cloud.

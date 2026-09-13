@@ -1,11 +1,14 @@
 import fs from "node:fs";
 import path from "node:path";
 import { matchesLegacySkill, readLegacyBaselines } from "./legacy.js";
+import { userSkillManagement } from "./user-skill-tree.js";
 
 /** Public projection: paths outside the Space never leave the local runtime. */
 export function readWorkspaceSkillCatalog(workspaceRoot, options = {}) {
   const resolved = resolveWorkspaceSkills(workspaceRoot, options);
-  return { ...resolved, skills: resolved.skills.map(({ skillPath, ...skill }) => skill) };
+  return { ...resolved, skills: resolved.skills.map(({ skillPath, ...skill }) => ({ ...skill,
+    ...(skill.source.kind === "user" ? { management: userSkillManagement(path.join(workspaceRoot, skill.directory), skill.directory) } : {}),
+  })) };
 }
 
 /** Both UI and engine adapters consume this single source-aware catalog. */

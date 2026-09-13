@@ -12,12 +12,20 @@ export function buildManagedTaskAccess(sessionId, externalAccess, { role = "work
     url: internalUrl && origin
       ? new URL(`/app/mobile/${mobileSection}/${encodeURIComponent(id)}`, `${origin}/`).href
       : "",
-    linkNotice: origin ? "" : taskLinkNotice(access?.reason),
+    linkNotice: origin ? "" : inheritedAccessNotice(access, "任务进度") || taskLinkNotice(access?.reason),
   };
 }
 
 export function taskLinkNotice(reason) {
   return reason === "tunnel-offline" ? TASK_ACCESS_OFFLINE : TASK_ACCESS_UNAVAILABLE;
+}
+
+export function inheritedAccessNotice(access, target = "内容") {
+  if (access?.inherited && access.reason === "space-offline") return `当前空间尚未运行，启动后将自动启用${target}链接，无需重复配置域名。`;
+  if (access?.reason === "space-domain-verifying") return `当前空间的子域名正在自动验证，完成后即可在线查看${target}，无需重复配置。`;
+  if (access?.reason === "parent-domain-unverified") return `主空间域名正在自动验证，验证通过后将自动启用当前空间的${target}链接，无需重复配置。`;
+  if (access?.inherited && access.reason === "tunnel-offline") return `主空间的远程连接暂时离线，恢复后将自动启用当前空间的${target}链接，无需重复配置。`;
+  return "";
 }
 
 function resolveAccess(value) {

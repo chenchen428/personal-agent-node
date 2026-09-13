@@ -1,4 +1,5 @@
 import fs from "node:fs";
+import { resolveInheritedSpaceDomain } from "../../runtime/src/space-domain-access.ts";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -110,6 +111,8 @@ export const config = {
 };
 
 export function resolveExternalAccess({ dataRoot = siteDataRoot, consoleBaseUrl = "", now = new Date() } = {}) {
+  const inherited = resolveInheritedSpaceDomain({ dataRoot, now });
+  if (inherited) return inherited;
   const site = readJson(path.join(dataRoot, "config", "site.json"));
   const mode = String(site?.connectionMode || "local-only");
   if (mode === "local-only") return { ready: false, reason: "local-only", origin: "" };

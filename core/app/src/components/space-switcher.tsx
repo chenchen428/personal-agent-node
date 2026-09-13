@@ -3,7 +3,8 @@
 import { useEffect, useRef, useState } from "react";
 import { Check, ChevronDown, CircleHelp, Layers3, Plus, X } from "lucide-react";
 import { fetchJson } from "@/lib/client-json";
-import { buildSpaceNavigationUrl, waitForSpaceRuntime } from "@/lib/space-navigation";
+import { createSpaceTransition, type SpaceTransitionState } from "@/lib/space-transition";
+import { SpaceTransition } from "./space-transition";
 
 type Space = {
   id: string;
@@ -23,9 +24,20 @@ export function SpaceSwitcher() {
   const [snapshot, setSnapshot] = useState<SpacesResponse>({ currentSpaceId: null, spaces: [] });
   const [open, setOpen] = useState(false);
   const [creating, setCreating] = useState(false);
-  const [switchingSpaceId, setSwitchingSpaceId] = useState("");
-  const [switchError, setSwitchError] = useState("");
+  const [transition, setTransition] = useState<SpaceTransitionState>(null);
+  const [switcher] = useState(() => createSpaceTransition({
+    onChange: setTransition,
+    navigate: (url) => window.location.assign(url),
+    currentHref: () => window.location.href,
+  }));
+  const switchingSpaceId = transition?.target.id || "";
   const root = useRef<HTMLDivElement>(null);
+  useEffect(() => () => switcher.dispose(), [switcher]);
+  useEffect(() => {
+    const restore = (event: PageTransitionEvent) => { if (event.persisted) switcher.restore(); };
+    window.addEventListener("pageshow", restore);
+    return () => window.removeEventListener("pageshow", restore);
+  }, [switcher]);
 
   useEffect(() => {
     if (!isLoopbackHostname(window.location.hostname)) return;
@@ -50,15 +62,8 @@ export function SpaceSwitcher() {
   if (!localDesktop) return null;
   const switchTo = async (space: Space) => {
     if (space.id === snapshot.currentSpaceId) return setOpen(false);
-    setSwitchingSpaceId(space.id);
-    setSwitchError("");
-    try {
-      const ready = await waitForSpaceRuntime(space);
-      window.location.assign(buildSpaceNavigationUrl(ready, window.location.href));
-    } catch (cause) {
-      setSwitchError(cause instanceof Error ? cause.message : "隔离空间暂时无法启动，请重试");
-      setSwitchingSpaceId("");
-    }
+    setOpen(false);
+    await switcher.start(space);
   };
 
   return <div className="space-switcher" ref={root}>
@@ -69,7 +74,7 @@ export function SpaceSwitcher() {
         <span role="tooltip">当工作、家庭或协作场景需要彼此保密时使用隔离空间。每个空间拥有独立的对话、任务、Agent 工作区、邮件、数据、发布页、连接、应用与 Token 统计；切换空间不会把内容带到另一个空间。</span>
       </span>
     </div>
-    <button className="space-switcher-trigger" type="button" aria-haspopup="listbox" aria-expanded={open} onClick={() => setOpen((value) => !value)}>
+    <button className="space-switcher-trigger" type="button" aria-haspopup="listbox" aria-expanded={open} disabled={Boolean(transition)} onClick={() => setOpen((value) => !value)}>
       <Layers3 aria-hidden="true" />
       <strong>{current?.displayName || "个人隔离空间"}</strong>
       <ChevronDown aria-hidden="true" />
@@ -84,10 +89,13 @@ export function SpaceSwitcher() {
             {selected ? <Check aria-hidden="true" /> : null}
           </button>;
         })}
-        {switchError ? <p className="space-switcher-error" role="alert">{switchError}</p> : null}
       </div>
       <button className="space-switcher-create" type="button" onClick={() => { setOpen(false); setCreating(true); }}><Plus aria-hidden="true" />新建隔离空间</button>
     </div> : null}
+    {transition ? <SpaceTransition state={transition} onDismiss={() => {
+      switcher.dismiss();
+      requestAnimationFrame(() => root.current?.querySelector<HTMLButtonElement>(".space-switcher-trigger")?.focus());
+    }} onRetry={() => void switcher.start(transition.target)} /> : null}
     {creating ? <CreateSpaceDialog onClose={() => setCreating(false)} onCreated={(space) => {
       setSnapshot((value) => ({ ...value, spaces: [...value.spaces, space] }));
       setCreating(false);

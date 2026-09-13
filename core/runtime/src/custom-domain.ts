@@ -33,7 +33,13 @@ export function readCustomDomainBindings({ dataRoot, env = process.env }: { data
   const config = resolveRequestedConfig(env, dataRoot);
   const local = readBindingDocument(bindingPath(config.dataRoot));
   const installation = readBindingDocument(installationBindingPath(config.installationDataRoot));
-  const document = installation.mail || installation.sites ? installation : local;
+  const document = fs.existsSync(installationBindingPath(config.installationDataRoot)) ? { ...installation } : { ...local };
+  if (config.space?.kind === "user") {
+    for (const kind of ["mail", "sites"] as const) {
+      if (local[kind]?.domain && local[kind].scope !== "installation" && (!local[kind].ownerSpaceId || local[kind].ownerSpaceId === config.space.id)) document[kind] = local[kind];
+    }
+    if (config.site?.connectionMode === "managed-cloud" && readJson(path.join(config.configDir, "cloud.json"))?.managedHost) document.sites = null;
+  }
   return projectBindingsForSpace(document, config.space);
 }
 
@@ -131,7 +137,7 @@ export async function startCustomDomainForwarder({
   if (normalized.kind === "sites") {
     for (const route of spaceRoutes) {
       const space = spaces.find((candidate) => candidate.id === route.spaceId);
-      if (!space) continue;
+      if (!space || space.kind !== "personal") continue;
       const sitePath = path.join(space.root, "config", "site.json");
       const site = readJson(sitePath);
       if (site) writeJsonAtomic(sitePath, { ...site, displayDomain: route.domain, asciiDomain: route.domain, updatedAt: now }, 0o600);
@@ -148,6 +154,9 @@ export function removeCustomDomainBinding({ dataRoot, kind, env = process.env }:
   const spaces = listSpaces(requestedConfig.installationDataRoot);
   const owner = spaces.find((space) => space.kind === "personal") || getSpace(requestedConfig.installationDataRoot);
   const current = readBindingDocument(installationBindingPath(requestedConfig.installationDataRoot));
+  if (requestedConfig.space?.kind !== "personal" && current[kind as CustomDomainKind]?.scope === "installation") {
+    throw customDomainError("CUSTOM_DOMAIN_INHERITED", "此域名继承自主空间；请在主空间管理父域名，子空间无需重复配置。");
+  }
   const removed = current[kind as CustomDomainKind];
   const next = { ...current, schemaVersion: 1, [kind as CustomDomainKind]: null };
   writeJsonAtomic(installationBindingPath(requestedConfig.installationDataRoot), next, 0o600);
@@ -158,6 +167,7 @@ export function removeCustomDomainBinding({ dataRoot, kind, env = process.env }:
   }
   if (kind === "sites" && removed?.previousSiteDomains) {
     for (const space of spaces) {
+      if (space.kind !== "personal") continue;
       const previous = removed.previousSiteDomains[space.id];
       const sitePath = path.join(space.root, "config", "site.json");
       const site = readJson(sitePath);
@@ -214,6 +224,9 @@ function projectBindingsForSpace(document: any, space: any) {
 function projectBindingForSpace(binding: any, space: any) {
   const baseDomain = normalizeDomain(binding?.baseDomain || binding?.domain);
   if (!baseDomain) return binding;
+  if (binding.scope !== "installation" && (!binding.ownerSpaceId || binding.ownerSpaceId === space?.id)) {
+    return { ...binding, baseDomain, domain: baseDomain, publicAddress: binding.kind === "mail" ? `agent@${baseDomain}` : `https://${baseDomain}`, inherited: false };
+  }
   const route = Array.isArray(binding.spaceRoutes) ? binding.spaceRoutes.find((candidate: any) => candidate.spaceId === space?.id) : null;
   const domain = route?.domain || (space?.kind === "user" ? `${space.slug}.${baseDomain}` : baseDomain);
   return { ...binding, baseDomain, domain, publicAddress: binding.kind === "mail" ? `agent@${domain}` : `https://${domain}`, inherited: space?.id !== binding.ownerSpaceId };

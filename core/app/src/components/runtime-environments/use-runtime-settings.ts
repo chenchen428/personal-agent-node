@@ -50,7 +50,7 @@ export function useRuntimeSettings() {
       const current = editor.current;
       const changed = current.saved && current.drafts && (current.engine !== current.saved.engine || engines.some((id) => profileChanged(current.drafts![id], current.saved!.profiles[id])));
       setSaved(value);
-      if (!changed) { setDrafts(value.profiles); setEngine(value.engine); }
+      if (!changed || value.readOnly) { setDrafts(value.profiles); setEngine(value.engine); }
       if (!current.saved) { setSelected(value.engine); setFeedback(""); setDetection({}); setResults({}); }
     } catch (cause) { if (!controller.signal.aborted) setError(cause instanceof Error ? cause.message : "读取失败，请重试。"); }
     finally { if (!controller.signal.aborted) setLoading(false); }
@@ -61,13 +61,14 @@ export function useRuntimeSettings() {
     return () => { mounted.current = false; pending.forEach((controller) => controller.abort()); };
   }, [load]);
   usePageRefresh(load);
-  const dirty = Boolean(saved && drafts && (engine !== saved.engine || engines.some((id) => profileChanged(drafts[id], saved.profiles[id]))));
+  const dirty = Boolean(saved && !saved.readOnly && drafts && (engine !== saved.engine || engines.some((id) => profileChanged(drafts[id], saved.profiles[id]))));
   useEffect(() => {
     const prevent = (event: BeforeUnloadEvent) => { if (dirty) { event.preventDefault(); event.returnValue = ""; } };
     window.addEventListener("beforeunload", prevent);
     return () => window.removeEventListener("beforeunload", prevent);
   }, [dirty]);
   const update = (patch: Partial<DraftProfile>) => {
+    if (saved?.readOnly) return;
     generation.current[selected] += 1;
     controllers.current.get(selected)?.abort();
     setBusy((value) => ({ ...value, [selected]: undefined }));
@@ -76,7 +77,7 @@ export function useRuntimeSettings() {
     setFeedback("");
   };
   const run = async (kind: "detect" | "test") => {
-    if (!drafts || !saved) return;
+    if (!drafts || !saved || saved.readOnly) return;
     const target = selected;
     const validation = kind === "test" ? profileValidation(target, drafts[target], saved.profiles[target]) : "";
     if (validation) { setResults((value) => ({ ...value, [target]: { ok: false, engine: target, message: validation } })); return; }
@@ -95,7 +96,7 @@ export function useRuntimeSettings() {
     } finally { if (!controller.signal.aborted && current === generation.current[target]) setBusy((value) => ({ ...value, [target]: undefined })); }
   };
   const save = async () => {
-    if (!saved || !drafts || !dirty) return;
+    if (!saved || !drafts || saved.readOnly || !dirty) return;
     const profiles: Partial<Record<Engine, ReturnType<typeof profilePayload>>> = {};
     for (const id of engines) {
       if (!profileChanged(drafts[id], saved.profiles[id])) continue;

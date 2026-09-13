@@ -13,12 +13,14 @@ export type { RuntimeSaveInput } from "./store.ts";
 export function createRuntimeEnvironmentService(options: StoreOptions & ConnectivityOptions & DetectionOptions) {
   const store = createRuntimeEnvironmentStore(options);
   return {
-    read: store.read, view: store.view, save: store.save, readExecution: store.readExecution,
+    read: store.read, view: store.view, save: store.save, readExecution: store.readExecution, assertWritable: store.assertWritable,
     async detect(input: { engine: RuntimeEngine; profile?: ProfileDraft }) {
+      store.assertWritable();
       const engine = validateEngine(input?.engine);
       return detectRuntimeEnvironment(store.resolveDraft(engine, input.profile), options);
     },
     async testConnectivity(input: { engine: RuntimeEngine; profile?: ProfileDraft }): Promise<ConnectivityResult> {
+      store.assertWritable();
       const engine = validateEngine(input?.engine);
       let execution;
       try { execution = store.resolveDraft(engine, input.profile); }

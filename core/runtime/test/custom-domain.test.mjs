@@ -5,7 +5,7 @@ import os from "node:os";
 import path from "node:path";
 import test from "node:test";
 
-import { initializeSite } from "../src/config.ts";
+import { initializeSite, resolveNodeConfig } from "../src/config.ts";
 import { customDomainInputFingerprint, normalizeCustomDomainInput, readCustomDomainBindings, removeCustomDomainBinding, startCustomDomainForwarder } from "../src/custom-domain.ts";
 import { createSpace } from "../src/space-registry.ts";
 
@@ -54,8 +54,9 @@ test("starting a custom-domain binding prepares one protected Relay key and proj
   assert.equal(inherited.sites.inherited, true);
   assert.equal(JSON.parse(fs.readFileSync(config.configPath, "utf8")).connectionMode, "self-hosted-edge");
   assert.equal(JSON.parse(fs.readFileSync(config.configPath, "utf8")).asciiDomain, "agent.example.net");
-  assert.equal(JSON.parse(fs.readFileSync(path.join(second.root, "config", "site.json"), "utf8")).asciiDomain, "work.agent.example.net");
-  assert.match(fs.readFileSync(path.join(second.root, "secrets", "applications", "site.env"), "utf8"), /SITE_DOMAIN="work\.agent\.example\.net"/);
+  assert.equal(JSON.parse(fs.readFileSync(path.join(second.root, "config", "site.json"), "utf8")).asciiDomain, "work.personal-agent.local");
+  assert.equal(resolveNodeConfig({ PERSONAL_AGENT_DATA_ROOT: root, PERSONAL_AGENT_SPACE_ID: second.id, PRIVATE_SITE_DATA_ROOT: second.root }).domain, "work.agent.example.net");
+  assert.match(fs.readFileSync(path.join(second.root, "secrets", "applications", "site.env"), "utf8"), /SITE_DOMAIN="work\.personal-agent\.local"/);
   assert.match(fs.readFileSync(config.envPath, "utf8"), /PERSONAL_AGENT_CUSTOM_DOMAIN_TOKEN="[A-Za-z0-9_-]{43}"/);
   assert.equal(fs.readFileSync(path.join(config.dataRoot, "secrets", "custom-domain", "relay-token"), "utf8").trim(), relayToken);
   assert.doesNotMatch(fs.readFileSync(path.join(config.dataRoot, "config", "custom-domain-bindings.json"), "utf8"), new RegExp(relayToken));

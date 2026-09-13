@@ -13,8 +13,10 @@ import { ConnectionClearDialog } from "./connection-clear-dialog";
 import { WechatClawAction } from "./wechat-claw-action";
 import { DingTalkAction } from "./dingtalk-action";
 import { OpenCliAction } from "./opencli-action";
+import { InheritedSiteConnection } from "./inherited-site-connection";
 
 export function ConnectionActionRow({ connection, refresh }: { connection: Connection; refresh: () => Promise<void> }) {
+  if (connection.id === "sites" && connection.details?.inherited === true) return <InheritedSiteConnection connection={connection} />;
   if (connection.id === "wechat-personal") return <><div className="connection-summary-action"><p>{connection.description}</p><PersonalWechatAction connection={connection} refresh={refresh} /></div></>;
   return <DefaultConnectionActionRow connection={connection} refresh={refresh} />;
 }

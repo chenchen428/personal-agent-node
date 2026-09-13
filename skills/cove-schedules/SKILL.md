@@ -5,7 +5,7 @@ description: 管理当前空间统一任务计划、单次及周期日程、提�
 
 # Cove 任务计划与日程
 
-同一件事只建立一个计划，任务中心的计划、日程、执行记录共享它。立即进行的普通委托仍使用 cove-tasks；有指定时间、重复规则、未来提醒或自动执行时使用本技能。先读 [calendar.md](references/calendar.md)，涉及执行或旧自动化时再读 [scheduled-tasks.md](references/scheduled-tasks.md)。
+同一件事只建立一个计划，日程与执行记录共享它。用户界面入口叫“日程”，只有“日程 / 执行记录”两个视图；计划在日程上下文中查看，不单独展示第三个视图。立即进行的普通委托仍使用 cove-tasks；有指定时间、重复规则、未来提醒或自动执行时使用本技能。先读 [calendar.md](references/calendar.md)，涉及执行或旧自动化时再读 [scheduled-tasks.md](references/scheduled-tasks.md)。
 
 区分行为：record 只记录；remind 提醒本人；execute 交给 Cove 执行。缺省为 record。不能因用户提到参与人而联系他们，也不能把每周开会自动理解成让 Agent 每周运行。提醒或执行保存完整要求到 executionPrompt；不要为同一计划再创建一条 cron。
 

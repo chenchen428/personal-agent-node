@@ -75,3 +75,11 @@
 @media (prefers-reduced-motion: reduce) { .runtime-spinning { animation: none; } }
 @media (max-width: 1000px) { .runtime-workbench { grid-template-columns: 160px minmax(0, 1fr); } .runtime-editor { padding: 18px; } .runtime-form-row { grid-template-columns: minmax(110px, .7fr) minmax(0, 1.3fr); column-gap: 16px; } .runtime-save-bar { flex-wrap: wrap; } }
 @media (max-width: 740px) { .runtime-workbench { grid-template-columns: minmax(0, 1fr); } .runtime-base-list { display: flex; gap: 8px; border-right: 0; border-bottom: 1px solid var(--pa-border); padding: 10px; } .runtime-base-option { margin: 0; } .runtime-form-row { grid-template-columns: minmax(0, 1fr); gap: 9px; } .runtime-field-copy { padding-top: 0; } .runtime-section-header { align-items: flex-start; flex-direction: column; gap: 10px; } }
+.runtime-inherited-note { padding: 18px 22px; border-bottom: 1px solid var(--pa-border, #e7e7e3); color: var(--pa-muted, #72726e); line-height: 1.7; }
+.runtime-inherited-note strong { color: var(--pa-ink, #242423); }
+.runtime-inherited-note p { margin: 5px 0 0; }
+.runtime-inherited-profile { padding: 20px 22px; }
+.runtime-inherited-profile h3 { margin: 0 0 18px; font-size: 16px; }
+.runtime-inherited-profile dl { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 20px; margin: 0; }
+.runtime-inherited-profile dt { color: var(--pa-muted, #72726e); font-size: 12px; }
+.runtime-inherited-profile dd { margin: 5px 0 0; overflow-wrap: anywhere; }

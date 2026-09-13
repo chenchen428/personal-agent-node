@@ -1,6 +1,14 @@
 export type CalendarPeriod = "upcoming" | "day" | "week";
 export type CalendarRange = { from: string; to: string } | null;
 
+export function calendarContext(pathname: string, params: URLSearchParams) {
+  const legacyPlanRoute = /\/(plans|schedules)$/.test(pathname);
+  return {
+    planId: params.get("planId") || (legacyPlanRoute ? params.get("id") : null),
+    selectedId: legacyPlanRoute ? null : params.get("id"),
+  };
+}
+
 export function dateKey(date: Date) { return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`; }
 export function calendarTime(value: string, timeZone?: string) {
   return new Intl.DateTimeFormat("zh-CN", { year: "numeric", month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit", hour12: false, timeZone }).format(new Date(value));

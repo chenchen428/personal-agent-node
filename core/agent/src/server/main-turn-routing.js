@@ -13,11 +13,25 @@ export function formatTaskStatusReply(children) {
     .slice(0, 5);
   if (!tasks.length) return "当前没有可报告的任务。";
   const lines = tasks.map((task) => {
-    const title = String(task.title || "未命名任务").trim();
+    const title = String(task.title || "未命名任务").trim().replace(/[\\[\]`*_<>]/g, "\\$&");
     const state = taskStatusLabel(task.status);
-    return `“${title}”当前状态：${state}。`;
+    const progress = taskProgressReference(task);
+    return `“${title}”当前状态：${state}。${progress ? ` ${progress}` : ""}`;
   });
   return lines.join("\n");
+}
+
+function taskProgressReference(task) {
+  try {
+    const url = new URL(String(task.url || ""));
+    if (url.protocol === "https:" && !url.username && !url.password && !url.search && !url.hash
+      && !["localhost", "127.0.0.1", "[::1]", "0.0.0.0"].includes(url.hostname)
+      && /^\/app\/mobile\/workers\/[^/]+$/.test(url.pathname)
+      && (!task.id || url.pathname === `/app/mobile/workers/${encodeURIComponent(task.id)}`)) {
+      return `[查看进度](${url.href.replaceAll("(", "%28").replaceAll(")", "%29")})`;
+    }
+  } catch {}
+  return task.linkNotice ? String(task.linkNotice) : "";
 }
 
 function taskStatusLabel(status) {

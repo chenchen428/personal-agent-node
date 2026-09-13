@@ -261,6 +261,11 @@
       "pattern": "/app/mobile/workers/calendar",
       "access": "authenticated",
       "capability": "plans"
+    },
+    {
+      "pattern": "/api/skills/user/*",
+      "access": "authenticated",
+      "capability": "skills"
     }
   ]
 }

@@ -4,7 +4,7 @@ import { CoveMark } from "../brand/cove-mark";
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Activity, Info, Layers3, ListTodo, Menu, PanelsTopLeft, X } from "lucide-react";
+import { Activity, CalendarDays, Info, Layers3, Menu, PanelsTopLeft, X } from "lucide-react";
 import { createContext, useContext, useEffect, useLayoutEffect, useRef, useState, type MutableRefObject, type ReactNode, type RefObject } from "react";
 import { safeHost, useRememberedScroll, useRemote } from "./data";
 import type { FilterOption, MobileSection, Overview } from "./types";
@@ -165,7 +165,7 @@ function MobileDrawer({ section, close, overview }: { section: MobileSection; cl
       <nav className="drawer-nav">
         <span className="drawer-nav-label">工作区</span>
         <Link href="/app/mobile" prefetch onClick={close} aria-current={section === "activity" ? "page" : undefined}><Activity className="mobile-nav-icon" aria-hidden="true" /><span>最近动态</span><small /></Link>
-        <Link href="/app/mobile/workers/plans" prefetch onClick={close} aria-current={section === "workers" || section === "calendar" ? "page" : undefined}><ListTodo className="mobile-nav-icon" aria-hidden="true" /><span>任务</span><small>{counts.workers}</small></Link>
+        <Link href="/app/mobile/workers/calendar" prefetch onClick={close} aria-current={section === "workers" || section === "calendar" ? "page" : undefined}><CalendarDays className="mobile-nav-icon" aria-hidden="true" /><span>日程</span><small /></Link>
         <Link href="/app/mobile/pages" prefetch onClick={close} aria-current={section === "pages" ? "page" : undefined}><PanelsTopLeft className="mobile-nav-icon" aria-hidden="true" /><span>发布页</span><small>{counts.pages}</small></Link>
         <span className="drawer-nav-label">系统</span>
         <Link href="/app/mobile/about" prefetch onClick={close} aria-current={section === "about" ? "page" : undefined}><Info className="mobile-nav-icon" aria-hidden="true" /><span>关于</span><small /></Link>

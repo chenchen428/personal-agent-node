@@ -1,9 +1,24 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
+import React from "react";
+import { renderToStaticMarkup } from "react-dom/server";
+import { InheritedRuntimeSettings } from "../core/app/src/components/runtime-environments/inherited-runtime-settings.tsx";
 import { profileChanged, profilePayload, profileValidation } from "../core/app/src/components/runtime-environments/draft.ts";
 
 const stored = { mode: "custom", model: "example-model", reasoningEffort: "", baseUrl: "https://api.example.com/v1", authType: "bearer", credentialConfigured: true };
+
+test("child runtime view displays inherited configuration without edit or secret controls", () => {
+  const html = renderToStaticMarkup(React.createElement(InheritedRuntimeSettings, { settings: {
+    schemaVersion: 1, spaceId: "child", revision: 3, engine: "codex", readOnly: true, inherited: true,
+    sourceSpace: { id: "primary-private-id", kind: "personal", displayName: "主工作区" },
+    profiles: { codex: { ...stored, credential: "fixture-secret-must-not-render" }, "claude-code": stored },
+  }, onRefresh() {} }));
+  assert.match(html, /由主工作区统一管理/);
+  assert.match(html, /example-model/);
+  assert.match(html, /重新读取/);
+  assert.doesNotMatch(html, /<input|保存运行环境|设为默认|设置凭据|清除|fixture-secret-must-not-render|primary-private-id/);
+});
 
 test("runtime draft retains existing credentials without placing secrets in profile payload", () => {
   assert.equal(profileChanged({ ...stored, credential: "" }, stored), false);

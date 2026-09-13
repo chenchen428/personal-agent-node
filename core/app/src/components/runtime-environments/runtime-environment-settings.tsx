@@ -8,6 +8,7 @@ import { RuntimeDetectionPanel } from "./runtime-detection-panel";
 import { engines, engineLabels } from "./types";
 import { profileChanged } from "./draft";
 import { useRuntimeSettings } from "./use-runtime-settings";
+import { InheritedRuntimeSettings } from "./inherited-runtime-settings";
 
 export function RuntimeEnvironmentSettings() {
   const state = useRuntimeSettings();
@@ -15,9 +16,10 @@ export function RuntimeEnvironmentSettings() {
   const busy = state.busy[selected];
   const anyBusy = Object.values(state.busy).some(Boolean);
   const result = state.results[selected];
+  if (!state.loading && saved?.readOnly && !state.error) return <InheritedRuntimeSettings settings={saved} onRefresh={() => void state.load()} />;
   return <section className="runtime-environments" aria-busy={state.loading || saving} aria-labelledby="runtime-environments-title">
     <header className="runtime-section-header">
-      <div><h2 id="runtime-environments-title">运行环境</h2><p>当前隔离空间的模型、授权与执行基座。</p></div>
+      <div><h2 id="runtime-environments-title">运行环境</h2><p>统一管理主工作区与子工作区的模型和执行基座。</p></div>
       {saved ? <span className="runtime-active-summary"><span className="runtime-status-dot" />当前默认 <strong>{engineLabels[saved.engine]}</strong></span> : null}
     </header>
     {state.loading ? <div className="runtime-loading" role="status"><LoaderCircle className="runtime-spinning" aria-hidden="true" />正在读取运行环境…</div>

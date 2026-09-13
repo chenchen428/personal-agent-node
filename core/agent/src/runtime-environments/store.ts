@@ -3,6 +3,7 @@ import path from "node:path";
 import { randomUUID } from "node:crypto";
 import { readCodexRuntimeSettings } from "../agent/codex-runtime-settings.ts";
 import { ENGINES, normalizeProfile, runtimeError, sameCredentialOrigin, validateEngine } from "./validation.ts";
+import { runtimeSettingsScope } from "./scope.ts";
 import type { ProfileDraft, RuntimeEngine, RuntimeEnvironmentView, RuntimeExecution, RuntimeProfile } from "./types.ts";
 
 export type StoreOptions = {
@@ -12,7 +13,7 @@ export type StoreOptions = {
   legacyFallback?: { model?: string; reasoningEffort?: string };
 };
 type StoredProfile = RuntimeProfile & { credentialId?: string };
-type StoredState = Omit<RuntimeEnvironmentView, "profiles"> & { profiles: Record<RuntimeEngine, StoredProfile> };
+type StoredState = Omit<RuntimeEnvironmentView, "profiles" | "readOnly" | "inherited" | "sourceSpace"> & { profiles: Record<RuntimeEngine, StoredProfile> };
 export type RuntimeSaveInput = { revision: number; engine: RuntimeEngine; profiles?: Partial<Record<RuntimeEngine, ProfileDraft>> };
 
 function atomicJson(file: string, value: unknown) {
@@ -25,16 +26,18 @@ function atomicJson(file: string, value: unknown) {
 }
 export function createRuntimeEnvironmentStore(options: StoreOptions) {
   if (!options.spaceId || typeof options.spaceId !== "string") throw runtimeError("运行环境缺少 Space 标识。");
-  const root = path.resolve(options.workspaceRoot);
+  const scope = runtimeSettingsScope(options.workspaceRoot, options.spaceId);
+  const root = scope.root;
+  const ownerSpaceId = scope.sourceSpace.id;
   const file = path.join(root, "config", "runtime-environments.json");
   const secretPath = (engine: RuntimeEngine, id: string) => {
     if (!/^[a-f0-9-]{36}$/.test(id)) throw runtimeError("凭据索引无效。", "RUNTIME_CONFIG_CORRUPT", 500);
     return path.join(root, "secrets", "runtime-environments", engine, `${id}.json`);
   };
   function defaults(): StoredState {
-    const legacy = readCodexRuntimeSettings(options.legacyFile || path.join(root, "config", "codex-runtime-settings.json"), options.legacyFallback);
+    const legacy = readCodexRuntimeSettings(scope.inherited ? path.join(root, "config", "codex-runtime-settings.json") : options.legacyFile || path.join(root, "config", "codex-runtime-settings.json"), scope.inherited ? {} : options.legacyFallback);
     const blank: RuntimeProfile = { mode: "account", model: "", reasoningEffort: "", baseUrl: "", authType: "api-key", credentialConfigured: false };
-    return { schemaVersion: 1, spaceId: options.spaceId, revision: 0, engine: "codex", profiles: {
+    return { schemaVersion: 1, spaceId: ownerSpaceId, revision: 0, engine: "codex", profiles: {
       codex: { ...blank, ...legacy }, "claude-code": { ...blank },
     } };
   }
@@ -45,7 +48,7 @@ export function createRuntimeEnvironmentStore(options: StoreOptions) {
       if (error?.code === "ENOENT") return defaults();
       throw runtimeError("运行环境配置无法读取，请恢复配置备份。", "RUNTIME_CONFIG_CORRUPT", 500);
     }
-    if (stored.spaceId !== options.spaceId) throw runtimeError("运行环境不属于当前 Space。", "RUNTIME_SPACE_MISMATCH", 403);
+    if (stored.spaceId !== ownerSpaceId) throw runtimeError("运行环境不属于授权的主空间。", "RUNTIME_SPACE_MISMATCH", 403);
     if (stored.schemaVersion !== 1 || !Number.isSafeInteger(stored.revision) || stored.revision < 1) {
       throw runtimeError("运行环境配置版本无效。", "RUNTIME_CONFIG_CORRUPT", 500);
     }
@@ -64,6 +67,7 @@ export function createRuntimeEnvironmentStore(options: StoreOptions) {
       baseUrl: profile.baseUrl, authType: profile.authType, credentialConfigured: Boolean(profile.credentialId),
     });
     return { schemaVersion: 1, spaceId: options.spaceId, revision: stored.revision, engine: stored.engine,
+      readOnly: scope.inherited, inherited: scope.inherited, sourceSpace: scope.sourceSpace,
       profiles: { codex: safe(stored.profiles.codex), "claude-code": safe(stored.profiles["claude-code"]) } };
   }
   function credential(stored: StoredState, engine: RuntimeEngine) {
@@ -71,16 +75,17 @@ export function createRuntimeEnvironmentStore(options: StoreOptions) {
     if (!id) return "";
     try {
       const value = JSON.parse(fs.readFileSync(secretPath(engine, id), "utf8"));
-      if (value.spaceId !== options.spaceId || value.engine !== engine || typeof value.credential !== "string") throw new Error();
+      if (value.spaceId !== ownerSpaceId || value.engine !== engine || typeof value.credential !== "string") throw new Error();
       return value.credential;
     } catch { throw runtimeError("当前运行环境的凭据不可用，请重新填写。", "RUNTIME_CREDENTIAL_UNAVAILABLE", 409); }
   }
   function readExecution(): RuntimeExecution {
     const stored = load();
     return { engine: stored.engine, revision: stored.revision, profile: publicView(stored).profiles[stored.engine],
-      credential: stored.profiles[stored.engine].mode === "custom" ? credential(stored, stored.engine) : "" };
+      credential: stored.profiles[stored.engine].mode === "custom" ? credential(stored, stored.engine) : "", sourceSpaceId: ownerSpaceId };
   }
   function resolveDraft(engineInput: RuntimeEngine, draft: ProfileDraft = {}): RuntimeExecution {
+    assertWritable();
     const engine = validateEngine(engineInput);
     const stored = load();
     const previous = stored.profiles[engine];
@@ -91,6 +96,7 @@ export function createRuntimeEnvironmentStore(options: StoreOptions) {
     return { engine, revision: stored.revision, profile: { ...profile, credentialConfigured: Boolean(resolved) }, credential: resolved };
   }
   function save(input: RuntimeSaveInput) {
+    assertWritable();
     validateEngine(input?.engine);
     if (!Number.isSafeInteger(input.revision) || input.revision < 0) throw runtimeError("保存时必须提供当前配置版本。");
     if (input.profiles !== undefined && (!input.profiles || typeof input.profiles !== "object" || Array.isArray(input.profiles))) throw runtimeError("运行配置格式无效。");
@@ -119,7 +125,7 @@ export function createRuntimeEnvironmentStore(options: StoreOptions) {
         if (supplied) {
           profile.credentialId = randomUUID();
           const target = secretPath(engine, profile.credentialId);
-          atomicJson(target, { schemaVersion: 1, spaceId: options.spaceId, engine, credential: supplied });
+          atomicJson(target, { schemaVersion: 1, spaceId: ownerSpaceId, engine, credential: supplied });
           created.push(target);
         } else if (draft.clearCredential) { delete profile.credentialId; }
         if (previous.credentialId && previous.credentialId !== profile.credentialId) retired.push(secretPath(engine, previous.credentialId));
@@ -137,5 +143,8 @@ export function createRuntimeEnvironmentStore(options: StoreOptions) {
       for (const target of committed ? retired : created) { try { fs.rmSync(target, { force: true }); } catch { /* immutable orphan secrets are never referenced */ } }
     }
   }
-  return { read: () => publicView(load()), view: () => publicView(load()), readExecution, resolveDraft, save };
+  function assertWritable() {
+    if (scope.inherited) throw runtimeError("运行设置继承自主空间，请前往主空间修改或测试。", "RUNTIME_SETTINGS_READ_ONLY", 403);
+  }
+  return { read: () => publicView(load()), view: () => publicView(load()), readExecution, resolveDraft, save, assertWritable };
 }

@@ -155,6 +155,8 @@ When changing Activity or Memory behavior, update the capability and route regis
 
 Task plans are Space-local records with one-time or recurring timing and record, remind, or execute modes. Calendar projects occurrences from those same plans; every execution has a persistent occurrence identity and a normal task session. Use cove-schedules for plan and occurrence changes. Only the main Agent receives the per-turn plan/calendar mutation capability; browser views are read-only. Recording a plan defaults to record mode and never contacts participants. Preserve execution history and update scopes for this occurrence, future occurrences, or the entire series. View requests should prefer governed poster images: deterministic complete calendar templates, freely designed Page imagery, system-validated QR targets, and main-reply managed attachments.
 
+运行设置的 Codex/Claude Code 基座、模型和服务配置由同一安装的 personal 主空间统一管理，子空间只读继承。服务端拒绝子空间保存、检测和连接测试，并在每个新回合从主配置获取执行快照；凭据仅在受控执行进程内使用，不复制到子空间文件或响应。历史子空间运行配置保留但不生效。此配置继承不授权跨空间读取会话、Activity、Memory、文件或业务数据，各空间的操作授权模式和 Token 额度保持独立。
+
 ## Required Checks
 
 ```bash

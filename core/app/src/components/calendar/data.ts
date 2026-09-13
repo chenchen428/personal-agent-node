@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 import { useClientResource } from "@/lib/use-client-resource";
-import { calendarLink, calendarSearch, calendarTime, dateKey, type CalendarPeriod } from "./view";
+import { calendarContext, calendarLink, calendarSearch, calendarTime, dateKey, type CalendarPeriod } from "./view";
 import type { ExecutionMode, Recurrence } from "../plans/types";
 import { executionModeLabel, recurrenceLabel } from "../plans/format";
 export { calendarTime, dateKey } from "./view";
@@ -40,22 +40,24 @@ export function useCalendar() {
   const [status, setStatus] = useState(params.get("status") && calendarStatus[params.get("status")!] ? params.get("status")! : "all");
   const [query, setQuery] = useState((params.get("query") || "").slice(0, 300));
   const [offset, setOffset] = useState(0);
-  const [selectedId, setSelectedId] = useState<string | null>(params.get("id"));
+  const context = calendarContext(pathname, new URLSearchParams(params.toString()));
+  const planId = context.planId;
+  const [selectedId, setSelectedId] = useState<string | null>(context.selectedId);
   const linkedSearch = params.toString();
   const appliedLink = useRef(linkedSearch);
   useEffect(() => {
-    if (!pathname.endsWith("/calendar") || appliedLink.current === linkedSearch) return;
+    if (!/\/(calendar|plans|schedules)$/.test(pathname) || appliedLink.current === linkedSearch) return;
     appliedLink.current = linkedSearch;
     const linked = new URLSearchParams(linkedSearch);
     const view = calendarLink(linked);
-    setDay(view.day); setOffset(0); setSelectedId(linked.get("id"));
+    setDay(view.day); setOffset(0); setSelectedId(calendarContext(pathname, linked).selectedId);
     setPeriod(view.period); setLinkedRange(view.linkedRange);
     setStatus(calendarStatus[linked.get("status") || ""] ? linked.get("status")! : "all");
     setQuery((linked.get("query") || "").slice(0, 300));
   }, [linkedSearch, pathname]);
   const from = new Date(`${day}T00:00:00`);
   const search = calendarSearch({ day, period, linkedRange, offset, query, status });
-  if (params.get("planId")) search.set("planId", params.get("planId")!);
+  if (planId) search.set("planId", planId);
   const result = useClientResource<CalendarResult<CalendarEntry>>(`/api/calendar?${search}`);
   const upcoming = useClientResource<CalendarUpcoming>("/api/calendar?view=upcoming&limit=1");
   function updateDay(value: string) { if (!/^\d{4}-\d{2}-\d{2}$/.test(value) || !Number.isFinite(new Date(`${value}T00:00:00`).getTime())) return; setDay(value); setOffset(0); setLinkedRange(null); setSelectedId(null); if (period === "upcoming") setPeriod("day"); }
@@ -63,6 +65,6 @@ export function useCalendar() {
   return { ...result, upcoming, refresh: () => Promise.all([result.refresh(), upcoming.refresh()]), day, setDay: updateDay, period, setPeriod: (value: string) => { setPeriod(value as CalendarPeriod); setOffset(0); setLinkedRange(null); if (value === "upcoming" && ["done", "cancelled"].includes(status)) setStatus("all"); },
     statusOptions: Object.entries(calendarStatus).filter(([value]) => period !== "upcoming" || !["done", "cancelled"].includes(value)),
     status, setStatus: (value: string) => { setStatus(value); setOffset(0); }, query, setQuery: (value: string) => { setQuery(value); setOffset(0); },
-    offset, setOffset, selectedId, setSelectedId, planId: params.get("planId"), move, today: () => updateDay(dateKey(new Date())),
+    offset, setOffset, selectedId, setSelectedId, planId, move, today: () => updateDay(dateKey(new Date())),
     timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone };
 }

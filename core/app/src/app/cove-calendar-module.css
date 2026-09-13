@@ -1,0 +1,42 @@
+.desktop-v72 .calendar-module-header > .page-header { min-height: 68px; align-items: center; }
+.desktop-v72 .calendar-module-header > .task-view-navigation { margin: 0 0 20px; }
+.desktop-v72 .calendar-module-header > .task-view-navigation a { min-width: 94px; height: 34px; font-size: 12px; }
+.calendar-module-summary { min-height: 148px; }
+.calendar-module-summary .calendar-upcoming-summary { min-height: 124px; align-content: center; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+.calendar-module-summary .calendar-upcoming-entry { padding: 14px 18px; }
+.calendar-module-summary .calendar-upcoming-entry > strong { font-size: 15px; }
+.desktop-v72 .calendar-module-page .cove-calendar-toolbar,
+.desktop-v72 .calendar-execution-toolbar { display: grid; grid-template-columns: 190px 300px minmax(160px, 1fr) 155px; align-items: center; gap: 12px; min-height: 76px; padding: 0 0 24px; border-bottom: 1px solid var(--hairline); }
+.calendar-module-page .cove-calendar-date-slot { min-width: 0; }
+.calendar-module-page .cove-calendar-date { gap: 5px; }
+.calendar-module-page .search-field { min-width: 0; width: 100%; }
+.calendar-execution-toolbar > .v72-list-controls { grid-column: 1 / 3; padding: 0; border: 0; justify-content: flex-start; gap: 16px; }
+.calendar-execution-toolbar > .search-field { grid-column: 3 / 5; }
+.desktop-v72 .calendar-module-layout { display: grid; grid-template-columns: minmax(280px, .9fr) minmax(0, 1.1fr); gap: 28px; padding-top: 28px; min-height: 480px; height: auto; align-items: start; }
+.calendar-module-layout > .v72-split-list { background: transparent; border: 0; overflow: visible; }
+.calendar-module-layout > .v72-split-detail { border-left: 1px solid var(--hairline); min-width: 0; min-height: 440px; overflow: visible; }
+.calendar-module-layout .cove-calendar-sidebar { padding-left: 28px; }
+.calendar-module-layout .cove-calendar-entry { grid-template-columns: 108px minmax(0, 1fr) 48px; gap: 12px; padding-inline: 8px; }
+.mobile-current .mobile-calendar-module .calendar-module-header > .task-view-navigation { margin: 0; padding: 4px 0 18px; }
+.mobile-current .mobile-calendar-module { padding: 0; }
+.mobile-current .mobile-calendar-module .calendar-module-summary { min-height: 168px; }
+.mobile-calendar-module .mobile-calendar-toolbar { display: grid; grid-template-columns: 96px minmax(0, 1fr) 36px; }
+.mobile-calendar-module .mobile-calendar-toolbar > select { width: 96px; }
+.mobile-calendar-module .mobile-calendar-date-slot { min-width: 0; gap: 2px; }
+.mobile-calendar-module .mobile-calendar-date-slot input { width: 100%; max-width: 110px; }
+.mobile-calendar-module .mobile-calendar-toolbar button { min-width: 28px; }
+.mobile-calendar-module .mobile-execution-toolbar { grid-template-columns: minmax(0, 1fr) 44px; }
+.mobile-calendar-module .mobile-execution-toolbar { min-height: 44px; font-size: 12px; }
+.mobile-calendar-module .mobile-task-list { padding-top: 0; }
+.mobile-calendar-module .mobile-task-items { margin-top: 0; }
+@media (max-width: 1250px) {
+  .desktop-v72 .calendar-module-page .cove-calendar-toolbar,
+  .desktop-v72 .calendar-execution-toolbar { grid-template-columns: minmax(190px, 1fr) minmax(300px, 1.4fr); min-height: 120px; grid-template-rows: 36px 36px; }
+  .calendar-execution-toolbar > .v72-list-controls { grid-column: 1; grid-row: 1; }
+  .calendar-execution-toolbar > .search-field { grid-column: 1 / 3; grid-row: 2; }
+}
+@media (max-width: 900px) {
+  .desktop-v72 .calendar-module-layout { grid-template-columns: minmax(0, 1fr); }
+  .calendar-module-layout > .v72-split-detail,
+  .calendar-module-layout .cove-calendar-sidebar { border-left: 0; border-top: 1px solid var(--hairline); padding: 24px 0 0; }
+}

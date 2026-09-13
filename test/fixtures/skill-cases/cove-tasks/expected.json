@@ -29,7 +29,13 @@
       "internalUrlRelative": true,
       "managedMobileUrlWhenAvailable": true,
       "emptyUrlAndNoticeWhenUnavailable": true,
-      "domainConcatenationForbidden": true
+      "domainConcatenationForbidden": true,
+      "requiredInInitialAcknowledgement": true,
+      "requiredAfterResume": true,
+      "retainedInProgressAndStatus": true,
+      "existingTaskDetailPage": true,
+      "noStaticProgressPageRequired": true,
+      "inheritCurrentSpaceDomainFromService": true
     }
   }
 }

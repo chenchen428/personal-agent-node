@@ -52,7 +52,7 @@ export function PasswordSettingsDialog({ onClose, onSaved }: { onClose: () => vo
   return <div className="settings-dialog-backdrop" role="presentation" onMouseDown={() => { if (!saving) onClose(); }}>
     <form className="settings-dialog" method="post" role="dialog" aria-modal="true" aria-labelledby="password-dialog-title" noValidate onSubmit={submit} onMouseDown={(event) => event.stopPropagation()}>
       <h2 id="password-dialog-title">修改访问密码</h2>
-      <p>新密码保存后，手机与私有域名上的其他会话会立即失效。</p>
+      <p>新密码保存后，公网访问的其他登录会话会立即失效。</p>
       <p id="password-requirements">密码需要 12–256 个字符，两次输入须一致。</p>
       <label>新的访问密码<Input autoFocus name="password" type="password" autoComplete="new-password" minLength={12} maxLength={256} disabled={saving} aria-describedby="password-requirements password-validation" value={password} onChange={(event) => { setPassword(event.target.value); setFeedback(""); }} placeholder="至少 12 个字符" /></label>
       <label>确认访问密码<Input name="confirmation" type="password" autoComplete="new-password" minLength={12} maxLength={256} disabled={saving} aria-describedby="password-validation" value={confirmation} onChange={(event) => { setConfirmation(event.target.value); setFeedback(""); }} placeholder="再次输入" /></label>

@@ -1,0 +1,8 @@
+.skill-manager-dialog { width: min(560px, calc(100vw - 40px)); max-height: calc(100vh - 64px); margin: auto; border: 1px solid var(--hairline); border-radius: 14px; padding: 28px; color: var(--ink); background: var(--canvas); overflow-y: auto; }
+.skill-manager-dialog::backdrop { background: rgb(18 25 24 / 38%); }
+.skill-manager-dialog > p { font-size: 13px; line-height: 1.8; color: var(--muted); }
+.skill-import-choices { display: flex; gap: 10px; flex-wrap: wrap; margin: 20px 0; }
+.skill-import-preview { padding: 14px; border: 1px solid var(--hairline); border-radius: 8px; font-size: 12px; }
+.skill-import-preview ul { max-height: 180px; overflow-y: auto; padding-left: 20px; line-height: 1.8; overflow-wrap: anywhere; }
+.skill-management-notice { padding: 12px 16px; border: 1px solid var(--hairline); border-radius: 8px; margin-bottom: 16px; font-size: 12px; }
+.skill-manager-dialog [role="alert"] { color: #a53c36; }

@@ -429,6 +429,14 @@
         "kind": "proxy",
         "targetKey": "agent",
         "upstreamPath": "/api/plans"
+      },
+      {
+        "key": "api-user-skills",
+        "prefix": "/api/skills/user",
+        "access": "authenticated",
+        "kind": "proxy",
+        "targetKey": "console",
+        "upstreamPath": "/api/skills/user"
       }
     ]
   },

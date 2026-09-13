@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import { isRuntimeEnvironmentPath } from "./runtime-environment-access.ts";
+import { isUserSkillManagementPath } from "./user-skill-access.ts";
 import http from "node:http";
 import path from "node:path";
 import { WebSocket } from "ws";
@@ -547,7 +548,7 @@ export function isTunnelRouteAllowed(_distribution, requestPath, kind = "http", 
   catch { return false; }
   if (pathname === "/api/system/spaces" || pathname === "/api/spaces") return false;
   if (/^\/(?:apps|app\/(?:mobile\/)?apps|api\/(?:system\/|node\/v1\/)?apps)(?:\/|$)/.test(pathname)) return false;
-  if (isRuntimeEnvironmentPath(pathname)) return false;
+  if (isRuntimeEnvironmentPath(pathname) || isUserSkillManagementPath(pathname)) return false;
   if (routePolicy === "gateway") {
     return ["http", "websocket"].includes(String(kind));
   }

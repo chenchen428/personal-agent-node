@@ -186,7 +186,9 @@ test("reports parent-scoped task status without starting or duplicating a task",
     assert.equal(store.countSessions({ parentSessionId: main.id }), before);
     const reply = store.getSession(main.id).messages.findLast((message) => message.role === "assistant");
     assert.match(reply?.content || "", /装修设计交付页”当前状态：处理中/);
-    assert.doesNotMatch(reply?.content || "", /worker|子任务/i);
+    assert.ok(reply.content.includes(`[查看进度](${store.getSession(child.id).url})`));
+    const visibleCopy = reply.content.replace(/\[([^\]]+)\]\([^)]+\)/g, "$1");
+    assert.doesNotMatch(visibleCopy, /worker|子任务/i);
   } finally {
     orchestrator.stop();
     store.close();
@@ -896,6 +898,9 @@ test("acknowledges WeChat immediately and queues the completed reply behind the 
   assert.match(calls[0].appServerDeveloperInstructions, /彼此独立推进的实质分支应分别创建子任务/);
   assert.match(calls[0].appServerDeveloperInstructions, /不要在主 Agent 中重复执行已经委派的工作/);
   assert.match(calls[0].appServerDeveloperInstructions, /负责收集这些状态、向用户汇总有意义的进展/);
+  assert.match(calls[0].appServerDeveloperInstructions, /涉及子任务必须给用户进度查看页面/);
+  assert.match(calls[0].appServerDeveloperInstructions, /第一次确认回复就附上CLI返回的任务url/);
+  assert.match(calls[0].appServerDeveloperInstructions, /不能等用户追问/);
   assert.match(calls[0].appServerDeveloperInstructions, /询问任务、进度、完成情况.*禁止创建或续接任务/);
   assert.match(calls[0].appServerDeveloperInstructions, new RegExp(`pa-cli session list --parent ${session.id} --all --json`));
   assert.doesNotMatch(calls[0].appServerDeveloperInstructions, /interior-designer|专业(?:子 )?Agent|专业目录|工作流进度/);

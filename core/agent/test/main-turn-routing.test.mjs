@@ -32,3 +32,15 @@ test("mixed status and delivery requests reach the Agent without losing follow-u
     assert.equal(isTaskStatusRequest(content), true, content);
   }
 });
+
+test("status replies retain the governed progress page and never invent a missing remote link", () => {
+  const reply = formatTaskStatusReply([{ id: "sess_progress", title: "整理资料", status: "running", url: "https://work.example.site/app/mobile/workers/sess_progress" }]);
+  assert.match(reply, /\[查看进度\]\(https:\/\/work\.example\.site\/app\/mobile\/workers\/sess_progress\)/);
+  const notice = "远程连接暂时离线，当前无法在线查看任务进度。";
+  const offline = formatTaskStatusReply([{ id: "sess_progress", title: "整理资料", status: "running", url: "", internalUrl: "/app/chat/session/sess_progress/live", linkNotice: notice }]);
+  assert.ok(offline.includes(notice));
+  assert.doesNotMatch(offline, /https?:\/\/|\[查看进度\]/);
+  for (const url of ["javascript:alert(1)", "https://localhost/app/mobile/workers/sess_progress", "https://work.example.site/app/mobile/workers/another", "https://work.example.site/app/mobile/workers/sess_progress?token=hidden"]) {
+    assert.doesNotMatch(formatTaskStatusReply([{ id: "sess_progress", title: "资料", status: "running", url }]), /\[查看进度\]|token=|javascript:/);
+  }
+});

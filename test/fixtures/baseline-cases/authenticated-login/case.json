@@ -9,6 +9,7 @@
     "Tunneled login requires explicit local secrets while direct loopback Console access needs no login",
     "Session cookies are host-only and tenant-bound",
     "Changing the local access password invalidates existing remote sessions",
-    "Unsafe return locations are rejected"
+    "Unsafe return locations are rejected",
+    "空间切换以原布局遮罩和安全骨架衔接，身份确认前不显示私有内容；当前页优先预取，后台读取隔离于同一scope，取消与迟到结果安全处理，跨空间不携带记录ID或搜索。"
   ]
 }

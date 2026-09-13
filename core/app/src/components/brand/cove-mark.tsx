@@ -1,3 +1,5 @@
+import React from "react";
+
 /** Original Cove artwork shared by the desktop and mobile product surfaces. */
 export function CoveMark({ className = "", title }: { className?: string; title?: string }) {
   return <svg className={`cove-mark ${className}`} viewBox="0 0 64 64" fill="none" role={title ? "img" : undefined} aria-label={title} aria-hidden={title ? undefined : true}>

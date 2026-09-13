@@ -2,6 +2,7 @@ import {
   buildManagedTaskAccess,
   TASK_ACCESS_OFFLINE,
   TASK_ACCESS_UNAVAILABLE,
+  inheritedAccessNotice,
 } from "../managed-access.js";
 
 export const PAGE_ACCESS_UNAVAILABLE = "暂未配置可访问的域名链接，无法直接访问页面";
@@ -23,7 +24,7 @@ export function buildManagedPageAccess(internalUrl, externalAccess) {
     return {
       internalUrl: normalizedInternalUrl,
       url: "",
-      linkNotice: PAGE_ACCESS_UNAVAILABLE,
+      linkNotice: inheritedAccessNotice(externalAccess, "页面") || PAGE_ACCESS_UNAVAILABLE,
     };
   }
   return {
@@ -111,9 +112,9 @@ function materializeSystemPath(value, origin, access) {
       value: "",
       blocked: false,
       unavailable: true,
-      notice: isPagePath(internalUrl)
+      notice: inheritedAccessNotice(access, isPagePath(internalUrl) ? "页面" : "内容") || (isPagePath(internalUrl)
         ? PAGE_ACCESS_UNAVAILABLE
-        : "暂未配置可访问的域名链接，无法直接访问该内容",
+        : "暂未配置可访问的域名链接，无法直接访问该内容"),
     };
   }
   return {

@@ -1,6 +1,7 @@
 import type { NextRequest } from "next/server";
 import { isLocalDesktopSpaceManagementRequest } from "@/lib/request-device";
 import { isLocalRuntimeEnvironmentRequest, isRuntimeEnvironmentPath } from "../../../../../runtime/src/runtime-environment-access";
+import { isLocalUserSkillRequest, isUserSkillManagementPath } from "../../../../../runtime/src/user-skill-access";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -13,6 +14,9 @@ const hopByHopHeaders = new Set([
 
 async function proxy(request: NextRequest, context: { params: Promise<{ path: string[] }> }) {
   const { path } = await context.params;
+  if (isUserSkillManagementPath(`/api/${path.join("/")}`) && !isLocalUserSkillRequest(request.headers)) {
+    return Response.json({ ok: false, error: { code: "DESKTOP_LOCAL_ONLY", message: "技能加入和移除仅支持本机桌面端" } }, { status: 403 });
+  }
   if (/^(?:(?:system|node\/v1)\/)?apps(?:\/|$)/.test(path.join("/"))) {
     return Response.json({ ok: false, error: { code: "FEATURE_RETIRED", message: "自定义应用已下线" } }, { status: 410 });
   }
