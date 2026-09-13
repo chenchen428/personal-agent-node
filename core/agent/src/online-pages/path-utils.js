@@ -41,6 +41,11 @@ export async function nextAvailablePath(targetPath, overwrite) {
 
 export function toPublicUrl(publicBaseUrl, publicRelativePath) {
   if (!publicBaseUrl) return "";
-  const normalized = publicRelativePath.split(path.sep).map(encodeURIComponent).join("/");
-  return `${publicBaseUrl}/${normalized.replace(/^\/+/, "")}`;
+  // Catalog paths always use '/', while filesystem paths may use '\\'. Encode
+  // each path component, never the separators between those components.
+  const relative = String(publicRelativePath || "").replace(/\\/g, "/");
+  if (/^[a-zA-Z]:|^\/\/|[\x00-\x1f\x7f]/.test(relative)) throw new Error("public URL requires a safe relative path");
+  const segments = relative.replace(/^\//, "").split("/");
+  if (segments.some(segment => !segment || segment === "." || segment === "..")) throw new Error("public URL requires a safe relative path");
+  return `${String(publicBaseUrl).replace(/\/+$/, "")}/${segments.map(encodeURIComponent).join("/")}`;
 }

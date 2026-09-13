@@ -5,6 +5,7 @@ import os from "node:os";
 import path from "node:path";
 import test from "node:test";
 import { createPageThumbnailPng } from "./page-thumbnail-fixture.mjs";
+import { toPublicUrl } from "../src/online-pages/path-utils.js";
 
 const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), "oab-upload-"));
 process.env.OPEN_AGENT_BRIDGE_WORKSPACE_ROOT = dataDir;
@@ -206,4 +207,47 @@ test("records a durable public object and hot local copy", async (t) => {
   const stored = catalog.get(asset.objectId);
   assert.equal(stored.status, "ready");
   assert.equal(stored.localCopies[0].tier, "hot");
+});
+
+test("public URL components encode Unicode and spaces identically for catalog and Windows paths", () => {
+  const expected = `https://pages.example.test/public/uploads/${encodeURIComponent("发布 资料")}/${encodeURIComponent("方案 终稿.html")}`;
+  for (const relative of ["uploads/发布 资料/方案 终稿.html", "uploads\\发布 资料\\方案 终稿.html", "uploads\\发布 资料/方案 终稿.html"]) {
+    assert.equal(toPublicUrl("https://pages.example.test/public/", relative), expected);
+    assert.doesNotMatch(toPublicUrl("https://pages.example.test/public", relative), /%2f|%5c/i);
+  }
+  for (const relative of ["../private", "uploads/../private", "uploads\\..\\private", "C:\\private", "\\\\server\\share", "uploads//file", "uploads/\0file"]) {
+    assert.throws(() => toPublicUrl("https://pages.example.test/public", relative), /safe relative path/);
+  }
+});
+
+test("published and catalog-listed Page share URLs retain real path separators on Windows", async (t) => {
+  const catalog = new ManagedFileCatalog({ dataDir: path.join(dataDir, "share-url-catalog") });
+  configureOnlinePagesStorage({ catalog });
+  t.after(() => { configureOnlinePagesStorage(); catalog.close(); });
+  const published = await publishHtmlPage({ folder: "catalog-shared", fileName: "方案 终稿.html", content: "<h1>Share URL fixture</h1>",
+    desktopThumbnail: { fileName: "desktop.png", content: createPageThumbnailPng().toString("base64") },
+    mobileThumbnail: { fileName: "mobile.png", content: createPageThumbnailPng(750, 1200).toString("base64") },
+  });
+  const stored = catalog.get(published.objectId);
+  assert.equal(stored.relativePath, "uploads/catalog-shared/方案-终稿.html");
+  const listed = (await listUploadedAssets()).find(item => item.objectId === published.objectId);
+  assert.equal(listed.pageId, published.pageId);
+  assert.equal(listed.shareUrl, published.shareUrl);
+  assert.equal(listed.shareUrl, `https://pages.example.test/public/uploads/catalog-shared/${encodeURIComponent("方案-终稿.html")}`);
+  assert.doesNotMatch(listed.shareUrl, /%2f|%5c/i);
+
+  // Imported catalog names can contain spaces even though new uploads sanitize them.
+  const folder = path.join(config.uploadsDir, "imported-shared");
+  fs.mkdirSync(folder, { recursive: true });
+  const fileName = "方案 终稿.html";
+  const content = "<h1>Imported Page</h1>";
+  fs.writeFileSync(path.join(folder, fileName), content);
+  fs.writeFileSync(path.join(folder, ".page.json"), JSON.stringify({ schemaVersion: 1, pageId: "public-imported-shared", entryFile: fileName, title: "Imported Page" }));
+  const imported = catalog.upsertObject({ visibility: "public", source: "pages", bucket: "fixture", objectKey: `uploads/imported-shared/${fileName}`,
+    relativePath: `uploads/imported-shared/${fileName}`, originalName: fileName, contentType: "text/html", sizeBytes: Buffer.byteLength(content),
+    sha256: crypto.createHash("sha256").update(content).digest("hex"), status: "ready" });
+  const importedPage = (await listUploadedAssets()).find(item => item.objectId === imported.id);
+  assert.equal(importedPage.pageId, "public-imported-shared");
+  assert.equal(importedPage.shareUrl, `https://pages.example.test/public/uploads/imported-shared/${encodeURIComponent(fileName)}`);
+  assert.doesNotMatch(importedPage.shareUrl, /%2f|%5c/i);
 });
