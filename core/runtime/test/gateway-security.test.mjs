@@ -202,6 +202,14 @@ test("canonical Console and domain API routes authenticate and rewrite to intern
       assert.equal((await request({ port, host: "example.site", path: "/api/node/v1/capabilities", headers: { cookie: "session=ok" } })).status, 200);
       assert.equal((await request({ port, host: "example.site", path: "/api/mobile/pages?limit=1", headers: { cookie: "session=ok" } })).status, 200);
       assert.equal((await request({ port, host: "example.site", path: "/api/memories?status=active", headers: { cookie: "session=ok" } })).status, 200);
+      for (const planPath of ["/api/plans?limit=1", "/api/plans/cal_fixture", "/api/plans/cal_fixture/runs?offset=0", "/api/plans/cal_fixture/history"]) {
+        assert.equal((await request({ port, host: "example.site", path: planPath })).status, 302, planPath);
+        assert.equal((await request({ port, host: "127.0.0.1", path: planPath })).status, 200, planPath);
+        assert.equal((await request({ port, host: "example.site", path: planPath, headers: { cookie: "session=ok" } })).status, 200, planPath);
+        assert.equal(received.at(-1).service, "bridge");
+        assert.equal(received.at(-1).url, planPath);
+        assert.equal(received.at(-1).authenticated, "1");
+      }
       assert.equal((await request({ port, host: "example.site", path: "/api/system/projects", headers: { cookie: "session=ok" } })).status, 200);
       assert.equal((await request({ port, host: "example.site", path: "/api/system/setup", headers: { cookie: "session=ok" } })).status, 200);
       assert.equal((await request({ port, host: "example.site", path: "/api/system/setup/actions/installation.local-auth/plan", headers: { cookie: "session=ok" } })).status, 200);
@@ -226,6 +234,14 @@ test("canonical Console and domain API routes authenticate and rewrite to intern
         { service: "bridge", url: "/api/node/v1/capabilities" },
         { service: "bridge", url: "/api/mobile/pages?limit=1" },
         { service: "bridge", url: "/api/memories?status=active" },
+        { service: "bridge", url: "/api/plans?limit=1" },
+        { service: "bridge", url: "/api/plans?limit=1" },
+        { service: "bridge", url: "/api/plans/cal_fixture" },
+        { service: "bridge", url: "/api/plans/cal_fixture" },
+        { service: "bridge", url: "/api/plans/cal_fixture/runs?offset=0" },
+        { service: "bridge", url: "/api/plans/cal_fixture/runs?offset=0" },
+        { service: "bridge", url: "/api/plans/cal_fixture/history" },
+        { service: "bridge", url: "/api/plans/cal_fixture/history" },
         { service: "console", url: "/api/projects" },
         { service: "console", url: "/api/setup" },
         { service: "console", url: "/api/setup/actions/installation.local-auth/plan" },

@@ -421,6 +421,14 @@
         "kind": "proxy",
         "targetKey": "agent",
         "upstreamPath": "/api/calendar"
+      },
+      {
+        "key": "api-plans",
+        "prefix": "/api/plans",
+        "access": "authenticated",
+        "kind": "proxy",
+        "targetKey": "agent",
+        "upstreamPath": "/api/plans"
       }
     ]
   },
