@@ -1,18 +1,18 @@
 # Getting started
 
-本源码包含本地修复候选版 `0.2.0-beta.58-recovery.1`，对应 Windows 安装包 `personal-agent-node-v0.2.0-beta.58-recovery.1-windows-x64-installer.exe`。本地候选使用下文的摘要绑定更新流程，不表示已经发布 GitHub Release。
+本源码对应 GitHub 预发布版本 `v0.2.0-beta.59`，包含研发恢复、Page 海报和日程体验更新。请下载对应版本已发布的完整安装包；Windows 与 macOS 原生签名仍为已披露的预发布延期状态。
 
 ## Install an immutable release
 
-Set `TAG=v0.2.0-beta.58` and open the matching [GitHub Release](https://github.com/chenchen428/personal-agent-node/releases/tag/v0.2.0-beta.58). A customer machine does not need Node.js, npm, Git, a source checkout, or a development Agent.
+Set `TAG=v0.2.0-beta.59` and open the matching [GitHub Release](https://github.com/chenchen428/personal-agent-node/releases/tag/v0.2.0-beta.59). A customer machine does not need Node.js, npm, Git, a source checkout, or a development Agent.
 
 | Computer | Asset |
 | --- | --- |
-| Windows x86-64 | `personal-agent-node-v0.2.0-beta.58-windows-x64-installer.exe` |
-| macOS Apple Silicon | `personal-agent-node-v0.2.0-beta.58-macos-arm64.pkg` |
-| macOS Intel | `personal-agent-node-v0.2.0-beta.58-macos-x64.pkg` |
-| Linux x86-64 | `personal-agent-node-v0.2.0-beta.58-linux-x64.tar.gz` |
-| Linux ARM64 | `personal-agent-node-v0.2.0-beta.58-linux-arm64.tar.gz` |
+| Windows x86-64 | `personal-agent-node-v0.2.0-beta.59-windows-x64-installer.exe` |
+| macOS Apple Silicon | `personal-agent-node-v0.2.0-beta.59-macos-arm64.pkg` |
+| macOS Intel | `personal-agent-node-v0.2.0-beta.59-macos-x64.pkg` |
+| Linux x86-64 | `personal-agent-node-v0.2.0-beta.59-linux-x64.tar.gz` |
+| Linux ARM64 | `personal-agent-node-v0.2.0-beta.59-linux-arm64.tar.gz` |
 
 The same Release also publishes `personal-agent-relay-install.sh`. The desktop
 shows its exact version-bound command when the user selects a custom domain.

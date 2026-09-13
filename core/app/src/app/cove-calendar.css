@@ -8,6 +8,8 @@
 .calendar-upcoming-entry > time { font-size: 13px; line-height: 1.7; }
 .cove-calendar-toolbar, .cove-calendar-date, .cove-calendar-caption, .cove-calendar-pager { display: flex; align-items: center; gap: 12px; }
 .cove-calendar-toolbar { flex-wrap: wrap; padding: 0 0 24px; border-bottom: 1px solid var(--hairline); }
+.cove-calendar-date-slot { display: flex; align-items: center; flex: 0 0 316px; min-height: 36px; }
+.cove-calendar-range-note { color: var(--muted); font-size: 13px; }
 .cove-calendar-toolbar select, .cove-calendar-date input { min-height: 36px; padding: 4px 10px; color: var(--ink); background: var(--canvas); border: 1px solid var(--hairline); border-radius: 7px; }
 .cove-calendar-date > button:not(.button) { display: grid; place-items: center; width: 32px; height: 36px; border: 0; background: transparent; cursor: pointer; }
 .cove-calendar-layout { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 36px; padding-top: 28px; }
