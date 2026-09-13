@@ -757,7 +757,7 @@ export class SessionOrchestrator {
       OPEN_AGENT_BRIDGE_CONSOLE_BASE_URL: config.consoleBaseUrl,
       OPEN_AGENT_BRIDGE_SESSION_ID: session.id,
       OPEN_AGENT_BRIDGE_PARENT_SESSION_ID: session.parentSessionId || "",
-      PATH: buildAgentPath(process.env),
+      PATH: buildAgentPath(process.env, this.siteDataRoot),
     };
     const activityCapability = session.role === "main" && this.activityStore
       ? crypto.randomBytes(32).toString("base64url")
@@ -1663,8 +1663,9 @@ function buildMemoryCliInstructions(capability) {
   ].join("\n");
 }
 
-export function buildAgentPath(env = process.env) {
+export function buildAgentPath(env = process.env, dataRoot = env.PERSONAL_AGENT_SPACE_ROOT || "") {
   const candidates = [
+    dataRoot ? path.join(path.resolve(dataRoot), "runtime", "bin") : "",
     String(env.PRIVATE_SITE_CLI_BIN || "").trim(),
     String(env.PRIVATE_SITE_INSTALL_ROOT || "").trim()
       ? path.join(String(env.PRIVATE_SITE_INSTALL_ROOT).trim(), "bin")

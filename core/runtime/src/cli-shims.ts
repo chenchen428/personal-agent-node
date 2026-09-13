@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { pathToFileURL } from "node:url";
 import { workspaceRoot } from "./config.ts";
 
 const bridgeCommandNames = ["pa-cli"];
@@ -22,10 +23,19 @@ export function prepareBridgeCliShims(config, options = {}) {
   }
   fs.rmSync(path.join(binDir, platform === "win32" ? "open-abg-mail-ingest.cmd" : "open-abg-mail-ingest"), { force: true, recursive: false });
   const commandPaths = [];
+  const nodeArgs = shimNodeArgs(entrypoint);
+  const registered = Boolean(config.space?.id && config.installationDataRoot);
   for (const name of bridgeCommandNames) {
     const commandPath = path.join(binDir, platform === "win32" ? `${name}.cmd` : name);
-    replaceShim(commandPath, renderShim({ platform, nodeRuntime, entrypoint, envPath: config.envPath, environment: shimEnvironment(config) }), platform);
+    replaceShim(commandPath, renderShim({ platform, nodeRuntime, nodeArgs, entrypoint, envPath: registered ? "" : config.envPath,
+      environment: registered ? { PERSONAL_AGENT_CLI_INSTALLATION_ROOT: config.installationDataRoot } : shimEnvironment(config) }), platform);
     commandPaths.push(commandPath);
+  }
+  if (registered) {
+    const scopedBin = spaceCliBin(config.dataRoot);
+    fs.mkdirSync(scopedBin, { recursive: true, mode: 0o700 });
+    replaceShim(path.join(scopedBin, platform === "win32" ? "pa-cli.cmd" : "pa-cli"), renderShim({ platform, nodeRuntime, nodeArgs, entrypoint,
+      environment: { PERSONAL_AGENT_CLI_INSTALLATION_ROOT: config.installationDataRoot, PERSONAL_AGENT_CLI_BOUND_SPACE_ID: config.space.id } }), platform);
   }
   return bridgeCliStatus(config, { platform, env, installRoot, binDir, commandPaths, entrypoint });
 }
@@ -53,21 +63,27 @@ export function bridgeCliStatus(config, options = {}) {
   const commandPaths = options.commandPaths || bridgeCommandNames.map((name) => path.join(binDir, platform === "win32" ? `${name}.cmd` : name));
   const expectedBridgeShims = commandPaths.map((commandPath) => ({
     commandPath,
-    content: renderShim({ platform, nodeRuntime, entrypoint, envPath: config.envPath, environment: shimEnvironment(config) }),
+    content: renderShim({ platform, nodeRuntime, nodeArgs: shimNodeArgs(entrypoint), entrypoint, envPath: config.space?.id && config.installationDataRoot ? "" : config.envPath,
+      environment: config.space?.id && config.installationDataRoot ? { PERSONAL_AGENT_CLI_INSTALLATION_ROOT: config.installationDataRoot } : shimEnvironment(config) }),
   }));
   const bridgeShimsMatch = expectedBridgeShims.every(({ commandPath, content }) => shimMatches(commandPath, content));
+  const scopedCommandPath = config.space?.id && config.installationDataRoot ? path.join(spaceCliBin(config.dataRoot), platform === "win32" ? "pa-cli.cmd" : "pa-cli") : "";
+  const scopedReady = !scopedCommandPath || shimMatches(scopedCommandPath, renderShim({ platform, nodeRuntime, nodeArgs: shimNodeArgs(entrypoint), entrypoint,
+    environment: { PERSONAL_AGENT_CLI_INSTALLATION_ROOT: config.installationDataRoot, PERSONAL_AGENT_CLI_BOUND_SPACE_ID: config.space.id } }));
   const bridgeFollowsCurrent = samePath(entrypoint, currentEntrypoint, platform) && bridgeShimsMatch;
   const pathReady = pathEntries(env.PATH || env.Path || "").some((entry) => samePath(entry, binDir, platform));
   return {
-    ready: fs.existsSync(entrypoint) && bridgeShimsMatch,
+    ready: fs.existsSync(entrypoint) && bridgeShimsMatch && scopedReady,
     followsCurrent: bridgeFollowsCurrent,
     pathReady,
     binDir,
     commandPath: commandPaths[0],
+    scopedCommandPath,
+    scopedReady,
     mailIngest: {
-      ready: fs.existsSync(entrypoint) && bridgeShimsMatch,
+      ready: fs.existsSync(entrypoint) && bridgeShimsMatch && scopedReady,
       followsCurrent: bridgeFollowsCurrent,
-      commandPath: commandPaths[0],
+      commandPath: scopedCommandPath || commandPaths[0],
       command: "pa-cli mail ingest",
     },
   };
@@ -85,14 +101,21 @@ export function defaultUserBin({ platform = process.platform, env = process.env,
   return existing || candidates[0];
 }
 
-export function renderShim({ platform = process.platform, nodeRuntime = process.execPath, entrypoint, envPath, environment = {} }) {
-  const values = { OPEN_AGENT_BRIDGE_ENV_FILE: envPath, ...environment };
+export function renderShim({ platform = process.platform, nodeRuntime = process.execPath, nodeArgs = [], entrypoint, envPath = "", environment = {} }) {
+  const values = { ...(envPath ? { OPEN_AGENT_BRIDGE_ENV_FILE: envPath } : {}), ...environment };
   if (platform === "win32") {
     const assignments = Object.entries(values).map(([key, value]) => `set "${key}=${windowsEnvironmentValue(value)}"`).join("\r\n");
-    return `@echo off\r\nsetlocal\r\n${assignments}\r\n"${cmdValue(nodeRuntime).replaceAll("/", "\\")}" "${cmdValue(entrypoint).replaceAll("/", "\\")}" %*\r\n`;
+    return `@echo off\r\nsetlocal\r\n${assignments}\r\n"${cmdValue(nodeRuntime).replaceAll("/", "\\")}" ${nodeArgs.map(arg => `"${cmdValue(arg)}" `).join("")}"${cmdValue(entrypoint).replaceAll("/", "\\")}" %*\r\n`;
   }
   const assignments = Object.entries(values).map(([key, value]) => `${key}=${shellValue(value)}`).join(" ");
-  return `#!/bin/sh\n${assignments} exec ${shellValue(nodeRuntime)} ${shellValue(entrypoint)} "$@"\n`;
+  return `#!/bin/sh\n${assignments} exec ${shellValue(process.platform === "win32" ? String(nodeRuntime).replaceAll("\\", "/") : nodeRuntime)} ${nodeArgs.map(arg => `${shellValue(arg)} `).join("")}${shellValue(entrypoint)} "$@"\n`;
+}
+
+export function spaceCliBin(dataRoot) { return path.join(path.resolve(dataRoot), "runtime", "bin"); }
+function shimNodeArgs(entrypoint) {
+  if (fs.existsSync(path.join(workspaceRoot, "release-manifest.json")) || path.resolve(entrypoint) !== path.join(workspaceRoot, "core", "agent", "bin", "pa-cli.mjs")) return [];
+  const loader = path.join(workspaceRoot, "node_modules", "tsx", "dist", "loader.mjs");
+  return fs.existsSync(loader) ? ["--import", pathToFileURL(loader).href] : [];
 }
 
 function shimEnvironment(config) {

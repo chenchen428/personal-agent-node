@@ -1,5 +1,7 @@
 # Local Mail Ingress
 
+多空间安装时，MTA 使用 `personal-agent --space <Space ID> mail plan --preview --json` 返回的明确空间命令，例如 `pa-cli --space <Space ID> mail ingest`，或使用对应空间 `runtime/bin/pa-cli`（Windows 为 `.cmd`）入口。全局入口默认个人主空间；不要把不带空间选择器的全局命令用于子空间收件。Agent 回合自动使用自己空间的专属入口，错配空间会在读取环境或写入邮件前拒绝，不复制其他空间凭据。
+
 Personal Agent does not bundle an SMTP or IMAP server. A user-managed local MTA receives and validates mail, then pipes one complete RFC 5322 message to `pa-cli mail ingest`. The command follows the active immutable Node release, archives the EML under `PRIVATE_SITE_DATA_ROOT/mail`, and submits a token-authenticated event to the loopback Agent service.
 
 The mailbox service belongs to the user. The user may keep it LAN-only or run a

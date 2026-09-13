@@ -257,6 +257,10 @@ test("main-Agent PATH prefers the stable CLI from the active installation", () =
   assert.equal(entries[0], cliBin);
   assert.equal(entries[1], path.join(installRoot, "bin"));
   assert.equal(entries.at(-1), inherited);
+  const spaceRoot = path.join(os.tmpdir(), "registered-space");
+  const scopedEntries = buildAgentPath({ PRIVATE_SITE_CLI_BIN: cliBin, PATH: inherited }, spaceRoot).split(path.delimiter);
+  assert.equal(scopedEntries[0], path.join(spaceRoot, "runtime", "bin"));
+  assert.equal(scopedEntries[1], cliBin);
 });
 
 test("recalls current-Space Memory before each real main-Agent user turn only", async () => {

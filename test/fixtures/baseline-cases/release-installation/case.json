@@ -7,6 +7,7 @@
   "when": "The release lifecycle advances the current link and retains its predecessor",
   "acceptance": [
     "Installation switches an immutable current release",
+    "Each Space prepares its own CLI wrapper and every Agent turn prioritizes that directory; a shared installation wrapper resolves the same default personal Space as the runtime CLI or an explicit --space selector, rejects mixed Agent identities before loading another environment, preserves current-turn credentials, and keeps HTTP and local mail paths isolated regardless of startup order on Windows and POSIX",
     "One previous release remains available",
     "A double-click Windows installation asks the user to choose one absolute Personal Agent root and keeps immutable Core, mutable Workspace data, installation staging, upgrades, rollback and uninstall state under that selected root; explicit CLI installation remains non-interactive and macOS behavior is unchanged",
     "Fresh Windows and macOS installation opens the local Setup Center in the Tauri desktop shell; fresh Linux installation uses a version-bound one-line GitHub Release installer, ships no desktop shell or WebView dependency, enables a persistent systemd user service, and exposes Setup Center only through loopback for SSH forwarding",

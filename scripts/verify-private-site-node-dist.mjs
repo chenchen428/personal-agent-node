@@ -165,6 +165,10 @@ function verifyPreparation() {
       assert(fs.existsSync(path.join(personalRoot, "agent-workspace", ...relative.split("/"))), `Prepared Agent workspace is missing product development contract: ${relative}`);
     }
     const agentWorkspaceRoot = path.join(personalRoot, "agent-workspace");
+    const scopedCli = path.join(personalRoot, "runtime", "bin", process.platform === "win32" ? "pa-cli.cmd" : "pa-cli");
+    assert(fs.existsSync(scopedCli), "Prepared Space is missing its isolated CLI wrapper");
+    const globalCli = fs.readFileSync(path.join(binRoot, process.platform === "win32" ? "pa-cli.cmd" : "pa-cli"), "utf8");
+    assert(globalCli.includes("PERSONAL_AGENT_CLI_INSTALLATION_ROOT") && !globalCli.includes("PERSONAL_AGENT_CLI_BOUND_SPACE_ID"), "Global CLI must resolve installation scope dynamically");
     assert(fs.readdirSync(path.join(agentWorkspaceRoot, "skills")).length === 0, "Fresh user skills must be empty; builtin skills belong to immutable release");
     assert(!fs.existsSync(path.join(personalRoot, "apps")), "Fresh installation must not recreate retired Apps");
     const preserved = path.join(agentWorkspaceRoot, "skills", "my-preference");

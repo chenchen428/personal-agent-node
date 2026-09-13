@@ -8,11 +8,28 @@ import { createGeneratedPageThumbnails } from "../src/online-pages/generated-pag
 import { normalizeTaskCreate, normalizeTaskPatch, rejectRetiredAgentOptions } from "../src/server/task-contract.js";
 import { posterDiagnostic } from "../src/posters/diagnostics.js";
 
+const args = parseArgs(process.argv.slice(2));
+const governedIdentityOptions = ["calendar", "plan", "memory"].includes(args._[0]) || (args._[0] === "pages" && args._[1] === "poster");
+if (args.space && !process.env.PERSONAL_AGENT_CLI_INSTALLATION_ROOT && !governedIdentityOptions) {
+  process.stderr.write(`${JSON.stringify({ ok: false, error: { code: "CLI_INSTALLATION_REQUIRED", message: "请通过已安装的 pa-cli 空间入口使用 --space。" } })}\n`);
+  process.exit(1);
+}
+if (process.env.PERSONAL_AGENT_CLI_INSTALLATION_ROOT) {
+  try {
+    const { bridgeCliEnvironment } = await import("../../runtime/src/cli-context.ts");
+    Object.assign(process.env, bridgeCliEnvironment(process.env, args.space || ""));
+    // This flag selected a verified transport context, never an API caller role.
+    // Uninstalled/legacy governed commands retain their own identity-option denial.
+    delete args.space;
+  } catch (error) {
+    process.stderr.write(`${JSON.stringify({ ok: false, error: { code: error.code || "CLI_SPACE_UNAVAILABLE", message: /^CLI_[A-Z_]+$/.test(error.code || "") ? error.message : "CLI 空间入口暂不可用。" } })}\n`);
+    process.exit(1);
+  }
+}
 const personalAgentHome = path.resolve(process.env.PERSONAL_AGENT_HOME || path.join(os.homedir(), ".personal-agent"));
 const siteDataRoot = path.resolve(process.env.PRIVATE_SITE_DATA_ROOT || path.join(personalAgentHome, "workspace"));
 loadServiceEnv(process.env.OPEN_AGENT_BRIDGE_ENV_FILE || path.join(siteDataRoot, "secrets", "applications", "site.env"));
 
-const args = parseArgs(process.argv.slice(2));
 const command = args._[0] || "help";
 const subcommand = args._[1] || "";
 const apiBase = (process.env.OPEN_AGENT_BRIDGE_API_BASE || `http://127.0.0.1:${process.env.OPEN_AGENT_BRIDGE_PORT || "8788"}`).replace(/\/+$/, "");
@@ -849,6 +866,8 @@ async function personalWechatConnectionCommand(parsed) {
 
 function help() {
   console.log(`Usage:
+  pa-cli [--space <space-id-or-slug>] <command> (installed global entry; default: personal Space)
+  Agent Space wrappers reject cross-Space selectors and preserve the current turn identity.
   pa-cli plan list [--execution-mode <record|remind|execute>] [--status <status>] [--query <text>] [--limit <n>] [--offset <n>] --capability <ephemeral> [--json]
   pa-cli plan show|history|runs --id <plan-id> [--occurrence-at <offset-ISO>] --capability <ephemeral> [--json]
   pa-cli plan create --title <text> --start-at <offset-ISO> --time-zone <IANA> [--execution-mode <record|remind|execute>] [--execution-prompt <text>] [--recurrence-json <object-or-null>] [--missed-run-policy <skip|latest>] [--input-file <json>] --capability <ephemeral> [--json]
