@@ -507,8 +507,8 @@
       "owner": "cove-runtime",
       "kind": "external-cli",
       "entrypoint": "skills/cove-runtime/references/command-map.md",
-      "command": "pa-cli pages list --json",
-      "description": "Inspect and publish governed Pages through the generic Page contract."
+      "command": "pa-cli pages publish --file <index.html> --folder <stable-name> --json",
+      "description": "Publish governed Pages through the generic Page contract; retain the returned pageId for later poster delivery."
     },
     {
       "name": "pa-cli-file",
