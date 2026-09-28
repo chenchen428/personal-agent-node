@@ -152,6 +152,11 @@ candidate unless its release manifest, complete `SHA256SUMS`, SBOM, exact Git
 revision, candidate security metadata, and OS/architecture all agree. Stable
 candidates still require native platform signing; prerelease signing may only
 use the explicitly documented deferred-prerelease policy.
+On macOS, the payload and its checksum footer are linked into the Mach-O before
+signing. The Node packaging stage reports only `staged`; a separate shell step
+uses `scripts/verify-platform-installer.sh` to verify the final updater signature,
+execute `inspect`, and recheck artifact digests before reporting success. Linux
+and Windows retain the appended payload and in-process `inspect` gate.
 
 Planning copies the exact updater into
 `workspace/installation/updates/<job-id>` and binds its SHA-256, size, revision,

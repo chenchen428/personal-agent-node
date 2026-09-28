@@ -2,6 +2,7 @@ package embedded
 
 import (
 	"archive/tar"
+	"bytes"
 	"compress/gzip"
 	"crypto/sha256"
 	"encoding/binary"
@@ -16,6 +17,7 @@ import (
 const FooterSize = 64
 
 var magic = [24]byte{'P', 'E', 'R', 'S', 'O', 'N', 'A', 'L', '_', 'A', 'G', 'E', 'N', 'T', '_', 'P', 'A', 'Y', 'L', 'O', 'A', 'D', '_', '1'}
+var linkedPayload []byte
 
 type Payload struct {
 	Root        string
@@ -24,6 +26,9 @@ type Payload struct {
 }
 
 func Extract(executable, destination string) (Payload, error) {
+	if len(linkedPayload) > 0 {
+		return extractPayload(bytes.NewReader(linkedPayload), int64(len(linkedPayload)), destination)
+	}
 	file, err := os.Open(executable)
 	if err != nil {
 		return Payload{}, err
@@ -33,22 +38,26 @@ func Extract(executable, destination string) (Payload, error) {
 	if err != nil {
 		return Payload{}, err
 	}
-	if info.Size() < FooterSize {
+	return extractPayload(file, info.Size(), destination)
+}
+
+func extractPayload(source io.ReaderAt, size int64, destination string) (Payload, error) {
+	if size < FooterSize {
 		return Payload{}, errors.New("installer has no embedded payload")
 	}
 	footer := make([]byte, FooterSize)
-	if _, err := file.ReadAt(footer, info.Size()-FooterSize); err != nil {
+	if _, err := source.ReadAt(footer, size-FooterSize); err != nil {
 		return Payload{}, err
 	}
 	if string(footer[:24]) != string(magic[:]) {
 		return Payload{}, errors.New("installer payload footer is missing")
 	}
 	length := int64(binary.BigEndian.Uint64(footer[24:32]))
-	if length <= 0 || length > info.Size()-FooterSize {
+	if length <= 0 || length > size-FooterSize {
 		return Payload{}, errors.New("installer payload length is invalid")
 	}
 	expected := footer[32:64]
-	section := io.NewSectionReader(file, info.Size()-FooterSize-length, length)
+	section := io.NewSectionReader(source, size-FooterSize-length, length)
 	hash := sha256.New()
 	if _, err := io.Copy(hash, section); err != nil {
 		return Payload{}, err

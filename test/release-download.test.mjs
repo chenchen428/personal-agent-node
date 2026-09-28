@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -183,6 +184,14 @@ test('release packaging delegates customer installation to self-contained Go pla
   assert.match(platformBuilder, /core['"], ['"]runtime['"], ['"]native/);
   assert.doesNotMatch(platformBuilder, /projects['"], ['"]core/);
   assert.match(platformBuilder, /nodeRuntime/);
+});
+
+test('macOS Node packaging cannot report success without the separate signed updater inspection', () => {
+  const root = path.resolve(import.meta.dirname, '..');
+  const result = spawnSync(process.execPath, ['scripts/build-platform-installer.mjs', '--tag', 'v0.0.0', '--release-root', '/missing', '--platform', 'darwin', '--arch', 'arm64'], { cwd: root, encoding: 'utf8' });
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /--stage-for-wrapper followed by scripts\/verify-platform-installer\.sh/);
+  assert.equal(spawnSync('bash', ['-n', 'scripts/verify-platform-installer.sh'], { cwd: root }).status, 0);
 });
 
 test('pre-release candidate stays digest-bound and uses the platform-native update handoff', () => {
