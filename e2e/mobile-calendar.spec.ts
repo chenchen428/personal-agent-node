@@ -83,3 +83,16 @@ test("mobile calendar empty state keeps the two views and date controls", async 
   expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(0);
   await context.close();
 });
+
+test("reminder detail describes pending reminder runs accurately", async ({ browser }) => {
+  const context = await browser.newContext({ viewport: { width: 390, height: 760 }, isMobile: true, hasTouch: true, userAgent: mobileUserAgent });
+  const page = await context.newPage();
+  await mockCalendar(page);
+  await page.route("**/api/plans/plan-fixture", (route) => route.fulfill({ json: { ok: true, result: { plan: { ...entry, id: "plan-fixture", executionMode: "remind", executionPrompt: "提醒验收", enabled: true, nextOccurrenceAt: entry.startAt, missedRunPolicy: "skip" } } } }));
+  await page.route("**/api/plans/plan-fixture/runs**", (route) => route.fulfill({ json: { ok: true, result: { items: [], total: 0, limit: 20, offset: 0, hasMore: false } } }));
+  await page.goto("/app/mobile/workers/calendar?planId=plan-fixture");
+  await expect(page.getByRole("heading", { name: "提醒记录" })).toBeVisible();
+  await expect(page.locator(".plan-runs")).toContainText("暂无提醒记录。到提醒时间后会显示在这里。");
+  await expect(page.locator(".plan-runs")).not.toContainText("仅记录的安排");
+  await context.close();
+});

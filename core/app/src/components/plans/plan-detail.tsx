@@ -25,7 +25,7 @@ export function PlanDetail({ id, mobile = false }: { id: string; mobile?: boolea
       <Link className="plan-detail-link" href={`/app/${mobile ? "mobile/" : ""}workers/calendar?planId=${encodeURIComponent(plan.id)}`}>在日程中查看 →</Link>
       <p className="plan-help">需要修改或取消时，告诉 Cove 是仅这一次、这次及以后，还是整个系列。</p>
       {!mobile ? <Link className="plan-detail-link" href="/app/conversations">前往主对话管理计划 →</Link> : null}
-      <PlanRuns planId={plan.id} mobile={mobile} legacyRunCount={plan.legacy?.runCount} key={plan.id} />
+      <PlanRuns planId={plan.id} executionMode={plan.executionMode} mobile={mobile} legacyRunCount={plan.legacy?.runCount} key={plan.id} />
     </> : null}
   </section>;
 }
