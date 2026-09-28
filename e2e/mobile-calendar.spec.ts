@@ -108,3 +108,16 @@ test("cancelled reminder is not described as paused", async ({ browser }) => {
   await expect(page.locator(".plan-detail")).toContainText("暂无待发生安排");
   await context.close();
 });
+
+test("delivered one-time reminder shows completion and its run", async ({ browser }) => {
+  const context = await browser.newContext({ viewport: { width: 390, height: 760 }, isMobile: true, hasTouch: true, userAgent: mobileUserAgent });
+  const page = await context.newPage();
+  await mockCalendar(page, true);
+  const run = { id: "run-fixture", planId: "plan-fixture", occurrenceAt: entry.startAt, status: "completed", sessionId: "session-fixture", createdAt: entry.startAt, updatedAt: entry.startAt };
+  await page.route("**/api/plans/plan-fixture", (route) => route.fulfill({ json: { ok: true, result: { plan: { ...entry, id: "plan-fixture", recurrence: null, executionMode: "remind", executionPrompt: "提醒验收", enabled: true, nextOccurrenceAt: null, latestRun: run, missedRunPolicy: "skip" } } } }));
+  await page.route("**/api/plans/plan-fixture/runs**", (route) => route.fulfill({ json: { ok: true, result: { items: [run], total: 1, limit: 20, offset: 0, hasMore: false } } }));
+  await page.goto("/app/mobile/workers/calendar?planId=plan-fixture");
+  await expect(page.locator(".plan-detail .cove-calendar-status")).toHaveText("已完成 · 提醒本人");
+  await expect(page.locator(".plan-runs")).toContainText("提醒已送达");
+  await context.close();
+});

@@ -16,7 +16,7 @@ export function PlanRuns({ planId, executionMode, mobile = false, occurrenceAt, 
     {legacyRunCount > 0 ? <p>升级前累计执行 {legacyRunCount} 次，以下列出可追溯的执行记录。</p> : null}
     {result.loading ? <p role="status">正在读取执行记录…</p> : null}
     {result.error || result.staleError ? <p role="alert">{result.error || result.staleError}<button onClick={() => void result.refresh()}>重试</button></p> : null}
-    {result.value?.items.map((run) => <article key={run.id}><div><strong>{runStatusLabel(run.status)}</strong><time dateTime={run.occurrenceAt}>{calendarTime(run.occurrenceAt)}</time></div>
+    {result.value?.items.map((run) => <article key={run.id}><div><strong>{executionMode === "remind" && run.status === "completed" ? "提醒已送达" : runStatusLabel(run.status)}</strong><time dateTime={run.occurrenceAt}>{calendarTime(run.occurrenceAt)}</time></div>
       {run.error ? <p>{run.error}</p> : null}{run.result ? <p>{typeof run.result === "string" ? run.result : "执行结果已记录"}</p> : null}
       {run.sessionId ? <Link href={executionHref(run.sessionId, mobile)}>查看执行详情与结果 →</Link> : <small>尚未产生任务会话</small>}
     </article>)}

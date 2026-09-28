@@ -10,10 +10,11 @@ import type { Plan } from "./types";
 export function PlanDetail({ id, mobile = false }: { id: string; mobile?: boolean }) {
   const result = useClientResource<{ plan: Plan }>(`/api/plans/${encodeURIComponent(id)}`);
   const plan = result.value?.plan;
+  const completed = plan && !plan.recurrence && plan.executionMode !== "record" && plan.latestRun?.status === "completed" && !plan.nextOccurrenceAt;
   return <section className="cove-calendar-detail plan-detail" aria-label="计划详情">
     {result.loading ? <p role="status">正在读取计划详情…</p> : null}
     {result.error || result.staleError ? <p role="alert">{result.error || result.staleError}<button onClick={() => void result.refresh()}>重新加载</button></p> : null}
-    {plan ? <><span className="cove-calendar-status">{plan.status === "cancelled" ? "已取消" : plan.enabled ? calendarStatus[plan.status] : "已暂停"} · {executionModeLabel[plan.executionMode]}</span><h2>{plan.title}</h2>
+    {plan ? <><span className="cove-calendar-status">{plan.status === "cancelled" ? "已取消" : !plan.enabled ? "已暂停" : completed ? "已完成" : calendarStatus[plan.status]} · {executionModeLabel[plan.executionMode]}</span><h2>{plan.title}</h2>
       <dl><dt>下一次</dt><dd>{plan.enabled && plan.nextOccurrenceAt ? calendarTime(plan.nextOccurrenceAt, plan.timeZone) : "暂无待发生安排"}</dd>
         <dt>重复</dt><dd>{recurrenceLabel(plan.recurrence)}{plan.recurrence?.until ? <small>截止 {calendarTime(plan.recurrence.until, plan.timeZone)}</small> : null}</dd>
         <dt>起始时间</dt><dd>{calendarTime(plan.startAt, plan.timeZone)}{plan.endAt ? ` — ${calendarTime(plan.endAt, plan.timeZone)}` : ""}<small>{plan.timeZone}</small></dd>
