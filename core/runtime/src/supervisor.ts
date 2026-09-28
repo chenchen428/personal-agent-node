@@ -33,6 +33,7 @@ export async function runSupervisor({ config = resolveNodeConfig(), logger = con
 
   const startComponent = async (spec) => {
     if (spec.waitFor) await waitForPort("127.0.0.1", spec.waitFor, 30_000);
+    if (spec.port) await assertPortAvailable(spec.host || "127.0.0.1", spec.port, spec.name);
     const logPath = path.join(config.logsDir, `${spec.name}.log`);
     const output = fs.openSync(logPath, "a");
     const child = spawn(spec.command, spec.args, {
@@ -261,21 +262,42 @@ function nextApplication(node, config) {
   return { command: node, args: [nextCli, "start", "core/app", "--hostname", "127.0.0.1", "--port", String(config.ports.admin)], cwd: workspaceRoot };
 }
 
-async function stopChildren(children) {
+export async function stopChildren(children) {
   const entries = [...children.values()].reverse();
   for (const { child } of entries) {
-    if (!child.killed) {
+    if (!childExited(child)) {
       try { child.kill("SIGTERM"); } catch {}
     }
   }
-  await new Promise((resolve) => setTimeout(resolve, 1500));
-  for (const { child, output } of entries) {
-    if (!child.killed) {
+  if (!await waitForChildrenExit(entries, 3_000)) {
+    for (const { child } of entries) if (!childExited(child)) {
       try { child.kill("SIGKILL"); } catch {}
     }
+  }
+  const exited = await waitForChildrenExit(entries, 1_000);
+  for (const { output } of entries) {
     try { fs.closeSync(output); } catch {}
   }
   children.clear();
+  if (!exited) throw new Error("Runtime children did not exit after SIGKILL");
+}
+
+function childExited(child) {
+  return child.exitCode !== null || child.signalCode !== null;
+}
+
+async function waitForChildrenExit(entries, timeoutMs) {
+  return (await Promise.all(entries.map(({ child }) => waitForChildExit(child, timeoutMs)))).every(Boolean);
+}
+
+function waitForChildExit(child, timeoutMs) {
+  if (childExited(child)) return Promise.resolve(true);
+  return new Promise((resolve) => {
+    const finish = (exited) => { clearTimeout(timer); child.off("exit", onExit); resolve(exited); };
+    const onExit = () => finish(true);
+    const timer = setTimeout(() => finish(childExited(child)), timeoutMs);
+    child.once("exit", onExit);
+  });
 }
 
 function waitForPort(host, port, timeoutMs) {
@@ -309,5 +331,17 @@ function waitForPort(host, port, timeoutMs) {
       socket.once("error", retry);
     };
     attempt();
+  });
+}
+
+export async function assertPortAvailable(host, port, name) {
+  if (!await portAvailable(host, port)) throw new Error(`${name} cannot start: ${host}:${port} is already in use`);
+}
+
+export function portAvailable(host, port) {
+  return new Promise((resolve, reject) => {
+    const server = net.createServer();
+    server.once("error", (error) => (error as NodeJS.ErrnoException).code === "EADDRINUSE" ? resolve(false) : reject(error));
+    server.listen({ host, port, exclusive: true }, () => server.close((error) => error ? reject(error) : resolve(true)));
   });
 }

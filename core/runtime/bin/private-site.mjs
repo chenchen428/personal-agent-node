@@ -7,7 +7,7 @@ import path from "node:path";
 import { spawn, spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { ensureMailIngressSecret, ensureNodeDirectories, gatewayUsesTls, initializeSite, mergeSecretEnv, migrateLegacyMailData, readEnvFile, resolveNodeConfig, workspaceRoot, writeJsonAtomic } from "../src/config.ts";
-import { runSupervisor, supervisorReleaseState } from "../src/supervisor.ts";
+import { portAvailable, runSupervisor, supervisorReleaseState } from "../src/supervisor.ts";
 import { runInstallationSupervisor } from "../src/installation-supervisor.ts";
 import { getSpace, installationPaths, listSpaces } from "../src/space-registry.ts";
 import { initializeOriginIdentity, initializeWireGuard, installOriginIdentity } from "../src/identity.ts";
@@ -162,8 +162,10 @@ async function daemonStartCommand() {
   }
   if (releaseState === "replace") {
     terminateSupervisor(status.pid);
-    if (!await waitForProcessExit(status.pid, 5_000)) throw new Error(`Previous Personal Agent release did not stop (pid ${status.pid})`);
+    if (!await waitForProcessExit(status.pid, 30_000)) throw new Error(`Previous Personal Agent release did not stop (pid ${status.pid})`);
+    await waitForGatewaysClosed(config, status, 3_000);
   }
+  if (releaseState === "stopped") await waitForGatewaysClosed(config, status, 3_000);
   const logPath = path.join(paths.installationRoot, "logs", "supervisor.log");
   const output = fs.openSync(logPath, "a");
   const child = spawn(process.execPath, [fileURLToPath(import.meta.url), "start"], {
@@ -188,10 +190,13 @@ async function stopCommand() {
     return;
   }
   if (!status?.pid || !processAlive(status.pid)) {
+    await waitForGatewaysClosed(config, status, 3_000);
     process.stdout.write(`${JSON.stringify({ ok: true, stopped: true, detail: "already stopped" })}\n`);
     return;
   }
   terminateSupervisor(status.pid);
+  if (!await waitForProcessExit(status.pid, 30_000)) throw new Error(`Personal Agent supervisor did not stop (pid ${status.pid})`);
+  await waitForGatewaysClosed(config, status, 3_000);
   writeJsonAtomic(path.join(paths.runtimeRoot, "supervisor.json"), { pid: status.pid, status: "stopped", releaseRoot: status.releaseRoot || "", stoppedAt: new Date().toISOString() });
   process.stdout.write(`${JSON.stringify({ ok: true, stopped: true, pid: status.pid })}\n`);
 }
@@ -506,6 +511,22 @@ async function waitForProcessExit(pid, timeoutMs) {
   const deadline = Date.now() + timeoutMs;
   while (processAlive(pid) && Date.now() < deadline) await new Promise((resolve) => setTimeout(resolve, 50));
   return !processAlive(pid);
+}
+
+async function waitForGatewaysClosed(config, status, timeoutMs) {
+  const activeIds = new Set(Object.keys(status?.spaces || {}));
+  const gateways = listSpaces(config.installationDataRoot)
+    .filter((space) => activeIds.has(space.id))
+    .map((space) => ({ host: space.id === config.space?.id ? config.gateway.host : "127.0.0.1", port: space.id === config.space?.id ? config.gateway.port : space.ports.gateway }));
+  if (!gateways.length) return;
+  const deadline = Date.now() + timeoutMs;
+  while (true) {
+    const available = await Promise.all(gateways.map(({ host, port }) => portAvailable(host, port)));
+    const busy = gateways.filter((_, index) => !available[index]);
+    if (!busy.length) return;
+    if (Date.now() >= deadline) throw new Error(`Previous Personal Agent gateway still listening on ${busy.map(({ host, port }) => `${host}:${port}`).join(", ")}`);
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  }
 }
 
 function run(commandName, commandArgs, cwd) {

@@ -83,6 +83,19 @@ func (OSRunner) Run(ctx context.Context, command string, args []string, env []st
 	return cmd.Output()
 }
 
+func (OSRunner) Start(ctx context.Context, command string, args []string, env []string) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	cmd := exec.Command(command, args...)
+	cmd.Env = env
+	if err := cmd.Start(); err != nil {
+		return err
+	}
+	go func() { _ = cmd.Wait() }()
+	return nil
+}
+
 func Install(ctx context.Context, opts Options, runner Runner) (result Result, returnedErr error) {
 	if runner == nil {
 		runner = OSRunner{}
@@ -826,9 +839,21 @@ func openBrowser(ctx context.Context, url, platform string, runner Runner) error
 
 func openDesktopShell(ctx context.Context, url string, opts Options, runner Runner, env []string) error {
 	if opts.Platform == "darwin" {
-		application := filepath.Join(userHome(), "Applications", "Personal Agent.app")
-		_, err := runner.Run(ctx, "open", []string{"-a", application, "--args", "--url", url}, env)
-		return err
+		executable := filepath.Join(opts.InstallRoot, "current", "desktop", "Personal Agent.app", "Contents", "MacOS", "personal-agent-ui")
+		info, err := os.Stat(executable)
+		if err != nil {
+			return fmt.Errorf("desktop shell executable: %w", err)
+		}
+		if !info.Mode().IsRegular() || info.Mode().Perm()&0o111 == 0 {
+			return errors.New("desktop shell executable is not runnable")
+		}
+		starter, ok := runner.(interface {
+			Start(context.Context, string, []string, []string) error
+		})
+		if !ok {
+			return errors.New("desktop shell runner cannot start asynchronously")
+		}
+		return starter.Start(ctx, executable, []string{"--url", url}, env)
 	}
 	launcher := filepath.Join(opts.InstallRoot, "bin", "personal-agent-ui")
 	if opts.Platform == "windows" {
