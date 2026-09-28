@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { DatabaseSync } from "node:sqlite";
 import test from "node:test";
 import {
   createSpace,
@@ -49,6 +50,37 @@ test("installation creates exactly one opaque personal Space with the complete i
     ]) assert.equal(fs.statSync(path.join(personal.root, relative)).isDirectory(), true, relative);
     for (const retired of ["apps", "databases/apps"]) assert.equal(fs.existsSync(path.join(personal.root, retired)), false);
     assert.equal(fs.lstatSync(personal.root).isSymbolicLink(), false);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("Space listing remains readable while another process holds a registry write transaction", () => {
+  const root = temporaryRoot();
+  try {
+    const { personal, paths } = initializeInstallation({ dataRoot: root });
+    const writer = new DatabaseSync(paths.registryFile);
+    try {
+      writer.exec("BEGIN IMMEDIATE");
+      assert.equal(listSpaces(root)[0]?.id, personal.id);
+      assert.equal(getSpace(root, personal.id)?.id, personal.id);
+    } finally {
+      writer.exec("ROLLBACK");
+      writer.close();
+    }
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("Space listing does not require a writable registry connection", () => {
+  const root = temporaryRoot();
+  try {
+    const { personal, paths } = initializeInstallation({ dataRoot: root });
+    fs.chmodSync(paths.registryFile, 0o444);
+    assert.equal(listSpaces(root)[0]?.id, personal.id);
+    assert.equal(getSpace(root, personal.id)?.id, personal.id);
+    fs.chmodSync(paths.registryFile, 0o600);
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
   }
