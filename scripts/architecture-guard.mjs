@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { exists, readJson, report, root } from './harness-lib.mjs';
 import { validateCommandRegistry } from './lib/command-registry-contract.mjs';
+import { routeContractIssues } from './lib/route-contract.mjs';
 
 const checks = [];
 const projects = readJson('registry/projects.json');
@@ -65,6 +66,8 @@ checks.push({ name: 'capabilities have registered owners', ok: capabilities.capa
 checks.push({ name: 'route policy defaults to deny', ok: routes.defaultPolicy === 'deny' });
 checks.push({ name: 'route patterns are unique', ok: new Set(routes.routes.map((entry) => entry.pattern)).size === routes.routes.length });
 checks.push({ name: 'routes reference capabilities', ok: routes.routes.every((entry) => capabilityIds.has(entry.capability)) });
+const routeIssues = routeContractIssues(routes, distribution);
+checks.push({ name: 'registered access and gateway targets are consistent', ok: routeIssues.length === 0, detail: routeIssues.join('; ') });
 checks.push({
   name: 'sensitive Console routes use authenticated gateway access',
   ok: ['/app/settings', '/app/setup', '/app/update', '/api/system/*', '/api/extensions/*', '/api/plugins/*']

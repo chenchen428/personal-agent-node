@@ -17,16 +17,15 @@
 .calendar-module-layout > .v72-split-detail { border-left: 1px solid var(--hairline); min-width: 0; min-height: 440px; overflow: visible; }
 .calendar-module-layout .cove-calendar-sidebar { padding-left: 28px; }
 .calendar-module-layout .cove-calendar-entry { grid-template-columns: 108px minmax(0, 1fr) 48px; gap: 12px; padding-inline: 8px; }
-.mobile-current .mobile-calendar-module .calendar-module-header > .task-view-navigation { margin: 0; padding: 4px 0 18px; }
 .mobile-current .mobile-calendar-module { padding: 0; }
-.mobile-current .mobile-calendar-module .calendar-module-summary { min-height: 168px; }
-.mobile-calendar-module .mobile-calendar-toolbar { display: grid; grid-template-columns: 96px minmax(0, 1fr) 36px; }
-.mobile-calendar-module .mobile-calendar-toolbar > select { width: 96px; }
-.mobile-calendar-module .mobile-calendar-date-slot { min-width: 0; gap: 2px; }
-.mobile-calendar-module .mobile-calendar-date-slot input { width: 100%; max-width: 110px; }
-.mobile-calendar-module .mobile-calendar-toolbar button { min-width: 28px; }
-.mobile-calendar-module .mobile-execution-toolbar { grid-template-columns: minmax(0, 1fr) 44px; }
-.mobile-calendar-module .mobile-execution-toolbar { min-height: 44px; font-size: 12px; }
+.mobile-current .mobile-calendar-module .calendar-module-header > .task-view-navigation { margin: 0; padding: 4px 0 12px; }
+.mobile-current .mobile-calendar-module .calendar-module-summary { min-height: 0; }
+.mobile-current .mobile-calendar-module .calendar-upcoming-summary { min-height: 0; grid-template-columns: minmax(0, 1fr); gap: 8px; margin-bottom: 8px; border: 1px solid var(--hairline); border-radius: 10px; padding: 10px 12px; background: var(--canvas); }
+.mobile-current .mobile-calendar-module .calendar-upcoming-summary > p { font-size: 12px; }
+.mobile-current .mobile-calendar-module .calendar-upcoming-entry { gap: 3px; border: 0; border-radius: 7px; padding: 8px; background: #fff; }
+.mobile-current .mobile-calendar-module .calendar-upcoming-entry > strong { font-size: 13px; }
+.mobile-current .mobile-calendar-module .calendar-upcoming-entry > time { font-size: 12px; }
+.mobile-calendar-module .mobile-execution-toolbar { grid-template-columns: minmax(0, 1fr) 44px; align-items: center; min-height: 44px; font-size: 12px; }
 .mobile-calendar-module .mobile-task-list { padding-top: 0; }
 .mobile-calendar-module .mobile-task-items { margin-top: 0; }
 @media (max-width: 1250px) {

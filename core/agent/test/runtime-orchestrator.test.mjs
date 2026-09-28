@@ -146,7 +146,7 @@ test('desktop input on a unified WeChat main records the successful runtime; WeC
       return { success: true };
     },
     stopAppServerCommand: () => false,
-  }, { runtimeExecutionSettings: () => ({ ...snapshot('codex'), revision: 9 }) });
+  }, { runtimeExecutionSettings: () => ({ ...snapshot('codex'), revision: 9 }), textBatchQuietMs: 20 });
   const unified = store.getOrCreateMainSessionForChannel({ channel: 'wechat', senderId: 'unified-owner',
     senderName: 'Owner', workspaceRoot: dataDir });
   const receipt = path.join(dataDir, 'runtime/setup/web-conversation.json');
@@ -157,7 +157,7 @@ test('desktop input on a unified WeChat main records the successful runtime; WeC
   await orchestrator.resumeSession(unified.id, 'desktop input', {
     displayContent: 'desktop input', messageMetadata: { channel: 'desktop', clientMessageId: 'desktop-runtime-check' },
   });
-  await waitFor(() => !orchestrator.running.size);
+  await waitFor(() => fs.existsSync(receipt) && !orchestrator.running.size);
   const value = JSON.parse(fs.readFileSync(receipt, 'utf8'));
   assert.equal(value.engine, 'codex');
   assert.equal(value.revision, 9);

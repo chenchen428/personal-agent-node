@@ -8,6 +8,7 @@ pa-cli plan list|show|history|runs|create|update 管理系列；pa-cli calendar 
 - calendar list --view upcoming --limit 1 查询下一次，不传固定 --to。nextEntry、ongoingEntry、asOf 分别表示下一次、进行中与查询基准。指定 --from/--to 查看带时区的明确范围；使用 limit/offset 翻页。
 - calendar show --id 接受服务返回的实例 ID；不要自行拼接计划 ID 或发生时间来假冒实例。
 - create 使用 --title、--participants-json、--start-at、--time-zone，可带 --end-at、--location、--notes、--status。复杂或多行内容优先使用 --input-file JSON，避免 shell 改写用户要求。
+- “9月30日18点提醒我提交报表”创建单次 plan，使用 executionMode=remind，并将“提醒我提交报表”完整写入 executionPrompt；“每周一9点提醒我”再加 weekly recurrence。写后核对下一次发生时间和时区。不要把提醒请求降为 record，也不要创建操作系统提醒事项。
 - 执行方式用 --execution-mode record|remind|execute，完整要求用 --execution-prompt；仅记录不需要提示。--missed-run-policy skip|latest 决定错过后跳过或最多补最近一次，缺省 skip。--enabled/--disabled 控制计划开关。
 - 周期用 --recurrence-json 或输入文件的 recurrence。没有周期为 null；frequency 支持 daily、weekly、monthly、yearly，interval 为正整数；weekly 的 weekdays 为0至6数组（0周日、1周一）。工作日使用 [1,2,3,4,5]。until 是带偏移 ISO 截止时间，count 是总发生次数。规则按计划 IANA 时区的本地钟计算；月末不存在日期跳过，不悄悄改成别的日期。
 - update 使用 --id、--expected-revision 和修改字段。--scope series 修改整个系列；--scope occurrence 或 future 必须携带服务返回的 --occurrence-at。仅本次写例外，后续修改拆分系列并保留以前记录。取消通过 status=cancelled；暂停整个计划可 disabled，不永久删除历史。

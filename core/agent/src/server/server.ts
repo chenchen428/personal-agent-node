@@ -50,7 +50,7 @@ import { readPlanRequest, legacyTaskFromPlan, legacyTaskInput, listLegacyTasks }
 import { BrowserHub } from "./broadcast.js";
 import { buildConversationAttachmentDeliveryView, buildDesktopConversationView } from "./desktop-conversation.js";
 import { SessionOrchestrator } from "./orchestrator.js";
-import { renderConsoleSessionsFragment, renderDashboard, renderDataPage, renderDataRowsFragment, renderMessagesFragment, renderNewSession, renderPagesIndex, renderPrivateFileBatch, renderPrivateFilePreview, renderReleaseNotesPage, renderSessionDetail, renderSkillCatalogPage } from "../web/pages.js";
+import { renderConsoleSessionsFragment, renderDashboard, renderDataPage, renderDataRowsFragment, renderMessagesFragment, renderNewSession, renderPagesIndex, renderPrivateFileBatch, renderPrivateFilePreview, renderReleaseNotesPage, renderSessionDetail } from "../web/pages.js";
 import { renderMailPage } from "../web/mail-page.js";
 import { buildPrivateAttachmentPreviewUrl, buildPrivateAttachmentUrls, decodePrivateAttachmentPath, privateFilePreviewKind, relativeAttachmentPath, sanitizeInboundAttachmentFileName, storedAttachmentDisplayName } from "../private-files/attachments.js";
 import { configurePrivateManagedFiles, headPrivateAttachment, privateStorageConfigured, readPrivateAttachment, signPrivateAttachmentUrl, uploadPrivateAttachment, verifyPrivateStorageAccess } from "../private-files/local-store.js";
@@ -876,9 +876,7 @@ async function handleRequest(request: http.IncomingMessage, response: http.Serve
   }
 
   if (url.pathname === "/agent-skills" && (request.method === "GET" || request.method === "HEAD")) {
-    sendHtml(response, 200, renderSkillCatalogPage(readWorkspaceSkillCatalog(config.workspaceRoot, {
-      releaseRoot: config.releaseRoot,
-    })), request.method === "HEAD");
+    sendRedirect(response, new URL("/app/skills", config.consoleBaseUrl).toString(), request.method === "HEAD");
     return;
   }
 

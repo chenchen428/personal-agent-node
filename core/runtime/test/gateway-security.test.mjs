@@ -182,6 +182,9 @@ test("canonical Console and domain API routes authenticate and rewrite to intern
       const publicPage = await request({ port, host: "example.site", path: "/public/report", headers: { cookie: "private=must-not-forward", authorization: "Bearer must-not-forward" } });
       assert.equal(publicPage.status, 200);
       assert.equal(publicPage.headers["set-cookie"], undefined);
+      for (const privatePath of ["/pages/report", "/blog/index.html", "/docs/index.html", "/resources/file.txt"]) {
+        assert.equal((await request({ port, host: "example.site", path: privatePath })).status, 302, privatePath);
+      }
       assert.equal((await request({ port, host: "example.site", path: "/app" })).status, 302);
       assert.equal((await request({ port, host: "127.0.0.1", path: "/app" })).status, 200);
       assert.equal((await request({ port, host: "127.0.0.1", path: "/app/settings" })).status, 200);

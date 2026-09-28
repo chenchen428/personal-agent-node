@@ -56,6 +56,7 @@ test("daily Token limit keeps the desktop message and replies without starting t
     hub: { broadcast: () => {} },
     channels: {},
     progressTimerEnabled: false,
+    textBatchQuietMs: 20,
     dailyTokenLimit: () => dailyTokenLimitSettings(1),
     runner: {
       runAppServerCommand: async () => { runnerCalls += 1; },
@@ -67,6 +68,7 @@ test("daily Token limit keeps the desktop message and replies without starting t
       displayContent: "blocked desktop message",
       messageMetadata: { channel: "desktop", clientMessageId: "quota-message-1" },
     });
+    await waitFor(() => store.getSession(main.id).messages.some((message) => message.role === "error" && message.metadata?.code === "DAILY_TOKEN_LIMIT_EXCEEDED"));
     const messages = store.getSession(main.id).messages;
     assert.equal(runnerCalls, 0);
     assert.equal(messages.some((message) => message.role === "user" && message.content === "blocked desktop message"), true);
@@ -91,6 +93,7 @@ test("daily Token limit automatically replies on WeChat without starting the Age
     hub: { broadcast: () => {} },
     channels: { wechat: { sendText: async (recipientId, text) => sent.push({ recipientId, text }) } },
     progressTimerEnabled: false,
+    textBatchQuietMs: 20,
     dailyTokenLimit: () => dailyTokenLimitSettings(2),
     runner: {
       runAppServerCommand: async () => { runnerCalls += 1; },
@@ -124,6 +127,7 @@ test("keeps Page routing with the main Agent after template forcing is retired",
     hub: { broadcast: () => {} },
     channels: {},
     progressTimerEnabled: false,
+    textBatchQuietMs: 20,
     runner: {
       runAppServerCommand: async (input) => {
         calls.push(input);
@@ -171,6 +175,7 @@ test("reports parent-scoped task status without starting or duplicating a task",
     hub: { broadcast: () => {} },
     channels: {},
     progressTimerEnabled: false,
+    textBatchQuietMs: 20,
     runner: {
       runAppServerCommand: async () => { runnerCalls += 1; },
       stopAppServerCommand: () => false,
@@ -182,6 +187,7 @@ test("reports parent-scoped task status without starting or duplicating a task",
       displayContent: "现在做到哪一步了？请只返回刚才那个任务的当前状态。",
       messageMetadata: { channel: "desktop", clientMessageId: "task-status-1" },
     });
+    await waitFor(() => store.getSession(main.id).messages.some((message) => message.role === "assistant"));
     assert.equal(runnerCalls, 0);
     assert.equal(store.countSessions({ parentSessionId: main.id }), before);
     const reply = store.getSession(main.id).messages.findLast((message) => message.role === "assistant");
@@ -206,6 +212,7 @@ test("routes personal WeChat through the main Agent and replies with the persona
     hub: { broadcast: () => {} },
     channels: { "wechat-personal": { sendText: async (recipientId, text) => sent.push({ recipientId, text }) } },
     progressTimerEnabled: false,
+    textBatchQuietMs: 20,
     runner: {
       runAppServerCommand: async (input) => {
         runnerInputs.push(input.stdin);
@@ -566,6 +573,7 @@ test("desktop messages continue the singleton main Agent session without creatin
     hub: { broadcast: () => {} },
     channels: {},
     progressTimerEnabled: false,
+    textBatchQuietMs: 20,
     runner: {
       runAppServerCommand: async (input) => {
         calls.push(input);
@@ -602,6 +610,193 @@ test("desktop messages continue the singleton main Agent session without creatin
   assert.equal(persistedMain.messages[0].metadata.clientMessageId, "desktop-message-1");
   orchestrator.stop();
   store.close();
+});
+
+test("rapid desktop messages are persisted separately but processed in one Agent turn", async () => {
+  const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), "oab-orchestrator-desktop-batch-"));
+  const store = new BridgeStore({ dataDir, consoleBaseUrl: "https://agent.example.test" });
+  const main = store.getOrCreateDesktopMainSession({ workspaceRoot: dataDir });
+  const calls = [];
+  const orchestrator = new SessionOrchestrator({
+    store,
+    hub: { broadcast: () => {} },
+    channels: {},
+    textBatchQuietMs: 20,
+    runner: { runAppServerCommand: async (input) => { calls.push(input.stdin); return { ok: true }; }, stopAppServerCommand: () => false },
+  });
+  try {
+    for (let index = 0; index < 1000; index += 1) {
+      const content = `第${index}条`;
+      await orchestrator.resumeSession(main.id, content, {
+        displayContent: content,
+        messageMetadata: { channel: "desktop", clientMessageId: `batch-${index}` },
+      });
+    }
+    await waitFor(() => calls.length > 0);
+    assert.equal(calls.length, 1);
+    assert.ok(calls[0].indexOf("第0条") < calls[0].indexOf("第999条"));
+    assert.equal(store.getSession(main.id).messages.filter((item) => item.role === "user").length, 1000);
+  } finally {
+    orchestrator.stop();
+    store.close();
+    fs.rmSync(dataDir, { recursive: true, force: true });
+  }
+});
+
+test("desktop file input flushes pending text without persisting its local path", async () => {
+  const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), "oab-orchestrator-desktop-file-order-"));
+  const store = new BridgeStore({ dataDir, consoleBaseUrl: "https://agent.example.test" });
+  const main = store.getOrCreateDesktopMainSession({ workspaceRoot: dataDir });
+  const calls = [];
+  const orchestrator = new SessionOrchestrator({
+    store,
+    hub: { broadcast: () => {} },
+    channels: {},
+    textBatchQuietMs: 60000,
+    runner: { runAppServerCommand: async (input) => { calls.push(input.stdin); return { ok: true }; }, stopAppServerCommand: () => false },
+  });
+  try {
+    await orchestrator.resumeSession(main.id, "先看说明", { displayContent: "先看说明", messageMetadata: { channel: "desktop", clientMessageId: "text-1", attachments: [] } });
+    const localPath = path.join(dataDir, "private-file.pdf");
+    await orchestrator.resumeSession(main.id, `再看文件\n${localPath}`, {
+      displayContent: "再看文件",
+      messageMetadata: { channel: "desktop", clientMessageId: "file-1", attachments: [{ objectId: "obj_0123456789abcdef01234567", name: "private-file.pdf" }] },
+    });
+    await waitFor(() => calls.length === 2);
+    assert.equal(calls[0], "先看说明");
+    assert.match(calls[1], /private-file\.pdf/);
+    assert.equal(store.listEvents(main.id).some((event) => JSON.stringify(event.payload.metadata || {}).includes(localPath)), false);
+  } finally {
+    orchestrator.stop();
+    store.close();
+    fs.rmSync(dataDir, { recursive: true, force: true });
+  }
+});
+
+test("desktop text waiting through restart is dispatched once", async () => {
+  const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), "oab-orchestrator-desktop-restart-"));
+  let store = new BridgeStore({ dataDir, consoleBaseUrl: "https://agent.example.test" });
+  const main = store.getOrCreateDesktopMainSession({ workspaceRoot: dataDir });
+  const options = { store, hub: { broadcast: () => {} }, channels: {}, textBatchQuietMs: 60000 };
+  const before = new SessionOrchestrator(options);
+  try {
+    await before.resumeSession(main.id, "一", { displayContent: "一", messageMetadata: { channel: "desktop", clientMessageId: "one" } });
+    await before.resumeSession(main.id, "二", { displayContent: "二", messageMetadata: { channel: "desktop", clientMessageId: "two" } });
+    before.stop();
+    store.close();
+    store = new BridgeStore({ dataDir, consoleBaseUrl: "https://agent.example.test" });
+    const calls = [];
+    const after = new SessionOrchestrator({
+      ...options,
+      store,
+      runner: { runAppServerCommand: async (input) => { calls.push(input.stdin); return { ok: true }; }, stopAppServerCommand: () => false },
+    });
+    try {
+      await after.recoverInterruptedMainSessions();
+      await waitFor(() => calls.length === 1);
+      assert.ok(calls[0].indexOf("一") < calls[0].indexOf("二"));
+      assert.deepEqual(store.getSession(main.id).messages.filter((item) => item.role === "user").map((item) => item.content), ["一", "二"]);
+    } finally {
+      after.stop();
+    }
+  } finally {
+    before.stop();
+    store.close();
+    fs.rmSync(dataDir, { recursive: true, force: true });
+  }
+});
+
+test("stopping a quiet-window desktop batch cancels it across timer and restart", async () => {
+  const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), "oab-orchestrator-desktop-batch-stop-"));
+  let store = new BridgeStore({ dataDir, consoleBaseUrl: "https://agent.example.test" });
+  const main = store.getOrCreateDesktopMainSession({ workspaceRoot: dataDir });
+  const calls = [];
+  const options = { store, hub: { broadcast: () => {} }, channels: {}, textBatchQuietMs: 30,
+    runner: { runAppServerCommand: async (input) => { calls.push(input.stdin); return { ok: true }; }, stopAppServerCommand: () => false } };
+  const before = new SessionOrchestrator(options);
+  try {
+    await before.resumeSession(main.id, "CANCEL_THIS", { displayContent: "CANCEL_THIS", messageMetadata: { channel: "desktop", clientMessageId: "stop-1" } });
+    assert.equal(before.stopSession(main.id), true);
+    await new Promise((resolve) => setTimeout(resolve, 70));
+    assert.equal(calls.length, 0);
+    before.stop();
+    store.close();
+    store = new BridgeStore({ dataDir, consoleBaseUrl: "https://agent.example.test" });
+    const after = new SessionOrchestrator({ ...options, store });
+    try {
+      await after.recoverInterruptedMainSessions();
+      assert.equal(calls.length, 0);
+      assert.equal(store.listEvents(main.id).some((event) => event.payload?.metadata?.eventType === "inbound-batch/cancelled"), true);
+      assert.equal(store.getSession(main.id).messages.some((message) => message.role === "user" && message.content === "CANCEL_THIS"), true);
+    } finally {
+      after.stop();
+    }
+  } finally {
+    before.stop();
+    store.close();
+    fs.rmSync(dataDir, { recursive: true, force: true });
+  }
+});
+
+test("stopping a quiet-window WeChat batch keeps its messages but never dispatches them", async () => {
+  const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), "oab-orchestrator-wechat-batch-stop-"));
+  const store = new BridgeStore({ dataDir, consoleBaseUrl: "https://agent.example.test" });
+  const calls = [];
+  const orchestrator = new SessionOrchestrator({
+    store, hub: { broadcast: () => {} }, channels: { wechat: { sendText: async () => {} } }, textBatchQuietMs: 20,
+    runner: { runAppServerCommand: async (input) => { calls.push(input.stdin); return { ok: true }; }, stopAppServerCommand: () => false },
+  });
+  try {
+    const session = await orchestrator.handleChannelMessage("wechat", { senderId: "stop-user", text: "请停止", attachments: [] });
+    assert.equal(orchestrator.stopSession(session.id), true);
+    await new Promise((resolve) => setTimeout(resolve, 60));
+    assert.equal(calls.length, 0);
+    assert.equal(store.getSession(session.id).messages.some((message) => message.role === "user" && message.content === "请停止"), true);
+    assert.equal(store.listEvents(session.id).some((event) => event.payload?.metadata?.eventType === "inbound-batch/cancelled"), true);
+  } finally {
+    orchestrator.stop();
+    store.close();
+    fs.rmSync(dataDir, { recursive: true, force: true });
+  }
+});
+
+test("running main recovery selects A before dispatching a pending B once", async () => {
+  const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), "oab-orchestrator-main-batch-recovery-order-"));
+  let store = new BridgeStore({ dataDir, consoleBaseUrl: "https://agent.example.test" });
+  const main = store.getOrCreateDesktopMainSession({ workspaceRoot: dataDir });
+  const before = new SessionOrchestrator({
+    store, hub: { broadcast: () => {} }, channels: {}, textBatchQuietMs: 60000,
+    runner: { runAppServerCommand: async () => new Promise(() => {}), stopAppServerCommand: () => false },
+  });
+  let beforeStopped = false;
+  try {
+    await before.resumeSession(main.id, "REQUEST_A", { displayContent: "REQUEST_A", messageMetadata: { channel: "desktop", clientMessageId: "a" } });
+    before.flushDesktopMessageBatch(main.id);
+    await waitFor(() => before.running.has(main.id));
+    await before.resumeSession(main.id, "REQUEST_B", { displayContent: "REQUEST_B", messageMetadata: { channel: "desktop", clientMessageId: "b" } });
+    before.stop();
+    beforeStopped = true;
+    store.close();
+    store = new BridgeStore({ dataDir, consoleBaseUrl: "https://agent.example.test" });
+    const calls = [];
+    const after = new SessionOrchestrator({
+      store, hub: { broadcast: () => {} }, channels: {}, textBatchQuietMs: 60000,
+      runner: { runAppServerCommand: async (input) => { calls.push(input.stdin); return { ok: true }; }, stopAppServerCommand: () => false },
+    });
+    try {
+      await after.recoverInterruptedMainSessions();
+      await waitFor(() => calls.length === 2);
+      assert.match(calls[0], /REQUEST_A/);
+      assert.doesNotMatch(calls[0], /REQUEST_B/);
+      assert.equal(calls.filter((input) => input.includes("REQUEST_B")).length, 1);
+    } finally {
+      after.stop();
+    }
+  } finally {
+    if (!beforeStopped) before.stop();
+    store.close();
+    fs.rmSync(dataDir, { recursive: true, force: true });
+  }
 });
 
 test("child task input retains the latest visible parent request", async () => {
@@ -803,6 +998,7 @@ test("proactive WeChat onboarding is durably deferred until the first inbound co
     store,
     hub: { broadcast: () => {} },
     channels: { wechat: { sendText: async () => { throw new Error("No cached context token for wx-user."); } } },
+    textBatchQuietMs: 20,
     runner: { runAppServerCommand: async () => ({ ok: true }), steerActiveTurn: async () => false, stopAppServerCommand: () => false },
   });
   try {
@@ -872,6 +1068,7 @@ test("acknowledges WeChat immediately and queues the completed reply behind the 
       },
       stopAppServerCommand: () => false,
     },
+    textBatchQuietMs: 20,
   });
 
   const session = await orchestrator.handleChannelMessage("wechat", {
@@ -1085,7 +1282,194 @@ test("collects consecutive attachment messages and sends one compact receipt aft
   store.close();
 });
 
-test("acknowledges consecutive WeChat messages and steers new input into the active turn", async () => {
+test("one thousand rapid WeChat texts enter one Agent turn in arrival order", async () => {
+  const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), "oab-orchestrator-wechat-text-batch-"));
+  const store = new BridgeStore({ dataDir, consoleBaseUrl: "https://agent.example.test" });
+  const calls = [];
+  const sent = [];
+  const orchestrator = new SessionOrchestrator({
+    store,
+    hub: { broadcast: () => {} },
+    channels: { wechat: { sendText: async (_, content) => sent.push(content) } },
+    runner: { runAppServerCommand: async (input) => { calls.push(input.stdin); return { ok: true }; }, stopAppServerCommand: () => false },
+    attachmentBatchQuietMs: 30,
+    attachmentBatchMaxWaitMs: 10000,
+    textBatchQuietMs: 30,
+  });
+  try {
+    for (let index = 0; index < 1000; index += 1) {
+      await orchestrator.handleChannelMessage("wechat", {
+        senderId: "text-batch-user", senderName: "连续发送者", text: `第${index}条`, attachments: [],
+      });
+    }
+    await waitFor(() => calls.length > 0, 12000);
+    assert.equal(calls.length, 1);
+    assert.equal(sent.filter((item) => item === "收到").length, 1);
+    assert.ok(calls[0].indexOf("第0条") < calls[0].indexOf("第999条"));
+    assert.equal(store.getSession(store.listMainSessions()[0].id).messages.filter((item) => item.role === "user").length, 1000);
+  } finally {
+    orchestrator.stop();
+    store.close();
+    fs.rmSync(dataDir, { recursive: true, force: true });
+  }
+});
+
+test("WeChat batches remain separate by sender and preserve text-file order", async () => {
+  const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), "oab-orchestrator-wechat-batch-scope-"));
+  const store = new BridgeStore({ dataDir, consoleBaseUrl: "https://agent.example.test" });
+  const calls = [];
+  const orchestrator = new SessionOrchestrator({
+    store,
+    hub: { broadcast: () => {} },
+    channels: { wechat: { sendText: async () => {} }, "wechat-personal": { sendText: async () => {} } },
+    runner: { runAppServerCommand: async (input) => { calls.push({ sessionId: input.sessionId, content: input.stdin }); return { ok: true }; }, stopAppServerCommand: () => false },
+    textBatchQuietMs: 20,
+    attachmentBatchQuietMs: 20,
+    attachmentBatchMaxWaitMs: 100,
+  });
+  try {
+    const alice = await orchestrator.handleChannelMessage("wechat", { senderId: "alice", text: "先看这张", attachments: [] });
+    await orchestrator.handleChannelMessage("wechat", { senderId: "bob", text: "另一会话", attachments: [] });
+    await orchestrator.handleChannelMessage("wechat", {
+      senderId: "alice", text: "", attachments: [{ kind: "image", fileName: "图.jpg", path: path.join(config.inboundAttachmentsDir, "wechat/alice/one.jpg") }],
+    });
+    await orchestrator.handleChannelMessage("wechat", { senderId: "alice", text: "然后回答", attachments: [] });
+    const personal = await orchestrator.handleChannelMessage("wechat-personal", { senderId: "alice", text: "个人微信独立会话", attachments: [] });
+    await waitFor(() => calls.length === 3);
+    const aliceCall = calls.find((item) => item.sessionId === alice.id).content;
+    const bobCall = calls.find((item) => item.sessionId !== alice.id && item.sessionId !== personal.id).content;
+    assert.equal(bobCall, "另一会话");
+    assert.equal(calls.find((item) => item.sessionId === personal.id).content, "个人微信独立会话");
+    assert.ok(aliceCall.indexOf("先看这张") < aliceCall.indexOf("图.jpg"));
+    assert.ok(aliceCall.indexOf("图.jpg") < aliceCall.indexOf("然后回答"));
+    assert.equal(store.getSession(alice.id).messages.filter((item) => item.role === "user").length, 3);
+    assert.equal(store.listEvents(alice.id).some((event) => JSON.stringify(event.payload.metadata || {}).includes(config.inboundAttachmentsDir)), false);
+  } finally {
+    orchestrator.stop();
+    store.close();
+    fs.rmSync(dataDir, { recursive: true, force: true });
+  }
+});
+
+test("personal WeChat group members keep separate Agent turns and speaker labels", async () => {
+  const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), "oab-orchestrator-wechat-group-batch-"));
+  const store = new BridgeStore({ dataDir, consoleBaseUrl: "https://agent.example.test" });
+  const calls = [];
+  const orchestrator = new SessionOrchestrator({
+    store,
+    hub: { broadcast: () => {} },
+    channels: { "wechat-personal": { sendText: async () => {} } },
+    textBatchQuietMs: 20,
+    runner: { runAppServerCommand: async (input) => { calls.push(input.stdin); return { ok: true }; }, stopAppServerCommand: () => false },
+  });
+  try {
+    const memberMessage = (memberId, sender, text) => ({
+      senderId: "family@chatroom", senderMemberId: memberId, sender, isGroup: true, text, attachments: [],
+    });
+    await orchestrator.handleChannelMessage("wechat-personal", memberMessage("wxid_alice", "微信群 family · Alice", "Alice 第一条"));
+    await orchestrator.handleChannelMessage("wechat-personal", memberMessage("wxid_bob", "微信群 family · Bob", "Bob 第一条"));
+    await orchestrator.handleChannelMessage("wechat-personal", memberMessage("wxid_alice", "微信群 family · Alice", "Alice 第二条"));
+    await waitFor(() => calls.length === 2);
+    assert.equal(calls.filter((content) => content.includes("Alice 第一条") && content.includes("Bob 第一条")).length, 0);
+    const aliceCall = calls.find((content) => content.includes("Alice 第一条"));
+    const bobCall = calls.find((content) => content.includes("Bob 第一条"));
+    assert.match(aliceCall, /Alice 第二条/);
+    assert.match(aliceCall, /微信群 family · Alice/);
+    assert.doesNotMatch(aliceCall, /Bob 第一条/);
+    assert.match(bobCall, /微信群 family · Bob/);
+    assert.doesNotMatch(bobCall, /Alice/);
+    assert.equal(store.listMainSessions().some((session) => store.listEvents(session.id).some((event) => JSON.stringify(event.payload).includes("wxid_alice") || JSON.stringify(event.payload).includes("wxid_bob"))), false);
+  } finally {
+    orchestrator.stop();
+    store.close();
+    fs.rmSync(dataDir, { recursive: true, force: true });
+  }
+});
+
+test("restart resumes a persisted quiet-window batch without losing its messages", async () => {
+  const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), "oab-orchestrator-wechat-batch-restart-"));
+  let store = new BridgeStore({ dataDir, consoleBaseUrl: "https://agent.example.test" });
+  const options = {
+    store,
+    hub: { broadcast: () => {} },
+    channels: { wechat: { sendText: async () => {} } },
+    runner: { runAppServerCommand: async () => ({ ok: true }), stopAppServerCommand: () => false },
+    textBatchQuietMs: 60000,
+    attachmentBatchMaxWaitMs: 60000,
+  };
+  const before = new SessionOrchestrator(options);
+  try {
+    const session = await before.handleChannelMessage("wechat", { senderId: "restart-user", text: "第一段", attachments: [] });
+    await before.handleChannelMessage("wechat", { senderId: "restart-user", text: "第二段", attachments: [] });
+    assert.equal(store.getSession(session.id).messages.filter((item) => item.role === "user").length, 2);
+    before.stop();
+    store.close();
+    store = new BridgeStore({ dataDir, consoleBaseUrl: "https://agent.example.test" });
+    const calls = [];
+    const after = new SessionOrchestrator({
+      ...options,
+      store,
+      runner: { runAppServerCommand: async (input) => { calls.push(input.stdin); return { ok: true }; }, stopAppServerCommand: () => false },
+    });
+    try {
+      await after.recoverInterruptedMainSessions();
+      await waitFor(() => calls.length === 1);
+      assert.ok(calls[0].indexOf("第一段") < calls[0].indexOf("第二段"));
+      assert.equal(store.getSession(session.id).messages.filter((item) => item.role === "user").length, 2);
+      await after.recoverInterruptedMainSessions();
+      assert.equal(calls.length, 1);
+    } finally {
+      after.stop();
+    }
+  } finally {
+    before.stop();
+    store.close();
+    fs.rmSync(dataDir, { recursive: true, force: true });
+  }
+});
+
+test("restart restores ordered text and file references from a pending WeChat batch", async () => {
+  const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), "oab-orchestrator-wechat-file-restart-"));
+  const inboundRoot = path.join(dataDir, "inbound");
+  const previousInboundRoot = config.inboundAttachmentsDir;
+  config.inboundAttachmentsDir = inboundRoot;
+  fs.mkdirSync(path.join(inboundRoot, "wechat"), { recursive: true });
+  const filePath = path.join(inboundRoot, "wechat", "note.txt");
+  fs.writeFileSync(filePath, "hello");
+  let store = new BridgeStore({ dataDir, consoleBaseUrl: "https://agent.example.test" });
+  const options = { store, hub: { broadcast: () => {} }, channels: { wechat: { sendText: async () => {} } }, textBatchQuietMs: 60000, attachmentBatchQuietMs: 60000 };
+  const before = new SessionOrchestrator(options);
+  try {
+    const session = await before.handleChannelMessage("wechat", { senderId: "file-restart", text: "先看说明", attachments: [] });
+    await before.handleChannelMessage("wechat", { senderId: "file-restart", text: "", attachments: [{ kind: "file", fileName: "note.txt", path: filePath }] });
+    await before.handleChannelMessage("wechat", { senderId: "file-restart", text: "然后回答", attachments: [] });
+    assert.equal(store.listEvents(session.id).some((event) => JSON.stringify(event.payload.metadata || {}).includes(filePath)), false);
+    before.stop();
+    store.close();
+    store = new BridgeStore({ dataDir, consoleBaseUrl: "https://agent.example.test" });
+    const calls = [];
+    const after = new SessionOrchestrator({
+      ...options, store,
+      runner: { runAppServerCommand: async (input) => { calls.push(input.stdin); return { ok: true }; }, stopAppServerCommand: () => false },
+    });
+    try {
+      await after.recoverInterruptedMainSessions();
+      await waitFor(() => calls.length === 1);
+      assert.ok(calls[0].indexOf("先看说明") < calls[0].indexOf("note.txt"));
+      assert.ok(calls[0].indexOf("note.txt") < calls[0].indexOf("然后回答"));
+      assert.equal(store.getSession(session.id).messages.filter((item) => item.role === "user").length, 3);
+    } finally {
+      after.stop();
+    }
+  } finally {
+    before.stop();
+    store.close();
+    config.inboundAttachmentsDir = previousInboundRoot;
+    fs.rmSync(dataDir, { recursive: true, force: true });
+  }
+});
+
+test("a later WeChat batch steers new input into the active turn", async () => {
   const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), "oab-orchestrator-wechat-queue-"));
   const store = new BridgeStore({ dataDir, consoleBaseUrl: "https://agent.example.test" });
   const sent = [];
@@ -1096,6 +1480,7 @@ test("acknowledges consecutive WeChat messages and steers new input into the act
     store,
     hub: { broadcast: () => {} },
     channels: { wechat: { sendText: async (recipientId, content) => sent.push({ recipientId, content }) } },
+    textBatchQuietMs: 20,
     runner: {
       steerActiveTurn: async (sessionId, content, onSessionEvent, options) => {
         steered.push({ sessionId, content, options });
@@ -1128,6 +1513,7 @@ test("acknowledges consecutive WeChat messages and steers new input into the act
     text: "第一条",
     attachments: [],
   });
+  await waitFor(() => calls.length === 1);
   await orchestrator.handleChannelMessage("wechat", {
     senderId: "wechat-queue-user",
     senderName: "队列用户",
@@ -1156,6 +1542,7 @@ test("defers a stale final WeChat reply and replays it after the next receipt", 
   const orchestrator = new SessionOrchestrator({
     store,
     hub: { broadcast: () => {} },
+    textBatchQuietMs: 20,
     channels: {
       wechat: {
         sendText: async (recipientId, content) => {

@@ -48,7 +48,9 @@ export class WeChatQianxunConnector {
   private readonly ownership?: { store: InstallationConnectionOwnership; spaceId: string };
   private onInboundMessage: ((message: {
     senderId: string;
+    senderMemberId: string;
     sender: string;
+    isGroup: boolean;
     sessionId: string;
     text: string;
     conversationHistory: PersonalWechatHistoryMessage[];
@@ -61,7 +63,7 @@ export class WeChatQianxunConnector {
     fetchImpl?: typeof fetch;
     operationStore?: ReturnType<typeof createOperationStore>;
     ownership?: { store: InstallationConnectionOwnership; spaceId: string };
-    onInboundMessage?: ((message: { senderId: string; sender: string; sessionId: string; text: string; conversationHistory: PersonalWechatHistoryMessage[]; attachments: never[]; createdAt: string }) => Promise<unknown>) | null;
+    onInboundMessage?: ((message: { senderId: string; senderMemberId: string; sender: string; isGroup: boolean; sessionId: string; text: string; conversationHistory: PersonalWechatHistoryMessage[]; attachments: never[]; createdAt: string }) => Promise<unknown>) | null;
   }) {
     if (!path.isAbsolute(dataRoot || "")) throw new Error("Qianxun data root must be absolute");
     this.rootDir = path.join(dataRoot, "connections", "wechat", "qianxun");
@@ -499,7 +501,9 @@ function toInboundMessage(message: PersonalWechatMessage, event: Record<string, 
     : `微信联系人 ${maskForConversation(message.senderWxid)}`;
   return {
     senderId: message.conversationWxid,
+    senderMemberId: message.senderWxid,
     sender: senderLabel,
+    isGroup: message.isGroup,
     sessionId: typeof event.eventKey === "string" ? event.eventKey : String(event.id || ""),
     text: message.text,
     conversationHistory,
