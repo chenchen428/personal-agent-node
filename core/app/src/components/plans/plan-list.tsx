@@ -20,9 +20,9 @@ export function PlanList({ value, loading, error, staleError, selectedId, onSele
 
 function PlanRow({ plan, selected, onSelect }: { plan: Plan; selected: boolean; onSelect: (id: string) => void }) {
   return <button type="button" className={`plan-row${selected ? " is-selected" : ""}`} aria-pressed={selected} onClick={() => onSelect(plan.id)}>
-    <span className="plan-row-heading"><strong>{plan.title}</strong><span>{!plan.enabled ? "已暂停" : plan.status === "cancelled" ? "已取消" : executionModeLabel[plan.executionMode]}</span></span>
+    <span className="plan-row-heading"><strong>{plan.title}</strong><span>{plan.status === "cancelled" ? "已取消" : !plan.enabled ? "已暂停" : executionModeLabel[plan.executionMode]}</span></span>
     <span>{recurrenceLabel(plan.recurrence)} · {plan.participants.join("、") || "我的安排"}</span>
-    <span className="plan-next">下一次：{plan.enabled && plan.nextOccurrenceAt ? <time dateTime={plan.nextOccurrenceAt}>{calendarTime(plan.nextOccurrenceAt, plan.timeZone)}</time> : !plan.enabled ? "已暂停" : "没有待发生安排"}</span>
+    <span className="plan-next">下一次：{plan.status === "cancelled" ? "已取消" : plan.enabled && plan.nextOccurrenceAt ? <time dateTime={plan.nextOccurrenceAt}>{calendarTime(plan.nextOccurrenceAt, plan.timeZone)}</time> : !plan.enabled ? "已暂停" : "没有待发生安排"}</span>
     {plan.latestRun ? <small>最近执行：{runStatusLabel(plan.latestRun.status)} · {calendarTime(plan.latestRun.occurrenceAt, plan.timeZone)}</small> : null}
   </button>;
 }

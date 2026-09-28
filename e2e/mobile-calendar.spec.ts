@@ -96,3 +96,15 @@ test("reminder detail describes pending reminder runs accurately", async ({ brow
   await expect(page.locator(".plan-runs")).not.toContainText("仅记录的安排");
   await context.close();
 });
+
+test("cancelled reminder is not described as paused", async ({ browser }) => {
+  const context = await browser.newContext({ viewport: { width: 390, height: 760 }, isMobile: true, hasTouch: true, userAgent: mobileUserAgent });
+  const page = await context.newPage();
+  await mockCalendar(page, true);
+  await page.route("**/api/plans/plan-fixture", (route) => route.fulfill({ json: { ok: true, result: { plan: { ...entry, id: "plan-fixture", status: "cancelled", executionMode: "remind", executionPrompt: "提醒验收", enabled: false, nextOccurrenceAt: null, missedRunPolicy: "skip" } } } }));
+  await page.route("**/api/plans/plan-fixture/runs**", (route) => route.fulfill({ json: { ok: true, result: { items: [], total: 0, limit: 20, offset: 0, hasMore: false } } }));
+  await page.goto("/app/mobile/workers/calendar?planId=plan-fixture");
+  await expect(page.locator(".plan-detail .cove-calendar-status")).toHaveText("已取消 · 提醒本人");
+  await expect(page.locator(".plan-detail")).toContainText("暂无待发生安排");
+  await context.close();
+});
