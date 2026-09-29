@@ -1,6 +1,6 @@
 {
   "name": "personal-agent-node",
-  "version": "0.2.0-beta.63",
+  "version": "0.2.0-beta.64",
   "private": true,
   "license": "Apache-2.0",
   "type": "module",
@@ -52,18 +52,18 @@
     "dingtalk-stream": "2.1.4",
     "http-proxy": "1.18.1",
     "lucide-react": "^1.24.0",
-    "mailparser": "^3.9.14",
-    "markdown-it": "14.3.0",
+    "mailparser": "3.9.31",
+    "markdown-it": "14.3.2",
     "mime-types": "2.1.35",
-    "next": "16.2.12",
+    "next": "16.3.7",
     "qrcode": "^1.5.4",
     "qrcode-terminal": "^0.12.0",
     "react": "19.2.7",
     "react-dom": "19.2.7",
-    "sharp": "0.35.3",
+    "sharp": "0.35.5",
     "tailwind-merge": "^3.6.0",
     "tsx": "^4.20.6",
-    "undici": "^7.28.0",
+    "undici": "7.30.0",
     "ws": "^8.18.3",
     "zod": "^3.25.76"
   },
@@ -79,8 +79,8 @@
     "typescript": "5.9.3"
   },
   "overrides": {
-    "fast-uri": "3.1.4",
-    "postcss": "8.5.19",
+    "fast-uri": "3.1.8",
+    "postcss": "8.5.28",
     "sharp": "$sharp"
   },
   "engines": {
