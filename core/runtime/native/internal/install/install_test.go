@@ -39,6 +39,9 @@ func (runner *desktopStartRunner) Start(_ context.Context, command string, args 
 }
 
 func TestMacDesktopOpensInstalledBundleExecutableInsteadOfLaunchServices(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("macOS bundle executables require Unix file permissions")
+	}
 	installRoot := t.TempDir()
 	application := filepath.Join(installRoot, "current", "desktop", "Personal Agent.app")
 	executable := filepath.Join(application, "Contents", "MacOS", "personal-agent-ui")
@@ -108,6 +111,9 @@ func TestOSRunnerStartsDesktopProcessWithoutWaitingForExit(t *testing.T) {
 }
 
 func TestMacDesktopUpgradeLaunchesCurrentVersionAndFailedLaunchRollsBack(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("macOS bundle executables require Unix file permissions")
+	}
 	home := t.TempDir()
 	t.Setenv("HOME", home)
 	installRoot := filepath.Join(home, "installation", "core")
