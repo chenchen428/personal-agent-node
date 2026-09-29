@@ -184,7 +184,15 @@ jobs:
         run: |
           signing_args=()
           if [[ "$REQUIRE_NATIVE_SIGNING" == "true" ]]; then signing_args+=(--require-signing); fi
-          node scripts/build-platform-installer.mjs --tag "$GITHUB_REF_NAME" --release-root dist/release-payload --node-runtime "${RUNNER_TEMP}/node-runtime${{ matrix.platform == 'win32' && '.exe' || '' }}" --output dist/platform --platform "${{ matrix.platform }}" --arch "${{ matrix.arch }}" "${signing_args[@]}"
+          if [[ "${{ matrix.platform }}" == "darwin" ]]; then
+            node scripts/build-platform-installer.mjs --tag "$GITHUB_REF_NAME" --release-root dist/release-payload --node-runtime "${RUNNER_TEMP}/node-runtime" --output dist/platform --platform darwin --arch "${{ matrix.arch }}" "${signing_args[@]}" --stage-for-wrapper > "${RUNNER_TEMP}/macos-platform-stage.json"
+          else
+            node scripts/build-platform-installer.mjs --tag "$GITHUB_REF_NAME" --release-root dist/release-payload --node-runtime "${RUNNER_TEMP}/node-runtime${{ matrix.platform == 'win32' && '.exe' || '' }}" --output dist/platform --platform "${{ matrix.platform }}" --arch "${{ matrix.arch }}" "${signing_args[@]}"
+          fi
+      - name: Verify final macOS updater in a separate process
+        if: matrix.platform == 'darwin'
+        shell: bash
+        run: bash scripts/verify-platform-installer.sh --stage-file "${RUNNER_TEMP}/macos-platform-stage.json" --tag "$GITHUB_REF_NAME" --output dist/platform --platform darwin --arch "${{ matrix.arch }}"
       - uses: actions/upload-artifact@v7
         with:
           name: platform-${{ matrix.asset }}

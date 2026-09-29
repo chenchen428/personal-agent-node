@@ -363,6 +363,7 @@ test("personal WeChat policy defaults to deny and only dispatches allowed Qianxu
   assert.equal((await connector.acceptCallback(groupAllowedBody)).dispatched, true);
   assert.equal((await connector.acceptCallback(groupAllowedBody)).reason, "duplicate");
   assert.deepEqual(inbound.map((item) => item.senderId), ["wxid_friend", "family@chatroom"]);
+  assert.deepEqual(inbound.map((item) => [item.senderMemberId, item.isGroup]), [["wxid_friend", false], ["wxid_friend", true]]);
 
   assert.equal((await connector.acceptCallback(direct("self-message", "wxid_friend", "my earlier reply", 1))).reason, "self_message");
   const directHistory = connector.conversationHistory(allowedContactId, { limit: 100 });

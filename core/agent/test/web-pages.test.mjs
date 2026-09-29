@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import test from "node:test";
 import vm from "node:vm";
-import { renderDashboard, renderDataPage, renderMessagesFragment, renderNewSession, renderPagesIndex, renderPrivateFileBatch, renderReleaseNotesPage, renderSessionDetail, renderSkillCatalogPage } from "../src/web/pages.js";
+import { renderDashboard, renderDataPage, renderMessagesFragment, renderNewSession, renderPagesIndex, renderPrivateFileBatch, renderReleaseNotesPage, renderSessionDetail } from "../src/web/pages.js";
 
 test("public pages use the Personal Agent surface and canonical public URLs", () => {
   const html = renderPagesIndex({
@@ -112,31 +112,6 @@ test("native data page renders dynamic schema, filters, aggregation, and mobile 
   assert.match(html, /fragment','rows'/);
   assert.match(html, /\.data-grid-scroll\{max-width:100%;overscroll-behavior-inline:contain/);
   assert.doesNotMatch(html, /Tabulator|DataTable|AG Grid/);
-  const inlineScript = html.match(/<script>([\s\S]*)<\/script>/)?.[1] || "";
-  assert.doesNotThrow(() => new vm.Script(inlineScript));
-});
-
-test("skill catalog lists workspace skills and opens description details", () => {
-  const html = renderSkillCatalogPage({
-    categories: [{ id: "research-knowledge", label: "Research & Knowledge" }],
-    skills: [{
-      name: "deep-research",
-      description: "Plan and execute structured evidence-backed research.",
-      category: "research-knowledge",
-      maturity: "beta",
-      cli: ["research"],
-      related: ["knowledge-capture"],
-    }],
-  });
-
-  assert.match(html, /技能清单/);
-  assert.match(html, /当前工作区 · 1 个技能/);
-  assert.match(html, /data-skill-name="deep-research"/);
-  assert.match(html, /Plan and execute structured evidence-backed research\./);
-  assert.match(html, /data-skill-detail[^>]*hidden/);
-  assert.match(html, /data-skill-detail-description/);
-  assert.match(html, /data-skill-search/);
-  assert.doesNotMatch(html, /\.skill-row:hover/);
   const inlineScript = html.match(/<script>([\s\S]*)<\/script>/)?.[1] || "";
   assert.doesNotThrow(() => new vm.Script(inlineScript));
 });

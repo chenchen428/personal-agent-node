@@ -8,6 +8,8 @@
   "acceptance": [
     "A local session stores ordered commands and events",
     "Concurrent input is serialized",
+    "The desktop main conversation persists each accepted short text message once and combines rapid same-session texts into one ordered Agent turn; a later batch can steer or queue behind an active turn, while desktop attachments retain their immediate governed path and pending text is dispatched first.",
+    "Explicit session stop cancels an undispatched message batch with a durable cancellation event; interrupted main-turn recovery selects the latest dispatched request before separately dispatching later pending input once.",
     "In-progress Worker tasks resume after a service restart, surface live recovery status, and report completion through the main Agent",
     "A Work reports verified artifact information in its final chat reply while the generic completion event remains domain-neutral, and the main Agent uses that information to author Activity",
     "Child tasks require an Agent-generated title of at most 20 characters and description of at most 100 characters, and both fields remain updateable through the Personal Agent CLI",
@@ -45,7 +47,7 @@
     "The release contains only thirteen cove-* skills; builtin and user sources share one authoritative UI and engine catalog, and unchanged legacy copies are excluded only by complete trusted file-tree fingerprints while all user files and backups stay untouched",
     "Codex and Claude suppress native skill autoload only inside product execution, receive the same current skill index, and refresh newly added user skills on the next turn and resume without changing global engine configuration",
     "涉及子任务时首次确认、恢复后确认、进度更新及状态回复均保留服务提供的进度页面；使用现有执行详情页，远程不可用时准确说明，不拼接或伪造地址。",
-    "服务成功监听后复用既有恢复机制续接start/running主会话：保留原会话历史和线程，先核实完成与外部副作用，失败或无终态落paused，避免重复恢复且不覆盖新用户回合；服务中断与用户主动停止区分，不新增队列或检查点。",
+    "服务成功监听后复用既有恢复机制续接start/running主会话：保留原会话历史和线程，先核实完成与外部副作用，失败或无终态落paused，避免重复恢复且不覆盖新用户回合；服务中断与用户主动停止区分，不为已开始执行的回合新增重试队列。短时输入在等待窗口内已逐条持久化，服务重启后恢复尚未派发的批次。",
     "我的技能支持本机同源桌面导入SKILL.md或文本资源目录、摘要绑定确认移除及撤销；内置只读，不执行导入脚本，不覆盖同名，拒绝目录逃逸/符号链接/跨Space目标，目录每新回合动态读取。"
   ]
 }

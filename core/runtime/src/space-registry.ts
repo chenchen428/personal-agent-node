@@ -175,7 +175,7 @@ export function initializeInstallation({ dataRoot, now = new Date() }: { dataRoo
 export function listSpaces(dataRoot: string, { includeDeleted = false } = {}) {
   const paths = installationPaths(dataRoot);
   if (!fs.existsSync(paths.registryFile)) return [];
-  const database = openRegistry(paths.registryFile);
+  const database = openRegistry(paths.registryFile, { readOnly: true });
   try {
     const rows = database.prepare(`SELECT * FROM spaces ${includeDeleted ? "" : "WHERE state<>'deleted'"} ORDER BY kind='personal' DESC, created_at ASC`).all() as Record<string, unknown>[];
     return rows.map(mapRow);
@@ -333,15 +333,17 @@ function createSpaceRecord(database: Database, paths: ReturnType<typeof installa
   }
 }
 
-function openRegistry(filePath: string) {
+function openRegistry(filePath: string, { readOnly = false } = {}) {
   fs.mkdirSync(path.dirname(filePath), { recursive: true, mode: 0o700 });
   // Node 22 labels its built-in SQLite API experimental. The registry is an
   // internal implementation detail, so do not let that runtime warning corrupt
   // the CLI's machine-readable stderr contract.
   process.env.NODE_NO_WARNINGS = "1";
   const { DatabaseSync } = require("node:sqlite") as typeof import("node:sqlite");
-  const database = new DatabaseSync(filePath);
-  database.exec(`
+  const database = new DatabaseSync(filePath, { readOnly });
+  try {
+    database.exec("PRAGMA busy_timeout=5000");
+    if (!readOnly) database.exec(`
     PRAGMA journal_mode=WAL;
     PRAGMA foreign_keys=ON;
     CREATE TABLE IF NOT EXISTS spaces(
@@ -362,7 +364,11 @@ function openRegistry(filePath: string) {
     );
     CREATE UNIQUE INDEX IF NOT EXISTS one_personal_space ON spaces(kind) WHERE kind='personal';
   `);
-  return database;
+    return database;
+  } catch (error) {
+    database.close();
+    throw error;
+  }
 }
 
 function requireSpaceRow(database: Database, selector: string) {

@@ -4,27 +4,47 @@
   "routes": [
     {
       "pattern": "/",
+      "access": "authenticated",
+      "capability": "publications"
+    },
+    {
+      "pattern": "/login",
+      "access": "public",
+      "capability": "agent"
+    },
+    {
+      "pattern": "/logout",
+      "access": "public",
+      "capability": "agent"
+    },
+    {
+      "pattern": "/assets/*",
+      "access": "public",
+      "capability": "console"
+    },
+    {
+      "pattern": "/public/*",
       "access": "public",
       "capability": "publications"
     },
     {
       "pattern": "/blog/*",
-      "access": "public",
+      "access": "authenticated",
       "capability": "publications"
     },
     {
       "pattern": "/pages/*",
-      "access": "public",
+      "access": "authenticated",
       "capability": "publications"
     },
     {
       "pattern": "/docs/*",
-      "access": "public",
+      "access": "authenticated",
       "capability": "publications"
     },
     {
       "pattern": "/resources/*",
-      "access": "public",
+      "access": "authenticated",
       "capability": "publications"
     },
     {
@@ -133,6 +153,11 @@
       "capability": "agent"
     },
     {
+      "pattern": "/api/token-usage/*",
+      "access": "authenticated",
+      "capability": "agent"
+    },
+    {
       "pattern": "/api/app/mail/*",
       "access": "authenticated",
       "capability": "mail"
@@ -169,6 +194,11 @@
     },
     {
       "pattern": "/api/skills",
+      "access": "authenticated",
+      "capability": "skills"
+    },
+    {
+      "pattern": "/api/skills/*",
       "access": "authenticated",
       "capability": "skills"
     },

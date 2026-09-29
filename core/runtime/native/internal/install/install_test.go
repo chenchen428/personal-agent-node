@@ -9,11 +9,162 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
+	"time"
 )
 
 type fakeRunner struct{ calls []string }
+
+type desktopStartRunner struct {
+	fakeRunner
+	command  string
+	args     []string
+	env      []string
+	err      error
+	resolved []string
+}
+
+func (runner *desktopStartRunner) Start(_ context.Context, command string, args []string, env []string) error {
+	runner.command = command
+	runner.args = append([]string(nil), args...)
+	runner.env = append([]string(nil), env...)
+	resolved, err := filepath.EvalSymlinks(command)
+	if err != nil {
+		return err
+	}
+	runner.resolved = append(runner.resolved, resolved)
+	return runner.err
+}
+
+func TestMacDesktopOpensInstalledBundleExecutableInsteadOfLaunchServices(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("macOS bundle executables require Unix file permissions")
+	}
+	installRoot := t.TempDir()
+	application := filepath.Join(installRoot, "current", "desktop", "Personal Agent.app")
+	executable := filepath.Join(application, "Contents", "MacOS", "personal-agent-ui")
+	if err := os.MkdirAll(filepath.Dir(executable), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(executable, []byte("fixture desktop executable"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	runner := &desktopStartRunner{}
+	env := []string{"PRIVATE_SITE_INSTALL_ROOT=" + installRoot}
+	url := "http://127.0.0.1:8843/app/setup"
+	if err := openDesktopShell(context.Background(), url, Options{Platform: "darwin", InstallRoot: installRoot}, runner, env); err != nil {
+		t.Fatal(err)
+	}
+	if runner.command != executable || len(runner.args) != 2 || runner.args[0] != "--url" || runner.args[1] != url {
+		t.Fatalf("desktop start = %q %q, want installed executable and setup URL", runner.command, runner.args)
+	}
+	if len(runner.calls) != 0 {
+		t.Fatalf("LaunchServices returned success without starting the gateway: %v", runner.calls)
+	}
+	if len(runner.env) != 1 || runner.env[0] != env[0] {
+		t.Fatalf("desktop environment = %v", runner.env)
+	}
+}
+
+func TestMacDesktopOpenRejectsMissingBundleExecutable(t *testing.T) {
+	runner := &desktopStartRunner{}
+	if err := openDesktopShell(context.Background(), "http://127.0.0.1:8843/app/setup", Options{Platform: "darwin", InstallRoot: t.TempDir()}, runner, nil); err == nil {
+		t.Fatal("missing desktop executable must fail before readiness is claimed")
+	}
+	if len(runner.calls) != 0 || runner.command != "" {
+		t.Fatalf("missing desktop executable should not invoke a launcher: %v, %q", runner.calls, runner.command)
+	}
+}
+
+func TestOSRunnerStartsDesktopProcessWithoutWaitingForExit(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("shell fixture is Unix-only")
+	}
+	root := t.TempDir()
+	started := filepath.Join(root, "started")
+	release := filepath.Join(root, "release")
+	command := `printf started > "$1"; while [ ! -e "$2" ]; do sleep 0.05; done`
+	result := make(chan error, 1)
+	go func() {
+		result <- (OSRunner{}).Start(context.Background(), "/bin/sh", []string{"-c", command, "fixture", started, release}, os.Environ())
+	}()
+	select {
+	case err := <-result:
+		if err != nil {
+			t.Fatal(err)
+		}
+	case <-time.After(time.Second):
+		_ = os.WriteFile(release, nil, 0o600)
+		<-result
+		t.Fatal("desktop process start waited for the child to exit")
+	}
+	defer os.WriteFile(release, nil, 0o600)
+	for attempt := 0; attempt < 40; attempt++ {
+		if _, err := os.Stat(started); err == nil {
+			return
+		}
+		time.Sleep(25 * time.Millisecond)
+	}
+	t.Fatal("desktop process did not start")
+}
+
+func TestMacDesktopUpgradeLaunchesCurrentVersionAndFailedLaunchRollsBack(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("macOS bundle executables require Unix file permissions")
+	}
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	installRoot := filepath.Join(home, "installation", "core")
+	nodeRuntime := filepath.Join(home, "node")
+	if err := os.WriteFile(nodeRuntime, []byte("bundled-node"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	runner := &desktopStartRunner{}
+	install := func(releaseID string) error {
+		_, err := Install(context.Background(), Options{
+			ReleaseRoot: macDesktopFixtureRelease(t, releaseID), NodeRuntime: nodeRuntime,
+			InstallRoot: installRoot, DataRoot: filepath.Join(home, "workspace"),
+			Platform: "darwin", SkipService: true, SkipStartWait: true,
+		}, runner)
+		return err
+	}
+	for _, releaseID := range []string{"release-one", "release-two"} {
+		if err := install(releaseID); err != nil {
+			t.Fatal(err)
+		}
+		want := filepath.Join(installRoot, "releases", releaseID, "desktop", "Personal Agent.app", "Contents", "MacOS", "personal-agent-ui")
+		want, err := filepath.EvalSymlinks(want)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got := runner.resolved[len(runner.resolved)-1]; got != want {
+			t.Fatalf("launched bundle executable = %q, want %q", got, want)
+		}
+	}
+	if len(runner.resolved) != 2 || len(runner.calls) != 4 {
+		t.Fatalf("expected init+prepare and one direct desktop start per version: starts=%v calls=%v", runner.resolved, runner.calls)
+	}
+	runner.err = errors.New("candidate desktop start failed")
+	if err := install("release-three"); err == nil || !strings.Contains(err.Error(), "candidate desktop start failed") {
+		t.Fatalf("expected desktop start failure, got %v", err)
+	}
+	if got := filepath.Base(pointerTarget(filepath.Join(installRoot, "current"))); got != "release-two" {
+		t.Fatalf("failed desktop launch did not restore current release: %q", got)
+	}
+	state, err := os.ReadFile(filepath.Join(installRoot, "installation.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var installation map[string]any
+	if err := json.Unmarshal(state, &installation); err != nil {
+		t.Fatal(err)
+	}
+	if installation["activeReleaseId"] != "release-two" {
+		t.Fatalf("failed desktop launch changed installation state: %s", state)
+	}
+}
 
 func TestEnvForPreservesUserCLIBin(t *testing.T) {
 	t.Setenv("PRIVATE_SITE_CLI_BIN", filepath.Join(t.TempDir(), "user-bin"))
@@ -792,6 +943,42 @@ func desktopFixtureRelease(t *testing.T, releaseID string) string {
 	for relative, content := range map[string][]byte{
 		"desktop/personal-agent-ui.exe": []byte("tauri-runtime"),
 		"personal-agent-ui.exe":         []byte("stable-launcher"),
+	} {
+		target := filepath.Join(root, filepath.FromSlash(relative))
+		if err := os.MkdirAll(filepath.Dir(target), 0o700); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(target, content, 0o700); err != nil {
+			t.Fatal(err)
+		}
+	}
+	rewriteFixtureChecksums(t, root)
+	return root
+}
+
+func macDesktopFixtureRelease(t *testing.T, releaseID string) string {
+	t.Helper()
+	root := fixtureRelease(t, releaseID)
+	manifestPath := filepath.Join(root, "release-manifest.json")
+	manifest := map[string]any{}
+	data, err := os.ReadFile(manifestPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := json.Unmarshal(data, &manifest); err != nil {
+		t.Fatal(err)
+	}
+	manifest["desktopShell"] = map[string]any{
+		"framework": "tauri", "platform": "darwin-arm64",
+		"entrypoint": "desktop/Personal Agent.app", "stableLauncher": "personal-agent-ui",
+	}
+	updated, _ := json.Marshal(manifest)
+	if err := os.WriteFile(manifestPath, updated, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	for relative, content := range map[string][]byte{
+		"desktop/Personal Agent.app/Contents/MacOS/personal-agent-ui": []byte("tauri-runtime"),
+		"personal-agent-ui": []byte("stable-launcher"),
 	} {
 		target := filepath.Join(root, filepath.FromSlash(relative))
 		if err := os.MkdirAll(filepath.Dir(target), 0o700); err != nil {

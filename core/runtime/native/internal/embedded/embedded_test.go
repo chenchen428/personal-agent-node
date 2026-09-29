@@ -35,6 +35,24 @@ func TestExtractVerifiesAndUnpacksAppendedPayload(t *testing.T) {
 	}
 }
 
+func TestExtractVerifiesAndUnpacksLinkedPayload(t *testing.T) {
+	payload := payloadArchive(t, map[string]string{"release/release-manifest.json": `{}`, "node/" + nodeName(): "node"})
+	previous := linkedPayload
+	defer func() { linkedPayload = previous }()
+	linkedPayload = append(append([]byte(nil), payload...), Footer(payload)...)
+	result, err := Extract(filepath.Join(t.TempDir(), "missing-setup"), filepath.Join(t.TempDir(), "out"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(result.NodeRuntime); err != nil {
+		t.Fatal(err)
+	}
+	linkedPayload[len(payload)/2] ^= 0xff
+	if _, err := Extract(filepath.Join(t.TempDir(), "missing-setup"), filepath.Join(t.TempDir(), "corrupt")); err == nil {
+		t.Fatal("corrupt linked payload was accepted")
+	}
+}
+
 func payloadArchive(t *testing.T, files map[string]string) []byte {
 	t.Helper()
 	var output bytes.Buffer

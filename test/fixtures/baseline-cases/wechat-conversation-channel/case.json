@@ -13,6 +13,8 @@
     "WeChat claw and personal WeChat account identities are each owned by exactly one isolated Space per installation; conflicting Spaces fail closed for status, polling, callbacks and sends",
     "Clearing a configured personal WeChat connection removes its local endpoint, secret, account binding, access policy, connectivity test and pending plans, releases the installation-level account owner, preserves chat history, and restores the Configure action",
     "WeChat identity maps to a reusable local Agent session",
+    "WeChat claw and personal WeChat persist each inbound text or file once, combine rapid messages from the same channel and sender into one ordered Agent turn and one receipt, keep other senders and channels separate, and recover a persisted batch after restart without exposing local attachment paths.",
+    "Personal WeChat group batches distinguish members within the same conversation using the connector's sender identity, retain each member's masked speaker label in Agent input, and do not steer one member's pending batch into another member's active turn.",
     "WeChat claw generates login QR codes through the official iLink host without inheriting unrelated model egress proxies by default, supports an explicit dedicated or opted-in system proxy, bounds and retries QR requests, validates QR and polling responses, and returns actionable redacted errors",
     "Health failure asks for confirmation before login",
     "Verification codes are bounded and are not persisted as conversation input",

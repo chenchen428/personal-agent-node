@@ -18,15 +18,20 @@ test("Calendar capability is issued only to main turns, redacted and revoked, an
     runner: { async runAppServerCommand(input) {
       issued = /日程临时能力值 ([A-Za-z0-9_-]+)/.exec(input.appServerDeveloperInstructions)?.[1] || "";
       assert.ok(issued);
-      const result = await orchestrator.executeCalendarCli(issued, { action: "create", input: { title: "明天讨论", startAt: "2026-09-13T09:00:00+08:00", timeZone: "Asia/Shanghai" } });
+      assert.match(input.appServerDeveloperInstructions, /Cove 日程[\s\S]*Windows[\s\S]*macOS/);
+      const result = await orchestrator.executeCalendarCli(issued, { action: "create", input: {
+        title: "提交报表提醒", startAt: "2026-09-30T18:00:00+08:00", timeZone: "Asia/Shanghai",
+        executionMode: "remind", executionPrompt: "提醒我提交报表。",
+      } });
       assert.equal(result.data.revision, 1);
+      assert.equal(result.data.executionMode, "remind");
       await assert.rejects(orchestrator.executeCalendarCli(issued, { action: "list", input: { spaceId: "other" } }));
       await input.onSessionEvent({ sessionId: input.sessionId, kind: "session.tool_use", payload: { content: `calendar ${issued}`, metadata: { nested: [issued] } } });
       return { ok: true };
     }, stopAppServerCommand() { return false; } },
   });
   try {
-    await orchestrator.runTurn(main.id, "安排日程", { developerInstructions: "main" });
+    await orchestrator.runTurn(main.id, "9月30日18点提醒我提交报表", { developerInstructions: "main" });
     assert.equal(calendarStore.list().total, 1);
     assert.doesNotMatch(JSON.stringify(store.getSession(main.id)), new RegExp(issued));
     await assert.rejects(orchestrator.executeCalendarCli(issued, { action: "list" }), { code: "CALENDAR_CAPABILITY_INVALID" });

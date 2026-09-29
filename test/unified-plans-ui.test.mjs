@@ -78,6 +78,8 @@ test("plan rows and navigation render real next dates, repeat modes, errors, and
       const plan={id:'cal-fixture',title:'每周例会',participants:[],startAt:'2027-01-04T01:00:00Z',timeZone:'Asia/Shanghai',status:'planned',enabled:true,recurrence:{frequency:'weekly',weekdays:[1]},executionMode:'remind',nextOccurrenceAt:'2027-01-04T01:00:00Z',latestRun:{status:'failed',occurrenceAt:'2026-12-28T01:00:00Z'}};
       const base={value:{items:[plan],total:1},loading:false,error:'',staleError:'',selectedId:'cal-fixture',onSelect(){},onRetry(){}};
       export const result={row:renderToStaticMarkup(React.createElement(PlanList,base)),
+        cancelled:renderToStaticMarkup(React.createElement(PlanList,{...base,value:{items:[{...plan,status:'cancelled',enabled:false,nextOccurrenceAt:null}],total:1}})),
+        completed:renderToStaticMarkup(React.createElement(PlanList,{...base,value:{items:[{...plan,recurrence:null,nextOccurrenceAt:null,latestRun:{status:'completed',occurrenceAt:plan.startAt}}],total:1}})),
         empty:renderToStaticMarkup(React.createElement(PlanList,{...base,value:{items:[],total:0}})),
         error:renderToStaticMarkup(React.createElement(PlanList,{...base,value:null,error:'读取失败'})),
         loading:renderToStaticMarkup(React.createElement(PlanList,{...base,value:null,loading:true})),
@@ -93,6 +95,8 @@ test("plan rows and navigation render real next dates, repeat modes, errors, and
   const result = module.exports.result;
   assert.match(result.row, /每周.*周一/); assert.match(result.row, /提醒本人/); assert.match(result.row, /2027.*1.*4.*09:00/);
   assert.match(result.row, /执行失败/); assert.match(result.row, /aria-pressed="true"/);
+  assert.match(result.cancelled, /已取消/); assert.doesNotMatch(result.cancelled, /已暂停/);
+  assert.match(result.completed, /已完成/); assert.doesNotMatch(result.completed, /没有待发生安排/);
   assert.match(result.error, /role="alert".*读取失败/); assert.doesNotMatch(result.error, /暂无符合条件/);
   assert.match(result.empty, /暂无符合条件的计划/); assert.match(result.loading, /role="status"/);
   assert.match(result.desktop, /href="\/app\/workers\/calendar" aria-current="page"/);

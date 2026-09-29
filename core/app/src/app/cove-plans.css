@@ -27,7 +27,3 @@
 .mobile-plan-selected > button, .mobile-plans .cove-calendar-pager button, .plan-list [role="alert"] button, .plan-detail [role="alert"] button { min-height: 44px; padding: 0 12px; background: transparent; border: 1px solid var(--hairline); border-radius: 6px; color: inherit; }
 .mobile-plans .plan-row { padding-left: 4px; padding-right: 4px; }
 .mobile-plans .cove-calendar-empty { padding: 40px 12px; }
-.mobile-calendar-toolbar { flex-wrap: wrap; justify-content: flex-start; }
-.mobile-calendar-toolbar > select { min-height: 44px; max-width: 115px; background: transparent; color: inherit; border: 1px solid var(--hairline); border-radius: 6px; }
-.mobile-calendar-date-slot { display: flex; align-items: center; gap: 4px; min-height: 44px; flex: 1; font-size: 11px; }
-.mobile-calendar-date-slot input { min-width: 0; max-width: 125px; }

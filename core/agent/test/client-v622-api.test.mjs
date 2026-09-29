@@ -30,6 +30,7 @@ test("V6.22 read-only client API is local, searchable and self-contained", async
       NODE_ENV: "test",
       OPEN_AGENT_BRIDGE_PORT: String(port),
       OPEN_AGENT_BRIDGE_API_TOKEN: token,
+      OPEN_AGENT_BRIDGE_CONSOLE_BASE_URL: "https://owner.example.test/app",
       PERSONAL_AGENT_AUTH_PASSWORD: "client-v622-local-password",
       PERSONAL_AGENT_AUTH_COOKIE_SECRET: "client-v622-cookie-secret-for-tests",
       OPEN_AGENT_BRIDGE_DATA_DIR: path.join(root, "bridge"),
@@ -64,6 +65,19 @@ test("V6.22 read-only client API is local, searchable and self-contained", async
     fs.rmSync(root, { recursive: true, force: true, maxRetries: 8, retryDelay: 125 });
   });
   await waitForServer(port, child, () => output);
+
+  const legacySkillPath = `http://127.0.0.1:${port}/agent-skills?next=https://attacker.example.test`;
+  const unauthenticatedSkillPage = await fetch(legacySkillPath, { redirect: "manual" });
+  assert.equal(unauthenticatedSkillPage.status, 302);
+  assert.match(unauthenticatedSkillPage.headers.get("location"), /^\/login\?return_to=/);
+  for (const method of ["GET", "HEAD"]) {
+    const legacySkillPage = await fetch(legacySkillPath, { method, redirect: "manual", headers: {
+      authorization: `Bearer ${token}`, host: "attacker.example.test",
+    } });
+    assert.equal(legacySkillPage.status, 302);
+    assert.equal(legacySkillPage.headers.get("location"), "https://owner.example.test/app/skills");
+    assert.equal(await legacySkillPage.text(), "");
+  }
 
   const capabilities = await get(port, token, "/api/node/v1/capabilities");
   assert.equal(capabilities.result.capabilities.client.readOnly, true);

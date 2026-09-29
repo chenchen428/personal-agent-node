@@ -17,13 +17,13 @@ const tag = required(args.tag, '--tag');
 const releaseRoot = path.resolve(required(args.releaseRoot, '--release-root'));
 const nodeRuntime = path.resolve(args.nodeRuntime || process.execPath);
 const output = path.resolve(args.output || path.join(root, 'dist', 'platform', tag));
+if (platform === 'darwin' && !args.stageForWrapper) throw new Error('macOS packaging requires --stage-for-wrapper followed by scripts/verify-platform-installer.sh in a separate process');
 const temporary = fs.mkdtempSync(path.join(os.tmpdir(), 'personal-agent-platform-'));
 
 try {
   verifyInputs();
   fs.mkdirSync(output, { recursive: true });
   const setupBinary = path.join(temporary, platform === 'win32' ? 'personal-agent-setup.exe' : 'personal-agent-setup');
-  buildGo('personal-agent-setup', './cmd/personal-agent-setup', setupBinary, target);
   const launcherBinary = path.join(temporary, platform === 'win32' ? 'personal-agent.exe' : 'personal-agent');
   buildGo('personal-agent', './cmd/personal-agent', launcherBinary, target);
   const uiLauncherBinary = platform === 'linux' ? '' : path.join(temporary, platform === 'win32' ? 'personal-agent-ui.exe' : 'personal-agent-ui');
@@ -43,16 +43,40 @@ try {
   finalizePlatformRelease(payloadRelease);
   const payload = path.join(temporary, 'payload.tar.gz');
   run('tar', ['-czf', path.basename(payload), '-C', path.basename(payloadRoot), 'release', 'node'], { cwd: temporary });
-  appendPayload(setupBinary, payload);
-  run(setupBinary, ['inspect']);
+  if (platform === 'darwin') {
+    const nativeRoot = path.join(temporary, 'native');
+    fs.cpSync(path.join(root, 'core', 'runtime', 'native'), nativeRoot, { recursive: true });
+    const embeddedRoot = path.join(nativeRoot, 'internal', 'embedded');
+    appendPayload(path.join(embeddedRoot, 'payload.bin'), payload);
+    fs.writeFileSync(path.join(embeddedRoot, 'linked_payload.go'), [
+      'package embedded',
+      '',
+      'import _ "embed"',
+      '',
+      '//go:embed payload.bin',
+      'var signedPayload []byte',
+      '',
+      'func init() { linkedPayload = signedPayload }',
+      '',
+    ].join('\n'));
+    buildGo('personal-agent-setup', './cmd/personal-agent-setup', setupBinary, target, { nativeRoot });
+    const identity = String(process.env.PERSONAL_AGENT_APPLE_APPLICATION_IDENTITY || '').trim();
+    if (args.requireSigning && !identity) throw new Error('macOS application signing identity is required');
+    run('codesign', identity
+      ? ['--force', '--options', 'runtime', '--timestamp', '--sign', identity, setupBinary]
+      : ['--force', '--sign', '-', setupBinary]);
+    run('codesign', ['--verify', '--strict', '--verbose=2', setupBinary]);
+  } else {
+    buildGo('personal-agent-setup', './cmd/personal-agent-setup', setupBinary, target);
+    appendPayload(setupBinary, payload);
+  }
+  if (platform !== 'darwin') run(setupBinary, ['inspect']);
 
   const updater = packageUpdater({ platform, architecture, tag, setupBinary, output });
   const asset = packageAsset({ platform, architecture, tag, setupBinary, output, temporary });
   const digest = sha256(asset);
-  process.stdout.write(`${JSON.stringify({ ok: true, tag, platform, architecture, target, nativeRuntime, asset, updater, sha256: digest, updaterSha256: sha256(updater) }, null, 2)}\n`);
-} finally {
-  fs.rmSync(temporary, { recursive: true, force: true });
-}
+  process.stdout.write(`${JSON.stringify({ ok: platform !== 'darwin', ...(platform === 'darwin' ? { staged: true } : {}), tag, platform, architecture, target, nativeRuntime, asset, updater, sha256: digest, updaterSha256: sha256(updater) }, null, 2)}\n`);
+} finally { fs.rmSync(temporary, { recursive: true, force: true }); }
 
 function verifyInputs() {
   const manifest = JSON.parse(fs.readFileSync(path.join(releaseRoot, 'release-manifest.json'), 'utf8'));
@@ -77,7 +101,7 @@ function verifySharpNativeRuntime(payloadRelease) {
 }
 
 function buildGo(name, packagePath, outputFile, target, options = {}) {
-  const nativeRoot = path.join(root, 'core', 'runtime', 'native');
+  const nativeRoot = options.nativeRoot || path.join(root, 'core', 'runtime', 'native');
   const environment = { ...process.env, CGO_ENABLED: '0', GOOS: target.goos, GOARCH: target.goarch };
   const subsystem = platform === 'win32' && options.gui ? ' -H windowsgui' : '';
   run('go', ['build', '-trimpath', '-ldflags', `-s -w${subsystem} -X main.buildVersion=${tag}`, '-o', outputFile, packagePath], { cwd: nativeRoot, env: environment });
@@ -239,10 +263,10 @@ function packageUpdater({ platform, architecture, tag, setupBinary, output }) {
   if (platform === 'darwin') {
     const identity = String(process.env.PERSONAL_AGENT_APPLE_APPLICATION_IDENTITY || '').trim();
     if (args.requireSigning && !identity) throw new Error('macOS application signing identity is required');
-    if (identity) {
-      run('codesign', ['--force', '--options', 'runtime', '--timestamp', '--sign', identity, target]);
-      run('codesign', ['--verify', '--strict', '--verbose=2', target]);
-    }
+    run('codesign', identity
+      ? ['--force', '--options', 'runtime', '--timestamp', '--sign', identity, target]
+      : ['--force', '--sign', '-', target]);
+    run('codesign', ['--verify', '--strict', '--verbose=2', target]);
   }
   return target;
 }
@@ -286,10 +310,10 @@ function targetFor(platform, architecture) {
 
 function run(command, commandArgs, options = {}) {
   const result = spawnSync(command, commandArgs, { cwd: options.cwd || root, env: options.env || process.env, encoding: 'utf8', windowsHide: true, stdio: options.stdio || 'pipe' });
-  if (result.status !== 0) throw new Error(`${command} failed: ${String(result.stderr || result.stdout || result.error || '').trim()}`);
+  if (result.status !== 0) throw new Error(`${command} failed: status=${result.status} signal=${result.signal} ${String(result.stderr || result.stdout || result.error || '').trim()}`);
   return result.stdout;
 }
 
 function sha256(file) { return crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex'); }
 function required(value, label) { if (!String(value || '').trim()) throw new Error(`${label} is required`); return String(value); }
-function parseArgs(argv) { const out = {}; for (let index = 0; index < argv.length; index += 1) { const key = argv[index]; if (key === '--tag') out.tag = argv[++index]; else if (key === '--release-root') out.releaseRoot = argv[++index]; else if (key === '--node-runtime') out.nodeRuntime = argv[++index]; else if (key === '--output') out.output = argv[++index]; else if (key === '--platform') out.platform = argv[++index]; else if (key === '--arch') out.arch = argv[++index]; else if (key === '--require-signing') out.requireSigning = true; else if (key === '--candidate') out.candidate = true; else throw new Error(`Unknown option: ${key}`); } return out; }
+function parseArgs(argv) { const out = {}; for (let index = 0; index < argv.length; index += 1) { const key = argv[index]; if (key === '--tag') out.tag = argv[++index]; else if (key === '--release-root') out.releaseRoot = argv[++index]; else if (key === '--node-runtime') out.nodeRuntime = argv[++index]; else if (key === '--output') out.output = argv[++index]; else if (key === '--platform') out.platform = argv[++index]; else if (key === '--arch') out.arch = argv[++index]; else if (key === '--require-signing') out.requireSigning = true; else if (key === '--candidate') out.candidate = true; else if (key === '--stage-for-wrapper') out.stageForWrapper = true; else throw new Error(`Unknown option: ${key}`); } return out; }

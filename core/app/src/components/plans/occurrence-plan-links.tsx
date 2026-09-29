@@ -9,6 +9,6 @@ export function OccurrencePlanLinks({ entry, mobile = false }: { entry: Calendar
   return <section className="occurrence-plan-links" aria-label="关联计划">
     <p>{recurrenceLabel(entry.recurrence)} · {executionModeLabel[entry.executionMode || "record"]}</p>
     <Link className="plan-detail-link" href={planHref(planId, mobile)}>查看所属计划 →</Link>
-    {entry.executionMode && entry.executionMode !== "record" ? <PlanRuns planId={planId} mobile={mobile} occurrenceAt={entry.occurrenceAt || entry.startAt} /> : null}
+    {entry.executionMode && entry.executionMode !== "record" ? <PlanRuns planId={planId} executionMode={entry.executionMode} mobile={mobile} occurrenceAt={entry.occurrenceAt || entry.startAt} /> : null}
   </section>;
 }
