@@ -19,6 +19,11 @@ test("update manager checks, plans, autonomously authorizes, verifies, and hands
   fs.writeFileSync(path.join(installRoot, "installation.json"), JSON.stringify({ schemaVersion: 2, activeReleaseId: "0.2.0-beta.13", previous: path.join(installRoot, "releases", "0.2.0-beta.12") }));
   const launcher = path.join(installRoot, "bin", process.platform === "win32" ? "personal-agent-ui.exe" : "personal-agent-ui");
   fs.writeFileSync(launcher, "launcher", { mode: 0o700 });
+  const macDesktop = path.join(installRoot, "current", "desktop", "Personal Agent.app", "Contents", "MacOS", "personal-agent-ui");
+  if (process.platform === "darwin") {
+    fs.mkdirSync(path.dirname(macDesktop), { recursive: true });
+    fs.writeFileSync(macDesktop, "desktop", { mode: 0o700 });
+  }
   const candidate = Buffer.from("verified candidate bytes");
   const digest = crypto.createHash("sha256").update(candidate).digest("hex");
   const tag = "v0.3.0-beta.1";
@@ -57,6 +62,7 @@ test("update manager checks, plans, autonomously authorizes, verifies, and hands
       assert.match(spawns[0].args.join(" "), new RegExp(`${planned.job.id}/job\\.json`));
     } else {
       assert.deepEqual(spawns[0].args.slice(0, 2), ["--apply-update", planned.job.id]);
+      assert.equal(spawns[0].command, process.platform === "darwin" ? macDesktop : launcher);
     }
     const stored = manager.readJob(planned.job.id);
     assert.equal(fs.readFileSync(stored.artifactPath).toString(), candidate.toString());
@@ -141,6 +147,11 @@ function createDownloadFixture({ downloadFallbackImpl, apiFetchFails = false, su
   fs.writeFileSync(path.join(installRoot, "installation.json"), JSON.stringify({ schemaVersion: 2, activeReleaseId: "0.2.0-beta.50" }));
   const launcher = path.join(installRoot, "bin", process.platform === "win32" ? "personal-agent-ui.exe" : "personal-agent-ui");
   fs.writeFileSync(launcher, "launcher", { mode: 0o700 });
+  if (process.platform === "darwin") {
+    const executable = path.join(installRoot, "current", "desktop", "Personal Agent.app", "Contents", "MacOS", "personal-agent-ui");
+    fs.mkdirSync(path.dirname(executable), { recursive: true });
+    fs.writeFileSync(executable, "desktop", { mode: 0o700 });
+  }
   const candidate = Buffer.from("fallback candidate bytes");
   const digest = crypto.createHash("sha256").update(candidate).digest("hex");
   const tag = "v0.2.0-beta.52";

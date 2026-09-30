@@ -1,6 +1,6 @@
 # Cove Node
 
-This checkout targets GitHub prerelease `v0.2.0-beta.64`, batching rapid WeChat and desktop messages into one Agent turn and improving calendar reminders, recurring plans, and the mobile calendar.
+This checkout targets GitHub prerelease `v0.2.0-beta.65`, batching rapid WeChat and desktop messages into one Agent turn and improving calendar reminders, recurring plans, the mobile calendar, and the macOS update handoff.
 
 Download the matching published release assets for your platform; Windows and macOS packages retain the disclosed unsigned prerelease status.
 
@@ -38,12 +38,12 @@ Connectivity and model providers are independent. Disconnecting Cloud must not d
 
 ## Install a release
 
-Beta users download one complete package for their operating system. No preinstalled Node.js, npm, development Agent, or source checkout is required. The current release is `v0.2.0-beta.64`:
+Beta users download one complete package for their operating system. No preinstalled Node.js, npm, development Agent, or source checkout is required. The current release is `v0.2.0-beta.65`:
 
-- Windows x86-64: `personal-agent-node-v0.2.0-beta.64-windows-x64-installer.exe`
-- macOS Apple Silicon: `personal-agent-node-v0.2.0-beta.64-macos-arm64.pkg`
-- macOS Intel: `personal-agent-node-v0.2.0-beta.64-macos-x64.pkg`
-- Linux x86-64 / ARM64: the matching `personal-agent-node-v0.2.0-beta.64-linux-*.tar.gz`
+- Windows x86-64: `personal-agent-node-v0.2.0-beta.65-windows-x64-installer.exe`
+- macOS Apple Silicon: `personal-agent-node-v0.2.0-beta.65-macos-arm64.pkg`
+- macOS Intel: `personal-agent-node-v0.2.0-beta.65-macos-x64.pkg`
+- Linux x86-64 / ARM64: the matching `personal-agent-node-v0.2.0-beta.65-linux-*.tar.gz`
 - Custom-domain public server: `personal-agent-relay-install.sh` (the client shows the version-bound command)
 
 Starting with a new Release that carries `personal-agent-node-install.sh`, Linux uses a headless `.tar.gz` package, runs continuously as a systemd user service, and ships no Tauri, WebKit, or desktop entry. Replace `<release-tag>` with that Release tag for a one-line install: `curl -fsSL https://github.com/chenchen428/personal-agent-node/releases/download/<release-tag>/personal-agent-node-install.sh | bash`. Use an SSH port forward to open `http://127.0.0.1:8843/app/setup` from your own computer.

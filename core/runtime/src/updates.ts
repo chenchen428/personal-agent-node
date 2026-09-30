@@ -185,7 +185,9 @@ export function createUpdateManager({ config, operations, now = () => Date.now()
       child.unref?.();
       return;
     }
-    const launcher = path.join(installRoot, "bin", process.platform === "win32" ? "personal-agent-ui.exe" : "personal-agent-ui");
+    const launcher = process.platform === "darwin"
+      ? path.join(installRoot, "current", "desktop", "Personal Agent.app", "Contents", "MacOS", "personal-agent-ui")
+      : path.join(installRoot, "bin", "personal-agent-ui.exe");
     if (!fs.existsSync(launcher)) throw operationError("DESKTOP_HANDOFF_UNAVAILABLE", "Stable desktop launcher is unavailable", 7);
     const child = spawnImpl(launcher, ["--apply-update", job.id, "--nonce", job.handoffNonce], { detached: true, stdio: "ignore", windowsHide: true, env: process.env });
     child.unref?.();

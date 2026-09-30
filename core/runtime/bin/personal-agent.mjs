@@ -88,12 +88,12 @@ async function executeHandled({ resource, action, id, args, requestedCommand }) 
   if (resource === 'update' && action === 'plan') return controlResult(await requestControl(requireConfig(), 'update.plan', { version: args.version }));
   if (resource === 'update' && action === 'apply') {
     requireId(args.operation, '--operation'); requireId(args.digest, '--digest');
-    return controlResult(await requestControl(requireConfig(), 'update.apply', { jobId: args.job, operationId: args.operation, digest: args.digest, authorizationPolicy: args.productDevelopment ? 'product-development' : '' }, {}, { timeoutMs: 130_000 }));
+    return controlResult(await requestControl(requireConfig(), 'update.apply', { jobId: args.job, operationId: args.operation, digest: args.digest, authorizationPolicy: args.productDevelopment ? 'product-development' : '' }, {}, { timeoutMs: 300_000 }));
   }
   if (resource === 'update' && action === 'rollback') {
     if (!args.operation) return controlResult(await requestControl(requireConfig(), 'update.rollback-plan'));
     requireId(args.digest, '--digest');
-    return controlResult(await requestControl(requireConfig(), 'update.apply', { jobId: args.job, operationId: args.operation, digest: args.digest, authorizationPolicy: args.productDevelopment ? 'product-development' : '' }, {}, { timeoutMs: 130_000 }));
+    return controlResult(await requestControl(requireConfig(), 'update.apply', { jobId: args.job, operationId: args.operation, digest: args.digest, authorizationPolicy: args.productDevelopment ? 'product-development' : '' }, {}, { timeoutMs: 300_000 }));
   }
   if (resource === 'operation' && action === 'list') return controlResult(await requestControl(requireConfig(), 'operation.list'));
   if (resource === 'operation' && action === 'show') return controlResult(await requestControl(requireConfig(), 'operation.inspect', { id }));
