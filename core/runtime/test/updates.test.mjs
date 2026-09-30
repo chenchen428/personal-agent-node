@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import crypto from "node:crypto";
 import fs from "node:fs";
+import net from "node:net";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
@@ -39,7 +40,8 @@ test("update manager checks, plans, autonomously authorizes, verifies, and hands
   };
   const spawns = [];
   const operations = createOperationStore({ dataRoot });
-  const manager = createUpdateManager({ config: { homeRoot, dataRoot, runtimeDir, agentWorkspaceRoot }, operations, fetchImpl, spawnImpl(command, args) { spawns.push({ command, args }); return { unref() {} }; } });
+  const notifications = [];
+  const manager = createUpdateManager({ config: { homeRoot, dataRoot, runtimeDir, agentWorkspaceRoot }, operations, fetchImpl, notifyDesktopImpl: async (...args) => { notifications.push(args); return false; }, spawnImpl(command, args) { spawns.push({ command, args }); return { unref() {} }; } });
   try {
     const checked = await manager.check();
     assert.equal(checked.updateAvailable, true);
@@ -63,12 +65,33 @@ test("update manager checks, plans, autonomously authorizes, verifies, and hands
     } else {
       assert.deepEqual(spawns[0].args.slice(0, 2), ["--apply-update", planned.job.id]);
       assert.equal(spawns[0].command, process.platform === "darwin" ? macDesktop : launcher);
+      if (process.platform === "darwin") assert.equal(notifications[0][0], "/tmp/site_personal_agent_desktop_si.sock");
     }
     const stored = manager.readJob(planned.job.id);
     assert.equal(fs.readFileSync(stored.artifactPath).toString(), candidate.toString());
     assert.ok(stored.handoffNonce.length >= 32);
+    assert.equal(manager.status({ background: false, jobId: planned.job.id }).job.handoffNonce, undefined);
+    assert.equal(manager.status({ background: false, jobId: planned.job.id }).job.artifactPath, undefined);
   } finally {
     fs.rmSync(homeRoot, { recursive: true, force: true });
+  }
+});
+
+test("macOS desktop handoff sends the bound update to the running app", { skip: process.platform !== "darwin" }, async () => {
+  const socketPath = `/tmp/pa-update-si-${process.pid}-${crypto.randomUUID().slice(0, 8)}.sock`;
+  let received = "";
+  const server = net.createServer((connection) => {
+    connection.setEncoding("utf8");
+    connection.on("data", (chunk) => { received += chunk; });
+  });
+  try {
+    await new Promise((resolve) => server.listen(socketPath, resolve));
+    const delivered = await updateInternals.notifyMacDesktop(socketPath, "/app/personal-agent-ui", ["--apply-update", "update_123", "--nonce", "secret"]);
+    assert.equal(delivered, true);
+    assert.equal(received, `${process.cwd()}\0\0/app/personal-agent-ui\0--apply-update\0update_123\0--nonce\0secret`);
+  } finally {
+    await new Promise((resolve) => server.close(resolve));
+    fs.rmSync(socketPath, { force: true });
   }
 });
 
@@ -201,6 +224,7 @@ function createDownloadFixture({ downloadFallbackImpl, apiFetchFails = false, su
     operations: createOperationStore({ dataRoot }),
     fetchImpl,
     downloadFallbackImpl: fallback,
+    notifyDesktopImpl: async () => false,
     spawnImpl() { return { unref() {} }; },
   });
   return { manager, candidate, assetUrl, cleanup: () => fs.rmSync(homeRoot, { recursive: true, force: true }) };
