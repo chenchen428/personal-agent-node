@@ -35,6 +35,7 @@ export function createControlService({ config = resolveNodeConfig(), now, logger
       input = "";
       let request;
       try { request = JSON.parse(line); } catch { socket.end(`${JSON.stringify(errorEnvelope(operationError("INVALID_REQUEST", "Control request must be valid JSON", 2)))}\n`); return; }
+      if (request.command === "update.apply") socket.setTimeout(310_000);
       handleControlRequest(request, { operations, approvalChallenges, updates }).then((response) => socket.end(`${JSON.stringify(response)}\n`)).catch((error) => socket.end(`${JSON.stringify(errorEnvelope(error))}\n`));
     });
   });

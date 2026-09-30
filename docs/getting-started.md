@@ -1,20 +1,20 @@
 # Getting started
 
-本源码对应 GitHub 预发布版 `v0.2.0-beta.64`，支持微信与桌面连续消息合批处理，修复日程提醒和周期任务的创建、执行与展示，并改进移动端日程页面。
+本源码对应 GitHub 预发布版 `v0.2.0-beta.65`，支持微信与桌面连续消息合批处理，修复日程提醒、周期任务和 macOS 客户端更新交接，并改进移动端日程页面。
 
 请下载对应平台已发布的完整安装包；Windows 与 macOS 原生签名仍为已披露的预发布延期状态。
 
 ## Install an immutable release
 
-Set `TAG=v0.2.0-beta.64` and open the matching [GitHub Release](https://github.com/chenchen428/personal-agent-node/releases/tag/v0.2.0-beta.64). A customer machine does not need Node.js, npm, Git, a source checkout, or a development Agent.
+Set `TAG=v0.2.0-beta.65` and open the matching [GitHub Release](https://github.com/chenchen428/personal-agent-node/releases/tag/v0.2.0-beta.65). A customer machine does not need Node.js, npm, Git, a source checkout, or a development Agent.
 
 | Computer | Asset |
 | --- | --- |
-| Windows x86-64 | `personal-agent-node-v0.2.0-beta.64-windows-x64-installer.exe` |
-| macOS Apple Silicon | `personal-agent-node-v0.2.0-beta.64-macos-arm64.pkg` |
-| macOS Intel | `personal-agent-node-v0.2.0-beta.64-macos-x64.pkg` |
-| Linux x86-64 | `personal-agent-node-v0.2.0-beta.64-linux-x64.tar.gz` |
-| Linux ARM64 | `personal-agent-node-v0.2.0-beta.64-linux-arm64.tar.gz` |
+| Windows x86-64 | `personal-agent-node-v0.2.0-beta.65-windows-x64-installer.exe` |
+| macOS Apple Silicon | `personal-agent-node-v0.2.0-beta.65-macos-arm64.pkg` |
+| macOS Intel | `personal-agent-node-v0.2.0-beta.65-macos-x64.pkg` |
+| Linux x86-64 | `personal-agent-node-v0.2.0-beta.65-linux-x64.tar.gz` |
+| Linux ARM64 | `personal-agent-node-v0.2.0-beta.65-linux-arm64.tar.gz` |
 
 The same Release also publishes `personal-agent-relay-install.sh`. The desktop
 shows its exact version-bound command when the user selects a custom domain.

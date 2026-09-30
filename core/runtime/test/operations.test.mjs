@@ -66,6 +66,24 @@ test("control socket requires a one-time approval challenge and survives malform
   }
 });
 
+test("control socket keeps a verified update request open during a long download", async () => {
+  const dataRoot = fs.mkdtempSync(path.join(os.tmpdir(), "pa-update-control-"));
+  const config = { dataRoot, runtimeDir: path.join(dataRoot, "runtime") };
+  const service = createControlService({ config });
+  service.updates.apply = async () => {
+    await new Promise((resolve) => setTimeout(resolve, 10_100));
+    return { job: { status: "handoff" } };
+  };
+  try {
+    await service.listen();
+    const response = await requestControl(config, "update.apply", {}, {}, { timeoutMs: 15_000 });
+    assert.equal(response.result.job.status, "handoff");
+  } finally {
+    await service.close();
+    fs.rmSync(dataRoot, { recursive: true, force: true });
+  }
+});
+
 test("registered product development can authorize an update without a human approval", async () => {
   const dataRoot = fs.mkdtempSync(path.join(os.tmpdir(), "personal-agent-policy-"));
   const store = createOperationStore({ dataRoot });
