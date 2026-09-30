@@ -159,6 +159,10 @@ export function createUpdateManager({ config, operations, now = () => Date.now()
     } catch {
       bytes = await fallback();
     }
+    if (response?.status === 403 || response?.status === 429) {
+      bytes = await fallback();
+      response = null;
+    }
     if (response) {
       if (!response.ok) throw operationError("UPDATE_DOWNLOAD_FAILED", `Update download failed with HTTP ${response.status}`, 7);
       const declared = Number(response.headers.get("content-length") || job.artifact.size || 0);
@@ -233,6 +237,10 @@ export function createUpdateManager({ config, operations, now = () => Date.now()
     let bytes;
     try { response = await fetchImpl(url, { ...init, signal: AbortSignal.timeout(15_000) }); }
     catch { bytes = await fallback(); }
+    if (response?.status === 403 || response?.status === 429) {
+      bytes = await fallback();
+      response = null;
+    }
     if (response) {
       if (!response.ok) throw operationError("UPDATE_CHECK_FAILED", `${label} failed with HTTP ${response.status}`, 7);
       try { bytes = Buffer.from(await response.arrayBuffer()); }

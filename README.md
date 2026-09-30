@@ -1,6 +1,6 @@
 # Cove Node
 
-本源码对应 GitHub 预发布版 `v0.2.0-beta.65`，支持微信与桌面连续消息合批处理，修复日程提醒、周期任务和 macOS 客户端更新交接，并改进移动端日程页面。
+本源码对应 GitHub 预发布版 `v0.2.0-beta.66`，支持微信与桌面连续消息合批处理，修复日程提醒、周期任务和 macOS 客户端更新交接，并改进移动端日程页面与 GitHub 限流下的更新检查。
 
 请下载对应平台已发布的完整安装包；Windows 与 macOS 原生签名仍为已披露的预发布延期状态。
 
@@ -41,12 +41,12 @@ Personal Agent Node 默认不需要连接 `chenjianhui.site` 或任何已配置�
 
 ## 安装发行版
 
-Beta 用户只需要下载对应系统的完整安装包，不需要预装 Node.js、npm、开发助手或克隆源码。当前发行版为 `v0.2.0-beta.65`：
+Beta 用户只需要下载对应系统的完整安装包，不需要预装 Node.js、npm、开发助手或克隆源码。当前发行版为 `v0.2.0-beta.66`：
 
-- Windows x86-64：`personal-agent-node-v0.2.0-beta.65-windows-x64-installer.exe`
-- macOS Apple Silicon：`personal-agent-node-v0.2.0-beta.65-macos-arm64.pkg`
-- macOS Intel：`personal-agent-node-v0.2.0-beta.65-macos-x64.pkg`
-- Linux x86-64 / ARM64：对应的 `personal-agent-node-v0.2.0-beta.65-linux-*.tar.gz`
+- Windows x86-64：`personal-agent-node-v0.2.0-beta.66-windows-x64-installer.exe`
+- macOS Apple Silicon：`personal-agent-node-v0.2.0-beta.66-macos-arm64.pkg`
+- macOS Intel：`personal-agent-node-v0.2.0-beta.66-macos-x64.pkg`
+- Linux x86-64 / ARM64：对应的 `personal-agent-node-v0.2.0-beta.66-linux-*.tar.gz`
 - 自定义域名公网服务器：`personal-agent-relay-install.sh`（由客户端展示当前版本固定命令）
 
 从携带 `personal-agent-node-install.sh` 的新版 Release 开始，Linux 发行版改为 `.tar.gz` 纯 headless 包，由 systemd user service 常驻，不携带 Tauri、WebKit 或桌面入口。将 `<release-tag>` 替换成目标版本后可一行安装：`curl -fsSL https://github.com/chenchen428/personal-agent-node/releases/download/<release-tag>/personal-agent-node-install.sh | bash`。首次设置通过 SSH 端口转发访问 `http://127.0.0.1:8843/app/setup`。

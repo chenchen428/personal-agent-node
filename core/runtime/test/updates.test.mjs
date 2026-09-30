@@ -138,7 +138,35 @@ test("update manager falls back for release and checksum metadata transport fail
   }
 });
 
-function createDownloadFixture({ downloadFallbackImpl, apiFetchFails = false, sumsFetchFails = false, artifactFetchFails = true }) {
+test("update manager uses the system downloader when GitHub rate limits direct requests", async () => {
+  const fallbackUrls = [];
+  const fixture = createDownloadFixture({
+    apiFetchStatus: 403,
+    sumsFetchStatus: 429,
+    artifactFetchStatus: 403,
+    artifactFetchFails: false,
+    downloadFallbackImpl: async (url, context) => {
+      fallbackUrls.push(url);
+      if (url.includes("api.github.com")) return Buffer.from(JSON.stringify([context.release]));
+      if (url.endsWith("SHA256SUMS")) return Buffer.from(`${context.digest}  ${context.assetName}\n`);
+      return context.candidate;
+    },
+  });
+  try {
+    const checked = await fixture.manager.check();
+    assert.equal(checked.available.version, "0.2.0-beta.52");
+    const planned = await fixture.manager.plan();
+    fixture.manager.approve({ jobId: planned.job.id, operationId: planned.operation.id, digest: planned.operation.digest });
+    await fixture.manager.apply({ jobId: planned.job.id, operationId: planned.operation.id, digest: planned.operation.digest });
+    assert.equal(fallbackUrls.length, 3);
+    assert.equal(fallbackUrls[2], fixture.assetUrl);
+    assert.equal(fs.readFileSync(fixture.manager.readJob(planned.job.id).artifactPath).toString(), fixture.candidate.toString());
+  } finally {
+    fixture.cleanup();
+  }
+});
+
+function createDownloadFixture({ downloadFallbackImpl, apiFetchFails = false, sumsFetchFails = false, artifactFetchFails = true, apiFetchStatus = 0, sumsFetchStatus = 0, artifactFetchStatus = 0 }) {
   const homeRoot = fs.mkdtempSync(path.join(os.tmpdir(), "pa-update-fallback-test-"));
   const dataRoot = path.join(homeRoot, "workspace");
   const installRoot = path.join(homeRoot, "core");
@@ -162,10 +190,10 @@ function createDownloadFixture({ downloadFallbackImpl, apiFetchFails = false, su
     { name: "SHA256SUMS", browser_download_url: `https://github.com/chenchen428/personal-agent-node/releases/download/${tag}/SHA256SUMS` },
   ] };
   const fetchImpl = async (url) => {
-    if (String(url).includes("api.github.com")) { if (apiFetchFails) throw new TypeError("fetch failed"); return Response.json([release]); }
-    if (String(url).endsWith("SHA256SUMS")) { if (sumsFetchFails) throw new TypeError("fetch failed"); return new Response(`${digest}  ${assetName}\n`); }
+    if (String(url).includes("api.github.com")) { if (apiFetchFails) throw new TypeError("fetch failed"); return apiFetchStatus ? new Response("", { status: apiFetchStatus }) : Response.json([release]); }
+    if (String(url).endsWith("SHA256SUMS")) { if (sumsFetchFails) throw new TypeError("fetch failed"); return sumsFetchStatus ? new Response("", { status: sumsFetchStatus }) : new Response(`${digest}  ${assetName}\n`); }
     if (artifactFetchFails) throw new TypeError("fetch failed");
-    return new Response(candidate, { headers: { "content-length": String(candidate.length) } });
+    return artifactFetchStatus ? new Response("", { status: artifactFetchStatus }) : new Response(candidate, { headers: { "content-length": String(candidate.length) } });
   };
   const fallback = (url) => downloadFallbackImpl(url, { release, digest, assetName, candidate });
   const manager = createUpdateManager({
