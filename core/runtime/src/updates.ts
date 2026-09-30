@@ -1,5 +1,6 @@
 import crypto from "node:crypto";
 import fs from "node:fs";
+import net from "node:net";
 import os from "node:os";
 import path from "node:path";
 import { execFile, spawn } from "node:child_process";
@@ -11,7 +12,7 @@ const CHECK_TTL_MS = 6 * 60 * 60_000;
 const MAX_ARTIFACT_BYTES = 1024 * 1024 * 1024;
 const ACTIVE_STATES = new Set(["planned", "approved", "downloading", "verified", "handoff", "activating", "restarting", "verifying"]);
 
-export function createUpdateManager({ config, operations, now = () => Date.now(), randomUUID = () => crypto.randomUUID(), fetchImpl = fetch, spawnImpl = spawn, downloadFallbackImpl = downloadArtifactWithPlatformClient } = {}) {
+export function createUpdateManager({ config, operations, now = () => Date.now(), randomUUID = () => crypto.randomUUID(), fetchImpl = fetch, spawnImpl = spawn, downloadFallbackImpl = downloadArtifactWithPlatformClient, notifyDesktopImpl = notifyMacDesktop } = {}) {
   if (!config?.dataRoot || !operations) throw operationError("INVALID_ARGUMENT", "Update manager requires config and operation storage", 2);
   const installRoot = path.join(config.homeRoot || path.dirname(config.dataRoot), "core");
   const updatesRoot = path.join(installationPaths(config.installationDataRoot || config.dataRoot).installationRoot, "updates");
@@ -24,7 +25,7 @@ export function createUpdateManager({ config, operations, now = () => Date.now()
     const currentVersion = String(installation?.activeReleaseId || packageVersion()).replace(/^v/, "");
     const channel = state.channel || channelFor(currentVersion);
     const jobs = listJobs();
-    const job = jobId ? readJob(jobId) : jobs[0] || null;
+    const job = jobId ? publicJob(readJob(jobId)) : jobs[0] || null;
     if (background && (!state.checkedAt || now() - Date.parse(state.checkedAt) >= CHECK_TTL_MS) && !checking) {
       checking = check().catch(() => null).finally(() => { checking = null; });
     }
@@ -132,7 +133,7 @@ export function createUpdateManager({ config, operations, now = () => Date.now()
           else transition(job, "verified");
           job.handoffNonce = crypto.randomBytes(32).toString("base64url");
           transition(job, "handoff");
-          launchShellHandoff(job);
+          await launchShellHandoff(job);
           return { jobId: job.id, status: job.status, targetReleaseId: job.targetReleaseId };
         } catch (error) {
           transition(job, "failed", { failure: { code: error?.code || "UPDATE_FAILED", message: String(error?.message || "Update failed").slice(0, 300) } });
@@ -180,7 +181,7 @@ export function createUpdateManager({ config, operations, now = () => Date.now()
     transition(job, "verified");
   }
 
-  function launchShellHandoff(job) {
+  async function launchShellHandoff(job) {
     if (process.platform === "linux") {
       const executable = job.kind === "apply" ? job.artifactPath : path.join(installRoot, "bin", "personal-agent-setup");
       if (!executable || !fs.statSync(executable, { throwIfNoEntry: false })?.isFile()) throw operationError("HEADLESS_HANDOFF_UNAVAILABLE", "Verified Linux update executor is unavailable", 7);
@@ -193,7 +194,9 @@ export function createUpdateManager({ config, operations, now = () => Date.now()
       ? path.join(installRoot, "current", "desktop", "Personal Agent.app", "Contents", "MacOS", "personal-agent-ui")
       : path.join(installRoot, "bin", "personal-agent-ui.exe");
     if (!fs.existsSync(launcher)) throw operationError("DESKTOP_HANDOFF_UNAVAILABLE", "Stable desktop launcher is unavailable", 7);
-    const child = spawnImpl(launcher, ["--apply-update", job.id, "--nonce", job.handoffNonce], { detached: true, stdio: "ignore", windowsHide: true, env: process.env });
+    const args = ["--apply-update", job.id, "--nonce", job.handoffNonce];
+    if (process.platform === "darwin" && await notifyDesktopImpl("/tmp/site_personal_agent_desktop_si.sock", launcher, args)) return;
+    const child = spawnImpl(launcher, args, { detached: true, stdio: "ignore", windowsHide: true, env: process.env });
     child.unref?.();
   }
 
@@ -253,6 +256,24 @@ export function createUpdateManager({ config, operations, now = () => Date.now()
   return { status, check, plan, planRollback, approve, apply, readJob, listJobs, updatesRoot, installRoot };
 }
 
+async function notifyMacDesktop(socketPath, executable, args) {
+  const socket = fs.statSync(socketPath, { throwIfNoEntry: false });
+  if (!socket) return false;
+  if (!socket.isSocket() || socket.uid !== process.getuid()) throw operationError("DESKTOP_HANDOFF_UNAVAILABLE", "Desktop handoff socket is not owned by this user", 7);
+  try {
+    await new Promise((resolve, reject) => {
+      const connection = net.createConnection(socketPath);
+      connection.setTimeout(2000, () => connection.destroy(new Error("Desktop handoff timed out")));
+      connection.on("connect", () => connection.end(`${process.cwd()}\0\0${[executable, ...args].join("\0")}`));
+      connection.on("error", reject);
+      connection.on("close", resolve);
+    });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 function requireProductDevelopmentState(config) {
   const state = readJson(path.join(config.dataRoot, "runtime", "product-development.json"));
   const workspaceValue = String(config.agentWorkspaceRoot || "").trim();
@@ -307,4 +328,4 @@ function atomicJson(file, value) { const temporary = `${file}.${process.pid}.${c
 function constantTimeEqual(left, right) { const a = Buffer.from(String(left || "")); const b = Buffer.from(String(right || "")); return a.length === b.length && crypto.timingSafeEqual(a, b); }
 function iso(value) { return new Date(value).toISOString(); }
 
-export const updateInternals = { compareVersions, updaterAssetName, checksumFor, channelFor };
+export const updateInternals = { compareVersions, updaterAssetName, checksumFor, channelFor, notifyMacDesktop };

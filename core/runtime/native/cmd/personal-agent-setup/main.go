@@ -84,6 +84,11 @@ func updateCommand(args []string) {
 	if err := verifyCandidateHandoff(home, jobPath, &job); err != nil {
 		failUpdate(jobPath, &job, err)
 	}
+	if runtime.GOOS == "darwin" {
+		if err := waitForDesktopParentExit(os.Getppid(), os.Getppid, 30*time.Second); err != nil {
+			failUpdate(jobPath, &job, err)
+		}
+	}
 	temporary := filepath.Join(os.TempDir(), fmt.Sprintf("personal-agent-update-%d", time.Now().UnixNano()))
 	defer os.RemoveAll(temporary)
 	payload, err := embedded.Extract(executable, temporary)
@@ -129,6 +134,11 @@ func updateCommand(args []string) {
 func rollbackUpdateCommand(args []string) {
 	home, jobPath, nonce := updateFlags("rollback-update", args)
 	job := requireUpdateJob(home, jobPath, nonce, "rollback")
+	if runtime.GOOS == "darwin" {
+		if err := waitForDesktopParentExit(os.Getppid(), os.Getppid, 30*time.Second); err != nil {
+			failUpdate(jobPath, &job, err)
+		}
+	}
 	job.Status = "activating"
 	writeUpdateJob(jobPath, &job)
 	result, err := installer.Rollback(context.Background(), filepath.Join(home, "core"), runtime.GOOS, nil)
@@ -247,6 +257,8 @@ func launchInstalledDesktop(home, route string) error {
 	launcher := filepath.Join(home, "core", "bin", "personal-agent-ui")
 	if runtime.GOOS == "windows" {
 		launcher += ".exe"
+	} else if runtime.GOOS == "darwin" {
+		launcher = filepath.Join(home, "core", "current", "desktop", "Personal Agent.app", "Contents", "MacOS", "personal-agent-ui")
 	}
 	command := exec.Command(launcher, "--url", "http://127.0.0.1:8843"+route)
 	command.Env = append(os.Environ(), "PERSONAL_AGENT_HOME="+home, "PRIVATE_SITE_INSTALL_ROOT="+filepath.Join(home, "core"), "PRIVATE_SITE_DATA_ROOT="+filepath.Join(home, "workspace"))
@@ -264,6 +276,17 @@ func waitForLocalGateway(timeout time.Duration) error {
 		time.Sleep(500 * time.Millisecond)
 	}
 	return fmt.Errorf("updated Personal Agent did not become ready")
+}
+
+func waitForDesktopParentExit(parent int, currentParent func() int, timeout time.Duration) error {
+	deadline := time.Now().Add(timeout)
+	for parent > 1 && currentParent() == parent {
+		if time.Now().After(deadline) {
+			return fmt.Errorf("previous Personal Agent desktop did not exit")
+		}
+		time.Sleep(50 * time.Millisecond)
+	}
+	return nil
 }
 
 func truncate(value string, limit int) string {
